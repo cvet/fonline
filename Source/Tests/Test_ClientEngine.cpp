@@ -435,22 +435,22 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     const array<pair<string_view, string_view>, 16> expected_failures {{
-        {"Models/VertexCountBomb.fbx", "vertices"},
+        {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
         {"Models/IndexCountBomb.fbx", "mesh indices"},
         {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
-        {"Models/SkinCountBomb.fbx", "skin bones"},
-        {"Models/SkinOffsetMismatch.fbx", "skin bone offsets"},
+        {"Models/SkinCountBomb.fbx", "skin bone count exceeds maximum"},
+        {"Models/SkinOffsetMismatch.fbx", "skin bone offset count mismatch"},
         {"Models/NonFiniteSkinWeight.fbx", "non-finite skin weight"},
-        {"Models/OutOfRangeSkinWeight.fbx", "skin weight -0.25 outside"},
+        {"Models/OutOfRangeSkinWeight.fbx", "skin weight outside [0, 1]"},
         {"Models/NonFiniteSkinIndex.fbx", "non-finite skin index"},
         {"Models/NonIntegralSkinIndex.fbx", "non-integral skin index"},
-        {"Models/OutOfRangeSkinIndex.fbx", "skin index 1 outside"},
+        {"Models/OutOfRangeSkinIndex.fbx", "skin index outside valid range"},
         {"Models/InvalidSkinWeightSum.fbx", "skin-weight sum"},
-        {"Models/ChildCountBomb.fbx", "children; maximum"},
+        {"Models/ChildCountBomb.fbx", "child count exceeds maximum"},
         {"Models/HierarchyDepthBomb.fbx", "hierarchy depth"},
         {"Models/DescriptionStringBomb.fo3d", "String length exceeds remaining buffer"},
-        {"Models/DescriptionLinksBomb.fo3d", "field 'links'"},
-        {"Models/DescriptionNestedCountBomb.fo3d", "field 'disabled meshes'"},
+        {"Models/DescriptionLinksBomb.fo3d", "links"},
+        {"Models/DescriptionNestedCountBomb.fo3d", "disabled meshes"},
     }};
 
     auto settings = MakeClientTestSettings();

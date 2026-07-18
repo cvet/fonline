@@ -826,7 +826,7 @@ TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
     {
         vector<ModelAnimationRuntimeJoint> invalid = source_joints;
         invalid[4].RestLocalTransform[3][0] += 1.0f;
-        CHECK_THROWS_WITH(ValidateModelAnimationRuntimeBaseJoints(*runtime_rig, invalid, "wrong rest fixture"), Catch::Matchers::ContainsSubstring("rest-pose mismatch"));
+        CHECK_THROWS_WITH(ValidateModelAnimationRuntimeBaseJoints(*runtime_rig, invalid, "wrong rest fixture"), Catch::Matchers::ContainsSubstring("rest-pose matrix component mismatch"));
     }
 }
 

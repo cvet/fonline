@@ -43,7 +43,7 @@ void VerifyModelBakedCountFitsData(const DataReader& reader, size_t count, size_
     FO_STRONG_ASSERT(min_element_size != 0, "Minimum baked element size must be non-zero");
 
     if (count > reader.GetUnreadSize() / min_element_size) {
-        throw DataReadingException(strex("Baked model '{}' field '{}' count {} cannot fit in {} unread bytes", context, field, count, reader.GetUnreadSize()));
+        throw DataReadingException("Baked model field element count cannot fit in unread bytes", context, field, count, reader.GetUnreadSize());
     }
 }
 

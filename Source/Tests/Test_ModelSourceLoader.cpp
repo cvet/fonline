@@ -144,7 +144,7 @@ TEST_CASE("ModelSourceAssetValidationRejectsInvalidSourceData")
     {
         ModelSourceAsset asset = valid;
         asset.Skeleton.Joints[1].Hierarchy = {"Root", "Missing", "Bone"};
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("without parent hierarchy"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("without a parent hierarchy"));
     }
 
     SECTION("HierarchyDepthLimit")
@@ -156,7 +156,7 @@ TEST_CASE("ModelSourceAssetValidationRejectsInvalidSourceData")
         asset.Skeleton.Joints[1].Hierarchy = deep_hierarchy;
         asset.Animations.front().Joints.front().OutputName = deep_hierarchy.back();
         asset.Animations.front().Joints.front().Hierarchy = deep_hierarchy;
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("hierarchy depth"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("joint hierarchy is too deep"));
     }
 
     SECTION("DuplicateClipName")
@@ -179,32 +179,32 @@ TEST_CASE("ModelSourceAssetValidationRejectsInvalidSourceData")
     {
         ModelSourceAsset asset = valid;
         asset.Animations.front().Joints.front().Translation.Times[1] = 0.0f;
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("non-ascending translation times"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("non-ascending track times"));
     }
 
     SECTION("InvalidKeyTimeIntervals")
     {
         ModelSourceAsset overflow = valid;
         overflow.Animations.front().Joints.front().Translation.Times = {std::numeric_limits<float32_t>::lowest(), std::numeric_limits<float32_t>::max()};
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(overflow), Catch::Matchers::ContainsSubstring("invalid translation time interval"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(overflow), Catch::Matchers::ContainsSubstring("invalid track time interval"));
 
         ModelSourceAsset reciprocal_overflow = valid;
         reciprocal_overflow.Animations.front().Joints.front().Translation.Times = {0.0f, std::numeric_limits<float32_t>::denorm_min()};
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(reciprocal_overflow), Catch::Matchers::ContainsSubstring("invalid translation time interval"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(reciprocal_overflow), Catch::Matchers::ContainsSubstring("invalid track time interval"));
     }
 
     SECTION("NonFiniteKey")
     {
         ModelSourceAsset asset = valid;
         asset.Animations.front().Joints.front().Translation.Values[1].x = std::numeric_limits<float32_t>::infinity();
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("non-finite translation value"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("non-finite track value"));
     }
 
     SECTION("Fp16Overflow")
     {
         ModelSourceAsset asset = valid;
         asset.Animations.front().Joints.front().Scale.Values[1].z = MODEL_ANIMATION_HALF_MAX + 1.0f;
-        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("outside ozz FP16 range"));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("outside the ozz FP16 range"));
     }
 
     SECTION("NonUnitQuaternion")

@@ -107,14 +107,14 @@ TEST_CASE("Direct model rest pose rejects invalid hierarchy and matrices")
     {
         const vector<ModelPoseJoint> joints {ModelPoseJoint {-1, identity}};
         vector<mat44> world_matrices(2);
-        CHECK_THROWS_WITH(BuildModelRestWorldMatrices(const_span<ModelPoseJoint> {joints}, identity, span<mat44> {world_matrices}), Catch::Matchers::ContainsSubstring("expected 1"));
+        CHECK_THROWS_WITH(BuildModelRestWorldMatrices(const_span<ModelPoseJoint> {joints}, identity, span<mat44> {world_matrices}), Catch::Matchers::ContainsSubstring("output matrix count does not match joint count"));
     }
 
     SECTION("Root parent")
     {
         const vector<ModelPoseJoint> joints {ModelPoseJoint {0, identity}};
         vector<mat44> world_matrices(1);
-        CHECK_THROWS_WITH(BuildModelRestWorldMatrices(const_span<ModelPoseJoint> {joints}, identity, span<mat44> {world_matrices}), Catch::Matchers::ContainsSubstring("invalid parent 0"));
+        CHECK_THROWS_WITH(BuildModelRestWorldMatrices(const_span<ModelPoseJoint> {joints}, identity, span<mat44> {world_matrices}), Catch::Matchers::ContainsSubstring("invalid parent"));
     }
 
     SECTION("Parent order")

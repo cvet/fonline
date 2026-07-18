@@ -970,7 +970,7 @@ static void ValidateCallbackFunc(nptr<AngelScript::asIScriptFunction> func)
         throw ScriptException("Null callback passed to event");
     }
     if (!HasFunctionAttribute(callback_func.get(), "Event")) {
-        throw ScriptException(strex("Only functions marked [[Event]] can be passed to events, got '{}'", callback_func->GetDeclaration(true, true, false)).str());
+        throw ScriptException("Only functions marked [[Event]] can be passed to events", callback_func->GetDeclaration(true, true, false));
     }
 }
 

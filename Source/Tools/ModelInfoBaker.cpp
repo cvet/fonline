@@ -441,7 +441,7 @@ static void UpdateModelDescriptionDependencyWriteTime(const FileCollection& file
 
     if (dependency_file == files.end()) {
         if (required) {
-            throw ModelInfoBakerException(strex("Model source dependency '{}' referenced by '{}' was not found", dependency, owner));
+            throw ModelInfoBakerException("Model source dependency referenced by owner was not found", dependency, owner);
         }
 
         return;
@@ -474,13 +474,13 @@ void ModelDescriptionParser::ParseFile(string_view fname, const vector<pair<stri
     FO_STACK_TRACE_ENTRY();
 
     if (std::ranges::find(_includeStack, fname) != _includeStack.end()) {
-        throw ModelInfoBakerException(strex("Recursive model description include '{}'", fname));
+        throw ModelInfoBakerException("Recursive model description include", fname);
     }
 
     File file = _files->FindFileByPath(fname);
 
     if (!file) {
-        throw ModelInfoBakerException(strex("Model description file '{}' not found", fname));
+        throw ModelInfoBakerException("Model description file not found", fname);
     }
 
     _maxWriteTime = std::max(_maxWriteTime, file.GetWriteTime());
@@ -524,13 +524,13 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     }
     else if (token == "Include") {
         if (index >= tokens.size()) {
-            throw ModelInfoBakerException(strex("Missing include path in '{}' at line {}", fname, line));
+            throw ModelInfoBakerException("Missing include path", fname, line);
         }
 
         const string include_name = tokens[index++];
 
         if ((tokens.size() - index) % 2 != 0) {
-            throw ModelInfoBakerException(strex("Include '{}' in '{}' at line {} has unpaired template argument", include_name, fname, line));
+            throw ModelInfoBakerException("Include has unpaired template argument", include_name, fname, line);
         }
 
         vector<pair<string, string>> replacements;
@@ -573,7 +573,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             state.Link = ModelDescriptionLinkPtr(description.DefaultLink);
         }
         else if (state.LayerValue == 0) {
-            throw ModelInfoBakerException(strex("Wrong zero value for layer '{}' in '{}' at line {}", state.Layer, fname, line));
+            throw ModelInfoBakerException("Wrong zero value for layer", state.Layer, fname, line);
         }
         else {
             state.Link = ModelDescriptionLinkPtr(description.Links.emplace_back());
@@ -587,7 +587,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         const string value = TakeModelDescriptionToken(tokens, index, token, fname, line);
 
         if (state.Layer < 0 || state.LayerValue == 0) {
-            throw ModelInfoBakerException(strex("Token '{}' requires non-zero layer value in '{}' at line {}", token, fname, line));
+            throw ModelInfoBakerException("Token requires non-zero layer value", token, fname, line);
         }
 
         state.Link = ModelDescriptionLinkPtr(description.Links.emplace_back());
@@ -697,7 +697,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         const string texture_name = TakeModelDescriptionToken(tokens, index, token, fname, line);
 
         if (texture_index < 0 || texture_index >= numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
-            throw ModelInfoBakerException(strex("Texture index '{}' in '{}' at line {} is out of range [0, {})", texture_index, fname, line, MODEL_MAX_TEXTURES));
+            throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, line, MODEL_MAX_TEXTURES);
         }
 
         state.Link->TextureInfo.emplace_back(texture_name, state.Mesh, texture_index);
@@ -719,7 +719,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         const string anim_file = TakeModelDescriptionToken(tokens, index, token, fname, line);
 
         if (!description.AnimationGeometryExceptions.emplace(anim_file).second) {
-            throw ModelInfoBakerException(strex("Duplicate animation-geometry exception '{}' in '{}' at line {}", anim_file, fname, line));
+            throw ModelInfoBakerException("Duplicate animation-geometry exception", anim_file, fname, line);
         }
     }
     else if (token == "AnimSpeed") {
@@ -769,7 +769,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         description.DrawHeight = ParseModelDescriptionInt(height_value, *_nameResolver, token, fname, line);
 
         if (description.DrawWidth <= 0 || description.DrawHeight <= 0) {
-            throw ModelInfoBakerException(strex("DrawSize in '{}' at line {} must be positive", fname, line));
+            throw ModelInfoBakerException("DrawSize must be positive", fname, line);
         }
     }
     else if (token == "ViewSize") {
@@ -779,7 +779,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         description.ViewHeight = ParseModelDescriptionInt(height_value, *_nameResolver, token, fname, line);
 
         if (description.ViewWidth <= 0 || description.ViewHeight <= 0) {
-            throw ModelInfoBakerException(strex("ViewSize in '{}' at line {} must be positive", fname, line));
+            throw ModelInfoBakerException("ViewSize must be positive", fname, line);
         }
     }
     else if (token == "DisableAnimationInterpolation") {
@@ -792,7 +792,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
         description.RotationBone = TakeModelDescriptionToken(tokens, index, token, fname, line);
     }
     else {
-        throw ModelInfoBakerException(strex("Unknown token '{}' in file '{}' at line {}", token, fname, line));
+        throw ModelInfoBakerException("Unknown token in file", token, fname, line);
     }
 }
 
@@ -858,14 +858,14 @@ static auto ValidateModelDescription(const FileCollection& source_files, const F
     FO_STACK_TRACE_ENTRY();
 
     if (description.Model.empty()) {
-        throw ModelInfoBakerException(strex("'Model' section not found in file '{}'", fname));
+        throw ModelInfoBakerException("'Model' section not found in file", fname);
     }
 
     if ((description.DrawWidth == 0) != (description.DrawHeight == 0)) {
-        throw ModelInfoBakerException(strex("DrawSize in '{}' must specify both dimensions", fname));
+        throw ModelInfoBakerException("DrawSize must specify both dimensions", fname);
     }
     if ((description.ViewWidth == 0) != (description.ViewHeight == 0)) {
-        throw ModelInfoBakerException(strex("ViewSize in '{}' must specify both dimensions", fname));
+        throw ModelInfoBakerException("ViewSize must specify both dimensions", fname);
     }
 
     unordered_map<string, BakedModelMeshInfo> mesh_cache;
@@ -873,7 +873,7 @@ static auto ValidateModelDescription(const FileCollection& source_files, const F
     ValidateBakedModelMeshFreshness(source_files, main_info, fname);
 
     if (main_info.DrawBonesCount == 0) {
-        throw ModelInfoBakerException(strex("Model '{}' referenced by '{}' has no drawable meshes", description.Model, fname));
+        throw ModelInfoBakerException("Model referenced by file has no drawable meshes", description.Model, fname);
     }
 
     ValidateModelDescriptionBoneReference(main_info, description.RotationBone, "RotationBone", fname);
@@ -915,7 +915,7 @@ static auto ValidateModelDescription(const FileCollection& source_files, const F
         result.CompatibilityReport = BuildModelSkeletonCompatibilityReport(main_info.Skeleton, clip_sources);
     }
     catch (const ModelSkeletonCompatibilityException& ex) {
-        throw ModelInfoBakerException(strex("Skeleton compatibility validation failed for '{}': {}", fname, ex.what()));
+        throw ModelInfoBakerException("Skeleton compatibility validation failed", fname, ex.what());
     }
 
     ValidateModelDescriptionAnimationData(result.CompatibilityReport, animations.Sources, fname);
@@ -925,13 +925,13 @@ static auto ValidateModelDescription(const FileCollection& source_files, const F
         result.AnimationRigData = BuildModelAnimationRigData(std::move(artifacts), animations.Bindings);
     }
     catch (const ModelAnimationConverterException& ex) {
-        throw ModelInfoBakerException(strex("Canonical animation conversion failed for '{}': {}", fname, ex.what()));
+        throw ModelInfoBakerException("Canonical animation conversion failed", fname, ex.what());
     }
     catch (const ModelAnimationArchiveException& ex) {
-        throw ModelInfoBakerException(strex("Canonical animation archive validation failed for '{}': {}", fname, ex.what()));
+        throw ModelInfoBakerException("Canonical animation archive validation failed", fname, ex.what());
     }
     catch (const ModelAnimationRigDataException& ex) {
-        throw ModelInfoBakerException(strex("Canonical animation data validation failed for '{}': {}", fname, ex.what()));
+        throw ModelInfoBakerException("Canonical animation data validation failed", fname, ex.what());
     }
 
     return result;
@@ -952,7 +952,7 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
         const string resolved_exception = strex(fname).extract_dir().combine_path(exception).str();
 
         if (!geometry_exceptions.emplace(resolved_exception).second) {
-            throw ModelInfoBakerException(strex("Animation-geometry exceptions in '{}' contain duplicate resolved target '{}'; keep exactly one AllowAnimationGeometry line", fname, resolved_exception));
+            throw ModelInfoBakerException("Animation-geometry exceptions contain duplicate resolved target; keep exactly one AllowAnimationGeometry line", fname, resolved_exception);
         }
     }
 
@@ -975,7 +975,7 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
             if (anim_info.DrawBonesCount != 0) {
                 if (geometry_exceptions.count(anim_file) == 0) {
                     const string first_draw_bone = anim_info.DrawBones.empty() ? string {"<unnamed>"} : *std::ranges::min_element(anim_info.DrawBones);
-                    throw ModelInfoBakerException(strex("External animation model '{}' referenced by '{}' contains {} drawable mesh nodes (first '{}'); remove the geometry or temporarily add 'AllowAnimationGeometry {}' while repairing the source", anim_file, fname, anim_info.DrawBonesCount, first_draw_bone, anim_entry.FileName));
+                    throw ModelInfoBakerException("External animation model contains drawable mesh nodes; remove the geometry or temporarily add an AllowAnimationGeometry line while repairing the source", anim_file, fname, anim_info.DrawBonesCount, first_draw_bone, anim_entry.FileName);
                 }
 
                 used_geometry_exceptions.emplace(anim_file);
@@ -987,7 +987,7 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
         }
 
         if (!ModelSourceAssetHasAnimation(*anim_source, anim_name)) {
-            throw ModelInfoBakerException(strex("Animation '{}' for ({}, {}) in '{}' not found in '{}'", anim_entry.Name, anim_entry.StateAnim, anim_entry.ActionAnim, fname, anim_file));
+            throw ModelInfoBakerException("Animation for state/action pair not found in animation file", anim_entry.Name, anim_entry.StateAnim, anim_entry.ActionAnim, fname, anim_file);
         }
 
         const ModelAnimationSource& selected_animation = GetModelSourceAnimation(*anim_source, anim_name);
@@ -1007,10 +1007,10 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
 
     for (const string& exception : geometry_exceptions) {
         if (selected_external_animation_files.count(exception) == 0) {
-            throw ModelInfoBakerException(strex("Animation-geometry exception '{}' in '{}' does not match a selected external Anim source; remove the AllowAnimationGeometry line or select that exact file", exception, fname));
+            throw ModelInfoBakerException("Animation-geometry exception does not match a selected external Anim source; remove the AllowAnimationGeometry line or select that exact file", exception, fname);
         }
         if (used_geometry_exceptions.count(exception) == 0) {
-            throw ModelInfoBakerException(strex("Animation-geometry exception '{}' in '{}' is stale because the selected external animation no longer contains drawable meshes; remove the AllowAnimationGeometry line", exception, fname));
+            throw ModelInfoBakerException("Animation-geometry exception is stale because the selected external animation no longer contains drawable meshes; remove the AllowAnimationGeometry line", exception, fname);
         }
     }
 
@@ -1018,7 +1018,7 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
         ValidateModelDescriptionAnimPair(name_resolver, anim_pair.first, anim_pair.second, "AnimSpeed", fname);
 
         if (speed <= 0.0f || !std::isfinite(1.0f / speed)) {
-            throw ModelInfoBakerException(strex("Animation speed for ({}, {}) in '{}' must be positive with a finite reciprocal", anim_pair.first, anim_pair.second, fname));
+            throw ModelInfoBakerException("Animation speed for state/action pair must be positive with a finite reciprocal", anim_pair.first, anim_pair.second, fname);
         }
     }
 
@@ -1070,7 +1070,7 @@ static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityRepo
                 continue;
             }
 
-            throw ModelInfoBakerException(strex("Animation '{}' from '{}' in '{}' has invalid output '{}': non-finite scale/rotation/translation keys = {}/{}/{}, zero rotation keys = {}", animation.Name, animation.FileName, fname, joint.OutputName, issue.NonFiniteScaleKeys, issue.NonFiniteRotationKeys, issue.NonFiniteTranslationKeys, issue.ZeroRotationKeys));
+            throw ModelInfoBakerException("Animation has invalid output with non-finite scale/rotation/translation keys or zero rotation keys", animation.Name, animation.FileName, fname, joint.OutputName, issue.NonFiniteScaleKeys, issue.NonFiniteRotationKeys, issue.NonFiniteTranslationKeys, issue.ZeroRotationKeys);
         }
     }
 
@@ -1097,7 +1097,7 @@ static void ValidateModelDescriptionAttachment(const FileCollection& source_file
 
     if (child_ext == "fo3d") {
         if (!baked_files.IsFileExists(link.ChildName) && !source_files.FindFileByPath(link.ChildName)) {
-            throw ModelInfoBakerException(strex("Attached model description '{}' referenced by '{}' not found", link.ChildName, fname));
+            throw ModelInfoBakerException("Attached model description referenced by file not found", link.ChildName, fname);
         }
 
         return;
@@ -1108,7 +1108,7 @@ static void ValidateModelDescriptionAttachment(const FileCollection& source_file
     const shared_ptr<const ModelSourceAsset> child_source = GetModelSourceAsset(model_sources, link.ChildName, fname);
 
     if (!child_source->Animations.empty()) {
-        throw ModelInfoBakerException(strex("Direct attached model '{}' referenced by '{}' contains {} embedded animation clips; animated child models require a .fo3d description", link.ChildName, fname, child_source->Animations.size()));
+        throw ModelInfoBakerException("Direct attached model contains embedded animation clips; animated child models require a .fo3d description", link.ChildName, fname, child_source->Animations.size());
     }
 
     ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
@@ -1119,25 +1119,25 @@ static void ValidateModelDescriptionLinkData(const FileCollection& source_files,
     FO_STACK_TRACE_ENTRY();
 
     if (link.SpeedAjust < 0.0f) {
-        throw ModelInfoBakerException(strex("Negative Speed value in '{}' for model '{}'", fname, target_info.FileName));
+        throw ModelInfoBakerException("Negative Speed value for model", fname, target_info.FileName);
     }
 
     for (const int32_t disabled_layer : link.DisabledLayer) {
         if (disabled_layer < 0 || disabled_layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
-            throw ModelInfoBakerException(strex("Disabled layer '{}' in '{}' is out of range [0, {})", disabled_layer, fname, MODEL_LAYERS_COUNT));
+            throw ModelInfoBakerException("Disabled layer is out of range", disabled_layer, fname, MODEL_LAYERS_COUNT);
         }
     }
 
     for (const auto& [texture_name, mesh_name, texture_index] : link.TextureInfo) {
         if (texture_index < 0 || texture_index >= numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
-            throw ModelInfoBakerException(strex("Texture index '{}' in '{}' is out of range [0, {})", texture_index, fname, MODEL_MAX_TEXTURES));
+            throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, MODEL_MAX_TEXTURES);
         }
 
         ValidateModelDescriptionMeshReference(target_info, mesh_name, "Texture", fname);
 
         if (strex(texture_name).starts_with("Parent")) {
             if (!parent_info) {
-                throw ModelInfoBakerException(strex("Parent texture '{}' in '{}' is used without parent model context", texture_name, fname));
+                throw ModelInfoBakerException("Parent texture is used without parent model context", texture_name, fname);
             }
 
             string parent_mesh = string(texture_name.substr(6));
@@ -1158,7 +1158,7 @@ static void ValidateModelDescriptionLinkData(const FileCollection& source_files,
 
         if (strex(effect_name).starts_with("Parent")) {
             if (!parent_info) {
-                throw ModelInfoBakerException(strex("Parent effect '{}' in '{}' is used without parent model context", effect_name, fname));
+                throw ModelInfoBakerException("Parent effect is used without parent model context", effect_name, fname);
             }
 
             string parent_mesh = string(effect_name.substr(6));
@@ -1189,16 +1189,16 @@ static void ValidateModelDescriptionCut(const FileCollection& source_files, cons
     }
 
     if (cut.Shapes.empty()) {
-        throw ModelInfoBakerException(strex("Cut '{}' in '{}' has no shapes", cut.FileName, fname));
+        throw ModelInfoBakerException("Cut has no shapes", cut.FileName, fname);
     }
 
     if (cut.Layers.empty()) {
-        throw ModelInfoBakerException(strex("Cut '{}' in '{}' has no layers", cut.FileName, fname));
+        throw ModelInfoBakerException("Cut has no layers", cut.FileName, fname);
     }
 
     for (const int32_t layer : cut.Layers) {
         if (layer < 0 || layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
-            throw ModelInfoBakerException(strex("Cut '{}' in '{}' has out of range layer {}", cut.FileName, fname, layer));
+            throw ModelInfoBakerException("Cut has out of range layer", cut.FileName, fname, layer);
         }
     }
 
@@ -1207,10 +1207,10 @@ static void ValidateModelDescriptionCut(const FileCollection& source_files, cons
     }
 
     if (cut.UnskinBone1.empty() != cut.UnskinBone2.empty()) {
-        throw ModelInfoBakerException(strex("Cut '{}' in '{}' must specify both unskin bones or none", cut.FileName, fname));
+        throw ModelInfoBakerException("Cut must specify both unskin bones or none", cut.FileName, fname);
     }
     if (!cut.UnskinShape.empty() && (cut.UnskinBone1.empty() || cut.UnskinBone2.empty())) {
-        throw ModelInfoBakerException(strex("Cut '{}' in '{}' specifies unskin shape without both unskin bones", cut.FileName, fname));
+        throw ModelInfoBakerException("Cut specifies unskin shape without both unskin bones", cut.FileName, fname);
     }
 
     ValidateModelDescriptionBoneReference(target_info, cut.UnskinBone1, "Cut", fname);
@@ -1248,7 +1248,7 @@ static void ValidateModelDescriptionBakedFileExists(const FileSystem& baked_file
     FO_STACK_TRACE_ENTRY();
 
     if (!baked_files.IsFileExists(path)) {
-        throw ModelInfoBakerException(strex("{} '{}' referenced by '{}' not found in baked resources", kind, path, fname));
+        throw ModelInfoBakerException("Referenced file not found in baked resources", kind, path, fname);
     }
 }
 
@@ -1257,7 +1257,7 @@ static void ValidateModelDescriptionDrawBoneReference(const BakedModelMeshInfo& 
     FO_STACK_TRACE_ENTRY();
 
     if (!bone_name.empty() && info.DrawBones.count(string(bone_name)) == 0) {
-        throw ModelInfoBakerException(strex("Draw bone '{}' for token '{}' in '{}' not found in model '{}'", bone_name, token, fname, info.FileName));
+        throw ModelInfoBakerException("Draw bone for token not found in model", bone_name, token, fname, info.FileName);
     }
 }
 
@@ -1266,7 +1266,7 @@ static void ValidateModelDescriptionBoneReference(const BakedModelMeshInfo& info
     FO_STACK_TRACE_ENTRY();
 
     if (!bone_name.empty() && info.Bones.count(string(bone_name)) == 0) {
-        throw ModelInfoBakerException(strex("Bone '{}' for token '{}' in '{}' not found in model '{}'", bone_name, token, fname, info.FileName));
+        throw ModelInfoBakerException("Bone for token not found in model", bone_name, token, fname, info.FileName);
     }
 }
 
@@ -1275,7 +1275,7 @@ static void ValidateModelDescriptionMeshReference(const BakedModelMeshInfo& info
     FO_STACK_TRACE_ENTRY();
 
     if (!mesh_name.empty() && info.DrawBones.count(string(mesh_name)) == 0) {
-        throw ModelInfoBakerException(strex("Mesh '{}' for token '{}' in '{}' not found in model '{}'", mesh_name, token, fname, info.FileName));
+        throw ModelInfoBakerException("Mesh for token not found in model", mesh_name, token, fname, info.FileName);
     }
 }
 
@@ -1302,7 +1302,7 @@ static void ValidateModelDescriptionEnumValue(const NameResolver& name_resolver,
     (void)name_resolver.ResolveEnumValueName(enum_name, value, &failed);
 
     if (failed) {
-        throw ModelInfoBakerException(strex("Invalid {} value '{}' for token '{}' in '{}'", enum_name, value, token, fname));
+        throw ModelInfoBakerException("Invalid enum value for token", enum_name, value, token, fname);
     }
 }
 
@@ -1326,13 +1326,13 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
     FO_STACK_TRACE_ENTRY();
 
     if (!baked_files.IsFileExists(path)) {
-        throw ModelInfoBakerException(strex("Baked model mesh '{}' not found", path));
+        throw ModelInfoBakerException("Baked model mesh not found", path);
     }
 
     const File file = baked_files.ReadFile(path);
 
     if (!file) {
-        throw ModelInfoBakerException(strex("Baked model mesh '{}' not readable", path));
+        throw ModelInfoBakerException("Baked model mesh not readable", path);
     }
 
     BakedModelMeshInfo info;
@@ -1347,12 +1347,12 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
         reader.VerifyEnd();
     }
     catch (const std::exception& ex) {
-        throw ModelInfoBakerException(strex("Invalid baked model mesh '{}': {}", path, ex.what()));
+        throw ModelInfoBakerException("Invalid baked model mesh", path, ex.what());
     }
 
     for (const string& skin_bone : info.SkinBoneRefs) {
         if (info.Bones.count(skin_bone) == 0) {
-            throw ModelInfoBakerException(strex("Invalid baked model mesh '{}': skin bone '{}' not found in hierarchy", path, skin_bone));
+            throw ModelInfoBakerException("Invalid baked model mesh: skin bone not found in hierarchy", path, skin_bone);
         }
     }
 
@@ -1366,10 +1366,10 @@ static void ValidateBakedModelMeshFreshness(const FileCollection& source_files, 
     const File source_file = source_files.FindFileByPath(info.FileName);
 
     if (!source_file) {
-        throw ModelInfoBakerException(strex("Model source '{}' referenced by '{}' was not found", info.FileName, owner));
+        throw ModelInfoBakerException("Model source referenced by owner was not found", info.FileName, owner);
     }
     if (source_file.GetWriteTime() > info.WriteTime) {
-        throw ModelInfoBakerException(strex("Baked model mesh '{}' referenced by '{}' is older than its source; run ModelMesh before ModelInfo", info.FileName, owner));
+        throw ModelInfoBakerException("Baked model mesh referenced by owner is older than its source; run ModelMesh before ModelInfo", info.FileName, owner);
     }
 }
 
@@ -1381,7 +1381,7 @@ static auto GetModelSourceAsset(const ModelSourceAssetCache& model_sources, stri
         return model_sources.Get(path);
     }
     catch (const std::exception& ex) {
-        throw ModelInfoBakerException(strex("Unable to load model source '{}' referenced by '{}': {}", path, owner, ex.what()));
+        throw ModelInfoBakerException("Unable to load model source referenced by owner", path, owner, ex.what());
     }
 }
 
@@ -1417,7 +1417,7 @@ static auto GetModelSourceAnimation(const ModelSourceAsset& asset, string_view a
         }
     }
 
-    throw ModelInfoBakerException(strex("Animation '{}' not found in model source '{}'", anim_name, asset.FileName));
+    throw ModelInfoBakerException("Animation not found in model source", anim_name, asset.FileName);
 }
 
 static auto GetModelSourceAnimationDuration(const ModelSourceAsset& asset, string_view anim_name) -> float32_t
@@ -1606,10 +1606,10 @@ static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info,
     FO_STACK_TRACE_ENTRY();
 
     if (parent_hierarchy.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw ModelInfoBakerException(strex("Baked model '{}' hierarchy depth exceeds {} joints", info.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH));
+        throw ModelInfoBakerException("Baked model hierarchy depth exceeds the joint limit", info.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH);
     }
     if (info.Skeleton.Joints.size() >= MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelInfoBakerException(strex("Baked model '{}' exceeds the canonical joint limit {}", info.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelInfoBakerException("Baked model exceeds the canonical joint limit", info.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     const string bone_name = reader.ReadString();
@@ -1639,7 +1639,7 @@ static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info,
     const uint32_t children_count = reader.Read<uint32_t>();
 
     if (children_count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelInfoBakerException(strex("Baked model '{}' bone '{}' has {} children; maximum is {}", info.FileName, bone_name, children_count, MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelInfoBakerException("Baked model bone has too many children", info.FileName, bone_name, children_count, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     for (uint32_t i = 0; i < children_count; i++) {
@@ -1666,7 +1666,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     const uint32_t skin_bones_count = reader.Read<uint32_t>();
 
     if (skin_bones_count > MODEL_MAX_BONES) {
-        throw ModelInfoBakerException(strex("Invalid baked mesh '{}': skin bones count {} exceeds MODEL_MAX_BONES limit {}", info.FileName, skin_bones_count, MODEL_MAX_BONES));
+        throw ModelInfoBakerException("Invalid baked mesh: skin bones count exceeds MODEL_MAX_BONES limit", info.FileName, skin_bones_count, MODEL_MAX_BONES);
     }
 
     for (uint32_t i = 0; i < skin_bones_count; i++) {
@@ -1683,7 +1683,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     const uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
 
     if (skin_bone_offsets_count != skin_bones_count) {
-        throw ModelInfoBakerException(strex("Invalid baked mesh '{}': skin bone offsets count {} does not match skin bones count {}", info.FileName, skin_bone_offsets_count, skin_bones_count));
+        throw ModelInfoBakerException("Invalid baked mesh: skin bone offsets count does not match skin bones count", info.FileName, skin_bone_offsets_count, skin_bones_count);
     }
 
     SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(skin_bone_offsets_count) * sizeof(mat44));
@@ -1851,7 +1851,7 @@ static auto TakeModelDescriptionToken(const vector<string>& tokens, size_t& inde
     FO_STACK_TRACE_ENTRY();
 
     if (index >= tokens.size()) {
-        throw ModelInfoBakerException(strex("Missing argument for token '{}' in '{}' at line {}", token, fname, line));
+        throw ModelInfoBakerException("Missing argument for token", token, fname, line);
     }
 
     return tokens[index++];
@@ -1862,13 +1862,13 @@ static auto ParseModelDescriptionFloat(string_view value, string_view token, str
     FO_STACK_TRACE_ENTRY();
 
     if (!strvex(value).is_number()) {
-        throw ModelInfoBakerException(strex("Invalid float value '{}' for token '{}' in '{}' at line {}", value, token, fname, line));
+        throw ModelInfoBakerException("Invalid float value for token", value, token, fname, line);
     }
 
     const float32_t parsed_value = strvex(value).to_float32();
 
     if (!std::isfinite(parsed_value)) {
-        throw ModelInfoBakerException(strex("Invalid non-finite float value '{}' for token '{}' in '{}' at line {}", value, token, fname, line));
+        throw ModelInfoBakerException("Invalid non-finite float value for token", value, token, fname, line);
     }
 
     return parsed_value;
@@ -1889,7 +1889,7 @@ static auto ParseModelDescriptionInt(string_view value, const NameResolver& name
     const int32_t enum_value = name_resolver.ResolveEnumValue(value, &failed);
 
     if (failed) {
-        throw ModelInfoBakerException(strex("Invalid enum value '{}' for token '{}' in '{}' at line {}", value, token, fname, line));
+        throw ModelInfoBakerException("Invalid enum value for token", value, token, fname, line);
     }
 
     return enum_value;
@@ -1900,7 +1900,7 @@ static void ValidateModelDescriptionLayer(int32_t layer, string_view token, stri
     FO_STACK_TRACE_ENTRY();
 
     if (layer < 0 || layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
-        throw ModelInfoBakerException(strex("Layer value '{}' for token '{}' in '{}' at line {} is out of range [0, {})", layer, token, fname, line, MODEL_LAYERS_COUNT));
+        throw ModelInfoBakerException("Layer value for token is out of range", layer, token, fname, line, MODEL_LAYERS_COUNT);
     }
 }
 

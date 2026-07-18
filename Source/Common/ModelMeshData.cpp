@@ -56,26 +56,26 @@ void ReadModelMeshHeader(DataReader& reader, string_view context)
         header_data = source_reader.ReadBytes(MODEL_MESH_HEADER_SIZE);
     }
     catch (const std::exception& ex) {
-        throw ModelMeshDataException(strex("Truncated baked model mesh header for '{}': {}", context, ex.what()));
+        throw ModelMeshDataException("Truncated baked model mesh header", context, ex.what());
     }
 
     DataReader header_reader {header_data};
     const const_span<uint8_t> magic = header_reader.ReadBytes(MODEL_MESH_MAGIC.size());
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_MESH_MAGIC.begin())) {
-        throw ModelMeshDataException(strex("Invalid baked model mesh magic for '{}'; expected 'LFMODMSH'", context));
+        throw ModelMeshDataException("Invalid baked model mesh magic; expected 'LFMODMSH'", context);
     }
 
     const uint16_t schema = header_reader.Read<uint16_t>();
 
     if (schema != MODEL_MESH_SCHEMA_VERSION) {
-        throw ModelMeshDataException(strex("Unsupported baked model mesh schema for '{}': expected {}, got {}", context, MODEL_MESH_SCHEMA_VERSION, schema));
+        throw ModelMeshDataException("Unsupported baked model mesh schema", context, MODEL_MESH_SCHEMA_VERSION, schema);
     }
 
     const uint16_t flags = header_reader.Read<uint16_t>();
 
     if ((flags & ~MODEL_MESH_SUPPORTED_FLAGS) != 0) {
-        throw ModelMeshDataException(strex("Baked model mesh '{}' contains unsupported flags: {}", context, flags));
+        throw ModelMeshDataException("Baked model mesh contains unsupported flags", context, flags);
     }
 
     header_reader.VerifyEnd();

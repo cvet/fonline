@@ -92,7 +92,7 @@ auto ModelInformation::Load(string_view name) -> bool
             FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
         }
         catch (const DataReadingException& ex) {
-            throw DataReadingException(strex("Invalid baked model description '{}': {}", name, ex.what()));
+            throw DataReadingException("Invalid baked model description", name, ex.what());
         }
 
         return true;

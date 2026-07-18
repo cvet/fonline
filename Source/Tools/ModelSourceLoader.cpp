@@ -74,10 +74,10 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
         throw ModelSourceLoaderException("Can't load a model source with an empty path");
     }
     if (!file) {
-        throw ModelSourceLoaderException(strex("Model source '{}' is not readable", path));
+        throw ModelSourceLoaderException("Model source is not readable", path);
     }
     if (file.GetPath() != path) {
-        throw ModelSourceLoaderException(strex("Model source path '{}' does not match loaded file '{}'", path, file.GetPath()));
+        throw ModelSourceLoaderException("Model source path does not match loaded file", path, file.GetPath());
     }
 
     ufbx_load_opts opts = {};
@@ -96,7 +96,7 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
     auto scene = make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error));
 
     if (!scene) {
-        throw ModelSourceLoaderException(strex("Unable to load model source '{}': {}", path, fbx_error.description.data));
+        throw ModelSourceLoaderException("Unable to load model source", path, fbx_error.description.data);
     }
 
     auto scene_holder = make_unique_del_ptr(scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
@@ -119,16 +119,16 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
     ValidateModelSourceName(asset.FileName, "model source file name", false);
 
     if (asset.Skeleton.FileName != asset.FileName) {
-        throw ModelSourceLoaderException(strex("Model source '{}' declares skeleton source '{}'", asset.FileName, asset.Skeleton.FileName));
+        throw ModelSourceLoaderException("Model source declares mismatched skeleton source", asset.FileName, asset.Skeleton.FileName);
     }
     if (asset.Skeleton.Joints.empty()) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has no skeleton joints", asset.FileName));
+        throw ModelSourceLoaderException("Model source has no skeleton joints", asset.FileName);
     }
     if (asset.Skeleton.Joints.size() > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has {} skeleton joints; maximum is {}", asset.FileName, asset.Skeleton.Joints.size(), MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelSourceLoaderException("Model source has too many skeleton joints", asset.FileName, asset.Skeleton.Joints.size(), MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
     if (asset.Animations.size() > MODEL_ANIMATION_RIG_MAX_CLIPS) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has {} animation clips; maximum is {}", asset.FileName, asset.Animations.size(), MODEL_ANIMATION_RIG_MAX_CLIPS));
+        throw ModelSourceLoaderException("Model source has too many animation clips", asset.FileName, asset.Animations.size(), MODEL_ANIMATION_RIG_MAX_CLIPS);
     }
 
     set<vector<string>> skeleton_hierarchies;
@@ -139,14 +139,14 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
         ValidateModelSourceName(joint.Name, strex("skeleton joint in '{}'", asset.FileName), joint.Hierarchy.size() == 1);
 
         if (joint.Hierarchy.empty()) {
-            throw ModelSourceLoaderException(strex("Model source '{}' contains joint '{}' with an empty hierarchy", asset.FileName, joint.Name));
+            throw ModelSourceLoaderException("Model source contains a joint with an empty hierarchy", asset.FileName, joint.Name);
         }
         if (joint.Hierarchy.back() != joint.Name) {
-            throw ModelSourceLoaderException(strex("Model source '{}' contains joint '{}' whose hierarchy ends with '{}'", asset.FileName, joint.Name, joint.Hierarchy.back()));
+            throw ModelSourceLoaderException("Model source contains a joint whose hierarchy ends with a different name", asset.FileName, joint.Name, joint.Hierarchy.back());
         }
 
         if (joint.Hierarchy.size() > MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-            throw ModelSourceLoaderException(strex("Model source '{}' joint '{}' has hierarchy depth {}; maximum is {}", asset.FileName, joint.Name, joint.Hierarchy.size(), MODEL_MESH_MAX_HIERARCHY_DEPTH));
+            throw ModelSourceLoaderException("Model source joint hierarchy is too deep", asset.FileName, joint.Name, joint.Hierarchy.size(), MODEL_MESH_MAX_HIERARCHY_DEPTH);
         }
 
         for (size_t i = 0; i < joint.Hierarchy.size(); i++) {
@@ -156,24 +156,24 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
         for (mat44::length_type column = 0; column < 4; column++) {
             for (mat44::length_type row = 0; row < 4; row++) {
                 if (!std::isfinite(joint.RestLocalTransform[column][row])) {
-                    throw ModelSourceLoaderException(strex("Model source '{}' contains non-finite rest transform at joint '{}'", asset.FileName, joint.Name));
+                    throw ModelSourceLoaderException("Model source contains a non-finite rest transform at a joint", asset.FileName, joint.Name);
                 }
             }
         }
 
         if (!skeleton_hierarchies.emplace(joint.Hierarchy).second) {
-            throw ModelSourceLoaderException(strex("Model source '{}' has duplicate joint hierarchy ending at '{}'", asset.FileName, joint.Name));
+            throw ModelSourceLoaderException("Model source has a duplicate joint hierarchy", asset.FileName, joint.Name);
         }
 
         const auto [name_it, name_inserted] = hierarchy_by_name.emplace(joint.Name, joint.Hierarchy);
 
         if (!name_inserted) {
-            throw ModelSourceLoaderException(strex("Model source '{}' has duplicate joint name '{}'", asset.FileName, name_it->first));
+            throw ModelSourceLoaderException("Model source has a duplicate joint name", asset.FileName, name_it->first);
         }
 
         if (joint.Hierarchy.size() == 1) {
             if (!root_hierarchy.empty()) {
-                throw ModelSourceLoaderException(strex("Model source '{}' has multiple root joints '{}' and '{}'", asset.FileName, root_hierarchy.front(), joint.Name));
+                throw ModelSourceLoaderException("Model source has multiple root joints", asset.FileName, root_hierarchy.front(), joint.Name);
             }
 
             root_hierarchy = joint.Hierarchy;
@@ -181,7 +181,7 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
     }
 
     if (root_hierarchy.empty()) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has no root joint", asset.FileName));
+        throw ModelSourceLoaderException("Model source has no root joint", asset.FileName);
     }
 
     for (const ModelSkeletonJoint& joint : asset.Skeleton.Joints) {
@@ -192,7 +192,7 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
         const vector<string> parent_hierarchy(joint.Hierarchy.begin(), joint.Hierarchy.end() - 1);
 
         if (skeleton_hierarchies.count(parent_hierarchy) == 0) {
-            throw ModelSourceLoaderException(strex("Model source '{}' has joint '{}' without parent hierarchy", asset.FileName, joint.Name));
+            throw ModelSourceLoaderException("Model source has a joint without a parent hierarchy", asset.FileName, joint.Name);
         }
     }
 
@@ -200,12 +200,12 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
         const ModelAnimationSource& animation = asset.Animations[i];
 
         if (animation.FileName != asset.FileName) {
-            throw ModelSourceLoaderException(strex("Animation '{}' in model source '{}' declares source file '{}'", animation.Name, asset.FileName, animation.FileName));
+            throw ModelSourceLoaderException("Animation in model source declares a mismatched source file", animation.Name, asset.FileName, animation.FileName);
         }
 
         for (size_t j = 0; j < i; j++) {
             if (strex(asset.Animations[j].Name).compare_ignore_case(animation.Name)) {
-                throw ModelSourceLoaderException(strex("Model source '{}' contains case-insensitive duplicate animation names '{}' and '{}'", asset.FileName, asset.Animations[j].Name, animation.Name));
+                throw ModelSourceLoaderException("Model source contains case-insensitive duplicate animation names", asset.FileName, asset.Animations[j].Name, animation.Name);
             }
         }
 
@@ -246,16 +246,16 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
             const File file = _files->FindFileByPath(path);
 
             if (!file) {
-                throw ModelSourceLoaderException(strex("Model source '{}' was not found", path));
+                throw ModelSourceLoaderException("Model source was not found", path);
             }
 
             ModelSourceAsset asset = _loadCallback ? _loadCallback(path, file) : LoadModelSourceAsset(path, file);
 
             if (asset.FileName != path) {
-                throw ModelSourceLoaderException(strex("Model source cache load for '{}' returned asset '{}'", path, asset.FileName));
+                throw ModelSourceLoaderException("Model source cache load returned a mismatched asset", path, asset.FileName);
             }
             if (asset.WriteTime != file.GetWriteTime()) {
-                throw ModelSourceLoaderException(strex("Model source cache load for '{}' returned write time {}, expected {}", path, asset.WriteTime, file.GetWriteTime()));
+                throw ModelSourceLoaderException("Model source cache load returned an unexpected write time", path, asset.WriteTime, file.GetWriteTime());
             }
 
             ValidateModelSourceAsset(asset);
@@ -276,7 +276,7 @@ static auto ConvertModelSourceString(const ufbx_string& value, const ModelSource
     auto data = make_nptr(value.data);
 
     if (value.length != 0 && !data) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has a null string in clip '{}', node '{}', field '{}', element {}", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex));
+        throw ModelSourceLoaderException("Model source has a null string", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex);
     }
 
     return value.length != 0 ? string {data.get(), value.length} : string {};
@@ -290,7 +290,7 @@ static auto ConvertModelSourceFloat(double value, const ModelSourceValidationCon
     constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
 
     if (!std::isfinite(value) || value < min_float || value > max_float) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has invalid numeric data in clip '{}', node '{}', field '{}', element {}, component '{}': {} is not representable as a finite float", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex, component, value));
+        throw ModelSourceLoaderException("Model source has numeric data that is not representable as a finite float", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
     }
 
     return numeric_cast<float32_t>(value);
@@ -348,10 +348,10 @@ static void AppendModelSourceSkeletonJoint(ptr<const ufbx_node> node, const vect
     FO_STACK_TRACE_ENTRY();
 
     if (parent_hierarchy.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw ModelSourceLoaderException(strex("Model source '{}' hierarchy depth exceeds {} joints at node '{}'", skeleton.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH, node->name.data));
+        throw ModelSourceLoaderException("Model source hierarchy depth exceeds the joint limit", skeleton.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH, node->name.data);
     }
     if (skeleton.Joints.size() >= MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelSourceLoaderException(strex("Model source '{}' exceeds the skeleton joint limit {}", skeleton.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelSourceLoaderException("Model source exceeds the skeleton joint limit", skeleton.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     const string node_name = ConvertModelSourceString(node->name, ModelSourceValidationContext {.FileName = skeleton.FileName, .NodeName = "<hierarchy>", .FieldName = "node_name", .ElementIndex = skeleton.Joints.size()});
@@ -372,7 +372,7 @@ static auto ExtractModelSourceAnimations(ptr<const ufbx_scene> scene, string_vie
     FO_STACK_TRACE_ENTRY();
 
     if (scene->anim_stacks.count > MODEL_ANIMATION_RIG_MAX_CLIPS) {
-        throw ModelSourceLoaderException(strex("Model source '{}' has {} animation stacks; maximum is {}", path, scene->anim_stacks.count, MODEL_ANIMATION_RIG_MAX_CLIPS));
+        throw ModelSourceLoaderException("Model source has too many animation stacks", path, scene->anim_stacks.count, MODEL_ANIMATION_RIG_MAX_CLIPS);
     }
 
     vector<ModelAnimationSource> result;
@@ -397,13 +397,13 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
     const string clip_name = ConvertModelSourceString(anim_stack->name, ModelSourceValidationContext {.FileName = path, .FieldName = "animation_stack_name"});
 
     if (!baked_anim) {
-        throw ModelSourceLoaderException(strex("Unable to bake animation '{}' from model source '{}': {}", clip_name, path, bake_error.description.data));
+        throw ModelSourceLoaderException("Unable to bake animation from model source", clip_name, path, bake_error.description.data);
     }
 
     auto baked_anim_holder = make_unique_del_ptr(baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); });
 
     if (baked_anim->nodes.count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has {} baked nodes; maximum is {}", clip_name, path, baked_anim->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelSourceLoaderException("Animation from model source has too many baked nodes", clip_name, path, baked_anim->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     ModelAnimationSource result;
@@ -422,7 +422,7 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
         joint.Hierarchy = BuildModelSourceHierarchy(node, path, clip_name);
 
         if (baked_node.translation_keys.count > std::numeric_limits<uint16_t>::max() || baked_node.rotation_keys.count > std::numeric_limits<uint16_t>::max() || baked_node.scale_keys.count > std::numeric_limits<uint16_t>::max()) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' node '{}' exceeds the per-track key limit {}: translation {}, rotation {}, scale {}", clip_name, path, node_name, std::numeric_limits<uint16_t>::max(), baked_node.translation_keys.count, baked_node.rotation_keys.count, baked_node.scale_keys.count));
+            throw ModelSourceLoaderException("Animation node exceeds the per-track key limit", clip_name, path, node_name, std::numeric_limits<uint16_t>::max(), baked_node.translation_keys.count, baked_node.rotation_keys.count, baked_node.scale_keys.count);
         }
 
         joint.Translation.Times.reserve(baked_node.translation_keys.count);
@@ -466,7 +466,7 @@ static auto BuildModelSourceHierarchy(ptr<const ufbx_node> node, string_view pat
 
     while (hierarchy_node) {
         if (result.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has a hierarchy deeper than {} at node '{}'", clip_name, path, MODEL_MESH_MAX_HIERARCHY_DEPTH, node->name.data));
+            throw ModelSourceLoaderException("Animation has a hierarchy deeper than the maximum", clip_name, path, MODEL_MESH_MAX_HIERARCHY_DEPTH, node->name.data);
         }
 
         result.emplace_back(ConvertModelSourceString(hierarchy_node->name, ModelSourceValidationContext {.FileName = path, .ClipName = clip_name, .NodeName = node->name.data, .FieldName = "hierarchy", .ElementIndex = result.size()}));
@@ -482,13 +482,13 @@ static void ValidateModelSourceName(string_view value, string_view context, bool
     FO_STACK_TRACE_ENTRY();
 
     if (!allow_empty && value.empty()) {
-        throw ModelSourceLoaderException(strex("Empty name in {}", context));
+        throw ModelSourceLoaderException("Empty name", context);
     }
     if (value.find('\0') != string_view::npos) {
-        throw ModelSourceLoaderException(strex("Embedded NUL in {}", context));
+        throw ModelSourceLoaderException("Embedded NUL in name", context);
     }
     if (!strvex(value).is_valid_utf8()) {
-        throw ModelSourceLoaderException(strex("Invalid UTF-8 in {}", context));
+        throw ModelSourceLoaderException("Invalid UTF-8 in name", context);
     }
 }
 
@@ -499,10 +499,10 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
     ValidateModelSourceName(animation.Name, strex("animation name in '{}'", animation.FileName), false);
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f || !std::isfinite(1.0f / animation.Duration)) {
-        throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has invalid duration {}", animation.Name, animation.FileName, animation.Duration));
+        throw ModelSourceLoaderException("Animation has an invalid duration", animation.Name, animation.FileName, animation.Duration);
     }
     if (animation.Joints.size() > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has {} joint outputs; maximum is {}", animation.Name, animation.FileName, animation.Joints.size(), MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelSourceLoaderException("Animation has too many joint outputs", animation.Name, animation.FileName, animation.Joints.size(), MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     set<vector<string>> seen_hierarchies;
@@ -513,10 +513,10 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
         ValidateModelSourceName(joint.OutputName, strex("animation '{}#{}' output {}", animation.FileName, animation.Name, i), joint.Hierarchy.size() == 1);
 
         if (joint.Hierarchy.empty()) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has an empty joint hierarchy at output {}", animation.Name, animation.FileName, i));
+            throw ModelSourceLoaderException("Animation has an empty joint hierarchy at an output", animation.Name, animation.FileName, i);
         }
         if (joint.Hierarchy.size() > MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has {} names in hierarchy {}; maximum is {}", animation.Name, animation.FileName, joint.Hierarchy.size(), i, MODEL_MESH_MAX_HIERARCHY_DEPTH));
+            throw ModelSourceLoaderException("Animation joint hierarchy has too many names", animation.Name, animation.FileName, joint.Hierarchy.size(), i, MODEL_MESH_MAX_HIERARCHY_DEPTH);
         }
 
         for (size_t j = 0; j < joint.Hierarchy.size(); j++) {
@@ -524,16 +524,16 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
         }
 
         if (joint.Hierarchy.back() != joint.OutputName) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' output '{}' does not match hierarchy leaf '{}' at index {}", animation.Name, animation.FileName, joint.OutputName, joint.Hierarchy.back(), i));
+            throw ModelSourceLoaderException("Animation output does not match its hierarchy leaf", animation.Name, animation.FileName, joint.OutputName, joint.Hierarchy.back(), i);
         }
         if (!seen_hierarchies.emplace(joint.Hierarchy).second) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has duplicate joint hierarchy at output {}", animation.Name, animation.FileName, i));
+            throw ModelSourceLoaderException("Animation has a duplicate joint hierarchy at an output", animation.Name, animation.FileName, i);
         }
         if (!seen_outputs.emplace(joint.OutputName).second) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' has duplicate output '{}'", animation.Name, animation.FileName, joint.OutputName));
+            throw ModelSourceLoaderException("Animation has a duplicate output", animation.Name, animation.FileName, joint.OutputName);
         }
         if (skeleton_hierarchies.count(joint.Hierarchy) == 0) {
-            throw ModelSourceLoaderException(strex("Animation '{}' from model source '{}' output '{}' references a hierarchy absent from its source skeleton", animation.Name, animation.FileName, joint.OutputName));
+            throw ModelSourceLoaderException("Animation output references a hierarchy absent from its source skeleton", animation.Name, animation.FileName, joint.OutputName);
         }
 
         ValidateModelSourceVec3Track(joint.Translation, animation.FileName, animation.Name, joint.OutputName, "translation");
@@ -547,10 +547,10 @@ static void ValidateModelSourceVec3Track(const ModelAnimationVec3Track& track, s
     FO_STACK_TRACE_ENTRY();
 
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
-        throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has invalid {} track sizes: {} times, {} values", source_file, clip_name, output_name, track_name, track.Times.size(), track.Values.size()));
+        throw ModelSourceLoaderException("Animation output has invalid track sizes", source_file, clip_name, output_name, track_name, track.Times.size(), track.Values.size());
     }
     if (track.Times.size() > std::numeric_limits<uint16_t>::max()) {
-        throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has {} {} keys; maximum is {}", source_file, clip_name, output_name, track.Times.size(), track_name, std::numeric_limits<uint16_t>::max()));
+        throw ModelSourceLoaderException("Animation output has too many track keys", source_file, clip_name, output_name, track.Times.size(), track_name, std::numeric_limits<uint16_t>::max());
     }
 
     ValidateModelSourceTimes(track.Times, source_file, clip_name, output_name, track_name);
@@ -559,10 +559,10 @@ static void ValidateModelSourceVec3Track(const ModelAnimationVec3Track& track, s
         const vec3& value = track.Values[i];
 
         if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z)) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has a non-finite {} value at key {}", source_file, clip_name, output_name, track_name, i));
+            throw ModelSourceLoaderException("Animation output has a non-finite track value", source_file, clip_name, output_name, track_name, i);
         }
         if (float_abs(value.x) > MODEL_ANIMATION_HALF_MAX || float_abs(value.y) > MODEL_ANIMATION_HALF_MAX || float_abs(value.z) > MODEL_ANIMATION_HALF_MAX) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has a {} value outside ozz FP16 range {} at key {}: ({}, {}, {})", source_file, clip_name, output_name, track_name, MODEL_ANIMATION_HALF_MAX, i, value.x, value.y, value.z));
+            throw ModelSourceLoaderException("Animation output has a track value outside the ozz FP16 range", source_file, clip_name, output_name, track_name, MODEL_ANIMATION_HALF_MAX, i, value.x, value.y, value.z);
         }
     }
 }
@@ -572,10 +572,10 @@ static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTra
     FO_STACK_TRACE_ENTRY();
 
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
-        throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has invalid rotation track sizes: {} times, {} values", source_file, clip_name, output_name, track.Times.size(), track.Values.size()));
+        throw ModelSourceLoaderException("Animation output has invalid rotation track sizes", source_file, clip_name, output_name, track.Times.size(), track.Values.size());
     }
     if (track.Times.size() > std::numeric_limits<uint16_t>::max()) {
-        throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has {} rotation keys; maximum is {}", source_file, clip_name, output_name, track.Times.size(), std::numeric_limits<uint16_t>::max()));
+        throw ModelSourceLoaderException("Animation output has too many rotation keys", source_file, clip_name, output_name, track.Times.size(), std::numeric_limits<uint16_t>::max());
     }
 
     ValidateModelSourceTimes(track.Times, source_file, clip_name, output_name, "rotation");
@@ -584,16 +584,16 @@ static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTra
         const quaternion& value = track.Values[i];
 
         if (!std::isfinite(value.w) || !std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z)) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has a non-finite rotation value at key {}", source_file, clip_name, output_name, i));
+            throw ModelSourceLoaderException("Animation output has a non-finite rotation value", source_file, clip_name, output_name, i);
         }
 
         const float32_t norm_squared = glm::dot(value, value);
 
         if (!std::isfinite(norm_squared) || norm_squared <= std::numeric_limits<float32_t>::epsilon()) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has a zero rotation value at key {}", source_file, clip_name, output_name, i));
+            throw ModelSourceLoaderException("Animation output has a zero rotation value", source_file, clip_name, output_name, i);
         }
         if (float_abs(norm_squared - 1.0f) > MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has a non-unit rotation value at key {}: squared norm {}", source_file, clip_name, output_name, i, norm_squared));
+            throw ModelSourceLoaderException("Animation output has a non-unit rotation value", source_file, clip_name, output_name, i, norm_squared);
         }
     }
 }
@@ -604,16 +604,16 @@ static void ValidateModelSourceTimes(const vector<float32_t>& times, string_view
 
     for (size_t i = 0; i < times.size(); i++) {
         if (!std::isfinite(times[i])) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has non-finite {} time at key {}", source_file, clip_name, output_name, track_name, i));
+            throw ModelSourceLoaderException("Animation output has a non-finite track time", source_file, clip_name, output_name, track_name, i);
         }
         if (i != 0 && times[i] <= times[i - 1]) {
-            throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has non-ascending {} times at keys {} and {}", source_file, clip_name, output_name, track_name, i - 1, i));
+            throw ModelSourceLoaderException("Animation output has non-ascending track times", source_file, clip_name, output_name, track_name, i - 1, i);
         }
         if (i != 0) {
             const float32_t delta = times[i] - times[i - 1];
 
             if (!std::isfinite(delta) || !std::isfinite(1.0f / delta)) {
-                throw ModelSourceLoaderException(strex("Animation '{}#{}' output '{}' has an invalid {} time interval at keys {} and {}: {} to {}", source_file, clip_name, output_name, track_name, i - 1, i, times[i - 1], times[i]));
+                throw ModelSourceLoaderException("Animation output has an invalid track time interval", source_file, clip_name, output_name, track_name, i - 1, i, times[i - 1], times[i]);
             }
         }
     }

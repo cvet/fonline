@@ -253,7 +253,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint},
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint},
         };
-        CHECK_THROWS_WITH(pose.Evaluate({}, {}, root_matrix, rotations), Catch::Matchers::ContainsSubstring("maximum"));
+        CHECK_THROWS_WITH(pose.Evaluate({}, {}, root_matrix, rotations), Catch::Matchers::ContainsSubstring("too many procedural rotations"));
     }
 
     SECTION("joint index")

@@ -330,7 +330,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     auto fbx_scene_holder = make_unique_del_ptr(fbx_scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
 
     if (fbx_scene->nodes.count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelMeshBakerException(strex("FBX '{}' hierarchy has {} joints; maximum is {}", fname, fbx_scene->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS));
+        throw ModelMeshBakerException("FBX hierarchy has too many joints", fname, fbx_scene->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
     // Convert data
@@ -352,7 +352,7 @@ static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname
     FO_STACK_TRACE_ENTRY();
 
     if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw ModelMeshBakerException(strex("FBX '{}' hierarchy exceeds the safe depth limit {} at node '{}'", fname, MODEL_MESH_MAX_HIERARCHY_DEPTH, fbx_node->name.data));
+        throw ModelMeshBakerException("FBX hierarchy exceeds the safe depth limit at node", fname, MODEL_MESH_MAX_HIERARCHY_DEPTH, fbx_node->name.data);
     }
 
     auto bone = SafeAlloc::MakeUnique<BakerBone>();
@@ -375,15 +375,15 @@ static void OptimizeBakedMeshGeometry(vector<Vertex3D>& vertices, vector<uint32_
     FO_STACK_TRACE_ENTRY();
 
     if (vertices.empty()) {
-        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has no indexed vertices to optimize", fname, node_name));
+        throw ModelMeshBakerException("FBX mesh node has no indexed vertices to optimize", fname, node_name);
     }
     if (indices.empty() || indices.size() % 3 != 0) {
-        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has invalid triangle index count {}", fname, node_name, indices.size()));
+        throw ModelMeshBakerException("FBX mesh node has invalid triangle index count", fname, node_name, indices.size());
     }
 
     for (size_t index_position = 0; index_position < indices.size(); index_position++) {
         if (indices[index_position] >= vertices.size() || indices[index_position] > std::numeric_limits<vindex_t>::max()) {
-            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has generated index {} at position {} outside the indexed vertex/vindex_t bounds [0, {})/[0, {}]", fname, node_name, indices[index_position], index_position, vertices.size(), std::numeric_limits<vindex_t>::max()));
+            throw ModelMeshBakerException("FBX mesh node has generated index outside the indexed vertex/vindex_t bounds", fname, node_name, indices[index_position], index_position, vertices.size(), std::numeric_limits<vindex_t>::max());
         }
     }
 
@@ -394,12 +394,12 @@ static void OptimizeBakedMeshGeometry(vector<Vertex3D>& vertices, vector<uint32_
     const size_t optimized_vertex_count = meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(), vertices.data(), vertices.size(), sizeof(Vertex3D));
 
     if (optimized_vertex_count != vertices.size()) {
-        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' vertex-fetch optimization retained {} of {} indexed vertices", fname, node_name, optimized_vertex_count, vertices.size()));
+        throw ModelMeshBakerException("FBX mesh node vertex-fetch optimization retained fewer than all indexed vertices", fname, node_name, optimized_vertex_count, vertices.size());
     }
 
     for (size_t index_position = 0; index_position < optimized_indices.size(); index_position++) {
         if (optimized_indices[index_position] >= optimized_vertex_count || optimized_indices[index_position] > std::numeric_limits<vindex_t>::max()) {
-            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' optimization produced index {} at position {} outside the indexed vertex/vindex_t bounds [0, {})/[0, {}]", fname, node_name, optimized_indices[index_position], index_position, optimized_vertex_count, std::numeric_limits<vindex_t>::max()));
+            throw ModelMeshBakerException("FBX mesh node optimization produced index outside the indexed vertex/vindex_t bounds", fname, node_name, optimized_indices[index_position], index_position, optimized_vertex_count, std::numeric_limits<vindex_t>::max());
         }
     }
 
@@ -420,10 +420,10 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         nptr<const ufbx_skin_deformer> fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 
         if (fbx_skin && fbx_skin->clusters.count == 0) {
-            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has a skin deformer without bone clusters", fname, bone->Name));
+            throw ModelMeshBakerException("FBX mesh node has a skin deformer without bone clusters", fname, bone->Name);
         }
         if (fbx_skin && fbx_skin->clusters.count > MODEL_MAX_BONES) {
-            throw ModelMeshBakerException(strex("Mesh '{}' has {} skin clusters, exceeds MODEL_MAX_BONES limit {}", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES));
+            throw ModelMeshBakerException("Mesh has too many skin clusters, exceeds MODEL_MAX_BONES limit", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES);
         }
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
@@ -478,7 +478,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                         const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), MODEL_BONES_PER_VERTEX);
 
                         if (weights_count == 0) {
-                            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has no retained skin influences at vertex {}", fname, bone->Name, v_index));
+                            throw ModelMeshBakerException("FBX mesh node has no retained skin influences at vertex", fname, bone->Name, v_index);
                         }
 
                         float32_t total_weight = 0.0f;
@@ -487,25 +487,25 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                             const ufbx_skin_weight skin_weight = fbx_skin->weights[fbx_skin_vertex.weight_begin + w];
 
                             if (skin_weight.cluster_index >= fbx_skin->clusters.count) {
-                                throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has skin cluster index {} outside [0, {}) at vertex {}, influence {}", fname, bone->Name, skin_weight.cluster_index, fbx_skin->clusters.count, v_index, w));
+                                throw ModelMeshBakerException("FBX mesh node has skin cluster index outside cluster range at vertex/influence", fname, bone->Name, skin_weight.cluster_index, fbx_skin->clusters.count, v_index, w);
                             }
 
                             v.BlendIndices[w] = numeric_cast<float32_t>(skin_weight.cluster_index);
                             v.BlendWeights[w] = ConvertFbxFloat(skin_weight.weight, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "skin_weight", .ElementIndex = fbx_skin_vertex.weight_begin + w}, "weight");
 
                             if (v.BlendWeights[w] < 0.0f) {
-                                throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has negative retained skin weight {} at vertex {}, influence {}", fname, bone->Name, v.BlendWeights[w], v_index, w));
+                                throw ModelMeshBakerException("FBX mesh node has negative retained skin weight at vertex/influence", fname, bone->Name, v.BlendWeights[w], v_index, w);
                             }
 
                             total_weight += v.BlendWeights[w];
 
                             if (!std::isfinite(total_weight)) {
-                                throw ModelMeshBakerException(strex("FBX '{}' has a non-finite accumulated skin weight for node '{}' at vertex {}", fname, bone->Name, v_index));
+                                throw ModelMeshBakerException("FBX has a non-finite accumulated skin weight for mesh node at vertex", fname, bone->Name, v_index);
                             }
                         }
 
                         if (!(total_weight > 0.0f)) {
-                            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has zero or negative retained skin-weight total {} at vertex {}", fname, bone->Name, total_weight, v_index));
+                            throw ModelMeshBakerException("FBX mesh node has zero or negative retained skin-weight total at vertex", fname, bone->Name, total_weight, v_index);
                         }
 
                         for (size_t w = 0; w < weights_count; w++) {
@@ -523,7 +523,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         }
 
         if (mesh->Vertices.size() > std::numeric_limits<uint32_t>::max()) {
-            throw ModelMeshBakerException(strex("Mesh '{}' has {} unindexed vertices, exceeds the uint32 writer count limit {}", fbx_node->name.data, mesh->Vertices.size(), std::numeric_limits<uint32_t>::max()));
+            throw ModelMeshBakerException("Mesh has too many unindexed vertices, exceeds the uint32 writer count limit", fbx_node->name.data, mesh->Vertices.size(), std::numeric_limits<uint32_t>::max());
         }
 
         vector<uint32_t> indices;
@@ -546,16 +546,16 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
 
         if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
-            throw ModelMeshBakerException(strex("FBX index generation failed for mesh '{}': {}", fbx_node->name.data, fbx_generate_indices_error.description.data));
+            throw ModelMeshBakerException("FBX index generation failed for mesh", fbx_node->name.data, fbx_generate_indices_error.description.data);
         }
         if (result_vertices == 0 || result_vertices > mesh->Vertices.size()) {
-            throw ModelMeshBakerException(strex("FBX index generation returned invalid vertex count {} for mesh '{}' with {} source vertices", result_vertices, fbx_node->name.data, mesh->Vertices.size()));
+            throw ModelMeshBakerException("FBX index generation returned invalid vertex count for mesh", result_vertices, fbx_node->name.data, mesh->Vertices.size());
         }
         if (result_vertices > std::numeric_limits<uint32_t>::max()) {
-            throw ModelMeshBakerException(strex("Mesh '{}' has {} indexed vertices, exceeds the uint32 writer count limit {}", fbx_node->name.data, result_vertices, std::numeric_limits<uint32_t>::max()));
+            throw ModelMeshBakerException("Mesh has too many indexed vertices, exceeds the uint32 writer count limit", fbx_node->name.data, result_vertices, std::numeric_limits<uint32_t>::max());
         }
         if (indices.size() > std::numeric_limits<uint32_t>::max()) {
-            throw ModelMeshBakerException(strex("Mesh '{}' has {} indices, exceeds the uint32 writer count limit {}", fbx_node->name.data, indices.size(), std::numeric_limits<uint32_t>::max()));
+            throw ModelMeshBakerException("Mesh has too many indices, exceeds the uint32 writer count limit", fbx_node->name.data, indices.size(), std::numeric_limits<uint32_t>::max());
         }
 
         mesh->Vertices.resize(result_vertices);
@@ -621,7 +621,7 @@ static auto ConvertFbxFloat(double value, const FbxValidationContext& context, s
     constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
 
     if (!std::isfinite(value) || value < min_float || value > max_float) {
-        throw ModelMeshBakerException(strex("FBX '{}' has invalid numeric data in scope '{}', node '{}', field '{}', element {}, component '{}': {} is not representable as a finite float", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value));
+        throw ModelMeshBakerException("FBX has invalid numeric data that is not representable as a finite float", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
     }
 
     return numeric_cast<float32_t>(value);
@@ -661,7 +661,7 @@ static auto ConvertFbxColorComponent(double value, const FbxValidationContext& c
     (void)ConvertFbxFloat(value, context, component);
 
     if (value < 0.0 || value > 1.0) {
-        throw ModelMeshBakerException(strex("FBX '{}' has an out-of-range color in scope '{}', node '{}', field '{}', element {}, component '{}': {} is outside [0, 1]", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value));
+        throw ModelMeshBakerException("FBX has an out-of-range color component outside [0, 1]", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
     }
 
     return numeric_cast<uint8_t>(iround<int32_t>(value * 255.0));
@@ -734,17 +734,17 @@ static void ValidateFbxVertex(const Vertex3D& vertex, size_t skin_bone_count, co
         const float32_t index = vertex.BlendIndices[component];
 
         if (weight < 0.0f || weight > 1.0f) {
-            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has normalized skin weight {} outside [0, 1] at serialized vertex {}, influence {}", context.FileName, context.NodeName, weight, context.ElementIndex, component));
+            throw ModelMeshBakerException("FBX mesh node has normalized skin weight outside [0, 1] at serialized vertex/influence", context.FileName, context.NodeName, weight, context.ElementIndex, component);
         }
         if (index < 0.0f || index != std::floor(index) || index >= numeric_cast<float32_t>(skin_bone_count)) {
-            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has normalized skin index {} outside integer range [0, {}) at serialized vertex {}, influence {}", context.FileName, context.NodeName, index, skin_bone_count, context.ElementIndex, component));
+            throw ModelMeshBakerException("FBX mesh node has normalized skin index outside integer range at serialized vertex/influence", context.FileName, context.NodeName, index, skin_bone_count, context.ElementIndex, component);
         }
 
         total_weight += weight;
     }
 
     if (!std::isfinite(total_weight) || !is_float_equal(total_weight, 1.0f, FBX_SKIN_WEIGHT_SUM_TOLERANCE)) {
-        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has normalized skin-weight sum {} instead of 1 at serialized vertex {}", context.FileName, context.NodeName, total_weight, context.ElementIndex));
+        throw ModelMeshBakerException("FBX mesh node has normalized skin-weight sum instead of 1 at serialized vertex", context.FileName, context.NodeName, total_weight, context.ElementIndex);
     }
 }
 

@@ -133,7 +133,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
             return loaded_root_bone;
         }
         catch (const DataReadingException& ex) {
-            throw DataReadingException(strex("Invalid baked model mesh '{}': {}", fname, ex.what()));
+            throw DataReadingException("Invalid baked model mesh", fname, ex.what());
         }
     }();
 
@@ -246,7 +246,7 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
     constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<vindex_t>::max()} + uint64_t {1};
 
     if (vertices_count > max_vertex_count) {
-        throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has {} vertices; maximum addressable count is {}", context, owner->Name, vertices_count, max_vertex_count));
+        throw DataReadingException("Baked model mesh bone vertex count exceeds maximum addressable count", context, owner->Name, vertices_count, max_vertex_count);
     }
 
     VerifyModelBakedCountFitsData(reader, vertices_count, sizeof(Vertex3D), "mesh vertices", context);
@@ -260,7 +260,7 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
 
     for (size_t index_pos = 0; index_pos < mesh.Indices.size(); index_pos++) {
         if (numeric_cast<size_t>(mesh.Indices[index_pos]) >= mesh.Vertices.size()) {
-            throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has vertex index {} at position {} outside vertex count {}", context, owner->Name, mesh.Indices[index_pos], index_pos, mesh.Vertices.size()));
+            throw DataReadingException("Baked model mesh bone has vertex index outside vertex count", context, owner->Name, mesh.Indices[index_pos], index_pos, mesh.Vertices.size());
         }
     }
 
@@ -269,7 +269,7 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
     const uint32_t skin_bones_count = reader.Read<uint32_t>();
 
     if (skin_bones_count > MODEL_MAX_BONES) {
-        throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has {} skin bones; maximum is {}", context, owner->Name, skin_bones_count, MODEL_MAX_BONES));
+        throw DataReadingException("Baked model mesh bone skin bone count exceeds maximum", context, owner->Name, skin_bones_count, MODEL_MAX_BONES);
     }
 
     VerifyModelBakedCountFitsData(reader, skin_bones_count, BAKED_STRING_MIN_SIZE, "skin bone names", context);
@@ -284,7 +284,7 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
     const uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
 
     if (skin_bone_offsets_count != skin_bones_count) {
-        throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has {} skin bone offsets for {} skin bones", context, owner->Name, skin_bone_offsets_count, skin_bones_count));
+        throw DataReadingException("Baked model mesh bone skin bone offset count mismatch", context, owner->Name, skin_bone_offsets_count, skin_bones_count);
     }
 
     VerifyModelBakedCountFitsData(reader, skin_bone_offsets_count, sizeof(mat44), "skin bone offsets", context);
@@ -300,26 +300,26 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
             const float32_t index = vertex.BlendIndices[influence];
 
             if (!std::isfinite(weight)) {
-                throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has non-finite skin weight at vertex {}, influence {}", context, owner->Name, vertex_index, influence));
+                throw DataReadingException("Baked model mesh bone has non-finite skin weight", context, owner->Name, vertex_index, influence);
             }
             if (weight < 0.0f || weight > 1.0f) {
-                throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has skin weight {} outside [0, 1] at vertex {}, influence {}", context, owner->Name, weight, vertex_index, influence));
+                throw DataReadingException("Baked model mesh bone has skin weight outside [0, 1]", context, owner->Name, weight, vertex_index, influence);
             }
             if (!std::isfinite(index)) {
-                throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has non-finite skin index at vertex {}, influence {}", context, owner->Name, vertex_index, influence));
+                throw DataReadingException("Baked model mesh bone has non-finite skin index", context, owner->Name, vertex_index, influence);
             }
             if (index != std::trunc(index)) {
-                throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has non-integral skin index {} at vertex {}, influence {}", context, owner->Name, index, vertex_index, influence));
+                throw DataReadingException("Baked model mesh bone has non-integral skin index", context, owner->Name, index, vertex_index, influence);
             }
             if (index < 0.0f || index >= numeric_cast<float32_t>(skin_bones_count)) {
-                throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has skin index {} outside [0, {}) at vertex {}, influence {}", context, owner->Name, index, skin_bones_count, vertex_index, influence));
+                throw DataReadingException("Baked model mesh bone has skin index outside valid range", context, owner->Name, index, skin_bones_count, vertex_index, influence);
             }
 
             total_weight += weight;
         }
 
         if (!std::isfinite(total_weight) || !is_float_equal(total_weight, 1.0f, MODEL_MESH_SKIN_WEIGHT_SUM_TOLERANCE)) {
-            throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has skin-weight sum {} instead of 1 at vertex {}", context, owner->Name, total_weight, vertex_index));
+            throw DataReadingException("Baked model mesh bone has skin-weight sum that is not 1", context, owner->Name, total_weight, vertex_index);
         }
     }
 
@@ -331,10 +331,10 @@ static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver, strin
     FO_STACK_TRACE_ENTRY();
 
     if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw DataReadingException(strex("Baked model mesh '{}' hierarchy depth exceeds {} joints", context, MODEL_MESH_MAX_HIERARCHY_DEPTH));
+        throw DataReadingException("Baked model mesh hierarchy depth exceeds maximum joints", context, MODEL_MESH_MAX_HIERARCHY_DEPTH);
     }
     if (joint_count >= MODEL_ANIMATION_MAX_JOINTS) {
-        throw DataReadingException(strex("Baked model mesh '{}' hierarchy exceeds {} joints", context, MODEL_ANIMATION_MAX_JOINTS));
+        throw DataReadingException("Baked model mesh hierarchy exceeds maximum joints", context, MODEL_ANIMATION_MAX_JOINTS);
     }
 
     joint_count++;
@@ -356,7 +356,7 @@ static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver, strin
     const uint32_t children_count = reader.Read<uint32_t>();
 
     if (children_count > MODEL_ANIMATION_MAX_JOINTS) {
-        throw DataReadingException(strex("Baked model mesh '{}' bone '{}' has {} children; maximum is {}", context, bone->Name, children_count, MODEL_ANIMATION_MAX_JOINTS));
+        throw DataReadingException("Baked model mesh bone child count exceeds maximum", context, bone->Name, children_count, MODEL_ANIMATION_MAX_JOINTS);
     }
 
     VerifyModelBakedCountFitsData(reader, children_count, BAKED_MODEL_MESH_BONE_MIN_SIZE, "child bones", context);

@@ -1168,8 +1168,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/TooWide.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
         CHECK(rig.Outputs.empty());
-        const string expected_diagnostic = strex("hierarchy has {} joints; maximum is {}", MODEL_ANIMATION_RIG_MAX_JOINTS + 1, MODEL_ANIMATION_RIG_MAX_JOINTS);
-        CHECK(std::ranges::any_of(captured_messages, [&expected_diagnostic](const string& message) { return message.find(expected_diagnostic) != string::npos; }));
+        const string expected_diagnostic = "FBX hierarchy has too many joints";
+        CHECK(std::ranges::any_of(captured_messages, [&expected_diagnostic](const string& message) { return message.find(expected_diagnostic) != string::npos && message.find(strex("{}", MODEL_ANIMATION_RIG_MAX_JOINTS + 1)) != string::npos && message.find(strex("{}", MODEL_ANIMATION_RIG_MAX_JOINTS)) != string::npos; }));
     }
 
     SECTION("Rejects non-finite source geometry with asset context")
@@ -1717,9 +1717,9 @@ TEST_CASE("ModelInfoBakerValidations")
         AddTestModel(rig, "Critters/External.fbx", "Root", true, {"Idle"});
 
         const string diagnostic = CaptureModelInfoBakingError(rig);
-        CHECK(diagnostic.find("External animation model 'Critters/External.fbx'") != string::npos);
-        CHECK(diagnostic.find("contains 1 drawable mesh nodes (first 'Root')") != string::npos);
-        CHECK(diagnostic.find("AllowAnimationGeometry External.fbx") != string::npos);
+        CHECK(diagnostic.find("External animation model contains drawable mesh nodes") != string::npos);
+        CHECK(diagnostic.find("Root") != string::npos);
+        CHECK(diagnostic.find("AllowAnimationGeometry line") != string::npos);
     }
 
     SECTION("Requires explicit temporary exceptions for known external animation geometry")
@@ -1753,7 +1753,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddTestModel(rig, "Critters/Body.fbx", "Root", true);
         AddTestModel(rig, "Critters/External.fbx", "Root", true, {"Idle"});
 
-        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Duplicate animation-geometry exception 'External.fbx'") && Catch::Matchers::ContainsSubstring("line 3"));
+        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Duplicate animation-geometry exception") && Catch::Matchers::ContainsSubstring("External.fbx") && Catch::Matchers::ContainsSubstring("- 3"));
     }
 
     SECTION("Rejects animation geometry exceptions with duplicate resolved targets")
@@ -1765,7 +1765,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddTestModel(rig, "Critters/External.fbx", "Root", true, {"Idle"});
 
         const string diagnostic = CaptureModelInfoBakingError(rig);
-        CHECK(diagnostic.find("duplicate resolved target 'Critters/External.fbx'") != string::npos);
+        CHECK(diagnostic.find("Critters/External.fbx") != string::npos);
         CHECK(diagnostic.find("keep exactly one AllowAnimationGeometry line") != string::npos);
     }
 
@@ -1779,7 +1779,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddTestModel(rig, "Critters/Ignored.fbx", "Root", true, {"Idle"});
 
         const string diagnostic = CaptureModelInfoBakingError(rig);
-        CHECK(diagnostic.find("Animation-geometry exception 'Critters/Ignored.fbx'") != string::npos);
+        CHECK(diagnostic.find("Critters/Ignored.fbx") != string::npos);
         CHECK(diagnostic.find("does not match a selected external Anim source") != string::npos);
     }
 
@@ -1792,7 +1792,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddTestModel(rig, "Critters/External.fbx", "Root", false, {"Idle"});
 
         const string diagnostic = CaptureModelInfoBakingError(rig);
-        CHECK(diagnostic.find("Animation-geometry exception 'Critters/External.fbx'") != string::npos);
+        CHECK(diagnostic.find("Critters/External.fbx") != string::npos);
         CHECK(diagnostic.find("is stale because the selected external animation no longer contains drawable meshes") != string::npos);
     }
 
@@ -1919,7 +1919,7 @@ TEST_CASE("ModelInfoBakerValidations")
         rig.AddBakedFile("Critters/TooDeep.fbx", MakeTestBakedModelChain(MODEL_MESH_MAX_HIERARCHY_DEPTH + 1));
 
         const string diagnostic = CaptureModelInfoBakingError(rig);
-        CHECK(diagnostic.find("Invalid baked model mesh 'Critters/TooDeep.fbx'") != string::npos);
+        CHECK(diagnostic.find("Invalid baked model mesh") != string::npos);
         CHECK(diagnostic.find("hierarchy depth") != string::npos);
         CHECK(diagnostic.find(strex("{}", MODEL_MESH_MAX_HIERARCHY_DEPTH)) != string::npos);
     }

@@ -600,7 +600,7 @@ auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view
         const hstring runtime_name = runtime_names[joint_index];
 
         if (runtime_name && !joint_indexes.emplace(runtime_name, numeric_cast<uint32_t>(joint_index)).second) {
-            throw ModelAnimationRuntimeException(strex("Model '{}' has duplicate runtime lookup name '{}'", context, runtime_name));
+            throw ModelAnimationRuntimeException("Model has duplicate runtime lookup name", context, runtime_name);
         }
     }
 
@@ -633,7 +633,7 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
         throw ModelAnimationRuntimeException("Rest-pose hierarchy has no joints");
     }
     if (world_matrices.size() != joints.size()) {
-        throw ModelAnimationRuntimeException(strex("Rest-pose output has {} matrices; expected {}", world_matrices.size(), joints.size()));
+        throw ModelAnimationRuntimeException("Rest-pose output matrix count does not match joint count", world_matrices.size(), joints.size());
     }
 
     ValidateModelAnimationRuntimeMatrix(root_matrix, "rest-pose root matrix");
@@ -643,7 +643,7 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
         ValidateModelAnimationRuntimeMatrix(joint.RestLocalTransform, strex("rest-pose local matrix at joint {}", joint_index));
 
         if ((joint_index == 0 && joint.ParentIndex != -1) || (joint_index != 0 && (joint.ParentIndex < 0 || numeric_cast<size_t>(joint.ParentIndex) >= joint_index))) {
-            throw ModelAnimationRuntimeException(strex("Rest-pose joint {} has invalid parent {}; joints must be in parent-before-child order", joint_index, joint.ParentIndex));
+            throw ModelAnimationRuntimeException("Rest-pose joint has invalid parent; joints must be in parent-before-child order", joint_index, joint.ParentIndex);
         }
     }
 
@@ -913,7 +913,7 @@ void ModelAnimationRuntimePose::OverrideWorldMatrix(size_t joint_index, const ma
     FO_STACK_TRACE_ENTRY();
 
     if (joint_index >= GetJointCount()) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose world override joint {} is outside [0, {})", joint_index, GetJointCount()));
+        throw ModelAnimationRuntimeException("Animation runtime pose world override joint is outside joint range", joint_index, GetJointCount());
     }
 
     ValidateModelAnimationRuntimeMatrix(world_matrix, "world override matrix");
@@ -933,14 +933,14 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         rig_data = ReadModelAnimationRigData(data, model_description);
     }
     catch (const ModelAnimationRigDataException& ex) {
-        throw ModelAnimationRuntimeException(strex("Can't load animation rig data for '{}': {}", model_description, ex.what()));
+        throw ModelAnimationRuntimeException("Can't load animation rig data", model_description, ex.what());
     }
 
     if (rig_data.Skeleton.Metadata.SourceAsset != model_description) {
-        throw ModelAnimationRuntimeException(strex("Animation rig skeleton source '{}' does not match model description '{}'", rig_data.Skeleton.Metadata.SourceAsset, model_description));
+        throw ModelAnimationRuntimeException("Animation rig skeleton source does not match model description", rig_data.Skeleton.Metadata.SourceAsset, model_description);
     }
     if (rig_data.BaseJointRemap.Metadata.SourceAsset != base_model) {
-        throw ModelAnimationRuntimeException(strex("Animation rig base-remap source '{}' does not match model '{}' for '{}'", rig_data.BaseJointRemap.Metadata.SourceAsset, base_model, model_description));
+        throw ModelAnimationRuntimeException("Animation rig base-remap source does not match model", rig_data.BaseJointRemap.Metadata.SourceAsset, base_model, model_description);
     }
 
     ozz::animation::Skeleton skeleton = DeserializeModelAnimationRuntimeObject<ozz::animation::Skeleton>(rig_data.Skeleton.Payload, strex("canonical skeleton for '{}'", model_description));
@@ -951,11 +951,11 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         base_joint_remap = ReadModelAnimationJointRemapPayload(rig_data.BaseJointRemap.Payload, strex("base joint remap for '{}'", model_description));
     }
     catch (const ModelAnimationRigDataException& ex) {
-        throw ModelAnimationRuntimeException(strex("Can't load base joint remap for '{}': {}", model_description, ex.what()));
+        throw ModelAnimationRuntimeException("Can't load base joint remap", model_description, ex.what());
     }
 
     if (base_joint_remap.CanonicalJointCount != canonical_joint_count || base_joint_remap.Duration != 0.0f || !base_joint_remap.NearestSampleTimes.empty()) {
-        throw ModelAnimationRuntimeException(strex("Invalid base joint remap for '{}': {} canonical joints, duration {}, {} nearest times; skeleton has {} joints", model_description, base_joint_remap.CanonicalJointCount, base_joint_remap.Duration, base_joint_remap.NearestSampleTimes.size(), canonical_joint_count));
+        throw ModelAnimationRuntimeException("Invalid base joint remap: joint count, duration, or nearest-time set does not match the skeleton", model_description, base_joint_remap.CanonicalJointCount, base_joint_remap.Duration, base_joint_remap.NearestSampleTimes.size(), canonical_joint_count);
     }
 
     vector<ModelAnimationRuntimeClip> clips;
@@ -972,25 +972,25 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
             joint_remap = ReadModelAnimationJointRemapPayload(clip_data.JointRemap.Payload, clip_context);
         }
         catch (const ModelAnimationRigDataException& ex) {
-            throw ModelAnimationRuntimeException(strex("Can't load joint remap for {}: {}", clip_context, ex.what()));
+            throw ModelAnimationRuntimeException("Can't load joint remap", clip_context, ex.what());
         }
 
         if (animation.num_tracks() != skeleton.num_joints()) {
-            throw ModelAnimationRuntimeException(strex("Ozz {} has {} tracks; canonical skeleton has {} joints", clip_context, animation.num_tracks(), skeleton.num_joints()));
+            throw ModelAnimationRuntimeException("Ozz animation track count does not match canonical skeleton joint count", clip_context, animation.num_tracks(), skeleton.num_joints());
         }
         if (!std::isfinite(animation.duration()) || animation.duration() <= 0.0f || !std::isfinite(1.0f / animation.duration())) {
-            throw ModelAnimationRuntimeException(strex("Ozz {} has invalid duration {}", clip_context, animation.duration()));
+            throw ModelAnimationRuntimeException("Ozz animation has invalid duration", clip_context, animation.duration());
         }
         if (animation.name() == nullptr || string_view {animation.name()} != clip_name) {
-            throw ModelAnimationRuntimeException(strex("Ozz {} contains object name '{}'", clip_context, animation.name() != nullptr ? animation.name() : "<null>"));
+            throw ModelAnimationRuntimeException("Ozz animation contains an unexpected object name", clip_context, animation.name() != nullptr ? animation.name() : "<null>");
         }
         if (joint_remap.CanonicalJointCount != canonical_joint_count || joint_remap.Duration != animation.duration()) {
-            throw ModelAnimationRuntimeException(strex("Ozz {} remap has {} canonical joints and duration {}; expected {} and {}", clip_context, joint_remap.CanonicalJointCount, joint_remap.Duration, canonical_joint_count, animation.duration()));
+            throw ModelAnimationRuntimeException("Ozz animation remap canonical joint count and duration do not match expected values", clip_context, joint_remap.CanonicalJointCount, joint_remap.Duration, canonical_joint_count, animation.duration());
         }
         const bool has_nearest_timeline = !joint_remap.NearestSampleTimes.empty();
 
         if (has_nearest_timeline != nearest_sampling) {
-            throw ModelAnimationRuntimeException(strex("Ozz {} nearest-sampling timeline does not match the model interpolation policy", clip_context));
+            throw ModelAnimationRuntimeException("Ozz animation nearest-sampling timeline does not match the model interpolation policy", clip_context);
         }
 
         clips.emplace_back(ModelAnimationRuntimeAccess::CreateClip(source_file, clip_name, clip_data.Animation.Metadata.SourceSignature, std::move(animation), std::move(joint_remap)));
@@ -1007,7 +1007,7 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
     const ModelAnimationJointRemap& remap = ModelAnimationRuntimeAccess::GetBaseJointRemap(rig);
 
     if (source_joints.size() != remap.SourceToCanonicalJointIndices.size()) {
-        throw ModelAnimationRuntimeException(strex("Animation base-joint remap count {} does not match source hierarchy count {} in {}", remap.SourceToCanonicalJointIndices.size(), source_joints.size(), context));
+        throw ModelAnimationRuntimeException("Animation base-joint remap count does not match source hierarchy count", remap.SourceToCanonicalJointIndices.size(), source_joints.size(), context);
     }
 
     const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(rig);
@@ -1019,21 +1019,21 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
         const uint32_t canonical_index = remap.SourceToCanonicalJointIndices[source_index];
 
         if (source_joint.Name != canonical_names[canonical_index]) {
-            throw ModelAnimationRuntimeException(strex("Animation base-joint name mismatch at source joint {} in {}: source '{}', canonical '{}' at {}", source_index, context, source_joint.Name, canonical_names[canonical_index], canonical_index));
+            throw ModelAnimationRuntimeException("Animation base-joint name mismatch between source and canonical joint", source_index, context, source_joint.Name, canonical_names[canonical_index], canonical_index);
         }
 
         const int16_t canonical_parent = canonical_parents[canonical_index];
 
         if (source_joint.ParentIndex < 0) {
             if (canonical_parent != ozz::animation::Skeleton::kNoParent) {
-                throw ModelAnimationRuntimeException(strex("Animation base root '{}' in {} maps to canonical joint {} with parent {}", source_joint.Name, context, canonical_index, canonical_parent));
+                throw ModelAnimationRuntimeException("Animation base root maps to a canonical joint that has a parent", source_joint.Name, context, canonical_index, canonical_parent);
             }
         }
         else {
             const uint32_t mapped_parent = remap.SourceToCanonicalJointIndices[numeric_cast<size_t>(source_joint.ParentIndex)];
 
             if (canonical_parent < 0 || mapped_parent != numeric_cast<uint32_t>(canonical_parent)) {
-                throw ModelAnimationRuntimeException(strex("Animation base-joint parent mismatch for '{}' at source joint {} in {}: source parent {} maps to {}, canonical parent is {}", source_joint.Name, source_index, context, source_joint.ParentIndex, mapped_parent, canonical_parent));
+                throw ModelAnimationRuntimeException("Animation base-joint parent mismatch between mapped source parent and canonical parent", source_joint.Name, source_index, context, source_joint.ParentIndex, mapped_parent, canonical_parent);
             }
         }
 
@@ -1053,7 +1053,7 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
         const pair<int32_t, string_view> joint_key {hierarchy_joint.ParentIndex, hierarchy_joint.Name};
 
         if (!hierarchy_index_by_parent_and_name.emplace(joint_key, numeric_cast<uint32_t>(hierarchy_index)).second) {
-            throw ModelAnimationRuntimeException(strex("Runtime model hierarchy in {} contains duplicate direct child '{}' under joint {}", context, hierarchy_joint.Name, hierarchy_joint.ParentIndex));
+            throw ModelAnimationRuntimeException("Runtime model hierarchy contains a duplicate direct child under a joint", context, hierarchy_joint.Name, hierarchy_joint.ParentIndex);
         }
     }
 
@@ -1076,7 +1076,7 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
         const auto hierarchy_it = hierarchy_index_by_parent_and_name.find(pair<int32_t, string_view> {hierarchy_parent, canonical_name});
 
         if (hierarchy_it == hierarchy_index_by_parent_and_name.end()) {
-            throw ModelAnimationRuntimeException(strex("Canonical animation joint '{}' at {} under resolved parent {} is absent from runtime model hierarchy in {}", canonical_name, canonical_index, hierarchy_parent, context));
+            throw ModelAnimationRuntimeException("Canonical animation joint is absent from the runtime model hierarchy", canonical_name, canonical_index, hierarchy_parent, context);
         }
 
         const uint32_t hierarchy_index = hierarchy_it->second;
@@ -1096,13 +1096,13 @@ static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, 
     FO_STACK_TRACE_ENTRY();
 
     if (payload.empty() || payload.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
-        throw ModelAnimationRuntimeException(strex("Invalid serialized ozz payload size {} for {}", payload.size(), context));
+        throw ModelAnimationRuntimeException("Invalid serialized ozz payload size", payload.size(), context);
     }
 
     ozz::io::MemoryStream stream;
 
     if (stream.Write(payload.data(), payload.size()) != payload.size() || stream.Seek(0, ozz::io::Stream::kSet) != 0) {
-        throw ModelAnimationRuntimeException(strex("Can't stage serialized ozz payload for {}", context));
+        throw ModelAnimationRuntimeException("Can't stage serialized ozz payload", context);
     }
 
     T result;
@@ -1111,14 +1111,14 @@ static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, 
         ozz::io::IArchive archive {&stream};
 
         if (!archive.TestTag<T>()) {
-            throw ModelAnimationRuntimeException(strex("Serialized ozz payload has the wrong type tag for {}", context));
+            throw ModelAnimationRuntimeException("Serialized ozz payload has the wrong type tag", context);
         }
 
         archive >> result;
     }
 
     if (stream.Tell() < 0 || numeric_cast<size_t>(stream.Tell()) != payload.size()) {
-        throw ModelAnimationRuntimeException(strex("Serialized ozz payload for {} was not consumed exactly: {} of {} bytes", context, stream.Tell(), payload.size()));
+        throw ModelAnimationRuntimeException("Serialized ozz payload was not consumed exactly", context, stream.Tell(), payload.size());
     }
 
     return result;
@@ -1129,30 +1129,30 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
     FO_STACK_TRACE_ENTRY();
 
     if (skeleton.num_joints() <= 0 || skeleton.num_joints() > numeric_cast<int>(MODEL_ANIMATION_MAX_JOINTS)) {
-        throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has invalid joint count {}", context, skeleton.num_joints()));
+        throw ModelAnimationRuntimeException("Ozz skeleton has invalid joint count", context, skeleton.num_joints());
     }
 
     const ozz::span<const int16_t> parents = skeleton.joint_parents();
     const ozz::span<const char* const> names = skeleton.joint_names();
 
     if (parents.size() != numeric_cast<size_t>(skeleton.num_joints()) || names.size() != numeric_cast<size_t>(skeleton.num_joints())) {
-        throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has inconsistent parent/name arrays", context));
+        throw ModelAnimationRuntimeException("Ozz skeleton has inconsistent parent/name arrays", context);
     }
 
     for (int joint = 0; joint < skeleton.num_joints(); joint++) {
         const int16_t parent = parents[numeric_cast<size_t>(joint)];
 
         if ((joint == 0 && parent != ozz::animation::Skeleton::kNoParent) || (joint != 0 && (parent < 0 || parent >= joint))) {
-            throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has invalid parent {} for joint {}", context, parent, joint));
+            throw ModelAnimationRuntimeException("Ozz skeleton has invalid parent for joint", context, parent, joint);
         }
         if (names[numeric_cast<size_t>(joint)] == nullptr) {
-            throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has a null name for joint {}", context, joint));
+            throw ModelAnimationRuntimeException("Ozz skeleton has a null name for joint", context, joint);
         }
 
         const string_view name {names[numeric_cast<size_t>(joint)]};
 
         if ((joint != 0 && name.empty()) || !strvex(name).is_valid_utf8()) {
-            throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has an invalid name for joint {}", context, joint));
+            throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
         ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, joint), numeric_cast<size_t>(joint), context);
@@ -1169,7 +1169,7 @@ static void ValidateModelAnimationRuntimeTransform(const ozz::math::Transform& t
     const bool valid_scale = float_abs(transform.scale.x) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.y) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.z) > std::numeric_limits<float32_t>::epsilon();
 
     if (!finite || !valid_scale || !std::isfinite(rotation_norm_squared) || float_abs(rotation_norm_squared - 1.0f) > 1.0e-4f) {
-        throw ModelAnimationRuntimeException(strex("Ozz skeleton for '{}' has an invalid rest transform at joint {}", context, joint_index));
+        throw ModelAnimationRuntimeException("Ozz skeleton has an invalid rest transform at joint", context, joint_index);
     }
 }
 
@@ -1178,17 +1178,17 @@ static void ValidateModelAnimationRuntimeJointList(const_span<ModelAnimationRunt
     FO_STACK_TRACE_ENTRY();
 
     if (joints.empty() || joints.size() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        throw ModelAnimationRuntimeException(strex("Runtime model hierarchy in {} has invalid joint count {}", context, joints.size()));
+        throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid joint count", context, joints.size());
     }
 
     for (size_t i = 0; i < joints.size(); i++) {
         const ModelAnimationRuntimeJoint& joint = joints[i];
 
         if (!strvex(joint.Name).is_valid_utf8() || joint.Name.find('\0') != string_view::npos || (i != 0 && joint.Name.empty())) {
-            throw ModelAnimationRuntimeException(strex("Runtime model hierarchy in {} has invalid joint name at {}", context, i));
+            throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid joint name", context, i);
         }
         if ((i == 0 && joint.ParentIndex != -1) || (i != 0 && (joint.ParentIndex < 0 || numeric_cast<size_t>(joint.ParentIndex) >= i))) {
-            throw ModelAnimationRuntimeException(strex("Runtime model hierarchy in {} has invalid parent {} at joint {} ('{}')", context, joint.ParentIndex, i, joint.Name));
+            throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid parent at joint", context, joint.ParentIndex, i, joint.Name);
         }
     }
 }
@@ -1205,14 +1205,14 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
             const float32_t canonical_value = canonical_rest[column][row];
 
             if (!std::isfinite(source_value) || !std::isfinite(canonical_value)) {
-                throw ModelAnimationRuntimeException(strex("Runtime/Ozz rest pose for joint '{}' at canonical index {} in {} contains a non-finite matrix component", joint.Name, canonical_index, context));
+                throw ModelAnimationRuntimeException("Runtime/Ozz rest pose contains a non-finite matrix component", joint.Name, canonical_index, context);
             }
 
             const float32_t difference = float_abs(source_value - canonical_value);
             const float32_t tolerance = MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(canonical_value));
 
             if (difference > tolerance) {
-                throw ModelAnimationRuntimeException(strex("Runtime/Ozz rest-pose mismatch for joint '{}' at canonical index {} in {} at [{}][{}]: runtime {}, canonical {}, delta {}, tolerance {}", joint.Name, canonical_index, context, column, row, source_value, canonical_value, difference, tolerance));
+                throw ModelAnimationRuntimeException("Runtime/Ozz rest-pose matrix component mismatch beyond tolerance", joint.Name, canonical_index, context, column, row, source_value, canonical_value, difference, tolerance);
             }
         }
     }
@@ -1225,7 +1225,7 @@ static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig&
     const size_t joint_count = rig.GetJointCount();
 
     if (rig.GetClipCount() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose rig has too many clips: {}", rig.GetClipCount()));
+        throw ModelAnimationRuntimeException("Animation runtime pose rig has too many clips", rig.GetClipCount());
     }
 
     for (size_t clip_index = 0; clip_index < rig.GetClipCount(); clip_index++) {
@@ -1235,18 +1235,18 @@ static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig&
         const string context = strex("runtime pose clip {} ('{}#{}')", clip_index, clip.GetSourceFile(), clip.GetClipName());
 
         if (animation.num_tracks() != numeric_cast<int>(joint_count) || !std::isfinite(animation.duration()) || animation.duration() <= 0.0f || !std::isfinite(1.0f / animation.duration())) {
-            throw ModelAnimationRuntimeException(strex("Invalid animation {} tracks/duration: {}/{}", context, animation.num_tracks(), animation.duration()));
+            throw ModelAnimationRuntimeException("Invalid animation track count or duration", context, animation.num_tracks(), animation.duration());
         }
 
         try {
             ValidateModelAnimationJointRemap(remap, context);
         }
         catch (const ModelAnimationRigDataException& ex) {
-            throw ModelAnimationRuntimeException(strex("Invalid animation {} remap: {}", context, ex.what()));
+            throw ModelAnimationRuntimeException("Invalid animation remap", context, ex.what());
         }
 
         if (remap.CanonicalJointCount != joint_count || remap.Duration != animation.duration()) {
-            throw ModelAnimationRuntimeException(strex("Invalid animation {} remap skeleton/duration: {}/{} joints, {}/{} duration", context, remap.CanonicalJointCount, joint_count, remap.Duration, animation.duration()));
+            throw ModelAnimationRuntimeException("Invalid animation remap joint count or duration", context, remap.CanonicalJointCount, joint_count, remap.Duration, animation.duration());
         }
     }
 }
@@ -1258,7 +1258,7 @@ static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!std::isfinite(matrix[column][row])) {
-                throw ModelAnimationRuntimeException(strex("Animation runtime pose {} contains a non-finite component at [{}][{}]", context, column, row));
+                throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, column, row);
             }
         }
     }
@@ -1269,31 +1269,31 @@ static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAni
     FO_STACK_TRACE_ENTRY();
 
     if (procedural_rotations.size() > ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose has {} procedural rotations; maximum is {}", procedural_rotations.size(), ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS));
+        throw ModelAnimationRuntimeException("Animation runtime pose has too many procedural rotations", procedural_rotations.size(), ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS);
     }
 
     for (size_t i = 0; i < procedural_rotations.size(); i++) {
         const ModelAnimationRuntimePose::ProceduralLocalRotation& procedural_rotation = procedural_rotations[i];
 
         if (procedural_rotation.JointIndex >= joint_count) {
-            throw ModelAnimationRuntimeException(strex("Animation runtime pose procedural rotation joint {} at input {} is outside [0, {})", procedural_rotation.JointIndex, i, joint_count));
+            throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation joint is outside joint range", procedural_rotation.JointIndex, i, joint_count);
         }
 
         const quaternion& rotation = procedural_rotation.Rotation;
 
         if (!std::isfinite(rotation.w) || !std::isfinite(rotation.x) || !std::isfinite(rotation.y) || !std::isfinite(rotation.z)) {
-            throw ModelAnimationRuntimeException(strex("Animation runtime pose procedural rotation at input {} contains a non-finite quaternion", i));
+            throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation contains a non-finite quaternion", i);
         }
 
         const float32_t length_squared = glm::dot(rotation, rotation);
 
         if (float_abs(length_squared - 1.0f) > 1.0e-4f) {
-            throw ModelAnimationRuntimeException(strex("Animation runtime pose procedural rotation at input {} is not normalized: squared length {}", i, length_squared));
+            throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation is not normalized", i, length_squared);
         }
 
         for (size_t previous = 0; previous < i; previous++) {
             if (procedural_rotations[previous].JointIndex == procedural_rotation.JointIndex) {
-                throw ModelAnimationRuntimeException(strex("Animation runtime pose has duplicate procedural rotation joint {} at inputs {} and {}", procedural_rotation.JointIndex, previous, i));
+                throw ModelAnimationRuntimeException("Animation runtime pose has a duplicate procedural rotation joint", procedural_rotation.JointIndex, previous, i);
             }
         }
     }
@@ -1348,21 +1348,21 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
     FO_STACK_TRACE_ENTRY();
 
     if (!std::isfinite(input.Position) || input.Position < 0.0f) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose {} has invalid position {}", context, input.Position));
+        throw ModelAnimationRuntimeException("Animation runtime pose track has invalid position", context, input.Position);
     }
     if (!std::isfinite(input.Weight) || input.Weight < 0.0f || input.Weight > 1.0f) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose {} has invalid weight {}", context, input.Weight));
+        throw ModelAnimationRuntimeException("Animation runtime pose track has invalid weight", context, input.Weight);
     }
     if (input.ClipIndex < -1 || (input.ClipIndex >= 0 && numeric_cast<size_t>(input.ClipIndex) >= rig.GetClipCount())) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose {} clip index {} is outside [-1, {})", context, input.ClipIndex, rig.GetClipCount()));
+        throw ModelAnimationRuntimeException("Animation runtime pose track clip index is outside valid range", context, input.ClipIndex, rig.GetClipCount());
     }
     if (!input.JointMask.empty() && input.JointMask.size() != joint_count) {
-        throw ModelAnimationRuntimeException(strex("Animation runtime pose {} joint mask has {} entries; expected {} or empty", context, input.JointMask.size(), joint_count));
+        throw ModelAnimationRuntimeException("Animation runtime pose track joint mask has an unexpected entry count", context, input.JointMask.size(), joint_count);
     }
 
     for (size_t joint = 0; joint < input.JointMask.size(); joint++) {
         if (input.JointMask[joint] > 1) {
-            throw ModelAnimationRuntimeException(strex("Animation runtime pose {} joint mask has invalid value {} at {}", context, input.JointMask[joint], joint));
+            throw ModelAnimationRuntimeException("Animation runtime pose track joint mask has an invalid value", context, input.JointMask[joint], joint);
         }
     }
 

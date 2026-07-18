@@ -124,10 +124,10 @@ auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skele
 
         for (const vector<string>& animated_hierarchy : clip.AnimatedJointHierarchies) {
             if (animated_hierarchy.empty()) {
-                throw ModelSkeletonCompatibilityException(strex("Animation '{}' in '{}' contains an empty joint hierarchy", clip.ClipName, clip.FileName));
+                throw ModelSkeletonCompatibilityException("Animation contains an empty joint hierarchy", clip.ClipName, clip.FileName);
             }
             if (clip_skeleton_index.JointByHierarchy.count(animated_hierarchy) == 0) {
-                throw ModelSkeletonCompatibilityException(strex("Animation '{}' in '{}' references joint hierarchy '{}' that is absent from its source skeleton", clip.ClipName, clip.FileName, FormatJointHierarchy(animated_hierarchy)));
+                throw ModelSkeletonCompatibilityException("Animation references joint hierarchy that is absent from its source skeleton", clip.ClipName, clip.FileName, FormatJointHierarchy(animated_hierarchy));
             }
 
             animated_hierarchies.emplace(animated_hierarchy);
@@ -139,7 +139,7 @@ auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skele
                 const auto source_joint_it = clip_skeleton_index.JointByHierarchy.find(source_hierarchy);
 
                 if (source_joint_it == clip_skeleton_index.JointByHierarchy.end()) {
-                    throw ModelSkeletonCompatibilityException(strex("Animation '{}' in '{}' has a discontinuous joint hierarchy '{}': ancestor '{}' is absent from its source skeleton", clip.ClipName, clip.FileName, FormatJointHierarchy(animated_hierarchy), FormatJointHierarchy(source_hierarchy)));
+                    throw ModelSkeletonCompatibilityException("Animation has a discontinuous joint hierarchy whose ancestor is absent from its source skeleton", clip.ClipName, clip.FileName, FormatJointHierarchy(animated_hierarchy), FormatJointHierarchy(source_hierarchy));
                 }
 
                 const ModelSkeletonJoint& source_joint = clip.Joints[source_joint_it->second];
@@ -166,7 +166,7 @@ auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skele
                 }
 
                 if (const auto name_it = canonical_hierarchy_by_name.find(canonical_name); name_it != canonical_hierarchy_by_name.end()) {
-                    throw ModelSkeletonCompatibilityException(strex("Joint parent conflict for '{}' from animation '{}' in '{}': canonical path is '{}', requested path is '{}'", canonical_name, clip.ClipName, clip.FileName, FormatJointHierarchy(name_it->second), FormatJointHierarchy(canonical_hierarchy)));
+                    throw ModelSkeletonCompatibilityException("Joint parent conflict between canonical and requested joint paths", canonical_name, clip.ClipName, clip.FileName, FormatJointHierarchy(name_it->second), FormatJointHierarchy(canonical_hierarchy));
                 }
 
                 ModelSkeletonJoint canonical_joint = source_joint;
@@ -280,7 +280,7 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
     FO_STACK_TRACE_ENTRY();
 
     if (joints.empty()) {
-        throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has no joints", source_file));
+        throw ModelSkeletonCompatibilityException("Skeleton source has no joints", source_file);
     }
 
     IndexedSkeletonSource result;
@@ -290,18 +290,18 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
         ValidateJoint(joint, source_file);
 
         if (!result.JointByHierarchy.emplace(joint.Hierarchy, i).second) {
-            throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has duplicate joint hierarchy '{}'", source_file, FormatJointHierarchy(joint.Hierarchy)));
+            throw ModelSkeletonCompatibilityException("Skeleton source has duplicate joint hierarchy", source_file, FormatJointHierarchy(joint.Hierarchy));
         }
 
         const auto [name_it, name_inserted] = result.HierarchyByName.emplace(joint.Name, joint.Hierarchy);
 
         if (!name_inserted) {
-            throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has duplicate joint name '{}' at '{}' and '{}'", source_file, joint.Name, FormatJointHierarchy(name_it->second), FormatJointHierarchy(joint.Hierarchy)));
+            throw ModelSkeletonCompatibilityException("Skeleton source has duplicate joint name at two hierarchies", source_file, joint.Name, FormatJointHierarchy(name_it->second), FormatJointHierarchy(joint.Hierarchy));
         }
 
         if (joint.Hierarchy.size() == 1) {
             if (!result.RootHierarchy.empty()) {
-                throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has multiple root joints '{}' and '{}'", source_file, FormatJointHierarchy(result.RootHierarchy), FormatJointHierarchy(joint.Hierarchy)));
+                throw ModelSkeletonCompatibilityException("Skeleton source has multiple root joints", source_file, FormatJointHierarchy(result.RootHierarchy), FormatJointHierarchy(joint.Hierarchy));
             }
 
             result.RootHierarchy = joint.Hierarchy;
@@ -309,7 +309,7 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
     }
 
     if (result.RootHierarchy.empty()) {
-        throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has no root joint", source_file));
+        throw ModelSkeletonCompatibilityException("Skeleton source has no root joint", source_file);
     }
 
     for (const ModelSkeletonJoint& joint : joints) {
@@ -320,7 +320,7 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
         const vector<string> parent_hierarchy(joint.Hierarchy.begin(), joint.Hierarchy.end() - 1);
 
         if (result.JointByHierarchy.count(parent_hierarchy) == 0) {
-            throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' has joint '{}' without parent hierarchy '{}'", source_file, FormatJointHierarchy(joint.Hierarchy), FormatJointHierarchy(parent_hierarchy)));
+            throw ModelSkeletonCompatibilityException("Skeleton source has joint without parent hierarchy", source_file, FormatJointHierarchy(joint.Hierarchy), FormatJointHierarchy(parent_hierarchy));
         }
     }
 
@@ -332,19 +332,19 @@ static void ValidateJoint(const ModelSkeletonJoint& joint, string_view source_fi
     FO_STACK_TRACE_ENTRY();
 
     if (joint.Hierarchy.empty()) {
-        throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' contains joint '{}' with an empty hierarchy", source_file, joint.Name));
+        throw ModelSkeletonCompatibilityException("Skeleton source contains joint with an empty hierarchy", source_file, joint.Name);
     }
     if (joint.Hierarchy.back() != joint.Name) {
-        throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' contains joint '{}' whose hierarchy ends with '{}'", source_file, joint.Name, joint.Hierarchy.back()));
+        throw ModelSkeletonCompatibilityException("Skeleton source contains joint whose hierarchy does not end with its name", source_file, joint.Name, joint.Hierarchy.back());
     }
     if (joint.Name.empty() && joint.Hierarchy.size() != 1) {
-        throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' contains an empty non-root joint name at '{}'", source_file, FormatJointHierarchy(joint.Hierarchy)));
+        throw ModelSkeletonCompatibilityException("Skeleton source contains an empty non-root joint name", source_file, FormatJointHierarchy(joint.Hierarchy));
     }
 
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!std::isfinite(joint.RestLocalTransform[column][row])) {
-                throw ModelSkeletonCompatibilityException(strex("Skeleton source '{}' contains non-finite rest transform at joint '{}'", source_file, FormatJointHierarchy(joint.Hierarchy)));
+                throw ModelSkeletonCompatibilityException("Skeleton source contains non-finite rest transform at joint", source_file, FormatJointHierarchy(joint.Hierarchy));
             }
         }
     }
@@ -503,10 +503,10 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         throw ModelAnimationConverterException("Can't build canonical animation artifacts for an empty model-description path");
     }
     if (!strvex(model_description).is_valid_utf8() || model_description.find('\0') != string_view::npos) {
-        throw ModelAnimationConverterException(strex("Model-description path '{}' is not a valid animation archive identity", model_description));
+        throw ModelAnimationConverterException("Model-description path is not a valid animation archive identity", model_description);
     }
     if (compatibility_report.BaseFile != base_skeleton.FileName) {
-        throw ModelAnimationConverterException(strex("Canonical animation report/base mismatch for '{}': report uses '{}', source uses '{}'", model_description, compatibility_report.BaseFile, base_skeleton.FileName));
+        throw ModelAnimationConverterException("Canonical animation report/base file mismatch", model_description, compatibility_report.BaseFile, base_skeleton.FileName);
     }
 
     const ModelAnimationCanonicalRig canonical_rig = BuildModelAnimationCanonicalRig(base_skeleton, compatibility_report);
@@ -523,7 +523,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         const auto canonical_it = canonical_rig.JointByHierarchy.find(base_joint.Hierarchy);
 
         if (canonical_it == canonical_rig.JointByHierarchy.end()) {
-            throw ModelAnimationConverterException(strex("Base joint '{}' from '{}' is absent from canonical animation rig for '{}'", FormatModelAnimationHierarchy(base_joint.Hierarchy), base_skeleton.FileName, model_description));
+            throw ModelAnimationConverterException("Base joint is absent from canonical animation rig", FormatModelAnimationHierarchy(base_joint.Hierarchy), base_skeleton.FileName, model_description);
         }
 
         result.BaseJointRemap.SourceToCanonicalJointIndices.emplace_back(canonical_it->second);
@@ -562,7 +562,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
     const ModelAnimationJointRemap loaded_base_remap = ReadModelAnimationJointRemapPayload(loaded_base_remap_archive.Payload, strex("base remap for '{}'", model_description));
 
     if (loaded_base_remap.Duration != result.BaseJointRemap.Duration || loaded_base_remap.SourceToCanonicalJointIndices != result.BaseJointRemap.SourceToCanonicalJointIndices || loaded_base_remap.CanonicalJointPresent != result.BaseJointRemap.CanonicalJointPresent || loaded_base_remap.NearestSampleTimes != result.BaseJointRemap.NearestSampleTimes) {
-        throw ModelAnimationConverterException(strex("Base-joint remap round-trip mismatch for '{}'", model_description));
+        throw ModelAnimationConverterException("Base-joint remap round-trip mismatch", model_description);
     }
 
     map<pair<string, string>, size_t> unique_animations;
@@ -603,7 +603,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
         const uint32_t clip_index = numeric_cast<uint32_t>(result.Clips.size());
 
         if (!clip_indices.emplace(std::make_pair(artifact.SourceFile, artifact.ClipName), clip_index).second) {
-            throw ModelAnimationConverterException(strex("Duplicate animation clip artifact '{}#{}' while building production rig data", artifact.SourceFile, artifact.ClipName));
+            throw ModelAnimationConverterException("Duplicate animation clip artifact while building production rig data", artifact.SourceFile, artifact.ClipName);
         }
 
         ModelAnimationRigClipData& clip = result.Clips.emplace_back();
@@ -615,7 +615,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
 
     for (const ModelAnimationRigBindingSource& binding : bindings) {
         if (!sorted_bindings.emplace(std::make_pair(binding.StateAnim, binding.ActionAnim), &binding).second) {
-            throw ModelAnimationConverterException(strex("Duplicate animation binding ({}, {}) while building production rig data", binding.StateAnim, binding.ActionAnim));
+            throw ModelAnimationConverterException("Duplicate animation binding while building production rig data", binding.StateAnim, binding.ActionAnim);
         }
     }
 
@@ -625,7 +625,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
         const auto clip_it = clip_indices.find({binding->SourceFile, binding->ClipName});
 
         if (clip_it == clip_indices.end()) {
-            throw ModelAnimationConverterException(strex("Animation binding ({}, {}) references missing clip '{}#{}'", animation_pair.first, animation_pair.second, binding->SourceFile, binding->ClipName));
+            throw ModelAnimationConverterException("Animation binding references missing clip", animation_pair.first, animation_pair.second, binding->SourceFile, binding->ClipName);
         }
 
         result.Bindings.emplace_back(ModelAnimationRigBinding {
@@ -644,10 +644,10 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
     FO_STACK_TRACE_ENTRY();
 
     if (compatibility_report.CanonicalJoints.empty()) {
-        throw ModelAnimationConverterException(strex("Canonical animation rig for '{}' has no joints", base_skeleton.FileName));
+        throw ModelAnimationConverterException("Canonical animation rig has no joints", base_skeleton.FileName);
     }
     if (compatibility_report.CanonicalJoints.size() > static_cast<size_t>(ozz::animation::Skeleton::kMaxJoints)) {
-        throw ModelAnimationConverterException(strex("Canonical animation rig for '{}' has {} joints; ozz supports at most {}", base_skeleton.FileName, compatibility_report.CanonicalJoints.size(), ozz::animation::Skeleton::kMaxJoints));
+        throw ModelAnimationConverterException("Canonical animation rig has more joints than ozz supports", base_skeleton.FileName, compatibility_report.CanonicalJoints.size(), ozz::animation::Skeleton::kMaxJoints);
     }
 
     ModelAnimationCanonicalRig result;
@@ -660,22 +660,22 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
         const ModelSkeletonJoint& joint = compatibility_report.CanonicalJoints[i];
 
         if (joint.Hierarchy.empty() || joint.Hierarchy.back() != joint.Name) {
-            throw ModelAnimationConverterException(strex("Canonical animation joint {} in '{}' has an invalid hierarchy", i, base_skeleton.FileName));
+            throw ModelAnimationConverterException("Canonical animation joint has an invalid hierarchy", i, base_skeleton.FileName);
         }
         if (i != 0 && !(compatibility_report.CanonicalJoints[i - 1].Hierarchy < joint.Hierarchy)) {
-            throw ModelAnimationConverterException(strex("Canonical animation joints for '{}' are not in strict deterministic hierarchy order at '{}'", base_skeleton.FileName, FormatModelAnimationHierarchy(joint.Hierarchy)));
+            throw ModelAnimationConverterException("Canonical animation joints are not in strict deterministic hierarchy order", base_skeleton.FileName, FormatModelAnimationHierarchy(joint.Hierarchy));
         }
 
         ValidateModelAnimationJointName(joint.Name, strex("canonical joint '{}' from '{}'", FormatModelAnimationHierarchy(joint.Hierarchy), base_skeleton.FileName), joint.Hierarchy.size() == 1);
         const uint32_t canonical_index = numeric_cast<uint32_t>(i);
 
         if (!result.JointByHierarchy.emplace(joint.Hierarchy, canonical_index).second) {
-            throw ModelAnimationConverterException(strex("Canonical animation rig for '{}' contains duplicate hierarchy '{}'", base_skeleton.FileName, FormatModelAnimationHierarchy(joint.Hierarchy)));
+            throw ModelAnimationConverterException("Canonical animation rig contains duplicate hierarchy", base_skeleton.FileName, FormatModelAnimationHierarchy(joint.Hierarchy));
         }
 
         if (joint.Hierarchy.size() == 1) {
             if (i != 0) {
-                throw ModelAnimationConverterException(strex("Canonical animation rig for '{}' contains more than one root", base_skeleton.FileName));
+                throw ModelAnimationConverterException("Canonical animation rig contains more than one root", base_skeleton.FileName);
             }
         }
         else {
@@ -683,7 +683,7 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
             const auto parent_it = result.JointByHierarchy.find(parent_hierarchy);
 
             if (parent_it == result.JointByHierarchy.end()) {
-                throw ModelAnimationConverterException(strex("Canonical animation joint '{}' from '{}' has no parent '{}'", FormatModelAnimationHierarchy(joint.Hierarchy), base_skeleton.FileName, FormatModelAnimationHierarchy(parent_hierarchy)));
+                throw ModelAnimationConverterException("Canonical animation joint has no parent hierarchy", FormatModelAnimationHierarchy(joint.Hierarchy), base_skeleton.FileName, FormatModelAnimationHierarchy(parent_hierarchy));
             }
 
             result.Parents[i] = numeric_cast<int16_t>(parent_it->second);
@@ -694,7 +694,7 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
 
     for (const ModelSkeletonJoint& base_joint : base_skeleton.Joints) {
         if (!base_joint_by_hierarchy.emplace(base_joint.Hierarchy, &base_joint).second) {
-            throw ModelAnimationConverterException(strex("Base skeleton '{}' contains duplicate hierarchy '{}' while building animation rig", base_skeleton.FileName, FormatModelAnimationHierarchy(base_joint.Hierarchy)));
+            throw ModelAnimationConverterException("Base skeleton contains duplicate hierarchy while building animation rig", base_skeleton.FileName, FormatModelAnimationHierarchy(base_joint.Hierarchy));
         }
     }
 
@@ -726,7 +726,7 @@ static auto BuildModelAnimationRuntimeSkeleton(const ModelSkeletonCompatibilityR
         const int16_t parent = canonical_rig.Parents[i];
 
         if (parent < 0 || numeric_cast<size_t>(parent) >= i) {
-            throw ModelAnimationConverterException(strex("Canonical ozz parent index {} is invalid for joint {} in '{}'", parent, i, compatibility_report.BaseFile));
+            throw ModelAnimationConverterException("Canonical ozz parent index is invalid for joint", parent, i, compatibility_report.BaseFile);
         }
 
         children[numeric_cast<size_t>(parent)].emplace_back(numeric_cast<uint32_t>(i));
@@ -737,14 +737,14 @@ static auto BuildModelAnimationRuntimeSkeleton(const ModelSkeletonCompatibilityR
     FillModelAnimationRawSkeletonJoint(0, compatibility_report, canonical_rig, children, raw_skeleton.roots[0]);
 
     if (!raw_skeleton.Validate() || raw_skeleton.num_joints() != numeric_cast<int>(compatibility_report.CanonicalJoints.size())) {
-        throw ModelAnimationConverterException(strex("Raw canonical ozz skeleton validation failed for '{}'", compatibility_report.BaseFile));
+        throw ModelAnimationConverterException("Raw canonical ozz skeleton validation failed", compatibility_report.BaseFile);
     }
 
     ozz::animation::offline::SkeletonBuilder builder;
     ozz::unique_ptr<ozz::animation::Skeleton> skeleton = builder(raw_skeleton);
 
     if (!skeleton) {
-        throw ModelAnimationConverterException(strex("Ozz SkeletonBuilder failed for '{}' with {} joints", compatibility_report.BaseFile, compatibility_report.CanonicalJoints.size()));
+        throw ModelAnimationConverterException("Ozz SkeletonBuilder failed", compatibility_report.BaseFile, compatibility_report.CanonicalJoints.size());
     }
 
     ValidateModelAnimationSkeletonRoundTrip(*skeleton, compatibility_report, canonical_rig, compatibility_report.BaseFile);
@@ -772,13 +772,13 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!std::isfinite(matrix[column][row])) {
-                throw ModelAnimationConverterException(strex("Non-finite matrix component [{}][{}] in {}", column, row, context));
+                throw ModelAnimationConverterException("Non-finite matrix component", column, row, context);
             }
         }
     }
 
     if (float_abs(matrix[0][3]) > MODEL_ANIMATION_AFFINE_TOLERANCE || float_abs(matrix[1][3]) > MODEL_ANIMATION_AFFINE_TOLERANCE || float_abs(matrix[2][3]) > MODEL_ANIMATION_AFFINE_TOLERANCE || float_abs(matrix[3][3] - 1.0f) > MODEL_ANIMATION_AFFINE_TOLERANCE) {
-        throw ModelAnimationConverterException(strex("Non-affine rest matrix in {}", context));
+        throw ModelAnimationConverterException("Non-affine rest matrix", context);
     }
 
     const vec3 source_axis_x {matrix[0]};
@@ -789,7 +789,7 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
     const float32_t scale_z = glm::length(source_axis_z);
 
     if (!std::isfinite(scale_x) || !std::isfinite(scale_y) || !std::isfinite(scale_z) || scale_x <= std::numeric_limits<float32_t>::epsilon() || scale_y <= std::numeric_limits<float32_t>::epsilon() || scale_z <= std::numeric_limits<float32_t>::epsilon()) {
-        throw ModelAnimationConverterException(strex("Zero or invalid rest scale ({}, {}, {}) in {}", scale_x, scale_y, scale_z, context));
+        throw ModelAnimationConverterException("Zero or invalid rest scale", scale_x, scale_y, scale_z, context);
     }
 
     vec3 axis_x = source_axis_x / scale_x;
@@ -800,13 +800,13 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
     const float32_t yz_dot = glm::dot(axis_y, axis_z);
 
     if (float_abs(xy_dot) > MODEL_ANIMATION_ORTHOGONAL_TOLERANCE || float_abs(xz_dot) > MODEL_ANIMATION_ORTHOGONAL_TOLERANCE || float_abs(yz_dot) > MODEL_ANIMATION_ORTHOGONAL_TOLERANCE) {
-        throw ModelAnimationConverterException(strex("Rest matrix contains shear in {}: normalized axis dots are {}, {}, {}", context, xy_dot, xz_dot, yz_dot));
+        throw ModelAnimationConverterException("Rest matrix contains shear; normalized axis dots are non-zero", context, xy_dot, xz_dot, yz_dot);
     }
 
     const float32_t determinant = glm::dot(glm::cross(axis_x, axis_y), axis_z);
 
     if (!std::isfinite(determinant) || float_abs(float_abs(determinant) - 1.0f) > MODEL_ANIMATION_ORTHOGONAL_TOLERANCE) {
-        throw ModelAnimationConverterException(strex("Rest matrix has invalid normalized determinant {} in {}", determinant, context));
+        throw ModelAnimationConverterException("Rest matrix has invalid normalized determinant", determinant, context);
     }
     if (determinant < 0.0f) {
         scale_x = -scale_x;
@@ -820,7 +820,7 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
     quaternion rotation = glm::normalize(glm::quat_cast(rotation_matrix));
 
     if (!std::isfinite(rotation.x) || !std::isfinite(rotation.y) || !std::isfinite(rotation.z) || !std::isfinite(rotation.w)) {
-        throw ModelAnimationConverterException(strex("Rest matrix produced a non-finite rotation in {}", context));
+        throw ModelAnimationConverterException("Rest matrix produced a non-finite rotation", context);
     }
     if (rotation.w < 0.0f) {
         rotation = -rotation;
@@ -841,7 +841,7 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
             const float32_t tolerance = MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(round_trip_value));
 
             if (difference > tolerance) {
-                throw ModelAnimationConverterException(strex("Rest matrix TRS round-trip failed at [{}][{}] in {}: source {}, round-trip {}, delta {}, tolerance {}", column, row, context, source_value, round_trip_value, difference, tolerance));
+                throw ModelAnimationConverterException("Rest matrix TRS round-trip failed", column, row, context, source_value, round_trip_value, difference, tolerance);
             }
         }
     }
@@ -873,7 +873,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
     ozz::unique_ptr<ozz::animation::Animation> runtime_animation = builder(raw_animation);
 
     if (!runtime_animation) {
-        throw ModelAnimationConverterException(strex("Ozz AnimationBuilder failed for '{}#{}' with {} canonical tracks", animation.FileName, animation.Name, raw_animation.tracks.size()));
+        throw ModelAnimationConverterException("Ozz AnimationBuilder failed", animation.FileName, animation.Name, raw_animation.tracks.size());
     }
 
     result.AnimationMetadata = ModelAnimationArchiveMetadata {
@@ -909,7 +909,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
     const ModelAnimationJointRemap loaded_remap = ReadModelAnimationJointRemapPayload(loaded_remap_archive.Payload, animation_context);
 
     if (loaded_remap.Duration != result.JointRemap.Duration || loaded_remap.SourceToCanonicalJointIndices != result.JointRemap.SourceToCanonicalJointIndices || loaded_remap.CanonicalJointPresent != result.JointRemap.CanonicalJointPresent || loaded_remap.NearestSampleTimes != result.JointRemap.NearestSampleTimes) {
-        throw ModelAnimationConverterException(strex("Joint-remap round-trip mismatch for '{}#{}'", animation.FileName, animation.Name));
+        throw ModelAnimationConverterException("Joint-remap round-trip mismatch", animation.FileName, animation.Name);
     }
 
     return result;
@@ -920,10 +920,10 @@ static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animatio
     FO_STACK_TRACE_ENTRY();
 
     if (animation.FileName.empty() || animation.Name.empty() || animation.FileName.find('\0') != string::npos || animation.Name.find('\0') != string::npos) {
-        throw ModelAnimationConverterException(strex("Animation identity '{}#{}' is invalid for ozz conversion", animation.FileName, animation.Name));
+        throw ModelAnimationConverterException("Animation identity is invalid for ozz conversion", animation.FileName, animation.Name);
     }
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f || !std::isfinite(1.0f / animation.Duration)) {
-        throw ModelAnimationConverterException(strex("Animation '{}#{}' has invalid duration {} for ozz conversion", animation.FileName, animation.Name, animation.Duration));
+        throw ModelAnimationConverterException("Animation has invalid duration for ozz conversion", animation.FileName, animation.Name, animation.Duration);
     }
 
     const size_t canonical_joint_count = compatibility_report.CanonicalJoints.size();
@@ -951,20 +951,20 @@ static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animatio
         const ModelAnimationJointSource& source_joint = animation.Joints[source_index];
 
         if (source_joint.Hierarchy.size() == 1 && source_joint.Hierarchy.front() != canonical_root) {
-            throw ModelAnimationConverterException(strex("Animation '{}#{}' has an animated aliased root '{}'; legacy name binding cannot safely map it to canonical root '{}'", animation.FileName, animation.Name, source_joint.Hierarchy.front(), canonical_root));
+            throw ModelAnimationConverterException("Animation has an animated aliased root that legacy name binding cannot safely map to the canonical root", animation.FileName, animation.Name, source_joint.Hierarchy.front(), canonical_root);
         }
 
         const vector<string> normalized_hierarchy = NormalizeModelAnimationHierarchy(source_joint.Hierarchy, canonical_root);
         const auto canonical_it = canonical_rig.JointByHierarchy.find(normalized_hierarchy);
 
         if (canonical_it == canonical_rig.JointByHierarchy.end()) {
-            throw ModelAnimationConverterException(strex("Animation '{}#{}' output '{}' does not map to canonical hierarchy '{}'", animation.FileName, animation.Name, source_joint.OutputName, FormatModelAnimationHierarchy(normalized_hierarchy)));
+            throw ModelAnimationConverterException("Animation output does not map to canonical hierarchy", animation.FileName, animation.Name, source_joint.OutputName, FormatModelAnimationHierarchy(normalized_hierarchy));
         }
 
         const uint32_t canonical_index = canonical_it->second;
 
         if (built_remap.CanonicalJointPresent[canonical_index] != 0) {
-            throw ModelAnimationConverterException(strex("Animation '{}#{}' maps more than one output to canonical joint '{}'", animation.FileName, animation.Name, FormatModelAnimationHierarchy(normalized_hierarchy)));
+            throw ModelAnimationConverterException("Animation maps more than one output to a canonical joint", animation.FileName, animation.Name, FormatModelAnimationHierarchy(normalized_hierarchy));
         }
 
         built_remap.SourceToCanonicalJointIndices[source_index] = canonical_index;
@@ -973,7 +973,7 @@ static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animatio
     }
 
     if (!result.Validate()) {
-        throw ModelAnimationConverterException(strex("Raw ozz animation validation failed for '{}#{}'", animation.FileName, animation.Name));
+        throw ModelAnimationConverterException("Raw ozz animation validation failed", animation.FileName, animation.Name);
     }
 
     set<float32_t> time_points;
@@ -991,7 +991,7 @@ static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animatio
     }
 
     if (time_points.size() > std::numeric_limits<uint16_t>::max()) {
-        throw ModelAnimationConverterException(strex("Animation '{}#{}' has {} unique ozz time points; maximum is {}", animation.FileName, animation.Name, time_points.size(), std::numeric_limits<uint16_t>::max()));
+        throw ModelAnimationConverterException("Animation has more unique ozz time points than the maximum", animation.FileName, animation.Name, time_points.size(), std::numeric_limits<uint16_t>::max());
     }
 
     joint_remap = std::move(built_remap);
@@ -1003,7 +1003,7 @@ static void FillModelAnimationFallbackTrack(const ozz::math::Transform& transfor
     FO_STACK_TRACE_ENTRY();
 
     if (float_abs(transform.translation.x) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.translation.y) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.translation.z) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.x) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.y) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.z) > MODEL_ANIMATION_HALF_MAX) {
-        throw ModelAnimationConverterException(strex("Fallback transform in {} exceeds ozz FP16 range {}", context, MODEL_ANIMATION_HALF_MAX));
+        throw ModelAnimationConverterException("Fallback transform exceeds ozz FP16 range", context, MODEL_ANIMATION_HALF_MAX);
     }
 
     track.translations = {
@@ -1031,7 +1031,7 @@ static void FillModelAnimationAuthoredTrack(const ModelAnimationJointSource& sou
     if (!nearest_sampling) {
         const auto validate_smooth_window_start = [&](const vector<float32_t>& times, string_view track_name) {
             if (times.size() > 1 && times.front() > 0.0f && times.front() <= duration) {
-                throw ModelAnimationConverterException(strex("Smooth {} track in {} starts at {} inside playback window (0, {}]; legacy sampling has a discontinuity there that ozz interpolation cannot preserve", track_name, animation_context, times.front(), duration));
+                throw ModelAnimationConverterException("Smooth track starts inside the playback window where legacy sampling has a discontinuity that ozz interpolation cannot preserve", track_name, animation_context, times.front(), duration);
             }
         };
         validate_smooth_window_start(source.Translation.Times, "translation");
@@ -1098,7 +1098,7 @@ static void RefineModelAnimationRotationTrack(ozz::animation::offline::RawAnimat
     FO_STACK_TRACE_ENTRY();
 
     if (rotations.size() < 2) {
-        throw ModelAnimationConverterException(strex("Ozz rotation refinement requires at least two keys in {}", context));
+        throw ModelAnimationConverterException("Ozz rotation refinement requires at least two keys", context);
     }
 
     const ozz::animation::offline::RawAnimation::JointTrack::Rotations original = rotations;
@@ -1129,13 +1129,13 @@ static void AppendModelAnimationRefinedRotationSegment(const ozz::animation::off
         return;
     }
     if (depth >= MODEL_ANIMATION_ROTATION_SUBDIVISION_MAX_DEPTH) {
-        throw ModelAnimationConverterException(strex("Ozz NLERP refinement in {} still has {} radian error after {} subdivisions", context, max_error, depth));
+        throw ModelAnimationConverterException("Ozz NLERP refinement still has radian error after maximum subdivisions", context, max_error, depth);
     }
 
     const float32_t middle_time = first.time + (second.time - first.time) * 0.5f;
 
     if (!(middle_time > first.time && middle_time < second.time)) {
-        throw ModelAnimationConverterException(strex("Ozz NLERP refinement time collapsed between {} and {} in {}", first.time, second.time, context));
+        throw ModelAnimationConverterException("Ozz NLERP refinement time collapsed between keys", first.time, second.time, context);
     }
 
     const quaternion first_rotation {first.value.w, first.value.x, first.value.y, first.value.z};
@@ -1182,7 +1182,7 @@ static auto BuildModelAnimationNearestTimeline(const ModelAnimationSource& anima
 
         const auto validate_boundary_keys = [&](const vector<float32_t>& times, string_view track_name) {
             if (!std::binary_search(times.begin(), times.end(), 0.0f) || !std::binary_search(times.begin(), times.end(), animation.Duration)) {
-                throw ModelAnimationConverterException(strex("Nearest-sampled animation '{}#{}' output '{}' {} track must contain exact keys at playback boundaries 0 and {}", animation.FileName, animation.Name, joint.OutputName, track_name, animation.Duration));
+                throw ModelAnimationConverterException("Nearest-sampled animation track must contain exact keys at playback boundaries 0 and duration", animation.FileName, animation.Name, joint.OutputName, track_name, animation.Duration);
             }
         };
         validate_boundary_keys(joint.Translation.Times, "translation");
@@ -1200,7 +1200,7 @@ static auto BuildModelAnimationNearestTimeline(const ModelAnimationSource& anima
                 result = timeline;
             }
             else if (timeline != result) {
-                throw ModelAnimationConverterException(strex("Nearest-sampled animation '{}#{}' does not use one shared S/R/T timeline at output '{}'", animation.FileName, animation.Name, joint.OutputName));
+                throw ModelAnimationConverterException("Nearest-sampled animation does not use one shared S/R/T timeline at output", animation.FileName, animation.Name, joint.OutputName);
             }
         }
     }
@@ -1251,7 +1251,7 @@ static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationVec3Track& tra
         }
     }
 
-    throw ModelAnimationConverterException(strex("Can't evaluate empty legacy vector track in {}", context));
+    throw ModelAnimationConverterException("Can't evaluate empty legacy vector track", context);
 }
 
 static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationQuaternionTrack& track, float32_t time, bool nearest_sampling, string_view context) -> quaternion
@@ -1271,7 +1271,7 @@ static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationQuaternionTrac
         }
     }
 
-    throw ModelAnimationConverterException(strex("Can't evaluate empty legacy rotation track in {}", context));
+    throw ModelAnimationConverterException("Can't evaluate empty legacy rotation track", context);
 }
 
 static void ValidateModelAnimationVec3Track(const ModelAnimationVec3Track& track, string_view context, bool half_range)
@@ -1279,21 +1279,21 @@ static void ValidateModelAnimationVec3Track(const ModelAnimationVec3Track& track
     FO_STACK_TRACE_ENTRY();
 
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
-        throw ModelAnimationConverterException(strex("Invalid vector track sizes in {}: {} times, {} values", context, track.Times.size(), track.Values.size()));
+        throw ModelAnimationConverterException("Invalid vector track sizes", context, track.Times.size(), track.Values.size());
     }
 
     for (size_t i = 0; i < track.Times.size(); i++) {
         if (!std::isfinite(track.Times[i]) || (i != 0 && track.Times[i] <= track.Times[i - 1])) {
-            throw ModelAnimationConverterException(strex("Invalid vector key time {} at index {} in {}", track.Times[i], i, context));
+            throw ModelAnimationConverterException("Invalid vector key time", track.Times[i], i, context);
         }
 
         const vec3& value = track.Values[i];
 
         if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z)) {
-            throw ModelAnimationConverterException(strex("Non-finite vector key at index {} in {}", i, context));
+            throw ModelAnimationConverterException("Non-finite vector key", i, context);
         }
         if (half_range && (float_abs(value.x) > MODEL_ANIMATION_HALF_MAX || float_abs(value.y) > MODEL_ANIMATION_HALF_MAX || float_abs(value.z) > MODEL_ANIMATION_HALF_MAX)) {
-            throw ModelAnimationConverterException(strex("Vector key at index {} in {} exceeds ozz FP16 range {}: ({}, {}, {})", i, context, MODEL_ANIMATION_HALF_MAX, value.x, value.y, value.z));
+            throw ModelAnimationConverterException("Vector key exceeds ozz FP16 range", i, context, MODEL_ANIMATION_HALF_MAX, value.x, value.y, value.z);
         }
     }
 }
@@ -1303,27 +1303,27 @@ static void ValidateModelAnimationQuaternionTrack(const ModelAnimationQuaternion
     FO_STACK_TRACE_ENTRY();
 
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
-        throw ModelAnimationConverterException(strex("Invalid rotation track sizes in {}: {} times, {} values", context, track.Times.size(), track.Values.size()));
+        throw ModelAnimationConverterException("Invalid rotation track sizes", context, track.Times.size(), track.Values.size());
     }
 
     for (size_t i = 0; i < track.Times.size(); i++) {
         if (!std::isfinite(track.Times[i]) || (i != 0 && track.Times[i] <= track.Times[i - 1])) {
-            throw ModelAnimationConverterException(strex("Invalid rotation key time {} at index {} in {}", track.Times[i], i, context));
+            throw ModelAnimationConverterException("Invalid rotation key time", track.Times[i], i, context);
         }
 
         const quaternion& value = track.Values[i];
 
         if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z) || !std::isfinite(value.w)) {
-            throw ModelAnimationConverterException(strex("Non-finite rotation key at index {} in {}", i, context));
+            throw ModelAnimationConverterException("Non-finite rotation key", i, context);
         }
 
         const float32_t norm_squared = glm::dot(value, value);
 
         if (!std::isfinite(norm_squared) || norm_squared <= std::numeric_limits<float32_t>::epsilon()) {
-            throw ModelAnimationConverterException(strex("Zero rotation key at index {} in {}", i, context));
+            throw ModelAnimationConverterException("Zero rotation key", i, context);
         }
         if (float_abs(norm_squared - 1.0f) > MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE) {
-            throw ModelAnimationConverterException(strex("Non-unit rotation key at index {} in {}: squared norm {}", i, context, norm_squared));
+            throw ModelAnimationConverterException("Non-unit rotation key", i, context, norm_squared);
         }
     }
 }
@@ -1363,13 +1363,13 @@ static void ValidateModelAnimationJointName(string_view name, string_view contex
     FO_STACK_TRACE_ENTRY();
 
     if (!root && name.empty()) {
-        throw ModelAnimationConverterException(strex("Empty non-root ozz joint name in {}", context));
+        throw ModelAnimationConverterException("Empty non-root ozz joint name", context);
     }
     if (name.find('\0') != string_view::npos) {
-        throw ModelAnimationConverterException(strex("Embedded NUL in ozz joint name in {}", context));
+        throw ModelAnimationConverterException("Embedded NUL in ozz joint name", context);
     }
     if (!strvex(name).is_valid_utf8()) {
-        throw ModelAnimationConverterException(strex("Invalid UTF-8 ozz joint name in {}", context));
+        throw ModelAnimationConverterException("Invalid UTF-8 ozz joint name", context);
     }
 }
 
@@ -1386,16 +1386,16 @@ static auto SerializeModelAnimationObject(const T& object, string_view context) 
     }
 
     if (stream.Size() == 0 || stream.Size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
-        throw ModelAnimationConverterException(strex("Invalid serialized ozz object size {} for {}", stream.Size(), context));
+        throw ModelAnimationConverterException("Invalid serialized ozz object size", stream.Size(), context);
     }
     if (stream.Seek(0, ozz::io::Stream::kSet) != 0) {
-        throw ModelAnimationConverterException(strex("Can't rewind serialized ozz object for {}", context));
+        throw ModelAnimationConverterException("Can't rewind serialized ozz object", context);
     }
 
     vector<uint8_t> result(stream.Size());
 
     if (stream.Read(result.data(), result.size()) != result.size()) {
-        throw ModelAnimationConverterException(strex("Can't read complete serialized ozz object for {}", context));
+        throw ModelAnimationConverterException("Can't read complete serialized ozz object", context);
     }
 
     return result;
@@ -1407,13 +1407,13 @@ static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_
     FO_STACK_TRACE_ENTRY();
 
     if (payload.empty() || payload.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
-        throw ModelAnimationConverterException(strex("Invalid serialized ozz payload size {} for {}", payload.size(), context));
+        throw ModelAnimationConverterException("Invalid serialized ozz payload size", payload.size(), context);
     }
 
     ozz::io::MemoryStream stream;
 
     if (stream.Write(payload.data(), payload.size()) != payload.size() || stream.Seek(0, ozz::io::Stream::kSet) != 0) {
-        throw ModelAnimationConverterException(strex("Can't stage serialized ozz payload for {}", context));
+        throw ModelAnimationConverterException("Can't stage serialized ozz payload", context);
     }
 
     T result;
@@ -1422,14 +1422,14 @@ static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_
         ozz::io::IArchive archive {&stream};
 
         if (!archive.TestTag<T>()) {
-            throw ModelAnimationConverterException(strex("Serialized ozz payload has the wrong type tag for {}", context));
+            throw ModelAnimationConverterException("Serialized ozz payload has the wrong type tag", context);
         }
 
         archive >> result;
     }
 
     if (stream.Tell() < 0 || numeric_cast<size_t>(stream.Tell()) != payload.size()) {
-        throw ModelAnimationConverterException(strex("Serialized ozz payload for {} was not consumed exactly: {} of {} bytes", context, stream.Tell(), payload.size()));
+        throw ModelAnimationConverterException("Serialized ozz payload was not consumed exactly", context, stream.Tell(), payload.size());
     }
 
     return result;
@@ -1445,7 +1445,7 @@ static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMeta
         return result;
     }
     catch (const ModelAnimationArchiveException& ex) {
-        throw ModelAnimationConverterException(strex("LF model animation archive validation failed for '{}#{}': {}", metadata.SourceAsset, metadata.ObjectName, ex.what()));
+        throw ModelAnimationConverterException("LF model animation archive validation failed", metadata.SourceAsset, metadata.ObjectName, ex.what());
     }
 }
 
@@ -1454,7 +1454,7 @@ static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skelet
     FO_STACK_TRACE_ENTRY();
 
     if (skeleton.num_joints() != numeric_cast<int>(compatibility_report.CanonicalJoints.size())) {
-        throw ModelAnimationConverterException(strex("Canonical ozz skeleton joint-count mismatch for '{}': expected {}, got {}", context, compatibility_report.CanonicalJoints.size(), skeleton.num_joints()));
+        throw ModelAnimationConverterException("Canonical ozz skeleton joint-count mismatch", context, compatibility_report.CanonicalJoints.size(), skeleton.num_joints());
     }
 
     const auto names = skeleton.joint_names();
@@ -1462,10 +1462,10 @@ static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skelet
 
     for (size_t i = 0; i < compatibility_report.CanonicalJoints.size(); i++) {
         if (string_view {names[i]} != compatibility_report.CanonicalJoints[i].Name) {
-            throw ModelAnimationConverterException(strex("Canonical ozz skeleton name mismatch for '{}' at joint {}: expected '{}', got '{}'", context, i, compatibility_report.CanonicalJoints[i].Name, names[i]));
+            throw ModelAnimationConverterException("Canonical ozz skeleton name mismatch at joint", context, i, compatibility_report.CanonicalJoints[i].Name, names[i]);
         }
         if (parents[i] != canonical_rig.Parents[i]) {
-            throw ModelAnimationConverterException(strex("Canonical ozz skeleton parent mismatch for '{}' at joint {}: expected {}, got {}", context, i, canonical_rig.Parents[i], parents[i]));
+            throw ModelAnimationConverterException("Canonical ozz skeleton parent mismatch at joint", context, i, canonical_rig.Parents[i], parents[i]);
         }
 
         const ozz::math::Transform actual_rest = ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(i));
@@ -1473,7 +1473,7 @@ static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skelet
         const float32_t rotation_dot = actual_rest.rotation.x * expected_rest.rotation.x + actual_rest.rotation.y * expected_rest.rotation.y + actual_rest.rotation.z * expected_rest.rotation.z + actual_rest.rotation.w * expected_rest.rotation.w;
 
         if (!is_float_equal(actual_rest.translation.x, expected_rest.translation.x, 1.0e-6f) || !is_float_equal(actual_rest.translation.y, expected_rest.translation.y, 1.0e-6f) || !is_float_equal(actual_rest.translation.z, expected_rest.translation.z, 1.0e-6f) || !is_float_equal(float_abs(rotation_dot), 1.0f, 1.0e-6f) || !is_float_equal(actual_rest.scale.x, expected_rest.scale.x, 1.0e-6f) || !is_float_equal(actual_rest.scale.y, expected_rest.scale.y, 1.0e-6f) || !is_float_equal(actual_rest.scale.z, expected_rest.scale.z, 1.0e-6f)) {
-            throw ModelAnimationConverterException(strex("Canonical ozz skeleton rest-pose mismatch for '{}' at joint {} ('{}')", context, i, compatibility_report.CanonicalJoints[i].Name));
+            throw ModelAnimationConverterException("Canonical ozz skeleton rest-pose mismatch at joint", context, i, compatibility_report.CanonicalJoints[i].Name);
         }
     }
 }
@@ -1483,26 +1483,26 @@ static void ValidateModelAnimationRoundTrip(const ozz::animation::Animation& ani
     FO_STACK_TRACE_ENTRY();
 
     if (animation.num_tracks() != numeric_cast<int>(canonical_joint_count)) {
-        throw ModelAnimationConverterException(strex("Ozz animation track-count mismatch for {}: expected {}, got {}", context, canonical_joint_count, animation.num_tracks()));
+        throw ModelAnimationConverterException("Ozz animation track-count mismatch", context, canonical_joint_count, animation.num_tracks());
     }
     if (string_view {animation.name()} != source.Name) {
-        throw ModelAnimationConverterException(strex("Ozz animation name mismatch for {}: expected '{}', got '{}'", context, source.Name, animation.name()));
+        throw ModelAnimationConverterException("Ozz animation name mismatch", context, source.Name, animation.name());
     }
     if (!is_float_equal(animation.duration(), source.Duration, 1.0e-6f)) {
-        throw ModelAnimationConverterException(strex("Ozz animation duration mismatch for {}: expected {}, got {}", context, source.Duration, animation.duration()));
+        throw ModelAnimationConverterException("Ozz animation duration mismatch", context, source.Duration, animation.duration());
     }
 
     const auto timepoints = animation.timepoints();
 
     if (timepoints.size() < 2 || timepoints.front() != 0.0f || !is_float_equal(timepoints.back(), 1.0f, 1.0e-6f)) {
-        throw ModelAnimationConverterException(strex("Ozz animation timepoint endpoints are invalid for {}: count {}, first {}, last {}", context, timepoints.size(), timepoints.empty() ? 0.0f : timepoints.front(), timepoints.empty() ? 0.0f : timepoints.back()));
+        throw ModelAnimationConverterException("Ozz animation timepoint endpoints are invalid", context, timepoints.size(), timepoints.empty() ? 0.0f : timepoints.front(), timepoints.empty() ? 0.0f : timepoints.back());
     }
 
     for (size_t i = 0; i < timepoints.size(); i++) {
         const float32_t ratio = timepoints[i];
 
         if (!std::isfinite(ratio) || ratio < 0.0f || ratio > 1.0f + 1.0e-6f || (i != 0 && ratio <= timepoints[i - 1])) {
-            throw ModelAnimationConverterException(strex("Invalid ozz animation timepoint ratio {} at index {} in {}", ratio, i, context));
+            throw ModelAnimationConverterException("Invalid ozz animation timepoint ratio", ratio, i, context);
         }
     }
 }
