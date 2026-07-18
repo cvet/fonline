@@ -242,7 +242,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<uint16_t>(collection.AnimTicks);
     writer.Write<uint8_t>(dirs);
 
-    for (auto dir : iterate_range(dirs)) {
+    for (uint8_t dir = 0; dir < dirs; dir++) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         writer.Write<int16_t>(sequence.OffsX);
         writer.Write<int16_t>(sequence.OffsY);
@@ -325,7 +325,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
     collection.EffectName = fofrm.GetAsStr("", "effect");
     collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
 
-    for (auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections;
         sub_collections.reserve(10);
 
@@ -470,7 +470,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-    for (auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
@@ -732,7 +732,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-    for (auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
@@ -1157,7 +1157,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
     collection.HaveDirs = header.RotationCount == 8;
 
-    for (auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
@@ -1309,7 +1309,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
     FrameCollection collection;
 
-    for (auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         reader.SetCurPos(0);
 
         int32_t dir_spr = dir;

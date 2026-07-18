@@ -581,7 +581,7 @@ void CritterHexView::Process()
             auto sum_total = [](ptr<const SpriteSheet> sheet) -> ipos32 {
                 ipos32 sum {};
 
-                for (auto i : iterate_range(sheet->GetFramesCount())) {
+                for (int32_t i = 0; i < sheet->GetFramesCount(); i++) {
                     sum.x += sheet->GetSprOffset()[i].x;
                     sum.y += sheet->GetSprOffset()[i].y;
                 }
@@ -794,14 +794,14 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
 
             ipos32 total {};
 
-            for (auto i : iterate_range(frames_count)) {
+            for (int32_t i = 0; i < frames_count; i++) {
                 total.x += spr_offset[i].x;
                 total.y += spr_offset[i].y;
             }
 
             ipos32 accum {};
 
-            for (auto i : iterate_range(cur_index + 1)) {
+            for (int32_t i = 0; i < cur_index + 1; i++) {
                 accum.x += spr_offset[i].x;
                 accum.y += spr_offset[i].y;
             }
@@ -833,7 +833,7 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
         }
     }
     else {
-        for (auto i : iterate_range(cur_index + 1)) {
+        for (int32_t i = 0; i < cur_index + 1; i++) {
             _offsAnim.x += anim->GetSprOffset()[i].x;
             _offsAnim.y += anim->GetSprOffset()[i].y;
         }
@@ -877,7 +877,7 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
 
     ipos32 total {};
 
-    for (auto i : iterate_range(frames_count)) {
+    for (int32_t i = 0; i < frames_count; i++) {
         total.x += spr_offset[i].x;
         total.y += spr_offset[i].y;
     }
@@ -906,7 +906,7 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
     int32_t best_index = 0;
     int64_t best_diff = std::numeric_limits<int64_t>::max();
 
-    for (auto i : iterate_range(frames_count)) {
+    for (int32_t i = 0; i < frames_count; i++) {
         accum.x += spr_offset[i].x;
         accum.y += spr_offset[i].y;
 

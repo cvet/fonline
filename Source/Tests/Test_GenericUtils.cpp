@@ -64,41 +64,6 @@ TEST_CASE("GenericUtils")
         CHECK(rnd64() == 9981545732273789042UL);
     }
 
-    SECTION("iterate_range")
-    {
-        int32_t t1 = 0;
-        int32_t t2 = 0;
-        for (auto i : iterate_range(5)) {
-            t1++;
-            t2 += i;
-        }
-        CHECK(t1 == 5);
-        CHECK(t2 == 10);
-
-        auto v = vector<int32_t> {3, 4, 5, 6, 7};
-        int32_t t3 = 0;
-        int32_t t4 = 0;
-        for (auto i : iterate_range(v)) {
-            t3++;
-            t4 += v[i];
-        }
-        CHECK(t3 == 5);
-        CHECK(t4 == 25);
-
-        int32_t t5 = 0;
-        for ([[maybe_unused]] auto i : iterate_range(0)) {
-            t5++;
-        }
-        CHECK(t5 == 0);
-
-        vector<int32_t> empty_v;
-        int32_t t6 = 0;
-        for ([[maybe_unused]] auto i : iterate_range(empty_v)) {
-            t6++;
-        }
-        CHECK(t6 == 0);
-    }
-
     SECTION("lerp")
     {
         CHECK(lerp(5, 7, -1.0f) == 5);

@@ -56,9 +56,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
     auto reader = DataReader(metadata_bin);
     auto sections_count = reader.Read<uint16_t>();
 
-    for (auto i : iterate_range(sections_count)) {
-        ignore_unused(i);
-
+    for (uint16_t i = 0; i < sections_count; i++) {
         auto section_name_size = reader.Read<uint16_t>();
         string_view section_name = reader.ReadStringView(section_name_size);
 
@@ -66,15 +64,11 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
         vector<vector<string_view>> entries;
         entries.reserve(entries_count);
 
-        for (auto j : iterate_range(entries_count)) {
-            ignore_unused(j);
-
+        for (uint32_t j = 0; j < entries_count; j++) {
             auto& cur_entry = entries.emplace_back();
             auto tokens_count = reader.Read<uint32_t>();
 
-            for (auto k : iterate_range(tokens_count)) {
-                ignore_unused(k);
-
+            for (uint32_t k = 0; k < tokens_count; k++) {
                 auto token_size = reader.Read<uint16_t>();
                 string_view token = reader.ReadStringView(token_size);
 

@@ -100,9 +100,7 @@ void MapManager::LoadFromResources()
 
                     static_map->CritterBillets.reserve(cr_count);
 
-                    for (auto i : iterate_range(cr_count)) {
-                        ignore_unused(i);
-
+                    for (uint32_t i = 0; i < cr_count; i++) {
                         ident_t cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         auto cr_pid_hash = reader.Read<hstring::hash_t>();
@@ -143,9 +141,7 @@ void MapManager::LoadFromResources()
                     static_map->StaticItems.reserve(item_count);
                     static_map->StaticItemsById.reserve(item_count);
 
-                    for (auto i : iterate_range(item_count)) {
-                        ignore_unused(i);
-
+                    for (uint32_t i = 0; i < item_count; i++) {
                         ident_t item_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         auto item_pid_hash = reader.Read<hstring::hash_t>();
@@ -263,8 +259,8 @@ void MapManager::LoadFromResources()
             int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
-                for (auto hx : iterate_range(map_size.width)) {
-                    for (auto hy : iterate_range(map_size.height)) {
+                for (int16_t hx = 0; hx < map_size.width; hx++) {
+                    for (int16_t hy = 0; hy < map_size.height; hy++) {
                         mpos hex = {hx, hy};
                         ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 

@@ -392,8 +392,8 @@ void MapView::LoadStaticData()
 
     int32_t roof_num = 1;
 
-    for (auto hx : iterate_range(_mapSize.width)) {
-        for (auto hy : iterate_range(_mapSize.height)) {
+    for (int16_t hx = 0; hx < _mapSize.width; hx++) {
+        for (int16_t hy = 0; hy < _mapSize.height; hy++) {
             const auto& field = _hexField->GetCellForReading(mpos(hx, hy));
 
             if (field.RoofNum == 0 && field.HasRoof) {
@@ -2160,8 +2160,8 @@ void MapView::RecacheScrollBlocks()
     irect32 scroll_area = GetScrollAxialArea();
     int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
 
-    for (auto hx : iterate_range(_mapSize.width)) {
-        for (auto hy : iterate_range(_mapSize.height)) {
+    for (int16_t hx = 0; hx < _mapSize.width; hx++) {
+        for (int16_t hy = 0; hy < _mapSize.height; hy++) {
             mpos hex = {hx, hy};
             const auto& field = _hexField->GetCellForReading(hex);
             ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
@@ -2205,8 +2205,8 @@ void MapView::Resize(msize size)
     }
 
     // Remove objects on shrink
-    for (auto hy : iterate_range(std::max(size.height, _mapSize.height))) {
-        for (auto hx : iterate_range(std::max(size.width, _mapSize.width))) {
+    for (int16_t hy = 0; hy < std::max(size.height, _mapSize.height); hy++) {
+        for (int16_t hx = 0; hx < std::max(size.width, _mapSize.width); hx++) {
             if (hx >= size.width || hy >= size.height) {
                 const auto& field = _hexField->GetCellForReading({hx, hy});
 
@@ -2236,8 +2236,8 @@ void MapView::Resize(msize size)
     _hexLight.resize(_mapSize.square() * 3);
     _hexField->Resize(_mapSize);
 
-    for (auto hy : iterate_range(_mapSize.height)) {
-        for (auto hx : iterate_range(_mapSize.width)) {
+    for (int16_t hy = 0; hy < _mapSize.height; hy++) {
+        for (int16_t hx = 0; hx < _mapSize.width; hx++) {
             CalculateHexLight(mpos(hx, hy), &_hexField->GetCellForReading(mpos(hx, hy)));
         }
     }

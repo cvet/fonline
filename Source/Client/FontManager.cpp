@@ -607,7 +607,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     reader.SetCurPos(next_block);
     uint32_t count = reader.GetLEUInt32() / 20;
 
-    for ([[maybe_unused]] auto i : iterate_range(count)) {
+    for (uint32_t i = 0; i < count; i++) {
         // Read data
         uint32_t id = reader.GetLEUInt32();
         uint16_t x = reader.GetLEUInt16();
@@ -969,7 +969,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     curx = r.x;
     cury = r.y;
 
-    for (auto i : iterate_range(fi.LinesAll)) {
+    for (int32_t i = 0; i < fi.LinesAll; i++) {
         fi.LineWidth[i] = curx;
     }
 

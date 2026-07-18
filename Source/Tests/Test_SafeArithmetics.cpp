@@ -102,22 +102,6 @@ TEST_CASE("SafeArithmetics")
         CHECK(lerp(20u, 10u, 2.0f) == 10u);
     }
 
-    SECTION("IterateRange")
-    {
-        int32_t sum = 0;
-        for (auto i : iterate_range(5)) {
-            sum += i;
-        }
-        CHECK(sum == 10);
-
-        vector<int32_t> values = {4, 5, 6};
-        size_t idx_sum = 0;
-        for (auto i : iterate_range(values)) {
-            idx_sum += i;
-        }
-        CHECK(idx_sum == 3);
-    }
-
     SECTION("IRoundAndConstCast")
     {
         CHECK(iround<int32_t>(1.4f) == 1);

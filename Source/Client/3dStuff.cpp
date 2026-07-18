@@ -2640,8 +2640,7 @@ auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCu
         float32_t vmin = mesh->Vertices[0].Position.x;
         float32_t vmax = mesh->Vertices[0].Position.x;
 
-        for (auto i : iterate_range(mesh->Vertices)) {
-            const auto& v = mesh->Vertices[i];
+        for (const auto& v : mesh->Vertices) {
             vmin = std::min(v.Position.x, vmin);
             vmax = std::max(v.Position.x, vmax);
         }

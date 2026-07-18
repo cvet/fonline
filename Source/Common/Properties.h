@@ -625,7 +625,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for ([[maybe_unused]] auto i : iterate_range(arr_size)) {
+            for (uint32_t i = 0; i < arr_size; i++) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
                 auto str_size_data = make_ptr(data.data() + data_pos);
@@ -644,7 +644,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             auto arr_size = data.size() / sizeof(hstring::hash_t);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (auto i : iterate_range(arr_size)) {
+            for (size_t i = 0; i < arr_size; i++) {
                 auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
                 hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 hstring hvalue = ResolveHash(hash);
@@ -753,7 +753,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for ([[maybe_unused]] auto i : iterate_range(arr_size)) {
+            for (uint32_t i = 0; i < arr_size; i++) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
                 auto str_size_data = make_ptr(data.data() + data_pos);
@@ -772,7 +772,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             auto arr_size = data.size() / sizeof(hstring::hash_t);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (auto i : iterate_range(arr_size)) {
+            for (size_t i = 0; i < arr_size; i++) {
                 auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
                 hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 hstring hvalue = ResolveHash(hash, nullptr);
