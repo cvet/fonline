@@ -56,10 +56,10 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    const auto atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-    const auto atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+    int32_t atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
+    int32_t atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
 
-    const auto alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
+    uint8_t alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
     return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
 }
 
@@ -133,7 +133,7 @@ void ModelSprite::SetSize(isize32 size)
     }
 
     _model->SetupFrame(size);
-    const int16_t new_offset_y = numeric_cast<int16_t>(size.height / 4);
+    int16_t new_offset_y = numeric_cast<int16_t>(size.height / 4);
 
     if (_atlasNode) {
         _atlasNode.reset(); // Frees the previous atlas slot via the owning handle's deleter
@@ -168,10 +168,10 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     FO_STACK_TRACE_ENTRY();
 
     const auto& settings = *_factory->_settings;
-    const mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
-    const mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
-    const mat44 proj_base = scene_ortho * cam_view;
-    const mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
+    mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 proj_base = scene_ortho * cam_view;
+    mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
     _model->Draw(proj, settings.ModelProjFactor);
 }
@@ -195,7 +195,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
         return nullptr;
     }
 
-    const auto draw_size = model->GetDrawSize();
+    isize32 draw_size = model->GetDrawSize();
     auto model_owner = model.take_not_null();
     auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
     model_spr->SetSize(draw_size);
@@ -209,7 +209,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
-    if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
+    if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
         auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
         auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
 
@@ -235,8 +235,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     FO_STACK_TRACE_ENTRY();
 
     // Find place for render
-    const auto frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};
-    const ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
+    isize32 frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};
+    ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
         for (ptr<RenderTarget> rt : _rtIntermediate) {
             if (rt->GetTexture()->Size == frame_size) {
                 return rt;
@@ -260,11 +260,11 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     pop_model_rt_on_fail.release();
 
     // Copy render
-    const int32_t l = iround<int32_t>(model_spr->GetAtlasRect().x * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
-    const int32_t t = iround<int32_t>(model_spr->GetAtlasRect().y * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
-    const int32_t w = iround<int32_t>(model_spr->GetAtlasRect().width * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
-    const int32_t h = iround<int32_t>(model_spr->GetAtlasRect().height * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
-    const irect32 region_to = irect32(l, t, w, h);
+    int32_t l = iround<int32_t>(model_spr->GetAtlasRect().x * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
+    int32_t t = iround<int32_t>(model_spr->GetAtlasRect().y * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
+    int32_t w = iround<int32_t>(model_spr->GetAtlasRect().width * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
+    int32_t h = iround<int32_t>(model_spr->GetAtlasRect().height * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
+    irect32 region_to = irect32(l, t, w, h);
 
     _sprMngr->GetRtMngr().PushRenderTarget(model_spr->GetAtlas()->GetRenderTarget());
     auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });

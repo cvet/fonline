@@ -27,7 +27,7 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
 
     writer.WriteString(name);
 
-    const mat44 matrix {1.0f};
+    mat44 matrix {1.0f};
     writer.Write<mat44>(matrix);
     writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
@@ -95,7 +95,7 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
 
     writer.WriteString(root_bone);
 
-    const mat44 matrix {1.0f};
+    mat44 matrix {1.0f};
     writer.Write<mat44>(matrix);
     writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(uint8_t {1});
@@ -121,7 +121,7 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
 
     writer.WriteString(root_bone);
 
-    const mat44 matrix {1.0f};
+    mat44 matrix {1.0f};
     writer.Write<mat44>(matrix);
     writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(uint8_t {1});
@@ -180,7 +180,7 @@ static auto ReadSavedModelInfoString(DataReader& reader) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t len = reader.Read<uint32_t>();
+    uint32_t len = reader.Read<uint32_t>();
     const_span<uint8_t> str_bytes = reader.ReadBytes(len);
     return !str_bytes.empty() ? string(reinterpret_cast<const char*>(str_bytes.data()), len) : string {};
 }
@@ -191,10 +191,10 @@ static void SkipSavedModelInfoCut(DataReader& reader)
 
     (void)ReadSavedModelInfoString(reader);
 
-    const uint32_t layer_count = reader.Read<uint32_t>();
+    uint32_t layer_count = reader.Read<uint32_t>();
     (void)reader.ReadBytes(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
 
-    const uint32_t shape_count = reader.Read<uint32_t>();
+    uint32_t shape_count = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < shape_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
@@ -271,7 +271,7 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t vertex_count = reader.Read<uint32_t>();
+    uint32_t vertex_count = reader.Read<uint32_t>();
     summary.Vertices += vertex_count;
     const_span<uint8_t> vertices = reader.ReadBytes(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D));
     if (vertex_count != 0 && !summary.FirstVertex) {
@@ -280,19 +280,19 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
         summary.FirstVertex = first_vertex;
     }
 
-    const uint32_t index_count = reader.Read<uint32_t>();
+    uint32_t index_count = reader.Read<uint32_t>();
     summary.Indices += index_count;
     (void)reader.ReadBytes(numeric_cast<size_t>(index_count) * sizeof(vindex_t));
 
     summary.DiffuseTexture = ReadSavedModelInfoString(reader);
 
-    const uint32_t skin_bone_count = reader.Read<uint32_t>();
+    uint32_t skin_bone_count = reader.Read<uint32_t>();
     summary.SkinBones += skin_bone_count;
     for (uint32_t i = 0; i < skin_bone_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
 
-    const uint32_t skin_bone_offset_count = reader.Read<uint32_t>();
+    uint32_t skin_bone_offset_count = reader.Read<uint32_t>();
     (void)reader.ReadBytes(numeric_cast<size_t>(skin_bone_offset_count) * sizeof(mat44));
 }
 
@@ -311,7 +311,7 @@ static void ReadBakedModelMeshSummaryBone(DataReader& reader, BakedModelMeshSumm
         SkipBakedModelMeshPayload(reader, summary);
     }
 
-    const uint32_t children_count = reader.Read<uint32_t>();
+    uint32_t children_count = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < children_count; i++) {
         ReadBakedModelMeshSummaryBone(reader, summary);
     }
@@ -373,7 +373,7 @@ TEST_CASE("ModelBakers")
     TestRig rig;
     AddModelInfoMetadata(rig);
 
-    const auto bakers = MakeRequestedBakers({string(ModelMeshBaker::NAME), string(ModelInfoBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(ModelMeshBaker::NAME), string(ModelInfoBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 2);
     CHECK(bakers[0]->GetName() == ModelMeshBaker::NAME);
@@ -399,7 +399,7 @@ TEST_CASE("ModelBakers")
     REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
     auto reader = DataReader({rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()});
-    const uint32_t model_name_len = reader.Read<uint32_t>();
+    uint32_t model_name_len = reader.Read<uint32_t>();
     string model_name;
     model_name.resize(model_name_len);
     reader.ReadStringBytes(model_name);
@@ -431,9 +431,9 @@ TEST_CASE("ModelBoneLookup")
 {
 #if FO_ENABLE_3D
     HashStorage hash_storage;
-    const hstring root_name = hash_storage.ToHashedString("Root");
-    const hstring child_name = hash_storage.ToHashedString("Child");
-    const hstring missing_name = hash_storage.ToHashedString("Missing");
+    hstring root_name = hash_storage.ToHashedString("Root");
+    hstring child_name = hash_storage.ToHashedString("Child");
+    hstring missing_name = hash_storage.ToHashedString("Missing");
 
     ModelBone root;
     root.Name = root_name;
@@ -520,7 +520,7 @@ TEST_CASE("ModelMeshBakerOrchestration")
         REQUIRE(checks.size() == 1);
         CHECK(checks.front() == pair<string, uint64_t> {"Models/Triangle.obj", 9});
         REQUIRE(rig.Outputs.count("Models/Triangle.obj") == 1);
-        const BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/Triangle.obj"));
+        BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/Triangle.obj"));
         CHECK(summary.AttachedMeshes == 1);
         CHECK(summary.Vertices == 3);
         CHECK(summary.Indices == 3);
@@ -536,7 +536,7 @@ TEST_CASE("ModelMeshBakerOrchestration")
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/Triangle.obj"));
 
         REQUIRE(rig.Outputs.count("Models/Triangle.obj") == 1);
-        const BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/Triangle.obj"));
+        BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/Triangle.obj"));
         CHECK(summary.Bones >= 1);
         CHECK(summary.AttachedMeshes == 1);
         CHECK(summary.Vertices == 3);
@@ -553,7 +553,7 @@ TEST_CASE("ModelMeshBakerOrchestration")
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/PositionOnly.obj"));
 
         REQUIRE(rig.Outputs.count("Models/PositionOnly.obj") == 1);
-        const BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/PositionOnly.obj"));
+        BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/PositionOnly.obj"));
         CHECK(summary.Bones >= 1);
         CHECK(summary.AttachedMeshes == 1);
         CHECK(summary.Vertices == 3);
@@ -697,7 +697,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/NoAnim.fo3d") == 1);
 
-        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        string config = rig.GetOutputText("ModelAnimInfo.foinfo");
         CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
         CHECK(config.find("StateAnims = 0 0\n") != string::npos);
         CHECK(config.find("ActionAnims = 1 3\n") != string::npos);
@@ -727,7 +727,7 @@ ActionAnimEqual 4 6
         ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"));
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        string config = rig.GetOutputText("ModelAnimInfo.foinfo");
         CHECK(config.find("StateAnims = 1 0 1 0\n") != string::npos);
         CHECK(config.find("ActionAnims = 5 5 3 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 500 200 200\n") != string::npos);
@@ -760,7 +760,7 @@ ActionAnimEqual 4 6
         (void)ReadSavedModelInfoLink(reader);
 
         REQUIRE(reader.Read<uint32_t>() == 1);
-        const SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
+        SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
         CHECK(root_link.Layer == 1);
         CHECK(root_link.LayerValue == 2);
         CHECK(root_link.LinkBone == "Body");
@@ -1172,7 +1172,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(reader.Read<int32_t>() == 44);
         CHECK(ReadSavedModelInfoString(reader) == "Body");
 
-        const SavedModelInfoLink default_link = ReadSavedModelInfoLink(reader);
+        SavedModelInfoLink default_link = ReadSavedModelInfoLink(reader);
         CHECK(default_link.LinkBone.empty());
         CHECK(default_link.RotX == Catch::Approx(1.0f));
         CHECK(default_link.RotY == Catch::Approx(2.0f));
@@ -1191,19 +1191,19 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(default_link.CutInfoCount == 1);
 
         REQUIRE(reader.Read<uint32_t>() == 3);
-        const SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
+        SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
         CHECK(root_link.Layer == 1);
         CHECK(root_link.LayerValue == 2);
         CHECK(root_link.LinkBone == "Body");
         CHECK(root_link.ChildName.empty());
 
-        const SavedModelInfoLink particles_link = ReadSavedModelInfoLink(reader);
+        SavedModelInfoLink particles_link = ReadSavedModelInfoLink(reader);
         CHECK(particles_link.Layer == 2);
         CHECK(particles_link.LayerValue == 3);
         CHECK(particles_link.ChildName == "Particles/Test.fope");
         CHECK(particles_link.IsParticles);
 
-        const SavedModelInfoLink attached_link = ReadSavedModelInfoLink(reader);
+        SavedModelInfoLink attached_link = ReadSavedModelInfoLink(reader);
         CHECK(attached_link.Layer == 3);
         CHECK(attached_link.LayerValue == 4);
         CHECK(attached_link.ChildName == "Critters/Hat.fbx");

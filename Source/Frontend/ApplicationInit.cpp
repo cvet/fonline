@@ -132,7 +132,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Installed client: the install dir is read-only, so move the log file into the per-user writable
     // data dir now that settings (and the resolved writable path) are known.
     if (!settings.UserWritablePath.empty()) {
-        const auto log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
+        string log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
         WriteLog("Switch log to path '{}'", log_path);
         LogToFile(log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile));
         WriteLog("Starting {}", FO_NICE_NAME);
@@ -222,16 +222,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         bool auto_find_config = false;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = args.Get(i);
+            string_view arg = args.Get(i);
 
             if (arg.empty()) {
                 continue;
             }
 
-            const string_view arg_view = strex(arg).trim().strv();
+            string_view arg_view = strex(arg).trim().strv();
 
             if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
-                auto next_arg = args.Get(i + 1);
+                string_view next_arg = args.Get(i + 1);
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
@@ -247,7 +247,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                const auto config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+                string config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
 
                 if (fs_exists(config_path) && !fs_is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
@@ -272,16 +272,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         vector<string> sub_configs_to_apply;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = args.Get(i);
+            string_view arg = args.Get(i);
 
             if (arg.empty()) {
                 continue;
             }
 
-            const string_view arg_view = strex(arg).trim().strv();
+            string_view arg_view = strex(arg).trim().strv();
 
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
-                auto next_arg = args.Get(i + 1);
+                string_view next_arg = args.Get(i + 1);
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
@@ -310,10 +310,10 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.
     ResolveUserWritablePath(settings);
 
-    const auto cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
+    string cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
 
     if (fs_is_dir(cache_dir)) {
-        const auto cache = CacheStorage(cache_dir);
+        auto cache = CacheStorage(cache_dir);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
@@ -336,7 +336,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     if (root.empty()) {
         // No explicit path: switch to the per-user writable layout only when the installer marker is
         // present next to the exe; otherwise stay portable.
-        const auto exe_path = Platform::GetExePath();
+        auto exe_path = Platform::GetExePath();
 
         if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
             settings.UserWritablePath = "";
@@ -347,7 +347,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     }
 
     if (root == "*") {
-        const string base = Platform::GetUserDataBase();
+        string base = Platform::GetUserDataBase();
 
         if (base.empty()) {
             WriteLog(LogType::Warning, "Client user-writable path requested but no user data dir found; using portable layout");
@@ -386,11 +386,11 @@ static void PrebakeResources(BakingSettings& settings)
     nptr<void> baker_dll = nullptr;
     auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
 
-    const auto lib_name = strex("{}_BakerLib", FO_DEV_NAME);
+    strex lib_name = strex("{}_BakerLib", FO_DEV_NAME);
 
     if (bake_resources == nullptr) {
-        const auto exe_path = Platform::GetExePath();
-        const auto lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
+        auto exe_path = Platform::GetExePath();
+        string lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
         baker_dll = Platform::LoadModule(lib_path);
 
         if (baker_dll) {
@@ -422,7 +422,7 @@ auto GetExeLogFileName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto exe_path = Platform::GetExePath()) {
+    if (auto exe_path = Platform::GetExePath()) {
         return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
     }
 

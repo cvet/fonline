@@ -73,8 +73,8 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     obj_infos.reserve(ArgsCount);
 
     for (AngelScript::asUINT i = 1; i < numeric_cast<AngelScript::asUINT>(generic->GetArgCount()); i++) {
-        const auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
-        const auto obj_type_id = generic->GetArgTypeId(i);
+        auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
+        int32_t obj_type_id = generic->GetArgTypeId(i);
         obj_infos.emplace_back(obj ? GetScriptObjectInfo(obj, obj_type_id) : string {"null"});
     }
 
@@ -131,7 +131,7 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
+    auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
 
     if (args_count > MAX_CALL_ARGS) {
         throw ScriptException(strex("Invoke supports at most {} arguments", MAX_CALL_ARGS).str());
@@ -141,14 +141,14 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
     vector<ComplexTypeDesc> arg_types;
     arg_types.reserve(args_count);
 
-    const auto arg_count = numeric_cast<AngelScript::asUINT>(gen->GetArgCount());
+    auto arg_count = numeric_cast<AngelScript::asUINT>(gen->GetArgCount());
 
     for (auto arg_index = first_arg; arg_index < arg_count; arg_index++) {
-        const auto arg_type_id = gen->GetArgTypeId(arg_index);
+        int32_t arg_type_id = gen->GetArgTypeId(arg_index);
         auto arg_type = ResolveScriptFuncType(as_engine, arg_type_id);
 
         if (!arg_type) {
-            const nptr<const char> type_decl = as_engine->GetTypeDeclaration(arg_type_id, true);
+            nptr<const char> type_decl = as_engine->GetTypeDeclaration(arg_type_id, true);
             throw ScriptException(strex("Unsupported invoke argument type '{}'", type_decl ? type_decl.get() : "<unknown>").str());
         }
 
@@ -164,7 +164,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
 
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
-    const auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
+    auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
     vector<ptr<void>> args_data;
     args_data.reserve(args_count);
     array<nptr<void>, MAX_CALL_ARGS> indirect_args {};
@@ -177,7 +177,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
         // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
         // re-packed into a local handle cell so the callee sees a plain handle slot.
-        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
+        bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
             indirect_args[index] = MemReadUnaligned<void*>(arg_data);
@@ -224,10 +224,10 @@ static void Global_NameOf(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("NameOf: function reference is null");
     }
 
-    const nptr<const char> ns = func->GetNamespace();
-    const nptr<const char> name = func->GetName();
-    const string_view ns_view = ns ? string_view {ns.get()} : string_view {};
-    const string_view name_view = name ? string_view {name.get()} : string_view {};
+    nptr<const char> ns = func->GetNamespace();
+    nptr<const char> name = func->GetName();
+    string_view ns_view = ns ? string_view {ns.get()} : string_view {};
+    string_view name_view = name ? string_view {name.get()} : string_view {};
 
     string result;
 
@@ -250,16 +250,16 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto func_name = GetGenericAddressArgAs<const string>(gen, 0);
-    const auto hashed_func_name = engine->Hashes.ToHashedString(*func_name);
+    hstring hashed_func_name = engine->Hashes.ToHashedString(*func_name);
     ptr<AngelScript::asIScriptGeneric> generic = gen;
-    const auto arg_types = ResolveInvokeArgTypes(generic, 1);
+    auto arg_types = ResolveInvokeArgTypes(generic, 1);
     auto func_desc = engine->FindFunc(hashed_func_name, span(arg_types));
 
     if (!func_desc) {
         throw ScriptException("Script function not found", *func_name);
     }
 
-    const bool result = InvokeResolvedFunction(func_desc, generic, 1);
+    bool result = InvokeResolvedFunction(func_desc, generic, 1);
     new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 
@@ -286,7 +286,7 @@ static void Global_IsGameDestroying(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = LookupScriptBackend(as_engine);
 
-    const bool destroying = !backend || !backend->HasGameEngine();
+    bool destroying = !backend || !backend->HasGameEngine();
     new (gen->GetAddressOfReturnLocation()) bool(destroying);
 }
 
@@ -307,7 +307,7 @@ static void Game_ParseEnum(AngelScript::asIScriptGeneric* gen)
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
     auto enum_value_name = GetGenericAddressArgAs<const string>(gen, 0);
 
-    const int32_t enum_value = meta->ResolveEnumValue(*enum_name, *enum_value_name);
+    int32_t enum_value = meta->ResolveEnumValue(*enum_name, *enum_value_name);
     new (gen->GetAddressOfReturnLocation()) int32_t(enum_value);
 }
 
@@ -321,7 +321,7 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     auto enum_value_name = GetGenericAddressArgAs<const string>(gen, 0);
 
     bool failed = false;
-    const int32_t enum_value = meta->ResolveEnumValue(*enum_name, *enum_value_name, &failed);
+    int32_t enum_value = meta->ResolveEnumValue(*enum_name, *enum_value_name, &failed);
 
     if (!failed) {
         const auto& enum_type = meta->GetBaseType(*enum_name);
@@ -344,7 +344,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
     MemCopy(&enum_index, enum_arg, enum_type.Size);
-    const bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
+    bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;
     string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
@@ -493,7 +493,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     const auto& type = engine->GetGameSetting(*name);
-    const auto& value = engine->Settings->GetCustomSetting(*name);
+    const any_t& value = engine->Settings->GetCustomSetting(*name);
 
     if (type.IsString) {
         if (type.Name == "any") {
@@ -542,7 +542,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
 
             // The textual check above misses numeric overflow: a value finite in float64 can still
             // become infinity when narrowed to float32, so the parsed result is validated too.
-            const float32_t float_value = strvex(value).to_float32();
+            float32_t float_value = strvex(value).to_float32();
 
             if (!std::isfinite(float_value)) {
                 throw ScriptException("String cast to float32 received a non-finite value");
@@ -650,7 +650,7 @@ static auto SplitSettingPath(string_view setting_name) -> vector<string>
     size_t prev_pos = 0;
 
     while (prev_pos <= setting_name.size()) {
-        const auto pos = setting_name.find('.', prev_pos);
+        auto pos = setting_name.find('.', prev_pos);
 
         if (pos == string_view::npos) {
             path.emplace_back(setting_name.substr(prev_pos));
@@ -725,7 +725,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         }
     }
 
-    const auto yield_id = as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV);
+    int32_t yield_id = as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV);
     FO_AS_VERIFY(yield_id);
     SetFunctionAttributes(as_engine->GetFunctionById(yield_id), {"Async"});
 
@@ -758,7 +758,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
-                const int32_t e = prop->GetRegIndex();
+                int32_t e = prop->GetRegIndex();
                 enums_arr->InsertLast(make_nptr(&e).void_cast());
             }
 
@@ -779,7 +779,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     unordered_map<string, string> setting_group_types;
     setting_group_types.emplace("", "GlobalSettings");
 
-    const auto ensure_setting_group = [&](const vector<string>& path) -> const string& {
+    auto ensure_setting_group = [&](const vector<string>& path) -> const string& {
         FO_VERIFY_AND_THROW(!path.empty(), "AngelScript settings group registration received an empty settings path", setting_group_types.size());
 
         string current_path;
@@ -793,9 +793,9 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             current_path += part;
 
             if (!setting_group_types.contains(current_path)) {
-                const auto partial_path = SplitSettingPath(current_path);
-                const auto type_name = MakeScriptSettingGroupTypeName(partial_path);
-                const string parent_type = setting_group_types.at(parent_path);
+                auto partial_path = SplitSettingPath(current_path);
+                string type_name = MakeScriptSettingGroupTypeName(partial_path);
+                string parent_type = setting_group_types.at(parent_path);
 
                 FO_AS_VERIFY(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(parent_type.c_str(), strex("{}@ get_{}() const", type_name, part).c_str(), FO_SCRIPT_GENERIC(Setting_GetGroup), FO_SCRIPT_GENERIC_CONV));
@@ -809,9 +809,9 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         return setting_group_types.at(current_path);
     };
 
-    const auto register_engine_setting = [&]<typename T>(string_view owner_type, string_view name, T& data, bool writeble) {
-        const string owner_type_str(owner_type);
-        const string name_str(name);
+    auto register_engine_setting = [&]<typename T>(string_view owner_type, string_view name, T& data, bool writeble) {
+        string owner_type_str(owner_type);
+        string name_str(name);
 
         if constexpr (!SettingScalarTypeNames<T>::ScalarName.empty()) {
             constexpr string_view type_str = SettingScalarTypeNames<T>::ScalarName;
@@ -841,17 +841,17 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 #include "Settings.inc"
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {
-        const auto path = SplitSettingPath(setting_name);
+        auto path = SplitSettingPath(setting_name);
         FO_VERIFY_AND_THROW(!path.empty(), "AngelScript game setting registration received an empty setting path", setting_name, setting_type->Name);
 
         string owner_type = "GlobalSettings";
 
         if (path.size() > 1) {
-            const vector<string> group_path(path.begin(), path.end() - 1);
+            vector<string> group_path(path.begin(), path.end() - 1);
             owner_type = ensure_setting_group(group_path);
         }
 
-        const string_view accessor_name = path.back();
+        string_view accessor_name = path.back();
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("{} get_{}()", MakeScriptTypeName(*setting_type), accessor_name).c_str(), FO_SCRIPT_GENERIC(Setting_GetValue), FO_SCRIPT_GENERIC_CONV, make_nptr(&setting_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("void set_{}({} value)", accessor_name, MakeScriptTypeName(*setting_type)).c_str(), FO_SCRIPT_GENERIC(Setting_SetValue), FO_SCRIPT_GENERIC_CONV, make_nptr(&setting_name).void_cast()));

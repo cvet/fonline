@@ -124,22 +124,22 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorAlgorithms")
     {
-        const vector<int32_t> values = {5, 1, 3, 2};
+        vector<int32_t> values = {5, 1, 3, 2};
 
-        const auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
         CHECK(filtered == vector<int32_t> {5, 1, 3});
 
-        const auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
+        auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
         CHECK(transformed == vector<int32_t> {50, 10, 30, 20});
 
-        const auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
         CHECK(sorted == vector<int32_t> {1, 2, 3, 5});
 
         CHECK(vec_exists(values, 3));
         CHECK_FALSE(vec_exists(values, 7));
 
-        const set<int32_t> uniq = {9, 8, 7};
-        const auto copied = to_vector(uniq);
+        set<int32_t> uniq = {9, 8, 7};
+        auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
     }
 
@@ -149,7 +149,7 @@ TEST_CASE("CommonHelpers")
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
 
-        const auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
+        auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
         CHECK(transformed == vector<int32_t> {4, 9});
     }
 

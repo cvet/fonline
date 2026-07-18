@@ -106,7 +106,7 @@ TEST_CASE("Logging")
 
         SetLogCallback("sv", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
 
-        const string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
+        string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
         WriteLog(string_view {raw});
 
         REQUIRE(captured.size() == 1);

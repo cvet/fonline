@@ -53,7 +53,7 @@ static auto MakeBuiltInDummyAtlasSprite(ptr<SpriteManager> spr_mngr, AtlasType a
 
     auto [atlas, atlas_node, pos] = spr_mngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
     auto tex = atlas->GetTexture();
-    const const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
+    const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
 
     tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, dummy_color);
     tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, dummy_color);
@@ -90,8 +90,8 @@ void ResourceManager::IndexFiles()
 
     constexpr array<string_view, 3> sound_extensions = {"wav", "acm", "ogg"};
 
-    for (const string_view sound_ext : sound_extensions) {
-        const auto sound_files = _resources->FilterFiles(sound_ext);
+    for (string_view sound_ext : sound_extensions) {
+        auto sound_files = _resources->FilterFiles(sound_ext);
 
         for (const auto& file_header : sound_files) {
             _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), string(file_header.GetPath()));
@@ -161,9 +161,9 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     FO_STACK_TRACE_ENTRY();
 
     // Check already loaded
-    const auto id = AnimMapId(model_name, state_anim, action_anim);
+    auto id = AnimMapId(model_name, state_anim, action_anim);
 
-    if (const auto it = _critterFrames.find(id); it != _critterFrames.end()) {
+    if (auto it = _critterFrames.find(id); it != _critterFrames.end()) {
         auto anim = it->second.as_nptr();
 
         if (anim) {
@@ -180,8 +180,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     }
 
     // Process loading
-    const auto base_state_anim = state_anim;
-    const auto base_action_anim = action_anim;
+    auto base_state_anim = state_anim;
+    auto base_action_anim = action_anim;
     shared_ptr<SpriteSheet> anim;
 
     while (true) {
@@ -206,7 +206,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                         anim = _sprMngr->LoadSprite(anim_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
 
                         // Fix by dirs
-                        const auto frame_flag = static_cast<AnimFrameFlag>(flags);
+                        auto frame_flag = static_cast<AnimFrameFlag>(flags);
 
                         for (int32_t d = 0; anim && d < anim->_dirCount; d++) {
                             auto dir_anim = anim->GetDir(hdir(d));
@@ -215,7 +215,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                             // Process flags
                             if (flags != 0) {
                                 if (IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame) || IsEnumSet(frame_flag, AnimFrameFlag::LastFrame)) {
-                                    const auto first = IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame);
+                                    bool first = IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame);
 
                                     // Append offsets
                                     if (!first) {
@@ -269,10 +269,10 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         }
 
         // Find substitute animation
-        const auto base_model_name = model_name;
-        const auto model_name_ = model_name;
-        const auto state_anim_ = state_anim;
-        const auto action_anim_ = action_anim;
+        hstring base_model_name = model_name;
+        hstring model_name_ = model_name;
+        auto state_anim_ = state_anim;
+        auto action_anim_ = action_anim;
 
         if (!anim && _animNameResolver->ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim)) {
             if (model_name_ != model_name || state_anim != state_anim_ || action_anim != action_anim_) {
@@ -338,7 +338,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 return nullptr;
             }
 
-            const auto frames_count = anim->GetFramesCount() + animex->GetFramesCount();
+            int32_t frames_count = anim->GetFramesCount() + animex->GetFramesCount();
             auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
 
             for (int32_t d = 0; d < anim->_dirCount; d++) {
@@ -374,9 +374,9 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         }
 
         // Clone
-        const auto frame_flag = static_cast<AnimFrameFlag>(flags);
-        const auto first_or_last_mask = CombineEnum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
-        const auto frames_count = !IsEnumSet(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
+        auto frame_flag = static_cast<AnimFrameFlag>(flags);
+        auto first_or_last_mask = CombineEnum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
+        int32_t frames_count = !IsEnumSet(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
         auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
@@ -492,7 +492,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
     static constexpr uint32_t ANIM2_FALLOUT_DEAD_FRONT2 = 15;
     static constexpr uint32_t ANIM2_FALLOUT_DEAD_BACK2 = 16;
 
-    const auto it = _critterFrames.find(FalloutAnimMapId(model_name, state_anim, action_anim));
+    auto it = _critterFrames.find(FalloutAnimMapId(model_name, state_anim, action_anim));
     if (it != _critterFrames.end()) {
         return it->second;
     }
@@ -509,13 +509,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
 
     // Try load from fofrm
     {
-        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
+        string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = _sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
+        string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = _sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
     }
 
@@ -585,7 +585,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
 
     // Ko rise offsets
     if (state_anim == ANIM1_FALLOUT_KNOCKOUT) {
-        auto anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
+        uint32_t anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
         if (action_anim == ANIM2_FALLOUT_STANDUP_BACK) {
             anim2_ = ANIM2_FALLOUT_KNOCK_BACK;
         }
@@ -603,7 +603,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(model_name).get_file_extension();
+    string ext = strex(model_name).get_file_extension();
 
     if (ext != "fo3d") {
         auto frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
@@ -635,7 +635,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _critterModels.find(model_name); it != _critterModels.end()) {
+    if (auto it = _critterModels.find(model_name); it != _critterModels.end()) {
         auto& model_spr = it->second;
 
         model_spr->GetModel()->SetDir(dir, false);

@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace AdvOps
 {
@@ -1009,7 +1009,7 @@ namespace AdvOps
                 {"Scripts/AdvOps.fos", script_source},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1019,7 +1019,7 @@ namespace AdvOps
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1028,13 +1028,13 @@ namespace AdvOps
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1081,12 +1081,12 @@ namespace AdvOps
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \

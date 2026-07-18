@@ -126,7 +126,7 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
+    uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
 
     if (settings->SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
@@ -150,7 +150,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     auto& raw_socket = connection->get_raw_socket();
 
     std::error_code endpoint_error;
-    const auto endpoint = raw_socket.remote_endpoint(endpoint_error);
+    auto endpoint = raw_socket.remote_endpoint(endpoint_error);
 
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
@@ -178,37 +178,37 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
     // dangling 'this'. Hold the wrapper alive for the duration of each handler via a weak_from_this() lock -
     // the same lifetime discipline the Asio transport gets from its shared_from_this() read/write handlers.
     // If the lock fails the wrapper is already gone and the callback is a no-op.
-    const auto connection = _connection.lock();
+    auto connection = _connection.lock();
 
     if (!connection) {
         return;
     }
 
-    const auto weak_self = weak_from_this();
+    auto weak_self = weak_from_this();
 
     connection->set_message_handler([weak_self, this](auto&&, auto&& msg) FO_DEFERRED {
-        const auto self = weak_self.lock();
+        auto self = weak_self.lock();
 
         if (self) {
             OnMessage(msg);
         }
     });
     connection->set_fail_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        const auto self = weak_self.lock();
+        auto self = weak_self.lock();
 
         if (self) {
             OnFail(hdl);
         }
     });
     connection->set_close_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        const auto self = weak_self.lock();
+        auto self = weak_self.lock();
 
         if (self) {
             OnClose(hdl);
         }
     });
     connection->set_http_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        const auto self = weak_self.lock();
+        auto self = weak_self.lock();
 
         if (self) {
             OnHttp(hdl);
@@ -241,7 +241,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         // internal io-thread-only path and must never be called from the engine thread that destroys this
         // wrapper - doing so races the websocketpp run loop and corrupts connection state / crashes. If the
         // weak ref no longer locks the endpoint already destroyed the connection - nothing to close.
-        if (const auto connection = _connection.lock()) {
+        if (auto connection = _connection.lock()) {
             std::error_code close_error;
             connection->close(websocketpp::close::status::going_away, "", close_error);
             ignore_unused(close_error);
@@ -300,16 +300,16 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto connection = _connection.lock();
+    auto connection = _connection.lock();
 
     if (!connection) {
         return;
     }
 
-    const auto buf = SendCallback();
+    auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto error = connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+        auto error = connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
 
         if (!error) {
             DispatchImpl();
@@ -329,7 +329,7 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
     // Runs on the engine thread, not the websocketpp io thread: use the thread-safe close() (posts to the
     // io service) rather than the io-thread-only terminate(), which would race the run loop. A dead weak ref
     // means the endpoint already tore the connection down - nothing to do.
-    if (const auto connection = _connection.lock()) {
+    if (auto connection = _connection.lock()) {
         std::error_code close_error;
         connection->close(websocketpp::close::status::going_away, "", close_error);
         ignore_unused(close_error);
@@ -430,8 +430,8 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
 
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
-    const auto remote_endpoint = connection->get_remote_endpoint();
-    const auto error_message = ec.message();
+    auto remote_endpoint = connection->get_remote_endpoint();
+    auto error_message = ec.message();
 
     WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
 }

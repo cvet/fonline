@@ -356,8 +356,8 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Critter_GetCritters(ptr<Critter> self,
         vector<ptr<Critter>> critters = self->GetCritters(seeType, findType);
 
         std::ranges::stable_sort(critters, [hex = self->GetHex()](ptr<const Critter> cr1, ptr<const Critter> cr2) {
-            const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-            const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+            int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+            int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
             return dist1 < dist2;
         });
 
@@ -437,7 +437,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid)
         throw ScriptException("Proto id arg is zero");
     }
 
-    const auto count = self->CountInvItemByPid(pid);
+    int32_t count = self->CountInvItemByPid(pid);
 
     if (count == 0) {
         return;
@@ -450,7 +450,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
-    const auto count = self->CountInvItemByPid(proto->GetProtoId());
+    int32_t count = self->CountInvItemByPid(proto->GetProtoId());
 
     if (count == 0) {
         return;
@@ -654,10 +654,10 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
         throw ScriptException("Slot is not allowed");
     }
 
-    const auto is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->CritterSlotMultiItem.size() && self->GetEngine()->Settings->CritterSlotMultiItem[static_cast<size_t>(slot)];
+    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->CritterSlotMultiItem.size() && self->GetEngine()->Settings->CritterSlotMultiItem[static_cast<size_t>(slot)];
 
     if (is_multi_item_allowed) {
-        const auto from_slot = item->GetCritterSlot();
+        auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);
 
@@ -669,7 +669,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
     }
     else {
         auto item_swap = self->GetInvItemBySlot(slot);
-        const auto from_slot = item->GetCritterSlot();
+        auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);
 
@@ -701,7 +701,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(ptr<Critter> self, CritterConditi
 {
     ValidateEntityAccess(contextItem);
 
-    const auto prev_cond = self->GetCondition();
+    auto prev_cond = self->GetCondition();
 
     if (prev_cond == cond) {
         return;
@@ -719,7 +719,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(ptr<Critter> self, CritterConditi
     }
 
     self->SetCondition(cond);
-    const auto context_item = contextItem.dyn_cast<const Item>();
+    auto context_item = contextItem.dyn_cast<const Item>();
 
     if (map) {
         map->AddCritterToField(self);
@@ -855,10 +855,10 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
-    const int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
-    const ipos16 clamped_offset = {clamped_ox, clamped_oy};
-    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
+    int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    ipos16 clamped_offset = {clamped_ox, clamped_oy};
+    auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;

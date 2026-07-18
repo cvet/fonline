@@ -439,7 +439,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
     auto model = hex_cr->GetModel();
     FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
-    const auto bone_pos = model->GetBonePos(boneName);
+    auto bone_pos = model->GetBonePos(boneName);
     if (!bone_pos.has_value()) {
         return false;
     }
@@ -461,8 +461,8 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
     auto hex_cr = RequireHexCritter(self);
-    const int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
     auto engine = self->GetEngine();
@@ -475,8 +475,8 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
 {
     auto hex_cr = RequireHexCritter(self);
-    const int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     auto engine = self->GetEngine();
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
@@ -569,7 +569,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
     }
 
     auto old_item = item->CreateRefClone();
-    const CritterItemSlot from_slot = item->GetCritterSlot();
+    CritterItemSlot from_slot = item->GetCritterSlot();
     auto map_cr = self.dyn_cast<CritterHexView>();
 
     if (toSlot == CritterItemSlot::Outside) {

@@ -86,7 +86,7 @@ static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFuncti
         return "<unknown>";
     }
 
-    const nptr<const char> declaration = func->GetDeclaration(true, true, false);
+    nptr<const char> declaration = func->GetDeclaration(true, true, false);
     return declaration ? declaration.get() : "<unknown>";
 }
 
@@ -107,7 +107,7 @@ static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScr
     }
 
     if (lnt) {
-        const auto line = numeric_cast<uint32_t>(row);
+        auto line = numeric_cast<uint32_t>(row);
         return pair {string {Preprocessor::ResolveOriginalFile(line, lnt.get())}, Preprocessor::ResolveOriginalLine(line, lnt.get())};
     }
 
@@ -116,10 +116,10 @@ static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScr
 
 static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> string
 {
-    const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
+    string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
 
     if (meta.GetSide() == EngineSideKind::ServerSide) {
-        const auto args = MakeScriptArgsName(inbound_call.Args);
+        string args = MakeScriptArgsName(inbound_call.Args);
         return strex("void {}::{}(Player@+ player{}{})", ns, inbound_call.Name, !args.empty() ? ", " : "", args);
     }
 
@@ -164,7 +164,7 @@ static auto ReadMutableObjectHandleSlot(nptr<const void> slot) noexcept -> nptr<
 
 static auto ResolveInboundRemoteCallImplementation(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> nptr<AngelScript::asIScriptFunction>
 {
-    const auto func_decl = MakeRemoteCallImplementationDecl(meta, inbound_call);
+    string func_decl = MakeRemoteCallImplementationDecl(meta, inbound_call);
     return mod->GetFunctionByDecl(func_decl.c_str());
 }
 
@@ -181,7 +181,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     vector<uint8_t> data;
     DataWriter writer(data);
 
-    const function<void(nptr<const void>, const BaseTypeDesc&)> write_simple = [&](nptr<const void> value, const BaseTypeDesc& type) {
+    function<void(nptr<const void>, const BaseTypeDesc&)> write_simple = [&](nptr<const void> value, const BaseTypeDesc& type) {
         if (type.IsPrimitive) {
             FO_VERIFY_AND_THROW(value, "Primitive argument value is null");
             VisitBaseTypePrimitive(value.get(), type, [&](auto&& v) {
@@ -205,8 +205,8 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             writer.Write<hstring::hash_t>(hstr->as_hash());
         }
         else if (type.IsRefType) {
-            const auto ref_obj = ReadMutableObjectHandleSlot(value);
-            const auto raw_data = ConvertRefTypeScriptObjectToRawData(type, ref_obj);
+            auto ref_obj = ReadMutableObjectHandleSlot(value);
+            auto raw_data = ConvertRefTypeScriptObjectToRawData(type, ref_obj);
             writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
             if (!raw_data.empty()) {
@@ -232,7 +232,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg->Type.Kind == ComplexTypeKind::Array) {
             auto arr = NativeDataProvider::ReadConstTypedHandleSlot<ScriptArray>(arg_ptr);
-            const auto arr_size = arr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
+            int32_t arr_size = arr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
             writer.Write<int32_t>(arr_size);
 
             if (arr) {
@@ -244,7 +244,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg->Type.Kind == ComplexTypeKind::Dict) {
             auto dict = NativeDataProvider::ReadConstTypedHandleSlot<ScriptDict>(arg_ptr);
-            const auto dict_size = dict ? numeric_cast<int32_t>(dict->GetSize()) : 0;
+            int32_t dict_size = dict ? numeric_cast<int32_t>(dict->GetSize()) : 0;
             writer.Write<int32_t>(dict_size);
 
             if (dict) {
@@ -258,7 +258,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg->Type.Kind == ComplexTypeKind::DictOfArray) {
             auto dict = NativeDataProvider::ReadConstTypedHandleSlot<ScriptDict>(arg_ptr);
-            const auto dict_size = dict ? numeric_cast<int32_t>(dict->GetSize()) : 0;
+            int32_t dict_size = dict ? numeric_cast<int32_t>(dict->GetSize()) : 0;
             writer.Write<int32_t>(dict_size);
 
             if (dict) {
@@ -267,7 +267,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
                     write_simple(key, arg->Type.KeyType.value());
 
                     auto arr = NativeDataProvider::ReadConstTypedHandleSlot<ScriptArray>(kv.second);
-                    const auto arr_size = arr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
+                    int32_t arr_size = arr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
                     writer.Write<int32_t>(arr_size);
 
                     if (arr) {
@@ -304,7 +304,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
     using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
-    const auto read_plain_data = [&](size_t size) -> nptr<void> {
+    auto read_plain_data = [&](size_t size) -> nptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
         ptr<uint8_t> storage_bytes = storage.Bytes;
@@ -312,7 +312,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         return storage_bytes.void_cast();
     };
 
-    const function<nptr<void>(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> nptr<void> {
+    function<nptr<void>(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> nptr<void> {
         if (type.IsPrimitive) {
             return read_plain_data(type.Size);
         }
@@ -322,9 +322,9 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             return read_plain_data(type.Size);
         }
         else if (type.IsString) {
-            const auto str_len = reader.Read<int32_t>();
+            int32_t str_len = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(str_len >= 0, "Str len is negative", str_len);
-            const size_t str_size = numeric_cast<size_t>(str_len);
+            size_t str_size = numeric_cast<size_t>(str_len);
             string str;
             str.resize(str_size);
             reader.ReadStringBytes(str);
@@ -333,13 +333,13 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             return str_value.void_cast();
         }
         else if (type.IsHashedString) {
-            const auto hash = reader.Read<hstring::hash_t>();
-            const auto hstr = engine->Hashes.ResolveHash(hash);
+            auto hash = reader.Read<hstring::hash_t>();
+            hstring hstr = engine->Hashes.ResolveHash(hash);
             auto hstr_value = make_ptr(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
             return hstr_value.void_cast();
         }
         else if (type.IsRefType) {
-            const uint32_t raw_size = reader.Read<uint32_t>();
+            uint32_t raw_size = reader.Read<uint32_t>();
             span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
 
             auto ref_obj = CreateRefTypeScriptObjectFromRawData(type, ref_raw_data);
@@ -369,14 +369,14 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         }
     };
 
-    const auto require_value_ptr = [](nptr<void> value) -> ptr<void> {
+    auto require_value_ptr = [](nptr<void> value) -> ptr<void> {
         FO_VERIFY_AND_THROW(value, "Decoded argument value is null");
         return value;
     };
 
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
-    const size_t args_count = inbound_call.Args.size() + (engine->GetSide() == EngineSideKind::ServerSide ? 1 : 0);
+    size_t args_count = inbound_call.Args.size() + (engine->GetSide() == EngineSideKind::ServerSide ? 1 : 0);
     vector<ptr<void>> data_storage;
     data_storage.reserve(args_count);
 
@@ -402,7 +402,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             arg_index++;
         }
         else if (arg->Type.Kind == ComplexTypeKind::Array) {
-            const auto arr_size = reader.Read<int32_t>();
+            int32_t arr_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
             auto arr_holder = CreateScriptArray(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto arr = arr_holder.as_ptr();
@@ -418,7 +418,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             }
         }
         else if (arg->Type.Kind == ComplexTypeKind::Dict) {
-            const auto dict_size = reader.Read<int32_t>();
+            int32_t dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
@@ -433,7 +433,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             }
         }
         else if (arg->Type.Kind == ComplexTypeKind::DictOfArray) {
-            const auto dict_size = reader.Read<int32_t>();
+            int32_t dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
@@ -444,7 +444,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             for (int32_t j = 0; j < dict_size; j++) {
                 nptr<void> key = read_simple(arg->Type.KeyType.value());
 
-                const auto arr_size = reader.Read<int32_t>();
+                int32_t arr_size = reader.Read<int32_t>();
                 FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
                 auto arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg->Type.BaseType)).c_str());
 
@@ -488,7 +488,7 @@ void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     for (const auto& outbound_call : (*meta->GetOutboundRemoteCalls()) | std::views::values) {
-        const string method_decl = strex("void {}({})", outbound_call.Name, MakeScriptArgsName(outbound_call.Args));
+        string method_decl = strex("void {}({})", outbound_call.Name, MakeScriptArgsName(outbound_call.Args));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("RemoteCaller", method_decl.c_str(), FO_SCRIPT_GENERIC(OutboundRemoteCallFunc), FO_SCRIPT_GENERIC_CONV, make_nptr(&outbound_call).void_cast()));
 
         if (meta->GetSide() == EngineSideKind::ServerSide) {
@@ -575,7 +575,7 @@ auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptMod
         }
     }
 
-    const auto append_error = [&errors](optional<pair<string, uint32_t>> location, const string& error) {
+    auto append_error = [&errors](optional<pair<string, uint32_t>> location, const string& error) {
         if (!errors.empty()) {
             errors.append("\n");
         }
@@ -590,21 +590,21 @@ auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptMod
 
     for (ptr<const AngelScript::asIScriptFunction> func : matched_funcs) {
         if (!HasFunctionAttribute(func.get(), expected_attr)) {
-            const auto func_decl = GetFunctionDeclarationString(func);
-            const auto message = strex("Inbound ///@ RemoteCall implementation '{}' must be marked [[{}]]", func_decl, expected_attr).str();
+            string func_decl = GetFunctionDeclarationString(func);
+            string message = strex("Inbound ///@ RemoteCall implementation '{}' must be marked [[{}]]", func_decl, expected_attr).str();
             append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
         }
     }
 
     for (ptr<const AngelScript::asIScriptFunction> func : CollectModuleScriptFunctions(mod)) {
         if (HasFunctionAttribute(func.get(), opposite_attr)) {
-            const auto func_decl = GetFunctionDeclarationString(func);
-            const auto message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' uses the wrong remote-call attribute for this engine side", opposite_attr, func_decl).str();
+            string func_decl = GetFunctionDeclarationString(func);
+            string message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' uses the wrong remote-call attribute for this engine side", opposite_attr, func_decl).str();
             append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
         }
         else if (HasFunctionAttribute(func.get(), expected_attr) && std::ranges::find(matched_funcs, func) == matched_funcs.end()) {
-            const auto func_decl = GetFunctionDeclarationString(func);
-            const auto message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' has no matching ///@ RemoteCall declaration", expected_attr, func_decl).str();
+            string func_decl = GetFunctionDeclarationString(func);
+            string message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' has no matching ///@ RemoteCall declaration", expected_attr, func_decl).str();
             append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
         }
     }

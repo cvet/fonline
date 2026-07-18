@@ -47,9 +47,9 @@ namespace SPK::FO
         FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
 
         auto& vbuf = _renderBuf->Vertices;
-        auto& vpos = _renderBuf->VertCount;
+        size_t& vpos = _renderBuf->VertCount;
         auto& ibuf = _renderBuf->Indices;
-        auto& ipos = _renderBuf->IndCount;
+        size_t& ipos = _renderBuf->IndCount;
 
         vpos = vertices;
         ipos = vertices / 4 * 6;
@@ -223,7 +223,7 @@ namespace SPK::FO
             }
         }
 
-        const bool globalOrientation = precomputeOrientation3D(group, //
+        bool globalOrientation = precomputeOrientation3D(group, //
             Vector3D(-_invModelView[0][2], -_invModelView[1][2], -_invModelView[2][2]), //
             Vector3D(_invModelView[0][1], _invModelView[1][1], _invModelView[2][1]), //
             Vector3D(_invModelView[0][3], _invModelView[1][3], _invModelView[2][3]));
@@ -259,8 +259,8 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
-        const Vector3D diag_v(diagonal, diagonal, diagonal);
+        float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
             for (ConstGroupIterator it(group); !it.end(); ++it) {
@@ -386,7 +386,7 @@ namespace SPK::FO
         _textureName = string(tex_name);
 
         if (!_textureName.empty() && _particleMngr) {
-            const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
+            string tex_path = strex(_path).extract_dir().combine_path(_textureName);
             auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffset = tex_data;
@@ -423,7 +423,7 @@ namespace SPK::FO
         upVector.set(0.0f, 1.0f, 0.0f);
 
         if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
-            const auto tmpSize = attrib->getValues<int32_t>();
+            auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
             case 1:
@@ -451,7 +451,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("scale"); attrib) {
-            const auto tmpScale = attrib->getValues<float32_t>();
+            auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
             case 1:
@@ -466,7 +466,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib) {
-            const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
+            auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
 
             switch (tmpAtlasDimensions.size()) {
             case 1:
@@ -481,7 +481,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("look orientation"); attrib) {
-            const auto lookOrient = attrib->getValue<std::string>();
+            auto lookOrient = attrib->getValue<std::string>();
 
             if (lookOrient == "LOOK_CAMERA_PLANE") {
                 lookOrientation = LOOK_CAMERA_PLANE;
@@ -498,7 +498,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("up orientation"); attrib) {
-            const auto upOrient = attrib->getValue<std::string>();
+            auto upOrient = attrib->getValue<std::string>();
 
             if (upOrient == "UP_CAMERA") {
                 upOrientation = UP_CAMERA;
@@ -515,7 +515,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("locked axis"); attrib) {
-            const auto lockAx = attrib->getValue<std::string>();
+            auto lockAx = attrib->getValue<std::string>();
 
             if (lockAx == "LOCK_LOOK") {
                 lockedAxis = LOCK_LOOK;
@@ -541,7 +541,7 @@ namespace SPK::FO
         Renderer::innerExport(descriptor);
 
         if (_drawWidth != 0 || _drawHeight != 0) {
-            const std::vector tmpSize = {_drawWidth, _drawHeight};
+            std::vector tmpSize = {_drawWidth, _drawHeight};
             descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
         }
 
@@ -553,10 +553,10 @@ namespace SPK::FO
 
         descriptor.getAttribute("texture")->setValue(std::string(_textureName));
 
-        const std::vector tmpScale = {scaleX, scaleY};
+        std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
-        const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
+        std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {

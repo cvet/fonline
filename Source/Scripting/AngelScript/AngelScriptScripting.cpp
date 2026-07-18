@@ -78,7 +78,7 @@ static void PrepareAngelScriptRuntime()
     std::call_once(init_once, [] {
         AngelScript::asSetGlobalMemoryFunctions(&AngelScriptAllocator::Alloc, &AngelScriptAllocator::Free);
 
-        const auto prepare_result = AngelScript::asPrepareMultithread();
+        int32_t prepare_result = AngelScript::asPrepareMultithread();
         FO_VERIFY_AND_THROW(prepare_result >= 0, "Prepare result is negative", prepare_result);
     });
 }

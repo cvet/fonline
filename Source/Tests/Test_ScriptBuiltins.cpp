@@ -165,7 +165,7 @@ namespace
 
     static void RegisterArrayComparableValue(AngelScript::asIScriptEngine* engine, string_view type_name, bool with_multiple_equals, bool with_multiple_cmp)
     {
-        const string name {type_name};
+        string name {type_name};
         REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
 
         if (with_multiple_equals) {
@@ -181,14 +181,14 @@ namespace
 
     static void RegisterArrayCmpOnlyValue(AngelScript::asIScriptEngine* engine, string_view type_name)
     {
-        const string name {type_name};
+        string name {type_name};
         REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
         REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("int opCmp(const {} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static void RegisterArrayComparatorFilterValue(AngelScript::asIScriptEngine* engine, string_view type_name, string_view method_decl, const AngelScript::asSFuncPtr& func_ptr)
     {
-        const string name {type_name};
+        string name {type_name};
         REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
         REQUIRE(engine->RegisterObjectMethod(name.c_str(), string {method_decl}.c_str(), func_ptr, FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
@@ -261,7 +261,7 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        const int32_t build_result = BuildAngelScriptModule(engine, module_name, source);
+        int32_t build_result = BuildAngelScriptModule(engine, module_name, source);
         ReportScriptMessages(messages);
         REQUIRE(build_result >= 0);
 
@@ -280,7 +280,7 @@ namespace
         nptr<AngelScript::asIScriptContext> ctx = engine->CreateContext();
         REQUIRE(ctx != nullptr);
         REQUIRE(ctx->Prepare(func.get()) >= 0);
-        const int32_t exec_result = ctx->Execute();
+        int32_t exec_result = ctx->Execute();
         UNSCOPED_INFO(strex("Script execution result: {}, exception: {}", exec_result, ctx->GetExceptionString()).str());
         REQUIRE(exec_result == AngelScript::asEXECUTION_FINISHED);
         REQUIRE(ctx->Unprepare() >= 0);
@@ -328,7 +328,7 @@ namespace
     template<typename T>
     static void CheckPrimitiveScriptArrayDirectOps(AngelScript::asIScriptEngine* engine, string_view type_decl, T low, T high)
     {
-        const string array_type_decl = strex("array<{}>", type_decl).str();
+        string array_type_decl = strex("array<{}>", type_decl).str();
         auto array_type = make_nptr(engine->GetTypeInfoByDecl(array_type_decl.c_str()));
         REQUIRE(array_type != nullptr);
 
@@ -1533,7 +1533,7 @@ namespace ScriptBuiltins
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1548,16 +1548,16 @@ namespace ScriptBuiltins
 
         writer.Write<uint16_t>(uint16_t {1}); // 1 section
 
-        const string_view section_name = "Enum";
+        string_view section_name = "Enum";
         writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
         writer.WriteStringBytes(section_name);
         writer.Write<uint32_t>(uint32_t {2}); // 2 entries
 
-        const auto write_token = [&](string_view token) {
+        auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
             writer.WriteStringBytes(token);
         };
-        const auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
+        auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
             writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
             write_token(name);
             write_token(underlying_type);
@@ -1575,7 +1575,7 @@ namespace ScriptBuiltins
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = MakeMetadataWithGenderEnum();
+        auto metadata_blob = MakeMetadataWithGenderEnum();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1584,9 +1584,9 @@ namespace ScriptBuiltins
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1634,7 +1634,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1642,7 +1642,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     // StringLength
     {
@@ -1834,7 +1834,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
         REQUIRE(func);
 
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         string message;
         string traceback;
         bool fatal = true;
@@ -2071,7 +2071,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2079,12 +2079,12 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
-    const auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         string message;
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
@@ -2553,7 +2553,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2561,7 +2561,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     // DictLength
     {
@@ -2633,7 +2633,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2641,7 +2641,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     // ComprehensiveMathTest
     {

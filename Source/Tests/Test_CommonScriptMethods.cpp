@@ -63,7 +63,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace CommonMethods
 {
@@ -503,7 +503,7 @@ namespace CommonMethods
         any mapSizeAny = mapSize;
         if (string(mapSizeAny).length() == 0) return -33;
 )"
-                                          R"(
+                                    R"(
         hdir dir = HDIR_SouthEast;
         if (dir.str.length() == 0) return -34;
         if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
@@ -515,7 +515,7 @@ namespace CommonMethods
         if (angle.angle != 60) return -38;
         if (!(angle == mdir(60))) return -39;
 )"
-                                          R"(
+                                    R"(
         TextPackName pack = TextPackName("Dialogs".hstr());
         TextPackName packCopy(pack);
         if (!(packCopy == pack)) return -40;
@@ -542,7 +542,7 @@ namespace CommonMethods
         LanguageName russLang = LanguageName("russ".hstr());
         if (!(englLang < russLang || russLang < englLang)) return -50;
 )"
-                                          R"(
+                                    R"(
 
         TextPackKey defaultKey;
         if (defaultKey.Collection.Name != EMPTY_HSTRING) return -51;
@@ -756,7 +756,7 @@ namespace CommonMethods
         return 0;
     }
 )"
-                                          R"(
+                                    R"(
     int TestScriptDynamicRefTypeAccessors()
     {
         RouteSnapshot snapshot = RouteSnapshot();
@@ -1699,7 +1699,7 @@ namespace CommonMethods
  )";
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "CommonMethodsScripts", {{"Scripts/CommonMethods.fos", script_source}}, [](string_view message) {
-            const auto message_str = string(message);
+            string message_str = string(message);
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos) {
                 throw ScriptSystemException(message_str);
             }
@@ -1718,12 +1718,12 @@ namespace CommonMethods
     {
         FO_STACK_TRACE_ENTRY();
 
-        const vector<vector<string_view>> value_types = {
+        vector<vector<string_view>> value_types = {
             {"BoolSnapshot", "Value", "bool"},
             {"IntSnapshot", "Value", "int32"},
             {"FloatSnapshot", "Value", "float32"},
         };
-        const vector<vector<string_view>> ref_types = {
+        vector<vector<string_view>> ref_types = {
             {"RouteSnapshot", "Value", "int32", "0", "Steps", "int32[]", "0", "Counters", "string=>int32", "0", "Child", "RouteNote", "0", "TargetProto", "ProtoCritter", "0", "OptionalItemProto", "ProtoItem", "1", "Nullable", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"},
             {"RouteNote", "Text", "string", "0"},
         };
@@ -1738,7 +1738,7 @@ namespace CommonMethods
         for (const auto& value_type : value_types) {
             writer.Write<uint32_t>(numeric_cast<uint32_t>(value_type.size()));
 
-            for (const auto token : value_type) {
+            for (auto token : value_type) {
                 WriteMetadataToken(writer, token);
             }
         }
@@ -1749,7 +1749,7 @@ namespace CommonMethods
         for (const auto& ref_type : ref_types) {
             writer.Write<uint32_t>(numeric_cast<uint32_t>(ref_type.size()));
 
-            for (const auto token : ref_type) {
+            for (auto token : ref_type) {
                 WriteMetadataToken(writer, token);
             }
         }
@@ -1759,7 +1759,7 @@ namespace CommonMethods
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = MakeCommonMethodsMetadataBlob();
+        auto metadata_blob = MakeCommonMethodsMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1768,15 +1768,15 @@ namespace CommonMethods
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
 
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto container_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto container_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1823,7 +1823,7 @@ namespace CommonMethods
         REQUIRE(context_mngr);
 
         auto ctx = context_mngr->RequestContext();
-        const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
+        uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
@@ -1856,12 +1856,12 @@ namespace CommonMethods
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_CM_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("CommonMethods::" func_name)); \
@@ -1872,7 +1872,7 @@ namespace CommonMethods
 #define RUN_CM_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
     REQUIRE(func); \
-    const auto prev_callback = GetExceptionCallback(); \
+    auto prev_callback = GetExceptionCallback(); \
     string message; \
     SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
@@ -2352,7 +2352,7 @@ TEST_CASE("CommonCppApiTests")
 
     SECTION("ServerHealthCheck")
     {
-        auto health = server->GetHealthInfo();
+        string health = server->GetHealthInfo();
         CHECK(health.find("Server uptime") != string::npos);
     }
 }

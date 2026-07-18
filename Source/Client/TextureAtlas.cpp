@@ -208,7 +208,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
     nptr<TextureAtlas> atlas {};
     unique_del_nptr<TextureAtlas::SpaceNode> atlas_node {};
-    const isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
+    isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
         for (auto& check_atlas : _allAtlases) {
@@ -232,13 +232,13 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
         atlas = new_atlas;
         auto node = new_atlas->GetLayout()->FindPosition(size_with_padding);
         FO_VERIFY_AND_THROW(node, "Missing required atlas node");
-        atlas_node = unique_del_nptr<TextureAtlas::SpaceNode> {node.get(), std::move(free_node)};
+        atlas_node = unique_del_nptr<TextureAtlas::SpaceNode> {node.get(), std::move(free_node)}; // FO_USE_AFTER_MOVE_SUPPRESS: atlas is null only when the earlier move branch did not run
     }
 
     FO_VERIFY_AND_THROW(atlas, "Atlas placement is missing its atlas");
     FO_VERIFY_AND_THROW(atlas_node, "Atlas placement is missing its layout node");
 
-    const ipos32 pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
+    ipos32 pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
 
     return {atlas, take_not_null(atlas_node), pos};
 }
@@ -253,8 +253,8 @@ void TextureAtlasManager::DumpAtlases() const
         atlases_memory_size += _allAtlases[i]->GetSize().square() * 4;
     }
 
-    const auto time = nanotime::now().desc(true);
-    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    time_desc_t time = nanotime::now().desc(true);
+    string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
@@ -279,7 +279,7 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
+        string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
         auto tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
         WriteSimpleTga(fname, atlas->GetSize(), std::move(tex_data));
         count++;

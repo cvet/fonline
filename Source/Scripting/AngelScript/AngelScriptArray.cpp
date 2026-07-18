@@ -79,7 +79,7 @@ static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 
     ptr<AngelScript::asITypeInfo> type_info = ti;
     ptr<AngelScript::asIScriptEngine> engine = type_info->GetEngine();
-    const int32_t type_id = type_info->GetSubTypeId();
+    int32_t type_id = type_info->GetSubTypeId();
 
     if (type_id == AngelScript::asTYPEID_VOID) {
         return false;
@@ -88,7 +88,7 @@ static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
         nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
-        const auto flags = sub_type->GetFlags();
+        auto flags = sub_type->GetFlags();
 
         if ((flags & AngelScript::asOBJ_VALUE) != 0 && (flags & AngelScript::asOBJ_POD) == 0) {
             bool has_default_ctor = false;
@@ -128,7 +128,7 @@ static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
     else {
         nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
-        const auto flags = sub_type->GetFlags();
+        auto flags = sub_type->GetFlags();
 
         if ((flags & AngelScript::asOBJ_GC) == 0) {
             if ((flags & AngelScript::asOBJ_SCRIPT_OBJECT) != 0) {
@@ -253,7 +253,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
     // The init list buffer starts with an int32 length header; elements follow with 4/8-byte alignment
     auto init_bytes = init_list.reinterpret_as<AngelScript::asBYTE>();
-    const int32_t length = *init_list.reinterpret_as<const int32_t>();
+    int32_t length = *init_list.reinterpret_as<const int32_t>();
     CheckArraySize(length);
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
@@ -279,10 +279,10 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         nptr<AngelScript::asITypeInfo> sub_type = ti->GetSubType();
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-        const int32_t sub_size = sub_type->GetSize();
-        const size_t elem_align = sub_size >= 8 ? 8u : 4u;
-        const size_t header = elem_align; // The int32 length header padded to the element alignment
-        const size_t stride = sub_size >= 4 ? align_up(numeric_cast<size_t>(sub_size), elem_align) : numeric_cast<size_t>(sub_size);
+        int32_t sub_size = sub_type->GetSize();
+        size_t elem_align = sub_size >= 8 ? 8u : 4u;
+        size_t header = elem_align; // The int32 length header padded to the element alignment
+        size_t stride = sub_size >= 4 ? align_up(numeric_cast<size_t>(sub_size), elem_align) : numeric_cast<size_t>(sub_size);
 
         for (int32_t i = 0; i < length; i++) {
             auto obj = At(i);
@@ -415,8 +415,8 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
         // dst (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
         // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
-        const nptr<void> old_obj = MemReadUnaligned<void*>(dst);
-        const nptr<void> new_obj = MemReadUnaligned<void*>(value);
+        nptr<void> old_obj = MemReadUnaligned<void*>(dst);
+        nptr<void> new_obj = MemReadUnaligned<void*>(value);
         MemWriteUnaligned<void*>(dst, new_obj.get_no_const());
 
         if (new_obj) {
@@ -511,7 +511,7 @@ void ScriptArray::CheckArraySize(int32_t num_elements) const
     }
 
     FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
-    const int32_t max_size = 0x7FFFFFFF / _elementSize;
+    int32_t max_size = 0x7FFFFFFF / _elementSize;
 
     if (num_elements > max_size) {
         throw ScriptException("Array size is too large", num_elements, max_size);
@@ -569,7 +569,7 @@ void ScriptArray::InsertAt(int32_t index, const ScriptArray& other)
         throw ScriptException("Mismatching array types");
     }
 
-    const auto num_elements = other.GetSize();
+    int32_t num_elements = other.GetSize();
     Resize(num_elements, index);
 
     if (&other != this) {
@@ -664,8 +664,8 @@ void ScriptArray::Construct(int32_t start, int32_t end)
         _buffer.reserve(std::max(_buffer.capacity(), numeric_cast<size_t>(10 * _elementSize)));
     }
 
-    const auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
-    const auto count = numeric_cast<size_t>((end - start) * _elementSize);
+    auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
+    auto count = numeric_cast<size_t>((end - start) * _elementSize);
     _buffer.insert(it_start, count, {});
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
@@ -674,7 +674,7 @@ void ScriptArray::Construct(int32_t start, int32_t end)
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
         for (int32_t index = start; index < end; index++) {
-            const nptr<void> new_obj = engine->CreateScriptObject(sub_type.get());
+            nptr<void> new_obj = engine->CreateScriptObject(sub_type.get());
             NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
             if (!new_obj) {
@@ -694,7 +694,7 @@ void ScriptArray::Destruct(int32_t start, int32_t end)
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
         for (int32_t index = start; index < end; index++) {
-            const auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+            auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
 
             if (obj) {
                 engine->ReleaseScriptObject(obj.get_no_const(), sub_type.get());
@@ -702,8 +702,8 @@ void ScriptArray::Destruct(int32_t start, int32_t end)
         }
     }
 
-    const auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
-    const auto it_end = _buffer.begin() + numeric_cast<ptrdiff_t>(end * _elementSize);
+    auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
+    auto it_end = _buffer.begin() + numeric_cast<ptrdiff_t>(end * _elementSize);
     _buffer.erase(it_start, it_end);
 }
 
@@ -886,7 +886,7 @@ void ScriptArray::Reverse()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t size = GetSize();
+    int32_t size = GetSize();
 
     if (size >= 2) {
         AngelScript::asBYTE temp[16];
@@ -939,7 +939,7 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
     auto release_ctx = scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                const auto state = ctx->GetState();
+                auto state = ctx->GetState();
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -972,10 +972,10 @@ auto ScriptArray::FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto size = GetSize();
+    int32_t size = GetSize();
 
     if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-        const auto handle = NativeDataProvider::ReadHandleSlot(ref);
+        auto handle = NativeDataProvider::ReadHandleSlot(ref);
 
         for (int32_t i = start_at; i < size; i++) {
             if (NativeDataProvider::ReadHandleSlot(At(i)) == handle) {
@@ -1034,7 +1034,7 @@ auto ScriptArray::Find(int32_t start_at, ptr<void> value) const -> int32_t
     auto release_ctx = scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                const auto state = ctx->GetState();
+                auto state = ctx->GetState();
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -1045,7 +1045,7 @@ auto ScriptArray::Find(int32_t start_at, ptr<void> value) const -> int32_t
     });
 
     int32_t ret = -1;
-    const int32_t size = GetSize();
+    int32_t size = GetSize();
 
     for (int32_t i = start_at; i < size; i++) {
         if (Equals(At(i), value, ctx)) {
@@ -1169,8 +1169,8 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
         return;
     }
 
-    const int32_t start = start_at;
-    const int32_t end = start_at + count;
+    int32_t start = start_at;
+    int32_t end = start_at + count;
 
     if (start < 0 || end < 0 || start >= GetSize() || end > GetSize()) {
         throw ScriptException("Index out of bounds", start, end, GetSize());
@@ -1190,7 +1190,7 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
     auto release_ctx = scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                const auto state = ctx->GetState();
+                auto state = ctx->GetState();
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -1223,7 +1223,7 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    const auto count = std::min(GetSize(), src.GetSize());
+    int32_t count = std::min(GetSize(), src.GetSize());
 
     if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         if (count != 0) {
@@ -1231,8 +1231,8 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                const nptr<void> old_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
-                const nptr<void> new_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+                nptr<void> old_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+                nptr<void> new_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
                 NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
                 if (new_obj) {
@@ -1251,8 +1251,8 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                const nptr<void> dst_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
-                const nptr<void> src_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+                nptr<void> dst_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+                nptr<void> src_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
                 engine->AssignScriptObject(dst_obj.get_no_const(), src_obj.get_no_const(), sub_type.get());
             }
         }
@@ -1291,7 +1291,7 @@ void ScriptArray::PrecacheSubTypeData()
 
     auto sub_type_data = SafeAlloc::MakeUnique<ScriptArrayTypeData>();
 
-    const bool must_be_const = (_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0;
+    bool must_be_const = (_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(_subTypeId);
 
@@ -1301,7 +1301,7 @@ void ScriptArray::PrecacheSubTypeData()
 
             if (func && func->GetParamCount() == 1 && (!must_be_const || func->IsReadOnly())) {
                 AngelScript::asDWORD flags = 0;
-                const int32_t return_type_id = func->GetReturnTypeId(&flags);
+                int32_t return_type_id = func->GetReturnTypeId(&flags);
 
                 if (flags != AngelScript::asTM_NONE) {
                     continue;
@@ -1381,7 +1381,7 @@ void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         for (int32_t i = 0; i < GetSize(); i++) {
-            const nptr<void> obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
+            nptr<void> obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
 
             if (obj) {
                 engine->GCEnumCallback(obj.get_no_const());
@@ -1490,7 +1490,7 @@ static auto ScriptArray_Reduce(ScriptArray& arr, int32_t count) -> void
         return;
     }
 
-    const auto size = numeric_cast<int32_t>(arr.GetSize());
+    int32_t size = numeric_cast<int32_t>(arr.GetSize());
 
     if (count > size) {
         throw ScriptException("Array size is less than reduce count", count, size);
@@ -1547,7 +1547,7 @@ static auto ScriptArray_Remove(ScriptArray& arr, void* value) -> bool
 
     nptr<void> value_arg = value;
     auto value_ptr = RequireScriptArrayValue(value_arg);
-    const int32_t index = arr.Find(0, value_ptr);
+    int32_t index = arr.Find(0, value_ptr);
 
     if (index != -1) {
         arr.RemoveAt(index);
@@ -1623,7 +1623,7 @@ static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray*
 
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1666,7 +1666,7 @@ static void ScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1683,7 +1683,7 @@ static void ScriptArray_InsertArrAt(ScriptArray& arr, int32_t index, const Scrip
         return;
     }
 
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1696,7 +1696,7 @@ static void ScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* othe
 {
     FO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1709,7 +1709,7 @@ static void ScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other
 {
     FO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1722,7 +1722,7 @@ static auto ScriptArray_Equals(ScriptArray& arr, const ScriptArray* other) -> bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr = other;
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");

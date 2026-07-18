@@ -37,7 +37,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto dir = strex("{}/{}", _storageDir, collection_name).str();
+        string dir = strex("{}/{}", _storageDir, collection_name).str();
 
         if (!fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't ensure collection directory", dir);
@@ -50,12 +50,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type = GetCollectionKeyType(collection_name);
         vector<DataBaseKey> ids;
 
         std::error_code ec;
-        const auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
-        const auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
+        auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
+        auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
 
         if (!ec) {
             for (const auto& dir_entry : dir_iterator) {
@@ -63,21 +63,21 @@ protected:
                     continue;
                 }
 
-                const auto path_str = dir_entry.path().filename().u8string();
-                const auto path = string(path_str.begin(), path_str.end());
+                auto path_str = dir_entry.path().filename().u8string();
+                string path = string(path_str.begin(), path_str.end());
 
                 if (strex(path).get_file_extension() != "json") {
                     continue;
                 }
 
-                const auto key_str = strvex(path).extract_file_name().erase_file_extension().str();
+                string key_str = strvex(path).extract_file_name().erase_file_extension().str();
 
                 if (key_type == DataBaseKeyType::IntId) {
                     if (!strvex(key_str).is_number()) {
                         throw DataBaseException("DbJson invalid numeric key format", key_str);
                     }
 
-                    const auto id_value = strvex(key_str).to_int64();
+                    int64_t id_value = strvex(key_str).to_int64();
 
                     if (id_value <= 0) {
                         throw DataBaseException("DbJson invalid numeric key value", key_str);
@@ -101,9 +101,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        const auto json = fs_read_file(path);
+        auto json = fs_read_file(path);
 
         if (!json) {
             return {};
@@ -131,7 +131,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         if (fs_exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
@@ -151,16 +151,16 @@ protected:
         auto json = make_unique_del_ptr(json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(json.get());
-        const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        auto pretty_json = nlohmann::json::parse(json.get());
+        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
 
-        const auto dir = strex(path).extract_dir().str();
+        string dir = strex(path).extract_dir().str();
 
         if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
         }
 
-        const string tmp_path = strex("{}.tmp", path).str();
+        string tmp_path = strex("{}.tmp", path).str();
 
         if (!fs_write_file(tmp_path, pretty_json_dump)) {
             fs_remove_file(tmp_path);
@@ -181,9 +181,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        const auto json = fs_read_file(path);
+        auto json = fs_read_file(path);
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
@@ -208,16 +208,16 @@ protected:
         auto new_json = make_unique_del_ptr(new_json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(new_json.get());
-        const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        auto pretty_json = nlohmann::json::parse(new_json.get());
+        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
 
-        const auto dir = strex(path).extract_dir().str();
+        string dir = strex(path).extract_dir().str();
 
         if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
         }
 
-        const string tmp_path = strex("{}.tmp", path).str();
+        string tmp_path = strex("{}.tmp", path).str();
 
         if (!fs_write_file(tmp_path, pretty_json_dump)) {
             fs_remove_file(tmp_path);
@@ -236,7 +236,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         if (!fs_remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);

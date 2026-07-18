@@ -59,10 +59,10 @@ TEST_CASE("DataSerialization")
         size_t write_pos = 1;
         span_write_object<uint16_t>(writable, write_pos, static_cast<uint16_t>(0xABCD));
 
-        const array<uint8_t, 3> raw = {1, 2, 3};
+        array<uint8_t, 3> raw = {1, 2, 3};
         span_write_bytes(writable, write_pos, {raw.data(), raw.size()});
 
-        const size_t zero_size_pos = write_pos;
+        size_t zero_size_pos = write_pos;
         span_write_bytes(writable, write_pos, const_span<uint8_t> {});
         CHECK(write_pos == zero_size_pos);
 
@@ -75,7 +75,7 @@ TEST_CASE("DataSerialization")
         CHECK(raw_read[1] == raw[1]);
         CHECK(raw_read[2] == raw[2]);
 
-        const size_t after_raw_pos = read_pos;
+        size_t after_raw_pos = read_pos;
         CHECK(span_read_bytes(const_span<uint8_t> {buf}, read_pos, 0).empty());
         CHECK(read_pos == after_raw_pos);
 
@@ -101,12 +101,12 @@ TEST_CASE("DataSerialization")
         span_write_aligned_object<uint32_t>(aligned_writable, aligned_write_pos, 0x11223344u);
         CHECK(aligned_write_pos == 8);
 
-        const array<uint8_t, 3> aligned_raw = {4, 5, 6};
+        array<uint8_t, 3> aligned_raw = {4, 5, 6};
         aligned_write_pos = 5;
         span_write_aligned_bytes(aligned_writable, aligned_write_pos, {aligned_raw.data(), aligned_raw.size()}, 8);
         CHECK(aligned_write_pos == 11);
 
-        const size_t zero_aligned_write_pos = aligned_write_pos;
+        size_t zero_aligned_write_pos = aligned_write_pos;
         span_write_aligned_bytes(aligned_writable, aligned_write_pos, const_span<uint8_t> {}, 8);
         CHECK(aligned_write_pos == zero_aligned_write_pos);
 
@@ -121,7 +121,7 @@ TEST_CASE("DataSerialization")
         CHECK(aligned_raw_read[1] == aligned_raw[1]);
         CHECK(aligned_raw_read[2] == aligned_raw[2]);
 
-        const size_t zero_aligned_read_pos = aligned_read_pos;
+        size_t zero_aligned_read_pos = aligned_read_pos;
         CHECK(span_read_aligned_bytes(const_span<uint8_t> {aligned_buf}, aligned_read_pos, 0, 8).empty());
         CHECK(aligned_read_pos == zero_aligned_read_pos);
     }
@@ -134,14 +134,14 @@ TEST_CASE("DataSerialization")
         writer.Write<uint32_t>(0xAABBCCDDu);
         writer.Write<int16_t>(static_cast<int16_t>(-1234));
 
-        const array<uint8_t, 3> raw = {1, 2, 3};
+        array<uint8_t, 3> raw = {1, 2, 3};
         writer.WriteBytes({raw.data(), raw.size()});
 
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 0xAABBCCDDu);
         CHECK(reader.Read<int16_t>() == static_cast<int16_t>(-1234));
 
-        const auto raw_read = reader.ReadPtr<uint8_t>(raw.size());
+        auto raw_read = reader.ReadPtr<uint8_t>(raw.size());
         CHECK(static_cast<bool>(raw_read));
         CHECK(raw_read[0] == 1);
         CHECK(raw_read[1] == 2);
@@ -224,7 +224,7 @@ TEST_CASE("DataSerialization")
         vector<uint8_t> buf;
         DataWriter writer {buf};
 
-        const array<uint8_t, 4> source = {9, 8, 7, 6};
+        array<uint8_t, 4> source = {9, 8, 7, 6};
         writer.WriteBytes({source.data(), source.size()});
 
         DataReader reader {span {buf}};
@@ -309,8 +309,8 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint32_t>(0x11223344u);
 
-        const size_t initial_size = buf.size();
-        const array<uint8_t, 3> source = {5, 6, 7};
+        size_t initial_size = buf.size();
+        array<uint8_t, 3> source = {5, 6, 7};
 
         writer.WritePtr(source.data(), 0);
 
@@ -338,7 +338,7 @@ TEST_CASE("DataSerialization")
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == static_cast<uint8_t>(0x11));
 
-        const auto raw = reader.ReadPtr<uint8_t>(source.size());
+        auto raw = reader.ReadPtr<uint8_t>(source.size());
         REQUIRE(static_cast<bool>(raw));
         CHECK(raw[0] == 1);
         CHECK(raw[source.size() - 1] == 2);

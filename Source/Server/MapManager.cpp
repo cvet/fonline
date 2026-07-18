@@ -55,11 +55,11 @@ void MapManager::LoadFromResources()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
+    auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
     std::vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     for (const auto& map_file_header : map_files) {
-        const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
+        hstring map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
         auto map_proto = _engine->GetProtoMap(map_pid);
 
         if (!map_proto) {
@@ -72,20 +72,20 @@ void MapManager::LoadFromResources()
             auto map_file = File::Load(map_file_header_copy);
             auto reader = DataReader(map_file.GetDataSpan());
 
-            const auto map_size = map_proto->GetSize();
+            auto map_size = map_proto->GetSize();
             auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
 
             // Read hashes
             {
-                const auto hashes_count = reader.Read<uint32_t>();
+                auto hashes_count = reader.Read<uint32_t>();
 
                 string str;
 
                 for (uint32_t i = 0; i < hashes_count; i++) {
-                    const auto str_len = reader.Read<uint32_t>();
+                    auto str_len = reader.Read<uint32_t>();
                     str.resize(str_len);
                     reader.ReadStringBytes(str);
-                    const auto hstr = _engine->Hashes.ToHashedString(str);
+                    hstring hstr = _engine->Hashes.ToHashedString(str);
                     ignore_unused(hstr);
                 }
             }
@@ -96,17 +96,17 @@ void MapManager::LoadFromResources()
 
                 // Read critters
                 {
-                    const auto cr_count = reader.Read<uint32_t>();
+                    auto cr_count = reader.Read<uint32_t>();
 
                     static_map->CritterBillets.reserve(cr_count);
 
-                    for (const auto i : iterate_range(cr_count)) {
+                    for (auto i : iterate_range(cr_count)) {
                         ignore_unused(i);
 
-                        const auto cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
+                        ident_t cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
-                        const auto cr_pid_hash = reader.Read<hstring::hash_t>();
-                        const auto cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
+                        auto cr_pid_hash = reader.Read<hstring::hash_t>();
+                        hstring cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
                         auto cr_proto = _engine->GetProtoCritter(cr_pid);
 
                         if (!cr_proto) {
@@ -114,7 +114,7 @@ void MapManager::LoadFromResources()
                         }
 
                         auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
-                        const auto props_data_size = reader.Read<uint32_t>();
+                        auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
@@ -127,7 +127,7 @@ void MapManager::LoadFromResources()
                         static_map->CritterBillets.emplace_back(cr_id, cr);
 
                         // Checks
-                        if (const auto hex = cr->GetHex(); !map_size.is_valid_pos(hex)) {
+                        if (auto hex = cr->GetHex(); !map_size.is_valid_pos(hex)) {
                             throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetName(), hex);
                         }
                     }
@@ -135,7 +135,7 @@ void MapManager::LoadFromResources()
 
                 // Read items
                 {
-                    const auto item_count = reader.Read<uint32_t>();
+                    auto item_count = reader.Read<uint32_t>();
 
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
@@ -143,13 +143,13 @@ void MapManager::LoadFromResources()
                     static_map->StaticItems.reserve(item_count);
                     static_map->StaticItemsById.reserve(item_count);
 
-                    for (const auto i : iterate_range(item_count)) {
+                    for (auto i : iterate_range(item_count)) {
                         ignore_unused(i);
 
-                        const auto item_id = ident_t {reader.Read<ident_t::underlying_type>()};
+                        ident_t item_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
-                        const auto item_pid_hash = reader.Read<hstring::hash_t>();
-                        const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
+                        auto item_pid_hash = reader.Read<hstring::hash_t>();
+                        hstring item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
                         auto item_proto = _engine->GetProtoItem(item_pid);
 
                         if (!item_proto) {
@@ -157,7 +157,7 @@ void MapManager::LoadFromResources()
                         }
 
                         auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
-                        const auto props_data_size = reader.Read<uint32_t>();
+                        auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
@@ -170,13 +170,13 @@ void MapManager::LoadFromResources()
 
                         // Checks
                         if (item->GetOwnership() == ItemOwnership::MapHex) {
-                            if (const auto hex = item->GetHex(); !map_size.is_valid_pos(hex)) {
+                            if (auto hex = item->GetHex(); !map_size.is_valid_pos(hex)) {
                                 throw MapManagerException("Invalid item position on map", map_proto->GetName(), item->GetName(), hex);
                             }
                         }
 
                         // Bind scripts
-                        if (const auto static_script = item->GetStaticScript()) {
+                        if (auto static_script = item->GetStaticScript()) {
                             item->StaticScriptFunc = _engine->FindFunc<bool, ptr<Critter>, ptr<StaticItem>, nptr<Item>, any_t>(static_script);
 
                             if (!item->StaticScriptFunc) {
@@ -187,7 +187,7 @@ void MapManager::LoadFromResources()
                             }
                         }
 
-                        if (const auto trigger_script = item->GetTriggerScript()) {
+                        if (auto trigger_script = item->GetTriggerScript()) {
                             item->TriggerScriptFunc = _engine->FindFunc<void, ptr<Critter>, ptr<StaticItem>, bool, mdir>(trigger_script);
 
                             if (!item->TriggerScriptFunc) {
@@ -204,7 +204,7 @@ void MapManager::LoadFromResources()
                             static_map->StaticItems.emplace_back(item);
                             static_map->StaticItemsById.emplace(item_id, item);
 
-                            const auto add_item_to_field = [item_ = ptr<StaticItem> {item}](ptr<StaticMap::Field> static_field) {
+                            auto add_item_to_field = [item_ = ptr<StaticItem> {item}](ptr<StaticMap::Field> static_field) {
                                 if (!vec_exists(static_field->StaticItems, item_)) {
                                     static_field->StaticItems.reserve(static_field->StaticItems.size() + 1);
                                     static_field->StaticItems.emplace_back(item_);
@@ -224,7 +224,7 @@ void MapManager::LoadFromResources()
                                 }
                             };
 
-                            const auto hex = item->GetHex();
+                            auto hex = item->GetHex();
                             auto static_field = static_map->HexField->GetCellForWriting(hex);
                             add_item_to_field(static_field);
 
@@ -235,7 +235,7 @@ void MapManager::LoadFromResources()
                                 });
                             }
                             if (item->IsNonEmptyMultihexMesh()) {
-                                for (const auto multihex : item->GetMultihexMesh()) {
+                                for (auto multihex : item->GetMultihexMesh()) {
                                     if (multihex != hex && map_size.is_valid_pos(multihex)) {
                                         auto multihex_field = static_map->HexField->GetCellForWriting(multihex);
                                         add_item_to_field(multihex_field);
@@ -259,14 +259,14 @@ void MapManager::LoadFromResources()
             reader.VerifyEnd();
 
             // Scroll blocks
-            const irect32 scroll_area = map_proto->GetScrollAxialArea();
-            const int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
+            irect32 scroll_area = map_proto->GetScrollAxialArea();
+            int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
-                for (const auto hx : iterate_range(map_size.width)) {
-                    for (const auto hy : iterate_range(map_size.height)) {
-                        const mpos hex = {hx, hy};
-                        const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+                for (auto hx : iterate_range(map_size.width)) {
+                    for (auto hy : iterate_range(map_size.height)) {
+                        mpos hex = {hx, hy};
+                        ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
                         // Is hex on scroll block line
                         if ((axial_hex.x >= scroll_area.x - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_block_size) || //
@@ -313,7 +313,7 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _staticMaps.find(proto);
+    auto it = _staticMaps.find(proto);
     FO_VERIFY_AND_THROW(it != _staticMaps.end(), "Lookup failed in static maps");
     return it->second;
 }
@@ -427,7 +427,7 @@ void MapManager::DestroyMapContent(ptr<Map> map)
         }
 
         // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
-        const size_t remaining_deps = map->GetCritters().size() + map->GetItems().size();
+        size_t remaining_deps = map->GetCritters().size() + map->GetItems().size();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map content destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -450,7 +450,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     {
         ScopedSyncContext create_scope;
 
-        for (const auto map_pid : map_pids) {
+        for (auto map_pid : map_pids) {
             auto map_proto = _engine->GetProtoMap(map_pid);
 
             if (!map_proto) {
@@ -627,7 +627,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
         }
 
         // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption.
-        const size_t remaining_deps = loc->GetInnerEntitiesCount();
+        size_t remaining_deps = loc->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Location inner-entity destruction made no progress", loc->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -697,7 +697,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
         }
 
         // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
-        const size_t remaining_deps = map->GetCritters().size() + map->GetItems().size() + map->GetInnerEntitiesCount();
+        size_t remaining_deps = map->GetCritters().size() + map->GetItems().size() + map->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -725,12 +725,12 @@ auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, 
     output.IsCritterFound = false;
     output.HasLastMovable = false;
 
-    const auto map_size = map->GetSize();
-    const auto dist = max_dist != 0 ? max_dist : GeometryHelper::GetDistance(start_hex, target_hex);
+    auto map_size = map->GetSize();
+    int32_t dist = max_dist != 0 ? max_dist : GeometryHelper::GetDistance(start_hex, target_hex);
 
     auto tracer = LineTracer(start_hex, target_hex, angle, map_size);
-    auto next_hex = start_hex;
-    auto prev_hex = next_hex;
+    mpos next_hex = start_hex;
+    mpos prev_hex = next_hex;
     bool last_passed_ok = false;
 
     for (int32_t i = 0;; i++) {
@@ -758,7 +758,7 @@ auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, 
         }
 
         if (collect_critters && map->IsCritterOnHex(next_hex, CritterFindType::Any)) {
-            const auto critters = map->GetCrittersOnHex(next_hex, find_type);
+            auto critters = map->GetCrittersOnHex(next_hex, find_type);
 
             for (ptr<const Critter> cr : critters) {
                 if (std::ranges::find(output.Critters, cr) == output.Critters.end()) {
@@ -791,7 +791,7 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
     if (cut == 0) {
-        const bool target_movable = multihex > 0 ? map->IsHexesMovable(to_hex, multihex) : map->IsHexMovable(to_hex);
+        bool target_movable = multihex > 0 ? map->IsHexesMovable(to_hex, multihex) : map->IsHexMovable(to_hex);
 
         if (!target_movable && !map->CheckGagItem(to_hex, gag_callback)) {
             FindPathOutput output;
@@ -841,11 +841,11 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
 
     ValidateEntityAccess(map);
 
-    const auto map_size = map->GetSize();
+    auto map_size = map->GetSize();
     unordered_set<mpos> target_hex_set;
     target_hex_set.reserve(target_hexes.size());
 
-    for (const mpos target_hex : target_hexes) {
+    for (mpos target_hex : target_hexes) {
         if (map_size.is_valid_pos(target_hex)) {
             target_hex_set.emplace(target_hex);
         }
@@ -916,7 +916,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-    const auto prev_map_id = cr->GetMapId();
+    auto prev_map_id = cr->GetMapId();
     auto prev_map_ref = prev_map_id ? cr->GetParent<Map>() : refcount_nptr<Map> {};
     FO_VERIFY_AND_THROW(!prev_map_id || prev_map_ref, "Previous map id is set but previous map was not found");
     ValidateEntityAccess(prev_map_ref);
@@ -936,7 +936,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     vector<ptr<Critter>> attached_critters;
 
     if (cr->HasAttachedCritters()) {
-        const auto attached_span = cr->GetAttachedCritters();
+        auto attached_span = cr->GetAttachedCritters();
         attached_critters.assign(attached_span.begin(), attached_span.end());
 
         for (auto& attached_cr : attached_critters) {
@@ -949,7 +949,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         if (map != nullptr) {
             FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter intra-map transfer target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
-            const auto multihex = cr->GetMultihex();
+            int32_t multihex = cr->GetMultihex();
 
             mpos start_hex = hex;
 
@@ -985,7 +985,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         mpos start_hex = hex;
 
         if (map) {
-            const auto multihex = cr->GetMultihex();
+            int32_t multihex = cr->GetMultihex();
 
             if (safe_radius.has_value()) {
                 auto safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), true);
@@ -1195,10 +1195,10 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
         else {
             // Tight lambda so the property lock is released (even on a throw) exactly when the
             // trip-id read/advance finishes, without widening the locked region over the work below.
-            const auto trip_id = [this]() {
+            auto trip_id = [this]() {
                 _engine->LockForPropertyAccess();
                 auto unlock_prop = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
-                const auto next_trip_id = _engine->GetLastGlobalMapTripId() + 1;
+                auto next_trip_id = _engine->GetLastGlobalMapTripId() + 1;
                 _engine->SetLastGlobalMapTripId(next_trip_id);
                 return next_trip_id;
             }();
@@ -1353,7 +1353,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
     ignore_unused(cr_holder);
     ignore_unused(target_holder);
 
-    const auto is_look_context_changed = [&map, &cr, &target]() noexcept -> bool {
+    auto is_look_context_changed = [&map, &cr, &target]() noexcept -> bool {
         if (map->IsDestroying() || map->IsDestroyed() || cr->IsDestroying() || cr->IsDestroyed() || target->IsDestroying() || target->IsDestroyed()) {
             return true;
         }
@@ -1383,7 +1383,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
         for (auto& attached_cr : target->GetAttachedCritters()) {
             FO_VERIFY_AND_THROW(attached_cr->GetMapId() == map->GetId(), "Attached critter is on a different map than its visibility target", target->GetId(), attached_cr->GetId(), attached_cr->GetMapId(), map->GetId());
 
-            const auto attached_mode = IsCritterSeeCritter(map, cr, attached_cr);
+            auto attached_mode = IsCritterSeeCritter(map, cr, attached_cr);
 
             if (attached_mode != CritterVisibilityMode::None) {
                 vis_mode = attached_mode;
@@ -1392,7 +1392,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
         }
     }
 
-    const bool is_see = vis_mode != CritterVisibilityMode::None;
+    bool is_see = vis_mode != CritterVisibilityMode::None;
 
     if (is_see) {
         if (target->AddVisibleCritter(cr, vis_mode)) {
@@ -1406,7 +1406,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             }
         }
         else {
-            const auto prev_mode = cr->GetVisibleCritterMode(target->GetId());
+            auto prev_mode = cr->GetVisibleCritterMode(target->GetId());
 
             if (prev_mode != vis_mode) {
                 cr->SetVisibleCritterMode(target->GetId(), vis_mode);
@@ -1434,10 +1434,10 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
         }
     }
 
-    const int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
-    const int32_t show_cr_dist1 = cr->GetShowCritterDist1();
-    const int32_t show_cr_dist2 = cr->GetShowCritterDist2();
-    const int32_t show_cr_dist3 = cr->GetShowCritterDist3();
+    int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
+    int32_t show_cr_dist1 = cr->GetShowCritterDist1();
+    int32_t show_cr_dist2 = cr->GetShowCritterDist2();
+    int32_t show_cr_dist3 = cr->GetShowCritterDist3();
 
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {

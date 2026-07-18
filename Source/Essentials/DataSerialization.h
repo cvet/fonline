@@ -281,7 +281,7 @@ public:
     // Reads a self-describing string written with WriteString (uint32 length prefix + bytes).
     auto ReadString() -> string
     {
-        const auto len = Read<uint32_t>();
+        auto len = Read<uint32_t>();
         string value;
         value.resize(len);
         ReadStringBytes(value);
@@ -291,7 +291,7 @@ public:
     // Reads a self-describing vector of strings written with WriteStringVector (uint32 count + each element via ReadString).
     auto ReadStringVector() -> vector<string>
     {
-        const auto count = Read<uint32_t>();
+        auto count = Read<uint32_t>();
         vector<string> values;
         values.reserve(count);
 
@@ -322,7 +322,7 @@ public:
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
-        const auto count = Read<uint32_t>();
+        auto count = Read<uint32_t>();
         vector<T> values;
         values.resize(count);
         ReadObjectArray(span<T> {values});
@@ -593,7 +593,7 @@ private:
     {
         FO_VERIFY_AND_THROW(size != 0, "Append size is zero");
 
-        const size_t offset = _dataBuf->size();
+        size_t offset = _dataBuf->size();
         GrowBuf(size);
 
         ptr<uint8_t> data = _dataBuf->data();

@@ -72,14 +72,14 @@ static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseType
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Property raw data size does not match base type", prop_name, base_type.Name, raw_data.size(), base_type.Size);
 
     if (base_type.IsSingleFloat) {
-        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
-        const float32_t value = *raw_data_ptr.reinterpret_as<float32_t>();
+        ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        float32_t value = *raw_data_ptr.reinterpret_as<float32_t>();
 
         FO_VERIFY_AND_THROW(std::isfinite(value), "Property float32 value must be finite", prop_name, value);
     }
     else if (base_type.IsDoubleFloat) {
-        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
-        const float64_t value = *raw_data_ptr.reinterpret_as<float64_t>();
+        ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        float64_t value = *raw_data_ptr.reinterpret_as<float64_t>();
 
         FO_VERIFY_AND_THROW(std::isfinite(value), "Property float64 value must be finite", prop_name, value);
     }
@@ -248,7 +248,7 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) const noexcept -> np
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_overlayEntryIndex.empty()) {
-        const uint16_t reg_index = prop->GetRegIndex();
+        uint16_t reg_index = prop->GetRegIndex();
 
         for (const OverlayEntry& entry : _overlayEntries) {
             if (entry.PropRegIndex == reg_index) {
@@ -259,8 +259,8 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) const noexcept -> np
         return nullptr;
     }
 
-    const uint16_t reg_index = prop->GetRegIndex();
-    const int32_t entries_index = _overlayEntryIndex[reg_index];
+    uint16_t reg_index = prop->GetRegIndex();
+    int32_t entries_index = _overlayEntryIndex[reg_index];
     return entries_index >= 0 ? &_overlayEntries[numeric_cast<size_t>(entries_index)] : nullptr;
 }
 
@@ -269,7 +269,7 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) noexcept -> nptr<Ove
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_overlayEntryIndex.empty()) {
-        const uint16_t reg_index = prop->GetRegIndex();
+        uint16_t reg_index = prop->GetRegIndex();
 
         for (OverlayEntry& entry : _overlayEntries) {
             if (entry.PropRegIndex == reg_index) {
@@ -280,8 +280,8 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) noexcept -> nptr<Ove
         return nullptr;
     }
 
-    const uint16_t reg_index = prop->GetRegIndex();
-    const int32_t entries_index = _overlayEntryIndex[reg_index];
+    uint16_t reg_index = prop->GetRegIndex();
+    int32_t entries_index = _overlayEntryIndex[reg_index];
     return entries_index >= 0 ? &_overlayEntries[numeric_cast<size_t>(entries_index)] : nullptr;
 }
 
@@ -295,7 +295,7 @@ auto Properties::IsOverlayPropertyIncluded(ptr<const Property> prop, bool with_p
 
     if (prop->IsPlainData()) {
         FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain synced property has no pod data offset", prop->GetName());
-        const auto limit = _registrator->_publicPodDataSpace.size() + (with_protected ? _registrator->_protectedPodDataSpace.size() : 0);
+        auto limit = _registrator->_publicPodDataSpace.size() + (with_protected ? _registrator->_protectedPodDataSpace.size() : 0);
         return *prop->_podDataOffset + prop->GetBaseSize() <= limit;
     }
 
@@ -313,7 +313,7 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
 
     FO_STRONG_ASSERT(data_alignment != 0 && (data_alignment & (data_alignment - 1)) == 0, "Overlay data alignment is not a power of two", _registrator->GetTypeName(), data_alignment);
 
-    const auto align_offset = [data_alignment](size_t offset) noexcept -> size_t { return align_up(offset, data_alignment); };
+    auto align_offset = [data_alignment](size_t offset) noexcept -> size_t { return align_up(offset, data_alignment); };
 
     // Best-fit search over freed holes and alignment paddings between existing entries;
     // garbage size counts exactly the bytes not owned by any entry within the used range,
@@ -334,11 +334,11 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
         size_t best_leftover = std::numeric_limits<size_t>::max();
         size_t gap_begin = 0;
 
-        const auto consider_gap = [&](size_t gap_end) noexcept {
-            const size_t aligned_offset = align_offset(gap_begin);
+        auto consider_gap = [&](size_t gap_end) noexcept {
+            size_t aligned_offset = align_offset(gap_begin);
 
             if (aligned_offset + data_size <= gap_end) {
-                const size_t leftover = gap_end - gap_begin - data_size;
+                size_t leftover = gap_end - gap_begin - data_size;
 
                 if (leftover < best_leftover) {
                     best_offset = aligned_offset;
@@ -366,7 +366,7 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
     }
 
     // No suitable hole, extend the overlay tail
-    const size_t needed_size = align_offset(_overlayDataSize) + data_size;
+    size_t needed_size = align_offset(_overlayDataSize) + data_size;
 
     if (needed_size > _overlayDataCapacity) {
         size_t new_capacity = _overlayDataCapacity != 0 ? _overlayDataCapacity : OVERLAY_START_CAPACITY;
@@ -378,7 +378,7 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
         RepackOverlayData(new_capacity);
     }
 
-    const size_t aligned_offset = align_offset(_overlayDataSize);
+    size_t aligned_offset = align_offset(_overlayDataSize);
     FO_STRONG_ASSERT(aligned_offset + data_size <= _overlayDataCapacity, "Overlay data allocation exceeds capacity", _registrator->GetTypeName(), aligned_offset, data_size, _overlayDataCapacity);
 
     _overlayGarbageSize += aligned_offset - _overlayDataSize;
@@ -397,8 +397,8 @@ auto Properties::MakeOverlayPackOrder() const noexcept -> vector<size_t>
     std::iota(pack_order.begin(), pack_order.end(), size_t {0});
 
     std::ranges::stable_sort(pack_order, [this](size_t left, size_t right) noexcept -> bool {
-        const size_t left_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[left].PropRegIndex)->GetDataAlignment();
-        const size_t right_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[right].PropRegIndex)->GetDataAlignment();
+        size_t left_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[left].PropRegIndex)->GetDataAlignment();
+        size_t right_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[right].PropRegIndex)->GetDataAlignment();
         return left_alignment > right_alignment;
     });
 
@@ -409,12 +409,12 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<size_t> pack_order = MakeOverlayPackOrder();
+    vector<size_t> pack_order = MakeOverlayPackOrder();
 
     size_t used_size = 0;
     size_t packed_size = 0;
 
-    for (const size_t entry_index : pack_order) {
+    for (size_t entry_index : pack_order) {
         const auto& entry = _overlayEntries[entry_index];
 
         if (entry.DataSize != 0) {
@@ -433,7 +433,7 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
     unique_arr_ptr<uint8_t> new_data = new_capacity != 0 ? SafeAlloc::MakeUniqueArr<uint8_t>(new_capacity) : nullptr;
     size_t new_size = 0;
 
-    for (const size_t entry_index : pack_order) {
+    for (size_t entry_index : pack_order) {
         auto& entry = _overlayEntries[entry_index];
 
         if (entry.DataSize != 0) {
@@ -478,8 +478,8 @@ void Properties::RemoveOverlayEntry(ptr<const Property> prop) noexcept
     if (entry) {
         _overlayGarbageSize += entry->DataSize;
 
-        const auto index = numeric_cast<size_t>(entry.get() - _overlayEntries.data());
-        const auto removed_reg_index = _overlayEntries[index].PropRegIndex;
+        auto index = numeric_cast<size_t>(entry.get() - _overlayEntries.data());
+        uint16_t removed_reg_index = _overlayEntries[index].PropRegIndex;
         _overlayEntries.erase(_overlayEntries.begin() + numeric_cast<ptrdiff_t>(index));
 
         if (!_overlayEntryIndex.empty()) {
@@ -629,7 +629,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
         for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
             if (other._complexData[i].first) {
-                const size_t complex_data_size = other._complexData[i].second;
+                size_t complex_data_size = other._complexData[i].second;
                 _complexData[i].first = SafeAlloc::MakeUniqueArr<uint8_t>(complex_data_size);
                 _complexData[i].second = complex_data_size;
 
@@ -662,7 +662,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
     ResetOverlayData();
 
-    const auto get_full_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop) noexcept -> span<const uint8_t> {
+    auto get_full_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop) noexcept -> span<const uint8_t> {
         if (data_prop.IsPlain) {
             if (data_prop.DataSize == 0) {
                 return {};
@@ -692,7 +692,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
     for (const auto& data_prop : _registrator->_dataProperties) {
         auto prop = data_prop.Prop;
         FO_STRONG_ASSERT(prop, "Data property entry is null");
-        const auto other_raw_data = get_full_raw_data(other, data_prop);
+        auto other_raw_data = get_full_raw_data(other, data_prop);
 
         if (!RawDataEqual(_baseProps->GetRawData(prop), other_raw_data)) {
             _overlayEntries.emplace_back(OverlayEntry {.PropRegIndex = prop->GetRegIndex(), .DataOffset = 0, .DataSize = numeric_cast<uint32_t>(other_raw_data.size())});
@@ -702,15 +702,15 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
     }
 
     if (!_overlayEntries.empty()) {
-        const vector<size_t> pack_order = MakeOverlayPackOrder();
+        vector<size_t> pack_order = MakeOverlayPackOrder();
 
         size_t packed_size = 0;
 
-        for (const size_t entry_index : pack_order) {
+        for (size_t entry_index : pack_order) {
             const auto& entry = _overlayEntries[entry_index];
 
             if (entry.DataSize != 0) {
-                const auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
+                auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
                 packed_size = align_up(packed_size, prop->GetDataAlignment());
                 packed_size += entry.DataSize;
             }
@@ -726,7 +726,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
         size_t data_offset = 0;
 
-        for (const size_t entry_index : pack_order) {
+        for (size_t entry_index : pack_order) {
             auto& entry = _overlayEntries[entry_index];
 
             if (entry.DataSize != 0) {
@@ -821,7 +821,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
         }
     }
     else {
-        const auto get_pod_data = [this]() noexcept -> const_span<uint8_t> {
+        auto get_pod_data = [this]() noexcept -> const_span<uint8_t> {
             nptr<const uint8_t> pod_data = _podData.get();
             FO_STRONG_ASSERT(pod_data, "POD data buffer is null");
             return {pod_data.get(), _registrator->_wholePodDataSize};
@@ -840,7 +840,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
             }
             else {
                 if (start_pos != -1) {
-                    const size_t len = i - start_pos;
+                    size_t len = i - start_pos;
                     writer.Write<uint32_t>(numeric_cast<uint32_t>(start_pos));
                     writer.Write<uint32_t>(numeric_cast<uint32_t>(len));
                     const_span<uint8_t> pod_data = get_pod_data();
@@ -852,7 +852,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
         }
 
         if (start_pos != -1) {
-            const size_t len = _registrator->_wholePodDataSize - start_pos;
+            size_t len = _registrator->_wholePodDataSize - start_pos;
             writer.Write<uint32_t>(numeric_cast<uint32_t>(start_pos));
             writer.Write<uint32_t>(numeric_cast<uint32_t>(len));
             const_span<uint8_t> pod_data = get_pod_data();
@@ -873,15 +873,15 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
     }
 
     // Store hashes
-    const auto add_hash = [&str_hashes, this](string_view str) {
+    auto add_hash = [&str_hashes, this](string_view str) {
         if (!str.empty()) {
-            const auto hstr = _registrator->_hashResolver->ToHashedString(str);
+            hstring hstr = _registrator->_hashResolver->ToHashedString(str);
             str_hashes.emplace(hstr);
         }
     };
 
     for (const auto& prop : _registrator->_hashProperties) {
-        const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
+        auto value = PropertiesSerializator::SavePropertyToValue(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
 
         if (value.Type() == AnyData::ValueType::String) {
             add_hash(value.AsString());
@@ -928,22 +928,22 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader(all_data);
-    const auto whole_pod_data_size = reader.Read<uint32_t>();
+    auto whole_pod_data_size = reader.Read<uint32_t>();
     FO_VERIFY_AND_THROW(whole_pod_data_size == _registrator->_wholePodDataSize, "Serialized POD property block was baked for a different property layout", _registrator->GetTypeName(), whole_pod_data_size, _registrator->_wholePodDataSize);
-    const auto has_overlay_data = reader.Read<bool>();
+    bool has_overlay_data = reader.Read<bool>();
     FO_VERIFY_AND_THROW((_baseProps != nullptr) == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrator->GetTypeName(), has_overlay_data, _baseProps != nullptr);
 
     if (_baseProps) {
         ResetOverlayData();
 
-        const auto overlay_entries_count = reader.Read<uint32_t>();
+        auto overlay_entries_count = reader.Read<uint32_t>();
 
         for (uint32_t i = 0; i < overlay_entries_count; i++) {
-            const auto prop_index = reader.Read<uint16_t>();
+            auto prop_index = reader.Read<uint16_t>();
             FO_VERIFY_AND_THROW(prop_index > 0 && prop_index < _registrator->_registeredProperties.size(), "Serialized overlay property index is outside registrator bounds", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), overlay_entries_count);
             auto prop = _registrator->_registeredProperties[prop_index].as_nptr();
             FO_VERIFY_AND_THROW(prop, "Serialized overlay property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size());
-            const auto data_size = reader.Read<uint32_t>();
+            auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
             SetRawData(prop, data);
         }
@@ -953,8 +953,8 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
         ResetComplexData();
 
         while (true) {
-            const auto start_pos = reader.Read<uint32_t>();
-            const auto len = reader.Read<uint32_t>();
+            auto start_pos = reader.Read<uint32_t>();
+            auto len = reader.Read<uint32_t>();
 
             if (start_pos == 0 && len == 0) {
                 break;
@@ -965,12 +965,12 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
         }
 
         // Read complex properties
-        const auto complex_props_count = reader.Read<uint32_t>();
+        auto complex_props_count = reader.Read<uint32_t>();
         FO_VERIFY_AND_THROW(complex_props_count == _registrator->_complexProperties.size(), "Serialized complex property count does not match the registrator layout", _registrator->GetTypeName(), complex_props_count, _registrator->_complexProperties.size());
 
         for (const auto& prop : _registrator->_complexProperties) {
             FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Registered complex property has no complex-data slot while restoring data", _registrator->GetTypeName(), prop->GetName(), prop->GetRegIndex());
-            const auto data_size = reader.Read<uint32_t>();
+            auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
             SetRawData(prop, data);
         }
@@ -1012,7 +1012,7 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
                 continue;
             }
 
-            const auto raw_data = GetRawData(prop);
+            auto raw_data = GetRawData(prop);
 
             cache->PropertyIndices.push_back(entry.PropRegIndex);
             cache->Data.push_back(raw_data.data());
@@ -1020,7 +1020,7 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
         }
 
         if (!cache->PropertyIndices.empty()) {
-            const auto property_indices = make_ptr(cache->PropertyIndices.data());
+            auto property_indices = make_ptr(cache->PropertyIndices.data());
             cache->Data.insert(cache->Data.begin() + 1, property_indices.reinterpret_as<uint8_t>().get());
             cache->Sizes.insert(cache->Sizes.begin() + 1, numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
         }
@@ -1028,7 +1028,7 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
     else {
         cache->PropertyIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
 
-        const auto preserve_size = 2u + (!cache->PropertyIndices.empty() ? 1u + cache->PropertyIndices.size() : 0);
+        auto preserve_size = 2u + (!cache->PropertyIndices.empty() ? 1u + cache->PropertyIndices.size() : 0);
         cache->Data.reserve(preserve_size);
         cache->Sizes.reserve(preserve_size);
 
@@ -1051,11 +1051,11 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
 
         // Store complex properties data
         if (!cache->PropertyIndices.empty()) {
-            const auto property_indices = make_ptr(cache->PropertyIndices.data());
+            auto property_indices = make_ptr(cache->PropertyIndices.data());
             cache->Data.push_back(property_indices.reinterpret_as<uint8_t>().get());
             cache->Sizes.push_back(numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
 
-            for (const auto index : cache->PropertyIndices) {
+            for (auto index : cache->PropertyIndices) {
                 auto prop = _registrator->GetPropertyByIndexUnsafe(index);
                 cache->Data.push_back(_complexData[*prop->_complexDataIndex].first.get());
                 cache->Sizes.push_back(numeric_cast<uint32_t>(_complexData[*prop->_complexDataIndex].second));
@@ -1073,7 +1073,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
     FO_VERIFY_AND_THROW(all_data.size() == all_data_sizes.size(), "Serialized property payload pointer list and size list have different lengths", _registrator->GetTypeName(), all_data.size(), all_data_sizes.size());
 
-    const auto read_raw_data_span = [](nptr<const uint8_t> data, size_t size) noexcept -> span<const uint8_t> {
+    auto read_raw_data_span = [](nptr<const uint8_t> data, size_t size) noexcept -> span<const uint8_t> {
         if (size == 0) {
             return {};
         }
@@ -1082,12 +1082,12 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
         return {data.get(), size};
     };
 
-    const auto apply_separate_props_data = [this, &read_raw_data_span](const vector<nptr<const uint8_t>>& separate_data, const vector<uint32_t>& separate_sizes) {
+    auto apply_separate_props_data = [this, &read_raw_data_span](const vector<nptr<const uint8_t>>& separate_data, const vector<uint32_t>& separate_sizes) {
         if (separate_data.empty()) {
             return;
         }
 
-        const uint32_t property_data_count = separate_sizes[0] / sizeof(uint16_t);
+        uint32_t property_data_count = separate_sizes[0] / sizeof(uint16_t);
         FO_VERIFY_AND_THROW(separate_sizes[0] == property_data_count * sizeof(uint16_t), "Serialized property index table size is not aligned to uint16 entries", _registrator->GetTypeName(), separate_sizes[0], sizeof(uint16_t));
         FO_VERIFY_AND_THROW(separate_data.size() == 1 + property_data_count, "Serialized separate property payload count does not match index table count", _registrator->GetTypeName(), separate_data.size(), property_data_count);
         FO_VERIFY_AND_THROW(separate_data[0], "Property index table payload is null");
@@ -1102,18 +1102,18 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             FO_VERIFY_AND_THROW(prop_index < _registrator->_registeredProperties.size(), "Serialized separate property index is outside the registrator property table", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), i, property_data_count);
             auto prop = _registrator->_registeredProperties[prop_index].as_nptr();
             FO_VERIFY_AND_THROW(prop, "Serialized separate property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, i, property_data_count);
-            const auto data_size = separate_sizes[1 + i];
-            const auto data = separate_data[1 + i];
+            auto data_size = separate_sizes[1 + i];
+            auto data = separate_data[1 + i];
             SetRawData(prop, read_raw_data_span(data, data_size));
         }
     };
 
-    const auto apply_full_data = [this, &read_raw_data_span](Properties& target, const vector<nptr<const uint8_t>>& full_data, const vector<uint32_t>& full_sizes) {
+    auto apply_full_data = [this, &read_raw_data_span](Properties& target, const vector<nptr<const uint8_t>>& full_data, const vector<uint32_t>& full_sizes) {
         FO_VERIFY_AND_THROW(!full_sizes.empty(), "Serialized full property payload is missing the POD size entry", _registrator->GetTypeName(), full_data.size());
 
-        const auto public_size = numeric_cast<uint32_t>(_registrator->_publicPodDataSpace.size());
-        const auto protected_size = numeric_cast<uint32_t>(_registrator->_protectedPodDataSpace.size());
-        const auto private_size = numeric_cast<uint32_t>(_registrator->_privatePodDataSpace.size());
+        auto public_size = numeric_cast<uint32_t>(_registrator->_publicPodDataSpace.size());
+        auto protected_size = numeric_cast<uint32_t>(_registrator->_protectedPodDataSpace.size());
+        auto private_size = numeric_cast<uint32_t>(_registrator->_privatePodDataSpace.size());
         FO_VERIFY_AND_THROW(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size, "Serialized POD property payload size does not match public/protected/private section boundaries", _registrator->GetTypeName(), full_sizes[0], public_size, protected_size, private_size);
 
         if (full_sizes[0] != 0) {
@@ -1122,7 +1122,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
         }
 
         if (full_data.size() > 1) {
-            const uint32_t complex_data_count = full_sizes[1] / sizeof(uint16_t);
+            uint32_t complex_data_count = full_sizes[1] / sizeof(uint16_t);
             FO_VERIFY_AND_THROW(complex_data_count > 0, "Serialized full property payload contains a complex index table with no entries", _registrator->GetTypeName(), full_sizes[1]);
             vector<uint16_t> complex_indicies(complex_data_count);
             FO_VERIFY_AND_THROW(full_data[1], "Complex index table payload is null");
@@ -1133,8 +1133,8 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
                 FO_VERIFY_AND_THROW(complex_indicies[i] < _registrator->_registeredProperties.size(), "Serialized complex property index is outside the registrator property table", _registrator->GetTypeName(), complex_indicies[i], _registrator->_registeredProperties.size(), i, complex_indicies.size());
                 auto prop = _registrator->GetPropertyByIndexUnsafe(complex_indicies[i]);
                 FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Serialized complex property index resolved to a property without complex-data slot", _registrator->GetTypeName(), prop->GetName(), complex_indicies[i]);
-                const auto data_size = full_sizes[2 + i];
-                const auto data = full_data[2 + i];
+                auto data_size = full_sizes[2 + i];
+                auto data = full_data[2 + i];
                 target.SetRawData(prop, read_raw_data_span(data, data_size));
             }
         }
@@ -1283,15 +1283,15 @@ auto Properties::SaveToText(nptr<const Properties> base) const -> map<string, st
     for (const auto& prop : _registrator->_textProperties) {
         // Skip same as in base or zero values
         if (base) {
-            const auto raw_data = GetRawData(prop);
-            const auto base_raw_data = base->GetRawData(prop);
+            auto raw_data = GetRawData(prop);
+            auto base_raw_data = base->GetRawData(prop);
 
             if (raw_data.size() == base_raw_data.size() && MemCompare(raw_data.data(), base_raw_data.data(), raw_data.size())) {
                 continue;
             }
         }
         else {
-            const auto raw_data = GetRawData(prop);
+            auto raw_data = GetRawData(prop);
 
             if (prop->_podDataOffset.has_value()) {
                 if (std::ranges::all_of(raw_data, [](uint8_t value) noexcept { return value == 0; })) {
@@ -1330,7 +1330,7 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
 
             for (const auto& prop : _registrator->_complexProperties) {
                 FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while comparing properties", prop->GetName(), _registrator->GetTypeName());
-                const auto index = *prop->_complexDataIndex;
+                auto index = *prop->_complexDataIndex;
                 const auto& complex_data = _complexData[index];
                 const auto& other_complex_data = other._complexData[index];
 
@@ -1376,7 +1376,7 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
         }
     }
 
-    const auto get_data_prop_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop, ptr<const Property> prop) noexcept -> span<const uint8_t> {
+    auto get_data_prop_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop, ptr<const Property> prop) noexcept -> span<const uint8_t> {
         if (props._baseProps) {
             return props.GetRawData(prop);
         }
@@ -1415,8 +1415,8 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
             continue;
         }
 
-        const auto raw_data = get_data_prop_raw_data(*this, data_prop, prop);
-        const auto other_raw_data = get_data_prop_raw_data(other, data_prop, prop);
+        auto raw_data = get_data_prop_raw_data(*this, data_prop, prop);
+        auto other_raw_data = get_data_prop_raw_data(other, data_prop, prop);
 
         if (raw_data.size() != other_raw_data.size() || !MemCompare(raw_data.data(), other_raw_data.data(), raw_data.size())) {
             return false;
@@ -1535,7 +1535,7 @@ void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_dat
 
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
-            const auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+            auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             prop_data.Set(raw_data.data(), raw_data.size());
             return;
         }
@@ -1544,7 +1544,7 @@ void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_dat
         return;
     }
 
-    const auto raw_data = GetRawData(prop);
+    auto raw_data = GetRawData(prop);
     prop_data.Set(raw_data.data(), raw_data.size());
 }
 
@@ -1554,7 +1554,7 @@ auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> ra
 
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
-            const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+            auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             return RawDataEqual(raw_data, current_overlay_data);
         }
 
@@ -1574,14 +1574,14 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
     if (_baseProps) {
         PropertyRawData base_prop_data;
         _baseProps->CopyRawData(prop, base_prop_data);
-        const auto base_raw_data = span<const uint8_t>(base_prop_data.GetPtrAs<uint8_t>().get(), base_prop_data.GetSize());
+        auto base_raw_data = span<const uint8_t>(base_prop_data.GetPtrAs<uint8_t>().get(), base_prop_data.GetSize());
 
         if (RawDataEqual(raw_data, base_raw_data)) {
             RemoveOverlayEntry(prop);
             return;
         }
 
-        const auto get_overlay_raw_data = [this](const OverlayEntry& entry) noexcept -> span<const uint8_t> {
+        auto get_overlay_raw_data = [this](const OverlayEntry& entry) noexcept -> span<const uint8_t> {
             if (entry.DataSize == 0) {
                 return {};
             }
@@ -1592,7 +1592,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
             auto entry_data = overlay_data.offset(entry.DataOffset);
             return {entry_data.get(), entry.DataSize};
         };
-        const auto set_overlay_raw_data = [this](size_t data_offset, span<const uint8_t> data) noexcept {
+        auto set_overlay_raw_data = [this](size_t data_offset, span<const uint8_t> data) noexcept {
             if (data.empty()) {
                 return;
             }
@@ -1605,7 +1605,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
         };
 
         if (auto entry = FindOverlayEntry(prop)) {
-            const auto current_overlay_data = get_overlay_raw_data(*entry);
+            auto current_overlay_data = get_overlay_raw_data(*entry);
 
             if (RawDataEqual(raw_data, current_overlay_data)) {
                 return;
@@ -1632,8 +1632,8 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
             set_overlay_raw_data(new_entry.DataOffset, raw_data);
 
-            const auto it = std::ranges::lower_bound(_overlayEntries, new_entry.PropRegIndex, std::ranges::less {}, &OverlayEntry::PropRegIndex);
-            const auto insert_pos = numeric_cast<size_t>(std::distance(_overlayEntries.begin(), it));
+            auto it = std::ranges::lower_bound(_overlayEntries, new_entry.PropRegIndex, std::ranges::less {}, &OverlayEntry::PropRegIndex);
+            auto insert_pos = numeric_cast<size_t>(std::distance(_overlayEntries.begin(), it));
             _overlayEntries.emplace(it, new_entry);
 
             if (ShouldUseOverlayEntryIndex(_overlayEntries.size())) {
@@ -1958,7 +1958,7 @@ void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& v
         SetValue<bool>(prop, strvex(value).to_bool());
     }
     else if (base_type.IsFloat) {
-        const auto str_value = strvex(value);
+        strvex str_value = strvex(value);
 
         FO_VERIFY_AND_THROW(str_value.is_number(), "Invalid float property value", prop->GetName(), value);
 
@@ -2310,14 +2310,14 @@ auto PropertyRegistrator::FindProperty(string_view property_name) const -> nptr<
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto key = string(property_name);
-    const auto hkey = _hashResolver->ToHashedString(key);
+    string key = string(property_name);
+    hstring hkey = _hashResolver->ToHashedString(key);
 
-    if (const auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
+    if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
     }
 
-    if (const auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
+    if (auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
         return it->second;
     }
 
@@ -2357,7 +2357,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     prop->_isClientOnly = tokens[0] == "Client";
     FO_VERIFY_AND_THROW(static_cast<int32_t>(prop->_isCommon) + static_cast<int32_t>(prop->_isServerOnly) + static_cast<int32_t>(prop->_isClientOnly) == 1, "Property declaration has an invalid scope token", _typeName, tokens[2], tokens[0]);
 
-    const auto type = _nameResolver->ResolveComplexType(tokens[1]);
+    auto type = _nameResolver->ResolveComplexType(tokens[1]);
     FO_VERIFY_AND_THROW(!type.IsMutable, "Property declaration uses a mutable type wrapper where property mutability must be declared by a tag", _typeName, tokens[2], tokens[1]);
     FO_VERIFY_AND_THROW(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, "Property declaration uses an unsupported entity base type", _typeName, tokens[2], tokens[1], type.BaseType.Name);
     FO_VERIFY_AND_THROW(type.Kind != ComplexTypeKind::Callback, "Property type cannot be a callback", prop->GetName(), tokens[1], type.Kind);
@@ -2424,7 +2424,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         }
     }
     else if (prop->_isDict) {
-        const size_t key_alignment = prop->_isDictKeyString ? sizeof(uint32_t) : alignment_for_size(prop->_dictKeyType.Size);
+        size_t key_alignment = prop->_isDictKeyString ? sizeof(uint32_t) : alignment_for_size(prop->_dictKeyType.Size);
         FO_VERIFY_AND_THROW(prop->_isDictKeyString || prop->_dictKeyType.Size != 0, "Dictionary property key type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
 
         size_t value_alignment;
@@ -2451,10 +2451,10 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     prop->_propName = tokens[2];
-    const auto h = _hashResolver->ToHashedString(prop->_propName);
+    hstring h = _hashResolver->ToHashedString(prop->_propName);
     ignore_unused(h);
 
-    if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
+    if (auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
         prop->_componentName = prop->_propName.substr(0, dot_pos);
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
         FO_VERIFY_AND_THROW(!prop->_componentName.empty(), "Property component-qualified name has an empty component part", _typeName, prop->_propName);
@@ -2471,7 +2471,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         if (tokens[i] == "Group") {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Group tag must be followed by '=' and a group name", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
 
-            const auto group = tokens[i + 2];
+            auto group = tokens[i + 2];
             int32_t priority = 0;
 
             if (i + 4 < tokens.size() && tokens[i + 3] == "^") {
@@ -2590,7 +2590,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_VERIFY_AND_THROW(!prop->_isPersistent || !prop->_isClientOnly, "Client-only property cannot be persistent");
     FO_VERIFY_AND_THROW(!prop->_isNullable || prop->IsBaseTypeProtoReference(), "Nullable property must reference a proto type");
 
-    const auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
+    auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
 
     // Disallow set or get accessors
     bool disabled = false;
@@ -2603,8 +2603,8 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     // PlainData property data offset — search for a free slot without mutating any member yet
-    const size_t prev_public_space_size = _publicPodDataSpace.size();
-    const size_t prev_protected_space_size = _protectedPodDataSpace.size();
+    size_t prev_public_space_size = _publicPodDataSpace.size();
+    size_t prev_protected_space_size = _protectedPodDataSpace.size();
 
     optional<size_t> pod_data_base_offset;
     bool pod_is_public = false;
@@ -2612,8 +2612,8 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     size_t pod_fit_size = 0;
 
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
-        const bool is_public = prop->IsPublicSync();
-        const bool is_protected = prop->IsOwnerSync();
+        bool is_public = prop->IsPublicSync();
+        bool is_protected = prop->IsOwnerSync();
         auto& space = is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace);
 
         size_t space_pos = 0;
@@ -2638,11 +2638,11 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             space_pos += prop->GetBaseSize();
         }
 
-        const size_t fit_size = ((space_pos + prop->GetBaseSize() + 7) / 8) * 8;
+        size_t fit_size = ((space_pos + prop->GetBaseSize() + 7) / 8) * 8;
 
         // Validate the projected POD storage alignment on a local before the resize is committed below
-        const size_t projected_space_size = fit_size > space.size() ? fit_size : space.size();
-        const size_t projected_whole_pod_size = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size() - space.size() + projected_space_size;
+        size_t projected_space_size = fit_size > space.size() ? fit_size : space.size();
+        size_t projected_whole_pod_size = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size() - space.size() + projected_space_size;
         FO_VERIFY_AND_THROW((projected_whole_pod_size % 8) == 0, "Property POD storage size lost required 8-byte alignment after registering property", _typeName, prop->GetName(), projected_whole_pod_size);
 
         pod_data_base_offset = space_pos;
@@ -2764,7 +2764,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     for (const auto& [group, priority] : pending_groups) {
-        if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
+        if (auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
             it->second.emplace_back(pair {ptr<const Property> {prop}, priority});
 
             std::ranges::stable_sort(it->second, [](auto&& a, auto&& b) -> bool {

@@ -67,7 +67,7 @@ namespace
     template<typename Predicate>
     auto WaitForCondition(Predicate&& predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
     {
-        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline = std::chrono::steady_clock::now() + timeout;
 
         while (std::chrono::steady_clock::now() < deadline) {
             if (predicate()) {
@@ -129,19 +129,19 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
 TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
     auto settings = MakeServerNetworkSettings();
-    const auto port = TestServerPort.fetch_add(1);
+    auto port = TestServerPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     shared_ptr<NetworkServerConnection> accepted_conn;
     vector<uint8_t> received_data;
     vector<uint8_t> sent_data;
-    const vector<uint8_t> response_data {4, 5, 6};
+    vector<uint8_t> response_data {4, 5, 6};
     size_t client_disconnect_count = 0;
     size_t server_disconnect_count = 0;
 
     auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
 
-    const auto shutdown = scope_exit([&server, port]() noexcept {
+    auto shutdown = scope_exit([&server, port]() noexcept {
         safe_call([&server] { server->Shutdown(); });
 
         safe_call([port] { InterthreadListeners.erase(port); });
@@ -188,7 +188,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
 {
     auto settings = MakeServerNetworkSettings();
-    const auto port = TestServerPort.fetch_add(1);
+    auto port = TestServerPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     size_t accepted_count = 0;
@@ -196,7 +196,7 @@ TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
     function<InterthreadDataCallback(InterthreadDataCallback)> copied_listener;
     {
         auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection>) { accepted_count++; });
-        const auto cleanup = scope_exit([&server, port]() noexcept {
+        auto cleanup = scope_exit([&server, port]() noexcept {
             safe_call([&server] { server->Shutdown(); });
             safe_call([port] {
                 scoped_lock locker {InterthreadListenersLocker};
@@ -237,14 +237,14 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     uint16_t port = 0;
     string startup_error;
-    const auto start_server = [&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
+    auto start_server = [&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
         for (int32_t attempt = 0; attempt != 64; ++attempt) {
             port = TestServerPort.fetch_add(1);
             BakerTests::OverrideSetting(settings.ServerPort, port);
 
             try {
                 return NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
-                    const auto callback_index = callback_count.fetch_add(1);
+                    auto callback_index = callback_count.fetch_add(1);
 
                     if (callback_index == 0) {
                         throw std::runtime_error("test accept callback failure");
@@ -263,7 +263,7 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     unique_ptr<NetworkServer> server = start_server();
 
-    const auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 
     tcp_socket first_client;
     REQUIRE(first_client.connect("127.0.0.1", port));
@@ -288,14 +288,14 @@ TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    const uint16_t port = TestServerPort.fetch_add(1);
+    uint16_t port = TestServerPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     std::promise<shared_ptr<NetworkServerConnection>> accepted_connection_promise;
     auto accepted_connection_future = accepted_connection_promise.get_future();
     unique_ptr<NetworkServer> server = NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_connection_promise.set_value(std::move(conn)); });
     bool server_shutdown = false;
-    const auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
+    auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
         if (!server_shutdown) {
             safe_call([&server] { server->Shutdown(); });
         }
@@ -334,7 +334,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    const auto port = TestServerPort.fetch_add(1);
+    auto port = TestServerPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
     BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
 
@@ -345,23 +345,23 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     auto server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
         conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
             [&](const_span<uint8_t> buf) {
-                const scoped_lock lock {state_mutex};
+                scoped_lock lock {state_mutex};
                 received.insert(received.end(), buf.begin(), buf.end());
             },
             []() {});
 
-        const scoped_lock lock {state_mutex};
+        scoped_lock lock {state_mutex};
         accepted_conn = std::move(conn);
     });
 
-    const auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 
     websocketpp::client<websocketpp::config::asio_client> client;
     client.clear_access_channels(websocketpp::log::alevel::all);
     client.clear_error_channels(websocketpp::log::elevel::all);
     client.init_asio();
 
-    const vector<uint8_t> payload {1, 2, 3};
+    vector<uint8_t> payload {1, 2, 3};
 
     client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
         std::error_code send_error;
@@ -370,7 +370,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     });
 
     std::error_code connect_error;
-    const auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
+    auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
     REQUIRE_FALSE(connect_error);
 
     std::error_code subprotocol_error;
@@ -386,7 +386,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
         catch (...) {
         }
     }};
-    const auto stop_client = scope_exit([&client, &client_thread]() noexcept {
+    auto stop_client = scope_exit([&client, &client_thread]() noexcept {
         safe_call([&client] { client.stop(); });
         safe_call([&client_thread] {
             if (client_thread.joinable()) {
@@ -397,14 +397,14 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 
     REQUIRE(WaitForCondition(
         [&] {
-            const scoped_lock lock {state_mutex};
+            scoped_lock lock {state_mutex};
             return received.size() >= payload.size();
         },
         std::chrono::milliseconds {5000}));
 
     shared_ptr<NetworkServerConnection> connection_to_close;
     {
-        const scoped_lock lock {state_mutex};
+        scoped_lock lock {state_mutex};
         CHECK(received == payload);
         REQUIRE(accepted_conn);
         connection_to_close = accepted_conn;

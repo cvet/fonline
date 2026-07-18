@@ -174,7 +174,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypes.find(Hashes.ToHashedString(name));
+    auto it = _entityTypes.find(Hashes.ToHashedString(name));
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Entity type name conflicts with an already registered base type", name);
@@ -195,7 +195,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         .PropRegistrator = std::move(registrator),
     };
 
-    const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     if (has_protos) {
@@ -235,7 +235,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _fixedTypes.find(Hashes.ToHashedString(name));
+    auto it = _fixedTypes.find(Hashes.ToHashedString(name));
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Fixed type name conflicts with an already registered base type", name);
@@ -255,7 +255,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         .PropRegistrator = std::move(registrator),
     };
 
-    const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     RegisterBaseType(name);
@@ -269,7 +269,7 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
 
     FO_VERIFY_AND_THROW(IsValidEntityType(target_type), "Invalid migration target entity type");
 
-    const auto it = _entityTypesByStr.find(holder_type);
+    auto it = _entityTypesByStr.find(holder_type);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Holder entry registration references an unknown holder entity type", holder_type, target_type, entry);
     FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
 
@@ -303,7 +303,7 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
         new_full_names.emplace(std::move(full_key), value);
     }
 
-    auto name_str = string(name);
+    string name_str = string(name);
     _enums.emplace(name_str, std::move(key_values));
     _enumsRev.emplace(name_str, std::move(key_values_rev));
     _enumsUnderlyingType.emplace(std::move(name_str), &GetBaseType(underlying_type));
@@ -320,7 +320,7 @@ void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name,
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
-    const auto name_str = string(name);
+    string name_str = string(name);
     FO_VERIFY_AND_THROW(name_str != "None" || entry_value <= 0, "Enum named None cannot register a positive entry value", name, entry_name, entry_value);
     FO_VERIFY_AND_THROW(_enums.count(name) != 0, "Enum entry registration references an unknown enum type", name, entry_name);
     FO_VERIFY_AND_THROW(_enums.at(name_str).count(entry_name) == 0, "Enum entry name is already registered for this enum type", name, entry_name);
@@ -353,7 +353,7 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_baseTypes.count(name) != 0, "Value type layout registration cannot find the base type entry", name, _baseTypes.size());
     FO_VERIFY_AND_THROW(_structLayouts.count(name) != 0, "Value type layout registration cannot find the struct layout entry", name, _structLayouts.size());
-    const auto name_str = string(name);
+    string name_str = string(name);
     FO_VERIFY_AND_THROW(_structLayouts.at(name_str).Fields.empty(), "Value type layout is already registered", name, _structLayouts.at(name_str).Fields.size());
 
     auto& type = _baseTypes.at(name_str);
@@ -470,7 +470,7 @@ void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& 
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypesByStr.find(entity_name);
+    auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
     auto entity_info = it->second;
 
@@ -483,7 +483,7 @@ void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<Metho
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypesByStr.find(entity_name);
+    auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
     auto entity_info = it->second;
 
@@ -497,7 +497,7 @@ void EngineMetadata::RegisterEntityEvents(string_view entity_name, vector<Entity
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypesByStr.find(entity_name);
+    auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
     auto entity_info = it->second;
 
@@ -511,7 +511,7 @@ void EngineMetadata::RegisterEntityEvent(string_view entity_name, EntityEventDes
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypesByStr.find(entity_name);
+    auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
     auto entity_info = it->second;
 
@@ -570,7 +570,7 @@ void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map
                     ignore_unused(name3);
                     FO_VERIFY_AND_THROW(inserted, "Migration rule chain contains a cycle while finalizing registration", name1, name2, target, replacement, current);
 
-                    const auto it = rules.find(current);
+                    auto it = rules.find(current);
 
                     if (it == rules.end()) {
                         break;
@@ -591,10 +591,10 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto hrule_name = Hashes.ToHashedString(rule_name);
-    const auto hextra_info = Hashes.ToHashedString(extra_info);
-    const auto htarget = Hashes.ToHashedString(target);
-    const auto hreplacement = Hashes.ToHashedString(replacement);
+    hstring hrule_name = Hashes.ToHashedString(rule_name);
+    hstring hextra_info = Hashes.ToHashedString(extra_info);
+    hstring htarget = Hashes.ToHashedString(target);
+    hstring hreplacement = Hashes.ToHashedString(replacement);
 
     auto& rules = _migrationRules[hrule_name][hextra_info];
 
@@ -611,7 +611,7 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
         ignore_unused(name);
         FO_VERIFY_AND_THROW(inserted, "Migration rule chain contains a cycle", rule_name, extra_info, target, replacement, current);
 
-        const auto it = rules.find(current);
+        auto it = rules.find(current);
 
         if (it == rules.end()) {
             break;
@@ -641,34 +641,34 @@ auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
     type.Name = type_str;
     type.HashedName = Hashes.ToHashedString(type_str);
 
-    if (const auto it = Data->BuiltinTypes.find(type_str); it != Data->BuiltinTypes.end()) {
+    if (auto it = Data->BuiltinTypes.find(type_str); it != Data->BuiltinTypes.end()) {
         it->second(type);
     }
-    else if (const auto it2 = _enumsUnderlyingType.find(type_str); it2 != _enumsUnderlyingType.end()) {
+    else if (auto it2 = _enumsUnderlyingType.find(type_str); it2 != _enumsUnderlyingType.end()) {
         type.IsEnum = true;
         type.EnumUnderlyingType = it2->second;
         type.Size = it2->second->Size;
     }
-    else if (const auto it3 = _structLayouts.find(type_str); it3 != _structLayouts.end()) {
+    else if (auto it3 = _structLayouts.find(type_str); it3 != _structLayouts.end()) {
         type.IsStruct = true;
         type.IsObject = true;
     }
-    else if (const auto it4 = _refTypes.find(type_str); it4 != _refTypes.end()) {
+    else if (auto it4 = _refTypes.find(type_str); it4 != _refTypes.end()) {
         type.IsRefType = true;
         type.IsObject = true;
         type.RefType = &it4->second;
     }
-    else if (const auto it5 = _entityTypesByStr.find(type_str); it5 != _entityTypesByStr.end()) {
+    else if (auto it5 = _entityTypesByStr.find(type_str); it5 != _entityTypesByStr.end()) {
         type.IsEntity = true;
         type.IsObject = true;
         type.IsGlobalEntity = it5->second->IsGlobal;
     }
-    else if (const auto it6 = _entityRelatives.find(type_str); it6 != _entityRelatives.end()) {
+    else if (auto it6 = _entityRelatives.find(type_str); it6 != _entityRelatives.end()) {
         type.IsEntity = true;
         type.IsObject = true;
         type.IsGlobalEntity = it6->second->IsGlobal;
     }
-    else if (const auto it7 = _fixedTypesByStr.find(type_str); it7 != _fixedTypesByStr.end()) {
+    else if (auto it7 = _fixedTypesByStr.find(type_str); it7 != _fixedTypesByStr.end()) {
         type.IsFixedType = true;
         type.IsObject = true;
         type.Size = sizeof(hstring::hash_t);
@@ -696,13 +696,13 @@ auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _entityTypes.find(type_name);
+    auto it = _entityTypes.find(type_name);
 
     if (it != _entityTypes.end()) {
         return it->second.PropRegistrator;
     }
 
-    const auto it2 = _fixedTypes.find(type_name);
+    auto it2 = _fixedTypes.find(type_name);
 
     if (it2 != _fixedTypes.end()) {
         return it2->second.PropRegistrator;
@@ -715,7 +715,7 @@ auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcep
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto type_name_hashed = Hashes.ToHashedString(type_name);
+    hstring type_name_hashed = Hashes.ToHashedString(type_name);
 
     return GetPropertyRegistrator(type_name_hashed);
 }
@@ -726,13 +726,13 @@ auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> ptr
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    const auto it = _entityTypesByStr.find(type_name);
+    auto it = _entityTypesByStr.find(type_name);
 
     if (it != _entityTypesByStr.end()) {
         return it->second->PropRegistrator;
     }
 
-    const auto it2 = _fixedTypesByStr.find(type_name);
+    auto it2 = _fixedTypesByStr.find(type_name);
     FO_VERIFY_AND_THROW(it2 != _fixedTypesByStr.end(), "Lookup failed in fixed types by str");
     return it2->second->PropRegistrator;
 }
@@ -762,7 +762,7 @@ auto EngineMetadata::GetEntityType(hstring type_name) const -> const EntityTypeD
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto it = _entityTypes.find(type_name);
+    auto it = _entityTypes.find(type_name);
     FO_VERIFY_AND_THROW(it != _entityTypes.end(), "Lookup failed in entity types");
 
     return it->second;
@@ -793,7 +793,7 @@ auto EngineMetadata::GetFixedType(hstring type_name) const -> const EntityTypeDe
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto it = _fixedTypes.find(type_name);
+    auto it = _fixedTypes.find(type_name);
     FO_VERIFY_AND_THROW(it != _fixedTypes.end(), "Lookup failed in fixed types");
 
     return it->second;
@@ -810,7 +810,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
+    auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
@@ -821,7 +821,7 @@ auto EngineMetadata::GetBaseType(string_view type_str) const -> const BaseTypeDe
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _baseTypes.find(type_str);
+    auto it = _baseTypes.find(type_str);
 
     if (it == _baseTypes.end()) {
         throw TypeResolveException("Invalid base type", type_str);
@@ -834,7 +834,7 @@ auto EngineMetadata::ResolveComplexType(string_view type_str) const -> ComplexTy
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto tokens = strvex(type_str).tokenize();
+    auto tokens = strvex(type_str).tokenize();
     const auto& [type, tokens_len] = ResolveComplexType(tokens);
 
     if (tokens_len != tokens.size()) {
@@ -908,7 +908,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
         auto args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
 
         while (true) {
-            const bool is_first_arg = tokens_len == 2; // First argument is return type
+            bool is_first_arg = tokens_len == 2; // First argument is return type
 
             if (is_first_arg && tokens[tokens_len] == "void") {
                 args->emplace_back();
@@ -958,7 +958,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, nptr<bool> fa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _enumsFullName.find(enum_value_name);
+    auto it = _enumsFullName.find(enum_value_name);
 
     if (it == _enumsFullName.end()) {
         if (failed) {
@@ -976,7 +976,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_n
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto enum_it = _enums.find(enum_name);
+    auto enum_it = _enums.find(enum_name);
 
     if (enum_it == _enums.end()) {
         if (failed) {
@@ -987,7 +987,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_n
         throw EnumResolveException("Invalid enum", enum_name, value_name);
     }
 
-    const auto value_it = enum_it->second.find(value_name);
+    auto value_it = enum_it->second.find(value_name);
 
     if (value_it == enum_it->second.end()) {
         if (failed) {
@@ -1005,7 +1005,7 @@ auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto enum_it = _enumsRev.find(enum_name);
+    auto enum_it = _enumsRev.find(enum_name);
 
     if (enum_it == _enumsRev.end()) {
         if (failed) {
@@ -1016,7 +1016,7 @@ auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, 
         throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
     }
 
-    const auto value_it = enum_it->second.find(value);
+    auto value_it = enum_it->second.find(value);
 
     if (value_it == enum_it->second.end()) {
         if (failed) {
@@ -1034,7 +1034,7 @@ auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDes
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _gameSettings.find(name);
+    auto it = _gameSettings.find(name);
 
     if (it == _gameSettings.end()) {
         throw TypeResolveException("Setting not found", name);
@@ -1051,19 +1051,19 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
         return std::nullopt;
     }
 
-    const auto it_rules = _migrationRules.find(rule_name);
+    auto it_rules = _migrationRules.find(rule_name);
 
     if (it_rules == _migrationRules.end()) {
         return std::nullopt;
     }
 
-    const auto it_rules2 = it_rules->second.find(extra_info);
+    auto it_rules2 = it_rules->second.find(extra_info);
 
     if (it_rules2 == it_rules->second.end()) {
         return std::nullopt;
     }
 
-    const auto it_target = it_rules2->second.find(target);
+    auto it_target = it_rules2->second.find(target);
 
     if (it_target == it_rules2->second.end()) {
         return std::nullopt;
@@ -1072,7 +1072,7 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
     hstring result = it_target->second;
 
     while (true) {
-        const auto it_target2 = it_rules2->second.find(result);
+        auto it_target2 = it_rules2->second.find(result);
 
         if (it_target2 == it_rules2->second.end()) {
             break;
@@ -1116,7 +1116,7 @@ auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const n
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+    if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
         type_name = it->second->PropRegistrator->GetTypeName();
     }
 
@@ -1127,7 +1127,7 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+    if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
         type_name = it->second->PropRegistrator->GetTypeName();
     }
 
@@ -1138,13 +1138,13 @@ auto EngineMetadata::GetModelAnimDuration(hstring model_name, CritterStateAnim s
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto model_it = _modelAnimDurations.find(model_name);
+    auto model_it = _modelAnimDurations.find(model_name);
 
     if (model_it == _modelAnimDurations.end()) {
         return {};
     }
 
-    const auto anim_it = model_it->second.find({state_anim, action_anim});
+    auto anim_it = model_it->second.find({state_anim, action_anim});
 
     if (anim_it == model_it->second.end()) {
         return {};
@@ -1192,26 +1192,26 @@ void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
             continue;
         }
 
-        const auto get_value = [&values](string_view key) -> string_view {
-            const auto it = values.find(key);
+        auto get_value = [&values](string_view key) -> string_view {
+            auto it = values.find(key);
             return it != values.end() ? it->second : string_view {};
         };
 
-        const auto state_anims = strvex(get_value("StateAnims")).split_to_int32(' ');
-        const auto action_anims = strvex(get_value("ActionAnims")).split_to_int32(' ');
-        const auto durations_ms = strvex(get_value("DurationsMs")).split_to_int32(' ');
+        auto state_anims = strvex(get_value("StateAnims")).split_to_int32(' ');
+        auto action_anims = strvex(get_value("ActionAnims")).split_to_int32(' ');
+        auto durations_ms = strvex(get_value("DurationsMs")).split_to_int32(' ');
 
         FO_VERIFY_AND_THROW(!state_anims.empty(), "Model animation info section has no entries", model_name);
         FO_VERIFY_AND_THROW(state_anims.size() == action_anims.size() && action_anims.size() == durations_ms.size(), "Model animation info arrays have different sizes", model_name, state_anims.size(), action_anims.size(), durations_ms.size());
 
-        const auto model_name_hashed = Hashes.ToHashedString(model_name);
+        hstring model_name_hashed = Hashes.ToHashedString(model_name);
         const auto [model_it, model_inserted] = model_anim_durations.try_emplace(model_name_hashed);
         FO_VERIFY_AND_THROW(model_inserted, "Duplicate model animation info section", model_name);
         auto& model_durations = model_it->second;
 
         for (size_t i = 0; i < state_anims.size(); i++) {
-            const auto state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
-            const auto action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
+            auto state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
+            auto action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
             FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", model_name, state_anims[i], action_anims[i], durations_ms[i]);
 
             const auto [it, inserted] = model_durations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]});
@@ -1315,7 +1315,7 @@ void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _inboundRemoteCallHandlers.find(name);
+    auto it = _inboundRemoteCallHandlers.find(name);
     FO_VERIFY_AND_THROW(it != _inboundRemoteCallHandlers.end(), "Lookup failed in inbound remote call handlers");
     it->second(name, caller, data);
 }

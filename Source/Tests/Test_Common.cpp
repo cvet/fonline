@@ -97,16 +97,33 @@ TEST_CASE("CommonEvents")
         dispatch(8);
         CHECK(calls == 3);
     }
+
+    SECTION("DispatchCopiesValueArgumentsForEverySubscriber")
+    {
+        EventObserver<string> observer;
+        EventDispatcher<string> dispatch(&observer);
+        EventUnsubscriber unsubscriber;
+        vector<string> received;
+
+        unsubscriber += (observer += [&](string value) { received.emplace_back(std::move(value)); });
+        unsubscriber += (observer += [&](string value) { received.emplace_back(std::move(value)); });
+
+        dispatch(string {"payload"});
+
+        REQUIRE(received.size() == 2);
+        CHECK(received[0] == "payload");
+        CHECK(received[1] == "payload");
+    }
 }
 
 TEST_CASE("CommonUtilities")
 {
     SECTION("WriteSimpleTgaCreatesFileWithExpectedHeader")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_common_tests" / std::to_string(std::random_device {}());
-        const auto file_path = temp_root / "nested" / "sample.tga";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_common_tests" / std::to_string(std::random_device {}());
+        auto file_path = temp_root / "nested" / "sample.tga";
 
-        const isize32 image_size {2, 1};
+        isize32 image_size {2, 1};
         vector<ucolor> pixels;
         pixels.emplace_back(ucolor {1, 2, 3, 4});
         pixels.emplace_back(ucolor {5, 6, 7, 8});
@@ -136,7 +153,7 @@ TEST_CASE("CommonUtilities")
         REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
 
         // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
-        const auto to_bgra = [](ucolor c) -> uint32_t {
+        auto to_bgra = [](ucolor c) -> uint32_t {
             std::swap(c.comp.r, c.comp.b);
             return c.rgba;
         };
@@ -146,7 +163,7 @@ TEST_CASE("CommonUtilities")
 
         input.close();
 
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 }

@@ -33,6 +33,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 - [Docs/SmartPointers.md](Docs/SmartPointers.md) - native smart-pointer vocabulary (`ptr<T>`/`nptr<T>` borrows, `unique_*`/`refcount_*` owners, engine-own `shared_ptr`/`weak_ptr`), raw-pointer allowlist, and audit expectations.
 - [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) - engine-invariant stability under exceptions: terminate-on-OOM allocation model, entity-lifecycle throw-as-signal contract, and the `FO_STRONG_ASSERT` disposition rules.
 - [Docs/ThreadSafetyAnalysis.md](Docs/ThreadSafetyAnalysis.md) - `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
+- [Docs/LocalVariables.md](Docs/LocalVariables.md) - explicit simple local types, redundant top-level local `const`, and use-after-move validation.
 - [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.
@@ -46,6 +47,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 
 - **Zero tolerance for warnings.** Engine C++ builds and codegen must finish clean; there is no acceptable warning backlog (Clang thread-safety analysis already runs as `-Werror=thread-safety`). Never introduce a new warning; if a change surfaces one, resolve it at the root in the same change rather than suppressing it.
 - Engine C++ changes: build and run the engine unit-test target used by the embedding project (`LF_UnitTests` / `RunUnitTests` in Last Frontier).
+- Engine `Source/` changes: run the full-scope explicit-simple-local-type, redundant-local-const, and use-after-move gates. See [Docs/LocalVariables.md](Docs/LocalVariables.md).
 - Build-system changes: validate the affected CMake preset or BuildTools command in the embedding project that exercises it.
 - Platform-packaging changes: validate the relevant package path (`Raw`, `Raw+WebServer`, Android package, etc.) and update the platform doc.
 - Script/native API boundary changes: update nullability/API docs and run the smallest test target that covers the changed binding.
@@ -69,6 +71,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
+- Locals and parameters follow normal C++ mutation semantics and need no engine-specific annotation. Avoid redundant top-level `const` on automatic locals; preserve pointee, referent, element, and `constexpr` constness. See [Docs/LocalVariables.md](Docs/LocalVariables.md).
 - Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface.
 - Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
 - Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
@@ -78,7 +81,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 - **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). Embedding projects track the per-function level in an audit baseline gated by CI (Last Frontier: `Tools/ExceptionSafetyAudit/`); update it in the same change.
 - Use `numeric_cast` for numeric conversions; do not use `static_cast` for numeric narrowing/widening unless the surrounding code has a specific established reason.
 - Use fixed-width types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `float32_t`, `float64_t`, `size_t`) instead of bare `int` / `float` in new engine code.
-- Do not use `auto` for primitive values or simple obvious types such as `string`, `hstring`, `size_t`, and the fixed-width aliases.
+- Replace local `auto` with an explicit type when Clang derives one unqualified `snake_case` name with no visible template arguments and the spelling introduces no conversion. Spell deduced `int`/`short`/`float`/`double` as `int32_t`/`int16_t`/`float32_t`/`float64_t`. Keep `auto` for templates (`vector<int>`, `ptr<void>`), namespace/nested types (`some_type::iterator`), dependent or inconsistent template deductions, and conversion-bearing declarations. See [Docs/LocalVariables.md](Docs/LocalVariables.md#explicit-simple-local-types).
 - Use the engine smart-pointer vocabulary from `Source/Essentials/SmartPointers.h` — `ptr<T>`/`nptr<T>` for borrows, `unique_*`/`refcount_*` for owners, engine-own `shared_ptr`/`weak_ptr` via `SafeAlloc::MakeShared()` — instead of `std::` smart pointers or bare raw `T*`. Raw pointers remain only at the documented ABI/low-level allowlist boundaries; inside a function, bind them to wrappers before ordinary engine work and unwrap with `.get()` only at the final handoff. See [Docs/SmartPointers.md](Docs/SmartPointers.md); embedding projects may gate this with an audit tool (Last Frontier: `Tools/SmartPointerAudit/`).
 - For `Entity` and derived types use **pointers**, not references.
 - Prefer `static` free functions for file-local helpers instead of unnamed namespaces.

@@ -181,7 +181,7 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
         throw NetBufferException("Invalid discard length", len, _bufEndPos);
     }
 
-    const size_t move_len = _bufEndPos - len;
+    size_t move_len = _bufEndPos - len;
 
     if (move_len != 0) {
         auto target = make_ptr(_bufData.data());
@@ -201,7 +201,7 @@ void NetOutBuffer::WritePropsData(const vector<nptr<const uint8_t>>& props_data,
     Write<uint16_t>(numeric_cast<uint16_t>(props_data.size()));
 
     for (size_t i = 0; i < props_data.size(); i++) {
-        const uint32_t data_size = numeric_cast<uint32_t>(props_data_sizes.at(i));
+        uint32_t data_size = numeric_cast<uint32_t>(props_data_sizes.at(i));
         Write<uint32_t>(data_size);
         Push(props_data.at(i), data_size);
     }
@@ -235,7 +235,7 @@ void NetOutBuffer::EndMsg()
     _msgStarted = false;
 
     // Move to message start position
-    const auto msg_len = numeric_cast<uint32_t>(_bufEndPos - _startedBufPos);
+    auto msg_len = numeric_cast<uint32_t>(_bufEndPos - _startedBufPos);
     EncryptKey(-numeric_cast<int32_t>(msg_len));
 
     // Verify signature
@@ -258,7 +258,7 @@ void NetOutBuffer::WriteHashedString(hstring value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hash = value.as_hash();
+    auto hash = value.as_hash();
     auto hash_bytes = make_ptr(&hash).reinterpret_as<uint8_t>();
     Push(hash_bytes, sizeof(hash));
 }
@@ -333,7 +333,7 @@ void NetInBuffer::ShrinkReadBuf()
         }
     }
     else if (_bufReadPos != 0) {
-        const size_t move_len = _bufEndPos - _bufReadPos;
+        size_t move_len = _bufEndPos - _bufReadPos;
 
         auto target = make_ptr(_bufData.data());
         auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
@@ -348,7 +348,7 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_count = Read<uint16_t>();
+    auto data_count = Read<uint16_t>();
 
     // Each entry carries at least its uint32 size prefix, so the count can never exceed unread/4; reject before allocating
     if (data_count > GetUnreadSize() / sizeof(uint32_t)) {
@@ -359,10 +359,10 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
     props_data.resize(data_count);
 
     for (uint16_t i = 0; i < data_count; i++) {
-        const auto data_size = Read<uint32_t>();
+        auto data_size = Read<uint32_t>();
 
         // A declared block can never be longer than the bytes still buffered; reject before allocating
-        const auto unread = GetUnreadSize();
+        size_t unread = GetUnreadSize();
 
         if (data_size > unread) {
             ResetBuf();
@@ -409,10 +409,10 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hash = Read<hstring::hash_t>();
+    auto hash = Read<hstring::hash_t>();
 
     bool failed = false;
-    const auto result = hash_resolver.ResolveHash(hash, &failed);
+    hstring result = hash_resolver.ResolveHash(hash, &failed);
 
     if (failed) {
         ResetBuf();

@@ -18,6 +18,40 @@ BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can
 pytest -q Engine/BuildTools/tests
 ```
 
+## Local variable validator
+
+`LocalVariableValidator/local_variable_validator.py` uses `clang-query` AST matchers plus clang-tidy's `bugprone-use-after-move` dataflow check for [redundant top-level local `const` and use-after-move](../Docs/LocalVariables.md). It does not enforce local or parameter immutability. It requires Clang 20+ tools matching the compiler that produced the selected `compile_commands.json`:
+
+```bash
+python3 BuildTools/LocalVariableValidator/local_variable_validator.py --self-test
+python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode report-only --compilation-database <build-dir> --jobs 4 --batch-size 2
+python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode apply --checks redundant-local-const --compilation-database <build-dir>
+python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode full-enforcement --checks redundant-local-const --compilation-database <build-dir>
+python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode full-enforcement --checks use-after-move --compilation-database <build-dir>
+```
+
+Linux runner provisioning installs `clang-tools-20` (for `clang-query-20`) and `clang-tidy-20` with the pinned compiler. Set `FO_CLANG_QUERY` and `FO_CLANG_TIDY` when versioned tools are not on `PATH`. `--jobs` bounds parallel Clang batches. Apply mode is deliberately limited to the redundant-const check and removes only the diagnosed top-level token; it preserves pointee, referent, and element constness. CI runs the full-source `--checks redundant-local-const` and `--checks use-after-move` gates; default `--checks all` combines them locally. Report JSON belongs in a workspace/output directory, not in the source tree.
+
+## Explicit simple local types
+
+`ExplicitLocalTypes/explicit_local_types.py` enforces the explicit-local-type rule documented in [LocalVariables.md](../Docs/LocalVariables.md#explicit-simple-local-types). It uses the Clang 20+ AST to replace only local `auto` declarations whose type has one accessible unqualified `snake_case` spelling, no visible template arguments, and no conversion-dependent semantics. A canonical template result may use a simple alias only when that exact alias is explicitly spelled in the initializer and uniquely matches the desugared result type:
+
+```bash
+python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --self-test
+python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode check --compilation-database <build-dir> --jobs 4 --batch-size 2
+python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode report-only --compilation-database <build-dir> --json <workspace>/explicit_local_types.json
+python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode apply --apply-report <workspace>/explicit_local_types.json
+```
+
+The report/apply split keeps the migration reviewable. Applying a report validates that every recorded location still contains the expected `auto` token before editing; `check` is the debt-free CI/developer gate.
+
+Embedding projects can target another first-party directory with
+`--source-root`. If that directory also contains vendored code, use
+`--unit-pattern` to select only authored translation units, `--source-pattern`
+to restrict Clang AST matching, and `--path-pattern` as a final canonical-path
+guard for observations and diagnostics. The local-variable validator accepts
+the same source/unit/path filters.
+
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.

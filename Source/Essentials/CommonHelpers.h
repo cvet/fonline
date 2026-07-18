@@ -300,7 +300,7 @@ struct scoped_init_clear
 template<std::ranges::range T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::ranges::find(vec, value);
+    auto it = std::ranges::find(vec, value);
     FO_VERIFY_AND_THROW(it == vec.end(), "Unexpected entry found in vec");
     vec.emplace_back(std::move(value));
 }
@@ -308,7 +308,7 @@ constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T>
 constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::ranges::find(vec, value);
+    auto it = std::ranges::find(vec, value);
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -316,7 +316,7 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T, typename U>
 constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 {
-    const auto it = std::ranges::find_if(vec, predicate);
+    auto it = std::ranges::find_if(vec, predicate);
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -324,7 +324,7 @@ constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 template<std::ranges::range T>
 constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (const auto it = std::ranges::find(vec, value); it == vec.end()) {
+    if (auto it = std::ranges::find(vec, value); it == vec.end()) {
         vec.emplace_back(std::move(value));
         return true;
     }
@@ -334,7 +334,7 @@ constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) n
 template<std::ranges::range T>
 constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (const auto it = std::ranges::find(vec, value); it != vec.end()) {
+    if (auto it = std::ranges::find(vec, value); it != vec.end()) {
         vec.erase(it);
         return true;
     }
@@ -344,7 +344,7 @@ constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value
 template<std::ranges::range T, typename U>
 constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexcept -> bool
 {
-    if (const auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
+    if (auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
         vec.erase(it);
         return true;
     }

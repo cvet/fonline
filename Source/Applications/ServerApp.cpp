@@ -67,7 +67,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {
@@ -75,7 +75,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         GetApp()->MainWindow.SetTitle("Server");
 
-        const auto configured_client_size = isize32 {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
+        isize32 configured_client_size = isize32 {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
         GetApp()->MainWindow.SetSize({GetApp()->Settings.ServerWidth, GetApp()->Settings.ServerHeight});
 
         refcount_nptr<ServerEngine> server {};
@@ -110,33 +110,33 @@ int main(int argc, char** argv) // Handled by SDL
             }
         });
 
-        const auto get_server = [&server]() -> ptr<ServerEngine> {
+        auto get_server = [&server]() -> ptr<ServerEngine> {
             FO_STACK_TRACE_ENTRY();
 
             FO_VERIFY_AND_THROW(server, "Server engine is not created");
             return server;
         };
 
-        const auto start_server = [&server] {
+        auto start_server = [&server] {
             auto settings = make_ptr(&GetApp()->Settings);
             server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
         };
-        const auto stop_server = [&server, &get_server] {
+        auto stop_server = [&server, &get_server] {
             auto running_server = get_server();
             running_server->Shutdown();
             server.reset();
         };
 
-        const auto start_client = [&] {
+        auto start_client = [&] {
             try {
-                const auto title = strex("Client {}", clients.size() + 1).str();
-                const auto client_size = configured_client_size;
+                string title = strex("Client {}", clients.size() + 1).str();
+                isize32 client_size = configured_client_size;
 
                 if (!os_size_saved) {
                     os_size_before_first_child = GetApp()->MainWindow.GetSize();
                     os_size_saved = true;
 
-                    const auto target = isize32 {
+                    auto target = isize32 {
                         std::max(os_size_before_first_child.width, client_size.width),
                         std::max(os_size_before_first_child.height, client_size.height + TAB_BAR_HEIGHT_PX),
                     };
@@ -148,7 +148,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                 auto window = GetApp()->CreateChildWindow(client_size, title);
 
-                const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
+                int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
                 auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
                 settings->CopyFrom(GetApp()->Settings);
                 ClientStartupSettingsHook(*settings, client_index, true);
@@ -199,11 +199,11 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
 
-            const auto child_count = GetApp()->GetChildWindowsCount();
-            const bool has_virtual_windows = (child_count > 0);
+            size_t child_count = GetApp()->GetChildWindowsCount();
+            bool has_virtual_windows = (child_count > 0);
             auto main_window = make_ptr(&GetApp()->MainWindow);
-            const bool main_active = (GetApp()->GetActiveWindow() == main_window);
-            const bool show_server = [&] {
+            bool main_active = (GetApp()->GetActiveWindow() == main_window);
+            bool show_server = [&] {
                 if (layout_mode == WindowLayoutMode::SingleTab) {
                     return main_active;
                 }
@@ -215,11 +215,11 @@ int main(int argc, char** argv) // Handled by SDL
 
             // Compute layout rects for this frame.
             const auto& io = ImGui::GetIO();
-            const float32_t host_w = io.DisplaySize.x;
-            const float32_t host_h = io.DisplaySize.y;
-            const float32_t tab_h = numeric_cast<float32_t>(TAB_BAR_HEIGHT_PX);
-            const float32_t content_top = has_virtual_windows ? tab_h : 0.0f;
-            const float32_t content_h = std::max(0.0f, host_h - content_top);
+            float32_t host_w = io.DisplaySize.x;
+            float32_t host_h = io.DisplaySize.y;
+            float32_t tab_h = numeric_cast<float32_t>(TAB_BAR_HEIGHT_PX);
+            float32_t content_top = has_virtual_windows ? tab_h : 0.0f;
+            float32_t content_h = std::max(0.0f, host_h - content_top);
 
             irect32 main_rect {};
 
@@ -227,7 +227,7 @@ int main(int argc, char** argv) // Handled by SDL
                 main_rect = {0, 0, iround<int32_t>(host_w), iround<int32_t>(host_h)};
             }
             else if (layout_mode == WindowLayoutMode::Tile && child_count == 1) {
-                const auto half_w = iround<int32_t>(host_w * 0.5f);
+                int32_t half_w = iround<int32_t>(host_w * 0.5f);
                 main_rect = {0, iround<int32_t>(content_top), half_w, iround<int32_t>(content_h)};
 
                 if (auto child = GetApp()->GetChildWindow(0)) {
@@ -241,14 +241,14 @@ int main(int argc, char** argv) // Handled by SDL
                     cols++;
                 }
 
-                const int32_t rows = (numeric_cast<int32_t>(child_count) + cols - 1) / cols;
-                const float32_t cell_w = host_w / numeric_cast<float32_t>(cols);
-                const float32_t cell_h = content_h / numeric_cast<float32_t>(rows);
+                int32_t rows = (numeric_cast<int32_t>(child_count) + cols - 1) / cols;
+                float32_t cell_w = host_w / numeric_cast<float32_t>(cols);
+                float32_t cell_h = content_h / numeric_cast<float32_t>(rows);
 
                 for (size_t i = 0; i < child_count; i++) {
-                    const auto idx = numeric_cast<int32_t>(i);
-                    const int32_t row = idx / cols;
-                    const int32_t col = idx % cols;
+                    int32_t idx = numeric_cast<int32_t>(i);
+                    int32_t row = idx / cols;
+                    int32_t col = idx % cols;
 
                     if (auto child = GetApp()->GetChildWindow(i)) {
                         child->SetDisplayRect({
@@ -263,7 +263,7 @@ int main(int argc, char** argv) // Handled by SDL
                 main_rect = {0, iround<int32_t>(content_top), iround<int32_t>(host_w), iround<int32_t>(content_h)};
             }
             else if (layout_mode == WindowLayoutMode::SingleTab) {
-                const irect32 area = {0, iround<int32_t>(content_top), iround<int32_t>(host_w), iround<int32_t>(content_h)};
+                irect32 area = {0, iround<int32_t>(content_top), iround<int32_t>(host_w), iround<int32_t>(content_h)};
                 main_rect = area;
 
                 auto shown = GetApp()->GetActiveWindow();
@@ -280,8 +280,8 @@ int main(int argc, char** argv) // Handled by SDL
 
             GetApp()->MainWindow.SetDisplayRect(main_rect);
 
-            const auto rect_pos = ImVec2(numeric_cast<float32_t>(main_rect.x), numeric_cast<float32_t>(main_rect.y));
-            const auto rect_size = ImVec2(numeric_cast<float32_t>(main_rect.width), numeric_cast<float32_t>(main_rect.height));
+            auto rect_pos = ImVec2(numeric_cast<float32_t>(main_rect.x), numeric_cast<float32_t>(main_rect.y));
+            auto rect_size = ImVec2(numeric_cast<float32_t>(main_rect.width), numeric_cast<float32_t>(main_rect.height));
 
             if (has_virtual_windows) {
                 constexpr ImGuiWindowFlags HOST_FIXED_FLAGS = //
@@ -295,7 +295,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                 auto pop_styles = scope_exit([]() noexcept { safe_call([] { ImGui::PopStyleVar(2); }); });
 
-                const auto draw_texture = [](ptr<AppWindow> window, ImVec2 region) {
+                auto draw_texture = [](ptr<AppWindow> window, ImVec2 region) {
                     auto tex = window->GetRenderTexture();
 
                     if (!tex || region.x <= 0.0f || region.y <= 0.0f) {
@@ -306,18 +306,18 @@ int main(int argc, char** argv) // Handled by SDL
                         return;
                     }
 
-                    const float32_t tex_w = numeric_cast<float32_t>(tex->Size.width);
-                    const float32_t tex_h = numeric_cast<float32_t>(tex->Size.height);
-                    const float32_t scale = std::min(region.x / tex_w, region.y / tex_h);
-                    const auto img_size = ImVec2(tex_w * scale, tex_h * scale);
-                    const auto cursor = ImGui::GetCursorScreenPos();
+                    float32_t tex_w = numeric_cast<float32_t>(tex->Size.width);
+                    float32_t tex_h = numeric_cast<float32_t>(tex->Size.height);
+                    float32_t scale = std::min(region.x / tex_w, region.y / tex_h);
+                    auto img_size = ImVec2(tex_w * scale, tex_h * scale);
+                    auto cursor = ImGui::GetCursorScreenPos();
                     ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + region.x, cursor.y + region.y), IM_COL32(0, 0, 0, 255));
 
-                    const auto img_origin = ImVec2(cursor.x + (region.x - img_size.x) * 0.5f, cursor.y + (region.y - img_size.y) * 0.5f);
+                    auto img_origin = ImVec2(cursor.x + (region.x - img_size.x) * 0.5f, cursor.y + (region.y - img_size.y) * 0.5f);
                     ImGui::SetCursorScreenPos(img_origin);
 
-                    const ImVec2 uv0 = tex->FlippedHeight ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 0.0f);
-                    const ImVec2 uv1 = tex->FlippedHeight ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 1.0f);
+                    ImVec2 uv0 = tex->FlippedHeight ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 0.0f);
+                    ImVec2 uv1 = tex->FlippedHeight ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 1.0f);
                     ImGui::Image(tex.get(), img_size, uv0, uv1);
 
                     window->SetDisplayRect({
@@ -332,7 +332,7 @@ int main(int argc, char** argv) // Handled by SDL
                     auto shown = GetApp()->GetActiveWindow();
 
                     if (shown && shown != &GetApp()->MainWindow) {
-                        const auto r = shown->GetDisplayRect();
+                        irect32 r = shown->GetDisplayRect();
                         ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(r.x), numeric_cast<float32_t>(r.y)), ImGuiCond_Always);
                         ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(r.width), numeric_cast<float32_t>(r.height)), ImGuiCond_Always);
 
@@ -351,11 +351,11 @@ int main(int argc, char** argv) // Handled by SDL
                             continue;
                         }
 
-                        const auto r = child->GetDisplayRect();
+                        irect32 r = child->GetDisplayRect();
                         ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(r.x), numeric_cast<float32_t>(r.y)), ImGuiCond_Always);
                         ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(r.width), numeric_cast<float32_t>(r.height)), ImGuiCond_Always);
 
-                        const auto label = strex("##ImageHostTile_{}", i).str();
+                        string label = strex("##ImageHostTile_{}", i).str();
 
                         if (ImGui::Begin(label.c_str(), nullptr, HOST_FIXED_FLAGS)) {
                             draw_texture(child, ImGui::GetContentRegionAvail());
@@ -375,14 +375,14 @@ int main(int argc, char** argv) // Handled by SDL
                             continue;
                         }
 
-                        const auto title = child->GetTitle().empty() ? strex("Window {}", i + 1).str() : child->GetTitle();
-                        const auto label = strex("{}###ImageHostCascade_{}", title, i).str();
+                        auto title = child->GetTitle().empty() ? strex("Window {}", i + 1).str() : child->GetTitle();
+                        string label = strex("{}###ImageHostCascade_{}", title, i).str();
 
-                        const auto cond = layout_init_dirty ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-                        const float32_t default_w = std::min(640.0f, host_w * 0.6f);
-                        const float32_t default_h = std::min(480.0f, content_h * 0.6f);
-                        const float32_t default_x = 40.0f + numeric_cast<float32_t>(i) * 30.0f;
-                        const float32_t default_y = content_top + 40.0f + numeric_cast<float32_t>(i) * 30.0f;
+                        auto cond = layout_init_dirty ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+                        float32_t default_w = std::min(640.0f, host_w * 0.6f);
+                        float32_t default_h = std::min(480.0f, content_h * 0.6f);
+                        float32_t default_x = 40.0f + numeric_cast<float32_t>(i) * 30.0f;
+                        float32_t default_y = content_top + 40.0f + numeric_cast<float32_t>(i) * 30.0f;
 
                         ImGui::SetNextWindowPos(ImVec2(default_x, default_y), cond);
                         ImGui::SetNextWindowSize(ImVec2(default_w, default_h), cond);
@@ -398,7 +398,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             if (show_server) {
                 ImGuiWindowFlags server_flags = ImGuiWindowFlags_NoCollapse;
-                const bool cascade_mode = (layout_mode == WindowLayoutMode::Cascade);
+                bool cascade_mode = (layout_mode == WindowLayoutMode::Cascade);
 
                 if (!has_virtual_windows) {
                     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
@@ -436,12 +436,12 @@ int main(int argc, char** argv) // Handled by SDL
                         if (ImGui::CollapsingHeader("Controls")) {
                             // Buttons sit on a single horizontal row; each takes an equal share of the available width.
                             constexpr int32_t CONTROL_BTN_COUNT = 4;
-                            const auto total_w = ImGui::GetContentRegionAvail().x;
-                            const auto spacing_x = ImGui::GetStyle().ItemSpacing.x;
-                            const auto btn_w = std::max(40.0f, (total_w - spacing_x * numeric_cast<float32_t>(CONTROL_BTN_COUNT - 1)) / numeric_cast<float32_t>(CONTROL_BTN_COUNT));
-                            const auto btn_size = ImVec2(btn_w, 30.0f);
+                            float32_t total_w = ImGui::GetContentRegionAvail().x;
+                            float32_t spacing_x = ImGui::GetStyle().ItemSpacing.x;
+                            float32_t btn_w = std::max(40.0f, (total_w - spacing_x * numeric_cast<float32_t>(CONTROL_BTN_COUNT - 1)) / numeric_cast<float32_t>(CONTROL_BTN_COUNT));
+                            auto btn_size = ImVec2(btn_w, 30.0f);
 
-                            const auto imgui_progress_btn = [&btn_size](string_view title) {
+                            auto imgui_progress_btn = [&btn_size](string_view title) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
                                 ImGui::Button(title.data(), btn_size);
                                 ImGui::PopStyleColor();
@@ -479,8 +479,8 @@ int main(int argc, char** argv) // Handled by SDL
                                     }
                                 }
 
-                                const auto time = nanotime::now().desc(true);
-                                const string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
+                                time_desc_t time = nanotime::now().desc(true);
+                                string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
                                 std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
@@ -523,7 +523,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextItemOpen(!GetApp()->Settings.CollapseLogOnStart, ImGuiCond_FirstUseEver);
 
                         if (ImGui::CollapsingHeader("Log")) {
-                            const auto log_height = std::max(150.0f, ImGui::GetContentRegionAvail().y);
+                            float32_t log_height = std::max(150.0f, ImGui::GetContentRegionAvail().y);
 
                             if (ImGui::BeginChild("##LogChild", ImVec2(0.0f, log_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
                                 scoped_lock locker {log_buffer_locker};
@@ -534,7 +534,7 @@ int main(int argc, char** argv) // Handled by SDL
                                             ImGuiTextUnformatted(lines[i]);
                                         }
 
-                                        const auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
+                                        auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
 
                                         for (const auto& st_line : strex(formatted).split('\n')) {
                                             ImGuiTextUnformatted(st_line);
@@ -568,8 +568,8 @@ int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowBgAlpha(0.85f);
 
                 if (ImGui::Begin("##WindowTabs", nullptr, TAB_BAR_FLAGS)) {
-                    const auto draw_tab = [&](ptr<AppWindow> window, const string& label) {
-                        const bool is_active = (GetApp()->GetActiveWindow() == window);
+                    auto draw_tab = [&](ptr<AppWindow> window, const string& label) {
+                        bool is_active = (GetApp()->GetActiveWindow() == window);
 
                         if (is_active) {
                             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -590,7 +590,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                     for (size_t i = 0; i < child_count; i++) {
                         if (auto child = GetApp()->GetChildWindow(i)) {
-                            const string label = child->GetTitle().empty() ? strex("Client {}", i + 1).str() : string {child->GetTitle()};
+                            string label = child->GetTitle().empty() ? strex("Client {}", i + 1).str() : string {child->GetTitle()};
                             draw_tab(child, label);
                         }
                     }
@@ -598,8 +598,8 @@ int main(int argc, char** argv) // Handled by SDL
                     ImGui::Dummy(ImVec2(16.0f, 0.0f));
                     ImGui::SameLine();
 
-                    const auto layout_button = [&](string_view_nt label, WindowLayoutMode mode) {
-                        const bool is_active = (layout_mode == mode);
+                    auto layout_button = [&](string_view_nt label, WindowLayoutMode mode) {
+                        bool is_active = (layout_mode == mode);
 
                         if (is_active) {
                             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));

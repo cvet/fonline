@@ -118,7 +118,7 @@ auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto key_type = _impl->GetCollectionKeyType(collection_name);
     auto ids = _impl->GetAllRecordIds(collection_name);
 
     for (auto& id : ids) {
@@ -137,7 +137,7 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::IntId) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
@@ -157,7 +157,7 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::String) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
@@ -264,7 +264,7 @@ auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _collectionKeyTypes.find(collection_name);
+    auto it = _collectionKeyTypes.find(collection_name);
 
     if (it == _collectionKeyTypes.end()) {
         throw DataBaseException("Unknown database collection", collection_name);
@@ -277,7 +277,7 @@ auto DataBaseImpl::ResolveCollectionName(string_view collection_name) const -> h
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _collectionNames.find(collection_name);
+    auto it = _collectionNames.find(collection_name);
 
     if (it == _collectionNames.end()) {
         throw DataBaseException("Unknown database collection name", collection_name);
@@ -310,12 +310,12 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    const auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
+    auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
 
-        const auto dir = strex(file_path).extract_dir().str();
+        string dir = strex(file_path).extract_dir().str();
 
         if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("Oplog directory can't be created", file_desc, dir);
@@ -327,17 +327,17 @@ void DataBaseImpl::InitializeOpLogs()
         const_span<string> content = handle->GetContent();
 
         for (size_t i = 0; i < handle->GetLinesCount(); i++) {
-            const auto line = string_view {content[i]};
-            const auto first_space = line.find(' ');
-            const auto second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
-            const auto third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
+            auto line = string_view {content[i]};
+            auto first_space = line.find(' ');
+            size_t second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
+            size_t third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
 
             if (first_space == string_view::npos || first_space == 0 || second_space == string_view::npos || second_space == first_space + 1) {
                 throw DataBaseException("Oplog file has invalid command format", i + 1, file_path);
             }
 
-            const auto command = line.substr(0, first_space);
-            const auto collection = line.substr(first_space + 1, second_space - first_space - 1);
+            auto command = line.substr(0, first_space);
+            auto collection = line.substr(first_space + 1, second_space - first_space - 1);
             string_view record_id_str {};
             string_view other {};
             bool has_other = false;
@@ -369,8 +369,8 @@ void DataBaseImpl::InitializeOpLogs()
                 throw DataBaseException("Oplog file has invalid delete command format", i + 1, file_path);
             }
             try {
-                const auto collection_name = ResolveCollectionName(collection);
-                const auto record_id = DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+                hstring collection_name = ResolveCollectionName(collection);
+                auto record_id = DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
 
                 if (!IsDbKeyValueValid(record_id)) {
                     throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
@@ -415,31 +415,31 @@ void DataBaseImpl::RestorePendingChanges()
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
         FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->OpLogPath);
-        const size_t line_index = i + 1;
+        size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
             throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->OpLogPath);
         }
     }
 
-    const size_t pending_commands_to_replay = pending_changes_content.size() - committed_changes_content.size();
+    size_t pending_commands_to_replay = pending_changes_content.size() - committed_changes_content.size();
     size_t replayed_commands = 0;
 
     try {
         for (size_t i = committed_changes_content.size(); i < pending_changes_content.size(); i++) {
             const auto& line = pending_changes_content[i];
-            const auto line_view = string_view {line};
-            const auto first_space = line_view.find(' ');
-            const auto second_space = line_view.find(' ', first_space + 1);
+            auto line_view = string_view {line};
+            auto first_space = line_view.find(' ');
+            auto second_space = line_view.find(' ', first_space + 1);
             FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->OpLogPath, line_view.size(), first_space);
             FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->OpLogPath, line_view.size(), first_space, second_space);
 
-            const auto command = line_view.substr(0, first_space);
-            const auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
+            auto command = line_view.substr(0, first_space);
+            auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
             string_view record_id_str {};
             string_view other {};
 
-            const auto third_space = line_view.find(' ', second_space + 1);
+            auto third_space = line_view.find(' ', second_space + 1);
 
             if (third_space == string_view::npos) {
                 FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
@@ -451,11 +451,11 @@ void DataBaseImpl::RestorePendingChanges()
                 other = line_view.substr(third_space + 1);
             }
 
-            const auto collection_name = ResolveCollectionName(collection);
-            const auto key_type = GetCollectionKeyType(collection_name);
-            const auto record_id = DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping());
-            const auto storage_record_id = EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping());
-            const auto current_doc = GetRecord(collection_name, storage_record_id);
+            hstring collection_name = ResolveCollectionName(collection);
+            auto key_type = GetCollectionKeyType(collection_name);
+            auto record_id = DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping());
+            auto storage_record_id = EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping());
+            auto current_doc = GetRecord(collection_name, storage_record_id);
 
             if (command == "delete") {
                 if (!current_doc.Empty()) {
@@ -532,7 +532,7 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
     }
 
     ValidateCollectionKey(collection_name, id);
-    const auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+    auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
 
     {
         scoped_lock locker {_stateLocker};
@@ -710,7 +710,7 @@ void DataBaseImpl::DrawGui()
 
     constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-    const auto info_row = [](string_view key, string_view value) {
+    auto info_row = [](string_view key, string_view value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGuiTextUnformatted(key);
@@ -758,7 +758,7 @@ void DataBaseImpl::DrawGui()
     }
 
     if (!_collectionKeyTypes.empty()) {
-        const string collections_label = strex("Collections ({})", _collectionKeyTypes.size()).str();
+        string collections_label = strex("Collections ({})", _collectionKeyTypes.size()).str();
         auto collections_label_cstr = make_ptr(collections_label.c_str());
 
         if (ImGui::TreeNode(collections_label_cstr.get())) {
@@ -767,7 +767,7 @@ void DataBaseImpl::DrawGui()
                 ImGui::TableSetupColumn("Key type", ImGuiTableColumnFlags_WidthStretch);
 
                 for (const auto& [collection_name, key_type] : _collectionKeyTypes) {
-                    const string_view key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
+                    string_view key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
                     info_row(collection_name, key_type_str);
                 }
 
@@ -930,7 +930,7 @@ void DataBaseImpl::CommitNextChange() noexcept
 
     if (!_backendFailed) {
         try {
-            const auto storage_record_id = EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+            auto storage_record_id = EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
 
             switch (op->Type) {
             case CommitOperationType::Insert:
@@ -962,19 +962,19 @@ void DataBaseImpl::CommitNextChange() noexcept
 
             switch (op->Type) {
             case CommitOperationType::Insert: {
-                const auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json = AnyDocumentToJson(op->Doc).dump();
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Update: {
-                const auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json = AnyDocumentToJson(op->Doc).dump();
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Delete: {
-                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("delete {} {}\n", op->CollectionName.as_str(), key).str();
             } break;
             }
@@ -1022,7 +1022,7 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
         return;
     }
 
-    const auto now_second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    auto now_second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
     scoped_lock locker {_dbRequestsMetricLocker};
 
@@ -1054,7 +1054,7 @@ void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBase
         throw DataBaseException("Invalid database key value", collection_name, id);
     }
 
-    const auto expected_type = GetCollectionKeyType(collection_name);
+    auto expected_type = GetCollectionKeyType(collection_name);
 
     if (GetDbKeyType(id) != expected_type) {
         throw DataBaseException("Invalid database key type for collection", collection_name, DbKeyTypeName(expected_type), id);
@@ -1120,13 +1120,13 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
 #endif
     });
 
-    const auto read_content = Read();
+    auto read_content = Read();
 
     if (!read_content.has_value()) {
         throw DataBaseException("Oplog file can't be read", _path);
     }
 
-    const auto normalized_content = strex(read_content.value()).normalize_line_endings().str();
+    string normalized_content = strex(read_content.value()).normalize_line_endings().str();
 
     if (!normalized_content.empty() && !normalized_content.ends_with('\n')) {
         throw DataBaseException("Oplog file has invalid line ending", _path);
@@ -1155,7 +1155,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    const auto size = _lseeki64(_fd, 0, SEEK_END);
+    auto size = _lseeki64(_fd, 0, SEEK_END);
 #else
     const auto size = lseek(_fd, 0, SEEK_END);
 #endif
@@ -1180,12 +1180,12 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     size_t offset = 0;
 
     while (offset < content.size()) {
-        const auto remaining = content.size() - offset;
+        auto remaining = content.size() - offset;
         auto read_pos = make_ptr(content.data() + offset);
 
 #if FO_WINDOWS
-        const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        const auto read_size = _read(_fd, read_pos.get(), chunk);
+        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
+        int32_t read_size = _read(_fd, read_pos.get(), chunk);
 #else
         const auto read_size = read(_fd, read_pos.get(), remaining);
 #endif
@@ -1253,7 +1253,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         return true;
     }
 
-    const auto normalized_content = strex(text).normalize_line_endings().str();
+    string normalized_content = strex(text).normalize_line_endings().str();
 
     if (!normalized_content.ends_with('\n')) {
         return false;
@@ -1263,22 +1263,22 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     size_t line_begin = 0;
 
     while (line_begin < normalized_content.size()) {
-        const auto line_end = normalized_content.find('\n', line_begin);
+        auto line_end = normalized_content.find('\n', line_begin);
 
         if (line_end == string::npos || line_end == line_begin) {
             return false;
         }
 
-        const auto line = string_view {normalized_content}.substr(line_begin, line_end - line_begin);
-        const auto first_space = line.find(' ');
-        const auto second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
-        const auto third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
+        auto line = string_view {normalized_content}.substr(line_begin, line_end - line_begin);
+        auto first_space = line.find(' ');
+        size_t second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
+        size_t third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
 
         if (first_space == string_view::npos || first_space == 0 || second_space == string_view::npos || second_space == first_space + 1) {
             return false;
         }
 
-        const auto command = line.substr(0, first_space);
+        auto command = line.substr(0, first_space);
         string_view other {};
         bool has_other = false;
 
@@ -1326,12 +1326,12 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     size_t offset = 0;
 
     while (offset < normalized_content.size()) {
-        const auto remaining = normalized_content.size() - offset;
+        auto remaining = normalized_content.size() - offset;
         auto write_pos = make_ptr(normalized_content.data() + offset);
 
 #if FO_WINDOWS
-        const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        const auto written_size = _write(_fd, write_pos.get(), chunk);
+        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
+        int32_t written_size = _write(_fd, write_pos.get(), chunk);
 #else
         const auto written_size = write(_fd, write_pos.get(), remaining);
 #endif
@@ -1366,14 +1366,14 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto finish_connect = [&](unique_ptr<DataBaseImpl> impl) -> DataBase {
+    auto finish_connect = [&](unique_ptr<DataBaseImpl> impl) -> DataBase {
         impl->InitializeCollections(collection_schemas);
         impl->InitializeOpLogs();
         impl->RestorePendingChanges();
         return DataBase(std::move(impl));
     };
 
-    if (const auto options = strvex(connection_info).split(' '); !options.empty()) {
+    if (auto options = strvex(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
         if (options.front() == "JSON" && options.size() == 2) {
@@ -1401,10 +1401,10 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto key_buf = strex(key);
-    const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
-    const string_view key_data = escaped_key;
-    const auto key_len = numeric_cast<int32_t>(escaped_key.length());
+    strex key_buf = strex(key);
+    string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
+    string_view key_data = escaped_key;
+    int32_t key_len = numeric_cast<int32_t>(escaped_key.length());
     auto key_ptr = make_nptr(key_data.data());
     auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
@@ -1414,7 +1414,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        const float64_t double_value = value.AsDouble();
+        float64_t double_value = value.AsDouble();
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("ValueToBson non-finite double", key, double_value);
@@ -1429,7 +1429,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        const string_view value_str = value.AsString();
+        string_view value_str = value.AsString();
 
         if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
@@ -1498,7 +1498,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
         return value->value.v_int64;
     }
     else if (value->value_type == BSON_TYPE_DOUBLE) {
-        const float64_t double_value = value->value.v_double;
+        float64_t double_value = value->value.v_double;
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter), double_value);
@@ -1539,7 +1539,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 
         while (bson_iter_next(&doc_iter)) {
             auto key = make_ptr(bson_iter_key(&doc_iter));
-            auto unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
+            string unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
             auto dict_value = BsonToValue(&doc_iter, escape_dot);
             dict.Emplace(std::move(unescaped_key), std::move(dict_value));
         }
@@ -1564,14 +1564,14 @@ void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_
 
     while (bson_iter_next(&iter)) {
         auto key = make_ptr(bson_iter_key(&iter));
-        const string_view key_text {key.get()};
+        string_view key_text {key.get()};
 
         if (key_text == "_id") {
             continue;
         }
 
         auto value = BsonToValue(&iter, escape_dot);
-        auto unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
+        string unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
         doc.Emplace(std::move(unescaped_key), std::move(value));
     }
 }
@@ -1584,7 +1584,7 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
     case AnyData::ValueType::Int64:
         return value.AsInt64();
     case AnyData::ValueType::Float64: {
-        const float64_t double_value = value.AsDouble();
+        float64_t double_value = value.AsDouble();
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("AnyValueToJson non-finite double", double_value);
@@ -1666,7 +1666,7 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
         return numeric_cast<int64_t>(value.get<int64_t>());
     }
     if (value.is_number_float()) {
-        const float64_t double_value = value.get<float64_t>();
+        float64_t double_value = value.get<float64_t>();
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("JsonToAnyValue non-finite double", double_value);
@@ -1834,7 +1834,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
             throw DataBaseException("Invalid database numeric key format", key_str);
         }
 
-        const auto id_value = strvex(key_str).to_int64();
+        int64_t id_value = strvex(key_str).to_int64();
 
         if (id_value <= 0) {
             throw DataBaseException("Invalid database numeric key value", key_str);
@@ -1843,7 +1843,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
         return ident_t {id_value};
     }
 
-    auto decoded_value = DecodeDbStringKey(key_str, escaping);
+    string decoded_value = DecodeDbStringKey(key_str, escaping);
 
     if (decoded_value.empty()) {
         throw DataBaseException("Invalid database string key value", key_str);
@@ -1904,7 +1904,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
         return string(value);
     }
 
-    auto decoded_value = DecodeDbStringKey(value, escaping);
+    string decoded_value = DecodeDbStringKey(value, escaping);
 
     if (!strvex(decoded_value).is_valid_utf8()) {
         throw DataBaseException("Invalid database string key utf8", value);
@@ -1924,8 +1924,8 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         result.reserve(2 + value.size() * 2);
         result += "s_";
 
-        for (const auto ch : value) {
-            const auto byte = static_cast<uint8_t>(ch);
+        for (auto ch : value) {
+            uint8_t byte = static_cast<uint8_t>(ch);
             result.push_back(hex_digits[byte >> 4]);
             result.push_back(hex_digits[byte & 0x0F]);
         }
@@ -1936,8 +1936,8 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     string result;
     result.reserve(value.size());
 
-    for (const auto ch : value) {
-        const auto byte = static_cast<uint8_t>(ch);
+    for (auto ch : value) {
+        uint8_t byte = static_cast<uint8_t>(ch);
 
         if (!ShouldEscapeDbStringByte(byte, escaping)) {
             result.push_back(ch);
@@ -1961,7 +1961,7 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
             throw DataBaseException("Invalid database string key format", value);
         }
 
-        const auto encoded_value = value.substr(2);
+        auto encoded_value = value.substr(2);
 
         if (encoded_value.empty() || encoded_value.size() % 2 != 0) {
             throw DataBaseException("Invalid database string key value", value);
@@ -1971,8 +1971,8 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         decoded_value.reserve(encoded_value.size() / 2);
 
         for (size_t i = 0; i < encoded_value.size(); i += 2) {
-            const auto high = DecodeHexDigit(encoded_value[i]);
-            const auto low = DecodeHexDigit(encoded_value[i + 1]);
+            uint8_t high = DecodeHexDigit(encoded_value[i]);
+            uint8_t low = DecodeHexDigit(encoded_value[i + 1]);
             decoded_value.push_back(static_cast<char>((high << 4) | low));
         }
 
@@ -1992,8 +1992,8 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
             throw DataBaseException("Invalid database string key value", value);
         }
 
-        const auto high = DecodeHexDigit(value[i + 1]);
-        const auto low = DecodeHexDigit(value[i + 2]);
+        uint8_t high = DecodeHexDigit(value[i + 1]);
+        uint8_t low = DecodeHexDigit(value[i + 2]);
         decoded_value.push_back(static_cast<char>((high << 4) | low));
         i += 2;
     }

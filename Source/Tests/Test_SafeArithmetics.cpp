@@ -104,15 +104,15 @@ TEST_CASE("SafeArithmetics")
 
     SECTION("IterateRange")
     {
-        auto sum = 0;
-        for (const auto i : iterate_range(5)) {
+        int32_t sum = 0;
+        for (auto i : iterate_range(5)) {
             sum += i;
         }
         CHECK(sum == 10);
 
-        const vector<int32_t> values = {4, 5, 6};
+        vector<int32_t> values = {4, 5, 6};
         size_t idx_sum = 0;
-        for (const auto i : iterate_range(values)) {
+        for (auto i : iterate_range(values)) {
             idx_sum += i;
         }
         CHECK(idx_sum == 3);

@@ -209,7 +209,7 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
     FO_VERIFY_AND_THROW(anim_index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", anim_index, _anims->size());
 
     ptr<const ModelAnimation> anim = (*_anims)[anim_index].first;
-    const auto reversed = (*_anims)[anim_index].second;
+    bool reversed = (*_anims)[anim_index].second;
 
     _tracks[track].Anim = anim;
     _tracks[track].Reversed = reversed;
@@ -217,7 +217,7 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
     _tracks[track].AnimOutput.resize(outputs.size());
 
     for (size_t i = 0; i < outputs.size(); i++) {
-        const auto link_name = outputs[i].BoneName;
+        hstring link_name = outputs[i].BoneName;
         nptr<Output> output = nullptr;
 
         if (!allowed_bones || allowed_bones->count(link_name) != 0) {
@@ -416,8 +416,8 @@ void ModelAnimationController::AdvanceTime(float32_t time)
             }
 
             const auto& anim_output = anim_outputs[j];
-            const auto duration = track.Anim->GetDuration();
-            const auto pos = std::fmod(track.Position, duration);
+            float32_t duration = track.Anim->GetDuration();
+            float32_t pos = std::fmod(track.Position, duration);
 
             FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
             FindSrtValue<quaternion>(pos, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
@@ -444,16 +444,16 @@ void ModelAnimationController::AdvanceTime(float32_t time)
 
         for (size_t i = base_idx + 1; i < _tracks.size(); i++) {
             if (o.Valid[i]) {
-                const auto factor = o.Factor[i];
+                float32_t factor = o.Factor[i];
                 Interpolate(o.Scale[base_idx], o.Scale[i], factor);
                 Interpolate(o.Rotation[base_idx], o.Rotation[i], factor);
                 Interpolate(o.Translation[base_idx], o.Translation[i], factor);
             }
         }
 
-        const auto ms = glm::scale(mat44 {1.0f}, o.Scale[base_idx]);
-        const auto mr = glm::mat4_cast(o.Rotation[base_idx]);
-        const auto mt = glm::translate(mat44 {1.0f}, o.Translation[base_idx]);
+        mat44 ms = glm::scale(mat44 {1.0f}, o.Scale[base_idx]);
+        auto mr = glm::mat4_cast(o.Rotation[base_idx]);
+        mat44 mt = glm::translate(mat44 {1.0f}, o.Translation[base_idx]);
         *o.Matrix = mt * mr * ms;
     }
 }

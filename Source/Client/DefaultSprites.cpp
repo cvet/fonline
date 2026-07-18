@@ -109,9 +109,9 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     dbuf->CheckAllocBuf(4, 6);
 
     auto& vbuf = dbuf->Vertices;
-    auto& vpos = dbuf->VertCount;
+    size_t& vpos = dbuf->VertCount;
     auto& ibuf = dbuf->Indices;
-    auto& ipos = dbuf->IndCount;
+    size_t& ipos = dbuf->IndCount;
 
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
@@ -323,16 +323,16 @@ auto SpriteSheet::Update() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (_playing) {
-        const auto cur_tick = _sprMngr->GetTimer().GetFrameTime();
-        const auto dt = (cur_tick - _startTick).to_ms<int32_t>();
-        const auto frm_count = numeric_cast<int32_t>(_framesCount);
-        const auto ticks_per_frame = numeric_cast<int32_t>(_wholeTicks) / frm_count;
-        const auto frames_passed = dt / ticks_per_frame;
+        nanotime cur_tick = _sprMngr->GetTimer().GetFrameTime();
+        int32_t dt = (cur_tick - _startTick).to_ms<int32_t>();
+        int32_t frm_count = numeric_cast<int32_t>(_framesCount);
+        int32_t ticks_per_frame = numeric_cast<int32_t>(_wholeTicks) / frm_count;
+        int32_t frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
             _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
 
-            auto index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
+            int32_t index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
 
             if (_looped) {
                 if (index < 0 || index >= frm_count) {
@@ -390,7 +390,7 @@ auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dir_value = dir.hex().value();
+    int8_t dir_value = dir.hex().value();
     if (dir_value == 0 || _dirCount == 1) {
         return this;
     }
@@ -402,7 +402,7 @@ auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dir_value = dir.hex().value();
+    int8_t dir_value = dir.hex().value();
     if (dir_value == 0 || _dirCount == 1) {
         return this;
     }
@@ -422,7 +422,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _sprMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -430,37 +430,37 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     auto reader = file.GetReader();
 
-    const auto check_number = reader.GetUInt8();
+    uint8_t check_number = reader.GetUInt8();
     FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
-    const auto frames_count = reader.GetLEUInt16();
+    uint16_t frames_count = reader.GetLEUInt16();
     FO_VERIFY_AND_THROW(frames_count != 0, "Sprite file contains no frames", frames_count);
-    const auto ticks = reader.GetLEUInt16();
-    const auto dirs = reader.GetUInt8();
+    uint16_t ticks = reader.GetLEUInt16();
+    uint8_t dirs = reader.GetUInt8();
     FO_VERIFY_AND_THROW(dirs != 0, "Sprite file direction count is zero", dirs);
 
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
 
         for (uint8_t i = 0; i < dirs; i++) {
-            const mdir dir = hdir(i);
+            mdir dir = hdir(i);
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
-            const auto ox = reader.GetLEInt16();
-            const auto oy = reader.GetLEInt16();
+            int16_t ox = reader.GetLEInt16();
+            int16_t oy = reader.GetLEInt16();
 
             dir_anim->_offset.x = ox;
             dir_anim->_offset.y = oy;
 
             for (uint16_t j = 0; j < frames_count; j++) {
-                const auto is_spr_ref = reader.GetUInt8();
+                uint8_t is_spr_ref = reader.GetUInt8();
 
                 if (is_spr_ref == 0) {
-                    const auto width = reader.GetLEUInt16();
-                    const auto height = reader.GetLEUInt16();
-                    const auto nx = reader.GetLEInt16();
-                    const auto ny = reader.GetLEInt16();
+                    uint16_t width = reader.GetLEUInt16();
+                    uint16_t height = reader.GetLEUInt16();
+                    int16_t nx = reader.GetLEInt16();
+                    int16_t ny = reader.GetLEInt16();
 
-                    const auto pixel_count = numeric_cast<size_t>(width) * height;
+                    auto pixel_count = numeric_cast<size_t>(width) * height;
                     vector<ucolor> pixels(pixel_count);
                     auto pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
                     MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
@@ -479,7 +479,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     dir_anim->_spr[j] = std::move(spr);
                 }
                 else {
-                    const auto index = reader.GetLEUInt16();
+                    uint16_t index = reader.GetLEUInt16();
 
                     dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
                     dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
@@ -487,27 +487,27 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             }
         }
 
-        const auto check_number2 = reader.GetUInt8();
+        uint8_t check_number2 = reader.GetUInt8();
         FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
 
         return anim;
     }
     else {
-        const auto ox = reader.GetLEInt16();
-        const auto oy = reader.GetLEInt16();
+        int16_t ox = reader.GetLEInt16();
+        int16_t oy = reader.GetLEInt16();
 
-        const auto is_spr_ref = reader.GetUInt8();
+        uint8_t is_spr_ref = reader.GetUInt8();
         FO_VERIFY_AND_THROW(is_spr_ref == 0, "Sprite file contains unsupported SPR reference record", is_spr_ref);
 
-        const auto width = reader.GetLEUInt16();
-        const auto height = reader.GetLEUInt16();
-        const auto nx = reader.GetLEInt16();
-        const auto ny = reader.GetLEInt16();
+        uint16_t width = reader.GetLEUInt16();
+        uint16_t height = reader.GetLEUInt16();
+        int16_t nx = reader.GetLEInt16();
+        int16_t ny = reader.GetLEInt16();
 
         ignore_unused(nx);
         ignore_unused(ny);
 
-        const auto pixel_count = numeric_cast<size_t>(width) * height;
+        auto pixel_count = numeric_cast<size_t>(width) * height;
         vector<ucolor> pixels(pixel_count);
         const_span<uint8_t> pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
         MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
@@ -515,7 +515,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
 
-        const auto check_number2 = reader.GetUInt8();
+        uint8_t check_number2 = reader.GetUInt8();
         FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
 
         return spr;
@@ -534,10 +534,10 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     vector<bool> hit_test_data;
 
     if (pixels) {
-        const size_t width = numeric_cast<size_t>(size.width);
-        const size_t height = numeric_cast<size_t>(size.height);
+        size_t width = numeric_cast<size_t>(size.width);
+        size_t height = numeric_cast<size_t>(size.height);
         auto pixel_ptr = pixels.as_ptr();
-        const auto pixel_data = make_span(pixel_ptr, width * height);
+        auto pixel_data = make_span(pixel_ptr, width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 
@@ -555,7 +555,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        const auto border_pixels = make_span(make_ptr(_borderBuf.data()), numeric_cast<size_t>(size.height + 2));
+        auto border_pixels = make_span(make_ptr(_borderBuf.data()), numeric_cast<size_t>(size.height + 2));
         tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, border_pixels);
 
         // Right

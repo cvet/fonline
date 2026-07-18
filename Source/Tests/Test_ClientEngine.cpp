@@ -142,7 +142,7 @@ namespace ClientEngineTest
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -152,7 +152,7 @@ namespace ClientEngineTest
 
     static auto MakeClientTestResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
@@ -161,9 +161,9 @@ namespace ClientEngineTest
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestClientCritter");
-        const auto script_blob = MakeClientScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestClientCritter");
+        auto script_blob = MakeClientScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
@@ -194,7 +194,7 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
-    const auto critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
+    hstring critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
     auto critter_proto = client->GetProtoCritter(critter_pid);
     REQUIRE(static_cast<bool>(critter_proto));
 
@@ -220,7 +220,7 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
     int start_calls = 0;
     int loop_calls = 0;
@@ -274,7 +274,7 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));

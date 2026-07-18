@@ -69,12 +69,12 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        const hstring item_type = meta.Hashes.ToHashedString("Item");
-        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
-        const hstring critter_type = meta.Hashes.ToHashedString("Critter");
-        const hstring proto_critter_type = meta.Hashes.ToHashedString("ProtoCritter");
-        const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        hstring item_type = meta.Hashes.ToHashedString("Item");
+        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        hstring critter_type = meta.Hashes.ToHashedString("Critter");
+        hstring proto_critter_type = meta.Hashes.ToHashedString("ProtoCritter");
+        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
+        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
 
         auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
         auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrator(meta, critter_type));
@@ -105,16 +105,16 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        const hstring item_type = meta.Hashes.ToHashedString("Item");
-        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
-        const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        const hstring legacy_pid = meta.Hashes.ToHashedString("LegacyKnife");
-        const hstring map_type = meta.Hashes.ToHashedString("Map");
-        const hstring proto_map_type = meta.Hashes.ToHashedString("ProtoMap");
-        const hstring location_type = meta.Hashes.ToHashedString("Location");
-        const hstring proto_location_type = meta.Hashes.ToHashedString("ProtoLocation");
-        const hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
-        const hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
+        hstring item_type = meta.Hashes.ToHashedString("Item");
+        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
+        hstring legacy_pid = meta.Hashes.ToHashedString("LegacyKnife");
+        hstring map_type = meta.Hashes.ToHashedString("Map");
+        hstring proto_map_type = meta.Hashes.ToHashedString("ProtoMap");
+        hstring location_type = meta.Hashes.ToHashedString("Location");
+        hstring proto_location_type = meta.Hashes.ToHashedString("ProtoLocation");
+        hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
+        hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
 
         auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
         auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrator(meta, map_type));
@@ -140,16 +140,16 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        const hstring proto_rule = meta.Hashes.ToHashedString("Proto");
-        const hstring item_type = meta.Hashes.ToHashedString("Item");
-        const hstring removed_pid = meta.Hashes.ToHashedString("RemovedKnife");
-        const hstring remove_sentinel = meta.Hashes.ToHashedString("Remove");
+        hstring proto_rule = meta.Hashes.ToHashedString("Proto");
+        hstring item_type = meta.Hashes.ToHashedString("Item");
+        hstring removed_pid = meta.Hashes.ToHashedString("RemovedKnife");
+        hstring remove_sentinel = meta.Hashes.ToHashedString("Remove");
 
         meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "Remove");
 
         // A deleted proto resolves to the "Remove" sentinel; EntityManager keys its clean entity drop
         // on exactly this. The proto itself is gone, so lookups still return null.
-        const auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
+        auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
         CHECK(resolved.has_value());
         CHECK(resolved.value() == remove_sentinel);
         CHECK_FALSE(static_cast<bool>(meta.GetProtoItem(removed_pid)));
@@ -160,7 +160,7 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        const hstring map_type = meta.Hashes.ToHashedString("Map");
+        hstring map_type = meta.Hashes.ToHashedString("Map");
 
         CHECK_FALSE(static_cast<bool>(meta.GetProtoEntity(map_type, meta.Hashes.ToHashedString("Missing"))));
         CHECK(meta.GetProtoEntities(map_type).empty());
@@ -178,9 +178,9 @@ TEST_CASE("ProtoManager")
         resources.AddCustomSource(std::move(source));
         meta.RegisterProtos(resources);
 
-        const hstring loaded_pid = meta.Hashes.ToHashedString("LoadedKnife");
-        const hstring item_type = meta.Hashes.ToHashedString("Item");
-        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        hstring loaded_pid = meta.Hashes.ToHashedString("LoadedKnife");
+        hstring item_type = meta.Hashes.ToHashedString("Item");
+        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
 
         REQUIRE(static_cast<bool>(meta.GetProtoItem(loaded_pid)));
         CHECK(meta.GetProtoItem(loaded_pid)->GetName() == string_view {"LoadedKnife"});

@@ -80,7 +80,7 @@ static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
     auto module_name = make_ptr(mod.c_str());
     auto proc_name = make_ptr(name.c_str());
 
-    const auto hmod = ::GetModuleHandleA(module_name.get());
+    auto hmod = ::GetModuleHandleA(module_name.get());
 
     if (hmod != nullptr) {
         FARPROC proc = ::GetProcAddress(hmod, proc_name.get());
@@ -122,7 +122,7 @@ void Platform::InfoLog(const string& str) noexcept
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    const wstring message = strex(str).to_wide_char();
+    wstring message = strex(str).to_wide_char();
     auto message_cstr = make_ptr(message.c_str());
     ::OutputDebugStringW(message_cstr.get());
 #elif FO_ANDROID
@@ -140,7 +140,7 @@ void Platform::SetThreadName(const string& str) noexcept
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
 
     if (set_thread_description != nullptr) {
-        const wstring thread_name = strex(str).to_wide_char();
+        wstring thread_name = strex(str).to_wide_char();
         auto thread_name_cstr = make_ptr(thread_name.c_str());
         set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
     }
@@ -356,7 +356,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     CpuUsageSnapshot result;
 
 #if FO_WINDOWS
-    const auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
+    auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
         ULARGE_INTEGER value {};
         value.LowPart = time.dwLowDateTime;
         value.HighPart = time.dwHighDateTime;
@@ -373,7 +373,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
 
-    const DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
     result.LogicalCoreCount = processor_count != 0 ? static_cast<uint32_t>(processor_count) : 1U;
 
     FILETIME idle_time {};
@@ -563,13 +563,13 @@ auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
 
     nptr<void> module_handle = nullptr;
 
-    const auto add_extension = [](const string& path, string_view extension) -> string { //
+    auto add_extension = [](const string& path, string_view extension) -> string { //
         return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
     };
 
 #if FO_WINDOWS
-    const string module_path = add_extension(module_name, ".dll");
-    const wstring module_path_wide = strex(module_path).to_wide_char();
+    string module_path = add_extension(module_name, ".dll");
+    wstring module_path_wide = strex(module_path).to_wide_char();
     auto module_path_cstr = make_ptr(module_path_wide.c_str());
     module_handle = ::LoadLibraryW(module_path_cstr.get());
 #elif FO_LINUX

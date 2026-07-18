@@ -46,7 +46,7 @@ auto fs_path_to_string(const std::filesystem::path& path) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto u8_str = path.u8string();
+    auto u8_str = path.u8string();
     return strex(string(u8_str.begin(), u8_str.end())).normalize_path_slashes();
 }
 
@@ -55,7 +55,7 @@ auto fs_resolve_path(string_view path) -> string
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
+    auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
     return !ec ? fs_path_to_string(resolved) : strex(path).normalize_path_slashes();
 }
 
@@ -111,7 +111,7 @@ auto fs_create_directories(string_view dir) noexcept -> bool
     }
 
     std::error_code ec;
-    const auto fs_dir = std::filesystem::path {fs_make_path(dir)};
+    auto fs_dir = std::filesystem::path {fs_make_path(dir)};
     std::filesystem::create_directories(fs_dir, ec);
     return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
@@ -121,7 +121,7 @@ auto fs_last_write_time(string_view path) noexcept -> uint64_t
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto wt = std::filesystem::last_write_time(std::filesystem::path {fs_make_path(path)}, ec);
+    auto wt = std::filesystem::last_write_time(std::filesystem::path {fs_make_path(path)}, ec);
     return !ec ? wt.time_since_epoch().count() : 0;
 }
 
@@ -130,7 +130,7 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto size = std::filesystem::file_size(std::filesystem::path {fs_make_path(path)}, ec);
+    uintmax_t size = std::filesystem::file_size(std::filesystem::path {fs_make_path(path)}, ec);
     return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
@@ -139,8 +139,8 @@ auto fs_read_file(string_view path) -> optional<string>
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto fs_path = std::filesystem::path {fs_make_path(path)};
-    const auto file_size = std::filesystem::file_size(fs_path, ec);
+    auto fs_path = std::filesystem::path {fs_make_path(path)};
+    uintmax_t file_size = std::filesystem::file_size(fs_path, ec);
 
     if (ec) {
         return std::nullopt;
@@ -172,7 +172,7 @@ auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> b
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto existing_content = fs_read_file(path);
+    auto existing_content = fs_read_file(path);
 
     if (!existing_content || existing_content->size() != content.size()) {
         return false;
@@ -189,7 +189,7 @@ auto fs_write_file(string_view path, string_view content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir = strex(path).extract_dir().str();
+    string dir = strex(path).extract_dir().str();
 
     if (!dir.empty() && !fs_create_directories(dir)) {
         return false;
@@ -213,7 +213,7 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir = strex(path).extract_dir().str();
+    string dir = strex(path).extract_dir().str();
 
     if (!dir.empty() && !fs_create_directories(dir)) {
         return false;
@@ -238,7 +238,7 @@ auto fs_remove_file(string_view path) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto fs_path = std::filesystem::path {fs_make_path(path)};
+    auto fs_path = std::filesystem::path {fs_make_path(path)};
     std::filesystem::remove(fs_path, ec);
     return !std::filesystem::exists(fs_path, ec) && !ec;
 }
@@ -248,7 +248,7 @@ auto fs_remove_dir_tree(string_view dir) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto fs_dir = std::filesystem::path {fs_make_path(dir)};
+    auto fs_dir = std::filesystem::path {fs_make_path(dir)};
     std::filesystem::remove_all(fs_dir, ec);
     return !std::filesystem::exists(fs_dir, ec) && !ec;
 }
@@ -257,9 +257,9 @@ auto fs_touch_file(string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fs_path = std::filesystem::path {fs_make_path(path)};
+    auto fs_path = std::filesystem::path {fs_make_path(path)};
     std::error_code ec;
-    const bool exists = std::filesystem::exists(fs_path, ec);
+    bool exists = std::filesystem::exists(fs_path, ec);
 
     if (ec) {
         return false;
@@ -298,7 +298,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
+    auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
@@ -318,7 +318,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
         auto read_buf = make_nptr(buf.data());
         stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
 
-        const auto read_size = numeric_cast<size_t>(stream.gcount());
+        auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
             auto hash_bytes = read_buf.reinterpret_as<const uint8_t>();
@@ -341,7 +341,7 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
+    auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
@@ -359,12 +359,12 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto full_dir = std::filesystem::path {fs_make_path(strex(base_dir).combine_path(cur_dir))};
-    const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
+    auto full_dir = std::filesystem::path {fs_make_path(strex(base_dir).combine_path(cur_dir))};
+    auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
-        const auto u8_str = dir_entry.path().filename().u8string();
-        const auto path = string(u8_str.begin(), u8_str.end());
+        auto u8_str = dir_entry.path().filename().u8string();
+        string path = string(u8_str.begin(), u8_str.end());
 
         if (!path.empty() && path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
@@ -373,7 +373,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
                 }
             }
             else {
-                const auto file_size = dir_entry.file_size();
+                uintmax_t file_size = dir_entry.file_size();
                 FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
                 visitor(strex(cur_dir).combine_path(path), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
             }
@@ -396,7 +396,7 @@ auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
         return true;
     }
 
-    const std::streamsize stream_len = numeric_cast<std::streamsize>(buf.size());
+    std::streamsize stream_len = numeric_cast<std::streamsize>(buf.size());
     auto target_chars = make_ptr(buf.data()).reinterpret_as<char>();
     stream.read(target_chars.get(), stream_len);
     return !!stream && stream.gcount() == stream_len;
@@ -406,7 +406,7 @@ auto stream_get_size(std::istream& stream) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cur_pos = stream.tellg();
+    auto cur_pos = stream.tellg();
 
     if (cur_pos < 0) {
         return 0;
@@ -419,7 +419,7 @@ auto stream_get_size(std::istream& stream) -> size_t
         return 0;
     }
 
-    const auto end_pos = stream.tellg();
+    auto end_pos = stream.tellg();
 
     if (end_pos < 0) {
         return 0;
@@ -439,7 +439,7 @@ auto stream_get_read_pos(std::istream& stream) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto pos = stream.tellg();
+    auto pos = stream.tellg();
     return pos >= 0 ? static_cast<size_t>(pos) : 0;
 }
 

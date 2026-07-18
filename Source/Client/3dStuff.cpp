@@ -84,7 +84,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _hashResolver->ToHashedString(fname);
+    hstring name_hashed = _hashResolver->ToHashedString(fname);
 
     for (size_t i = 0; i != _loadedModels.size(); ++i) {
         auto root_bone = _loadedModels[i].as_ptr();
@@ -107,7 +107,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     }
 
     // Load file data
-    const auto file = _resources->ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
@@ -117,7 +117,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FixModelBoneAfterLoad(root_bone, root_bone);
 
     // Load animations
-    const auto anim_count = reader.Read<uint32_t>();
+    auto anim_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < anim_count; i++) {
         auto anim = SafeAlloc::MakeUnique<ModelAnimation>();
@@ -138,8 +138,8 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     FO_STACK_TRACE_ENTRY();
 
     // Find in already loaded
-    const auto take_first = anim_name == "Base";
-    const auto name_hashed = _hashResolver->ToHashedString(anim_fname);
+    bool take_first = anim_name == "Base";
+    hstring name_hashed = _hashResolver->ToHashedString(anim_fname);
 
     for (size_t i = 0; i != _loadedAnims.size(); ++i) {
         auto anim = _loadedAnims[i].as_ptr();
@@ -155,7 +155,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     }
 
     // File not processed, load and recheck animations
-    const auto root_bone = LoadModel(anim_fname);
+    auto root_bone = LoadModel(anim_fname);
 
     if (root_bone) {
         return LoadAnimation(anim_fname, anim_name);
@@ -186,7 +186,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
         auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
-        const string_view tex_name = mesh->DiffuseTexture;
+        string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
@@ -281,9 +281,9 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
     // Projection
-    const auto frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
-    const auto proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
-    const auto proj_width = proj_height * frame_ratio;
+    float32_t frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
+    float32_t proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
+    float32_t proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
 }
@@ -294,7 +294,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out {};
-    const mat44 identity {1.0f};
+    mat44 identity {1.0f};
 
     if (!ProjectPoint(pos, identity, _frameProj, viewport, out)) {
         return {};
@@ -308,10 +308,10 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
     FO_STACK_TRACE_ENTRY();
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    const auto xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
-    const auto yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
+    float32_t xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
+    float32_t yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
     vec3 out {};
-    const mat44 identity {1.0f};
+    mat44 identity {1.0f};
 
     if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f}, identity, _frameProj, viewport, out)) {
         return {};
@@ -325,13 +325,13 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+    glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
 
     if (clip_pos.w == 0.0f) {
         return false;
     }
 
-    const vec3 ndc_pos {clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w, clip_pos.z / clip_pos.w};
+    vec3 ndc_pos {clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w, clip_pos.z / clip_pos.w};
 
     out_pos.x = (ndc_pos.x * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[2]) + numeric_cast<float32_t>(viewport[0]);
     out_pos.y = (ndc_pos.y * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[3]) + numeric_cast<float32_t>(viewport[1]);
@@ -343,11 +343,11 @@ auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, cons
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
-    const float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
-    const float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
-    const mat44 clip_to_model = glm::inverse(proj_matrix * model_matrix);
-    const glm::vec<4, float32_t, glm::defaultp> obj_pos = clip_to_model * glm::vec<4, float32_t, glm::defaultp> {ndc_x, ndc_y, ndc_z, 1.0f};
+    float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
+    float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
+    float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
+    mat44 clip_to_model = glm::inverse(proj_matrix * model_matrix);
+    glm::vec<4, float32_t, glm::defaultp> obj_pos = clip_to_model * glm::vec<4, float32_t, glm::defaultp> {ndc_x, ndc_y, ndc_z, 1.0f};
 
     if (obj_pos.w == 0.0f) {
         return false;
@@ -380,14 +380,14 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prev_state_anim = _curStateAnim;
-    const auto prev_action_anim = _curActionAnim;
+    auto prev_state_anim = _curStateAnim;
+    auto prev_action_anim = _curActionAnim;
 
     _curStateAnim = state_anim;
     _curActionAnim = action_anim;
 
     // Restore rotation
-    if (const auto no_rotate = IsEnumSet(flags, ModelAnimFlags::NoRotate); no_rotate != _noRotate) {
+    if (bool no_rotate = IsEnumSet(flags, ModelAnimFlags::NoRotate); no_rotate != _noRotate) {
         _noRotate = no_rotate;
 
         if (_noRotate) {
@@ -400,7 +400,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     }
 
     // Get animation index
-    const auto anim_pair = std::make_pair(state_anim, action_anim);
+    auto anim_pair = std::make_pair(state_anim, action_anim);
     float32_t speed = 1.0f;
     int32_t anim_index = 0;
 
@@ -419,16 +419,16 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     }
 
     // Animation layers
-    if (const auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
+    if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
         for (auto&& [layer_index, value] : it->second) {
             new_layers[layer_index] = value;
         }
     }
 
-    const bool layers_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
+    bool layers_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
 
     // Try skip redundant calls
-    const bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
+    bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
 
     if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layers_changed) {
         return false;
@@ -441,7 +441,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     if (layers_changed || IsEnumSet(flags, ModelAnimFlags::Init)) {
         // Store data to compare later
-        const auto old_cuts = _allCuts;
+        auto old_cuts = _allCuts;
 
         for (size_t i = 0; i < _allMeshes.size(); i++) {
             _allMeshesDisabled[i] = _allMeshes[i]->Disabled;
@@ -469,10 +469,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
             for (const auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty()) {
-                    for (const auto j : link.DisabledLayer) {
+                    for (auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
                     }
-                    for (const auto disabled_mesh_name : link.DisabledMesh) {
+                    for (auto disabled_mesh_name : link.DisabledMesh) {
                         for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
                             auto mesh = _allMeshes[mesh_index].as_ptr();
 
@@ -486,7 +486,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
 
         if (_parentBone) {
-            for (const auto j : _animLink.DisabledLayer) {
+            for (auto j : _animLink.DisabledLayer) {
                 unused_layers[j] = true;
             }
             for (auto disabled_mesh_name : _animLink.DisabledMesh) {
@@ -527,7 +527,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                         if (!available) {
                             FO_VERIFY_AND_THROW(link.LinkBone, "Particle model link has no target bone");
-                            const auto to_bone = FindBone(link.LinkBone);
+                            auto to_bone = FindBone(link.LinkBone);
                             FO_VERIFY_AND_THROW(to_bone, "Particle model link target bone not found");
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
@@ -551,7 +551,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         }
 
                         if (!available) {
-                            const auto create_child_model = [this, &link]() -> unique_ptr<ModelInstance> {
+                            auto create_child_model = [this, &link]() -> unique_ptr<ModelInstance> {
                                 auto model = _modelMngr->CreateModel(link.ChildName);
                                 FO_VERIFY_AND_THROW(model, "Child model was not found for a model link", link.ChildName);
                                 return model.take_not_null();
@@ -653,7 +653,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     RefreshMoveAnimation();
 
     if (_bodyAnimController && anim_index >= 0) {
-        const auto new_track = _curTrack == 0 ? 1 : 0;
+        int32_t new_track = _curTrack == 0 ? 1 : 0;
         _animDuration = _bodyAnimController->GetAnimationDuration(anim_index);
 
         // Turn off fast transition bones on other tracks
@@ -663,10 +663,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         _bodyAnimController->ResetEvents();
 
-        const auto no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
-        const auto smooth_time = no_smooth ? 0.0f : _modelMngr->_moveTransitionTime;
-        const auto anim_start_time = std::min(_animDuration * ntime, _animDuration - 0.001f);
-        const auto anim_duration = IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
+        bool no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
+        float32_t smooth_time = no_smooth ? 0.0f : _modelMngr->_moveTransitionTime;
+        float32_t anim_start_time = std::min(_animDuration * ntime, _animDuration - 0.001f);
+        float32_t anim_duration = IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
 
         // Disable current track
         if (no_smooth) {
@@ -721,9 +721,9 @@ void ModelInstance::MoveModel(ipos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vec3 pos_zero = Convert2dTo3d({0, 0});
-    const vec3 pos = Convert2dTo3d(offset);
-    const vec3 diff = pos - pos_zero;
+    vec3 pos_zero = Convert2dTo3d({0, 0});
+    vec3 pos = Convert2dTo3d(offset);
+    vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
     _forceDraw = true;
@@ -776,8 +776,8 @@ void ModelInstance::RefreshMoveAnimation()
     auto action_anim = CritterActionAnim::Idle;
 
     if (_isMoving) {
-        const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
-        const bool forbid_back = _modelInfo->_disableBackwardAnim;
+        float32_t angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        bool forbid_back = _modelInfo->_disableBackwardAnim;
 
         if (forbid_back || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
@@ -798,7 +798,7 @@ void ModelInstance::RefreshMoveAnimation()
         state_anim = _curStateAnim;
         _isMovingBack = false;
 
-        const auto angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+        float32_t angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
 
         if (std::abs(angle_diff) > _modelMngr->_settings->CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
@@ -822,7 +822,7 @@ void ModelInstance::RefreshMoveAnimation()
     _curMovingAnim = action_anim;
 
     float32_t speed = 1.0f;
-    const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+    int32_t anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
@@ -842,7 +842,7 @@ void ModelInstance::RefreshMoveAnimation()
     constexpr float32_t smooth_time = 0.001f;
 
     if (anim_index != -1) {
-        const auto new_track = _curMoveTrack == 0 ? 1 : 0;
+        int32_t new_track = _curMoveTrack == 0 ? 1 : 0;
 
         _moveAnimController->ResetEvents();
 
@@ -858,7 +858,7 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
 
         if (_turnAnimPlaying) {
-            const auto anim_duration = _moveAnimController->GetAnimationDuration(anim_index);
+            float32_t anim_duration = _moveAnimController->GetAnimationDuration(anim_index);
             _moveAnimController->AddEventEnable(new_track, false, anim_duration / speed);
         }
 
@@ -912,8 +912,8 @@ auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto index = std::make_pair(state_anim, action_anim);
-    const auto it = _modelInfo->_animIndexes.find(index);
+    auto index = std::make_pair(state_anim, action_anim);
+    auto it = _modelInfo->_animIndexes.find(index);
 
     return it != _modelInfo->_animIndexes.end();
 }
@@ -942,8 +942,8 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (_bodyAnimController) {
-        const auto track0_playing = _bodyAnimController->GetTrackEnable(0) && _bodyAnimController->GetTrackSpeed(0) > 0.0f;
-        const auto track1_playing = _bodyAnimController->GetTrackEnable(1) && _bodyAnimController->GetTrackSpeed(1) > 0.0f;
+        bool track0_playing = _bodyAnimController->GetTrackEnable(0) && _bodyAnimController->GetTrackSpeed(0) > 0.0f;
+        bool track1_playing = _bodyAnimController->GetTrackEnable(1) && _bodyAnimController->GetTrackSpeed(1) > 0.0f;
         return track0_playing || track1_playing;
     }
     else {
@@ -965,10 +965,10 @@ auto ModelInstance::GetViewSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto draw_width_scale = numeric_cast<float32_t>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.width);
-    const auto draw_height_scale = numeric_cast<float32_t>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.height);
-    const auto view_width = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.width) * draw_width_scale);
-    const auto view_height = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.height) * draw_height_scale);
+    float32_t draw_width_scale = numeric_cast<float32_t>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.width);
+    float32_t draw_height_scale = numeric_cast<float32_t>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.height);
+    int32_t view_width = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.width) * draw_width_scale);
+    int32_t view_height = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.height) * draw_height_scale);
 
     return {view_width, view_height};
 }
@@ -1072,7 +1072,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     parent_mesh_name.remove_prefix(1);
                 }
 
-                const auto parent_mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
+                hstring parent_mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
 
                 for (size_t mesh_index = 0; mesh_index != _parent->_allMeshes.size(); ++mesh_index) {
                     auto mesh = _parent->_allMeshes[mesh_index].as_ptr();
@@ -1132,7 +1132,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     parent_mesh_name.remove_prefix(1);
                 }
 
-                const auto mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
+                hstring mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
 
                 for (size_t mesh_index = 0; mesh_index != _parent->_allMeshes.size(); ++mesh_index) {
                     auto mesh = _parent->_allMeshes[mesh_index].as_ptr();
@@ -1151,7 +1151,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             FO_VERIFY_AND_THROW(effect, "Effect was not loaded", std::get<0>(eff_info));
 
             // Assign it
-            const auto mesh_name = std::get<1>(eff_info);
+            auto mesh_name = std::get<1>(eff_info);
             size_t assigned_meshes = 0;
 
             for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
@@ -1188,7 +1188,7 @@ void ModelInstance::SetLookDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32_t>(180 - dir.angle());
+    float32_t new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
@@ -1205,7 +1205,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32_t>(180 - dir.angle());
+    float32_t new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
@@ -1227,9 +1227,9 @@ void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
-    const auto my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
-    const auto mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
+    mat44 mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
+    mat44 my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
+    mat44 mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
 
     _matRot = mx * my * mz;
 }
@@ -1365,8 +1365,8 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
     ptr<MeshData> mesh_data = mesh_instance->Mesh.get_no_const();
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
-    const auto vertices_old_size = vertices.size();
-    const auto indices_old_size = indices.size();
+    auto vertices_old_size = vertices.size();
+    auto indices_old_size = indices.size();
 
     // Set or add data
     if (combined_mesh->EncapsulatedMeshCount == 0) {
@@ -1382,15 +1382,15 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
         indices.insert(indices.end(), mesh_data->Indices.begin(), mesh_data->Indices.end());
 
         // Add indices offset
-        const auto index_offset = numeric_cast<vindex_t>(vertices.size() - mesh_data->Vertices.size());
-        const auto start_index = indices.size() - mesh_data->Indices.size();
+        auto index_offset = numeric_cast<vindex_t>(vertices.size() - mesh_data->Vertices.size());
+        auto start_index = indices.size() - mesh_data->Indices.size();
         for (auto i = start_index, j = indices.size(); i < j; i++) {
             indices[i] += index_offset;
         }
 
         // Add bones matrices offset
-        const auto bone_index_offset = numeric_cast<float32_t>(combined_mesh->CurBoneMatrix);
-        const auto start_vertex = vertices.size() - mesh_data->Vertices.size();
+        float32_t bone_index_offset = numeric_cast<float32_t>(combined_mesh->CurBoneMatrix);
+        auto start_vertex = vertices.size() - mesh_data->Vertices.size();
         for (auto i = start_vertex, j = vertices.size(); i < j; i++) {
             for (auto& blend_index : vertices[i].BlendIndices) {
                 blend_index += bone_index_offset;
@@ -1467,15 +1467,15 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
     FO_STACK_TRACE_ENTRY();
 
     auto sq = [](float32_t f) -> float32_t { return f * f; };
-    const auto a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
-    const auto b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
-    const auto c = sq(sp.x) + sq(sp.y) + sq(sp.z) + sq(p1.Position.x) + sq(p1.Position.y) + sq(p1.Position.z) - 2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - sq(r);
-    const auto i = sq(b) - 4 * a * c;
+    float32_t a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
+    float32_t b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
+    float32_t c = sq(sp.x) + sq(sp.y) + sq(sp.z) + sq(p1.Position.x) + sq(p1.Position.y) + sq(p1.Position.z) - 2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - sq(r);
+    float32_t i = sq(b) - 4 * a * c;
 
     if (i > 0.0f) {
-        const auto sqrt_i = sqrt(i);
-        const auto mu1 = (-b + sqrt_i) / (2 * a);
-        const auto mu2 = (-b - sqrt_i) / (2 * a);
+        float32_t sqrt_i = sqrt(i);
+        float32_t mu1 = (-b + sqrt_i) / (2 * a);
+        float32_t mu2 = (-b - sqrt_i) / (2 * a);
 
         // Line segment doesn't intersect and on outside of sphere, in which case both values of u wll either be less
         // than 0 or greater than 1
@@ -1491,7 +1491,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
 
         // Line segment intersects at one point, in which case one value of u will be between 0 and 1 and the other not
         if ((mu1 >= 0.0f && mu1 <= 1.0f && (mu2 < 0.0f || mu2 > 1.0f)) || (mu2 >= 0.0f && mu2 <= 1.0f && (mu1 < 0.0f || mu1 > 1.0f))) {
-            const auto& mu = ((mu1 >= 0.0f && mu1 <= 1.0f) ? mu1 : mu2);
+            const float32_t& mu = ((mu1 >= 0.0f && mu1 <= 1.0f) ? mu1 : mu2);
             in = p1;
             in.Position.x = p1.Position.x + mu * (p2.Position.x - p1.Position.x);
             in.Position.y = p1.Position.y + mu * (p2.Position.y - p1.Position.y);
@@ -1539,8 +1539,8 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
 
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
             // Move shape to face space
-            const auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
-            const auto sm = glm::inverse(mesh_transform) * shape.GlobalTransformationMatrix;
+            mat44 mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
+            auto sm = glm::inverse(mesh_transform) * shape.GlobalTransformationMatrix;
             vec3 ss {};
             vec3 sp {};
             quaternion sr {};
@@ -1549,8 +1549,8 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
             glm::decompose(sm, ss, sr, sp, skew, perspective);
 
             // Check anim layer
-            const auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
-            const auto skip = std::ranges::find(cut->Layers, mesh_anim_layer) == cut->Layers.end();
+            int32_t mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
+            bool skip = std::ranges::find(cut->Layers, mesh_anim_layer) == cut->Layers.end();
 
             // Process faces
             i_count += combined_mesh->MeshIndices[k];
@@ -1705,16 +1705,16 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                 }
 
                 // Move shape to face space
-                const auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
-                const auto sm = glm::inverse(mesh_transform) * cut->UnskinShape.GlobalTransformationMatrix;
+                mat44 mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
+                auto sm = glm::inverse(mesh_transform) * cut->UnskinShape.GlobalTransformationMatrix;
                 vec3 ss {};
                 vec3 sp {};
                 quaternion sr {};
                 vec3 skew {};
                 glm::vec<4, float32_t, glm::defaultp> perspective {};
                 glm::decompose(sm, ss, sr, sp, skew, perspective);
-                auto sphere_square_radius = powf(cut->UnskinShape.SphereRadius * ss.x, 2.0f);
-                auto revert_shape = cut->RevertUnskinShape;
+                float32_t sphere_square_radius = powf(cut->UnskinShape.SphereRadius * ss.x, 2.0f);
+                bool revert_shape = cut->RevertUnskinShape;
 
                 // Process mesh vertices
                 v_count += combined_mesh->MeshVertices[i];
@@ -1723,9 +1723,8 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                     auto& v = vertices[v_pos];
 
                     // Get vertex side
-                    const auto diff = v.Position - sp;
-                    auto v_side = (glm::dot(diff, diff) <= sphere_square_radius);
-
+                    auto diff = v.Position - sp;
+                    bool v_side = (glm::dot(diff, diff) <= sphere_square_radius);
                     if (revert_shape) {
                         v_side = !v_side;
                     }
@@ -1733,7 +1732,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                     // Check influences
                     for (size_t b = 0; b < MODEL_BONES_PER_VERTEX; b++) {
                         // No influence
-                        auto w = v.BlendWeights[b];
+                        float32_t w = v.BlendWeights[b];
 
                         if (w < 0.00001f) {
                             continue;
@@ -1801,17 +1800,17 @@ void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_sc
 
     _drawProj = proj;
     _directSceneDraw = direct_scene;
-    const auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+    auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
 
-    const auto time = GetTime();
-    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
+    nanotime time = GetTime();
+    float32_t dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
 
     _lastDrawTime = time;
     _forceDraw = false;
 
     // Move animation
-    const auto w = _frameSize.width / FRAME_SCALE;
-    const auto h = _frameSize.height / FRAME_SCALE;
+    int32_t w = _frameSize.width / FRAME_SCALE;
+    int32_t h = _frameSize.height / FRAME_SCALE;
     ProcessAnimation(dt, {w / 2, h - h / 4}, scale);
 
     if (_actualCombinedMeshesCount != 0) {
@@ -1831,11 +1830,11 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Update world matrix, only for root
     if (!_parentBone) {
-        const vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
-        const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
-        const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
-        const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
-        const mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
+        vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
+        mat44 mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
+        mat44 mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        mat44 mat_trans = glm::translate(mat44 {1.0f}, pos3d);
+        mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
 
         _parentMatrix = mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
@@ -1843,7 +1842,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Rotate body
     if (!is_float_equal(_moveDirAngle, _targetMoveDirAngle)) {
-        const auto diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
+        float32_t diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
         _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
     }
 
@@ -1887,7 +1886,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Update linked matrices
     if (_parentBone && !_linkBones.empty()) {
-        const auto link_bones_count = _linkBones.size() / 2;
+        auto link_bones_count = _linkBones.size() / 2;
 
         for (size_t i = 0; i < link_bones_count; i++) {
             _linkBones[i * 2 + 1]->CombinedTransformationMatrix = _linkBones[i * 2]->CombinedTransformationMatrix;
@@ -1904,8 +1903,8 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     for (auto& model_particle : _modelParticles) {
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
-        const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
-        const bool tilt_in_proj = _directSceneDraw;
+        vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+        bool tilt_in_proj = _directSceneDraw;
 
         if (model_particle.Id == 0) {
             model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
@@ -1933,8 +1932,8 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     if (_bodyAnimController && elapsed >= 0.0f && _animDuration > 0.0f) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                const auto fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
-                const auto fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+                float32_t fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+                float32_t fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
 
                 if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
                     callback.Callback();
@@ -1949,11 +1948,11 @@ void ModelInstance::UpdateBoneMatrices(ptr<ModelBone> bone, ptr<const mat44> par
     FO_STACK_TRACE_ENTRY();
 
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+        mat44 mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr->_headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+        mat44 mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -1992,8 +1991,8 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     span<float32_t> world_matrices = make_span(world_matrices_values, WORLD_MATRIX_VALUE_COUNT);
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
-        const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-        const size_t matrix_offset = i * MATRIX_VALUE_COUNT;
+        auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
+        size_t matrix_offset = i * MATRIX_VALUE_COUNT;
         span<float32_t> world_matrix = world_matrices.subspan(matrix_offset, MATRIX_VALUE_COUNT);
         auto source_matrix_values = make_ptr(glm::value_ptr(m));
         const_span<float32_t> source_matrix = make_span(source_matrix_values, MATRIX_VALUE_COUNT);
@@ -2017,7 +2016,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                const size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
+                size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
                 MemCopy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
 
                 auto texture_size = make_ptr(&custom_tex_buf->TexSize[texture_uniform_offset]);
@@ -2080,7 +2079,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto bone = FindBone(bone_name);
+    auto bone = FindBone(bone_name);
 
     if (!bone) {
         return std::nullopt;
@@ -2093,9 +2092,9 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
     glm::vec<4, float32_t, glm::defaultp> perspective {};
     glm::decompose(bone->CombinedTransformationMatrix, scale, rot, pos, skew, perspective);
 
-    const auto p = Convert3dTo2d(pos);
-    const auto x = p.x - _frameSize.width / FRAME_SCALE / 2;
-    const auto y = -(p.y - _frameSize.height / FRAME_SCALE / 4);
+    ipos32 p = Convert3dTo2d(pos);
+    int32_t x = p.x - _frameSize.width / FRAME_SCALE / 2;
+    int32_t y = -(p.y - _frameSize.height / FRAME_SCALE / 4);
 
     return ipos32 {x, y};
 }
@@ -2116,13 +2115,13 @@ auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAn
     }
 
     float32_t speed = 1.0f;
-    const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+    int32_t anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
     if (anim_index < 0) {
         return {};
     }
 
-    auto duration = _bodyAnimController->GetAnimationDuration(anim_index);
+    float32_t duration = _bodyAnimController->GetAnimationDuration(anim_index);
 
     if (speed > 0.0f) {
         duration /= speed;
@@ -2157,7 +2156,7 @@ auto ModelInformation::Load(string_view name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(name).get_file_extension();
+    string ext = strex(name).get_file_extension();
 
     if (ext.empty()) {
         return false;
@@ -2166,7 +2165,7 @@ auto ModelInformation::Load(string_view name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        const auto fo3d = _modelMngr->_resources->ReadFile(name);
+        auto fo3d = _modelMngr->_resources->ReadFile(name);
 
         if (!fo3d) {
             return false;
@@ -2195,15 +2194,15 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string model = reader.ReadString();
-    const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
+    string model = reader.ReadString();
+    bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
     _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
 
-    const int32_t draw_width = reader.Read<int32_t>();
-    const int32_t draw_height = reader.Read<int32_t>();
-    const int32_t view_width = reader.Read<int32_t>();
-    const int32_t view_height = reader.Read<int32_t>();
+    int32_t draw_width = reader.Read<int32_t>();
+    int32_t draw_height = reader.Read<int32_t>();
+    int32_t view_width = reader.Read<int32_t>();
+    int32_t view_height = reader.Read<int32_t>();
 
     FO_VERIFY_AND_THROW((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), "Baked model description contains invalid DrawSize", name, draw_width, draw_height);
     FO_VERIFY_AND_THROW((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), "Baked model description contains invalid ViewSize", name, view_width, view_height);
@@ -2217,12 +2216,12 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         _viewSize.height = view_height;
     }
 
-    const string rotation_bone = reader.ReadString();
+    string rotation_bone = reader.ReadString();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
 
     BakedModelDescriptionLink default_link = ReadBakedModelDescriptionLink(reader);
 
-    const uint32_t links_count = reader.Read<uint32_t>();
+    uint32_t links_count = reader.Read<uint32_t>();
     vector<BakedModelDescriptionLink> links;
     links.reserve(links_count);
 
@@ -2233,7 +2232,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         links.emplace_back(std::move(link));
     }
 
-    const uint32_t anim_entries_count = reader.Read<uint32_t>();
+    uint32_t anim_entries_count = reader.Read<uint32_t>();
     vector<BakedModelDescriptionAnimEntry> anim_entries;
     anim_entries.reserve(anim_entries_count);
 
@@ -2241,21 +2240,21 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         anim_entries.emplace_back(ReadBakedModelDescriptionAnimEntry(reader));
     }
 
-    const uint32_t anim_speed_count = reader.Read<uint32_t>();
+    uint32_t anim_speed_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < anim_speed_count; i++) {
-        const int32_t state_anim = reader.Read<int32_t>();
-        const int32_t action_anim = reader.Read<int32_t>();
-        const float32_t speed = reader.Read<float32_t>();
+        int32_t state_anim = reader.Read<int32_t>();
+        int32_t action_anim = reader.Read<int32_t>();
+        float32_t speed = reader.Read<float32_t>();
         FO_VERIFY_AND_THROW(speed > 0.0f, "Baked model description contains a non-positive animation speed", state_anim, action_anim, name, speed);
         _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim)), speed);
     }
 
-    const uint32_t anim_layer_values_count = reader.Read<uint32_t>();
+    uint32_t anim_layer_values_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < anim_layer_values_count; i++) {
-        const BakedModelDescriptionAnimLayerValue value = ReadBakedModelDescriptionAnimLayerValue(reader);
-        const auto index = std::make_pair(static_cast<CritterStateAnim>(value.StateAnim), static_cast<CritterActionAnim>(value.ActionAnim));
+        BakedModelDescriptionAnimLayerValue value = ReadBakedModelDescriptionAnimLayerValue(reader);
+        auto index = std::make_pair(static_cast<CritterStateAnim>(value.StateAnim), static_cast<CritterActionAnim>(value.ActionAnim));
         FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Baked model description contains an animation layer out of range", value.Layer, name);
 
         if (_animLayerValues.count(index) == 0) {
@@ -2265,26 +2264,26 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         _animLayerValues[index].emplace_back(value.Layer, value.LayerValue);
     }
 
-    const uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
+    uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < fast_transition_bones_count; i++) {
-        const string bone_name = reader.ReadString();
+        string bone_name = reader.ReadString();
         _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(bone_name));
     }
 
-    const uint32_t state_anim_equals_count = reader.Read<uint32_t>();
+    uint32_t state_anim_equals_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < state_anim_equals_count; i++) {
-        const int32_t from = reader.Read<int32_t>();
-        const int32_t to = reader.Read<int32_t>();
+        int32_t from = reader.Read<int32_t>();
+        int32_t to = reader.Read<int32_t>();
         _stateAnimEquals.emplace(static_cast<CritterStateAnim>(from), static_cast<CritterStateAnim>(to));
     }
 
-    const uint32_t action_anim_equals_count = reader.Read<uint32_t>();
+    uint32_t action_anim_equals_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < action_anim_equals_count; i++) {
-        const int32_t from = reader.Read<int32_t>();
-        const int32_t to = reader.Read<int32_t>();
+        int32_t from = reader.Read<int32_t>();
+        int32_t to = reader.Read<int32_t>();
         _actionAnimEquals.emplace(static_cast<CritterActionAnim>(from), static_cast<CritterActionAnim>(to));
     }
 
@@ -2300,11 +2299,11 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _hierarchy = hierarchy;
     FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
-    for (const hstring bone_name : _fastTransitionBones) {
+    for (hstring bone_name : _fastTransitionBones) {
         FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
-    const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
+    auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
         auto area = _modelMngr->GetHierarchy(raw_cut.FileName);
         FO_VERIFY_AND_THROW(area, "Cut file was not found", raw_cut.FileName);
 
@@ -2337,7 +2336,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         }
 
         for (const string& shape : raw_cut.Shapes) {
-            const hstring shape_name = !shape.empty() ? _modelMngr->GetBoneHashedString(shape) : hstring {};
+            hstring shape_name = !shape.empty() ? _modelMngr->GetBoneHashedString(shape) : hstring {};
             bool shape_found = false;
 
             for (ptr<ModelBone> bone : area->_allDrawBones) {
@@ -2378,7 +2377,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     if (_animController) {
         for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
-            const auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
+            auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
 
             if (_animIndexes.count(anim_pair) != 0) {
                 continue;
@@ -2393,16 +2392,16 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                 anim_path = strex(name).extract_dir().combine_path(anim_entry.FileName);
             }
 
-            const bool reversed = anim_entry.Name.starts_with('~');
-            const string anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
+            bool reversed = anim_entry.Name.starts_with('~');
+            string anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
             auto anim = _modelMngr->LoadAnimation(anim_path, anim_name);
             FO_VERIFY_AND_THROW(anim, "Animation was not found for a baked model description", anim_entry.Name, anim_path, name);
 
-            const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
+            int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
             _animIndexes.emplace(anim_pair, anim_index);
         }
 
-        const int32_t anim_count = _animController->GetAnimationsCount();
+        int32_t anim_count = _animController->GetAnimationsCount();
         FO_VERIFY_AND_THROW(anim_count != 0, "No animations registered for a baked model description", name);
 
         for (int32_t i = 0; i < anim_count; i++) {
@@ -2443,7 +2442,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.LayerValue = reader.Read<int32_t>();
     FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Model link layer is out of range", link.Data.Layer);
 
-    const string link_bone = reader.ReadString();
+    string link_bone = reader.ReadString();
     link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
     link.Data.ChildName = reader.ReadString();
     link.Data.IsParticles = reader.Read<uint8_t>() != 0;
@@ -2460,39 +2459,39 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     FO_VERIFY_AND_THROW(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
     link.Data.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
 
-    for (const int32_t disabled_layer : link.Data.DisabledLayer) {
+    for (int32_t disabled_layer : link.Data.DisabledLayer) {
         FO_VERIFY_AND_THROW(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Disabled model layer is out of range", disabled_layer);
     }
 
-    const uint32_t disabled_mesh_count = reader.Read<uint32_t>();
+    uint32_t disabled_mesh_count = reader.Read<uint32_t>();
     link.Data.DisabledMesh.reserve(disabled_mesh_count);
 
     for (uint32_t i = 0; i < disabled_mesh_count; i++) {
-        const string mesh_name = reader.ReadString();
+        string mesh_name = reader.ReadString();
         link.Data.DisabledMesh.emplace_back(!mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
-    const uint32_t texture_count = reader.Read<uint32_t>();
+    uint32_t texture_count = reader.Read<uint32_t>();
     link.Data.TextureInfo.reserve(texture_count);
 
     for (uint32_t i = 0; i < texture_count; i++) {
         string texture_name = reader.ReadString();
-        const string mesh_name = reader.ReadString();
-        const int32_t texture_index = reader.Read<int32_t>();
+        string mesh_name = reader.ReadString();
+        int32_t texture_index = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
         link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
     }
 
-    const uint32_t effect_count = reader.Read<uint32_t>();
+    uint32_t effect_count = reader.Read<uint32_t>();
     link.Data.EffectInfo.reserve(effect_count);
 
     for (uint32_t i = 0; i < effect_count; i++) {
         string effect_name = reader.ReadString();
-        const string mesh_name = reader.ReadString();
+        string mesh_name = reader.ReadString();
         link.Data.EffectInfo.emplace_back(std::move(effect_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
-    const uint32_t cut_count = reader.Read<uint32_t>();
+    uint32_t cut_count = reader.Read<uint32_t>();
     link.CutInfo.reserve(cut_count);
 
     for (uint32_t i = 0; i < cut_count; i++) {
@@ -2546,21 +2545,21 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
+    int32_t anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
 
     if (anim_index != -1) {
         return anim_index;
     }
 
     // Find substitute animation
-    const auto base_model_name = _modelMngr->_hashResolver->ToHashedString(_fileName);
-    const auto base_state_anim = state_anim;
-    const auto base_action_anim = action_anim;
+    hstring base_model_name = _modelMngr->_hashResolver->ToHashedString(_fileName);
+    auto base_state_anim = state_anim;
+    auto base_action_anim = action_anim;
 
     while (anim_index == -1) {
-        auto model_name = base_model_name;
-        const auto state_anim_ = state_anim;
-        const auto action_anim_ = action_anim;
+        hstring model_name = base_model_name;
+        auto state_anim_ = state_anim;
+        auto action_anim_ = action_anim;
 
         if (_modelMngr->_animNameResolver->ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
             anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
@@ -2577,17 +2576,17 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it1 = _stateAnimEquals.find(state_anim); it1 != _stateAnimEquals.end()) {
+    if (auto it1 = _stateAnimEquals.find(state_anim); it1 != _stateAnimEquals.end()) {
         state_anim = it1->second;
     }
-    if (const auto it2 = _actionAnimEquals.find(action_anim); it2 != _actionAnimEquals.end()) {
+    if (auto it2 = _actionAnimEquals.find(action_anim); it2 != _actionAnimEquals.end()) {
         action_anim = it2->second;
     }
 
-    const auto index = std::make_pair(state_anim, action_anim);
+    auto index = std::make_pair(state_anim, action_anim);
 
     if (speed) {
-        const auto it = _animSpeed.find(index);
+        auto it = _animSpeed.find(index);
 
         if (it != _animSpeed.end()) {
             *speed = it->second;
@@ -2597,7 +2596,7 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
         }
     }
 
-    if (const auto it = _animIndexes.find(index); it != _animIndexes.end()) {
+    if (auto it = _animIndexes.find(index); it != _animIndexes.end()) {
         return it->second;
     }
 
@@ -2638,10 +2637,10 @@ auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCu
         shape.IsSphere = true;
 
         // Evaluate sphere radius
-        auto vmin = mesh->Vertices[0].Position.x;
-        auto vmax = mesh->Vertices[0].Position.x;
+        float32_t vmin = mesh->Vertices[0].Position.x;
+        float32_t vmax = mesh->Vertices[0].Position.x;
 
-        for (const auto i : iterate_range(mesh->Vertices)) {
+        for (auto i : iterate_range(mesh->Vertices)) {
             const auto& v = mesh->Vertices[i];
             vmin = std::min(v.Position.x, vmin);
             vmax = std::max(v.Position.x, vmax);
@@ -2744,7 +2743,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
-    const string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
+    string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 
@@ -2887,7 +2886,7 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
     }
 
     for (size_t i = 0; i < bone->Children.size(); i++) {
-        const auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
+        auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
 
         if (child_bone) {
             return child_bone;

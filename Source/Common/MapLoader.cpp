@@ -42,7 +42,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     FO_STACK_TRACE_ENTRY();
 
     // Load from file
-    const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
+    bool is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
 
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
@@ -61,7 +61,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     unordered_set<ident_t::underlying_type> busy_ids;
     ident_t::underlying_type last_lowest_id = 1;
 
-    const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
+    auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
         if (id <= 0 || !busy_ids.emplace(id).second) {
             auto new_id = last_lowest_id;
 
@@ -80,7 +80,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     // Critters
     for (const auto& pkv : map_data.GetSections("Critter")) {
         auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto critter invalid data");
@@ -88,10 +88,10 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        auto id_it = kv->find("$Id");
+        ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (!proto) {
@@ -113,7 +113,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     // Items
     for (const auto& pkv : map_data.GetSections("Item")) {
         auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto item invalid data");
@@ -121,10 +121,10 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        auto id_it = kv->find("$Id");
+        ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoItem(hashed_proto_name);
 
         if (!proto) {

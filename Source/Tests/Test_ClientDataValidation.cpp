@@ -70,7 +70,7 @@ static auto MakeRefTypeRawData(EngineMetadata& meta, string_view ref_type_name, 
     Properties props(&registrator);
     PropertiesSerializator::LoadPropertyFromValue(&props, prop.get(), value, meta.Hashes, meta);
 
-    const auto raw_data = props.GetRawData(prop.get());
+    auto raw_data = props.GetRawData(prop.get());
     return {raw_data.begin(), raw_data.end()};
 }
 
@@ -110,18 +110,18 @@ TEST_CASE("ClientDataValidation")
     const BaseTypeDesc& ref_type = meta.GetBaseType("TestRefType");
     const BaseTypeDesc& enum_ref_type = meta.GetBaseType("EnumRefType");
     const BaseTypeDesc& nested_ref_type = meta.GetBaseType("NestedRefType");
-    const hstring known_hash = meta.Hashes.ToHashedString("KnownHash");
+    hstring known_hash = meta.Hashes.ToHashedString("KnownHash");
 
     SECTION("Accepts valid nested payload")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeSimpleArg(enum_type, "enum_value"), MakeSimpleArg(float_type, "float_value"), MakeSimpleArg(hstring_type, "hash_value"), MakeArrayArg(int_type, "numbers"), MakeDictOfArrayArg(hstring_type, uint16_type, "mapped_values"), MakeSimpleArg(struct_type, "packed_struct")});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeSimpleArg(enum_type, "enum_value"), MakeSimpleArg(float_type, "float_value"), MakeSimpleArg(hstring_type, "hash_value"), MakeArrayArg(int_type, "numbers"), MakeDictOfArrayArg(hstring_type, uint16_type, "mapped_values"), MakeSimpleArg(struct_type, "packed_struct")});
 
         vector<uint8_t> data;
         DataWriter writer(data);
-        const string text = "text";
-        const uint16_t first_uint16 = 7;
-        const uint16_t second_uint16 = 8;
-        const uint8_t true_bool = 1;
+        string text = "text";
+        uint16_t first_uint16 = 7;
+        uint16_t second_uint16 = 8;
+        uint8_t true_bool = 1;
 
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
         writer.WriteStringBytes(text);
@@ -144,7 +144,7 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects invalid UTF-8 strings")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
         const uint8_t bytes[] = {0xC3, 0x28};
@@ -158,7 +158,7 @@ TEST_CASE("ClientDataValidation")
     SECTION("Rejects strings with embedded NUL")
     {
         // 'a','b','\0','c' is valid UTF-8 but an embedded NUL is never legitimate client text
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
         const uint8_t bytes[] = {'a', 'b', 0x00, 'c'};
@@ -171,7 +171,7 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects invalid enum values")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -185,7 +185,7 @@ TEST_CASE("ClientDataValidation")
         const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
         const BaseTypeDesc& enum_u8 = meta.GetBaseType("TestEnumU8");
 
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16, "u16"), MakeSimpleArg(enum_u8, "u8")});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16, "u16"), MakeSimpleArg(enum_u8, "u8")});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -198,7 +198,7 @@ TEST_CASE("ClientDataValidation")
     SECTION("Rejects invalid uint16 enum value at underlying size")
     {
         const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -210,7 +210,7 @@ TEST_CASE("ClientDataValidation")
     SECTION("Rejects truncated uint16 enum payload")
     {
         const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -221,7 +221,7 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects non finite floats inside arrays")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(float_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(float_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -234,10 +234,10 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects unknown hashed strings")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(hstring_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(hstring_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
-        const hstring::hash_t unknown_hash = hashing_ex::hash("MissingHash", 11);
+        hstring::hash_t unknown_hash = hashing_ex::hash("MissingHash", 11);
 
         writer.Write<hstring::hash_t>(unknown_hash);
 
@@ -246,10 +246,10 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects invalid bool values")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(bool_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(bool_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
-        const uint8_t invalid_bool = 2;
+        uint8_t invalid_bool = 2;
 
         writer.Write<uint8_t>(invalid_bool);
 
@@ -258,10 +258,10 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects truncated nested collections")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(hstring_type, uint16_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(hstring_type, uint16_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
-        const uint16_t first_uint16 = 7;
+        uint16_t first_uint16 = 7;
 
         writer.Write<int32_t>(1);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
@@ -273,9 +273,9 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Accepts valid ref type payloads and collections")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(ref_type, "snapshot"), MakeArrayArg(ref_type, "history"), MakeDictOfArrayArg(int_type, ref_type, "groups")});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(ref_type, "snapshot"), MakeArrayArg(ref_type, "history"), MakeDictOfArrayArg(int_type, ref_type, "groups")});
 
-        const auto make_full_snapshot = [] {
+        auto make_full_snapshot = [] {
             AnyData::Array numbers;
             numbers.EmplaceBack(int64_t {10});
             numbers.EmplaceBack(int64_t {20});
@@ -287,14 +287,14 @@ TEST_CASE("ClientDataValidation")
             return AnyData::Value {std::move(snapshot)};
         };
 
-        const auto make_sparse_snapshot = [] {
+        auto make_sparse_snapshot = [] {
             AnyData::Dict snapshot;
             snapshot.Emplace("Label", AnyData::Value {string {"tail"}});
             return AnyData::Value {std::move(snapshot)};
         };
 
-        const auto full_raw = MakeRefTypeRawData(meta, "TestRefType", make_full_snapshot());
-        const auto sparse_raw = MakeRefTypeRawData(meta, "TestRefType", make_sparse_snapshot());
+        auto full_raw = MakeRefTypeRawData(meta, "TestRefType", make_full_snapshot());
+        auto sparse_raw = MakeRefTypeRawData(meta, "TestRefType", make_sparse_snapshot());
 
         vector<uint8_t> data;
         DataWriter writer(data);
@@ -316,9 +316,9 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Accepts nested ref type payloads and collections")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(nested_ref_type, "snapshot"), MakeArrayArg(nested_ref_type, "history"), MakeDictOfArrayArg(int_type, nested_ref_type, "groups")});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(nested_ref_type, "snapshot"), MakeArrayArg(nested_ref_type, "history"), MakeDictOfArrayArg(int_type, nested_ref_type, "groups")});
 
-        const auto make_inner_snapshot = [] {
+        auto make_inner_snapshot = [] {
             AnyData::Array numbers;
             numbers.EmplaceBack(int64_t {10});
             numbers.EmplaceBack(int64_t {20});
@@ -330,13 +330,13 @@ TEST_CASE("ClientDataValidation")
             return AnyData::Value {std::move(snapshot)};
         };
 
-        const auto make_status = [] {
+        auto make_status = [] {
             AnyData::Dict status;
             status.Emplace("State", AnyData::Value {string {"Value"}});
             return AnyData::Value {std::move(status)};
         };
 
-        const auto make_full_snapshot = [&] {
+        auto make_full_snapshot = [&] {
             AnyData::Dict snapshot;
             snapshot.Emplace("Inner", make_inner_snapshot());
             snapshot.Emplace("Status", make_status());
@@ -344,14 +344,14 @@ TEST_CASE("ClientDataValidation")
             return AnyData::Value {std::move(snapshot)};
         };
 
-        const auto make_sparse_snapshot = [] {
+        auto make_sparse_snapshot = [] {
             AnyData::Dict snapshot;
             snapshot.Emplace("Label", AnyData::Value {string {"tail"}});
             return AnyData::Value {std::move(snapshot)};
         };
 
-        const auto full_raw = MakeRefTypeRawData(meta, "NestedRefType", make_full_snapshot());
-        const auto sparse_raw = MakeRefTypeRawData(meta, "NestedRefType", make_sparse_snapshot());
+        auto full_raw = MakeRefTypeRawData(meta, "NestedRefType", make_full_snapshot());
+        auto sparse_raw = MakeRefTypeRawData(meta, "NestedRefType", make_sparse_snapshot());
 
         vector<uint8_t> data;
         DataWriter writer(data);
@@ -373,7 +373,7 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Accepts empty ref type collections")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type, "history"), MakeDictOfArrayArg(int_type, ref_type, "groups")});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type, "history"), MakeDictOfArrayArg(int_type, ref_type, "groups")});
         vector<uint8_t> data;
         DataWriter writer(data);
 
@@ -385,12 +385,12 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects invalid ref type field payloads")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_ref_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_ref_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
-        const uint32_t raw_size = sizeof(uint32_t) + sizeof(int32_t);
-        const uint32_t field_size = sizeof(int32_t);
-        const int32_t invalid_enum = 77;
+        uint32_t raw_size = sizeof(uint32_t) + sizeof(int32_t);
+        uint32_t field_size = sizeof(int32_t);
+        int32_t invalid_enum = 77;
 
         writer.Write<uint32_t>(raw_size);
         writer.Write<uint32_t>(field_size);
@@ -401,12 +401,12 @@ TEST_CASE("ClientDataValidation")
 
     SECTION("Rejects truncated ref type payloads inside arrays")
     {
-        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type)});
+        RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type)});
         vector<uint8_t> data;
         DataWriter writer(data);
         AnyData::Dict snapshot;
         snapshot.Emplace("Label", AnyData::Value {string {"one"}});
-        const auto full_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
+        auto full_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
 
         writer.Write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
@@ -435,7 +435,7 @@ TEST_CASE("ClientDataValidationPropertyBlobPadding")
 
     vector<uint8_t> str_arr_data;
     {
-        const auto raw_data = props.GetRawData(str_arr_prop.get());
+        auto raw_data = props.GetRawData(str_arr_prop.get());
         REQUIRE(raw_data.size() == 18);
         str_arr_data.assign(raw_data.begin(), raw_data.end());
     }
@@ -446,7 +446,7 @@ TEST_CASE("ClientDataValidationPropertyBlobPadding")
     CHECK_THROWS_AS(ValidateInboundPropertyData(str_arr_prop.get(), str_arr_data, meta), ClientDataValidationException);
 
     // dict<uint8, int64>: key@0, zero padding 1..8, value@8..16
-    const auto wide_dict_value = []() {
+    auto wide_dict_value = []() {
         AnyData::Dict dict;
         dict.Emplace("1", int64_t {0x1111111111111111});
         return AnyData::Value {std::move(dict)};
@@ -456,7 +456,7 @@ TEST_CASE("ClientDataValidationPropertyBlobPadding")
 
     vector<uint8_t> wide_dict_data;
     {
-        const auto raw_data = props.GetRawData(wide_dict_prop.get());
+        auto raw_data = props.GetRawData(wide_dict_prop.get());
         REQUIRE(raw_data.size() == 16);
         wide_dict_data.assign(raw_data.begin(), raw_data.end());
     }
@@ -489,9 +489,9 @@ TEST_CASE("ClientDataValidationFuzz")
     const BaseTypeDesc& struct_type = meta.GetBaseType("TestStruct");
     const BaseTypeDesc& ref_type = meta.GetBaseType("TestRefType");
 
-    const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeArrayArg(int_type, "numbers"), MakeSimpleArg(enum_type, "mode"), MakeSimpleArg(struct_type, "packed"), MakeSimpleArg(ref_type, "snapshot")});
+    RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeArrayArg(int_type, "numbers"), MakeSimpleArg(enum_type, "mode"), MakeSimpleArg(struct_type, "packed"), MakeSimpleArg(ref_type, "snapshot")});
 
-    const auto build_valid = [&]() {
+    auto build_valid = [&]() {
         AnyData::Array numbers;
         numbers.EmplaceBack(int64_t {10});
         numbers.EmplaceBack(int64_t {20});
@@ -499,11 +499,11 @@ TEST_CASE("ClientDataValidationFuzz")
         snapshot.Emplace("Numbers", AnyData::Value {std::move(numbers)});
         snapshot.Emplace("Label", AnyData::Value {string {"alpha"}});
         snapshot.Emplace("Mode", AnyData::Value {string {"Value"}});
-        const auto ref_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
+        auto ref_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
 
         vector<uint8_t> data;
         DataWriter writer(data);
-        const string text = "hello";
+        string text = "hello";
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
         writer.WriteStringBytes(text);
         writer.Write<int32_t>(3); // int array element count
@@ -517,11 +517,11 @@ TEST_CASE("ClientDataValidationFuzz")
         return data;
     };
 
-    const auto valid = build_valid();
+    auto valid = build_valid();
     CHECK_NOTHROW(ValidateInboundRemoteCallData(call, valid, meta));
 
     uint32_t rng = 0xABCDEF01;
-    const auto next = [&rng]() {
+    auto next = [&rng]() {
         rng = rng * 1664525U + 1013904223U;
         return rng;
     };
@@ -537,7 +537,7 @@ TEST_CASE("ClientDataValidationFuzz")
             data.resize(next() % data.size()); // truncate
         }
         if (!data.empty()) {
-            const int flips = static_cast<int>(next() % 3) + 1;
+            int32_t flips = static_cast<int32_t>(next() % 3) + 1;
             for (int f = 0; f < flips; f++) {
                 data[next() % data.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
             }

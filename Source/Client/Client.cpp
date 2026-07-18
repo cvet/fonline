@@ -136,14 +136,14 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     // Properties that sending to clients
     {
-        const auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
+        auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
             return [this, callback](nptr<Entity> entity, ptr<const Property> prop) FO_DEFERRED {
                 FO_VERIFY_AND_THROW(entity, "Property owner entity is null");
                 (this->*callback)(entity, prop);
             };
         };
 
-        const auto set_send_callbacks = [](nptr<const PropertyRegistrator> registrator, const PropertyPostSetCallback& callback) {
+        auto set_send_callbacks = [](nptr<const PropertyRegistrator> registrator, const PropertyPostSetCallback& callback) {
             FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
@@ -168,14 +168,14 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     // Properties with custom behaviours
     {
-        const auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
+        auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
             return [this, callback](nptr<Entity> entity, ptr<const Property> prop) FO_DEFERRED {
                 FO_VERIFY_AND_THROW(entity, "Property owner entity is null");
                 (this->*callback)(entity, prop);
             };
         };
 
-        const auto set_callback = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertyPostSetCallback callback) {
+        auto set_callback = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
             auto prop = registrator->GetPropertyByIndex(prop_index);
@@ -289,8 +289,8 @@ void ClientEngine::ScheduleDelayedCallback(timespan delay, function<void()> body
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fire_time = GameTime.GetFrameTime() + delay;
-    const auto pos = std::ranges::lower_bound(_scheduledCallbacks, fire_time, {}, &ScheduledCallback::FireTime);
+    nanotime fire_time = GameTime.GetFrameTime() + delay;
+    auto pos = std::ranges::lower_bound(_scheduledCallbacks, fire_time, {}, &ScheduledCallback::FireTime);
     _scheduledCallbacks.insert(pos, ScheduledCallback {.FireTime = fire_time, .Body = std::move(body)});
 }
 
@@ -299,9 +299,9 @@ void ClientEngine::ProcessScheduledCallbacks()
     FO_STACK_TRACE_ENTRY();
 
     // Execute only callbacks that were due when this pass began.
-    const auto now = GameTime.GetFrameTime();
-    const auto due_end = std::ranges::upper_bound(_scheduledCallbacks, now, {}, &ScheduledCallback::FireTime);
-    const size_t due_count = numeric_cast<size_t>(std::distance(_scheduledCallbacks.begin(), due_end));
+    nanotime now = GameTime.GetFrameTime();
+    auto due_end = std::ranges::upper_bound(_scheduledCallbacks, now, {}, &ScheduledCallback::FireTime);
+    size_t due_count = numeric_cast<size_t>(std::distance(_scheduledCallbacks.begin(), due_end));
     vector<function<void()>> callbacks;
     callbacks.reserve(due_count);
 
@@ -449,7 +449,7 @@ void ClientEngine::MainLoop()
         }
 
         CanDrawInScripts = true;
-        const auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
+        auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
 
         OnRenderIface.Fire();
 
@@ -493,13 +493,13 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
     }
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
-        const auto key_code = ev.KeyDown.Code;
-        const auto key_text = ev.KeyDown.Text;
+        auto key_code = ev.KeyDown.Code;
+        string key_text = ev.KeyDown.Text;
 
         OnKeyDown.Fire(key_code, key_text);
     }
     else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
-        const auto key_code = ev.KeyUp.Code;
+        auto key_code = ev.KeyUp.Code;
 
         OnKeyUp.Fire(key_code);
     }
@@ -667,11 +667,11 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     _conn.OutBuf->Write(moving->GetSpeed());
     _conn.OutBuf->Write(moving->GetStartHex());
     _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
-    for (const auto step : moving->GetSteps()) {
+    for (auto step : moving->GetSteps()) {
         _conn.OutBuf->Write(step.hex());
     }
     _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetControlSteps().size()));
-    for (const auto control_step : moving->GetControlSteps()) {
+    for (auto control_step : moving->GetControlSteps()) {
         _conn.OutBuf->Write(control_step);
     }
     _conn.OutBuf->Write(moving->GetEndHexOffset());
@@ -699,9 +699,9 @@ void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto props = entity->GetProperties();
+    auto props = entity->GetProperties();
     props->ValidateForRawData(prop);
-    const auto prop_raw_data = props->GetRawData(prop);
+    auto prop_raw_data = props->GetRawData(prop);
 
     _conn.OutBuf->StartMsg(NetMessage::SendProperty);
     _conn.OutBuf->Write(numeric_cast<uint32_t>(prop_raw_data.size()));
@@ -744,7 +744,7 @@ void ClientEngine::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32_t>();
+    auto data_size = _conn.InBuf->Read<uint32_t>();
 
     vector<uint8_t> data;
     data.resize(data_size);
@@ -752,7 +752,7 @@ void ClientEngine::Net_OnInitData()
     _conn.InBuf->Pop(data.data(), data_size);
 
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
 
     RestoreData(_globalsPropertiesData);
     GameTime.SetSynchronizedTime(time);
@@ -771,21 +771,21 @@ void ClientEngine::Net_OnInitData()
         auto reader = DataReader(data);
 
         while (true) {
-            const auto name_len = reader.Read<int16_t>();
+            int16_t name_len = reader.Read<int16_t>();
 
             if (name_len == -1) {
                 break;
             }
 
             FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
-            const size_t fname_size = numeric_cast<size_t>(name_len);
+            size_t fname_size = numeric_cast<size_t>(name_len);
             string fname;
             fname.resize(fname_size);
             reader.ReadStringBytes(fname);
-            const auto size = reader.Read<uint64_t>();
-            const auto hash = reader.Read<uint64_t>();
-            const auto target = reader.Read<UpdateFileTarget>();
-            const auto data_index = reader.Read<uint32_t>();
+            auto size = reader.Read<uint64_t>();
+            auto hash = reader.Read<uint64_t>();
+            auto target = reader.Read<UpdateFileTarget>();
+            auto data_index = reader.Read<uint32_t>();
 
             ignore_unused(hash);
             ignore_unused(data_index);
@@ -814,10 +814,10 @@ void ClientEngine::Net_OnHashList()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto count = _conn.InBuf->Read<uint32_t>();
+    auto count = _conn.InBuf->Read<uint32_t>();
 
     for (uint32_t i = 0; i < count; i++) {
-        const auto str = _conn.InBuf->Read<string>();
+        string str = _conn.InBuf->Read<string>();
 
         // Learn the string locally so the matching hash now resolves; same hash function as the server
         Hashes.ToHashedString(str);
@@ -834,7 +834,7 @@ void ClientEngine::Net_OnLoginSuccess()
 
     WriteLog("Authentication success");
 
-    const auto player_id = _conn.InBuf->Read<ident_t>();
+    auto player_id = _conn.InBuf->Read<ident_t>();
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
     _conn.InBuf->ReadPropsData(_playerPropertiesData);
 
@@ -857,15 +857,15 @@ void ClientEngine::Net_OnAddCritter()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto pid = _conn.InBuf->Read<hstring>(Hashes);
-    const auto hex = _conn.InBuf->Read<mpos>();
-    const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir = _conn.InBuf->Read<mdir>();
-    const auto cond = _conn.InBuf->Read<CritterCondition>();
-    const auto is_controlled_by_player = _conn.InBuf->Read<bool>();
-    const auto is_player_offline = _conn.InBuf->Read<bool>();
-    const auto is_chosen = _conn.InBuf->Read<bool>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    hstring pid = _conn.InBuf->Read<hstring>(Hashes);
+    auto hex = _conn.InBuf->Read<mpos>();
+    auto hex_offset = _conn.InBuf->Read<ipos16>();
+    auto dir = _conn.InBuf->Read<mdir>();
+    auto cond = _conn.InBuf->Read<CritterCondition>();
+    bool is_controlled_by_player = _conn.InBuf->Read<bool>();
+    bool is_player_offline = _conn.InBuf->Read<bool>();
+    bool is_chosen = _conn.InBuf->Read<bool>();
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     nptr<CritterHexView> hex_cr;
@@ -913,12 +913,12 @@ void ClientEngine::Net_OnAddCritter()
     cr->SetIsPlayerOffline(is_player_offline);
 
     // Initial items
-    const auto items_count = _conn.InBuf->Read<uint32_t>();
+    auto items_count = _conn.InBuf->Read<uint32_t>();
 
     for (uint32_t i = 0; i < items_count; i++) {
-        const auto item_id = _conn.InBuf->Read<ident_t>();
-        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
-        const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+        auto item_id = _conn.InBuf->Read<ident_t>();
+        hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         auto proto = GetProtoItem(item_pid);
@@ -930,13 +930,13 @@ void ClientEngine::Net_OnAddCritter()
     }
 
     // Visibility mode (sent regardless of context; default Full for global map)
-    const auto vis_mode = _conn.InBuf->Read<CritterVisibilityMode>();
+    auto vis_mode = _conn.InBuf->Read<CritterVisibilityMode>();
     cr->SetVisibilityMode(vis_mode);
 
     // Initial attachment
-    const auto is_attached = _conn.InBuf->Read<bool>();
+    bool is_attached = _conn.InBuf->Read<bool>();
 
-    const auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
+    auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
@@ -972,7 +972,7 @@ void ClientEngine::Net_OnAddCritter()
     }
 
     // Initial moving
-    const auto is_moving = _conn.InBuf->Read<bool>();
+    bool is_moving = _conn.InBuf->Read<bool>();
 
     if (is_moving) {
         ReceiveCritterMoving(hex_cr);
@@ -1019,7 +1019,7 @@ void ClientEngine::Net_OnRemoveCritter()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
 
     if (_curMap) {
         auto map = GetCurMap();
@@ -1071,8 +1071,8 @@ void ClientEngine::Net_OnCritterVisibilityMode()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
 
     if (_curMap) {
         auto map = GetCurMap();
@@ -1092,8 +1092,8 @@ void ClientEngine::Net_OnInfoMessage()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto info_message = _conn.InBuf->Read<EngineInfoMessage>();
-    const auto extra_text = _conn.InBuf->Read<string>();
+    auto info_message = _conn.InBuf->Read<EngineInfoMessage>();
+    string extra_text = _conn.InBuf->Read<string>();
 
     OnInfoMessage.Fire(info_message, extra_text);
 }
@@ -1102,8 +1102,8 @@ void ClientEngine::Net_OnCritterDir()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto dir = _conn.InBuf->Read<mdir>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1128,7 +1128,7 @@ void ClientEngine::Net_OnCritterMove()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
     nptr<CritterHexView> cr;
 
     if (_curMap) {
@@ -1148,8 +1148,8 @@ void ClientEngine::Net_OnCritterMoveSpeed()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto speed = _conn.InBuf->Read<uint16_t>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto speed = _conn.InBuf->Read<uint16_t>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1184,16 +1184,16 @@ void ClientEngine::Net_OnCritterAction()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto action = _conn.InBuf->Read<CritterAction>();
-    const auto action_ext = _conn.InBuf->Read<int32_t>();
-    const auto is_context_item = _conn.InBuf->Read<bool>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto action = _conn.InBuf->Read<CritterAction>();
+    int32_t action_ext = _conn.InBuf->Read<int32_t>();
+    bool is_context_item = _conn.InBuf->Read<bool>();
 
     refcount_nptr<ItemView> context_item {};
 
     if (is_context_item) {
-        const auto item_id = _conn.InBuf->Read<ident_t>();
-        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        auto item_id = _conn.InBuf->Read<ident_t>();
+        hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         auto proto = GetProtoItem(item_pid);
@@ -1229,17 +1229,17 @@ void ClientEngine::Net_OnCritterMoveItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto action = _conn.InBuf->Read<CritterAction>();
-    const auto prev_slot = _conn.InBuf->Read<CritterItemSlot>();
-    const auto cur_slot = _conn.InBuf->Read<CritterItemSlot>();
-    const auto is_moved_item = _conn.InBuf->Read<bool>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto action = _conn.InBuf->Read<CritterAction>();
+    auto prev_slot = _conn.InBuf->Read<CritterItemSlot>();
+    auto cur_slot = _conn.InBuf->Read<CritterItemSlot>();
+    bool is_moved_item = _conn.InBuf->Read<bool>();
 
     refcount_nptr<ItemView> moved_item {};
 
     if (is_moved_item) {
-        const auto item_id = _conn.InBuf->Read<ident_t>();
-        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        auto item_id = _conn.InBuf->Read<ident_t>();
+        hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         auto proto = GetProtoItem(item_pid);
@@ -1266,7 +1266,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         BreakIntoDebugger();
 
         // Skip rest data
-        const auto items_count = _conn.InBuf->Read<uint32_t>();
+        auto items_count = _conn.InBuf->Read<uint32_t>();
 
         for (uint32_t i = 0; i < items_count; i++) {
             (void)_conn.InBuf->Read<ident_t>();
@@ -1279,7 +1279,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
-    const auto items_count = _conn.InBuf->Read<uint32_t>();
+    auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
         FO_VERIFY_AND_THROW(!cr->GetIsChosen(), "Critter is already marked as chosen");
@@ -1287,9 +1287,9 @@ void ClientEngine::Net_OnCritterMoveItem()
         cr->DeleteAllInvItems();
 
         for (uint32_t i = 0; i < items_count; i++) {
-            const auto item_id = _conn.InBuf->Read<ident_t>();
-            const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
-            const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+            auto item_id = _conn.InBuf->Read<ident_t>();
+            hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
+            auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
             auto proto = GetProtoItem(item_pid);
@@ -1327,8 +1327,8 @@ void ClientEngine::Net_OnCritterTeleport()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto to_hex = _conn.InBuf->Read<mpos>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto to_hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1354,10 +1354,10 @@ void ClientEngine::Net_OnCritterPos()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto hex = _conn.InBuf->Read<mpos>();
-    const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir = _conn.InBuf->Read<mdir>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto hex = _conn.InBuf->Read<mpos>();
+    auto hex_offset = _conn.InBuf->Read<ipos16>();
+    auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1387,7 +1387,7 @@ void ClientEngine::Net_OnCritterPos()
         }
     }
 
-    const auto cr_hex_offset = cr->GetHexOffset();
+    auto cr_hex_offset = cr->GetHexOffset();
 
     if (cr_hex_offset != hex_offset) {
         cr->AddExtraOffs({cr_hex_offset.x - hex_offset.x, cr_hex_offset.y - hex_offset.y});
@@ -1402,11 +1402,11 @@ void ClientEngine::Net_OnCritterAttachments()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto is_attached = _conn.InBuf->Read<bool>();
-    const auto attach_master = _conn.InBuf->Read<ident_t>();
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    bool is_attached = _conn.InBuf->Read<bool>();
+    auto attach_master = _conn.InBuf->Read<ident_t>();
 
-    const auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
+    auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
@@ -1467,9 +1467,9 @@ void ClientEngine::Net_OnChosenAddItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf->Read<ident_t>();
-    const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
-    const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+    auto item_id = _conn.InBuf->Read<ident_t>();
+    hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
+    auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     auto chosen = GetChosen();
@@ -1513,7 +1513,7 @@ void ClientEngine::Net_OnChosenRemoveItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf->Read<ident_t>();
+    auto item_id = _conn.InBuf->Read<ident_t>();
 
     auto chosen = GetChosen();
 
@@ -1550,9 +1550,9 @@ void ClientEngine::Net_OnAddItemOnMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex = _conn.InBuf->Read<mpos>();
-    const auto item_id = _conn.InBuf->Read<ident_t>();
-    const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+    auto hex = _conn.InBuf->Read<mpos>();
+    auto item_id = _conn.InBuf->Read<ident_t>();
+    hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     if (!_curMap) {
@@ -1577,7 +1577,7 @@ void ClientEngine::Net_OnRemoveItemFromMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf->Read<ident_t>();
+    auto item_id = _conn.InBuf->Read<ident_t>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1630,8 +1630,8 @@ void ClientEngine::Net_OnProperty()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32_t>();
-    const auto type = _conn.InBuf->Read<NetProperty>();
+    auto data_size = _conn.InBuf->Read<uint32_t>();
+    auto type = _conn.InBuf->Read<NetProperty>();
 
     ident_t cr_id;
     ident_t item_id;
@@ -1658,7 +1658,7 @@ void ClientEngine::Net_OnProperty()
         break;
     }
 
-    const auto property_index = _conn.InBuf->Read<uint16_t>();
+    auto property_index = _conn.InBuf->Read<uint16_t>();
 
     PropertyRawData prop_data;
     _conn.InBuf->Pop(prop_data.Alloc(data_size), data_size);
@@ -1749,7 +1749,7 @@ void ClientEngine::Net_OnTimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
 
     GameTime.SetSynchronizedTimeMonotonic(time);
     SetSynchronizedTime(GameTime.GetSynchronizedTime());
@@ -1761,11 +1761,11 @@ void ClientEngine::Net_OnLoadMap()
 
     WriteLog("Change map");
 
-    const auto loc_id = _conn.InBuf->Read<ident_t>();
-    const auto map_id = _conn.InBuf->Read<ident_t>();
-    const auto loc_pid = _conn.InBuf->Read<hstring>(Hashes);
-    const auto map_pid = _conn.InBuf->Read<hstring>(Hashes);
-    const auto map_index_in_loc = _conn.InBuf->Read<int32_t>();
+    auto loc_id = _conn.InBuf->Read<ident_t>();
+    auto map_id = _conn.InBuf->Read<ident_t>();
+    hstring loc_pid = _conn.InBuf->Read<hstring>(Hashes);
+    hstring map_pid = _conn.InBuf->Read<hstring>(Hashes);
+    int32_t map_index_in_loc = _conn.InBuf->Read<int32_t>();
 
     if (map_pid) {
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
@@ -1813,15 +1813,15 @@ void ClientEngine::Net_OnSomeItems()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto context_param = any_t(_conn.InBuf->Read<string>());
-    const auto items_count = _conn.InBuf->Read<uint32_t>();
+    any_t context_param = any_t(_conn.InBuf->Read<string>());
+    auto items_count = _conn.InBuf->Read<uint32_t>();
 
     vector<refcount_ptr<ItemView>> items;
     items.reserve(items_count);
 
     for (uint32_t i = 0; i < items_count; i++) {
-        const auto item_id = _conn.InBuf->Read<ident_t>();
-        const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+        auto item_id = _conn.InBuf->Read<ident_t>();
+        hstring pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
         FO_VERIFY_AND_THROW(item_id, "Item id is empty");
 
@@ -1836,7 +1836,7 @@ void ClientEngine::Net_OnSomeItems()
         items.emplace_back(item);
     }
 
-    const auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item; });
+    auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item; });
     OnReceiveItems.Fire(items2, context_param);
 }
 
@@ -1844,7 +1844,7 @@ void ClientEngine::Net_OnViewMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex = _conn.InBuf->Read<mpos>();
+    auto hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1858,8 +1858,8 @@ void ClientEngine::Net_OnRemoteCall()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto remote_call_name = _conn.InBuf->Read<hstring>(Hashes);
-    const auto data_size = _conn.InBuf->Read<int32_t>();
+    hstring remote_call_name = _conn.InBuf->Read<hstring>(Hashes);
+    int32_t data_size = _conn.InBuf->Read<int32_t>();
 
     _remoteCallData.resize(data_size);
 
@@ -1872,10 +1872,10 @@ void ClientEngine::Net_OnAddCustomEntity()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto holder_id = _conn.InBuf->Read<ident_t>();
-    const auto holder_entry = _conn.InBuf->Read<hstring>(Hashes);
-    const auto id = _conn.InBuf->Read<ident_t>();
-    const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+    auto holder_id = _conn.InBuf->Read<ident_t>();
+    hstring holder_entry = _conn.InBuf->Read<hstring>(Hashes);
+    auto id = _conn.InBuf->Read<ident_t>();
+    hstring pid = _conn.InBuf->Read<hstring>(Hashes);
     _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
     nptr<Entity> holder;
@@ -1901,7 +1901,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto id = _conn.InBuf->Read<ident_t>();
+    auto id = _conn.InBuf->Read<ident_t>();
 
     auto entity = GetEntity(id);
 
@@ -1943,19 +1943,19 @@ void ClientEngine::ReceiveCustomEntities(nptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entries_count = _conn.InBuf->Read<uint16_t>();
+    auto entries_count = _conn.InBuf->Read<uint16_t>();
 
     if (entries_count == 0) {
         return;
     }
 
     for (uint16_t i = 0; i < entries_count; i++) {
-        const auto entry = _conn.InBuf->Read<hstring>(Hashes);
-        const auto entities_count = _conn.InBuf->Read<uint32_t>();
+        hstring entry = _conn.InBuf->Read<hstring>(Hashes);
+        auto entities_count = _conn.InBuf->Read<uint32_t>();
 
         for (uint32_t j = 0; j < entities_count; j++) {
-            const auto id = _conn.InBuf->Read<ident_t>();
-            const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+            auto id = _conn.InBuf->Read<ident_t>();
+            hstring pid = _conn.InBuf->Read<hstring>(Hashes);
             _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder) {
@@ -1974,11 +1974,11 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
+    auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
-    const bool has_protos = GetEntityType(type_name).HasProtos;
+    bool has_protos = GetEntityType(type_name).HasProtos;
     nptr<const ProtoEntity> proto;
 
     if (pid) {
@@ -2019,12 +2019,12 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto whole_time = _conn.InBuf->Read<uint32_t>();
-    const auto offset_time = _conn.InBuf->Read<uint32_t>();
-    const auto speed = _conn.InBuf->Read<uint16_t>();
-    const auto start_hex = _conn.InBuf->Read<mpos>();
+    auto whole_time = _conn.InBuf->Read<uint32_t>();
+    auto offset_time = _conn.InBuf->Read<uint32_t>();
+    auto speed = _conn.InBuf->Read<uint16_t>();
+    auto start_hex = _conn.InBuf->Read<mpos>();
 
-    const auto steps_count = _conn.InBuf->Read<uint16_t>();
+    auto steps_count = _conn.InBuf->Read<uint16_t>();
     vector<mdir> steps;
     steps.resize(steps_count);
 
@@ -2032,7 +2032,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
         steps[i] = mdir(_conn.InBuf->Read<hdir>());
     }
 
-    const auto control_steps_count = _conn.InBuf->Read<uint16_t>();
+    auto control_steps_count = _conn.InBuf->Read<uint16_t>();
     vector<uint16_t> control_steps;
     control_steps.resize(control_steps_count);
 
@@ -2040,7 +2040,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
         control_steps[i] = _conn.InBuf->Read<uint16_t>();
     }
 
-    const auto end_hex_offset = _conn.InBuf->Read<ipos16>();
+    auto end_hex_offset = _conn.InBuf->Read<ipos16>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -2060,7 +2060,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     ipos16 start_hex_offset = cr->GetHexOffset();
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
+        ipos32 cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
         start_hex_offset = {numeric_cast<int16_t>(start_hex_offset.x + cr_offset.x), numeric_cast<int16_t>(start_hex_offset.y + cr_offset.y)};
     }
 
@@ -2074,7 +2074,7 @@ auto ClientEngine::GetEntity(ident_t id) -> nptr<ClientEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _allEntities.find(id);
+    auto it = _allEntities.find(id);
 
     if (it == _allEntities.end()) {
         return nullptr;
@@ -2105,7 +2105,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
+    if (auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
         auto& cached_anim = it->second;
 
         cached_anim->Anim->PlayDefault();
@@ -2139,7 +2139,7 @@ void ClientEngine::AnimFree(uint32_t anim_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
+    if (auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
         auto& iface_anim = it->second;
 
         iface_anim->Anim->Stop();
@@ -2157,7 +2157,7 @@ auto ClientEngine::AnimGetSpr(uint32_t anim_id) -> nptr<Sprite>
         return nullptr;
     }
 
-    if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
+    if (auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
         return it->second->Anim;
     }
 
@@ -2586,30 +2586,30 @@ void ClientEngine::LmapPrepareMap()
         return;
     }
 
-    const auto hex = chosen->GetHex();
-    const auto maxpixx = _lmapWMap.width / 2 / _lmapZoom;
-    const auto maxpixy = _lmapWMap.height / 2 / _lmapZoom;
-    const auto bx = hex.x - maxpixx;
-    const auto by = hex.y - maxpixy;
-    const auto ex = hex.x + maxpixx;
-    const auto ey = hex.y + maxpixy;
+    auto hex = chosen->GetHex();
+    int32_t maxpixx = _lmapWMap.width / 2 / _lmapZoom;
+    int32_t maxpixy = _lmapWMap.height / 2 / _lmapZoom;
+    int32_t bx = hex.x - maxpixx;
+    int32_t by = hex.y - maxpixy;
+    int32_t ex = hex.x + maxpixx;
+    int32_t ey = hex.y + maxpixy;
 
-    const auto vis = chosen->GetLookDistance();
-    auto pix_x = _lmapWMap.width;
-    auto pix_y = 0;
+    int32_t vis = chosen->GetLookDistance();
+    int32_t pix_x = _lmapWMap.width;
+    int32_t pix_y = 0;
 
-    for (auto i1 = bx; i1 < ex; i1++) {
-        for (auto i2 = by; i2 < ey; i2++) {
+    for (int32_t i1 = bx; i1 < ex; i1++) {
+        for (int32_t i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
             if (!map->GetSize().is_valid_pos(i1, i2)) {
                 continue;
             }
 
-            const auto hex2 = map->GetSize().from_raw_pos(i1, i2);
+            mpos hex2 = map->GetSize().from_raw_pos(i1, i2);
 
             bool is_far = false;
-            const auto dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
+            int32_t dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
 
             if (dist > vis) {
                 is_far = true;
@@ -2722,7 +2722,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         cr->SynchronizeMoving();
     }
 
-    const auto prev_moving = cr->IsMoving();
+    bool prev_moving = cr->IsMoving();
 
     cr->StopMoving();
     cr->NormalizeHexOffset();
@@ -2737,9 +2737,9 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
     if (speed != 0) {
         if (pos_or_dir.index() == 0) {
             hex = std::get<0>(std::get<0>(pos_or_dir));
-            const auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
-            const auto cut = std::get<2>(std::get<0>(pos_or_dir));
-            const auto find_path = map->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
+            auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
+            auto cut = std::get<2>(std::get<0>(pos_or_dir));
+            auto find_path = map->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
 
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
@@ -2749,7 +2749,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
             }
         }
         else if (pos_or_dir.index() == 1) {
-            const auto dir = std::get<1>(pos_or_dir);
+            auto dir = std::get<1>(pos_or_dir);
 
             hex = cr->GetHex();
             end_hex_offset = cr->GetHexOffset();
@@ -2783,7 +2783,7 @@ void ClientEngine::CritterLookTo(ptr<CritterHexView> cr, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prev_dir = cr->GetDir();
+    auto prev_dir = cr->GetDir();
 
     cr->ChangeLookDir(dir);
 
@@ -2809,9 +2809,9 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
         return;
     }
 
-    const auto names = strex(video_name).split('|');
+    auto names = strex(video_name).split('|');
     FO_VERIFY_AND_THROW(!names.empty(), "Video playback request produced no resource candidates after splitting the video name", video_name, can_interrupt);
-    const auto file = Resources.ReadFile(names.front());
+    auto file = Resources.ReadFile(names.front());
 
     if (!file) {
         return;
@@ -2858,9 +2858,9 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto reload_effect = [this, effectPath](ptr<RenderEffect> def_effect) -> ptr<RenderEffect> { return EffectMngr.ResolveEffect(def_effect, effectPath); };
+    auto reload_effect = [this, effectPath](ptr<RenderEffect> def_effect) -> ptr<RenderEffect> { return EffectMngr.ResolveEffect(def_effect, effectPath); };
 
-    const uint32_t eff_type = static_cast<uint32_t>(effectType);
+    uint32_t eff_type = static_cast<uint32_t>(effectType);
 
     if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
         auto map = GetCurMap();
@@ -2965,7 +2965,7 @@ void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSu
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t values_size = numeric_cast<int32_t>(values.size());
+    int32_t values_size = numeric_cast<int32_t>(values.size());
 
     if (valuesOffset < 0 || valuesOffset > values_size) {
         throw ScriptException("Effect script values offset is out of range", valuesOffset, values_size);

@@ -54,29 +54,29 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
     // Read data
     map<string_view, vector<vector<string_view>>> engine_data;
     auto reader = DataReader(metadata_bin);
-    const auto sections_count = reader.Read<uint16_t>();
+    auto sections_count = reader.Read<uint16_t>();
 
-    for (const auto i : iterate_range(sections_count)) {
+    for (auto i : iterate_range(sections_count)) {
         ignore_unused(i);
 
-        const auto section_name_size = reader.Read<uint16_t>();
-        const string_view section_name = reader.ReadStringView(section_name_size);
+        auto section_name_size = reader.Read<uint16_t>();
+        string_view section_name = reader.ReadStringView(section_name_size);
 
-        const auto entries_count = reader.Read<uint32_t>();
+        auto entries_count = reader.Read<uint32_t>();
         vector<vector<string_view>> entries;
         entries.reserve(entries_count);
 
-        for (const auto j : iterate_range(entries_count)) {
+        for (auto j : iterate_range(entries_count)) {
             ignore_unused(j);
 
             auto& cur_entry = entries.emplace_back();
-            const auto tokens_count = reader.Read<uint32_t>();
+            auto tokens_count = reader.Read<uint32_t>();
 
-            for (const auto k : iterate_range(tokens_count)) {
+            for (auto k : iterate_range(tokens_count)) {
                 ignore_unused(k);
 
-                const auto token_size = reader.Read<uint16_t>();
-                const string_view token = reader.ReadStringView(token_size);
+                auto token_size = reader.Read<uint16_t>();
+                string_view token = reader.ReadStringView(token_size);
 
                 cur_entry.emplace_back(token);
             }
@@ -114,8 +114,8 @@ static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<
             unordered_map<string, int32_t> key_values;
 
             for (size_t i = 2; i < tokens.size(); i += 2) {
-                const auto key = tokens[i];
-                const auto value = strvex(tokens[i + 1]).to_int32();
+                auto key = tokens[i];
+                int32_t value = strvex(tokens[i + 1]).to_int32();
                 key_values.emplace(key, value);
             }
 
@@ -123,8 +123,8 @@ static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<
         }
         else {
             for (size_t i = 2; i < tokens.size(); i += 2) {
-                const auto key = tokens[i];
-                const auto value = strvex(tokens[i + 1]).to_int32();
+                auto key = tokens[i];
+                int32_t value = strvex(tokens[i + 1]).to_int32();
 
                 meta->RegisterEnumEntry(enum_name, key, value);
             }
@@ -138,12 +138,12 @@ static void RegisterDynamicMetadataEntities(ptr<EngineMetadata> meta, const vect
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(!tokens.empty(), "Entity metadata record is empty and cannot provide an entity type name", engine_data.size());
-        const auto name = tokens[0];
-        const auto flags = span(tokens).subspan(1);
-        const auto is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
-        const auto has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
-        const auto has_statics = std::ranges::any_of(flags, [](auto&& f) { return f == "HasStatics"; });
-        const auto has_abstract = std::ranges::any_of(flags, [](auto&& f) { return f == "HasAbstract"; });
+        auto name = tokens[0];
+        auto flags = span(tokens).subspan(1);
+        bool is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
+        bool has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
+        bool has_statics = std::ranges::any_of(flags, [](auto&& f) { return f == "HasStatics"; });
+        bool has_abstract = std::ranges::any_of(flags, [](auto&& f) { return f == "HasAbstract"; });
 
         meta->RegisterEntityType(name, false, is_global, has_protos, has_statics, has_abstract);
     }
@@ -155,15 +155,15 @@ static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "EntityHolder metadata record is missing target, holder entity, target entity or entry name", tokens.size());
-        const auto target = tokens[0];
-        const auto holder_entity = tokens[1];
-        const auto target_entity = tokens[2];
-        const auto entry = tokens[3];
-        const auto flags = span(tokens).subspan(4);
-        const auto has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
-        const auto has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
-        const auto has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
-        const auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
+        auto target = tokens[0];
+        auto holder_entity = tokens[1];
+        auto target_entity = tokens[2];
+        auto entry = tokens[3];
+        auto flags = span(tokens).subspan(4);
+        bool has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
+        bool has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
+        bool has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
+        auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
 
         if (target != "Stub") {
             meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync, has_persistent);
@@ -230,15 +230,15 @@ static void RegisterDynamicMetadataRefTypes(ptr<EngineMetadata> meta, const vect
         for (size_t i = 1; i < tokens.size();) {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size(), "RefType metadata field record is truncated", name);
 
-            const auto field_name = tokens[i];
-            const auto field_type = tokens[i + 1];
-            const auto flag_count_signed = strex(tokens[i + 2]).to_int32();
+            auto field_name = tokens[i];
+            auto field_type = tokens[i + 1];
+            int32_t flag_count_signed = strex(tokens[i + 2]).to_int32();
             FO_VERIFY_AND_THROW(flag_count_signed >= 0, "RefType metadata field has a negative flag count", field_name, name);
-            const auto flag_count = numeric_cast<size_t>(flag_count_signed);
+            auto flag_count = numeric_cast<size_t>(flag_count_signed);
 
             FO_VERIFY_AND_THROW(i + 3 + flag_count <= tokens.size(), "RefType metadata field flags are truncated", field_name, name);
 
-            const auto type = meta->ResolveComplexType(field_type);
+            auto type = meta->ResolveComplexType(field_type);
             FO_VERIFY_AND_THROW(!type.IsMutable, "RefType metadata field has a mutable type", field_type, field_name, name);
             FO_VERIFY_AND_THROW(type.Kind != ComplexTypeKind::Callback, "RefType metadata field cannot use a callback type", field_name, name);
             FO_VERIFY_AND_THROW(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, "RefType metadata field cannot reference a runtime entity type", field_name, name);
@@ -267,12 +267,12 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
-        const auto entity_name = tokens[0];
+        auto entity_name = tokens[0];
         auto prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
-        const auto prop_tokens = span(tokens).subspan(1);
+        auto prop_tokens = span(tokens).subspan(1);
 
         auto prop = prop_registrator->RegisterProperty(prop_tokens);
-        const string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
+        string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }
 }
@@ -284,14 +284,14 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 2, "Event metadata record is missing entity name or event name", tokens.size());
         FO_VERIFY_AND_THROW((tokens.size() - 2) % 3 == 0, "Event metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens.size());
-        const auto entity_name = tokens[0];
+        auto entity_name = tokens[0];
         EntityEventDesc event;
         event.Name = tokens[1];
 
         for (size_t i = 2; i + 3 <= tokens.size(); i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
-            const bool arg_nullable = tokens[i + 1] == "?";
-            auto arg_name = string(tokens[i + 2]);
+            bool arg_nullable = tokens[i + 1] == "?";
+            string arg_name = string(tokens[i + 2]);
             event.Args.emplace_back(std::move(arg_name), std::move(arg_type), arg_nullable);
         }
 
@@ -309,12 +309,12 @@ static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const v
         RemoteCallDesc remote_call;
         remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
-        const auto inbound = tokens[2] == "In";
+        bool inbound = tokens[2] == "In";
 
         for (size_t i = 3; i + 3 <= tokens.size(); i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
-            const bool arg_nullable = tokens[i + 1] == "?";
-            auto arg_name = string(tokens[i + 2]);
+            bool arg_nullable = tokens[i + 1] == "?";
+            string arg_name = string(tokens[i + 2]);
             remote_call.Args.emplace_back(std::move(arg_name), std::move(arg_type), arg_nullable);
         }
 
@@ -333,7 +333,7 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 2, "Setting metadata record is missing setting name or value type", tokens.size());
-        const auto name = tokens[0];
+        auto name = tokens[0];
         const auto& type = meta->GetBaseType(tokens[1]);
 
         meta->RegisterGameSetting(name, type);
@@ -355,9 +355,9 @@ auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vec
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string target_lower = strex(target).lower();
+    string target_lower = strex(target).lower();
 
-    if (const auto restore_info = resources->ReadFile(strex("Metadata.fometa-{}", target_lower))) {
+    if (auto restore_info = resources->ReadFile(strex("Metadata.fometa-{}", target_lower))) {
         return restore_info.GetData();
     }
     else {

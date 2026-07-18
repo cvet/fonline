@@ -90,9 +90,9 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     auto spr = GetSprite();
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing draw rect", _hex, _drawOrder, _index);
 
-    const isize32 spr_size = spr->GetSize();
-    const ipos32 root_pos = GetDrawRootPos();
-    const ipos32 root_offset = GetSpriteRootOffset();
+    isize32 spr_size = spr->GetSize();
+    ipos32 root_pos = GetDrawRootPos();
+    ipos32 root_offset = GetSpriteRootOffset();
 
     return {ipos32(root_pos.x - root_offset.x, root_pos.y - root_offset.y), spr_size};
 }
@@ -104,8 +104,8 @@ auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
     ipos32 pos = _hexOffset + *_pHexOffset;
 
     if (_elevation != 0) {
-        const float32_t elevation = numeric_cast<float32_t>(_elevation);
-        const float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        float32_t elevation = numeric_cast<float32_t>(_elevation);
+        float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
         pos.y -= iround<int32_t>(map_elevation_y);
     }
 
@@ -139,8 +139,8 @@ auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
     auto spr = GetSprite();
     FO_VERIFY_AND_RETURN_VALUE(spr, ipos32(), "Map sprite has no sprite while computing sprite root offset", _hex, _drawOrder, _index);
 
-    const ipos32 spr_offset = spr->GetOffset();
-    const isize32 spr_size = spr->GetSize();
+    ipos32 spr_offset = spr->GetOffset();
+    isize32 spr_size = spr->GetSize();
 
     return {spr_size.width / 2 - spr_offset.x, spr_size.height - spr_offset.y};
 }
@@ -152,13 +152,13 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
     auto spr = GetSprite();
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing view rect", _hex, _drawOrder, _index);
 
-    auto rect = GetDrawRect();
+    irect32 rect = GetDrawRect();
 
-    if (const auto view_rect = spr->GetViewSize(); view_rect.has_value()) [[likely]] {
-        const auto view_ox = view_rect->x;
-        const auto view_oy = view_rect->y;
-        const auto view_width = view_rect->width;
-        const auto view_height = view_rect->height;
+    if (auto view_rect = spr->GetViewSize(); view_rect.has_value()) [[likely]] {
+        int32_t view_ox = view_rect->x;
+        int32_t view_oy = view_rect->y;
+        int32_t view_width = view_rect->width;
+        int32_t view_height = view_rect->height;
 
         rect.x = rect.x + rect.width / 2 - view_width / 2 + view_ox;
         rect.y = rect.y + rect.height - view_height + view_oy;
@@ -203,15 +203,15 @@ void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size)
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_hex.x >= 1 && _hex.x < size.width - 1 && _hex.y >= 1 && _hex.y < size.height - 1) [[likely]] {
-        const size_t width = numeric_cast<size_t>(size.width);
-        const size_t height = numeric_cast<size_t>(size.height);
-        const size_t light_count = width * height;
-        const auto lights = make_span(light, light_count);
-        const auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
+        size_t width = numeric_cast<size_t>(size.width);
+        size_t height = numeric_cast<size_t>(size.height);
+        size_t light_count = width * height;
+        auto lights = make_span(light, light_count);
+        auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
             FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
             return &lights[pos];
         };
-        const size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
+        size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
         _light = light_at(light_index);
 
         switch (corner) {
@@ -387,7 +387,7 @@ void MapSpriteList::Invalidate(ptr<MapSprite> mspr) noexcept
     FO_STRONG_ASSERT(mspr->_owner, "Map sprite has no owner", mspr->_index);
     mspr->Reset();
 
-    const auto index = mspr->_index;
+    uint32_t index = mspr->_index;
     _spritesPool.emplace_back(std::move(_activeSprites[index]));
     _needSort = true;
 

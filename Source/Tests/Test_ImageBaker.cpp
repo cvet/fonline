@@ -181,8 +181,8 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     auto data = MakeFrm(fps, frames, 1, -1);
 
     for (int32_t dir = 1; dir < dirs_to_fill; dir++) {
-        const size_t dir_pos = numeric_cast<size_t>(dir) * 2;
-        const size_t data_offset = data.size() - 0x3E;
+        size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+        size_t data_offset = data.size() - 0x3E;
 
         SetBeInt16(data, 0xA + dir_pos, numeric_cast<int16_t>(10 + dir));
         SetBeInt16(data, 0x16 + dir_pos, numeric_cast<int16_t>(-10 - dir));
@@ -196,7 +196,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
 [[nodiscard]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
 {
     auto data = MakeFrm(fps, frames);
-    const size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+    size_t dir_pos = numeric_cast<size_t>(dir) * 2;
 
     SetBeInt16(data, 0xA + dir_pos, offs_x);
     SetBeInt16(data, 0x16 + dir_pos, offs_y);
@@ -210,8 +210,8 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     vector<uint8_t> palette(256 * 3);
 
     for (uint8_t index = 1; index <= GameSettings::MAP_DIR_COUNT; index++) {
-        const uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
-        const size_t palette_pos = numeric_cast<size_t>(index) * 3;
+        uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
+        size_t palette_pos = numeric_cast<size_t>(index) * 3;
         palette[palette_pos + 0] = color_base;
         palette[palette_pos + 1] = numeric_cast<uint8_t>(color_base + 1);
         palette[palette_pos + 2] = numeric_cast<uint8_t>(color_base + 2);
@@ -332,7 +332,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     data[4] = 1;
     data[6] = 1;
 
-    const size_t palette_index = 0xA + 1 * 3;
+    size_t palette_index = 0xA + 1 * 3;
     data[palette_index + 0] = 1;
     data[palette_index + 1] = 2;
     data[palette_index + 2] = 3;
@@ -382,7 +382,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    const vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -538,7 +538,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    const vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -748,7 +748,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     AppendLeInt32(data, 1); // Sequence count
     AppendLeInt32(data, numeric_cast<int32_t>(sequence_frames.size())); // Sequence item count
 
-    for (const int16_t frame : sequence_frames) {
+    for (int16_t frame : sequence_frames) {
         AppendLeInt16(data, frame);
     }
 
@@ -761,7 +761,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     AppendLe16(data, 0); // Animation index
 
     data.insert(data.end(), {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
-    const size_t file_offset_pos = data.size();
+    size_t file_offset_pos = data.size();
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
@@ -795,7 +795,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
 
 static void ReplaceFirstTagByte(vector<uint8_t>& data, string_view tag, uint8_t replacement)
 {
-    const auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
+    auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
     FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
     *it = replacement;
 }
@@ -835,8 +835,8 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     frame.NextX = reader.Read<int16_t>();
     frame.NextY = reader.Read<int16_t>();
 
-    const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    const auto frame_data = reader.ReadBytes(data_size);
+    size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+    auto frame_data = reader.ReadBytes(data_size);
     frame.Data.assign(frame_data.begin(), frame_data.end());
 
     CHECK(reader.Read<uint8_t>() == 42);
@@ -868,7 +868,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
         frame.NextX = reader.Read<int16_t>();
         frame.NextY = reader.Read<int16_t>();
 
-        const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+        size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
         const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
         frame.Data.assign(frame_data.begin(), frame_data.end());
     }
@@ -886,7 +886,7 @@ TEST_CASE("ImageBaker")
     SECTION("Setup")
     {
         TestRig rig;
-        const auto bakers = MakeRequestedBakers({string(ImageBaker::NAME)}, rig);
+        auto bakers = MakeRequestedBakers({string(ImageBaker::NAME)}, rig);
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == ImageBaker::NAME);
@@ -904,7 +904,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "ui/icon.tga");
 
         REQUIRE(rig.Outputs.contains("ui/icon.tga"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("ui/icon.tga"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("ui/icon.tga"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -951,14 +951,14 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("gfx/rle.tga"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
         CHECK(frame.Data == vector<uint8_t> {0, 0, 255, 255, 0, 0, 255, 255});
 
         REQUIRE(rig.Outputs.contains("gfx/rle-raw-packets.tga"));
-        const auto raw_packet_frame = ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"));
+        auto raw_packet_frame = ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"));
 
         CHECK(raw_packet_frame.Width == 2);
         CHECK(raw_packet_frame.Height == 1);
@@ -982,7 +982,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.frm"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -1010,7 +1010,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/animated.frm");
 
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -1065,8 +1065,8 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
             const_span<uint8_t> data = reader.ReadBytes(4);
-            const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
-            const vector<uint8_t> expected_data {
+            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),
                 numeric_cast<uint8_t>((color_base + 1) * 4),
                 numeric_cast<uint8_t>((color_base + 2) * 4),
@@ -1081,7 +1081,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
     {
-        const vector<FrmFrameSpec> frames {
+        vector<FrmFrameSpec> frames {
             FrmFrameSpec {
                 .Width = 1,
                 .Height = 1,
@@ -1149,7 +1149,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("gfx/animated.fr0"));
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -1185,7 +1185,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/indexed.png");
 
         REQUIRE(rig.Outputs.contains("gfx/indexed.png"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -1206,35 +1206,35 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("legacy/pixel.rix"));
-        const auto rix_frame = ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"));
+        auto rix_frame = ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"));
 
         CHECK(rix_frame.Width == 1);
         CHECK(rix_frame.Height == 1);
         CHECK(rix_frame.Data == vector<uint8_t> {12, 8, 4, 255});
 
         REQUIRE(rig.Outputs.contains("legacy/blank.zar"));
-        const auto zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"));
+        auto zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"));
 
         CHECK(zar_frame.Width == 1);
         CHECK(zar_frame.Height == 1);
         CHECK(zar_frame.Data == vector<uint8_t> {0, 0, 0, 0});
 
         REQUIRE(rig.Outputs.contains("legacy/palette.zar"));
-        const auto palette_zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"));
+        auto palette_zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"));
 
         CHECK(palette_zar_frame.Width == 3);
         CHECK(palette_zar_frame.Height == 1);
         CHECK(palette_zar_frame.Data == vector<uint8_t> {0x11, 0x22, 0x33, 0xFF, 0x11, 0x22, 0x33, 0x7F, 0x11, 0x22, 0x33, 0x40});
 
         REQUIRE(rig.Outputs.contains("legacy/panel.mos"));
-        const auto mos_frame = ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"));
+        auto mos_frame = ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"));
 
         CHECK(mos_frame.Width == 2);
         CHECK(mos_frame.Height == 1);
         CHECK(mos_frame.Data == vector<uint8_t> {1, 2, 3, 255, 0, 0, 0, 0});
 
         REQUIRE(rig.Outputs.contains("legacy/cycle.bam"));
-        const auto bam_frame = ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"));
+        auto bam_frame = ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"));
 
         CHECK(bam_frame.Width == 4);
         CHECK(bam_frame.Height == 1);
@@ -1243,7 +1243,7 @@ TEST_CASE("ImageBaker")
         CHECK(bam_frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0, 0, 0, 0, 6, 5, 4, 0xFF, 6, 5, 4, 0xFF});
 
         REQUIRE(rig.Outputs.contains("legacy/floor.til"));
-        const auto til_frame = ReadSingleFrame(rig.Outputs.at("legacy/floor.til"));
+        auto til_frame = ReadSingleFrame(rig.Outputs.at("legacy/floor.til"));
 
         CHECK(til_frame.Width == 3);
         CHECK(til_frame.Height == 1);
@@ -1260,7 +1260,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1282,7 +1282,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static-art.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/static-art.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1304,7 +1304,7 @@ TEST_CASE("ImageBaker")
         specific_frame_baker.BakeFiles(specific_frame.GetAllSourceFiles(), "legacy/bam-specific.fofrm");
 
         REQUIRE(specific_frame.Outputs.contains("legacy/bam-specific.fofrm"));
-        const auto selected = ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"));
+        auto selected = ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"));
 
         CHECK(selected.SequenceSize == 1);
         CHECK(selected.AnimTicks == 100);
@@ -1323,7 +1323,7 @@ TEST_CASE("ImageBaker")
         clamped_frame_baker.BakeFiles(clamped_frame.GetAllSourceFiles(), "legacy/bam-clamped.fofrm");
 
         REQUIRE(clamped_frame.Outputs.contains("legacy/bam-clamped.fofrm"));
-        const auto clamped = ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"));
+        auto clamped = ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"));
 
         CHECK(clamped.SequenceSize == 1);
         CHECK(clamped.AnimTicks == 100);
@@ -1345,7 +1345,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-range.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art-range.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 100);
@@ -1367,7 +1367,7 @@ TEST_CASE("ImageBaker")
         forward_baker.BakeFiles(forward.GetAllSourceFiles(), "gfx/art-forward.fofrm");
 
         REQUIRE(forward.Outputs.contains("gfx/art-forward.fofrm"));
-        const auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
+        auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
 
         CHECK(forward_sequence.SequenceSize == 2);
         CHECK(forward_sequence.AnimTicks == 100);
@@ -1392,7 +1392,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-dirs.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art-dirs.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-dirs.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-dirs.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1414,7 +1414,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1436,7 +1436,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1469,12 +1469,12 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == 0);
             CHECK_FALSE(reader.Read<bool>());
 
-            const auto width = reader.Read<uint16_t>();
-            const auto height = reader.Read<uint16_t>();
-            const auto next_x = reader.Read<int16_t>();
-            const auto next_y = reader.Read<int16_t>();
+            auto width = reader.Read<uint16_t>();
+            auto height = reader.Read<uint16_t>();
+            int16_t next_x = reader.Read<int16_t>();
+            int16_t next_y = reader.Read<int16_t>();
 
-            const size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            size_t data_size = numeric_cast<size_t>(width) * height * 4;
             const_span<uint8_t> data = reader.ReadBytes(data_size);
 
             if (width == 3) {
@@ -1526,7 +1526,7 @@ NextY_1=8
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/anim.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/anim.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -1556,7 +1556,7 @@ OffsetX=5
         dir_one_baker.BakeFiles(dir_one_without_frames.GetAllSourceFiles(), "gfx/no-dir.fofrm");
 
         REQUIRE(dir_one_without_frames.Outputs.contains("gfx/no-dir.fofrm"));
-        const auto sequence = ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"));
+        auto sequence = ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1579,12 +1579,12 @@ Frm=dir1.tga
         CHECK_THROWS_AS(direction_gap_baker.BakeFiles(direction_gap.GetAllSourceFiles(), "gfx/gap.fofrm"), ImageBakerException);
         CHECK(direction_gap.Outputs.empty());
 
-        const auto add_toy_loader = [](ImageBaker& baker) {
+        auto add_toy_loader = [](ImageBaker& baker) {
             baker.AddLoader(
                 [](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
                     ignore_unused(opt, reader, files);
 
-                    const string fname_str {fname};
+                    string fname_str {fname};
                     ImageBaker::FrameCollection collection;
                     collection.SequenceSize = fname_str.find("two") != string::npos ? 2 : 1;
                     collection.AnimTicks = 100;
@@ -1686,8 +1686,8 @@ Frm=one.toy
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            const int16_t offs_x = reader.Read<int16_t>();
-            const int16_t offs_y = reader.Read<int16_t>();
+            int16_t offs_x = reader.Read<int16_t>();
+            int16_t offs_y = reader.Read<int16_t>();
 
             if (dir == 0) {
                 CHECK(offs_x == 1);

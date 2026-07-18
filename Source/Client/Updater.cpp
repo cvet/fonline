@@ -150,15 +150,15 @@ auto Updater::Process() -> bool
         update_text += "\n";
 
         for (const auto& update_file : _filesToUpdate) {
-            auto cur_bytes = update_file.Size - update_file.RemaningSize;
+            uint64_t cur_bytes = update_file.Size - update_file.RemaningSize;
 
             if (&update_file == &_filesToUpdate.front()) {
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = strex(update_file.Name).format_path();
+            float32_t cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
+            float32_t max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            string name = strex(update_file.Name).format_path();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
@@ -166,10 +166,10 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
-    const auto dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
+    int32_t elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
+    int32_t dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
 
-    for ([[maybe_unused]] const auto i : iterate_range(dots)) {
+    for ([[maybe_unused]] auto i : iterate_range(dots)) {
         update_text += ".";
     }
 
@@ -182,7 +182,7 @@ auto Updater::Process() -> bool
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
-        const auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
+        auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
         if (_settings->UpdaterInfoPos < 0) {
             _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
@@ -234,15 +234,15 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
-    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
-    const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
-    const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
-    const auto make_final_path = [&](const UpdateFile& f) -> string {
-        const auto live_path = make_live_path(f);
+    auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
+    auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
+    auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
+    auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
+    auto make_final_path = [&](const UpdateFile& f) -> string {
+        string live_path = make_live_path(f);
         return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
     };
-    const auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
+    auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
         if (file_uses_binary_dir(f)) {
             ReplaceFileSafely(staged_path, make_live_path(f));
         }
@@ -257,8 +257,8 @@ void Updater::GetNextFile()
         }
 
         const auto& prev_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(prev_update_file);
-        const auto temp_path_str = make_temp_path(prev_update_file);
+        string prev_path_str = make_final_path(prev_update_file);
+        string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
@@ -279,9 +279,9 @@ void Updater::GetNextFile()
 
     if (!_filesToUpdate.empty()) {
         auto& next_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(next_update_file);
-        const auto temp_path = make_temp_path(next_update_file);
-        const auto temp_file_size = GetDiskFileSize(temp_path);
+        string prev_path_str = make_final_path(next_update_file);
+        string temp_path = make_temp_path(next_update_file);
+        auto temp_file_size = GetDiskFileSize(temp_path);
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
@@ -315,7 +315,7 @@ void Updater::GetNextFile()
             }
         }
 
-        const auto dir = strex(temp_path).extract_dir().str();
+        string dir = strex(temp_path).extract_dir().str();
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir)) {
@@ -324,7 +324,7 @@ void Updater::GetNextFile()
             }
         }
 
-        const auto open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
+        int32_t open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
         _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
 
         if (!_tempFile) {
@@ -360,7 +360,7 @@ void Updater::RequestUpdateFile(const UpdateFile& update_file)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto start_offset = update_file.Size - update_file.RemaningSize;
+    uint64_t start_offset = update_file.Size - update_file.RemaningSize;
 
     _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
     _conn.OutBuf->Write(update_file.Index);
@@ -404,7 +404,7 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
 
-        const bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+        bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
         WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
 
         if (!can_self_update_binaries) {
@@ -441,7 +441,7 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32_t>();
+    auto data_size = _conn.InBuf->Read<uint32_t>();
 
     vector<uint8_t> data;
     data.resize(data_size);
@@ -450,7 +450,7 @@ void Updater::Net_OnInitData()
 
     vector<vector<uint8_t>> globals_properties_data;
     _conn.InBuf->ReadPropsData(globals_properties_data);
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
     ignore_unused(globals_properties_data);
 
     _gameTime.SetSynchronizedTime(time);
@@ -458,7 +458,7 @@ void Updater::Net_OnInitData()
     FO_VERIFY_AND_THROW(!_fileListReceived, "Update file list was already received");
     _fileListReceived = true;
 
-    const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
+    auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
     WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
 
     if (data.empty()) {
@@ -481,8 +481,8 @@ void Updater::Net_OnInitData()
     }
 
     auto reader = DataReader(data);
-    const auto accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-    const string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
+    bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+    string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
     string runtime_server_prefix;
 
@@ -496,12 +496,12 @@ void Updater::Net_OnInitData()
         WriteLog("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
     }
 
-    const auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
+    auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
         if (!fname_basename.starts_with(runtime_server_prefix)) {
             return std::nullopt;
         }
 
-        const string_view rest = string_view(fname_basename).substr(runtime_server_prefix.size());
+        string_view rest = string_view(fname_basename).substr(runtime_server_prefix.size());
 
         if (!rest.empty() && rest[0] != '.') {
             return std::nullopt;
@@ -511,21 +511,21 @@ void Updater::Net_OnInitData()
     };
 
     while (true) {
-        const auto name_len = reader.Read<int16_t>();
+        int16_t name_len = reader.Read<int16_t>();
 
         if (name_len == -1) {
             break;
         }
 
         FO_VERIFY_AND_THROW(name_len > 0, "Update file name length must be positive", name_len);
-        const size_t fname_size = numeric_cast<size_t>(name_len);
+        size_t fname_size = numeric_cast<size_t>(name_len);
         string fname;
         fname.resize(fname_size);
         reader.ReadStringBytes(fname);
-        const auto size = reader.Read<uint64_t>();
-        const auto hash = reader.Read<uint64_t>();
-        const auto target = reader.Read<UpdateFileTarget>();
-        const auto data_index = reader.Read<uint32_t>();
+        auto size = reader.Read<uint64_t>();
+        auto hash = reader.Read<uint64_t>();
+        auto target = reader.Read<UpdateFileTarget>();
+        auto data_index = reader.Read<uint32_t>();
 
         string local_name = fname;
         bool is_client_binary = false;
@@ -535,18 +535,18 @@ void Updater::Net_OnInitData()
                 continue;
             }
 
-            const auto fname_basename = strex(fname).extract_file_name().str();
-            const auto remapped = remap_runtime_name(fname_basename);
+            string fname_basename = strex(fname).extract_file_name().str();
+            auto remapped = remap_runtime_name(fname_basename);
 
             if (!remapped.has_value()) {
                 continue;
             }
 
-            const auto remapped_basename = *remapped;
-            const auto fname_dir = strex(fname).extract_dir().str();
+            auto remapped_basename = *remapped;
+            string fname_dir = strex(fname).extract_dir().str();
             local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
 
-            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
+            string file_path = strex(_binaryDir).combine_path(local_name).str();
 
             if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
                 if (fs_exists(file_path)) {
@@ -578,7 +578,7 @@ void Updater::Net_OnInitData()
                         continue;
                     }
 
-                    const auto file = resources.ReadFile(fname);
+                    auto file = resources.ReadFile(fname);
 
                     if (file && IsDataHashMatch(file.GetData(), size, hash)) {
                         continue;
@@ -626,7 +626,7 @@ void Updater::Net_OnTimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
     _gameTime.SetSynchronizedTimeMonotonic(time);
 }
 
@@ -634,10 +634,10 @@ void Updater::Net_OnHashList()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t count = _conn.InBuf->Read<uint32_t>();
+    uint32_t count = _conn.InBuf->Read<uint32_t>();
 
     for (uint32_t i = 0; i < count; i++) {
-        const string str = _conn.InBuf->Read<string>();
+        string str = _conn.InBuf->Read<string>();
 
         _hashStorage.ToHashedString(str);
     }
@@ -651,14 +651,14 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size_raw = _conn.InBuf->Read<int32_t>();
+    int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
     if (data_size_raw < 0) {
         Abort(StrFilesystemError);
         return;
     }
 
-    const auto data_size = numeric_cast<size_t>(data_size_raw);
+    auto data_size = numeric_cast<size_t>(data_size_raw);
 
     _updateFileBuf.resize(data_size);
 
@@ -677,7 +677,7 @@ void Updater::Net_OnUpdateFileData()
     }
 
     // Write data to temp file
-    const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
+    size_t write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
         _tempFile.write(make_ptr(_updateFileBuf.data()).reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
@@ -708,7 +708,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto local_size = fs_file_size(file_path);
+    auto local_size = fs_file_size(file_path);
 
     if (!local_size.has_value() || *local_size != expected_size) {
         return false;
@@ -722,11 +722,11 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     };
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
-    const auto local_mtime = fs_last_write_time(file_path);
-    const auto cache_key = strex("{}.hash", strex(file_path).extract_file_name()).str();
+    uint64_t local_mtime = fs_last_write_time(file_path);
+    string cache_key = strex("{}.hash", strex(file_path).extract_file_name()).str();
 
     if (_cache.HasEntry(cache_key)) {
-        const auto data = _cache.GetData(cache_key);
+        auto data = _cache.GetData(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
@@ -739,13 +739,13 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         }
     }
 
-    const auto local_hash = fs_hash_file(file_path);
+    auto local_hash = fs_hash_file(file_path);
 
     if (!local_hash.has_value()) {
         return false;
     }
 
-    const CachedHash entry {*local_size, local_mtime, *local_hash};
+    CachedHash entry {*local_size, local_mtime, *local_hash};
     _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
@@ -776,8 +776,8 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto backup_path = strex("{}.bak", final_path).str();
-    const auto final_exists = fs_exists(final_path);
+    string backup_path = strex("{}.bak", final_path).str();
+    bool final_exists = fs_exists(final_path);
 
     fs_remove_file(backup_path);
 
@@ -809,7 +809,7 @@ auto Updater::GetClientBinaryDir() -> string
         return "/";
     }
     else {
-        const auto exe_path = Platform::GetExePath();
+        auto exe_path = Platform::GetExePath();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         return strex(exe_path.value()).extract_dir().str();
     }
@@ -964,7 +964,7 @@ auto GetClientRuntimeLivePath() -> string
         binary_dir = "/";
     }
     else {
-        const auto exe_path = Platform::GetExePath();
+        auto exe_path = Platform::GetExePath();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         binary_dir = strex(exe_path.value()).extract_dir().str();
     }
@@ -983,15 +983,15 @@ auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+    optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
 
     if (!target.has_value()) {
         return string(fallback_runtime_path);
     }
 
-    const string staging_path = MakeClientRuntimeStagingPath(target.value());
-    const bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
-    const bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
+    string staging_path = MakeClientRuntimeStagingPath(target.value());
+    bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
+    bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
     return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
 }
 
@@ -1003,13 +1003,13 @@ auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_vi
         return std::nullopt;
     }
 
-    const optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
+    optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
 
     if (!file_size.has_value() || file_size.value() == 0 || file_size.value() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
     }
 
-    const optional<string> content = fs_read_file(bootstrap_file_path);
+    optional<string> content = fs_read_file(bootstrap_file_path);
 
     if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
@@ -1026,14 +1026,14 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
         return false;
     }
 
-    const optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+    optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
 
     if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
         return false;
     }
 
     // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
-    const string temp_path = strex("{}.tmp", bootstrap_file_path).str();
+    string temp_path = strex("{}.tmp", bootstrap_file_path).str();
 
     if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
         return false;
@@ -1052,25 +1052,25 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto runtime_name = GetCurrentClientRuntimeLibraryName();
-        const auto runtime_primary_name = strex("{}{}", runtime_name, GetClientRuntimeLibraryExtension()).str();
+        string runtime_name = GetCurrentClientRuntimeLibraryName();
+        string runtime_primary_name = strex("{}{}", runtime_name, GetClientRuntimeLibraryExtension()).str();
 
         vector<pair<string, string>> renames;
 
         fs_iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
-            const auto file_name = strex(path).extract_file_name().str();
+            string file_name = strex(path).extract_file_name().str();
 
             if (!file_name.ends_with(ClientBinaryStagingSuffix)) {
                 return;
             }
 
-            const auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
+            auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
 
             if (unstaged_name == runtime_primary_name) {
                 return;
             }
 
-            const bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
+            bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
 
             if (!matches_runtime) {
                 return;
@@ -1093,8 +1093,8 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
-        const auto name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
+    if (auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
+        string name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
 
         if (!name.empty()) {
             return name;
@@ -1108,7 +1108,7 @@ void ShowUpdaterFailure(UpdaterResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto target_name = GetCurrentBinaryUpdateTargetName();
+    string_view target_name = GetCurrentBinaryUpdateTargetName();
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
@@ -1149,7 +1149,7 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string trimmed_path = strex(runtime_path).trim().str();
+    string trimmed_path = strex(runtime_path).trim().str();
 
     if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
         return std::nullopt;

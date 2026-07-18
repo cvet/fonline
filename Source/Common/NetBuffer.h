@@ -103,7 +103,7 @@ public:
         requires(std::same_as<T, string_view> || std::same_as<T, string>)
     void Write(const T& value)
     {
-        const auto len = numeric_cast<uint32_t>(value.length());
+        auto len = numeric_cast<uint32_t>(value.length());
 
         Push(&len, sizeof(len));
         Push(value.data(), len);
@@ -170,7 +170,7 @@ public:
         Pop(&len, sizeof(len));
 
         // A declared string can never be longer than the bytes still buffered; reject before allocating
-        const auto unread = GetUnreadSize();
+        size_t unread = GetUnreadSize();
 
         if (len > unread) {
             ResetBuf();

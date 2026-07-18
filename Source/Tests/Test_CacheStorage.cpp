@@ -7,7 +7,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempCacheDir(string_view name) -> string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(base);
 }
 
@@ -15,12 +15,12 @@ TEST_CASE("CacheStorage")
 {
     SECTION("StringAndBinaryEntriesRoundtrip")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        const vector<uint8_t> payload {{0x10, 0x20, 0x30, 0x40}};
+        vector<uint8_t> payload {{0x10, 0x20, 0x30, 0x40}};
 
         cache.SetString("greeting", "hello cache");
         cache.SetData("folder/item.bin", payload);
@@ -35,8 +35,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -51,8 +51,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("RemoveEntryAndMissingEntriesBehaveGracefully")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_remove");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempCacheDir("cache_storage_remove");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -73,8 +73,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("MoveConstructionPreservesAccess")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_move");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempCacheDir("cache_storage_move");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};

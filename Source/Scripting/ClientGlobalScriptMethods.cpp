@@ -175,8 +175,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
         throw ScriptException("Critters not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(hex_cr1->GetHex(), hex_cr2->GetHex());
-    const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(hex_cr1->GetHex(), hex_cr2->GetHex());
+    int32_t multihex = cr1->GetMultihex() + cr2->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -215,8 +215,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
         throw ScriptException("Critter/Item not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
-    const auto multihex = hex_cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
+    int32_t multihex = hex_cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -236,8 +236,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
         throw ScriptException("Item/Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
-    const auto multihex = hex_cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
+    int32_t multihex = hex_cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -252,8 +252,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
-    const auto multihex = hex_cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
+    int32_t multihex = hex_cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -268,8 +268,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
-    const auto multihex = hex_cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
+    int32_t multihex = hex_cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -570,8 +570,8 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
     }
 
     std::ranges::stable_sort(sorted_critters, [](ptr<const CritterView> cr1, ptr<const CritterView> cr2) {
-        const mpos cr1_pos = cr1->GetHex();
-        const mpos cr2_pos = cr2->GetHex();
+        mpos cr1_pos = cr1->GetHex();
+        mpos cr2_pos = cr2->GetHex();
 
         if (cr1_pos.y == cr2_pos.y) {
             if (cr1_pos.x == cr2_pos.x) {
@@ -628,7 +628,7 @@ FO_SCRIPT_API bool Client_Game_IsVideoPlaying(ptr<ClientEngine> client)
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngine> client, string_view videoName, bool looped)
 {
-    const auto file = client->Resources.ReadFile(videoName);
+    auto file = client->Resources.ReadFile(videoName);
 
     if (!file) {
         throw ScriptException("Video file not found", videoName);
@@ -667,7 +667,7 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<
     if (size.width > 0 && size.height > 0) {
         resources->Tex->UpdateTextureRegion({}, resources->Tex->Size, resources->Clip.RenderFrame());
 
-        const irect32 r = {pos.x, pos.y, size.width, size.height};
+        irect32 r = {pos.x, pos.y, size.width, size.height};
         client->SprMngr.DrawTexture(resources->Tex, false, nullptr, &r);
     }
 
@@ -785,7 +785,7 @@ FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ptr<ClientEngine> client,
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
 {
-    const ipos32 prev_pos = client->MousePos;
+    ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
         client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});
@@ -1044,7 +1044,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
         return;
     }
 
-    const fpos32 draw_pos = fpos32(pos + (offs ? sprite->GetOffset() : ipos32()));
+    fpos32 draw_pos = fpos32(pos + (offs ? sprite->GetOffset() : ipos32()));
     client->SprMngr.DrawSpriteSizeExt(sprite, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
@@ -1118,7 +1118,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(ptr<ClientEngine> client, RenderPri
     }
 
     vector<PrimitivePoint> points;
-    const auto size = data.size() / 3;
+    auto size = data.size() / 3;
     points.reserve(size);
 
     for (size_t i = 0; i < size; i++) {
@@ -1142,7 +1142,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring m
 FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, readonly_vector<int32_t> layers, readonly_vector<float32_t> position, ucolor color)
 {
 #if FO_ENABLE_3D
-    const size_t instance_index = numeric_cast<size_t>(instance);
+    size_t instance_index = numeric_cast<size_t>(instance);
 
     // x y
     // rx ry rz
@@ -1178,27 +1178,27 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         model->StartMeshGeneration();
     }
 
-    const size_t count = position.size();
-    const float32_t x = count > 0 ? position[0] : 0.0f;
-    const float32_t y = count > 1 ? position[1] : 0.0f;
-    const float32_t rx = count > 2 ? position[2] : 0.0f;
-    const float32_t ry = count > 3 ? position[3] : 0.0f;
-    const float32_t rz = count > 4 ? position[4] : 0.0f;
-    const float32_t sx = count > 5 ? position[5] : 1.0f;
-    const float32_t sy = count > 6 ? position[6] : 1.0f;
-    const float32_t sz = count > 7 ? position[7] : 1.0f;
-    const float32_t speed = count > 8 ? position[8] : 1.0f;
-    const float32_t ntime = count > 9 ? position[9] : 0.0f;
-    const float32_t stl = count > 10 ? position[10] : 0.0f;
-    const float32_t stt = count > 11 ? position[11] : 0.0f;
-    const float32_t str = count > 12 ? position[12] : 0.0f;
-    const float32_t stb = count > 13 ? position[13] : 0.0f;
+    size_t count = position.size();
+    float32_t x = count > 0 ? position[0] : 0.0f;
+    float32_t y = count > 1 ? position[1] : 0.0f;
+    float32_t rx = count > 2 ? position[2] : 0.0f;
+    float32_t ry = count > 3 ? position[3] : 0.0f;
+    float32_t rz = count > 4 ? position[4] : 0.0f;
+    float32_t sx = count > 5 ? position[5] : 1.0f;
+    float32_t sy = count > 6 ? position[6] : 1.0f;
+    float32_t sz = count > 7 ? position[7] : 1.0f;
+    float32_t speed = count > 8 ? position[8] : 1.0f;
+    float32_t ntime = count > 9 ? position[9] : 0.0f;
+    float32_t stl = count > 10 ? position[10] : 0.0f;
+    float32_t stt = count > 11 ? position[11] : 0.0f;
+    float32_t str = count > 12 ? position[12] : 0.0f;
+    float32_t stb = count > 13 ? position[13] : 0.0f;
 
     if (count > 13) {
         client->SprMngr.PushScissor({iround<int32_t>(stl), iround<int32_t>(stt), iround<int32_t>(str) - iround<int32_t>(stl), iround<int32_t>(stb) - iround<int32_t>(stt)});
     }
 
-    const auto scissor_guard = scope_fail([&]() noexcept {
+    auto scissor_guard = scope_fail([&]() noexcept {
         if (count > 13) {
             client->SprMngr.PopScissor();
         }
@@ -1220,14 +1220,14 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
     model->PlayAnim(stateAnim, actionAnim, client->DrawCritterModelLayers, ntime, ModelAnimFlags::NoSmooth);
 
     if (count > 13) {
-        const int32_t max_height = iround<int32_t>(stb - stt) * 4 / 3;
+        int32_t max_height = iround<int32_t>(stb - stt) * 4 / 3;
         model_spr->SetSize({iround<int32_t>(str - stl), max_height});
     }
 
     model_spr->DrawToAtlas();
 
-    const int32_t result_x = iround<int32_t>(x) - model_spr->GetSize().width / 2 + model_spr->GetOffset().x;
-    const int32_t result_y = iround<int32_t>(y) - model_spr->GetSize().height + model_spr->GetOffset().y;
+    int32_t result_x = iround<int32_t>(x) - model_spr->GetSize().width / 2 + model_spr->GetOffset().x;
+    int32_t result_y = iround<int32_t>(y) - model_spr->GetSize().height + model_spr->GetOffset().y;
 
     client->SprMngr.DrawSprite(model_spr, {result_x, result_y}, color != ucolor::clear ? color : Color::Neutral);
 
@@ -1289,7 +1289,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    const isize32 surface_size = client->SprMngr.GetScreenSize();
+    isize32 surface_size = client->SprMngr.GetScreenSize();
 
     if (client->OffscreenSurfaces.empty()) {
         auto rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, surface_size, false);
@@ -1309,7 +1309,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.emplace_back(rt);
 
-    const auto it = std::ranges::find(client->DirtyOffscreenSurfaces, rt);
+    auto it = std::ranges::find(client->DirtyOffscreenSurfaces, rt);
 
     if (it != client->DirtyOffscreenSurfaces.end() || forceClear) {
         if (it != client->DirtyOffscreenSurfaces.end()) {
@@ -1339,12 +1339,12 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    const int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    const int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    const int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    const int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
-    const frect32 from(l, t, r - l, b - t);
-    const irect32 to(l, t, r - l, b - t);
+    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
+    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    frect32 from(l, t, r - l, b - t);
+    irect32 to(l, t, r - l, b - t);
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1366,12 +1366,12 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 
     rt->SetCustomDrawEffect(effect);
 
-    const int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    const int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    const int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    const int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
-    const frect32 from(l, t, r - l, b - t);
-    const irect32 to(l, t, r - l, b - t);
+    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
+    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    frect32 from(l, t, r - l, b - t);
+    irect32 to(l, t, r - l, b - t);
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1382,11 +1382,11 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    const frect32 from = frect32(std::clamp(fromX, 0, client->Settings->ScreenWidth), //
+    frect32 from = frect32(std::clamp(fromX, 0, client->Settings->ScreenWidth), //
         std::clamp(fromY, 0, client->Settings->ScreenHeight), //
         std::clamp(fromW, 0, client->Settings->ScreenWidth - fromX), //
         std::clamp(fromH, 0, client->Settings->ScreenHeight - fromY));
-    const irect32 to = irect32(std::clamp(toX, 0, client->Settings->ScreenWidth), //
+    irect32 to = irect32(std::clamp(toX, 0, client->Settings->ScreenWidth), //
         std::clamp(toY, 0, client->Settings->ScreenHeight), //
         std::clamp(toW, 0, client->Settings->ScreenWidth - toX), //
         std::clamp(toH, 0, client->Settings->ScreenHeight - toY));
@@ -1408,15 +1408,15 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
     }
 
     auto texture = main_rt->GetTexture();
-    const auto size = texture->Size;
+    isize32 size = texture->Size;
     auto pixels = texture->GetTextureRegion({0, 0}, size);
 
     if (texture->FlippedHeight) {
-        const auto width = numeric_cast<size_t>(size.width);
+        auto width = numeric_cast<size_t>(size.width);
 
         if (width != 0) {
             vector<ucolor> row_buf(width);
-            const size_t row_bytes = width * sizeof(ucolor);
+            size_t row_bytes = width * sizeof(ucolor);
 
             auto row_buf_data = make_nptr(row_buf.data());
             FO_VERIFY_AND_THROW(row_buf_data, "Row buffer data is null");
@@ -1424,8 +1424,8 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             FO_VERIFY_AND_THROW(pixels_data, "Pixel data is null");
 
             for (int32_t y = 0; y < size.height / 2; y++) {
-                const auto top = numeric_cast<size_t>(y) * width;
-                const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
+                auto top = numeric_cast<size_t>(y) * width;
+                auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
                 MemCopy(row_buf_data, pixels_data.get() + top, row_bytes);
                 MemCopy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
                 MemCopy(pixels_data.get() + bottom, row_buf_data, row_bytes);
@@ -1433,8 +1433,8 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    const auto path = strex(filePath).format_path().str();
-    const auto dir = strex(path).extract_dir().str();
+    string path = strex(filePath).format_path().str();
+    string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
         if (!fs_create_directories(dir)) {
@@ -1450,8 +1450,8 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view fi
 {
     ignore_unused(client);
 
-    const auto path = strex(filePath).format_path().str();
-    const auto dir = strex(path).extract_dir().str();
+    string path = strex(filePath).format_path().str();
+    string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
         if (!fs_create_directories(dir)) {

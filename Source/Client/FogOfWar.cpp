@@ -99,8 +99,8 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
         return;
     }
 
-    const auto is_traced_overlay = input.TraceMode == TraceModeType::Overlay;
-    const auto dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
+    bool is_traced_overlay = input.TraceMode == TraceModeType::Overlay;
+    int32_t dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
     if (dist <= 0) {
         return;
     }
@@ -109,25 +109,25 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
         FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Trace bullet to block callback is required in overlay trace mode");
     }
 
-    const auto base_hex = input.FogOrigin.BaseHex;
-    const auto half_hw = input.MapHexWidth / 2;
-    const auto half_hh = input.MapHexHeight / 2;
-    const auto has_custom_overlay_color = input.OverlayColor.comp.a != 0;
-    const auto has_custom_center_color = input.CenterColor.comp.a != 0;
-    const auto default_overlay_color = ucolor {96, 224, 96, 255};
-    const auto overlay_color = has_custom_overlay_color ? input.OverlayColor : default_overlay_color;
+    mpos base_hex = input.FogOrigin.BaseHex;
+    int32_t half_hw = input.MapHexWidth / 2;
+    int32_t half_hh = input.MapHexHeight / 2;
+    bool has_custom_overlay_color = input.OverlayColor.comp.a != 0;
+    bool has_custom_center_color = input.CenterColor.comp.a != 0;
+    ucolor default_overlay_color = ucolor {96, 224, 96, 255};
+    ucolor overlay_color = has_custom_overlay_color ? input.OverlayColor : default_overlay_color;
 
-    const ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
-    const auto center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
-    const auto center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, center_alpha} : (has_custom_center_color ? input.CenterColor : ucolor {0, 0, 0, center_alpha});
-    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset};
+    ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
+    uint8_t center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
+    ucolor center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, center_alpha} : (has_custom_center_color ? input.CenterColor : ucolor {0, 0, 0, center_alpha});
+    auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset};
 
-    auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
+    ipos32 target_raw_hex = ipos32 {base_hex.x, base_hex.y};
     size_t points_added = 0;
 
     bool seek_start = true;
 
-    for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
+    for (int32_t i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
         mdir dir;
         int32_t iterations;
 
@@ -156,27 +156,27 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, dir);
             }
 
-            const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
-            const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
+            mpos target_hex = input.MapSize.clamp_pos(target_raw_hex);
+            int32_t target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
             auto edge_offset = target_dist < dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
             if (is_traced_overlay) {
-                const auto max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
-                const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_overlay_dist, input.CheckShootBlocks);
-                const auto block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
-                const auto result_overlay_dist = GeometryHelper::GetDistance(base_hex, block_hex);
-                const auto overlay_strength = numeric_cast<uint8_t>(std::max(max_overlay_dist - result_overlay_dist, 0) * 255 / max_overlay_dist);
-                const auto color_r = numeric_cast<uint8_t>(overlay_color.comp.r * overlay_strength / 255);
-                const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
-                const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
-                const auto color = ucolor {color_r, color_g, color_b, 255};
+                int32_t max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
+                auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_overlay_dist, input.CheckShootBlocks);
+                ipos32 block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
+                int32_t result_overlay_dist = GeometryHelper::GetDistance(base_hex, block_hex);
+                auto overlay_strength = numeric_cast<uint8_t>(std::max(max_overlay_dist - result_overlay_dist, 0) * 255 / max_overlay_dist);
+                uint8_t color_r = numeric_cast<uint8_t>(overlay_color.comp.r * overlay_strength / 255);
+                uint8_t color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
+                uint8_t color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
+                ucolor color = ucolor {color_r, color_g, color_b, 255};
                 auto overlay_offset = result_overlay_dist < max_overlay_dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
             }
             else {
-                const auto hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
-                const auto color = ucolor {255, numeric_cast<uint8_t>(target_dist * 255 / dist), 0, 0};
+                ipos32 hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
+                ucolor color = ucolor {255, numeric_cast<uint8_t>(target_dist * 255 / dist), 0, 0};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = edge_offset});
             }
@@ -249,14 +249,14 @@ void FogShape::UpdateTransition(nanotime frame_time)
         return;
     }
 
-    const auto clamped_duration = std::max(_transitionDuration, 0);
+    int32_t clamped_duration = std::max(_transitionDuration, 0);
 
     if (clamped_duration == 0) {
         FinishTransition();
         return;
     }
 
-    const auto progress = std::clamp((frame_time - _transitionTime).div<float32_t>(std::chrono::milliseconds {clamped_duration}), 0.0f, 1.0f);
+    float32_t progress = std::clamp((frame_time - _transitionTime).div<float32_t>(std::chrono::milliseconds {clamped_duration}), 0.0f, 1.0f);
 
     InterpolatePoints(_startPoints, _targetPoints, progress, _points);
 
@@ -303,7 +303,7 @@ auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
         return {};
     }
 
-    const auto center = GetCollapsePoint(points);
+    auto center = GetCollapsePoint(points);
 
     auto collapsed = points;
 
@@ -328,10 +328,10 @@ auto FogShape::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge
         return points[0];
     }
 
-    const auto src_edge = std::min((sample_edge_idx * (edge_count - 1) + (sample_edge_count - 1) / 2) / (sample_edge_count - 1), edge_count - 1);
+    auto src_edge = std::min((sample_edge_idx * (edge_count - 1) + (sample_edge_count - 1) / 2) / (sample_edge_count - 1), edge_count - 1);
     // Edge index to array index: skip every third slot (center)
     // edge 0 → arr 0, edge 1 → arr 1, edge 2 → arr 3, edge 3 → arr 4, ...
-    const auto arr_idx = 3 * (src_edge / 2) + (src_edge % 2);
+    auto arr_idx = 3 * (src_edge / 2) + (src_edge % 2);
     return arr_idx < points.size() ? points[arr_idx] : fallback;
 }
 
@@ -339,7 +339,7 @@ auto FogShape::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto lerp_channel = [t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); };
+    auto lerp_channel = [t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); };
 
     return ucolor {lerp_channel(from.comp.r, to.comp.r), lerp_channel(from.comp.g, to.comp.g), lerp_channel(from.comp.b, to.comp.b), lerp_channel(from.comp.a, to.comp.a)};
 }
@@ -361,20 +361,20 @@ void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto result_count = std::max(from_points.size(), to_points.size());
+    auto result_count = std::max(from_points.size(), to_points.size());
 
     if (result_count == 0) {
         result_points.clear();
         return;
     }
 
-    const auto from_center = GetCollapsePoint(from_points);
-    const auto to_center = GetCollapsePoint(to_points);
-    const auto fallback_center = !to_points.empty() ? to_center : from_center;
+    auto from_center = GetCollapsePoint(from_points);
+    auto to_center = GetCollapsePoint(to_points);
+    auto fallback_center = !to_points.empty() ? to_center : from_center;
 
-    const auto from_edge_count = from_points.size() - from_points.size() / 3;
-    const auto to_edge_count = to_points.size() - to_points.size() / 3;
-    const auto result_edge_count = result_count - result_count / 3;
+    auto from_edge_count = from_points.size() - from_points.size() / 3;
+    auto to_edge_count = to_points.size() - to_points.size() / 3;
+    auto result_edge_count = result_count - result_count / 3;
 
     result_points.resize(result_count);
 
@@ -385,8 +385,8 @@ void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
             result_points[i] = LerpFogPoint(from_center, to_center, t);
         }
         else {
-            const auto from_edge = SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, fallback_center);
-            const auto to_edge = SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, fallback_center);
+            auto from_edge = SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, fallback_center);
+            auto to_edge = SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, fallback_center);
             result_points[i] = LerpFogPoint(from_edge, to_edge, t);
             edge_idx++;
         }

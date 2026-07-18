@@ -45,14 +45,14 @@ TEST_CASE("MapLoader")
         size_t critter_calls = 0;
         size_t item_calls = 0;
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[Critter]\n"
-                               "$Id = 1\n"
-                               "$Proto = MissingCritter\n"
-                               "[Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = MissingItem\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[Critter]\n"
+                         "$Id = 1\n"
+                         "$Proto = MissingCritter\n"
+                         "[Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = MissingItem\n";
 
         CHECK_THROWS_AS(MapLoader::Load("MissingProtoMap", map_buf, meta, hashes, [&](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { critter_calls++; }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }), MapLoaderException);
 
@@ -65,12 +65,12 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[Critter]\n"
-                               "$Id = 1\n"
-                               "[Item]\n"
-                               "$Id = 2\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[Critter]\n"
+                         "$Id = 1\n"
+                         "[Item]\n"
+                         "$Id = 2\n";
 
         CHECK_THROWS_AS(MapLoader::Load("InvalidEntriesMap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -90,24 +90,24 @@ TEST_CASE("MapLoader")
         vector<string> critter_proto_names;
         vector<string> item_proto_names;
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[Critter]\n"
-                               "$Id = 0\n"
-                               "$Proto = TestCritter\n"
-                               "Name = One\n"
-                               "[Critter]\n"
-                               "$Id = 0\n"
-                               "$Proto = TestCritter\n"
-                               "Name = Two\n"
-                               "[Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = TestItem\n"
-                               "Kind = Alpha\n"
-                               "[Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = TestItem\n"
-                               "Kind = Beta\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[Critter]\n"
+                         "$Id = 0\n"
+                         "$Proto = TestCritter\n"
+                         "Name = One\n"
+                         "[Critter]\n"
+                         "$Id = 0\n"
+                         "$Proto = TestCritter\n"
+                         "Name = Two\n"
+                         "[Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = TestItem\n"
+                         "Kind = Alpha\n"
+                         "[Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = TestItem\n"
+                         "Kind = Beta\n";
 
         CHECK_NOTHROW(MapLoader::Load(
             "ValidMap", map_buf, meta, hashes,

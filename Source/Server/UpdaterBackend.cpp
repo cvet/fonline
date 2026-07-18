@@ -57,7 +57,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     map<string, vector<UpdateFileInfo>> binary_target_update_files;
     map<string, vector<uint8_t>> binary_target_update_files_desc;
 
-    const auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
+    auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
         auto file = fs_open_ifstream(disk_path);
@@ -66,7 +66,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             throw UpdaterException("Resource pack for client not found", disk_path);
         }
 
-        const size_t file_size = stream_get_size(file);
+        size_t file_size = stream_get_size(file);
 
         if (settings.UpdateFilesInMemory) {
             data.InMemory = true;
@@ -82,7 +82,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         else {
             data.DiskPath = string(disk_path);
             data.Size = numeric_cast<uint64_t>(file_size);
-            const auto file_hash = fs_hash_file(disk_path);
+            auto file_hash = fs_hash_file(disk_path);
 
             if (!file_hash.has_value()) {
                 throw UpdaterException("Can't hash resource pack for client", disk_path);
@@ -100,19 +100,19 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         return info;
     };
 
-    const auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
+    auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
 
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
-            const auto pack_name = strex("{}.zip", resource_entry).str();
-            const auto pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
+            string pack_name = strex("{}.zip", resource_entry).str();
+            string pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));
         }
     }
 
-    const auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
-    const auto platform_binaries_path = fs_path_to_string(platform_binaries_dir);
+    auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
+    string platform_binaries_path = fs_path_to_string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
         FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
@@ -122,23 +122,23 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
                 continue;
             }
 
-            const auto binary_target_name = fs_path_to_string(platform_entry.path().filename());
+            string binary_target_name = fs_path_to_string(platform_entry.path().filename());
             FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs_path_to_string(platform_entry.path()));
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
                 FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
-                const auto disk_path = fs_path_to_string(binary_entry.path());
-                const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
+                string disk_path = fs_path_to_string(binary_entry.path());
+                string client_file_name = fs_path_to_string(binary_entry.path().filename());
                 auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
                 binary_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
     }
 
-    const auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
+    auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
-        const auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
+        auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
             const auto& data = update_files[info.FileIndex];
             writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
             writer.WriteStringBytes(info.ClientPath);
@@ -182,7 +182,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto desc_it = _binaryTargetUpdateFilesDesc.find(string(binary_target_name));
+    auto desc_it = _binaryTargetUpdateFilesDesc.find(string(binary_target_name));
     return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
@@ -193,8 +193,8 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    const auto file_index = in_buf->Read<uint32_t>();
-    const auto start_offset = in_buf->Read<uint64_t>();
+    auto file_index = in_buf->Read<uint32_t>();
+    auto start_offset = in_buf->Read<uint64_t>();
 
     in_buf.Unlock();
 
@@ -211,7 +211,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     }
 
     const auto& update_file = _updateFiles[file_index];
-    const auto file_size = update_file.Size;
+    uint64_t file_size = update_file.Size;
 
     if (start_offset > file_size) {
         WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
@@ -219,17 +219,17 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         return;
     }
 
-    const uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
-    const uint64_t remaining_size = file_size - start_offset;
-    const uint64_t update_portion = std::min(update_portion_limit, remaining_size);
-    const size_t update_portion_size = numeric_cast<size_t>(update_portion);
+    uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
+    uint64_t remaining_size = file_size - start_offset;
+    uint64_t update_portion = std::min(update_portion_limit, remaining_size);
+    size_t update_portion_size = numeric_cast<size_t>(update_portion);
 
     vector<uint8_t> disk_update_data {};
 
     if (update_portion_size != 0 && !update_file.InMemory) {
         disk_update_data.resize(update_portion_size);
 
-        const auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
+        auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
             FO_STACK_TRACE_ENTRY();
 
             auto file = fs_open_ifstream(disk_path);
@@ -258,7 +258,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
-            const size_t offset = numeric_cast<size_t>(start_offset);
+            size_t offset = numeric_cast<size_t>(start_offset);
             FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
             update_data = {update_file.MemoryData.data() + offset, update_portion_size};
         }

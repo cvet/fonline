@@ -53,13 +53,13 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const hstring proto_id = proto->GetProtoId();
+    hstring proto_id = proto->GetProtoId();
     auto loc = proto.dyn_cast<ProtoLocation>();
     auto map = proto.dyn_cast<ProtoMap>();
     auto cr = proto.dyn_cast<ProtoCritter>();
     auto item = proto.dyn_cast<ProtoItem>();
 
-    const auto it = _protos[type_name].emplace(proto_id, std::move(proto));
+    auto it = _protos[type_name].emplace(proto_id, std::move(proto));
     FO_VERIFY_AND_THROW(it.second, "Duplicate prototype id", type_name, proto_id);
 
     if (loc) {
@@ -80,7 +80,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
+    auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
         auto registrator = _meta->GetPropertyRegistrator(type_name);
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
@@ -127,49 +127,49 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
     auto proto_files = resources.FilterFiles(protos_ext);
 
     for (const auto& proto_file_header : proto_files) {
-        const auto proto_file = File::Load(proto_file_header);
+        auto proto_file = File::Load(proto_file_header);
         auto reader = DataReader(proto_file.GetDataSpan());
 
         // Hashes
         {
-            const auto hashes_count = reader.Read<uint32_t>();
+            auto hashes_count = reader.Read<uint32_t>();
             string str;
 
             for (uint32_t i = 0; i < hashes_count; i++) {
-                const auto str_len = reader.Read<uint32_t>();
+                auto str_len = reader.Read<uint32_t>();
                 str.resize(str_len);
                 reader.ReadStringBytes(str);
-                const auto hstr = _meta->Hashes.ToHashedString(str);
+                hstring hstr = _meta->Hashes.ToHashedString(str);
                 ignore_unused(hstr);
             }
         }
 
         // Protos
         {
-            const auto types_count = reader.Read<uint32_t>();
+            auto types_count = reader.Read<uint32_t>();
             vector<uint8_t> props_data;
 
             for (uint32_t i = 0; i < types_count; i++) {
-                const auto protos_count = reader.Read<uint32_t>();
+                auto protos_count = reader.Read<uint32_t>();
 
-                const auto type_name_len = reader.Read<uint16_t>();
+                auto type_name_len = reader.Read<uint16_t>();
                 string type_name_str;
                 type_name_str.resize(type_name_len);
                 reader.ReadStringBytes(type_name_str);
-                const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
+                hstring type_name = _meta->Hashes.ToHashedString(type_name_str);
 
                 FO_VERIFY_AND_THROW(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name), "Proto file references unknown entity or fixed type");
 
                 for (uint32_t j = 0; j < protos_count; j++) {
-                    const auto proto_name_len = reader.Read<uint16_t>();
+                    auto proto_name_len = reader.Read<uint16_t>();
                     string proto_name;
                     proto_name.resize(proto_name_len);
                     reader.ReadStringBytes(proto_name);
-                    const auto proto_id = _meta->Hashes.ToHashedString(proto_name);
+                    hstring proto_id = _meta->Hashes.ToHashedString(proto_name);
 
                     auto proto = CreateProto(type_name, proto_id, nullptr);
 
-                    const auto data_size = reader.Read<uint32_t>();
+                    auto data_size = reader.Read<uint32_t>();
                     props_data.resize(data_size);
                     span<uint8_t> props_data_span = props_data;
                     reader.ReadBytes(props_data_span);
@@ -188,7 +188,7 @@ auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept -> nptr<const P
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
-    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
+    if (auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
         return it->second;
     }
 
@@ -201,7 +201,7 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept -> nptr<cons
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
-    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
+    if (auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
         return it->second;
     }
 
@@ -214,7 +214,7 @@ auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept -> nptr<const Pr
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
-    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
+    if (auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
         return it->second;
     }
 
@@ -227,7 +227,7 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept -> nptr<con
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
-    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
+    if (auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
         return it->second;
     }
 
@@ -240,13 +240,13 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noe
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
 
-    const auto it_type = _protos.find(type_name);
+    auto it_type = _protos.find(type_name);
 
     if (it_type == _protos.end()) {
         return nullptr;
     }
 
-    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
+    if (auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
         return it->second;
     }
 
@@ -257,7 +257,7 @@ auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const u
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it_type = _protos.find(type_name);
+    auto it_type = _protos.find(type_name);
 
     if (it_type == _protos.end()) {
         return _emptyProtos;

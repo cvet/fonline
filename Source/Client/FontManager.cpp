@@ -133,18 +133,18 @@ void FontManager::BuildFont(int32_t index)
 
     auto atlas_spr = font->ImageNormal;
     FO_VERIFY_AND_THROW(atlas_spr, "Atlas sprite is null");
-    auto tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
-    auto tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
-    auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
-    auto image_y = tex_h * atlas_spr->GetAtlasRect().y;
+    float32_t tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
+    float32_t tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
+    float32_t image_x = tex_w * atlas_spr->GetAtlasRect().x;
+    float32_t image_y = tex_h * atlas_spr->GetAtlasRect().y;
 
-    const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
-    const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
-    const auto bordered_ox = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width) * font->ImageBordered->GetAtlasRect().x) : 0;
-    const auto bordered_oy = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height) * font->ImageBordered->GetAtlasRect().y) : 0;
+    int32_t normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
+    int32_t normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
+    int32_t bordered_ox = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width) * font->ImageBordered->GetAtlasRect().x) : 0;
+    int32_t bordered_oy = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height) * font->ImageBordered->GetAtlasRect().y) : 0;
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return make_ptr(&tex_data[y * width + x]); };
+    auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return make_ptr(&tex_data[y * width + x]); };
     vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
     vector<ucolor> data_bordered;
 
@@ -154,7 +154,7 @@ void FontManager::BuildFont(int32_t index)
 
     // Bake the bound scale: downscale glyph bitmaps in place and round every metric to integers at
     // the target size, so the whole text pipeline keeps working in plain unscaled integer coordinates
-    const bool scale_baked = font->BakeScale != 1.0f;
+    bool scale_baked = font->BakeScale != 1.0f;
 
     if (scale_baked) {
         BakeFontScale(*font, data_normal, atlas_spr->GetSize());
@@ -166,13 +166,13 @@ void FontManager::BuildFont(int32_t index)
     }
 
     // Fix texture coordinates
-    auto max_h = 0;
+    int32_t max_h = 0;
 
     for (auto& letter : font->Letters | std::views::values) {
-        const auto x = numeric_cast<float32_t>(letter.Pos.x);
-        const auto y = numeric_cast<float32_t>(letter.Pos.y);
-        const auto w = numeric_cast<float32_t>(letter.Size.width);
-        const auto h = numeric_cast<float32_t>(letter.Size.height);
+        float32_t x = numeric_cast<float32_t>(letter.Pos.x);
+        float32_t y = numeric_cast<float32_t>(letter.Pos.y);
+        float32_t w = numeric_cast<float32_t>(letter.Size.width);
+        float32_t h = numeric_cast<float32_t>(letter.Size.height);
 
         letter.TexPos.x = (image_x + x - 1.0f) / tex_w;
         letter.TexPos.y = (image_y + y - 1.0f) / tex_h;
@@ -200,9 +200,9 @@ void FontManager::BuildFont(int32_t index)
 
     // Normalize color to gray
     if (font->MakeGray) {
-        for (auto y = 0; y < atlas_spr->GetSize().height; y++) {
-            for (auto x = 0; x < atlas_spr->GetSize().width; x++) {
-                const auto a = pixel_at(data_normal, atlas_spr->GetSize().width, x, y)->comp.a;
+        for (int32_t y = 0; y < atlas_spr->GetSize().height; y++) {
+            for (int32_t x = 0; x < atlas_spr->GetSize().width; x++) {
+                uint8_t a = pixel_at(data_normal, atlas_spr->GetSize().width, x, y)->comp.a;
 
                 if (a != 0) {
                     *pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {128, 128, 128, a};
@@ -228,13 +228,13 @@ void FontManager::BuildFont(int32_t index)
 
     // Fill border
     if (font->ImageBordered) {
-        for (auto y = 1; y < font->ImageBordered->GetSize().height - 2; y++) {
-            for (auto x = 1; x < font->ImageBordered->GetSize().width - 2; x++) {
+        for (int32_t y = 1; y < font->ImageBordered->GetSize().height - 2; y++) {
+            for (int32_t x = 1; x < font->ImageBordered->GetSize().width - 2; x++) {
                 if (*pixel_at(data_normal, atlas_spr->GetSize().width, x, y) != ucolor::clear) {
-                    for (auto xx = -1; xx <= 1; xx++) {
-                        for (auto yy = -1; yy <= 1; yy++) {
-                            const auto ox = x + xx;
-                            const auto oy = y + yy;
+                    for (int32_t xx = -1; xx <= 1; xx++) {
+                        for (int32_t yy = -1; yy <= 1; yy++) {
+                            int32_t ox = x + xx;
+                            int32_t oy = y + yy;
 
                             if (*pixel_at(data_bordered, font->ImageBordered->GetSize().width, ox, oy) == ucolor::clear) {
                                 *pixel_at(data_bordered, font->ImageBordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
@@ -254,10 +254,10 @@ void FontManager::BuildFont(int32_t index)
         image_y = tex_h * font->ImageBordered->GetAtlasRect().y;
 
         for (auto& letter : font->Letters | std::views::values) {
-            const auto x = numeric_cast<float32_t>(letter.Pos.x);
-            const auto y = numeric_cast<float32_t>(letter.Pos.y);
-            const auto w = numeric_cast<float32_t>(letter.Size.width);
-            const auto h = numeric_cast<float32_t>(letter.Size.height);
+            float32_t x = numeric_cast<float32_t>(letter.Pos.x);
+            float32_t y = numeric_cast<float32_t>(letter.Pos.y);
+            float32_t w = numeric_cast<float32_t>(letter.Size.width);
+            float32_t h = numeric_cast<float32_t>(letter.Size.height);
             letter.TexBorderedPos.x = (image_x + x - 1.0f) / tex_w;
             letter.TexBorderedPos.y = (image_y + y - 1.0f) / tex_h;
             letter.TexBorderedPos.width = (w + 2.0f) / tex_w;
@@ -270,16 +270,16 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float32_t scale = font.BakeScale;
-    const auto scale_value = [scale](int32_t value) -> int32_t { return iround<int32_t>(numeric_cast<float32_t>(value) * scale); };
+    float32_t scale = font.BakeScale;
+    auto scale_value = [scale](int32_t value) -> int32_t { return iround<int32_t>(numeric_cast<float32_t>(value) * scale); };
 
     for (auto& letter : font.Letters | std::views::values) {
         letter.Offset.x = scale_value(letter.Offset.x);
         letter.Offset.y = scale_value(letter.Offset.y);
         letter.XAdvance = scale_value(letter.XAdvance);
 
-        const int32_t src_w = letter.Size.width;
-        const int32_t src_h = letter.Size.height;
+        int32_t src_w = letter.Size.width;
+        int32_t src_h = letter.Size.height;
 
         if (src_w <= 0 || src_h <= 0) {
             continue;
@@ -287,21 +287,21 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
 
         FO_VERIFY_AND_THROW(letter.Pos.x >= 0 && letter.Pos.y >= 0 && letter.Pos.x + src_w <= sheet_size.width && letter.Pos.y + src_h <= sheet_size.height, "Font letter rect is out of the font image bounds", letter.Pos.x, letter.Pos.y, src_w, src_h, sheet_size);
 
-        const int32_t dst_w = std::max(scale_value(src_w), 1);
-        const int32_t dst_h = std::max(scale_value(src_h), 1);
+        int32_t dst_w = std::max(scale_value(src_w), 1);
+        int32_t dst_h = std::max(scale_value(src_h), 1);
 
         // Area-average resample with alpha-weighted color, so antialiased glyph edges keep their tone.
         // Sampling stays inside the letter rect, so tightly packed neighbor glyphs never bleed in.
         vector<ucolor> scaled_pixels(numeric_cast<size_t>(dst_w) * numeric_cast<size_t>(dst_h));
-        const float32_t x_ratio = numeric_cast<float32_t>(src_w) / numeric_cast<float32_t>(dst_w);
-        const float32_t y_ratio = numeric_cast<float32_t>(src_h) / numeric_cast<float32_t>(dst_h);
+        float32_t x_ratio = numeric_cast<float32_t>(src_w) / numeric_cast<float32_t>(dst_w);
+        float32_t y_ratio = numeric_cast<float32_t>(src_h) / numeric_cast<float32_t>(dst_h);
 
         for (int32_t dy = 0; dy < dst_h; dy++) {
             for (int32_t dx = 0; dx < dst_w; dx++) {
-                const float32_t sx_begin = x_ratio * numeric_cast<float32_t>(dx);
-                const float32_t sx_end = x_ratio * numeric_cast<float32_t>(dx + 1);
-                const float32_t sy_begin = y_ratio * numeric_cast<float32_t>(dy);
-                const float32_t sy_end = y_ratio * numeric_cast<float32_t>(dy + 1);
+                float32_t sx_begin = x_ratio * numeric_cast<float32_t>(dx);
+                float32_t sx_end = x_ratio * numeric_cast<float32_t>(dx + 1);
+                float32_t sy_begin = y_ratio * numeric_cast<float32_t>(dy);
+                float32_t sy_end = y_ratio * numeric_cast<float32_t>(dy + 1);
 
                 float32_t weight_sum = 0.0f;
                 float32_t alpha_sum = 0.0f;
@@ -310,22 +310,22 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
                 float32_t blue_sum = 0.0f;
 
                 for (int32_t sy = iround<int32_t>(std::floor(sy_begin)); sy < src_h; sy++) {
-                    const float32_t cover_y = std::min(numeric_cast<float32_t>(sy + 1), sy_end) - std::max(numeric_cast<float32_t>(sy), sy_begin);
+                    float32_t cover_y = std::min(numeric_cast<float32_t>(sy + 1), sy_end) - std::max(numeric_cast<float32_t>(sy), sy_begin);
 
                     if (cover_y <= 0.0f) {
                         break;
                     }
 
                     for (int32_t sx = iround<int32_t>(std::floor(sx_begin)); sx < src_w; sx++) {
-                        const float32_t cover_x = std::min(numeric_cast<float32_t>(sx + 1), sx_end) - std::max(numeric_cast<float32_t>(sx), sx_begin);
+                        float32_t cover_x = std::min(numeric_cast<float32_t>(sx + 1), sx_end) - std::max(numeric_cast<float32_t>(sx), sx_begin);
 
                         if (cover_x <= 0.0f) {
                             break;
                         }
 
-                        const float32_t weight = cover_x * cover_y;
-                        const ucolor src_pixel = sheet_data[numeric_cast<size_t>(letter.Pos.y + sy) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x + sx)];
-                        const float32_t alpha_weight = numeric_cast<float32_t>(src_pixel.comp.a) * weight;
+                        float32_t weight = cover_x * cover_y;
+                        ucolor src_pixel = sheet_data[numeric_cast<size_t>(letter.Pos.y + sy) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x + sx)];
+                        float32_t alpha_weight = numeric_cast<float32_t>(src_pixel.comp.a) * weight;
 
                         weight_sum += weight;
                         alpha_sum += alpha_weight;
@@ -352,12 +352,12 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
         // Clear the original rect, then place the scaled glyph at the same top-left corner: the freed
         // space only widens the transparent gap around every neighbor glyph
         for (int32_t y = 0; y < src_h; y++) {
-            const size_t row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
+            size_t row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
             std::fill_n(sheet_data.begin() + numeric_cast<ptrdiff_t>(row_begin), src_w, ucolor::clear);
         }
         for (int32_t y = 0; y < dst_h; y++) {
-            const size_t dst_row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
-            const size_t src_row_begin = numeric_cast<size_t>(y) * numeric_cast<size_t>(dst_w);
+            size_t dst_row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
+            size_t src_row_begin = numeric_cast<size_t>(y) * numeric_cast<size_t>(dst_w);
             std::copy_n(scaled_pixels.begin() + numeric_cast<ptrdiff_t>(src_row_begin), dst_w, sheet_data.begin() + numeric_cast<ptrdiff_t>(dst_row_begin));
         }
 
@@ -386,7 +386,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto index = static_cast<int32_t>(font);
+    int32_t index = static_cast<int32_t>(font);
     FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
 
     // Skip if loaded
@@ -395,7 +395,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     }
 
     // Load font data
-    const auto file = _sprMngr->_resources->ReadFile(font_path);
+    auto file = _sprMngr->_resources->ReadFile(font_path);
 
     if (!file) {
         throw FontManagerException("Font file not found", font_path);
@@ -412,7 +412,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     string key;
     string letter_buf;
     nptr<FontData::Letter> cur_letter;
-    auto version = -1;
+    int32_t version = -1;
 
     while (!str.eof() && !str.fail()) {
         // Get key
@@ -472,7 +472,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             size_t letter_len = letter_buf.length() - utf8_letter_begin;
             FO_STRONG_ASSERT(utf8_letter_begin <= letter_buf.size(), "String offset is past the end of the string");
             auto letter_pos = make_ptr(letter_buf.c_str() + utf8_letter_begin);
-            auto letter = utf8::Decode(letter_pos, letter_len);
+            uint32_t letter = utf8::Decode(letter_pos, letter_len);
 
             if (!utf8::IsValid(letter)) {
                 throw FontManagerException("Invalid UTF-8 letter", font_path, letter_buf);
@@ -548,14 +548,14 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto index = static_cast<int32_t>(font);
+    int32_t index = static_cast<int32_t>(font);
     FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
 
     FontData font_data;
     font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
     font_data.BakeScale = ResolveFontScale(default_scale);
 
-    const auto file = _sprMngr->_resources->ReadFile(font_path);
+    auto file = _sprMngr->_resources->ReadFile(font_path);
 
     if (!file) {
         throw FontManagerException("Font file not found", font_path);
@@ -563,8 +563,8 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     auto reader = file.GetReader();
 
-    const auto signature = reader.GetLEUInt32();
-    const auto make_signature = [](uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
+    uint32_t signature = reader.GetLEUInt32();
+    auto make_signature = [](uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
 
     if (signature != make_signature('B', 'M', 'F', 3)) {
         throw FontManagerException("Invalid font signature", font_path);
@@ -572,8 +572,8 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Info
     reader.GoForward(1);
-    auto block_len = reader.GetLEUInt32();
-    auto next_block = block_len + reader.GetCurPos() + 1;
+    uint32_t block_len = reader.GetLEUInt32();
+    size_t next_block = block_len + reader.GetCurPos() + 1;
 
     reader.GoForward(7);
 
@@ -586,8 +586,8 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     block_len = reader.GetLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    const int32_t line_height = reader.GetLEUInt16();
-    const int32_t base_height = reader.GetLEUInt16();
+    int32_t line_height = reader.GetLEUInt16();
+    int32_t base_height = reader.GetLEUInt16();
     reader.GoForward(2); // Texture width
     reader.GoForward(2); // Texture height
 
@@ -600,23 +600,23 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     block_len = reader.GetLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    auto image_name = reader.GetStrNT();
+    string image_name = reader.GetStrNT();
     image_name = strex(font_path).extract_dir().combine_path(image_name);
 
     // Chars
     reader.SetCurPos(next_block);
-    const auto count = reader.GetLEUInt32() / 20;
+    uint32_t count = reader.GetLEUInt32() / 20;
 
-    for ([[maybe_unused]] const auto i : iterate_range(count)) {
+    for ([[maybe_unused]] auto i : iterate_range(count)) {
         // Read data
-        const auto id = reader.GetLEUInt32();
-        const auto x = reader.GetLEUInt16();
-        const auto y = reader.GetLEUInt16();
-        const auto w = reader.GetLEUInt16();
-        const auto h = reader.GetLEUInt16();
-        const auto ox = reader.GetLEUInt16();
-        const auto oy = reader.GetLEUInt16();
-        const auto xa = reader.GetLEUInt16();
+        uint32_t id = reader.GetLEUInt32();
+        uint16_t x = reader.GetLEUInt16();
+        uint16_t y = reader.GetLEUInt16();
+        uint16_t w = reader.GetLEUInt16();
+        uint16_t h = reader.GetLEUInt16();
+        uint16_t ox = reader.GetLEUInt16();
+        uint16_t oy = reader.GetLEUInt16();
+        uint16_t xa = reader.GetLEUInt16();
         reader.GoForward(2);
 
         // Fill data
@@ -663,16 +663,16 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& str = fi.Text;
-    const auto flags = fi.Format.Flags;
+    string& str = fi.Text;
+    auto flags = fi.Format.Flags;
     auto font = fi.CurFont;
     FO_VERIFY_AND_THROW(font, "Font is null");
-    const auto r = fi.Rect;
-    const auto infinity_w = r.width == 0;
-    const auto infinity_h = r.height == 0;
-    auto curx = 0;
-    auto cury = 0;
-    auto& color_offset = fi.ColorOffset;
+    irect32 r = fi.Rect;
+    bool infinity_w = r.width == 0;
+    bool infinity_h = r.height == 0;
+    int32_t curx = 0;
+    int32_t cury = 0;
+    int32_t& color_offset = fi.ColorOffset;
 
     // Colorize: strip `@color:...@` markers and write parsed colors into TextColor.
     nptr<ucolor> dots;
@@ -690,7 +690,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     size_t pos = 0;
 
     while (pos < str.size()) {
-        const size_t marker_pos = str.find(InlineColorTagPrefix, pos);
+        size_t marker_pos = str.find(InlineColorTagPrefix, pos);
 
         if (marker_pos == string::npos) {
             buf.append(str, pos, string::npos);
@@ -728,7 +728,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     str = std::move(buf);
 
     // Single SkipLines counter — its meaning flips between "from top" and "from bottom" based on FontFlag::AlignBottom
-    const bool skip_from_bottom = IsEnumSet(flags, FontFlag::AlignBottom);
+    bool skip_from_bottom = IsEnumSet(flags, FontFlag::AlignBottom);
     int32_t skip_line = skip_from_bottom ? 0 : fi.Format.SkipLines;
     int32_t skip_line_end = skip_from_bottom ? fi.Format.SkipLines : 0;
 
@@ -779,13 +779,15 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     j++;
                 }
 
-                const auto erased = j - i;
+                int32_t erased = j - i;
                 str.erase(numeric_cast<size_t>(i), numeric_cast<size_t>(erased));
                 letter = i < numeric_cast<int32_t>(str.size()) ? numeric_cast<uint8_t>(str[i]) : 0;
                 i_advance = 1;
 
                 if (mode == FormatMode::Draw) {
-                    for (auto k = i, l = numeric_cast<int32_t>(fi.TextColor.size()) - erased; k < l; k++) {
+                    int32_t text_color_end = numeric_cast<int32_t>(fi.TextColor.size()) - erased;
+
+                    for (int32_t k = i; k < text_color_end; k++) {
                         fi.TextColor[k] = fi.TextColor[k + erased];
                     }
                 }
@@ -813,7 +815,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     str.insert(numeric_cast<size_t>(i), 1, '\n');
 
                     if (mode == FormatMode::Draw) {
-                        for (auto k = numeric_cast<int32_t>(fi.TextColor.size()) - 1; k > i; k--) {
+                        for (int32_t k = numeric_cast<int32_t>(fi.TextColor.size()) - 1; k > i; k--) {
                             fi.TextColor[k] = fi.TextColor[k - 1];
                         }
                     }
@@ -823,7 +825,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     fi.LineSpaceWidth[fi.LinesAll - 1] = 1;
 
                     // Erase next first spaces
-                    const int32_t ii = i + i_advance;
+                    int32_t ii = i + i_advance;
                     j = ii;
 
                     while (j < numeric_cast<int32_t>(str.size()) && str[j] == ' ') {
@@ -831,11 +833,13 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     }
 
                     if (j > ii) {
-                        const auto erased = j - ii;
+                        int32_t erased = j - ii;
                         str.erase(numeric_cast<size_t>(ii), numeric_cast<size_t>(erased));
 
                         if (mode == FormatMode::Draw) {
-                            for (auto k = ii, l = numeric_cast<int32_t>(fi.TextColor.size()) - erased; k < l; k++) {
+                            int32_t text_color_end = numeric_cast<int32_t>(fi.TextColor.size()) - erased;
+
+                            for (int32_t k = ii; k < text_color_end; k++) {
                                 fi.TextColor[k] = fi.TextColor[k + erased];
                             }
                         }
@@ -933,7 +937,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         int32_t j = 0;
         int32_t line_cur = 0;
         ucolor last_color;
-        const int32_t str_size = numeric_cast<int32_t>(str.size());
+        int32_t str_size = numeric_cast<int32_t>(str.size());
 
         for (; j < str_size; ++j) {
             if (str[j] == '\n') {
@@ -965,7 +969,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     curx = r.x;
     cury = r.y;
 
-    for (const auto i : iterate_range(fi.LinesAll)) {
+    for (auto i : iterate_range(fi.LinesAll)) {
         fi.LineWidth[i] = curx;
     }
 
@@ -989,8 +993,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         }
 
-        auto letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
-        auto letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
+        size_t letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -1025,7 +1029,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         case '\r':
             break;
         default:
-            if (const auto it = font->Letters.find(letter); it != font->Letters.end()) {
+            if (auto it = font->Letters.find(letter); it != font->Letters.end()) {
                 curx += it->second.XAdvance;
             }
 
@@ -1081,7 +1085,7 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
         return false;
     }
 
-    const size_t close_pos = str.find('@', marker_pos + InlineColorTagPrefix.size());
+    size_t close_pos = str.find('@', marker_pos + InlineColorTagPrefix.size());
 
     if (close_pos == string_view::npos) {
         return false;
@@ -1131,7 +1135,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
-    const std::array<uint64_t, 8> key_parts {
+    std::array<uint64_t, 8> key_parts {
         HashStorage::DefaultHash(make_const_span(str)),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
@@ -1142,16 +1146,16 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    const uint64_t key = HashStorage::DefaultHash(make_span(key_parts));
+    uint64_t key = HashStorage::DefaultHash(make_span(key_parts));
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;
         return it->second;
     }
 
-    const auto str_len = str.length();
-    const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
-    const auto max_lines = std::max<size_t>(str_len + 1, 1);
+    auto str_len = str.length();
+    auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
+    auto max_lines = std::max<size_t>(str_len + 1, 1);
 
     auto fi = SafeAlloc::MakeUnique<FontFormatInfo>();
     FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
@@ -1184,9 +1188,9 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     color = _sprMngr->ApplyColorBrightness(color);
     auto fi = GetOrFormat(format, format.Font, rect, color, FormatMode::Draw, str);
 
-    const auto flags = format.Flags;
+    auto flags = format.Flags;
     const string& format_str = fi->Text;
-    const int32_t color_offset = fi->ColorOffset;
+    int32_t color_offset = fi->ColorOffset;
     int32_t curx = rect.x + fi->CurX;
     int32_t cury = rect.y + fi->CurY;
     int32_t curstr = 0;
@@ -1208,22 +1212,22 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
         }
     }
 
-    const size_t str_len = format_str.size();
+    size_t str_len = format_str.size();
     _sprMngr->_spritesDrawBuf->CheckAllocBuf(str_len * 4, str_len * 6);
 
     auto& vbuf = _sprMngr->_spritesDrawBuf->Vertices;
-    auto& vpos = _sprMngr->_spritesDrawBuf->VertCount;
+    size_t& vpos = _sprMngr->_spritesDrawBuf->VertCount;
     auto& ibuf = _sprMngr->_spritesDrawBuf->Indices;
-    auto& ipos = _sprMngr->_spritesDrawBuf->IndCount;
+    size_t& ipos = _sprMngr->_spritesDrawBuf->IndCount;
 
-    const auto start_ipos = ipos;
+    size_t start_ipos = ipos;
 
-    auto variable_space = false;
+    bool variable_space = false;
     int32_t i_advance;
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(format_str.size()); i += i_advance) {
         if (!IsEnumSet(flags, FontFlag::NoColorize)) {
-            const auto new_color = fi->TextColor[i + color_offset];
+            auto new_color = fi->TextColor[i + color_offset];
 
             if (new_color != ucolor::clear) {
                 if (new_color.comp.a != 0) {
@@ -1265,7 +1269,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
         case '\r':
             continue;
         default:
-            const auto it = font->Letters.find(letter);
+            auto it = font->Letters.find(letter);
 
             if (it == font->Letters.end()) {
                 continue;
@@ -1273,16 +1277,16 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
 
             const auto& l = it->second;
 
-            const auto x = numeric_cast<float32_t>(curx - l.Offset.x - 1);
-            const auto y = numeric_cast<float32_t>(cury - l.Offset.y - 1);
-            const auto w = numeric_cast<float32_t>(l.Size.width + 2);
-            const auto h = numeric_cast<float32_t>(l.Size.height + 2);
+            float32_t x = numeric_cast<float32_t>(curx - l.Offset.x - 1);
+            float32_t y = numeric_cast<float32_t>(cury - l.Offset.y - 1);
+            float32_t w = numeric_cast<float32_t>(l.Size.width + 2);
+            float32_t h = numeric_cast<float32_t>(l.Size.height + 2);
 
-            const auto& texture_uv = IsEnumSet(flags, FontFlag::Bordered) ? l.TexBorderedPos : l.TexPos;
-            const auto x1 = texture_uv.x;
-            const auto y1 = texture_uv.y;
-            const auto x2 = texture_uv.x + texture_uv.width;
-            const auto y2 = texture_uv.y + texture_uv.height;
+            const frect32& texture_uv = IsEnumSet(flags, FontFlag::Bordered) ? l.TexBorderedPos : l.TexPos;
+            float32_t x1 = texture_uv.x;
+            float32_t y1 = texture_uv.y;
+            float32_t x2 = texture_uv.x + texture_uv.width;
+            float32_t y2 = texture_uv.y + texture_uv.height;
 
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
@@ -1336,7 +1340,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
         }
     }
 
-    const auto ind_count = ipos - start_ipos;
+    size_t ind_count = ipos - start_ipos;
 
     if (ind_count != 0) {
         if (_sprMngr->_dipQueue.empty() || _sprMngr->_dipQueue.back().MainTexture != texture || _sprMngr->_dipQueue.back().SourceEffect != font->DrawEffect) {
@@ -1381,7 +1385,7 @@ auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_fon
     }
 
     auto font = GetFont(num_font);
-    const auto lines_count = GetLinesCount(size, str, num_font);
+    int32_t lines_count = GetLinesCount(size, str, num_font);
 
     if (lines_count <= 0) {
         return 0;
@@ -1410,7 +1414,7 @@ auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, 
         return true;
     }
 
-    const auto rect = irect32 {0, 0, size};
+    irect32 rect = irect32 {0, 0, size};
     auto fi = GetOrFormat(format, format.Font, rect, ucolor {}, FormatMode::LineCount, str);
 
     result_size = {fi->MaxCurX, fi->LinesInRect * font->LineHeight + (fi->LinesInRect - 1) * font->YAdvance};

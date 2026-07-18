@@ -116,7 +116,7 @@ TEST_CASE("EngineMetadata")
         AddTestMigrationRule(meta, "OldField", "MiddleField");
         AddTestMigrationRule(meta, "MiddleField", "NewField");
 
-        const optional<hstring> resolved = ResolveTestMigrationRule(meta, "OldField");
+        optional<hstring> resolved = ResolveTestMigrationRule(meta, "OldField");
         REQUIRE(resolved.has_value());
         CHECK(resolved.value() == HashTestMigrationToken(meta, "NewField"));
     }
@@ -149,8 +149,8 @@ TEST_CASE("EngineMetadata")
     {
         EngineMetadata meta {[] { }};
         MigrationRulesMap migration_rules {};
-        const hstring rule_name = HashTestMigrationToken(meta, "Property");
-        const hstring extra_info = HashTestMigrationToken(meta, "Item");
+        hstring rule_name = HashTestMigrationToken(meta, "Property");
+        hstring extra_info = HashTestMigrationToken(meta, "Item");
 
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "OldField"), HashTestMigrationToken(meta, "MiddleField"));
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "MiddleField"), HashTestMigrationToken(meta, "OldField"));

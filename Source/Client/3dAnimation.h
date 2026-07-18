@@ -168,14 +168,14 @@ void ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, 
     FO_VERIFY_AND_THROW(!times.empty(), "Animation SRT track has no keyframes to sample", time, duration, values.size());
 
     if (reserved) {
-        for (auto i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
+        for (int32_t i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
             if (i >= 1) {
-                const auto rtime = duration - time;
+                float32_t rtime = duration - time;
 
                 if (rtime <= times[i] && rtime > times[i - 1]) {
                     result = values[i];
                     const T& value = values[i - 1];
-                    const auto factor = (rtime - times[i]) / (times[i] - times[i - 1]);
+                    float32_t factor = (rtime - times[i]) / (times[i] - times[i - 1]);
                     Interpolate(result, value, factor);
                     break;
                 }
@@ -192,7 +192,7 @@ void ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, 
                 if (time >= times[i] && time < times[i + 1]) {
                     result = values[i];
                     const T& value = values[i + 1];
-                    const auto factor = (time - times[i]) / (times[i + 1] - times[i]);
+                    float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
                     Interpolate(result, value, factor);
                     break;
                 }

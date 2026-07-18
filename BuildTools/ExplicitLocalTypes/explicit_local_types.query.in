@@ -1,0 +1,29 @@
+set output dump
+set bind-root false
+set traversal IgnoreUnlessSpelledInSource
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), anyOf(hasType(autoType()), hasType(qualType(hasDescendant(qualType(autoType()))))), @SOURCE_FILTER@).bind("auto_local")
+
+let qualifiedRecordAuto autoType(hasDeducedType(recordType(hasDeclaration(cxxRecordDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo"))))))))), unless(hasDeducedType(typedefType())))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), anyOf(hasType(qualifiedRecordAuto), hasType(qualType(hasDescendant(qualType(qualifiedRecordAuto))))), @SOURCE_FILTER@).bind("nested_type_local")
+
+let qualifiedEnumAuto autoType(hasDeducedType(enumType(hasDeclaration(enumDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo"))))))))), unless(hasDeducedType(typedefType())))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), anyOf(hasType(qualifiedEnumAuto), hasType(qualType(hasDescendant(qualType(qualifiedEnumAuto))))), @SOURCE_FILTER@).bind("nested_type_local")
+
+let qualifiedTypedefAuto autoType(hasDeducedType(typedefType(hasDeclaration(typedefNameDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo"))))))))))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), anyOf(hasType(qualifiedTypedefAuto), hasType(qualType(hasDescendant(qualType(qualifiedTypedefAuto))))), @SOURCE_FILTER@).bind("nested_type_local")
+
+let foRecordAuto autoType(hasDeducedType(recordType(hasDeclaration(cxxRecordDecl(hasAncestor(namespaceDecl(hasName("fo"))))))), unless(hasDeducedType(typedefType())))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), unless(hasAncestor(namespaceDecl(hasName("fo")))), hasAutomaticStorageDuration(), anyOf(hasType(foRecordAuto), hasType(qualType(hasDescendant(qualType(foRecordAuto))))), @SOURCE_FILTER@).bind("nested_type_local")
+
+let foEnumAuto autoType(hasDeducedType(enumType(hasDeclaration(enumDecl(hasAncestor(namespaceDecl(hasName("fo"))))))), unless(hasDeducedType(typedefType())))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), unless(hasAncestor(namespaceDecl(hasName("fo")))), hasAutomaticStorageDuration(), anyOf(hasType(foEnumAuto), hasType(qualType(hasDescendant(qualType(foEnumAuto))))), @SOURCE_FILTER@).bind("nested_type_local")
+
+let foTypedefAuto autoType(hasDeducedType(typedefType(hasDeclaration(typedefNameDecl(hasAncestor(namespaceDecl(hasName("fo"))))))))
+
+match varDecl(unless(parmVarDecl()), unless(isImplicit()), unless(hasAncestor(namespaceDecl(hasName("fo")))), hasAutomaticStorageDuration(), anyOf(hasType(foTypedefAuto), hasType(qualType(hasDescendant(qualType(foTypedefAuto))))), @SOURCE_FILTER@).bind("nested_type_local")

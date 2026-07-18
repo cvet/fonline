@@ -96,7 +96,7 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
 
         for (const auto& file_header : files) {
             ImGui::SetNextItemOpen(false);
-            const string file_path = string(file_header.GetPath());
+            string file_path = string(file_header.GetPath());
 
             if (ImGui::TreeNodeEx(file_path.c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                 auto item_pop = scope_fail([]() noexcept { ImGui::TreePop(); });

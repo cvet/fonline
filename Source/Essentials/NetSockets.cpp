@@ -101,14 +101,14 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
         write_ptr = &write_set;
     }
 
-    const auto timeout_ms = std::max<int64_t>(timeout.milliseconds(), 0);
+    auto timeout_ms = std::max<int64_t>(timeout.milliseconds(), 0);
 
     timeval timeout_tv {};
     timeout_tv.tv_sec = numeric_cast<decltype(timeout_tv.tv_sec)>(timeout_ms / 1000);
     timeout_tv.tv_usec = numeric_cast<decltype(timeout_tv.tv_usec)>((timeout_ms % 1000) * 1000);
 
 #if FO_WINDOWS
-    const auto select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
+    int32_t select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #else
     const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #endif
@@ -144,7 +144,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return numeric_cast<uint32_t>(htonl(INADDR_LOOPBACK));
     }
 
-    const string host_name = string(host);
+    string host_name = string(host);
     auto host_name_cstr = make_ptr(host_name.c_str());
     uint32_t addr = numeric_cast<uint32_t>(::inet_addr(host_name_cstr.get()));
 
@@ -175,7 +175,7 @@ auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t addr_host_order = numeric_cast<uint32_t>(ntohl(addr_net_order));
+    uint32_t addr_host_order = numeric_cast<uint32_t>(ntohl(addr_net_order));
 
     return strex("{}.{}.{}.{}", //
         numeric_cast<uint8_t>((addr_host_order >> 24) & 0xFF), //
@@ -208,7 +208,7 @@ auto net_sockets::last_error_text() noexcept -> string
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    const auto error_code = ::WSAGetLastError();
+    int32_t error_code = ::WSAGetLastError();
     nptr<wchar_t> ws;
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
         nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(ws.get_pp()), 0, nullptr);
@@ -218,7 +218,7 @@ auto net_sockets::last_error_text() noexcept -> string
     }
 
     auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { ::LocalFree(make_nptr(text.get()).void_cast()); }};
-    const string error_str = strex().parse_wide_char(ws).trim();
+    string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);
 #else
@@ -241,7 +241,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 
     close();
 
-    const socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -251,7 +251,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    const auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
         CloseSocket(sock);
@@ -277,7 +277,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
     close();
 
-    const socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -287,7 +287,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    const auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
         CloseSocket(sock);
@@ -314,7 +314,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 #endif
 
     auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
-    const auto r = ::connect(sock, addr_ptr.get(), sizeof(addr));
+    int32_t r = ::connect(sock, addr_ptr.get(), sizeof(addr));
 
     if (r == SOCKET_ERROR_VALUE) {
 #if FO_WINDOWS
@@ -430,7 +430,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
     close();
 
-    const socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -440,7 +440,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    const auto resolved = net_sockets::resolve_ipv4(bind_host);
+    auto resolved = net_sockets::resolve_ipv4(bind_host);
 
     if (!resolved.has_value()) {
         CloseSocket(sock);
@@ -488,12 +488,12 @@ auto tcp_server::accept() noexcept -> tcp_socket
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
-    auto addr_len_ptr = make_ptr(&addr_len);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
+    auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), &addr_len);
+    socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), addr_len_ptr.get());
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -515,7 +515,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
     close();
 
-    const socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -539,7 +539,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    const auto resolved = net_sockets::resolve_ipv4(bind_host);
+    auto resolved = net_sockets::resolve_ipv4(bind_host);
 
     if (!resolved.has_value()) {
         CloseSocket(sock);
@@ -591,7 +591,7 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
     }
 
 #if !FO_WEB
-    const int32_t opt = enabled ? 1 : 0;
+    int32_t opt = enabled ? 1 : 0;
     auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, opt_data.get(), sizeof(opt)) != SOCKET_ERROR_VALUE;
 #else
@@ -611,7 +611,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    const auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
         return 0;
@@ -637,18 +637,18 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
-    auto addr_len_ptr = make_ptr(&addr_len);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
+    auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
+    int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
 
     if (result <= 0) {
         return result;
     }
 
-    const uint32_t ip = ntohl(addr.sin_addr.s_addr);
+    uint32_t ip = ntohl(addr.sin_addr.s_addr);
     out_host = strex("{}.{}.{}.{}", (ip >> 24U) & 0xFFU, (ip >> 16U) & 0xFFU, (ip >> 8U) & 0xFFU, ip & 0xFFU);
     out_port = ntohs(addr.sin_port);
     return result;

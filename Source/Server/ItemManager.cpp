@@ -167,7 +167,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    const auto add_item = [&]() -> ptr<Item> {
+    auto add_item = [&]() -> ptr<Item> {
         auto item = CreateItem(pid, proto->GetStackable() ? count : 1, props);
         auto item_holder = item.hold_ref();
         ignore_unused(item_holder);
@@ -184,11 +184,11 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
         return item;
     };
 
-    ptr<Item> item = add_item();
+    auto item = add_item();
 
     // Non-stacked items
     if (!proto->GetStackable() && count > 1) {
-        const auto fixed_count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+        int32_t fixed_count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
 
         for (int32_t i = 0; i < fixed_count; i++) {
             (void)add_item();
@@ -249,7 +249,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
 
         // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging
         // loop is corruption, so terminate rather than leave a half-destroyed "undead" item.
-        const size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
+        size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Item destruction made no progress", item->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -280,7 +280,7 @@ auto ItemManager::SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>
         return nullptr;
     }
 
-    const int32_t fresh_count = item->GetCount();
+    int32_t fresh_count = item->GetCount();
     item->SetCount(fresh_count - count);
     FO_VERIFY_AND_THROW(!new_item->IsDestroyed(), "Newly split item is already destroyed");
 
@@ -592,7 +592,7 @@ void ItemManager::SetItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
 
     ValidateEntityAccess(cr);
 
-    const auto cur_count = cr->CountInvItemByPid(pid);
+    int32_t cur_count = cr->CountInvItemByPid(pid);
 
     if (cur_count > count) {
         SubItemCritter(cr, pid, cur_count - count);
