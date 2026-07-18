@@ -358,6 +358,20 @@ if(FO_ENABLE_3D AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     endif()
 endif()
 
+# meshoptimizer
+if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
+    SetValue(FO_MESHOPTIMIZER_DIR "${FO_ENGINE_ROOT}/ThirdParty/meshoptimizer")
+    SetValue(FO_MESHOPTIMIZER_SOURCE
+        "${FO_MESHOPTIMIZER_DIR}/src/meshoptimizer.h"
+        "${FO_MESHOPTIMIZER_DIR}/src/allocator.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vcacheoptimizer.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vfetchoptimizer.cpp")
+    AddStaticThirdPartyLibrary(meshoptimizer
+        SOURCE_LIST FO_MESHOPTIMIZER_SOURCE
+        APPEND_TO FO_BAKER_LIBS)
+    TargetIncludeDirectories(meshoptimizer INTERFACE "${FO_MESHOPTIMIZER_DIR}/src")
+endif()
+
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
     SetValue(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")

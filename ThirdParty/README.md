@@ -19,6 +19,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * imgui - [imgui-1.92.8](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.58](https://github.com/pnggroup/libpng)
 * LibreSSL - [4.3.2](https://www.libressl.org)
+* meshoptimizer - [v1.2](https://github.com/zeux/meshoptimizer/releases/tag/v1.2)
 * mongo-c-driver - [mongo-c-driver-2.3.1](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
 * ozz-animation - [0.16.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.16.0), with the exact upstream revision and pruning list recorded in its manifest

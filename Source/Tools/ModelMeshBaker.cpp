@@ -39,6 +39,7 @@
 #include "ModelAnimationData.h"
 #include "ModelMeshData.h"
 
+#include "meshoptimizer.h"
 #include "ufbx.h"
 
 extern "C" void* ufbx_malloc(size_t size)
@@ -73,6 +74,40 @@ extern "C" void ufbx_free(void* ptr, size_t old_size)
 }
 
 FO_BEGIN_NAMESPACE
+
+class ModelMeshOptimizationAllocator final
+{
+public:
+    static auto MESHOPTIMIZER_ALLOC_CALLCONV Allocate(size_t size) noexcept -> void*
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        constexpr SafeAllocator<uint8_t> allocator;
+        return allocator.allocate(size);
+    }
+
+    static void MESHOPTIMIZER_ALLOC_CALLCONV Deallocate(void* raw_memory) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        auto memory = make_nptr(raw_memory).reinterpret_as<uint8_t>();
+
+        if (memory) {
+            constexpr SafeAllocator<uint8_t> allocator;
+            allocator.deallocate(memory.get(), 0);
+        }
+    }
+};
+
+static void PrepareModelMeshOptimizationRuntime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // meshoptimizer exposes one allocator table per linked module. This synchronization has no
+    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs.
+    static std::once_flag init_once;
+    std::call_once(init_once, [] { meshopt_setAllocator(&ModelMeshOptimizationAllocator::Allocate, &ModelMeshOptimizationAllocator::Deallocate); });
+}
 
 struct BakerMeshData
 {
@@ -171,6 +206,8 @@ struct FbxValidationContext
 };
 
 static constexpr float32_t FBX_SKIN_WEIGHT_SUM_TOLERANCE = 1.0e-4f;
+static_assert(std::is_trivially_copyable_v<Vertex3D>);
+static_assert(sizeof(Vertex3D) <= 256);
 
 ModelMeshBaker::ModelMeshBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -186,6 +223,8 @@ ModelMeshBaker::~ModelMeshBaker()
 void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
+
+    PrepareModelMeshOptimizationRuntime();
 
     // Collect files
     vector<File> filtered_files;
@@ -263,6 +302,7 @@ static auto ConvertFbxColorComponent(double value, const FbxValidationContext& c
 static auto ConvertFbxColor(const ufbx_vec4& value, const FbxValidationContext& context) -> ucolor;
 static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContext& context) -> mat44;
 static void ValidateFbxVertex(const Vertex3D& vertex, size_t skin_bone_count, const FbxValidationContext& context);
+static void OptimizeBakedMeshGeometry(vector<Vertex3D>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name);
 
 auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
 {
@@ -328,6 +368,43 @@ static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname
     }
 
     return bone;
+}
+
+static void OptimizeBakedMeshGeometry(vector<Vertex3D>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (vertices.empty()) {
+        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has no indexed vertices to optimize", fname, node_name));
+    }
+    if (indices.empty() || indices.size() % 3 != 0) {
+        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has invalid triangle index count {}", fname, node_name, indices.size()));
+    }
+
+    for (size_t index_position = 0; index_position < indices.size(); index_position++) {
+        if (indices[index_position] >= vertices.size() || indices[index_position] > std::numeric_limits<vindex_t>::max()) {
+            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' has generated index {} at position {} outside the indexed vertex/vindex_t bounds [0, {})/[0, {}]", fname, node_name, indices[index_position], index_position, vertices.size(), std::numeric_limits<vindex_t>::max()));
+        }
+    }
+
+    vector<uint32_t> optimized_indices(indices.size());
+    meshopt_optimizeVertexCache(optimized_indices.data(), indices.data(), indices.size(), vertices.size());
+
+    vector<Vertex3D> optimized_vertices(vertices.size());
+    const size_t optimized_vertex_count = meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(), vertices.data(), vertices.size(), sizeof(Vertex3D));
+
+    if (optimized_vertex_count != vertices.size()) {
+        throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' vertex-fetch optimization retained {} of {} indexed vertices", fname, node_name, optimized_vertex_count, vertices.size()));
+    }
+
+    for (size_t index_position = 0; index_position < optimized_indices.size(); index_position++) {
+        if (optimized_indices[index_position] >= optimized_vertex_count || optimized_indices[index_position] > std::numeric_limits<vindex_t>::max()) {
+            throw ModelMeshBakerException(strex("FBX '{}' mesh node '{}' optimization produced index {} at position {} outside the indexed vertex/vindex_t bounds [0, {})/[0, {}]", fname, node_name, optimized_indices[index_position], index_position, optimized_vertex_count, std::numeric_limits<vindex_t>::max()));
+        }
+    }
+
+    vertices = std::move(optimized_vertices);
+    indices = std::move(optimized_indices);
 }
 
 static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node, string_view fname)
@@ -481,13 +558,8 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
             throw ModelMeshBakerException(strex("Mesh '{}' has {} indices, exceeds the uint32 writer count limit {}", fbx_node->name.data, indices.size(), std::numeric_limits<uint32_t>::max()));
         }
 
-        for (size_t index_position = 0; index_position < indices.size(); index_position++) {
-            if (indices[index_position] >= result_vertices || indices[index_position] > std::numeric_limits<vindex_t>::max()) {
-                throw ModelMeshBakerException(strex("Mesh '{}' has generated index {} at position {} outside the indexed vertex/vindex_t bounds [0, {})/[0, {}]", fbx_node->name.data, indices[index_position], index_position, result_vertices, std::numeric_limits<vindex_t>::max()));
-            }
-        }
-
         mesh->Vertices.resize(result_vertices);
+        OptimizeBakedMeshGeometry(mesh->Vertices, indices, fname, bone->Name);
         mesh->Indices.resize(indices.size());
         std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 

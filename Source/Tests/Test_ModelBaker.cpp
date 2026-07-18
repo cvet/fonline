@@ -518,6 +518,8 @@ struct BakedModelMeshSummary
     uint32_t SkinBones {};
     string DiffuseTexture {};
     optional<Vertex3D> FirstVertex {};
+    vector<Vertex3D> VertexData {};
+    vector<vindex_t> IndexData {};
 };
 
 static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary& summary)
@@ -526,16 +528,18 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
 
     const uint32_t vertex_count = reader.Read<uint32_t>();
     summary.Vertices += vertex_count;
-    const_span<uint8_t> vertices = reader.ReadBytes(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D));
+    const size_t vertex_offset = summary.VertexData.size();
+    summary.VertexData.resize(vertex_offset + vertex_count);
+    reader.ReadObjectArray(span<Vertex3D> {summary.VertexData}.subspan(vertex_offset, vertex_count));
     if (vertex_count != 0 && !summary.FirstVertex) {
-        Vertex3D first_vertex;
-        MemCopy(&first_vertex, vertices.data(), sizeof(first_vertex));
-        summary.FirstVertex = first_vertex;
+        summary.FirstVertex = summary.VertexData[vertex_offset];
     }
 
     const uint32_t index_count = reader.Read<uint32_t>();
     summary.Indices += index_count;
-    (void)reader.ReadBytes(numeric_cast<size_t>(index_count) * sizeof(vindex_t));
+    const size_t index_offset = summary.IndexData.size();
+    summary.IndexData.resize(index_offset + index_count);
+    reader.ReadObjectArray(span<vindex_t> {summary.IndexData}.subspan(index_offset, index_count));
 
     summary.DiffuseTexture = ReadSavedModelInfoString(reader);
 
@@ -631,6 +635,38 @@ v 0 1 0
 
     for (size_t i = 0; i < triangle_count; i++) {
         result += "f 1 2 3\n";
+    }
+
+    return result;
+}
+
+static auto MakeInterleavedStripObjMesh(string_view object_name, size_t strip_count, size_t triangles_per_strip) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(strip_count >= 2, "Interleaved strip fixture requires at least two strips");
+    FO_VERIFY_AND_THROW(triangles_per_strip >= 2, "Interleaved strip fixture requires at least two triangles per strip");
+
+    string result = strex("o {}\n", object_name).str();
+    const size_t vertices_per_strip = triangles_per_strip + 2;
+
+    for (size_t strip = 0; strip < strip_count; strip++) {
+        for (size_t vertex = 0; vertex < vertices_per_strip; vertex++) {
+            result += strex("v {} {} 0\n", vertex, strip * 4 + vertex % 2).str();
+        }
+    }
+
+    for (size_t triangle = 0; triangle < triangles_per_strip; triangle++) {
+        for (size_t strip = 0; strip < strip_count; strip++) {
+            const size_t first = strip * vertices_per_strip + triangle + 1;
+
+            if (triangle % 2 == 0) {
+                result += strex("f {} {} {}\n", first, first + 1, first + 2).str();
+            }
+            else {
+                result += strex("f {} {} {}\n", first + 1, first, first + 2).str();
+            }
+        }
     }
 
     return result;
@@ -1013,6 +1049,47 @@ TEST_CASE("ModelMeshBakerOrchestration")
         CHECK(summary.FirstVertex->TexCoordBase[1] == 0.0f);
         CHECK(summary.FirstVertex->BlendIndices[0] == 0.0f);
         CHECK(summary.FirstVertex->BlendWeights[0] == 1.0f);
+    }
+
+    SECTION("Optimizes baked vertex cache and fetch order")
+    {
+        constexpr size_t strip_count = 8;
+        constexpr size_t triangles_per_strip = 4;
+        TestRig rig;
+        rig.AddSourceFile("Models/InterleavedStrips.obj", MakeInterleavedStripObjMesh("InterleavedStrips", strip_count, triangles_per_strip), 9);
+
+        ModelMeshBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/InterleavedStrips.obj"));
+
+        REQUIRE(rig.Outputs.count("Models/InterleavedStrips.obj") == 1);
+        const BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/InterleavedStrips.obj"));
+        REQUIRE(summary.AttachedMeshes == 1);
+        REQUIRE(summary.VertexData.size() == strip_count * (triangles_per_strip + 2));
+        REQUIRE(summary.IndexData.size() == strip_count * triangles_per_strip * 3);
+        REQUIRE(summary.IndexData.size() >= 6);
+
+        bool first_triangles_share_vertex = false;
+        for (size_t first = 0; first < 3; first++) {
+            for (size_t second = 3; second < 6; second++) {
+                first_triangles_share_vertex = first_triangles_share_vertex || summary.IndexData[first] == summary.IndexData[second];
+            }
+        }
+        CHECK(first_triangles_share_vertex);
+
+        vector<uint8_t> seen_vertices(summary.VertexData.size());
+        size_t next_first_use = 0;
+
+        for (const vindex_t index : summary.IndexData) {
+            REQUIRE(index < summary.VertexData.size());
+
+            if (seen_vertices[index] == 0) {
+                CHECK(index == next_first_use);
+                seen_vertices[index] = 1;
+                next_first_use++;
+            }
+        }
+
+        CHECK(next_first_use == summary.VertexData.size());
     }
 
     SECTION("Normalizes the retained four skin influences")

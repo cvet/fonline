@@ -216,6 +216,26 @@ skin-weight normalization.
 Diagnostics name the source asset, node, field, element, and component. Invalid
 values are never clamped or replaced with identity.
 
+After `ufbx_generate_indices` has removed byte-identical duplicate vertices,
+the baker runs the pinned `meshoptimizer` v1.2 release (tag commit
+`9d9890c73011d75920af614485296d1e03e95448`) on each drawable mesh. Vertex-cache
+optimization first reorders whole triangles to improve transformed-vertex
+reuse; vertex-fetch optimization then reorders the interleaved `Vertex3D`
+buffer to first-use order and rewrites its 32-bit working indices. Both passes
+write temporary buffers. The baker verifies triangle-list shape and index ranges
+before the library call, requires fetch optimization to retain every vertex
+produced by `ufbx`, validates the resulting indices again, and only then commits
+the buffers and narrows indices to `vindex_t`. The library's temporary allocator
+is installed once before parallel mesh jobs and uses `SafeAllocator`, preserving
+the engine rpmalloc, backup-pool retry, and fail-fast OOM policy.
+
+These passes are lossless reorderings, so `LFMODMSH` remains schema `1`; existing
+runtime readers need no meshoptimizer dependency. Overdraw reordering is not
+enabled because the same assets target desktop and tiled mobile GPUs, where its
+benefit is workload-dependent. Quantization, mesh codecs, LODs, meshlets, and a
+packed vertex layout remain a separate measured schema-2 design rather than an
+implicit extension of this wire format.
+
 Animation extraction is owned by `ModelSourceLoader`, not by the baked mesh
 format. For each source FBX selected through a resolved `.fo3d`, the loader uses
 `ufbx` to extract the source skeleton and every clip, validates the complete
