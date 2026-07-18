@@ -3,6 +3,93 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## NEXT
+
+* Deprecate the HLSL front-end. It will be removed at the next major version.
+  See issue #4210 for details.
+
+## 16.3.0 2026-05-01
+### Deprecation Notice
+* Deprecate the HLSL front-end. See issue #4210 for details.
+
+### Other changes
+* Support GL_NV_explicit_typecast
+* Raise the maximum limit for specialization constant IDs
+* Add explicit 8-bit and 16-bit type support for bitfieldReverse
+* Implement system include directives for the standalone wrapper
+* Check for invalid usage of gl_WorkGroupSize components
+* HLSL: Provide string error context only if token is a string
+* Fix layoutDescriptorStride bitfield truncation for large stride values
+* GL_EXT_long_vector with 2-4 components no longer require LongVector capability
+* Fix alignment of guard blocks
+* Fix ShaderDebugInfo having invalid line numbers when generating SPIRV 1.0
+* Replace ostringstream with string concat during #include preprocessing
+* Check for bad parameters on long vector type
+* HLSL: Check for bad integer argument on Load*, Store*, Interlocked*
+* HLSL: handle type error for ternary operator
+* HLSL: Ensure scope is popped even when method body fails to parse
+* Avoid unneccessary copies in SpirvIntrinsics.cpp
+* Unconditionally emit debug source for include files when using non-semantic debug info
+* Support bfloat16 and float8 tensors
+* Add small type capabilities for GLSL.STD.450
+* Add initial support for NonSemantic.Shader.DebugInfo 101
+* Fix access chains for GL_ARM_tensors with raw descriptor heap accesses
+* Support GL_KHR_compute_shader_derivatives
+* Require a quad or linear layout qualifier to be specified for GL_KHR_compute_shader_derivatives
+* Supportx SPV_KHR_constant_data and SPV_KHR_abort
+
+## 16.2.0 2026-01-22
+* Allow gl_FragDepth identifier to be redeclared
+* Replace 'GL_TASK(MESH)_SHADER_NV' with 'GL_TASK(MESH)_SHADER_EXT'
+* Scalarize swizzled MeshEXT stores
+* Support GL_EXT_long_vector
+* Add missing preamble #define for GL_EXT_nontemporal_keyword
+* Support GL_NV_push_constant_bank
+* Support GL_EXT_descriptor_heap
+
+## 16.1.0 2025-12-01
+* Avoid emitting OpCapability RuntimeDescriptorArray when unnecessary
+* Improve compilation speed when debug infomation is enabled
+* Fix Debug Info for Retargeted Builtins
+* Support GL_EXT_shader_invocation_reorder
+* Add checks to coopMatMulAdd
+* Implement stringify operator
+* Add ES support for depth layout qualifier
+* Add debug info for hitObjectNV
+* Emit a DebugGlobalVariable instead of DebugLocalVariable for rayQueryEXT
+* Add debug info for constant variable
+* Improve debug line to point declaration
+* Fix bugs in buffer reference alignment
+* Reject string operands in binary and select ops
+* Support GL_EXT_shader_64bit_indexing
+* Support GLSL_EXT_uniform_buffer_unsized_array
+* Add semantic check for cooperative vector loads/stores
+* Improve the debug info name of opaque (sampler) types
+* Support IO mapping of combined samplers and acceleration structures
+* Fix bug in debug info for bool types inside SSBO/UBO
+* Fix bug in debug info for struct member names
+* Add methods for entry point and invert-y to C interface
+
+## 16.0.0 2025-09-25
+### Breaking changes
+* Remove spirv-remapper (ported to SPIRV-Tools as canonicalize-ids optimization pass)
+
+### Other changes
+* Emit error for in/out structs containing booleans
+* Fix contradictory layout link errors
+* Improve error checks for float8 math
+* Fix bug in cooperative matrix load/store handling of array slices
+* Update memory semantic validation rules to match update to Vulkan specification
+* Simplify glslang grammar for identifier lists
+* Fix erroneous parse errors in variable declarations using existing struct names
+* Fix type conversions for createTensorLayout/ViewNV
+* Fix OpAccessChain signed index issue for small unsigned integers
+* Support GLSL_QCOM_cooperative_matrix_conversion
+* Allow spec constant matrix use
+* Fix inconsistent labeling of capability strings
+* Fix crash on unnamed function parameters under relaxed rules
+* Fix exported member functions in ShaderLang.h
+
 ## 15.4.0 2025-06-26
 * Support GL_NV_gpu_shader5/GL_ARB_gpu_shader5
 * Remove BUILD_SHARED_LIBS option (defer to built-in variable)

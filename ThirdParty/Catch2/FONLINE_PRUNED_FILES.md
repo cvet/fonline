@@ -5,33 +5,38 @@ from upstream, remove these paths again after copying the new version.
 
 Removed paths:
 - benchmarks/
+- CMake/
+- data/
 - docs/
 - examples/
 - extras/
 - fuzzing/
-- projects/
 - src/
 - tests/
+- third_party/
 - tools/
-- .github/
-- .reuse/
+- .bazelrc
 - .clang-format
-- .cmake-format.py
-- .editorconfig
-- .git-blame-ignore-revs
+- .clang-tidy
+- .conan/
 - .gitattributes
+- .github/
 - .gitignore
-- .mailmap
 - appveyor.yml
+- BUILD.bazel
 - CMakeLists.txt
+- CMakePresets.json
+- codecov.yml
 - CODE_OF_CONDUCT.md
 - conanfile.py
+- Doxyfile
+- MAINTAINERS.md
+- mdsnippets.json
 - meson.build
 - meson_options.txt
-- pyproject.toml
-- README.android
+- MODULE.bazel
 - SECURITY.md
-- vcpkg.json
 
-Retained files: catch_amalgamated.cpp, catch_amalgamated.hpp, LICENSE.txt,
-README.md, CHANGELOG.md.
+Retained files: catch_amalgamated.cpp and catch_amalgamated.hpp are the upstream
+release assets (also generated into extras/); LICENSE.txt and README.md come from
+the source root; CHANGELOG.md is the upstream docs/release-notes.md.

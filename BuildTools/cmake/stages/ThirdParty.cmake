@@ -79,9 +79,11 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         SOURCE_LIST FO_RPMALLOC_SOURCE
         APPEND_TO FO_ESSENTIALS_LIBS
         INCLUDE_DIRS "${FO_RPMALLOC_DIR}/rpmalloc")
-    AddCompileDefinitionsList(
-        FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
-        ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
+    AddCompileDefinitionsList(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
+    # The engine routes all allocation through its own global operator new/delete
+    # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
+    # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
+    TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
 else()
@@ -506,13 +508,9 @@ if(FO_BUILD_BAKER_LIB)
         GLSLANG_ENABLE_INSTALL OFF
         BUILD_EXTERNAL OFF
         BUILD_WERROR OFF
-        SKIP_GLSLANG_INSTALL ON
         ENABLE_SPIRV ON
         ENABLE_HLSL OFF
         ENABLE_GLSLANG_BINARIES OFF
-        ENABLE_SPVREMAPPER OFF
-        ENABLE_AMD_EXTENSIONS OFF
-        ENABLE_NV_EXTENSIONS OFF
         ENABLE_RTTI ON
         ENABLE_EXCEPTIONS ON
         ENABLE_OPT OFF
@@ -521,8 +519,6 @@ if(FO_BUILD_BAKER_LIB)
 
     if(FO_WEB)
         SetCacheValues(
-            ENABLE_GLSLANG_WEB ON
-            ENABLE_GLSLANG_WEB_DEVEL ON
             ENABLE_EMSCRIPTEN_SINGLE_FILE ON
             ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
@@ -559,8 +555,7 @@ if(FO_BUILD_BAKER_LIB)
         SPIRV_CROSS_ENABLE_REFLECT OFF
         SPIRV_CROSS_ENABLE_C_API OFF
         SPIRV_CROSS_ENABLE_UTIL OFF
-        SPIRV_CROSS_SKIP_INSTALL ON
-        SPIRV_SKIP_TESTS ON)
+        SPIRV_CROSS_SKIP_INSTALL ON)
     AddSubdirectory("${FO_SPIRV_CROSS_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)

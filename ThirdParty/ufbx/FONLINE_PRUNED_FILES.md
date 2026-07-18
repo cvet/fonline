@@ -24,5 +24,9 @@ Removed paths:
 - misc/*.hpp
 - misc/*.py
 - misc/*.sh
+- misc/*.txt
+- misc/lcovrc
+- misc/typos.toml
 
-Retained files: ufbx.c, ufbx.h, misc/ufbx.natvis, misc/ufbxi.natvis, LICENSE, README.md.
+Retained files: ufbx.c, ufbx.h, misc/ufbx.natvis, misc/ufbxi.natvis, misc/changelog.md,
+LICENSE, README.md.

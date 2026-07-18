@@ -10,6 +10,8 @@ Removed paths:
 - kokoro/
 - ndk_test/
 - StandAlone/
+- Test/
+- .github/
 - .clang-format
 - .gitattributes
 - .gitignore

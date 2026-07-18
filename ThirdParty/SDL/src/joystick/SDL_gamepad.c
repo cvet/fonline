@@ -713,7 +713,7 @@ static GamepadMapping_t *SDL_CreateMappingForAndroidGamepad(SDL_GUID guid)
     int button_mask;
     int axis_mask;
     Uint16 vendor, product;
-
+    
     SDL_strlcpy(mapping_string, "none,", sizeof(mapping_string));
 
     SDL_GetJoystickGUIDInfo(guid, &vendor, &product, NULL, NULL);
