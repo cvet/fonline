@@ -229,7 +229,9 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
 
     bool had_exception = false;
 
-    for (const auto& cb : copy(callbacks)) {
+    const small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+
+    for (const auto& cb : callbacks_snapshot) {
         EventResult result = EventResult::ContinueChain;
 
         try {

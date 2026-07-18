@@ -337,7 +337,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
     const size_t args_count = gen->GetArgCount() + (add_obj ? 1 : 0);
-    vector<ptr<void>> args_data;
+    small_vector<ptr<void>, 16> args_data;
     args_data.reserve(args_count);
     array<nptr<void>, 1> this_obj_storage {};
 
