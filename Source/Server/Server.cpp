@@ -1963,6 +1963,12 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
         return;
     }
 
+    if (connection->IsLoginTimedOut(GameTime.GetFrameTime())) {
+        WriteLog("Connection login timeout from host '{}'", connection->GetHost());
+        connection->HardDisconnect();
+        return;
+    }
+
     auto in_buf = connection->ReadBuf();
 
     if (connection->IsGracefulDisconnected()) {
@@ -1998,10 +2004,12 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
 
                 auto updater_backend = make_ptr(&*_updaterBackend);
                 updater_backend->ProcessUpdateFile(unlogined_player, Settings->UpdateFileMaxPortionSize);
+                connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             }
             case NetMessage::RemoteCall:
                 Process_RemoteCall(unlogined_player);
+                connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             case NetMessage::UnresolvedHash:
                 Process_UnresolvedHash(connection);
@@ -2647,6 +2655,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     player->Send_InitData(update_desc);
 
     connection->MarkHandshakeComplete();
+    connection->RegisterLoginProgress(GameTime.GetFrameTime());
 
     if (compatibility_outdated) {
         WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
