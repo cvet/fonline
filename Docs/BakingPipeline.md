@@ -364,6 +364,7 @@ mirrored rest matrices by placing reflection in X scale and requires `T*R*S` mat
 round-trip within a relative `1e-4` tolerance; shear, non-affine/zero-scale
 transforms, non-unit quaternions, animation translation/scale outside ozz FP16
 range, non-positive durations or durations whose reciprocal is not finite,
+effective `(state, action)` cycle durations that round below one millisecond,
 collapsed or non-finite normalized runtime timepoints, more than 1024 joints,
 more than 65535
 time points, and animated aliased roots fail baking.

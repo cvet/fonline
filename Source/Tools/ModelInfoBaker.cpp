@@ -1518,16 +1518,24 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             }
 
             if (speed <= 0.0f || !std::isfinite(1.0f / speed)) {
-                throw ModelInfoBakerException(strex("Animation speed for ({}, {}) in '{}' must be positive with a finite reciprocal", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath()));
+                throw ModelInfoBakerException("Animation speed must be positive with a finite reciprocal", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath());
             }
 
             const double duration_milliseconds = static_cast<double>(clip_duration) / static_cast<double>(speed) * 1000.0;
 
             if (!std::isfinite(duration_milliseconds) || duration_milliseconds <= 0.0 || duration_milliseconds > static_cast<double>(std::numeric_limits<int32_t>::max())) {
-                throw ModelInfoBakerException(strex("Animation duration for ({}, {}) in '{}' is outside the millisecond output range: clip {}, speed {}", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), clip_duration, speed));
+                throw ModelInfoBakerException("Animation duration is outside the millisecond output range", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), clip_duration, speed);
             }
 
-            raw_durations.emplace_back(anim_entry.StateAnim, anim_entry.ActionAnim, iround<int32_t>(duration_milliseconds));
+            const int32_t duration_ms = iround<int32_t>(duration_milliseconds);
+
+            // The runtime model-anim-info load rejects a non-positive duration, so a sub-millisecond effective
+            // cycle that rounds down to zero must fail here rather than bake a manifest the client cannot load.
+            if (duration_ms <= 0) {
+                throw ModelInfoBakerException("Animation duration rounds to a non-positive millisecond value", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), clip_duration, speed);
+            }
+
+            raw_durations.emplace_back(anim_entry.StateAnim, anim_entry.ActionAnim, duration_ms);
         }
 
         // Match ModelInformation::GetAnimationIndexEx: both alias maps are applied once before the

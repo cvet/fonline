@@ -1438,6 +1438,20 @@ ActionAnimEqual 4 6
         CHECK_THROWS_AS(speed_baker.BakeFiles(speed_rig.GetAllSourceFiles(), ""), ModelInfoBakerException);
     }
 
+    SECTION("Rejects ModelAnimInfo effective duration that rounds below one millisecond")
+    {
+        // Default clip duration is 1.0s, so speed 1e6 yields 0.001ms, which rounds to a zero millisecond
+        // count. The runtime model-anim-info load requires a positive duration, so baking must fail here
+        // rather than emit a manifest the client cannot load.
+        TestRig rounding_rig;
+        AddModelInfoMetadata(rounding_rig);
+        rounding_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nAnimSpeed 0 1 1e6\n", 1);
+        AddTestModelSource(rounding_rig, MakeTestModelSource("Critters/Body.fbx", "Body", {"Idle"}));
+
+        ModelInfoBaker rounding_baker(rounding_rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
+        CHECK_THROWS_AS(rounding_baker.BakeFiles(rounding_rig.GetAllSourceFiles(), ""), ModelInfoBakerException);
+    }
+
     SECTION("Applies include replacements in model descriptions")
     {
         TestRig rig;
