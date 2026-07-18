@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// #pragma once
+#pragma once
 
 #include "Common.h"
 
@@ -61,9 +61,9 @@ public:
     auto ReceiveData() -> const_span<uint8_t>;
     void Disconnect() noexcept;
 
-    [[nodiscard]] static auto CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
-    [[nodiscard]] static auto CreateSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
-    [[nodiscard]] static auto CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
+    static auto CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
+    static auto CreateSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
+    static auto CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
 
 protected:
     virtual auto CheckStatusImpl(bool for_write) -> bool = 0;
