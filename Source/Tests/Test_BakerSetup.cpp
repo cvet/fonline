@@ -401,6 +401,111 @@ Bakers = {}
     CHECK(fs_remove_dir_tree(temp_dir));
 }
 
+#if FO_ANGELSCRIPT_SCRIPTING && FO_ENABLE_3D
+TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
+{
+    using namespace BakerTests;
+
+    const string temp_dir = MakeTempBakerSetupDir("baker_data_source_dependency_order");
+    const string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    const string metadata_output_path = strex(temp_dir).combine_path("output/Metadata/Metadata.fometa-client").str();
+    const string model_input_path = strex(temp_dir).combine_path("model_input/placeholder.txt").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+    REQUIRE(fs_write_file(model_input_path, string_view {"placeholder"}));
+
+    const auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    SetBakerSetupFileWriteTime(metadata_input_path, source_time);
+    REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+    SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("BakerDataSourceDependencyOrder.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = ModelInfo
+InputDirs = model_input
+IncludePatterns = **/*.fo3d
+Bakers = {}
+)",
+            strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    BakerDataSource data_source {&settings};
+
+    CHECK(data_source.IsFileExists("Metadata.fometa-client"));
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+#endif
+
+TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
+{
+    const string temp_dir = MakeTempBakerSetupDir("baker_data_source_pack_priority");
+    const string base_input_path = strex(temp_dir).combine_path("base_input/Data/shared.json").str();
+    const string override_input_path = strex(temp_dir).combine_path("override_input/Data/shared.json").str();
+    const string base_output_path = strex(temp_dir).combine_path("output/Base/Data/shared.json").str();
+    const string override_output_path = strex(temp_dir).combine_path("output/Override/Data/shared.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(base_input_path, string_view {"base-source"}));
+    REQUIRE(fs_write_file(override_input_path, string_view {"override-source"}));
+    REQUIRE(fs_write_file(base_output_path, string_view {"base-output"}));
+    REQUIRE(fs_write_file(override_output_path, string_view {"override-output"}));
+
+    const auto base_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {4};
+    const auto override_time = base_time + std::chrono::minutes {1};
+    SetBakerSetupFileWriteTime(base_input_path, base_time);
+    SetBakerSetupFileWriteTime(override_input_path, override_time);
+    SetBakerSetupFileWriteTime(base_output_path, base_time + std::chrono::minutes {2});
+    SetBakerSetupFileWriteTime(override_output_path, base_time + std::chrono::minutes {2});
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("BakerDataSourcePackPriority.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Base
+InputDirs = base_input
+IncludePatterns = **/*.json
+Bakers = {}
+[ResourcePack]
+Name = Override
+InputDirs = override_input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+            strex(temp_dir).combine_path("output").str(), RawCopyBaker::NAME, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    BakerDataSource data_source {&settings};
+    size_t size = 0;
+    uint64_t write_time = 0;
+    const auto data = data_source.OpenFile("Data/shared.json", size, write_time);
+
+    REQUIRE(data);
+    ptr<const uint8_t> data_ptr = data;
+    CHECK(data_ptr.reinterpret_as<char>().as_str(size) == "override-output");
+    CHECK(write_time == fs_last_write_time(override_input_path));
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
 TEST_CASE("BakerMasterRawCopy")
 {
     const string temp_dir = MakeTempBakerSetupDir("master_baker_raw_copy");
