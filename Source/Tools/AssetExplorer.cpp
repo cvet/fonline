@@ -76,8 +76,6 @@ void AssetExplorer::OnDraw()
         DrawSection(strex("Protos ({})", proto_ext).str(), proto_ext);
     }
 
-    DrawSection("Dialogs", "fodlg");
-    DrawSection("Interface", "fogui");
     DrawSection("Models", "fo3d");
     DrawSection("Texts", "fotxt");
 
