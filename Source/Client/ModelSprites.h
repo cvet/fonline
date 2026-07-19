@@ -42,6 +42,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class ModelInstance;
+class ModelManager;
 class ModelSpriteFactory;
 
 class ModelSprite final : public AtlasSprite
@@ -54,19 +56,14 @@ public:
     ModelSprite(ModelSprite&&) noexcept = default;
     auto operator=(const ModelSprite&) = delete;
     auto operator=(ModelSprite&&) noexcept -> ModelSprite& = delete;
-    ~ModelSprite() override = default;
+    ~ModelSprite() override;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDirectDraw() const -> bool override;
-    [[nodiscard]] auto GetModel() -> ptr<ModelInstance>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return _model;
-    }
-    [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
+    [[nodiscard]] auto GetModel() -> ptr<ModelInstance>;
+    [[nodiscard]] auto IsPlaying() const -> bool override;
 
     void Prewarm() override;
     void SetDir(mdir dir) override;
@@ -93,10 +90,10 @@ public:
     ModelSpriteFactory(ModelSpriteFactory&&) noexcept = delete;
     auto operator=(const ModelSpriteFactory&) = delete;
     auto operator=(ModelSpriteFactory&&) noexcept -> ModelSpriteFactory& = delete;
-    ~ModelSpriteFactory() override = default;
+    ~ModelSpriteFactory() override;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr; }
+    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager>;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 

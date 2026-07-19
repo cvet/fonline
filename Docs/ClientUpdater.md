@@ -9,6 +9,12 @@ The native client ships as two artifacts:
 
 The host loads the runtime through a stable C ABI ([../Source/Client/ClientRuntimeApi.h](../Source/Client/ClientRuntimeApi.h)) and falls back to the embedded client linked into `LF_Client.exe` if loading fails.
 
+On native host/runtime platforms the runnable `LF_Client` target depends on
+`LF_ClientLib`, and the runtime target's post-build step copies its output to
+the host-derived sibling name. Building `LF_Client` therefore refreshes both
+artifacts; `LF_ClientLib` remains independently buildable when only the runtime
+module is needed. The headless host/runtime targets use the same dependency.
+
 **Platform support.** The host + runtime split is built only on Windows, Linux and macOS â€” that is the set of platforms where `CanSelfUpdateNativeModules()` returns `true` and where the static_assert at the top of `ClientLib.cpp` accepts the build. Web, iOS and Android ship a single self-contained `LF_Client` binary instead: the engine code is statically linked into the executable and the runtime-loading branch in `RunEmbeddedOrLoadedClient()` is never taken. The CMake gate that enforces this lives in [../BuildTools/cmake/stages/Applications.cmake](../BuildTools/cmake/stages/Applications.cmake) (`if(FO_WINDOWS OR FO_LINUX OR FO_MAC)`), and Android additionally takes the `FO_BUILD_LIBRARY` branch which produces only the shared `LF_Client` artifact required by the SDL Android Java loader.
 
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
@@ -475,7 +481,7 @@ instead of looping back to the game which would only reject the connection again
 Local validation steps:
 
 1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
-2. Build both `LF_Client` and `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux).
+2. Build `LF_Client`; its native target dependency also builds `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly when validating the runtime target in isolation.
 3. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
 5. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no fallback).

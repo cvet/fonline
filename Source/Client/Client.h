@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "Application.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
@@ -51,6 +50,8 @@
 #include "ItemView.h"
 #include "LocationView.h"
 #include "MapView.h"
+#include "ModelInstance.h"
+#include "ModelSprites.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
