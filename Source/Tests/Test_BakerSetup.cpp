@@ -694,6 +694,15 @@ Bakers = {}
     const nlohmann::json& pack_image = FindBakerSetupReportEntry(art_pack.at("bakers"), ImageBaker::NAME);
     CHECK(pack_image.at("details").at("spriteMesh").at("frames").at("unique") == unique_frames);
 
+    BakerTests::OverrideSetting(settings.ForceBaking, false);
+    MasterBaker incremental_baker {&settings};
+    REQUIRE(incremental_baker.BakeAll());
+    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
+
+    const nlohmann::json incremental_report = ReadBakerSetupReport(output_dir);
+    CHECK(incremental_report.at("status") == "success");
+    CHECK(incremental_report.at("totals").at("filesChanged") == 0);
+
     CHECK(fs_remove_dir_tree(temp_dir));
 }
 

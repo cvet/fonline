@@ -354,10 +354,13 @@ header and frame table. For metadata queries that must not load pixel payloads,
 `ImageBaker` also writes one compact version 1
 `SpriteInfo/<PackName>.foinfo` index per resource pack. The index is an
 aggregate output over every image source in that pack; normal scan baking
-merges changed entries with the existing complete index, while an explicit
-request for the index rebuilds every entry. Introducing or losing the index is
-a full-rebake condition rather than a reason to decode all sprite pixels at
-runtime. The common `ReadAnimInfo` path reads those 2D indexes in every
+merges changed entries with the existing complete index from the same pack's
+output directory, while an explicit request for the index rebuilds every
+entry. Pack-local previous outputs are mounted separately from the shared
+cross-pack baked-file registry so a pack can read its own aggregate before its
+first baker invocation. Introducing or losing the index is a full-rebake
+condition rather than a reason to decode all sprite pixels at runtime. The
+common `ReadAnimInfo` path reads those 2D indexes in every
 build, reads `ModelAnimInfo.foinfo` when 3D is enabled, and merges both payloads
 by resource name in `EngineMetadata`. Baker-local statistics follow the same
 ownership names (`SpriteInfoBakingStats` and

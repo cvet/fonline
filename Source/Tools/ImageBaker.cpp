@@ -172,8 +172,11 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     set<string> current_sprite_sources;
     uint64_t maximum_source_write_time = 0;
 
-    if (scan_mode && _context->BakedFiles->IsFileExists(sprite_info_path)) {
-        const File sprite_info_file = _context->BakedFiles->ReadFile(sprite_info_path);
+    const nptr<const FileSystem> sprite_info_files = _context->PackBakedFiles ? _context->PackBakedFiles : _context->BakedFiles;
+    FO_VERIFY_AND_THROW(sprite_info_files, "Baker context has no baked file registry");
+
+    if (scan_mode && sprite_info_files->IsFileExists(sprite_info_path)) {
+        const File sprite_info_file = sprite_info_files->ReadFile(sprite_info_path);
         FO_VERIFY_AND_THROW(sprite_info_file, "Baked sprite info resource is not readable", sprite_info_path);
 
         for (SpriteInfoFileEntry& entry : ReadSpriteInfoFile(sprite_info_path, sprite_info_file.GetStr())) {

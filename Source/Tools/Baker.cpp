@@ -111,13 +111,13 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
     }
 }
 
-auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report, bool output_discovery) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report, bool output_discovery, nptr<const FileSystem> pack_baked_files) -> vector<unique_ptr<BaseBaker>>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
+    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .PackBakedFiles = pack_baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
@@ -337,6 +337,7 @@ void MasterBaker::BakeAllInternal()
         string PackName {};
         string OutputDir {};
         FileSystem InputFiles {};
+        FileSystem PackBakedFiles {};
         FileCollection FilteredFiles {};
         vector<unique_ptr<BaseBaker>> Bakers {};
         shared_ptr<BakingReport> Report {};
@@ -363,6 +364,7 @@ void MasterBaker::BakeAllInternal()
         pack_bake_context->PackName = res_pack.Name;
         pack_bake_context->OutputDir = output_dir;
         pack_bake_context->Report = pack_report;
+        pack_bake_context->PackBakedFiles.AddDirSource(output_dir, true, true, true);
 
         for (const auto& input_dir : res_pack.InputDirs) {
             pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
@@ -414,7 +416,7 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_, pack_report);
+        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_, pack_report, false, &pack_bake_context->PackBakedFiles);
         for (const auto& baker : pack_bake_context->Bakers) {
             pack_report->RecordBakerRegistration(res_pack.Name, baker->GetName(), baker->GetOrder());
         }
