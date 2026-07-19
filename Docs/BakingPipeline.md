@@ -118,6 +118,8 @@ The abstract base for individual baker implementations. Each baker provides:
 
 `BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction.
 
+During output discovery it visits resource packs in configured order so a later baker can read outputs declared by an earlier dependency (for example, model baking can load client metadata). When packs declare the same logical output path, the later registration replaces the earlier one; file resolution also searches packs from last to first, preserving the normal resource-overlay rule that later packs shadow earlier packs.
+
 ## Built-in baker types
 
 `Source/Tools/Baker.cpp` registers built-in bakers when requested and enabled:

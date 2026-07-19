@@ -566,11 +566,12 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         res_entry.InputFiles = res_entry.InputDir.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
     }
 
-    // Evaluate output files
+    // Evaluate output files in dependency order. Later packs still replace earlier
+    // registrations and ResolveFilePath searches them in reverse priority order.
     const auto check_file = [&](string_view path, uint64_t write_time) {
         scoped_lock locker {_outputFilesLocker};
 
-        _outputFiles.emplace(path, write_time);
+        _outputFiles.insert_or_assign(string(path), write_time);
         return false;
     };
 
@@ -580,8 +581,8 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
     };
 
     for (size_t i = 0; i < _inputResources.size(); i++) {
-        const auto& res_pack = res_packs[res_packs.size() - 1 - i];
-        const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
+        const auto& res_pack = res_packs[i];
+        const auto& res_entry = _inputResources[i];
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
