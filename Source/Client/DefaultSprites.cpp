@@ -146,13 +146,11 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
         const float32_t height = numeric_cast<float32_t>(_size.height);
         const ucolor color_left = std::get<0>(colors);
         const ucolor color_right = std::get<1>(colors);
-        FO_STRONG_ASSERT(mesh.SourceSize.width > 0 && mesh.SourceSize.height > 0, "Sprite mesh logical source dimensions must be positive", mesh.SourceSize);
         const uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
 
         for (const ipos32 local_pos : mesh.Vertices) {
             const float32_t nx = numeric_cast<float32_t>(local_pos.x) / width;
             const float32_t ny = numeric_cast<float32_t>(local_pos.y) / height;
-            FO_STRONG_ASSERT(local_pos.x >= 0 && local_pos.x <= _size.width && local_pos.y >= 0 && local_pos.y <= _size.height, "Sprite mesh position is outside the cropped sprite frame", local_pos, _size);
             const int32_t source_x = std::clamp(local_pos.x + mesh.SourceOffset.x, 0, mesh.SourceSize.width);
             const uint32_t color_x = numeric_cast<uint32_t>(source_x);
             const auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {

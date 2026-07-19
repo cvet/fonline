@@ -335,6 +335,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     }
 
     FO_VERIFY_AND_THROW(expected_runtime_bindings.size() == animation_runtime_rig->GetBindings().size(), "Animation runtime rig binding count does not match the baked model description", name, expected_runtime_bindings.size(), animation_runtime_rig->GetBindings().size());
+
     if (_animController) {
         for (const BakedModelDescriptionAnimationEntry& anim_entry : anim_entries) {
             const auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
@@ -372,6 +373,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         FO_VERIFY_AND_THROW(anim_count != 0, "No animations registered for a baked model description", name);
         FO_STRONG_ASSERT(numeric_cast<size_t>(anim_count) == _animIndexes.size(), "Animation controller metadata count differs from its state/action index", name, anim_count, _animIndexes.size());
     }
+
     _animationRuntimeRig = std::move(animation_runtime_rig);
 
     return true;
