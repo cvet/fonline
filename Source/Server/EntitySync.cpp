@@ -701,7 +701,7 @@ static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
 // (`TryRegisterDescendantHold`). `skip_index` marks an op the caller already holds (a kept park
 // grant); pass SIZE_MAX for none.
 
-static auto TryAcquireOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t skip_index) noexcept -> size_t
+static auto TryAcquireOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t skip_index) noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -735,7 +735,7 @@ static void ReleaseOp(const pair<ptr<EntityLock>, bool>& op) noexcept
     }
 }
 
-static void RollbackOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t count, size_t skip_index) noexcept
+static void RollbackOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t count, size_t skip_index) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -855,7 +855,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // BOTH cr's and the map's own lock, because `MapManager::Transfer` severs cr→map mid-call and
         // re-validates cr, which needs cr's own lock — not merely the parent map's.)
 
-        vector<ptr<EntityLock>> new_locks;
+        SyncLockList new_locks;
         vector<refcount_ptr<ServerEntity>> new_owners;
         new_locks.reserve(lock_to_entity.size());
         new_owners.reserve(lock_to_entity.size());
@@ -877,7 +877,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // CURRENT parent chains (lock-free, like the cover); the verify step below re-checks that every
         // ancestor is still marked and retries on a reparent. `AcquireLocks` drops any ancestor that is
         // itself in the cover (an exclusive hold already excludes its descendants).
-        vector<ptr<EntityLock>> new_holds;
+        SyncLockList new_holds;
         vector<refcount_ptr<ServerEntity>> new_hold_owners;
 
         for (auto& owner : new_owners) {
@@ -1075,7 +1075,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
     // no wait-for cycle forms even though the new lock may sit *below* locks we already hold. We never
     // release what we already hold, so a covered entity stays covered the whole time and cannot be moved
     // out from under us.
-    vector<ptr<EntityLock>> add_marks;
+    SyncLockList add_marks;
     vector<refcount_ptr<ServerEntity>> add_mark_owners;
 
     for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
@@ -1098,7 +1098,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         add_mark_owners.emplace_back(require_refcount_ptr(parent));
     }
 
-    vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive
+    small_vector<pair<ptr<EntityLock>, bool>, 8> ops; // bool = is-exclusive
     ops.reserve(add_marks.size() + 1);
     ops.emplace_back(lock, true);
 
@@ -1247,7 +1247,7 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
 
 // Dedup a lock list while keeping its parallel owner list aligned. A simple sort-unique on `locks`
 // alone would lose the lock↔owner correspondence, so pair them, sort+unique by lock, and rebuild both.
-static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>& owners)
+static void DedupLockOwners(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>& owners)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1273,7 +1273,7 @@ static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<
     }
 }
 
-void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>&& owners, vector<ptr<EntityLock>>& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners)
+void SyncContext::AcquireLocks(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>&& owners, SyncLockList& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1289,7 +1289,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     {
         const auto in_cover = [&locks](ptr<EntityLock> l) { return std::ranges::find(locks, l) != locks.end(); };
 
-        vector<ptr<EntityLock>> filtered_holds;
+        SyncLockList filtered_holds;
         vector<refcount_ptr<ServerEntity>> filtered_hold_owners;
         filtered_holds.reserve(holds.size());
         filtered_hold_owners.reserve(holds.size());
@@ -1310,7 +1310,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     // blocks on its lowest not-yet-taken lock while holding strictly lower-addressed ones, so no
     // wait-for cycle can form regardless of which ops are exclusive vs intention. The two sets are
     // disjoint (filter above), so each lock appears once.
-    vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive
+    small_vector<pair<ptr<EntityLock>, bool>, 8> ops; // bool = is-exclusive
     ops.reserve(locks.size() + holds.size());
 
     for (auto lock : locks) {
@@ -1360,7 +1360,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     _heldDescendantHoldOwners = std::move(hold_owners);
 }
 
-void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, const vector<ptr<EntityLock>>& holds)
+void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds)
 {
     FO_STACK_TRACE_ENTRY();
 
