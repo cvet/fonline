@@ -262,7 +262,10 @@ Current count: **93** `Test_*.cpp` suites.
 
 The model-animation tests divide the production contract explicitly.
 `Test_ModelMeshData.cpp` exercises the mandatory `LFMODMSH` schema-1 mesh-only
-header, including every truncated size and rejection of old headerless data.
+header and complete recursive payload codec. It covers geometry, skin palettes,
+children, structural validation, trailing data, every truncated header size,
+rejection of old headerless data, and exact byte compatibility with the original
+schema-1 writer layout.
 `Test_ClientEngine.cpp` also bakes a position-only OBJ through `ModelMeshBaker`
 and preloads the resulting bytes through the real `ModelManager` parser. This
 crosses the `BakerLib`/`ClientLib` boundary and catches payload-layout drift that

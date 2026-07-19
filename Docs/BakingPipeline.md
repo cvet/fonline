@@ -151,7 +151,7 @@ pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
 | `ModelSourceLoader` | Tools | Backend-neutral source skeleton/clip/TRS data, `ufbx` import, complete source validation, and the per-bake single-flight `ModelSourceAssetCache`. |
 | `ModelAnimationConverter` | Tools | Deterministic canonical hierarchy construction, compatibility diagnostics, contributed-joint/root-alias and parent analysis, and conversion into runtime rig artifacts using the pinned Ozz offline implementation internally. |
 | `ModelAnimationData` | Common | Versioned little-endian LF animation envelopes and the native rig manifest: identity and signatures, canonical skeleton, base/clip remaps, clip payloads, presence/nearest data, and state/action bindings. |
-| `ModelMeshData` | Common | Versioned `LFMODMSH` mesh-wire header shared by baker and client. It contains no runtime animation implementation. |
+| `ModelMeshData` | Common | Passive mesh-wire DTOs plus the versioned `LFMODMSH` reader, writer, and shared structural validation. It contains no runtime animation implementation. |
 | `ModelMeshBaker` | Tools | Validates and writes mesh-only hierarchy, bind, vertex, index, influence, and drawable data. |
 | `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimInfo.foinfo`. |
 
@@ -183,11 +183,14 @@ frame selectors fall back to the first available cycle/frame.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
-`ModelMeshBaker` writes a versioned mesh-only payload. Every baked model mesh
+`ModelMeshBaker` builds the passive `ModelMeshData` tree and its common codec
+writes a versioned mesh-only payload. Every baked model mesh
 starts with `LFMODMSH`, schema `1`, and zero flags, followed by the recursive
 bone, bind, and drawable-mesh data. The writer does not serialize clips or a TRS
-tail. Both `ModelInfoBaker` and the client require this header, consume the mesh
-payload exactly, and reject old headerless files, unknown schemas or flags,
+tail. `ModelInfoBaker` traverses the decoded DTO for metadata, while the client
+adapts it into hashed runtime hierarchy and render types; neither owns a second
+byte parser. Both require this header, consume the mesh payload exactly, and
+reject old headerless files, unknown schemas or flags,
 truncation, and trailing data. There is no legacy mesh-format fallback.
 Runtime readers preflight every serialized length/count against the unread byte
 span before allocation. Mesh vertices are limited by `vindex_t`

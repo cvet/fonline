@@ -345,6 +345,12 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         const array<vindex_t, 1> indices {vindex_t {1}};
         writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
         writer.WriteObjectArray(const_span<vindex_t> {indices});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<uint32_t>(uint32_t {0});
     }));
 
     malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {

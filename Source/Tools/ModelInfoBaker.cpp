@@ -219,9 +219,7 @@ static auto ModelSourceAssetHasAnimation(const ModelSourceAsset& asset, string_v
 static auto GetModelSourceAnimation(const ModelSourceAsset& asset, string_view anim_name) -> const ModelAnimationSource&;
 static auto GetModelSourceAnimationDuration(const ModelSourceAsset& asset, string_view anim_name) -> float32_t;
 static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& files, const ModelSourceAssetCache& model_sources, string_view target_path);
-static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info, const vector<string>& parent_hierarchy);
-static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info, string_view owner_bone);
-static void SkipBakedModelMeshBytes(DataReader& reader, size_t size);
+static void CollectBakedModelMeshInfo(const ModelMeshBoneData& bone, BakedModelMeshInfo& info, const vector<string>& parent_hierarchy);
 
 static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>;
 static auto ApplyModelDescriptionReplacements(string content, const vector<pair<string, string>>& replacements) -> string;
@@ -1342,18 +1340,12 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
 
     try {
         auto reader = DataReader(file.GetDataSpan());
-        ReadModelMeshHeader(reader, path);
-        ReadBakedModelMeshBone(reader, info, {});
-        reader.VerifyEnd();
+        ModelMeshData mesh_data = ReadModelMeshData(reader, path);
+        FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", path);
+        CollectBakedModelMeshInfo(*mesh_data.RootBone, info, {});
     }
     catch (const std::exception& ex) {
         throw ModelInfoBakerException("Invalid baked model mesh", path, ex.what());
-    }
-
-    for (const string& skin_bone : info.SkinBoneRefs) {
-        if (info.Bones.count(skin_bone) == 0) {
-            throw ModelInfoBakerException("Invalid baked model mesh: skin bone not found in hierarchy", path, skin_bone);
-        }
     }
 
     return info;
@@ -1601,99 +1593,43 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
     ctx.WriteData(output_path, data);
 }
 
-static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info, const vector<string>& parent_hierarchy)
+static void CollectBakedModelMeshInfo(const ModelMeshBoneData& bone, BakedModelMeshInfo& info, const vector<string>& parent_hierarchy)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (parent_hierarchy.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw ModelInfoBakerException("Baked model hierarchy depth exceeds the joint limit", info.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH);
-    }
-    if (info.Skeleton.Joints.size() >= MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelInfoBakerException("Baked model exceeds the canonical joint limit", info.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS);
-    }
-
-    const string bone_name = reader.ReadString();
     vector<string> hierarchy = parent_hierarchy;
-    hierarchy.emplace_back(bone_name);
+    hierarchy.emplace_back(bone.Name);
 
-    if (!bone_name.empty()) {
-        info.Bones.emplace(bone_name);
+    if (!bone.Name.empty()) {
+        info.Bones.emplace(bone.Name);
     }
 
-    const mat44 rest_local_transform = reader.Read<mat44>();
-    info.Skeleton.Joints.emplace_back(ModelSkeletonJoint {bone_name, hierarchy, rest_local_transform});
-    SkipBakedModelMeshBytes(reader, sizeof(mat44));
+    info.Skeleton.Joints.emplace_back(ModelSkeletonJoint {bone.Name, hierarchy, bone.TransformationMatrix});
 
-    const bool has_attached_mesh = reader.Read<uint8_t>() != 0;
-
-    if (has_attached_mesh) {
+    if (bone.AttachedMesh) {
         info.DrawBonesCount++;
 
-        if (!bone_name.empty()) {
-            info.DrawBones.emplace(bone_name);
+        if (!bone.Name.empty()) {
+            info.DrawBones.emplace(bone.Name);
         }
 
-        ReadBakedModelMeshData(reader, info, bone_name);
-    }
-
-    const uint32_t children_count = reader.Read<uint32_t>();
-
-    if (children_count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
-        throw ModelInfoBakerException("Baked model bone has too many children", info.FileName, bone_name, children_count, MODEL_ANIMATION_RIG_MAX_JOINTS);
-    }
-
-    for (uint32_t i = 0; i < children_count; i++) {
-        ReadBakedModelMeshBone(reader, info, hierarchy);
-    }
-}
-
-static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info, string_view owner_bone)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    uint32_t len = reader.Read<uint32_t>();
-    SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(len) * sizeof(Vertex3D));
-
-    len = reader.Read<uint32_t>();
-    SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(len) * sizeof(vindex_t));
-
-    const string diffuse_texture = reader.ReadString();
-
-    if (!diffuse_texture.empty()) {
-        info.DiffuseTextures.emplace_back(diffuse_texture);
-    }
-
-    const uint32_t skin_bones_count = reader.Read<uint32_t>();
-
-    if (skin_bones_count > MODEL_MAX_BONES) {
-        throw ModelInfoBakerException("Invalid baked mesh: skin bones count exceeds MODEL_MAX_BONES limit", info.FileName, skin_bones_count, MODEL_MAX_BONES);
-    }
-
-    for (uint32_t i = 0; i < skin_bones_count; i++) {
-        string skin_bone = reader.ReadString();
-
-        if (!skin_bone.empty()) {
-            info.SkinBoneRefs.emplace_back(std::move(skin_bone));
+        if (!bone.AttachedMesh->DiffuseTexture.empty()) {
+            info.DiffuseTextures.emplace_back(bone.AttachedMesh->DiffuseTexture);
         }
-        else if (!owner_bone.empty()) {
-            info.SkinBoneRefs.emplace_back(owner_bone);
+
+        for (const string& skin_bone : bone.AttachedMesh->SkinBoneNames) {
+            if (!skin_bone.empty()) {
+                info.SkinBoneRefs.emplace_back(skin_bone);
+            }
+            else if (!bone.Name.empty()) {
+                info.SkinBoneRefs.emplace_back(bone.Name);
+            }
         }
     }
 
-    const uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
-
-    if (skin_bone_offsets_count != skin_bones_count) {
-        throw ModelInfoBakerException("Invalid baked mesh: skin bone offsets count does not match skin bones count", info.FileName, skin_bone_offsets_count, skin_bones_count);
+    for (const auto& child : bone.Children) {
+        CollectBakedModelMeshInfo(*child, info, hierarchy);
     }
-
-    SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(skin_bone_offsets_count) * sizeof(mat44));
-}
-
-static void SkipBakedModelMeshBytes(DataReader& reader, size_t size)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    (void)reader.ReadBytes(size);
 }
 
 void BakerModelDescription::Save(DataWriter& writer) const

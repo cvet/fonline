@@ -38,7 +38,6 @@
 #include "Application.h"
 #include "EngineBase.h"
 #include "ModelAnimation.h"
-#include "ModelBakedData.h"
 #include "ModelHierarchy.h"
 #include "ModelInformation.h"
 #include "ModelInstance.h"
@@ -47,11 +46,22 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver, string_view context, uint32_t depth, uint32_t& joint_count) -> unique_ptr<ModelBone>;
+static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_resolver) -> unique_ptr<ModelBone>;
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone);
 
-static constexpr size_t BAKED_STRING_MIN_SIZE = sizeof(uint32_t);
-static constexpr size_t BAKED_MODEL_MESH_BONE_MIN_SIZE = BAKED_STRING_MIN_SIZE + 2 * sizeof(mat44) + sizeof(uint8_t) + sizeof(uint32_t);
+static_assert(std::same_as<ModelMeshIndexData, vindex_t>);
+static_assert(MODEL_MESH_BONES_PER_VERTEX == MODEL_BONES_PER_VERTEX);
+static_assert(sizeof(ModelMeshVertexData) == sizeof(Vertex3D));
+static_assert(alignof(ModelMeshVertexData) == alignof(Vertex3D));
+static_assert(offsetof(ModelMeshVertexData, Position) == offsetof(Vertex3D, Position));
+static_assert(offsetof(ModelMeshVertexData, Normal) == offsetof(Vertex3D, Normal));
+static_assert(offsetof(ModelMeshVertexData, TexCoord) == offsetof(Vertex3D, TexCoord));
+static_assert(offsetof(ModelMeshVertexData, TexCoordBase) == offsetof(Vertex3D, TexCoordBase));
+static_assert(offsetof(ModelMeshVertexData, Tangent) == offsetof(Vertex3D, Tangent));
+static_assert(offsetof(ModelMeshVertexData, Bitangent) == offsetof(Vertex3D, Bitangent));
+static_assert(offsetof(ModelMeshVertexData, BlendWeights) == offsetof(Vertex3D, BlendWeights));
+static_assert(offsetof(ModelMeshVertexData, BlendIndices) == offsetof(Vertex3D, BlendIndices));
+static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color));
 
 ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
@@ -125,14 +135,13 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     auto reader = DataReader(file.GetDataSpan());
     auto root_bone = [&]() -> unique_ptr<ModelBone> {
         try {
-            ReadModelMeshHeader(reader, fname);
-            uint32_t joint_count = 0;
-            auto loaded_root_bone = LoadModelBone(reader, *_hashResolver, fname, 0, joint_count);
+            ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
+            FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", fname);
+            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), *_hashResolver);
             FixModelBoneAfterLoad(loaded_root_bone, loaded_root_bone);
-            reader.VerifyEnd();
             return loaded_root_bone;
         }
-        catch (const DataReadingException& ex) {
+        catch (const std::exception& ex) {
             throw DataReadingException("Invalid baked model mesh", fname, ex.what());
         }
     }();
@@ -234,7 +243,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
     return _hierarchyFiles.back();
 }
 
-static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_resolver, ptr<ModelBone> owner, string_view context) -> MeshData
+static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, HashResolver& hash_resolver, ptr<ModelBone> owner) -> MeshData
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -242,127 +251,54 @@ static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_res
         .Owner = owner,
     };
 
-    const uint32_t vertices_count = reader.Read<uint32_t>();
-    constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<vindex_t>::max()} + uint64_t {1};
+    mesh.Vertices.reserve(source.Vertices.size());
 
-    if (vertices_count > max_vertex_count) {
-        throw DataReadingException("Baked model mesh bone vertex count exceeds maximum addressable count", context, owner->Name, vertices_count, max_vertex_count);
+    for (const ModelMeshVertexData& source_vertex : source.Vertices) {
+        auto& vertex = mesh.Vertices.emplace_back();
+        vertex.Position = source_vertex.Position;
+        vertex.Normal = source_vertex.Normal;
+        std::ranges::copy(source_vertex.TexCoord, vertex.TexCoord);
+        std::ranges::copy(source_vertex.TexCoordBase, vertex.TexCoordBase);
+        vertex.Tangent = source_vertex.Tangent;
+        vertex.Bitangent = source_vertex.Bitangent;
+        std::ranges::copy(source_vertex.BlendWeights, vertex.BlendWeights);
+        std::ranges::copy(source_vertex.BlendIndices, vertex.BlendIndices);
+        vertex.Color = source_vertex.Color;
     }
 
-    VerifyModelBakedCountFitsData(reader, vertices_count, sizeof(Vertex3D), "mesh vertices", context);
-    mesh.Vertices.resize(vertices_count);
-    reader.ReadObjectArray(span {mesh.Vertices});
+    mesh.Indices = std::move(source.Indices);
+    mesh.DiffuseTexture = std::move(source.DiffuseTexture);
+    mesh.SkinBones.resize(source.SkinBoneNames.size());
+    mesh.SkinBoneNames.reserve(source.SkinBoneNames.size());
 
-    const uint32_t indices_count = reader.Read<uint32_t>();
-    VerifyModelBakedCountFitsData(reader, indices_count, sizeof(vindex_t), "mesh indices", context);
-    mesh.Indices.resize(indices_count);
-    reader.ReadObjectArray(span {mesh.Indices});
-
-    for (size_t index_pos = 0; index_pos < mesh.Indices.size(); index_pos++) {
-        if (numeric_cast<size_t>(mesh.Indices[index_pos]) >= mesh.Vertices.size()) {
-            throw DataReadingException("Baked model mesh bone has vertex index outside vertex count", context, owner->Name, mesh.Indices[index_pos], index_pos, mesh.Vertices.size());
-        }
+    for (const string& skin_bone_name : source.SkinBoneNames) {
+        mesh.SkinBoneNames.emplace_back(hash_resolver.ToHashedString(skin_bone_name));
     }
 
-    mesh.DiffuseTexture = reader.ReadString();
-
-    const uint32_t skin_bones_count = reader.Read<uint32_t>();
-
-    if (skin_bones_count > MODEL_MAX_BONES) {
-        throw DataReadingException("Baked model mesh bone skin bone count exceeds maximum", context, owner->Name, skin_bones_count, MODEL_MAX_BONES);
-    }
-
-    VerifyModelBakedCountFitsData(reader, skin_bones_count, BAKED_STRING_MIN_SIZE, "skin bone names", context);
-    mesh.SkinBones.resize(skin_bones_count);
-    mesh.SkinBoneNames.resize(skin_bones_count);
-
-    for (uint32_t i = 0; i < skin_bones_count; i++) {
-        const string tmp = reader.ReadString();
-        mesh.SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
-    }
-
-    const uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
-
-    if (skin_bone_offsets_count != skin_bones_count) {
-        throw DataReadingException("Baked model mesh bone skin bone offset count mismatch", context, owner->Name, skin_bone_offsets_count, skin_bones_count);
-    }
-
-    VerifyModelBakedCountFitsData(reader, skin_bone_offsets_count, sizeof(mat44), "skin bone offsets", context);
-    mesh.SkinBoneOffsets.resize(skin_bone_offsets_count);
-    reader.ReadObjectArray(span {mesh.SkinBoneOffsets});
-
-    for (size_t vertex_index = 0; vertex_index < mesh.Vertices.size(); vertex_index++) {
-        const Vertex3D& vertex = mesh.Vertices[vertex_index];
-        float32_t total_weight = 0.0f;
-
-        for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-            const float32_t weight = vertex.BlendWeights[influence];
-            const float32_t index = vertex.BlendIndices[influence];
-
-            if (!std::isfinite(weight)) {
-                throw DataReadingException("Baked model mesh bone has non-finite skin weight", context, owner->Name, vertex_index, influence);
-            }
-            if (weight < 0.0f || weight > 1.0f) {
-                throw DataReadingException("Baked model mesh bone has skin weight outside [0, 1]", context, owner->Name, weight, vertex_index, influence);
-            }
-            if (!std::isfinite(index)) {
-                throw DataReadingException("Baked model mesh bone has non-finite skin index", context, owner->Name, vertex_index, influence);
-            }
-            if (index != std::trunc(index)) {
-                throw DataReadingException("Baked model mesh bone has non-integral skin index", context, owner->Name, index, vertex_index, influence);
-            }
-            if (index < 0.0f || index >= numeric_cast<float32_t>(skin_bones_count)) {
-                throw DataReadingException("Baked model mesh bone has skin index outside valid range", context, owner->Name, index, skin_bones_count, vertex_index, influence);
-            }
-
-            total_weight += weight;
-        }
-
-        if (!std::isfinite(total_weight) || !is_float_equal(total_weight, 1.0f, MODEL_MESH_SKIN_WEIGHT_SUM_TOLERANCE)) {
-            throw DataReadingException("Baked model mesh bone has skin-weight sum that is not 1", context, owner->Name, total_weight, vertex_index);
-        }
-    }
-
+    mesh.SkinBoneOffsets = std::move(source.SkinBoneOffsets);
     return mesh;
 }
 
-static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver, string_view context, uint32_t depth, uint32_t& joint_count) -> unique_ptr<ModelBone>
+static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_resolver) -> unique_ptr<ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
-        throw DataReadingException("Baked model mesh hierarchy depth exceeds maximum joints", context, MODEL_MESH_MAX_HIERARCHY_DEPTH);
-    }
-    if (joint_count >= MODEL_ANIMATION_MAX_JOINTS) {
-        throw DataReadingException("Baked model mesh hierarchy exceeds maximum joints", context, MODEL_ANIMATION_MAX_JOINTS);
-    }
-
-    joint_count++;
     auto bone = SafeAlloc::MakeUnique<ModelBone>();
-
-    const string tmp = reader.ReadString();
-    const hstring source_name = hash_resolver.ToHashedString(tmp);
+    const hstring source_name = hash_resolver.ToHashedString(source.Name);
     bone->Name = source_name;
     bone->SourceName = source_name;
-
-    bone->RestLocalTransform = reader.Read<mat44>();
+    bone->RestLocalTransform = source.TransformationMatrix;
     bone->TransformationMatrix = bone->RestLocalTransform;
-    bone->GlobalTransformationMatrix = reader.Read<mat44>();
+    bone->GlobalTransformationMatrix = source.GlobalTransformationMatrix;
 
-    if (reader.Read<uint8_t>() != 0) {
-        bone->AttachedMesh.emplace(ReadModelBoneAttachedMesh(reader, hash_resolver, bone, context));
+    if (source.AttachedMesh) {
+        bone->AttachedMesh.emplace(ConvertModelMeshGeometry(std::move(*source.AttachedMesh), hash_resolver, bone));
     }
 
-    const uint32_t children_count = reader.Read<uint32_t>();
+    bone->Children.reserve(source.Children.size());
 
-    if (children_count > MODEL_ANIMATION_MAX_JOINTS) {
-        throw DataReadingException("Baked model mesh bone child count exceeds maximum", context, bone->Name, children_count, MODEL_ANIMATION_MAX_JOINTS);
-    }
-
-    VerifyModelBakedCountFitsData(reader, children_count, BAKED_MODEL_MESH_BONE_MIN_SIZE, "child bones", context);
-
-    for (uint32_t i = 0; i < children_count; i++) {
-        bone->Children.emplace_back(LoadModelBone(reader, hash_resolver, context, depth + 1, joint_count));
+    for (auto& child : source.Children) {
+        bone->Children.emplace_back(ConvertModelMeshBone(std::move(*child), hash_resolver));
     }
 
     bone->CombinedTransformationMatrix = mat44();
