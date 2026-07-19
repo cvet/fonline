@@ -731,6 +731,12 @@ namespace ScriptBuiltins
         target.set(replacement);
         if (target[0].Id != cr2.Id) return -16;
 
+        // The int index occupies a padded VM argument slot. The following handle must still be
+        // passed as the second dense native x86 argument to array<T>::insertAt.
+        target.insertAt(1, cr1);
+        if (target.length() != 2) return -17;
+        if (target[0].Id != cr2.Id || target[1].Id != cr1.Id) return -18;
+
         Game.DestroyCritter(cr1);
         Game.DestroyCritter(cr2);
         return 1;

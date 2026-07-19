@@ -25,6 +25,8 @@ Use this page when choosing validation for an engine change or when adding/remov
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
+`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. It rejects the reported `CreateFile2` import; embedding-project CI should run it after linking and before packaging.
+
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
 

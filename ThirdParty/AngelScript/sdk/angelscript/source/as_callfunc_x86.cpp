@@ -104,7 +104,17 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 	// ICC_THISCALL_OBJLAST if sysFunc->takesObjByVal (avoid copy code)
 	// Check if is THISCALL_OBJ* calling convention (in this case needs to add secondObject pointer into stack).
 	bool isThisCallMethod = callConv >= ICC_THISCALL_OBJLAST;
-	int paramSize = isThisCallMethod || sysFunc->takesObjByVal ? 0 : sysFunc->paramSize;
+	bool hasPaddedArgument = false;
+	for( asUINT n = 0; n < descr->parameterTypes.GetLength(); n++ )
+	{
+		if( descr->parameterTypes[n].GetArgSlotSizeOnStackDWords() > descr->parameterTypes[n].GetSizeOnStackDWords() )
+		{
+			hasPaddedArgument = true;
+			break;
+		}
+	}
+	bool rebuildParamBuffer = sysFunc->takesObjByVal || isThisCallMethod || hasPaddedArgument;
+	int paramSize = rebuildParamBuffer ? 0 : sysFunc->paramSize;
 
 	int dpos = 1;
 
@@ -117,7 +127,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		paramSize++;
 	}
 
-	if( sysFunc->takesObjByVal || isThisCallMethod )
+	if( rebuildParamBuffer )
 	{
 		int spos = 0;
 
@@ -154,11 +164,15 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			}
 			else
 			{
-				// Copy the value directly
-				paramBuffer[dpos++] = args[spos++];
-				if( descr->parameterTypes[n].GetSizeOnStackDWords() > 1 )
+				// (FOnline Patch) The VM keeps one-DWORD by-value arguments in even-sized slots on
+				// every platform, but the x86 native ABI packs them densely. Copy only the real
+				// argument data and skip the VM-only trailing slot padding before the native call.
+				const int valueSize = descr->parameterTypes[n].GetSizeOnStackDWords();
+				const int slotSize = descr->parameterTypes[n].GetArgSlotSizeOnStackDWords();
+				for( int dword = 0; dword < valueSize; dword++ )
 					paramBuffer[dpos++] = args[spos++];
-				paramSize += descr->parameterTypes[n].GetSizeOnStackDWords();
+				spos += slotSize - valueSize;
+				paramSize += valueSize;
 			}
 		}
 		// Keep a free location at the beginning
