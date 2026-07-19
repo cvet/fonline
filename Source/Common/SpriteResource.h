@@ -83,7 +83,7 @@ struct SpriteResourceImageData
     vector<ucolor> Pixels {};
 };
 
-[[nodiscard]] auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData;
-[[nodiscard]] auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData;
+auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData;
+auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData;
 
 FO_END_NAMESPACE

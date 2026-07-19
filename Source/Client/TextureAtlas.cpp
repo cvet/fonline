@@ -98,6 +98,7 @@ auto TextureAtlasLayout::Allocate(isize32 size) -> unique_del_nptr<Allocation>
     }
 
     const optional<Placement> placement = FindBestPlacement(size);
+
     if (!placement) {
         return {};
     }
@@ -170,11 +171,13 @@ auto TextureAtlasLayout::FindBestPlacement(isize32 size) const noexcept -> optio
         };
 
         const auto candidate_score = std::tie(candidate.Score.ShortSideFit, candidate.Score.LongSideFit, candidate.Score.AreaWaste, candidate.Score.Y, candidate.Score.X, candidate.Score.FreeWidth, candidate.Score.FreeHeight);
+
         if (!best_placement) {
             best_placement = candidate;
         }
         else {
             const auto best_score = std::tie(best_placement->Score.ShortSideFit, best_placement->Score.LongSideFit, best_placement->Score.AreaWaste, best_placement->Score.Y, best_placement->Score.X, best_placement->Score.FreeWidth, best_placement->Score.FreeHeight);
+
             if (candidate_score < best_score) {
                 best_placement = candidate;
             }
@@ -236,6 +239,7 @@ void TextureAtlasLayout::RebuildFreeRectangles()
     }
 
     std::sort(used_rectangles.begin(), used_rectangles.end());
+
     for (const irect32 used_rectangle : used_rectangles) {
         SplitFreeRectangles(rebuilt_free_rectangles, used_rectangle);
     }
@@ -296,6 +300,7 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
             }
 
             const bool duplicate_with_earlier = free_rectangles[i] == free_rectangles[j] && j < i;
+
             if (Contains(free_rectangles[j], free_rectangles[i]) && (free_rectangles[i] != free_rectangles[j] || duplicate_with_earlier)) {
                 contained = true;
                 break;
@@ -350,6 +355,7 @@ void TextureAtlasLayout::DrawAllocationOverlay(const Allocation& allocation, spa
 
         for (const ipos32 vertex : sprite_mesh->Vertices) {
             const ipos32 vertex_pos = sprite_origin + vertex;
+
             if (_size.is_valid_pos(vertex_pos)) {
                 pixels[numeric_cast<size_t>(vertex_pos.y) * _size.width + vertex_pos.x] = ATLAS_DUMP_VERTEX_COLOR;
             }
@@ -377,6 +383,7 @@ void TextureAtlasLayout::DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_si
         }
 
         const int32_t double_error = error * 2;
+
         if (double_error >= dy) {
             error += dy;
             from.x += sx;
@@ -486,17 +493,20 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
             }
 
             const optional<TextureAtlasLayout::FitScore> check_fit = check_atlas->GetLayout()->FindBestFitScore(size_with_padding);
+
             if (!check_fit) {
                 continue;
             }
 
             const auto check_score = std::tie(check_fit->ShortSideFit, check_fit->LongSideFit, check_fit->AreaWaste);
+
             if (!best_fit) {
                 atlas = check_atlas;
                 best_fit = check_fit;
             }
             else {
                 const auto best_score = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
+
                 if (check_score < best_score) {
                     atlas = check_atlas;
                     best_fit = check_fit;

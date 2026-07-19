@@ -229,6 +229,7 @@ void ModelSprite::SetupFrame(isize32 frame_size)
     if (_model->GetDrawSize() != frame_size) {
         _model->SetupFrame(frame_size);
     }
+
     _frameSize = frame_size;
     _boundedCropEstablished = false;
     _cropEnvelopeId.reset();
