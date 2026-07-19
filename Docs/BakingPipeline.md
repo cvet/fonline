@@ -40,6 +40,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tools/ModelMeshBaker.cpp`
 - `Source/Tools/ModelInfoBaker.h`
 - `Source/Tools/ModelInfoBaker.cpp`
+- `Source/Common/AnimInfo.h`
+- `Source/Common/AnimInfo.cpp`
 - `Source/Common/ModelBounds.cpp`
 - `Source/Common/ModelBounds.h`
 - `Source/Tools/ModelBoundsCalculator.h`
@@ -329,8 +331,27 @@ frame index, so the top lists remain deterministic under parallel baking.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
-`ModelInfoBaker` emits the regular baked model descriptions together with a
-common `ModelAnimInfo.foinfo` companion. Bounds schema version 2 adds three
+Shared animation metadata uses `AnimInfo` as the aggregate record. The generic
+record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
+and resolved per-frame bounds, plus a `ModelAnimInfo` payload in
+`FO_ENABLE_3D` builds for model and animation AABBs and typed animation
+durations. `ReadSpriteResource` fills the sprite payload from the baked sprite
+header and frame table. For metadata queries that must not load pixel payloads,
+`ImageBaker` also writes one compact version 1
+`SpriteInfo/<PackName>.foinfo` index per resource pack. The index is an
+aggregate output over every image source in that pack; normal scan baking
+merges changed entries with the existing complete index, while an explicit
+request for the index rebuilds every entry. Introducing or losing the index is
+a full-rebake condition rather than a reason to decode all sprite pixels at
+runtime. The common `ReadAnimInfo` path reads those 2D indexes in every
+build, reads `ModelAnimInfo.foinfo` when 3D is enabled, and merges both payloads
+by resource name in `EngineMetadata`. Baker-local statistics follow the same
+ownership names (`SpriteInfoBakingStats` and
+`ModelAnimInfoBakingStats`) instead of using the aggregate `AnimInfo` name.
+
+When `FO_ENABLE_3D` is active, `ModelInfoBaker` emits the regular baked model
+descriptions together with a model-specific `ModelAnimInfo.foinfo` companion. Bounds
+schema version 2 adds three
 required root-space contracts to every model section:
 
 - `ModelBoundsMin*` / `ModelBoundsMax*` store the aggregate of all emitted
@@ -346,16 +367,24 @@ required root-space contracts to every model section:
 The baker samples animation keys, their midpoints, and a uniform timeline to
 build deterministic envelopes independent of camera angle, projection factor,
 model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract; the client also
-loads the version and parallel arrays strictly. Enabled animation bounds size
+animation bounds are baking errors in the version 2 contract. In
+`FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
+once at startup and strictly
+validates its version, required bounds, and every parallel duration/bounds
+array before publishing the parsed model records. Duration and animation-bounds
+groups are optional and validated independently: durations use the alias-expanded
+animation key domain, while bounds use the raw animation key domain, so either
+group can legitimately appear without the other. A static section can carry
+neither group; a present companion with no model sections is malformed.
+Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
 layer/child-model envelopes extend both contracts, while exact weighted
 current-pose geometry selects the atlas crop and expands/rerenders the scratch
 frame when sampled bounds are insufficient.
 
-`Source/Common/ModelBounds.h/.cpp` owns the shared root-space AABB contract used
-by the baker and client: finite/ordered validation, non-point extent checks,
+`Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
+root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
 point and bounds accumulation, eight-corner transformed accumulation, and the
 common `max(0.01, maxAbs * 0.001)` guard. `ModelBoundsCalculator` is limited to
 reading baked model data and sampling geometry; it does not maintain a parallel
@@ -381,12 +410,17 @@ the same one-step `StateAnimEqual` / `ActionAnimEqual` resolution used by the
 client model runtime, including alias priority over an exact entry with the
 alias source key. Any pack can select `ModelInfo`; behavior never branches on
 `PackName`. Put that pack on every runtime side that needs model metadata.
-`EngineMetadata` registers the duration table alongside prototypes at startup,
-including model names in its hash storage; common scripts query it through
-`Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The method returns
-a `timespan`, or zero when the resource, model, or resolved tuple is absent. The
-config representation is an internal baker/runtime contract and should not be
-parsed by embedding-project scripts.
+In `FO_ENABLE_3D` builds, `EngineMetadata` registers the complete parsed
+model-animation records alongside prototypes at startup, including aggregate/view bounds, the alias-resolved
+duration table, the raw-animation bounds table, and model names in hash storage.
+The duration and bounds key sets intentionally remain separate because aliases
+can produce duration-only keys while raw `.fo3d` entries can be bounds-only.
+Client model code requests the parsed record instead of reopening the config;
+common scripts query its duration table through
+`Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The script method
+returns a `timespan`, or zero when the resource, model, or resolved tuple is
+absent. The config representation is an internal baker/runtime contract and
+should not be parsed by embedding-project code.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
 

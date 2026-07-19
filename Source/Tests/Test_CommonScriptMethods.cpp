@@ -1785,7 +1785,35 @@ namespace CommonMethods
         runtime_source->AddFile("CommonMethodsContainer.fopro-bin-server", container_blob);
         runtime_source->AddFile("CommonMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("CommonMethods.fos-bin-server", script_blob);
-        runtime_source->AddFile("ModelAnimInfo.foinfo", "[Critters/Test.fo3d]\nStateAnims = 1 1\nActionAnims = 3 5\nDurationsMs = 500 250\n");
+#if FO_ENABLE_3D
+        runtime_source->AddFile("ModelAnimInfo.foinfo", R"([Critters/Test.fo3d]
+BoundsVersion = 2
+ModelBoundsMinX = -2
+ModelBoundsMinY = -1
+ModelBoundsMinZ = 0
+ModelBoundsMaxX = 2
+ModelBoundsMaxY = 1
+ModelBoundsMaxZ = 4
+ViewBoundsMinX = -1
+ViewBoundsMinY = -0.5
+ViewBoundsMinZ = 0
+ViewBoundsMaxX = 1
+ViewBoundsMaxY = 0.5
+ViewBoundsMaxZ = 3
+StateAnims = 1 1
+ActionAnims = 3 5
+DurationsMs = 500 250
+BoundsStateAnims = 1
+BoundsActionAnims = 7
+BoundsMinX = -1.5
+BoundsMinY = -0.75
+BoundsMinZ = 0.25
+BoundsMaxX = 1.5
+BoundsMaxY = 0.75
+BoundsMaxZ = 3.5
+
+)");
+#endif
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -1917,6 +1945,8 @@ TEST_CASE("GeometryDirectionAngles")
     }
 }
 
+#if FO_ENABLE_3D
+
 TEST_CASE("ModelAnimationInfoLookup")
 {
     MAKE_CM_SERVER();
@@ -1924,6 +1954,8 @@ TEST_CASE("ModelAnimationInfoLookup")
     CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));
     RUN_CM_FUNC("TestGetModelAnimDuration");
 }
+
+#endif
 
 // ========== Proto Getter Tests ==========
 

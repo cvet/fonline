@@ -311,10 +311,10 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
     CommitFrameCrop(PrepareFrameCrop(frame_size, bounds));
 }
 
-ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver) :
+ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
-    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), effect_mngr, &spr_mngr->GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
+    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
         [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); })}
 {
     FO_STACK_TRACE_ENTRY();

@@ -827,7 +827,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
     }
 
-    SECTION("Returns cleanly for empty ModelAnimInfo input and skipped output")
+    SECTION("Returns cleanly for empty model animation info input and skipped output")
     {
         TestRig empty_rig;
         AddModelInfoMetadata(empty_rig);

@@ -607,12 +607,13 @@ Bakers = {}
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
     REQUIRE(fs_exists(output_path));
+    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
 
     const nlohmann::json report = ReadBakerSetupReport(output_dir);
     CHECK(report.at("schemaVersion") == 1);
     CHECK(report.at("status") == "success");
     CHECK(report.at("totals").at("inputFiles") == 1);
-    CHECK(report.at("totals").at("filesChanged") == 1);
+    CHECK(report.at("totals").at("filesChanged") == 2);
 
     const nlohmann::json& image = FindBakerSetupReportEntry(report.at("bakers"), ImageBaker::NAME);
     REQUIRE(image.at("details").contains("spriteMesh"));

@@ -43,6 +43,8 @@ Read this page together with:
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ModelSpriteLayout.h`
 - `Source/Client/ModelSpriteLayout.cpp`
+- `Source/Common/AnimInfo.h`
+- `Source/Common/AnimInfo.cpp`
 - `Source/Common/ModelBounds.h`
 - `Source/Common/ModelBounds.cpp`
 - `Source/Client/ParticleSprites.h`
@@ -161,12 +163,20 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh
-  produced by `ImageBaker`. A source-backed sprite uses that mesh for ordinary
+  produced by `ImageBaker`. The resource decoder also fills the `Sprite`
+  payload of the common `AnimInfo` record with frame count, duration,
+  directions, and resolved per-frame bounds; this payload remains available in
+  builds without 3D support. `EngineMetadata` reads the matching compact
+  version 1 `SpriteInfo/<PackName>.foinfo` indexes at startup, so common sprite metadata
+  queries do not decode pixel payloads. A source-backed sprite uses its mesh for ordinary
   full-image draws; an explicit empty mesh skips the draw, while a missing/quad
   mesh keeps the four-vertex path used by runtime-generated atlas sprites.
-- `ModelSpriteFactory` turns model resources into atlas-backed sprites. It reads
-  the version 2 aggregate, idle-priority view, and per-animation bounds from
-  `ModelAnimInfo.foinfo`; no authored `.fo3d` `DrawSize` or `ViewSize` remains.
+- With `FO_ENABLE_3D`, `ModelSpriteFactory` turns model resources into
+  atlas-backed sprites. It asks
+  `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
+  view, and per-animation bounds from `ModelAnimInfo.foinfo`; the client model
+  layer never reopens or reparses that companion, and no authored `.fo3d`
+  `DrawSize` or `ViewSize` remains.
   Enabled body/movement animation envelopes are projected through the active
   model transform across every facing direction to derive a power-of-two
   logical scratch frame large enough for the body and projected shadow. The

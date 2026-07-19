@@ -36,7 +36,6 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
-#include "ConfigFile.h"
 #include "EngineBase.h"
 #include "ModelSpriteLayout.h"
 #include "Settings.h"
@@ -52,9 +51,10 @@ static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
     _resources {resources},
+    _engineMetadata {engine_metadata},
     _effectMngr {effect_mngr},
     _render {render},
     _gameTime {game_time},
@@ -78,168 +78,6 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     for (const auto& bone_name : settings->LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }
-
-    LoadBakedModelBounds();
-}
-
-void ModelManager::LoadBakedModelBounds()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    constexpr string_view bounds_file_name = "ModelAnimInfo.foinfo";
-
-    if (!_resources->IsFileExists(bounds_file_name)) {
-        return;
-    }
-
-    const File bounds_file = _resources->ReadFile(bounds_file_name);
-    FO_VERIFY_AND_THROW(bounds_file, "Model animation bounds resource is not readable", bounds_file_name);
-
-    auto bounds_config = ConfigFile(bounds_file_name, bounds_file.GetStr());
-    decltype(_bakedModelBounds) baked_model_bounds;
-    constexpr array<string_view, 12> model_bounds_keys {
-        "ModelBoundsMinX",
-        "ModelBoundsMinY",
-        "ModelBoundsMinZ",
-        "ModelBoundsMaxX",
-        "ModelBoundsMaxY",
-        "ModelBoundsMaxZ",
-        "ViewBoundsMinX",
-        "ViewBoundsMinY",
-        "ViewBoundsMinZ",
-        "ViewBoundsMaxX",
-        "ViewBoundsMaxY",
-        "ViewBoundsMaxZ",
-    };
-    constexpr array<string_view, 8> animation_bounds_keys {
-        "BoundsStateAnims",
-        "BoundsActionAnims",
-        "BoundsMinX",
-        "BoundsMinY",
-        "BoundsMinZ",
-        "BoundsMaxX",
-        "BoundsMaxY",
-        "BoundsMaxZ",
-    };
-
-    for (const auto& [section_name, key_values] : *bounds_config.GetSections()) {
-        if (section_name.empty()) {
-            FO_VERIFY_AND_THROW(key_values.empty(), "Model bounds resource has entries outside a section", bounds_file_name);
-            continue;
-        }
-
-        FO_VERIFY_AND_THROW(key_values.count("BoundsVersion") != 0, "Model bounds section is missing its version", bounds_file_name, section_name);
-
-        for (const string_view key : model_bounds_keys) {
-            FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model bounds section is missing a required key", bounds_file_name, section_name, key);
-        }
-
-        const auto get_value = [&key_values, bounds_file_name, section_name](string_view key) -> string_view {
-            const auto it = key_values.find(key);
-            FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation bounds key lookup failed", bounds_file_name, section_name, key);
-            return it->second;
-        };
-        const auto parse_int_values = [&get_value, bounds_file_name, section_name](string_view key) -> vector<int32_t> {
-            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
-            vector<int32_t> values;
-            values.reserve(tokens.size());
-
-            for (const string_view token : tokens) {
-                int32_t value {};
-                auto token_begin = make_nptr(token.data());
-                ptr<const char> token_end = token_begin.offset(token.size());
-                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
-                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Model animation bounds integer contains invalid text", bounds_file_name, section_name, key, token);
-                values.emplace_back(value);
-            }
-
-            return values;
-        };
-        const auto parse_float_values = [&get_value, bounds_file_name, section_name](string_view key) -> vector<float32_t> {
-            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
-            vector<float32_t> values;
-            values.reserve(tokens.size());
-
-            for (const string_view token : tokens) {
-                float32_t value {};
-                auto token_begin = make_nptr(token.data());
-                ptr<const char> token_end = token_begin.offset(token.size());
-                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
-                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get() && std::isfinite(value), "Model animation bounds scalar contains invalid text", bounds_file_name, section_name, key, token);
-                values.emplace_back(value);
-            }
-
-            return values;
-        };
-
-        const vector<int32_t> versions = parse_int_values("BoundsVersion");
-        FO_VERIFY_AND_THROW(versions.size() == 1 && versions.front() == numeric_cast<int32_t>(MODEL_BOUNDS_VERSION), "Model bounds version is unsupported", bounds_file_name, section_name, versions.size(), versions.empty() ? 0 : versions.front());
-
-        const auto parse_scalar = [&parse_float_values, bounds_file_name, section_name](string_view key) -> float32_t {
-            const vector<float32_t> values = parse_float_values(key);
-            FO_VERIFY_AND_THROW(values.size() == 1, "Model bounds scalar must contain exactly one value", bounds_file_name, section_name, key, values.size());
-            return values.front();
-        };
-        BakedModelBoundsInfo section_info {
-            .ModelBounds =
-                {
-                    .Min = {parse_scalar("ModelBoundsMinX"), parse_scalar("ModelBoundsMinY"), parse_scalar("ModelBoundsMinZ")},
-                    .Max = {parse_scalar("ModelBoundsMaxX"), parse_scalar("ModelBoundsMaxY"), parse_scalar("ModelBoundsMaxZ")},
-                },
-            .ViewBounds =
-                {
-                    .Min = {parse_scalar("ViewBoundsMinX"), parse_scalar("ViewBoundsMinY"), parse_scalar("ViewBoundsMinZ")},
-                    .Max = {parse_scalar("ViewBoundsMaxX"), parse_scalar("ViewBoundsMaxY"), parse_scalar("ViewBoundsMaxZ")},
-                },
-        };
-        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ModelBounds), "Model bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, section_info.ModelBounds.Min.x, section_info.ModelBounds.Min.y, section_info.ModelBounds.Min.z, section_info.ModelBounds.Max.x, section_info.ModelBounds.Max.y, section_info.ModelBounds.Max.z);
-        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ModelBounds), "Model bounds record is degenerate", bounds_file_name, section_name);
-        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ViewBounds), "Model view bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, section_info.ViewBounds.Min.x, section_info.ViewBounds.Min.y, section_info.ViewBounds.Min.z, section_info.ViewBounds.Max.x, section_info.ViewBounds.Max.y, section_info.ViewBounds.Max.z);
-        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ViewBounds), "Model view bounds record is degenerate", bounds_file_name, section_name);
-
-        bool has_animation_bounds = false;
-
-        for (const string_view key : animation_bounds_keys) {
-            has_animation_bounds = has_animation_bounds || key_values.count(key) != 0;
-        }
-
-        if (has_animation_bounds) {
-            for (const string_view key : animation_bounds_keys) {
-                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation bounds section is missing a required key", bounds_file_name, section_name, key);
-            }
-
-            const vector<int32_t> state_anims = parse_int_values("BoundsStateAnims");
-            const vector<int32_t> action_anims = parse_int_values("BoundsActionAnims");
-            const vector<float32_t> min_x = parse_float_values("BoundsMinX");
-            const vector<float32_t> min_y = parse_float_values("BoundsMinY");
-            const vector<float32_t> min_z = parse_float_values("BoundsMinZ");
-            const vector<float32_t> max_x = parse_float_values("BoundsMaxX");
-            const vector<float32_t> max_y = parse_float_values("BoundsMaxY");
-            const vector<float32_t> max_z = parse_float_values("BoundsMaxZ");
-            const size_t bounds_count = state_anims.size();
-
-            FO_VERIFY_AND_THROW(bounds_count != 0, "Model animation bounds section contains no records", bounds_file_name, section_name);
-            FO_VERIFY_AND_THROW(action_anims.size() == bounds_count && min_x.size() == bounds_count && min_y.size() == bounds_count && min_z.size() == bounds_count && max_x.size() == bounds_count && max_y.size() == bounds_count && max_z.size() == bounds_count, "Model animation bounds arrays have different sizes", bounds_file_name, section_name, bounds_count, action_anims.size(), min_x.size(), min_y.size(), min_z.size(), max_x.size(), max_y.size(), max_z.size());
-            section_info.AnimationBounds.reserve(bounds_count);
-
-            for (size_t i = 0; i < bounds_count; i++) {
-                const ModelBounds3D bounds {
-                    .Min = {min_x[i], min_y[i], min_z[i]},
-                    .Max = {max_x[i], max_y[i], max_z[i]},
-                };
-                FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model animation bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, state_anims[i], action_anims[i], bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
-                FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model animation bounds record is degenerate", bounds_file_name, section_name, state_anims[i], action_anims[i]);
-
-                const bool inserted = section_info.AnimationBounds.emplace(std::make_pair(state_anims[i], action_anims[i]), bounds).second;
-                FO_VERIFY_AND_THROW(inserted, "Model animation bounds section contains a duplicate animation pair", bounds_file_name, section_name, state_anims[i], action_anims[i]);
-            }
-        }
-
-        const bool inserted = baked_model_bounds.emplace(string(section_name), std::move(section_info)).second;
-        FO_VERIFY_AND_THROW(inserted, "Model bounds resource contains a duplicate section", bounds_file_name, section_name);
-    }
-
-    _bakedModelBounds = std::move(baked_model_bounds);
 }
 
 auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
@@ -3131,10 +2969,12 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     _fileName = name;
     _hierarchy = hierarchy;
-    const auto baked_model_bounds_it = _modelMngr->_bakedModelBounds.find(string(name));
-    FO_VERIFY_AND_THROW(baked_model_bounds_it != _modelMngr->_bakedModelBounds.end(), "Model description has no baked bounds", name);
-    _modelBounds = baked_model_bounds_it->second.ModelBounds;
-    _viewBounds = baked_model_bounds_it->second.ViewBounds;
+    const auto anim_info = _modelMngr->_engineMetadata->GetAnimInfo(_modelMngr->_hashResolver->ToHashedString(name));
+    FO_VERIFY_AND_THROW(anim_info, "Model description has no baked animation info", name);
+    FO_VERIFY_AND_THROW(anim_info->Model.has_value(), "Animation info has no model data", name);
+    const ModelAnimInfo& model_anim_info = *anim_info->Model;
+    _modelBounds = model_anim_info.ModelBounds;
+    _viewBounds = model_anim_info.ViewBounds;
     FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
@@ -3243,8 +3083,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                 _animationBounds.resize(bounds_index + 1);
             }
 
-            const auto bounds_it = baked_model_bounds_it->second.AnimationBounds.find(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim));
-            FO_VERIFY_AND_THROW(bounds_it != baked_model_bounds_it->second.AnimationBounds.end(), "Model animation has no baked bounds", name, anim_entry.StateAnim, anim_entry.ActionAnim);
+            const auto bounds_it = model_anim_info.AnimationBounds.find(anim_pair);
+            FO_VERIFY_AND_THROW(bounds_it != model_anim_info.AnimationBounds.end(), "Model animation has no baked bounds", name, anim_entry.StateAnim, anim_entry.ActionAnim);
 
             if (!_animationBounds[bounds_index]) {
                 _animationBounds[bounds_index] = bounds_it->second;

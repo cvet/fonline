@@ -51,6 +51,15 @@ static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const B
 static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot);
 static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>;
 
+struct SpriteInfoBakingStats
+{
+    uint64_t Collections {};
+    uint64_t Directions {};
+    uint64_t FrameSlots {};
+    uint64_t UniqueFrames {};
+    uint64_t SharedFrameReferences {};
+};
+
 // clang-format off
 alignas(ucolor) static uint8_t FoPalette[] = {
     // Transparent color
@@ -154,8 +163,26 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     vector<pair<File, LoadFunc>> files_to_bake;
     files_to_bake.reserve(files.GetFilesCount());
+    const string sprite_info_path = strex("{}/{}.foinfo", SPRITE_INFO_DIRECTORY, _context->PackName);
+    const bool scan_mode = target_path.empty();
+    const bool sprite_info_target = target_path == sprite_info_path;
+    const bool bake_sprite_info = scan_mode || sprite_info_target;
+    bool sprite_info_needs_write = !_context->BakeChecker;
+    map<string, SpriteInfoFileEntry> sprite_info_entries;
+    set<string> current_sprite_sources;
+    uint64_t maximum_source_write_time = 0;
 
-    if (target_path.empty()) {
+    if (scan_mode && _context->BakedFiles->IsFileExists(sprite_info_path)) {
+        const File sprite_info_file = _context->BakedFiles->ReadFile(sprite_info_path);
+        FO_VERIFY_AND_THROW(sprite_info_file, "Baked sprite info resource is not readable", sprite_info_path);
+
+        for (SpriteInfoFileEntry& entry : ReadSpriteInfoFile(sprite_info_path, sprite_info_file.GetStr())) {
+            const bool inserted = sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second;
+            FO_VERIFY_AND_THROW(inserted, "Baked sprite info resource contains a duplicate source path", sprite_info_path);
+        }
+    }
+
+    if (bake_sprite_info) {
         for (auto&& [ext, loader] : _fileLoaders) {
             for (const auto& file_header : files) {
                 const string file_ext = strex(file_header.GetPath()).get_file_extension();
@@ -163,7 +190,9 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 if (file_ext != ext) {
                     continue;
                 }
-                if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+                current_sprite_sources.emplace(file_header.GetPath());
+                maximum_source_write_time = std::max(maximum_source_write_time, file_header.GetWriteTime());
+                if (scan_mode && _context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                     continue;
                 }
 
@@ -190,14 +219,19 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         files_to_bake.emplace_back(std::move(file), _fileLoaders.at(ext));
     }
 
-    vector<std::future<void>> file_bakings;
+    if (bake_sprite_info && !current_sprite_sources.empty() && _context->BakeChecker) {
+        sprite_info_needs_write = _context->BakeChecker(sprite_info_path, maximum_source_write_time);
+    }
 
-    for (auto& file_to_bake : files_to_bake) {
-        const auto task_name = strex("BakeImage-{}", file_to_bake.first.GetPath()).str();
-        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [&]() FO_DEFERRED {
+    vector<std::future<SpriteInfoFileEntry>> file_bakings;
+
+    for (size_t file_index = 0; file_index < files_to_bake.size(); file_index++) {
+        const auto task_name = strex("BakeImage-{}", files_to_bake[file_index].first.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &files_to_bake, file_index]() FO_DEFERRED -> SpriteInfoFileEntry {
+            auto& file_to_bake = files_to_bake[file_index];
             const string_view path = file_to_bake.first.GetPath();
             const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
-            BakeCollection(path, collection);
+            return BakeCollection(path, collection);
         }));
     }
 
@@ -205,7 +239,8 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (auto& file_baking : file_bakings) {
         try {
-            file_baking.get();
+            SpriteInfoFileEntry entry = file_baking.get();
+            sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
             WriteLog("Image baking error: {}", ex.what());
@@ -216,9 +251,36 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (errors != 0) {
         throw ImageBakerException("Errors during images baking", errors);
     }
+
+    if (!bake_sprite_info || _context->OutputDiscovery) {
+        return;
+    }
+
+    const size_t sprite_info_entry_count = sprite_info_entries.size();
+    std::erase_if(sprite_info_entries, [&current_sprite_sources](const auto& entry) { return !current_sprite_sources.contains(entry.first); });
+    const bool removed_sprite_info_entries = sprite_info_entries.size() != sprite_info_entry_count;
+    FO_VERIFY_AND_THROW(sprite_info_entries.size() == current_sprite_sources.size(), "Sprite info index is incomplete; perform a full resource rebake", _context->PackName, sprite_info_entries.size(), current_sprite_sources.size());
+
+    if (!sprite_info_needs_write && files_to_bake.empty() && !removed_sprite_info_entries) {
+        return;
+    }
+
+    if (!sprite_info_entries.empty()) {
+        vector<SpriteInfoFileEntry> entries;
+        entries.reserve(sprite_info_entries.size());
+
+        for (auto& [source_path, entry] : sprite_info_entries) {
+            ignore_unused(source_path);
+            entries.emplace_back(std::move(entry));
+        }
+
+        const string sprite_info = WriteSpriteInfoFile(entries);
+        const vector<uint8_t> sprite_info_data(sprite_info.begin(), sprite_info.end());
+        _context->WriteData(sprite_info_path, sprite_info_data);
+    }
 }
 
-void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const
+auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const -> SpriteInfoFileEntry
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -228,9 +290,22 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     const auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
     const SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
     const string output_path = collection.NewName.empty() ? string(fname) : collection.NewName;
+    SpriteInfoFileEntry sprite_info_entry {
+        .SourcePath = string(fname),
+        .ResourcePath = output_path,
+        .Info =
+            {
+                .FrameCount = collection.SequenceSize,
+                .Duration = std::chrono::milliseconds {collection.AnimTicks},
+                .Directions = vector<SpriteDirInfo>(dirs),
+            },
+    };
     const bool report_enabled = IsBakingReportEnabled();
     vector<SpriteMeshBakingFrameReport> frame_reports;
-    uint64_t shared_frame_references = 0;
+    SpriteInfoBakingStats stats {
+        .Collections = 1,
+        .Directions = dirs,
+    };
     writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.Write<uint16_t>(collection.SequenceSize);
@@ -239,6 +314,8 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
     for (const auto dir : iterate_range(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[dir];
+        direction_info.Frames.resize(collection.SequenceSize);
         vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
         vector<int32_t> mesh_build_paddings(sequence.Frames.size());
         vector<int32_t> frame_paddings(sequence.Frames.size());
@@ -267,9 +344,12 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
         for (int32_t i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
+            SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(i)];
+            stats.FrameSlots++;
             writer.Write<bool>(shot.Shared);
 
             if (!shot.Shared) {
+                stats.UniqueFrames++;
                 const int32_t frame_padding = frame_paddings[numeric_cast<size_t>(i)];
                 optional<FrameShot> padded_shot;
                 ptr<const FrameShot> bake_shot = &shot;
@@ -361,6 +441,9 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 writer.Write<uint16_t>(bake_shot->Height);
                 writer.Write<int16_t>(bake_shot->NextX);
                 writer.Write<int16_t>(bake_shot->NextY);
+                frame_info.Offset = frame_offset;
+                frame_info.Size = cropped_size;
+                frame_info.NextOffset = {bake_shot->NextX, bake_shot->NextY};
 
                 if (!bake_shot->Data.empty()) {
                     writer.WriteBytes({bake_shot->Data.data(), bake_shot->Data.size()});
@@ -386,8 +469,11 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 }
             }
             else {
-                shared_frame_references += report_enabled ? 1 : 0;
+                stats.SharedFrameReferences++;
                 writer.Write<uint16_t>(shot.SharedIndex);
+                FO_VERIFY_AND_THROW(shot.SharedIndex < i, "Shared sprite frame points outside previously baked frames", fname, dir, i, shot.SharedIndex);
+                frame_info = direction_info.Frames[shot.SharedIndex];
+                frame_info.SharedFrameIndex = shot.SharedIndex;
             }
         }
     }
@@ -397,22 +483,24 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     _context->WriteData(output_path, data);
 
     if (!report_enabled) {
-        return;
+        return sprite_info_entry;
     }
 
-    AddBakingReportCounter("collections");
-    AddBakingReportCounter("directions", dirs);
-    AddBakingReportCounter("frameSlots", numeric_cast<uint64_t>(frame_reports.size()) + shared_frame_references);
-    AddBakingReportCounter("uniqueFrames", numeric_cast<uint64_t>(frame_reports.size()));
-    AddBakingReportCounter("sharedFrameReferences", shared_frame_references);
+    AddBakingReportCounter("collections", stats.Collections);
+    AddBakingReportCounter("directions", stats.Directions);
+    AddBakingReportCounter("frameSlots", stats.FrameSlots);
+    AddBakingReportCounter("uniqueFrames", stats.UniqueFrames);
+    AddBakingReportCounter("sharedFrameReferences", stats.SharedFrameReferences);
     AddBakingReportHistogramValue("sourceFormats", strex(fname).get_file_extension());
 
     for (const SpriteMeshBakingFrameReport& frame_report : frame_reports) {
         RecordSpriteMeshBakingFrame(frame_report);
     }
-    if (shared_frame_references != 0) {
-        RecordSharedSpriteMeshBakingFrames(shared_frame_references);
+    if (stats.SharedFrameReferences != 0) {
+        RecordSharedSpriteMeshBakingFrames(stats.SharedFrameReferences);
     }
+
+    return sprite_info_entry;
 }
 
 static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot

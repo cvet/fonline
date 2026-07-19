@@ -49,6 +49,7 @@
 FO_BEGIN_NAMESPACE
 
 class IAppRender;
+class EngineMetadata;
 
 enum class ModelAnimFlags : uint8_t
 {
@@ -76,13 +77,6 @@ struct ModelSpriteBounds
     irect32 Rect {};
     isize32 RequiredFrameSize {};
     ModelSpriteBoundsEnvelopeId EnvelopeId {};
-};
-
-struct BakedModelBoundsInfo
-{
-    ModelBounds3D ModelBounds {};
-    ModelBounds3D ViewBounds {};
-    unordered_map<pair<int32_t, int32_t>, ModelBounds3D> AnimationBounds {};
 };
 
 struct ModelBone;
@@ -205,7 +199,7 @@ public:
     using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -219,13 +213,13 @@ public:
     void PreloadModel(string_view name);
 
 private:
-    void LoadBakedModelBounds();
     auto LoadModel(string_view fname) -> nptr<ModelBone>;
     auto GetInformation(string_view name) -> nptr<ModelInformation>;
     auto GetHierarchy(string_view name) -> nptr<ModelHierarchy>;
 
     ptr<RenderSettings> _settings;
     ptr<FileSystem> _resources;
+    ptr<const EngineMetadata> _engineMetadata;
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
     ptr<GameTimer> _gameTime;
@@ -239,7 +233,6 @@ private:
     vector<unique_ptr<ModelAnimation>> _loadedAnims {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
-    unordered_map<string, BakedModelBoundsInfo> _bakedModelBounds {};
     float32_t _moveTransitionTime {0.25f};
     float32_t _globalSpeedAdjust {1.0f};
     int32_t _animUpdateThreshold {};

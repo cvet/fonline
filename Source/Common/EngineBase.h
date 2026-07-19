@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AnimInfo.h"
 #include "EntityProperties.h"
 #include "Geometry.h"
 #include "Properties.h"
@@ -98,7 +99,7 @@ public:
     [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> nptr<const ProtoLocation>;
     [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> override;
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
-    [[nodiscard]] auto GetModelAnimDuration(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) const -> timespan;
+    [[nodiscard]] auto GetAnimInfo(hstring resource_name) const noexcept -> nptr<const AnimInfo>;
 
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrator>;
@@ -122,7 +123,7 @@ public:
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterProtos(const FileSystem& resources);
-    void RegisterModelAnimInfo(const FileSystem& resources);
+    void RegisterAnimInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
@@ -139,7 +140,7 @@ private:
     unordered_map<string_view, ptr<EntityTypeDesc>> _entityTypesByStr {};
     unordered_map<string_view, ptr<EntityTypeDesc>> _fixedTypesByStr {};
     ProtoManager _protoMngr;
-    unordered_map<hstring, unordered_map<pair<CritterStateAnim, CritterActionAnim>, timespan>> _modelAnimDurations {};
+    unordered_map<hstring, AnimInfo> _animInfos {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, unordered_map<string, int32_t>> _enums {};
     unordered_map<string, unordered_map<int32_t, string>> _enumsRev {};

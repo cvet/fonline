@@ -111,13 +111,13 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
     }
 }
 
-auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report, bool output_discovery) -> vector<unique_ptr<BaseBaker>>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .Report = std::move(report)});
+    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
@@ -769,7 +769,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_pack = res_packs[res_packs.size() - 1 - i];
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources);
+        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources, nullptr, true);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
             bakers[j]->BakeFiles(res_entry.InputFiles);

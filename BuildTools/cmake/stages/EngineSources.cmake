@@ -72,6 +72,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/ModelBounds.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ModelBounds.h"
+    "${FO_ENGINE_ROOT}/Source/Common/AnimInfo.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/AnimInfo.h"
     "${FO_ENGINE_ROOT}/Source/Common/SpriteResource.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/SpriteResource.h"
     "${FO_ENGINE_ROOT}/Source/Common/WebRelated.cpp"

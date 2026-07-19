@@ -201,8 +201,20 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     const const_span<uint8_t> resource_data = const_span<uint8_t> {containing_data}.subspan(3, data.size());
     const SpriteResourceData resource = ReadSpriteResource(resource_data);
 
-    CHECK(resource.FrameCount == 2);
-    CHECK(resource.AnimTicks == 75);
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    CHECK(sprite_info.FrameCount == 2);
+    CHECK(sprite_info.Duration == std::chrono::milliseconds {75});
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
+    CHECK(sprite_info.Directions.front().Frames[0].Offset == ipos32 {-3, 4});
+    CHECK(sprite_info.Directions.front().Frames[0].Size == isize32 {2, 1});
+    CHECK(sprite_info.Directions.front().Frames[0].NextOffset == ipos32 {5, -6});
+    REQUIRE(sprite_info.Directions.front().Frames[1].SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames[1].SharedFrameIndex == 0);
+    CHECK(sprite_info.Directions.front().Frames[1].Offset == ipos32 {-3, 4});
+    CHECK(sprite_info.Directions.front().Frames[1].Size == isize32 {2, 1});
+    CHECK(sprite_info.Directions.front().Frames[1].NextOffset == ipos32 {5, -6});
     REQUIRE(resource.Directions.size() == 1);
 
     const SpriteResourceDirectionData& direction = resource.Directions.front();

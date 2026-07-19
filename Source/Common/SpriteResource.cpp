@@ -50,13 +50,16 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
     FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite resource version is unsupported", version, SPRITE_RESOURCE_VERSION);
 
     SpriteResourceData resource;
-    resource.FrameCount = reader.GetLEUInt16();
-    FO_VERIFY_AND_THROW(resource.FrameCount != 0, "Sprite resource contains no frames");
-    resource.AnimTicks = reader.GetLEUInt16();
+    resource.Animation.Sprite.emplace();
+    SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    sprite_info.FrameCount = reader.GetLEUInt16();
+    FO_VERIFY_AND_THROW(sprite_info.FrameCount != 0, "Sprite resource contains no frames");
+    sprite_info.Duration = std::chrono::milliseconds {reader.GetLEUInt16()};
 
     const uint8_t direction_count = reader.GetUInt8();
     FO_VERIFY_AND_THROW(direction_count != 0, "Sprite resource contains no directions");
     resource.Directions.resize(direction_count);
+    sprite_info.Directions.resize(direction_count);
 
     const auto read_sprite_pixels = [&reader](isize32 size) -> vector<ucolor> {
         FO_VERIFY_AND_THROW(size.width > 0, "Sprite frame width must be positive", size.width);
@@ -74,10 +77,13 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 
     for (uint8_t direction_index = 0; direction_index < direction_count; direction_index++) {
         SpriteResourceDirectionData& direction = resource.Directions[direction_index];
-        direction.Frames.resize(resource.FrameCount);
+        SpriteDirInfo& direction_info = sprite_info.Directions[direction_index];
+        direction.Frames.resize(sprite_info.FrameCount);
+        direction_info.Frames.resize(sprite_info.FrameCount);
 
-        for (uint16_t frame_index = 0; frame_index < resource.FrameCount; frame_index++) {
+        for (uint16_t frame_index = 0; frame_index < sprite_info.FrameCount; frame_index++) {
             SpriteResourceFrameData& frame = direction.Frames[frame_index];
+            SpriteFrameInfo& frame_info = direction_info.Frames[frame_index];
             const uint8_t is_shared = reader.GetUInt8();
             FO_VERIFY_AND_THROW(is_shared <= 1, "Sprite frame reference flag is invalid", is_shared, direction_index, frame_index);
 
@@ -85,6 +91,8 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
                 const uint16_t shared_frame_index = reader.GetLEUInt16();
                 FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite frame reference points outside previously decoded frames", shared_frame_index, direction_index, frame_index);
                 frame.SharedFrameIndex = shared_frame_index;
+                frame_info = direction_info.Frames[shared_frame_index];
+                frame_info.SharedFrameIndex = shared_frame_index;
                 continue;
             }
 
@@ -94,6 +102,9 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
             frame.Size.height = reader.GetLEUInt16();
             frame.NextOffset.x = reader.GetLEInt16();
             frame.NextOffset.y = reader.GetLEInt16();
+            frame_info.Offset = frame.Offset;
+            frame_info.Size = frame.Size;
+            frame_info.NextOffset = frame.NextOffset;
             frame.Pixels = read_sprite_pixels(frame.Size);
             frame.Mesh = ReadSpriteFrameMesh(reader, frame.Size);
         }

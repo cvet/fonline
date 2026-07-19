@@ -61,6 +61,7 @@ struct BakingContext
     optional<bool> ForceSyncMode {};
     shared_ptr<BakingReport> Report {};
     string BakerName {};
+    bool OutputDiscovery {};
 };
 
 class BaseBaker
@@ -78,7 +79,7 @@ public:
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
 
-    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr) -> vector<unique_ptr<BaseBaker>>;
+    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }

@@ -34,6 +34,8 @@
 
 #include "Common.h"
 
+#include "AnimInfo.h"
+
 FO_BEGIN_NAMESPACE
 
 constexpr uint8_t SPRITE_RESOURCE_MAGIC = 43;
@@ -71,8 +73,7 @@ struct SpriteResourceDirectionData
 
 struct SpriteResourceData
 {
-    uint16_t FrameCount {};
-    uint16_t AnimTicks {};
+    AnimInfo Animation {};
     vector<SpriteResourceDirectionData> Directions {};
 };
 

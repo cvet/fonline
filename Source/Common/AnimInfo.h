@@ -33,26 +33,66 @@
 #pragma once
 
 #include "Common.h"
-
-#if FO_ENABLE_3D
+#include "ModelBounds.h"
 
 FO_BEGIN_NAMESPACE
 
-constexpr uint32_t MODEL_BOUNDS_VERSION = 2;
+class FileSystem;
 
-struct ModelBounds3D
+constexpr string_view SPRITE_INFO_DIRECTORY = "SpriteInfo";
+constexpr int32_t SPRITE_INFO_VERSION = 1;
+
+struct SpriteFrameInfo
 {
-    vec3 Min {};
-    vec3 Max {};
+    optional<uint16_t> SharedFrameIndex {};
+    ipos32 Offset {};
+    isize32 Size {};
+    ipos32 NextOffset {};
 };
 
-auto IsValidModelBounds(const ModelBounds3D& bounds) -> bool;
-auto HasModelBoundsExtent(const ModelBounds3D& bounds) -> bool;
-auto IncludeModelBoundsPoint(optional<ModelBounds3D>& target, const vec3& point) -> bool;
-auto IncludeModelBounds(optional<ModelBounds3D>& target, const ModelBounds3D& bounds) -> bool;
-auto IncludeTransformedModelBounds(optional<ModelBounds3D>& target, const ModelBounds3D& bounds, const mat44& transform) -> bool;
-auto CalculateGuardedModelBounds(const ModelBounds3D& bounds) -> optional<ModelBounds3D>;
+struct SpriteDirInfo
+{
+    vector<SpriteFrameInfo> Frames {};
+};
 
-FO_END_NAMESPACE
+struct SpriteInfo
+{
+    uint16_t FrameCount {};
+    timespan Duration {};
+    vector<SpriteDirInfo> Directions {};
+};
+
+struct SpriteInfoFileEntry
+{
+    string SourcePath {};
+    string ResourcePath {};
+    SpriteInfo Info {};
+};
+
+#if FO_ENABLE_3D
+
+struct ModelAnimInfo
+{
+    ModelBounds3D ModelBounds {};
+    ModelBounds3D ViewBounds {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, timespan> AnimationDurations {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, ModelBounds3D> AnimationBounds {};
+};
+
+auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimInfo>;
 
 #endif
+
+struct AnimInfo
+{
+    optional<SpriteInfo> Sprite {};
+#if FO_ENABLE_3D
+    optional<ModelAnimInfo> Model {};
+#endif
+};
+
+auto ReadAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimInfo>;
+auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>;
+auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string;
+
+FO_END_NAMESPACE

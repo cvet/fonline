@@ -52,7 +52,8 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
         const auto file = editor->BakedResources.ReadFile(path);
         FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
         SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
-        FO_VERIFY_AND_THROW(resource.FrameCount == 1, "Particle editor texture must contain exactly one sprite frame", resource.FrameCount);
+        FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Particle editor texture has no sprite animation info", path);
+        FO_VERIFY_AND_THROW(resource.Animation.Sprite->FrameCount == 1, "Particle editor texture must contain exactly one sprite frame", resource.Animation.Sprite->FrameCount);
         FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Particle editor texture must contain exactly one direction", resource.Directions.size());
 
         SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();

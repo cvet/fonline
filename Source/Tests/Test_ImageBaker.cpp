@@ -1710,6 +1710,16 @@ TEST_CASE("ImageBaker")
         CHECK(raw_packet_frame.Width == 2);
         CHECK(raw_packet_frame.Height == 1);
         CHECK(raw_packet_frame.Data == vector<uint8_t> {0x10, 0x20, 0x30, 0xFF, 0x40, 0x50, 0x60, 0xFF});
+
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
+        const vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
+        REQUIRE(sprite_info_entries.size() == 2);
+        CHECK(sprite_info_entries[0].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
+        CHECK(sprite_info_entries[1].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[1].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
     }
 
     SECTION("BakesFrmWithCritterNewNameAndCustomPalette")
@@ -2481,7 +2491,7 @@ Frm=one.toy
         CHECK(rig.Outputs.empty());
     }
 
-    SECTION("BakeCheckerSkipsScanModeFiles")
+    SECTION("ScanModeRejectsIncompleteSpriteInfoIndex")
     {
         TestRig rig;
         AddSourceBinaryFile(rig, "gfx/skipped-scan.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
@@ -2492,10 +2502,59 @@ Frm=one.toy
             checked.emplace_back(string {path}, write_time);
             return false;
         })};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), VerificationException);
 
         CHECK(rig.Outputs.empty());
-        CHECK(checked == vector<pair<string, uint64_t>> {{"gfx/skipped-scan.tga", 31}});
+        CHECK(checked ==
+            vector<pair<string, uint64_t>> {
+                {"gfx/skipped-scan.tga", 31},
+                {"SpriteInfo/TestPack.foinfo", 31},
+            });
+    }
+
+    SECTION("BakesSpriteInfoIndexAsRuntimeTarget")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/runtime-info.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 32);
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "SpriteInfo/TestPack.foinfo");
+
+        REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        REQUIRE(entries.size() == 1);
+        CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
+        CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
+        CHECK(entries.front().Info.FrameCount == 1);
+        CHECK(entries.front().Info.Directions.front().Frames.front().Size == isize32 {1, 1});
+    }
+
+    SECTION("ScanModeRemovesStaleSpriteInfoEntries")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
+
+        const SpriteInfo info {
+            .FrameCount = 1,
+            .Duration = std::chrono::milliseconds {100},
+            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
+        };
+        rig.AddBakedFile("SpriteInfo/TestPack.foinfo",
+            WriteSpriteInfoFile({
+                SpriteInfoFileEntry {.SourcePath = "gfx/current.tga", .ResourcePath = "gfx/current.tga", .Info = info},
+                SpriteInfoFileEntry {.SourcePath = "gfx/removed.tga", .ResourcePath = "gfx/removed.tga", .Info = info},
+            }));
+
+        ImageBaker baker {rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; })};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        REQUIRE(entries.size() == 1);
+        CHECK(entries.front().SourcePath == "gfx/current.tga");
     }
 
     SECTION("InvalidTgaInputsAreReported")
