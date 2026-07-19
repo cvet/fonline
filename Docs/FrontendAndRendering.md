@@ -37,8 +37,8 @@ Read this page together with:
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ModelSpriteLayout.h`
 - `Source/Client/ModelSpriteLayout.cpp`
-- `Source/Common/AnimInfo.h`
-- `Source/Common/AnimInfo.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
 - `Source/Common/ModelBounds.h`
 - `Source/Common/ModelBounds.cpp`
 - `Source/Common/Geometry.h`
@@ -197,7 +197,7 @@ padded/quad path rather than an ordinary full-sprite draw.
 Runtime model sprites may still use a cropped quad, but their logical layout is
 automatic. `.fo3d` no longer accepts `DrawSize` or `ViewSize`, and the
 corresponding default render settings no longer provide fallback dimensions.
-`ModelAnimInfo.foinfo` bounds schema version 2 supplies an aggregate root-space
+`ModelAnimationInfo.foinfo` bounds schema version 2 supplies an aggregate root-space
 model AABB, a dedicated idle-priority view AABB, and individual animation AABBs.
 In `FO_ENABLE_3D` builds, the common `EngineMetadata` loader parses and validates
 the complete companion once; rendering requests immutable model records from that registry rather than

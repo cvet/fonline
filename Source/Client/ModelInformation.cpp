@@ -155,11 +155,11 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     const uint32_t anim_entries_count = reader.Read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, anim_entries_count, BAKED_MODEL_DESCRIPTION_ANIM_ENTRY_MIN_SIZE, "animation entries", name);
-    vector<BakedModelDescriptionAnimEntry> anim_entries;
+    vector<BakedModelDescriptionAnimationEntry> anim_entries;
     anim_entries.reserve(anim_entries_count);
 
     for (uint32_t i = 0; i < anim_entries_count; i++) {
-        anim_entries.emplace_back(ReadBakedModelDescriptionAnimEntry(reader));
+        anim_entries.emplace_back(ReadBakedModelDescriptionAnimationEntry(reader));
     }
 
     const uint32_t anim_speed_count = reader.Read<uint32_t>();
@@ -231,7 +231,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _hierarchy = hierarchy;
     IndexAnimationPoseJoints(*animation_runtime_rig);
 
-    const auto anim_info = _modelMngr->_engineMetadata->GetAnimInfo(_modelMngr->_hashResolver->ToHashedString(name));
+    const auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_hashResolver->ToHashedString(name));
     FO_VERIFY_AND_THROW(anim_info && anim_info->Model, "Baked model animation information was not found", name);
     _modelBounds = anim_info->Model->ModelBounds;
     _viewBounds = anim_info->Model->ViewBounds;
@@ -317,7 +317,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     set<pair<int32_t, int32_t>> expected_runtime_bindings;
 
-    for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
+    for (const BakedModelDescriptionAnimationEntry& anim_entry : anim_entries) {
         const pair<int32_t, int32_t> anim_pair {anim_entry.StateAnim, anim_entry.ActionAnim};
 
         if (!expected_runtime_bindings.emplace(anim_pair).second) {
@@ -336,7 +336,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     FO_VERIFY_AND_THROW(expected_runtime_bindings.size() == animation_runtime_rig->GetBindings().size(), "Animation runtime rig binding count does not match the baked model description", name, expected_runtime_bindings.size(), animation_runtime_rig->GetBindings().size());
     if (_animController) {
-        for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
+        for (const BakedModelDescriptionAnimationEntry& anim_entry : anim_entries) {
             const auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
 
             if (_animIndexes.count(anim_pair) != 0) {
@@ -584,11 +584,11 @@ auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) cons
     return cut;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimEntry
+auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimationEntry
 {
     FO_STACK_TRACE_ENTRY();
 
-    BakedModelDescriptionAnimEntry anim_entry;
+    BakedModelDescriptionAnimationEntry anim_entry;
     anim_entry.StateAnim = reader.Read<int32_t>();
     anim_entry.ActionAnim = reader.Read<int32_t>();
     anim_entry.FileName = reader.ReadString();

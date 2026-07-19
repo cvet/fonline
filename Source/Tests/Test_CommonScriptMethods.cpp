@@ -1792,7 +1792,7 @@ namespace CommonMethods
         runtime_source->AddFile("CommonMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("CommonMethods.fos-bin-server", script_blob);
 #if FO_ENABLE_3D
-        runtime_source->AddFile("ModelAnimInfo.foinfo", R"([Critters/Test.fo3d]
+        runtime_source->AddFile("ModelAnimationInfo.foinfo", R"([Critters/Test.fo3d]
 BoundsVersion = 2
 ModelBoundsMinX = -2
 ModelBoundsMinY = -1
@@ -1806,11 +1806,11 @@ ViewBoundsMinZ = 0
 ViewBoundsMaxX = 1
 ViewBoundsMaxY = 0.5
 ViewBoundsMaxZ = 3
-StateAnims = 1 1
-ActionAnims = 3 5
+StateAnimations = 1 1
+ActionAnimations = 3 5
 DurationsMs = 500 250
-BoundsStateAnims = 1
-BoundsActionAnims = 7
+BoundsStateAnimations = 1
+BoundsActionAnimations = 7
 BoundsMinX = -1.5
 BoundsMinY = -0.75
 BoundsMinZ = 0.25

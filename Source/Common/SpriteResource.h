@@ -34,7 +34,7 @@
 
 #include "Common.h"
 
-#include "AnimInfo.h"
+#include "AnimationInfo.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -73,7 +73,7 @@ struct SpriteResourceDirectionData
 
 struct SpriteResourceData
 {
-    AnimInfo Animation {};
+    AnimationInfo Animation {};
     vector<SpriteResourceDirectionData> Directions {};
 };
 

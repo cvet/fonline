@@ -125,7 +125,7 @@ private:
         vector<BakedModelDescriptionCutInfo> CutInfo {};
     };
 
-    struct BakedModelDescriptionAnimEntry
+    struct BakedModelDescriptionAnimationEntry
     {
         int32_t StateAnim {};
         int32_t ActionAnim {};
@@ -145,7 +145,7 @@ private:
     [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
     [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> BakedModelDescriptionLink;
     [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> BakedModelDescriptionAnimationEntry;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();

@@ -30,7 +30,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "AnimInfo.h"
+#include "AnimationInfo.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
 
@@ -223,22 +223,22 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
 
 #if FO_ENABLE_3D
 
-constexpr string_view MODEL_ANIM_INFO_FILE_NAME = "ModelAnimInfo.foinfo";
+constexpr string_view MODEL_ANIMATION_INFO_FILE_NAME = "ModelAnimationInfo.foinfo";
 
-auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimInfo>
+auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimationInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!resources.IsFileExists(MODEL_ANIM_INFO_FILE_NAME)) {
-        WriteLog(LogType::Info, "Model animation info document '{}' is not present", MODEL_ANIM_INFO_FILE_NAME);
+    if (!resources.IsFileExists(MODEL_ANIMATION_INFO_FILE_NAME)) {
+        WriteLog(LogType::Info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
         return {};
     }
 
-    const File info_file = resources.ReadFile(MODEL_ANIM_INFO_FILE_NAME);
-    FO_VERIFY_AND_THROW(info_file, "Model animation info resource is not readable", MODEL_ANIM_INFO_FILE_NAME);
+    const File info_file = resources.ReadFile(MODEL_ANIMATION_INFO_FILE_NAME);
+    FO_VERIFY_AND_THROW(info_file, "Model animation info resource is not readable", MODEL_ANIMATION_INFO_FILE_NAME);
 
-    auto config = ConfigFile(MODEL_ANIM_INFO_FILE_NAME, info_file.GetStr());
-    unordered_map<hstring, ModelAnimInfo> model_anim_infos;
+    auto config = ConfigFile(MODEL_ANIMATION_INFO_FILE_NAME, info_file.GetStr());
+    unordered_map<hstring, ModelAnimationInfo> model_anim_infos;
     constexpr array<string_view, 12> model_bounds_keys {
         "ModelBoundsMinX",
         "ModelBoundsMinY",
@@ -254,13 +254,13 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
         "ViewBoundsMaxZ",
     };
     constexpr array<string_view, 3> animation_duration_keys {
-        "StateAnims",
-        "ActionAnims",
+        "StateAnimations",
+        "ActionAnimations",
         "DurationsMs",
     };
     constexpr array<string_view, 8> animation_bounds_keys {
-        "BoundsStateAnims",
-        "BoundsActionAnims",
+        "BoundsStateAnimations",
+        "BoundsActionAnimations",
         "BoundsMinX",
         "BoundsMinY",
         "BoundsMinZ",
@@ -271,19 +271,19 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
 
     for (const auto& [section_name, key_values] : *config.GetSections()) {
         if (section_name.empty()) {
-            FO_VERIFY_AND_THROW(key_values.empty(), "Model animation info resource has entries outside a section", MODEL_ANIM_INFO_FILE_NAME);
+            FO_VERIFY_AND_THROW(key_values.empty(), "Model animation info resource has entries outside a section", MODEL_ANIMATION_INFO_FILE_NAME);
             continue;
         }
 
-        FO_VERIFY_AND_THROW(key_values.count("BoundsVersion") != 0, "Model animation info section is missing its version", MODEL_ANIM_INFO_FILE_NAME, section_name);
+        FO_VERIFY_AND_THROW(key_values.count("BoundsVersion") != 0, "Model animation info section is missing its version", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
 
         for (const string_view key : model_bounds_keys) {
-            FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation info section is missing a required bounds key", MODEL_ANIM_INFO_FILE_NAME, section_name, key);
+            FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation info section is missing a required bounds key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
         }
 
         const auto get_value = [&key_values, section_name](string_view key) -> string_view {
             const auto it = key_values.find(key);
-            FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIM_INFO_FILE_NAME, section_name, key);
+            FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             return it->second;
         };
         const auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
@@ -296,7 +296,7 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
                 auto token_begin = make_nptr(token.data());
                 ptr<const char> token_end = token_begin.offset(token.size());
                 const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
-                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Model animation info integer contains invalid text", MODEL_ANIM_INFO_FILE_NAME, section_name, key, token);
+                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Model animation info integer contains invalid text", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, token);
                 values.emplace_back(value);
             }
 
@@ -312,7 +312,7 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
                 auto token_begin = make_nptr(token.data());
                 ptr<const char> token_end = token_begin.offset(token.size());
                 const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
-                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get() && std::isfinite(value), "Model animation info scalar contains invalid text", MODEL_ANIM_INFO_FILE_NAME, section_name, key, token);
+                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get() && std::isfinite(value), "Model animation info scalar contains invalid text", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, token);
                 values.emplace_back(value);
             }
 
@@ -323,15 +323,15 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
         const bool has_animation_bounds = has_any_key(animation_bounds_keys);
 
         const vector<int32_t> versions = parse_int_values("BoundsVersion");
-        FO_VERIFY_AND_THROW(versions.size() == 1 && versions.front() == numeric_cast<int32_t>(MODEL_BOUNDS_VERSION), "Model animation info version is unsupported", MODEL_ANIM_INFO_FILE_NAME, section_name, versions.size(), versions.empty() ? 0 : versions.front());
+        FO_VERIFY_AND_THROW(versions.size() == 1 && versions.front() == numeric_cast<int32_t>(MODEL_BOUNDS_VERSION), "Model animation info version is unsupported", MODEL_ANIMATION_INFO_FILE_NAME, section_name, versions.size(), versions.empty() ? 0 : versions.front());
 
         const auto parse_scalar = [&parse_float_values, section_name](string_view key) -> float32_t {
             const vector<float32_t> values = parse_float_values(key);
-            FO_VERIFY_AND_THROW(values.size() == 1, "Model animation info bounds scalar must contain exactly one value", MODEL_ANIM_INFO_FILE_NAME, section_name, key, values.size());
+            FO_VERIFY_AND_THROW(values.size() == 1, "Model animation info bounds scalar must contain exactly one value", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, values.size());
             return values.front();
         };
 
-        ModelAnimInfo section_info {
+        ModelAnimationInfo section_info {
             .ModelBounds =
                 {
                     .Min = {parse_scalar("ModelBoundsMinX"), parse_scalar("ModelBoundsMinY"), parse_scalar("ModelBoundsMinZ")},
@@ -343,41 +343,41 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
                     .Max = {parse_scalar("ViewBoundsMaxX"), parse_scalar("ViewBoundsMaxY"), parse_scalar("ViewBoundsMaxZ")},
                 },
         };
-        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ModelBounds), "Model bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIM_INFO_FILE_NAME, section_name, section_info.ModelBounds.Min.x, section_info.ModelBounds.Min.y, section_info.ModelBounds.Min.z, section_info.ModelBounds.Max.x, section_info.ModelBounds.Max.y, section_info.ModelBounds.Max.z);
-        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ModelBounds), "Model bounds record is degenerate", MODEL_ANIM_INFO_FILE_NAME, section_name);
-        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ViewBounds), "Model view bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIM_INFO_FILE_NAME, section_name, section_info.ViewBounds.Min.x, section_info.ViewBounds.Min.y, section_info.ViewBounds.Min.z, section_info.ViewBounds.Max.x, section_info.ViewBounds.Max.y, section_info.ViewBounds.Max.z);
-        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ViewBounds), "Model view bounds record is degenerate", MODEL_ANIM_INFO_FILE_NAME, section_name);
+        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ModelBounds), "Model bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, section_info.ModelBounds.Min.x, section_info.ModelBounds.Min.y, section_info.ModelBounds.Min.z, section_info.ModelBounds.Max.x, section_info.ModelBounds.Max.y, section_info.ModelBounds.Max.z);
+        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ModelBounds), "Model bounds record is degenerate", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
+        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ViewBounds), "Model view bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, section_info.ViewBounds.Min.x, section_info.ViewBounds.Min.y, section_info.ViewBounds.Min.z, section_info.ViewBounds.Max.x, section_info.ViewBounds.Max.y, section_info.ViewBounds.Max.z);
+        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ViewBounds), "Model view bounds record is degenerate", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
 
         if (has_animation_durations) {
             for (const string_view key : animation_duration_keys) {
-                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation duration section is missing a required key", MODEL_ANIM_INFO_FILE_NAME, section_name, key);
+                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation duration section is missing a required key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             }
 
-            const vector<int32_t> state_anims = parse_int_values("StateAnims");
-            const vector<int32_t> action_anims = parse_int_values("ActionAnims");
+            const vector<int32_t> state_anims = parse_int_values("StateAnimations");
+            const vector<int32_t> action_anims = parse_int_values("ActionAnimations");
             const vector<int32_t> durations_ms = parse_int_values("DurationsMs");
             const size_t duration_count = state_anims.size();
-            FO_VERIFY_AND_THROW(duration_count != 0, "Model animation duration section contains no records", MODEL_ANIM_INFO_FILE_NAME, section_name);
-            FO_VERIFY_AND_THROW(action_anims.size() == duration_count && durations_ms.size() == duration_count, "Model animation duration arrays have different sizes", MODEL_ANIM_INFO_FILE_NAME, section_name, duration_count, action_anims.size(), durations_ms.size());
+            FO_VERIFY_AND_THROW(duration_count != 0, "Model animation duration section contains no records", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
+            FO_VERIFY_AND_THROW(action_anims.size() == duration_count && durations_ms.size() == duration_count, "Model animation duration arrays have different sizes", MODEL_ANIMATION_INFO_FILE_NAME, section_name, duration_count, action_anims.size(), durations_ms.size());
             section_info.AnimationDurations.reserve(duration_count);
 
             for (size_t i = 0; i < duration_count; i++) {
                 const CritterStateAnim state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
                 const CritterActionAnim action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
-                FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", MODEL_ANIM_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], durations_ms[i]);
+                FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], durations_ms[i]);
 
                 const bool inserted = section_info.AnimationDurations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]}).second;
-                FO_VERIFY_AND_THROW(inserted, "Model animation duration section contains a duplicate animation pair", MODEL_ANIM_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
+                FO_VERIFY_AND_THROW(inserted, "Model animation duration section contains a duplicate animation pair", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
             }
         }
 
         if (has_animation_bounds) {
             for (const string_view key : animation_bounds_keys) {
-                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation bounds section is missing a required key", MODEL_ANIM_INFO_FILE_NAME, section_name, key);
+                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation bounds section is missing a required key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             }
 
-            const vector<int32_t> state_anims = parse_int_values("BoundsStateAnims");
-            const vector<int32_t> action_anims = parse_int_values("BoundsActionAnims");
+            const vector<int32_t> state_anims = parse_int_values("BoundsStateAnimations");
+            const vector<int32_t> action_anims = parse_int_values("BoundsActionAnimations");
             const vector<float32_t> min_x = parse_float_values("BoundsMinX");
             const vector<float32_t> min_y = parse_float_values("BoundsMinY");
             const vector<float32_t> min_z = parse_float_values("BoundsMinZ");
@@ -385,8 +385,8 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
             const vector<float32_t> max_y = parse_float_values("BoundsMaxY");
             const vector<float32_t> max_z = parse_float_values("BoundsMaxZ");
             const size_t bounds_count = state_anims.size();
-            FO_VERIFY_AND_THROW(bounds_count != 0, "Model animation bounds section contains no records", MODEL_ANIM_INFO_FILE_NAME, section_name);
-            FO_VERIFY_AND_THROW(action_anims.size() == bounds_count && min_x.size() == bounds_count && min_y.size() == bounds_count && min_z.size() == bounds_count && max_x.size() == bounds_count && max_y.size() == bounds_count && max_z.size() == bounds_count, "Model animation bounds arrays have different sizes", MODEL_ANIM_INFO_FILE_NAME, section_name, bounds_count, action_anims.size(), min_x.size(), min_y.size(), min_z.size(), max_x.size(), max_y.size(), max_z.size());
+            FO_VERIFY_AND_THROW(bounds_count != 0, "Model animation bounds section contains no records", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
+            FO_VERIFY_AND_THROW(action_anims.size() == bounds_count && min_x.size() == bounds_count && min_y.size() == bounds_count && min_z.size() == bounds_count && max_x.size() == bounds_count && max_y.size() == bounds_count && max_z.size() == bounds_count, "Model animation bounds arrays have different sizes", MODEL_ANIMATION_INFO_FILE_NAME, section_name, bounds_count, action_anims.size(), min_x.size(), min_y.size(), min_z.size(), max_x.size(), max_y.size(), max_z.size());
             section_info.AnimationBounds.reserve(bounds_count);
 
             for (size_t i = 0; i < bounds_count; i++) {
@@ -396,31 +396,31 @@ auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver)
                     .Min = {min_x[i], min_y[i], min_z[i]},
                     .Max = {max_x[i], max_y[i], max_z[i]},
                 };
-                FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model animation bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIM_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
-                FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model animation bounds record is degenerate", MODEL_ANIM_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
+                FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model animation bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
+                FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model animation bounds record is degenerate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
 
                 const bool inserted = section_info.AnimationBounds.emplace(pair {state_anim, action_anim}, bounds).second;
-                FO_VERIFY_AND_THROW(inserted, "Model animation bounds section contains a duplicate animation pair", MODEL_ANIM_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
+                FO_VERIFY_AND_THROW(inserted, "Model animation bounds section contains a duplicate animation pair", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
             }
         }
 
         const hstring resource_name = hash_resolver.ToHashedString(section_name);
         const bool inserted = model_anim_infos.emplace(resource_name, std::move(section_info)).second;
-        FO_VERIFY_AND_THROW(inserted, "Model animation info resource contains a duplicate section", MODEL_ANIM_INFO_FILE_NAME, section_name);
+        FO_VERIFY_AND_THROW(inserted, "Model animation info resource contains a duplicate section", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
     }
 
-    FO_VERIFY_AND_THROW(!model_anim_infos.empty(), "Model animation info resource contains no model sections", MODEL_ANIM_INFO_FILE_NAME);
+    FO_VERIFY_AND_THROW(!model_anim_infos.empty(), "Model animation info resource contains no model sections", MODEL_ANIMATION_INFO_FILE_NAME);
 
     return model_anim_infos;
 }
 
 #endif
 
-auto ReadAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimInfo>
+auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimationInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
-    unordered_map<hstring, AnimInfo> anim_infos;
+    unordered_map<hstring, AnimationInfo> anim_infos;
 
     for (const FileHeader& file_header : resources.FilterFiles("foinfo", SPRITE_INFO_DIRECTORY)) {
         const File info_file = File::Load(file_header);
@@ -430,7 +430,7 @@ auto ReadAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> u
 
         for (SpriteInfoFileEntry& sprite_entry : sprite_entries) {
             const hstring resource_name = hash_resolver.ToHashedString(sprite_entry.ResourcePath);
-            AnimInfo& anim_info = anim_infos[resource_name];
+            AnimationInfo& anim_info = anim_infos[resource_name];
 
             if (!anim_info.Sprite.has_value()) {
                 anim_info.Sprite = std::move(sprite_entry.Info);
@@ -439,11 +439,11 @@ auto ReadAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> u
     }
 
 #if FO_ENABLE_3D
-    auto model_anim_infos = ReadModelAnimInfo(resources, hash_resolver);
+    auto model_anim_infos = ReadModelAnimationInfo(resources, hash_resolver);
     anim_infos.reserve(anim_infos.size() + model_anim_infos.size());
 
     for (auto& [resource_name, model_info] : model_anim_infos) {
-        AnimInfo& anim_info = anim_infos[resource_name];
+        AnimationInfo& anim_info = anim_infos[resource_name];
         FO_VERIFY_AND_THROW(!anim_info.Model.has_value(), "Animation info already contains model data", resource_name);
         anim_info.Model = std::move(model_info);
     }

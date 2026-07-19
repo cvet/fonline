@@ -1133,13 +1133,13 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
     return _protoMngr.GetProtoEntities(type_name);
 }
 
-auto EngineMetadata::GetAnimInfo(hstring resource_name) const noexcept -> nptr<const AnimInfo>
+auto EngineMetadata::GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto anim_it = _animInfos.find(resource_name);
+    const auto anim_it = _animationInfos.find(resource_name);
 
-    if (anim_it == _animInfos.end()) {
+    if (anim_it == _animationInfos.end()) {
         return nullptr;
     }
 
@@ -1164,13 +1164,13 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
     _protoMngr.LoadFromResources(resources);
 }
 
-void EngineMetadata::RegisterAnimInfo(const FileSystem& resources)
+void EngineMetadata::RegisterAnimationInfo(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    _animInfos = ReadAnimInfo(resources, Hashes);
+    _animationInfos = ReadAnimationInfo(resources, Hashes);
 }
 
 BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
@@ -1187,7 +1187,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FO_STACK_TRACE_ENTRY();
 
     RegisterProtos(Resources);
-    RegisterAnimInfo(Resources);
+    RegisterAnimationInfo(Resources);
     FinalizeRegistration();
 }
 

@@ -33,7 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "AnimInfo.h"
+#include "AnimationInfo.h"
 #include "EngineBase.h"
 #include "Test_BakerHelpers.h"
 #include "TextPack.h"
@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 
 using MigrationRulesMap = unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>;
 
-static auto MakeSpriteAnimInfoResources() -> FileSystem
+static auto MakeSpriteAnimationInfoResources() -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -76,13 +76,13 @@ static auto MakeSpriteAnimInfoResources() -> FileSystem
 
 #if FO_ENABLE_3D
 
-static constexpr string_view VALID_ANIMATION_DURATIONS = R"(StateAnims = 1
-ActionAnims = 3
+static constexpr string_view VALID_ANIMATION_DURATIONS = R"(StateAnimations = 1
+ActionAnimations = 3
 DurationsMs = 500
 )";
 
-static constexpr string_view VALID_ANIMATION_BOUNDS = R"(BoundsStateAnims = 1
-BoundsActionAnims = 1
+static constexpr string_view VALID_ANIMATION_BOUNDS = R"(BoundsStateAnimations = 1
+BoundsActionAnimations = 1
 BoundsMinX = -1
 BoundsMinY = -1
 BoundsMinZ = 0
@@ -91,7 +91,7 @@ BoundsMaxY = 1
 BoundsMaxZ = 2
 )";
 
-static constexpr string_view VALID_MODEL_ANIM_INFO = R"([Critters/Test.fo3d]
+static constexpr string_view VALID_MODEL_ANIMATION_INFO = R"([Critters/Test.fo3d]
 BoundsVersion = 2
 ModelBoundsMinX = -2
 ModelBoundsMinY = -1
@@ -105,11 +105,11 @@ ViewBoundsMinZ = 0
 ViewBoundsMaxX = 1
 ViewBoundsMaxY = 0.5
 ViewBoundsMaxZ = 3
-StateAnims = 1 1
-ActionAnims = 3 5
+StateAnimations = 1 1
+ActionAnimations = 3 5
 DurationsMs = 500 250
-BoundsStateAnims = 1
-BoundsActionAnims = 1
+BoundsStateAnimations = 1
+BoundsActionAnimations = 1
 BoundsMinX = -1.5
 BoundsMinY = -0.75
 BoundsMinZ = 0.25
@@ -134,19 +134,19 @@ ViewBoundsMaxZ = 1.5
 
 )";
 
-static auto MakeModelAnimInfoResources(string_view content) -> FileSystem
+static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AnimInfoTestPack");
-    source->AddFile("ModelAnimInfo.foinfo", content);
+    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
+    source->AddFile("ModelAnimationInfo.foinfo", content);
 
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
     return resources;
 }
 
-static auto MakeModelAnimInfoDocument(string_view animation_fields, string_view bounds_version = "2", string_view model_bounds_max_x = "2") -> string
+static auto MakeModelAnimationInfoDocument(string_view animation_fields, string_view bounds_version = "2", string_view model_bounds_max_x = "2") -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -169,13 +169,13 @@ ViewBoundsMaxZ = 3
         bounds_version, model_bounds_max_x, animation_fields);
 }
 
-static void CheckModelAnimInfoRejected(string_view content)
+static void CheckModelAnimationInfoRejected(string_view content)
 {
     FO_STACK_TRACE_ENTRY();
 
     EngineMetadata meta {[] { }};
-    FileSystem resources = MakeModelAnimInfoResources(content);
-    CHECK_THROWS_AS(meta.RegisterAnimInfo(resources), VerificationException);
+    FileSystem resources = MakeModelAnimationInfoResources(content);
+    CHECK_THROWS_AS(meta.RegisterAnimationInfo(resources), VerificationException);
 }
 
 #endif
@@ -299,15 +299,15 @@ TEST_CASE("EngineMetadata")
     }
 }
 
-TEST_CASE("EngineMetadataSpriteAnimInfo")
+TEST_CASE("EngineMetadataSpriteAnimationInfo")
 {
     SECTION("ParsesSpritePayloadWithout3DDependency")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeSpriteAnimInfoResources();
-        meta.RegisterAnimInfo(resources);
+        FileSystem resources = MakeSpriteAnimationInfoResources();
+        meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimInfo(meta.Hashes.ToHashedString("Art/Test.png"));
+        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Test.png"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
@@ -318,12 +318,12 @@ TEST_CASE("EngineMetadataSpriteAnimInfo")
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
         REQUIRE(sprite_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
         CHECK(*sprite_info.Directions.front().Frames.back().SharedFrameIndex == 0);
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimInfo(meta.Hashes.ToHashedString("Art/Missing.png"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Missing.png"))));
     }
 
     SECTION("RejectsUnsupportedSpriteInfoVersion")
     {
-        FileSystem resources = MakeSpriteAnimInfoResources();
+        FileSystem resources = MakeSpriteAnimationInfoResources();
         const File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
         string invalid_info = info_file.GetStr();
         invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
@@ -334,25 +334,25 @@ TEST_CASE("EngineMetadataSpriteAnimInfo")
         invalid_resources.AddCustomSource(std::move(source));
 
         EngineMetadata meta {[] { }};
-        CHECK_THROWS_AS(meta.RegisterAnimInfo(invalid_resources), VerificationException);
+        CHECK_THROWS_AS(meta.RegisterAnimationInfo(invalid_resources), VerificationException);
     }
 }
 
 #if FO_ENABLE_3D
 
-TEST_CASE("EngineMetadataModelAnimInfo")
+TEST_CASE("EngineMetadataModelAnimationInfo")
 {
     SECTION("ParsesCompleteModelAndKeepsDurationAndBoundsDomainsIndependent")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimInfoResources(VALID_MODEL_ANIM_INFO);
-        meta.RegisterAnimInfo(resources);
+        FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
+        meta.RegisterAnimationInfo(resources);
 
         const hstring model_name = meta.Hashes.ToHashedString("Critters/Test.fo3d");
-        const auto info = meta.GetAnimInfo(model_name);
+        const auto info = meta.GetAnimationInfo(model_name);
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info = *info->Model;
 
         CHECK(model_info.ModelBounds.Min.x == -2.0f);
         CHECK(model_info.ModelBounds.Min.y == -1.0f);
@@ -394,48 +394,48 @@ TEST_CASE("EngineMetadataModelAnimInfo")
     SECTION("AcceptsStaticModelAndReturnsNullForMissingModel")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimInfoResources(VALID_MODEL_ANIM_INFO);
-        meta.RegisterAnimInfo(resources);
+        FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
+        meta.RegisterAnimationInfo(resources);
 
-        const auto static_info = meta.GetAnimInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
+        const auto static_info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
         REQUIRE(static_cast<bool>(static_info));
         REQUIRE(static_info->Model.has_value());
-        const ModelAnimInfo& static_model_info = *static_info->Model;
+        const ModelAnimationInfo& static_model_info = *static_info->Model;
         CHECK(static_model_info.AnimationDurations.empty());
         CHECK(static_model_info.AnimationBounds.empty());
         CHECK(static_model_info.ModelBounds.Min.x == -4.0f);
         CHECK(static_model_info.ViewBounds.Max.z == 1.5f);
 
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimInfo(meta.Hashes.ToHashedString("Critters/Missing.fo3d"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Missing.fo3d"))));
     }
 
     SECTION("MissingResourceLeavesLookupEmpty")
     {
         EngineMetadata meta {[] { }};
         FileSystem resources;
-        CHECK_NOTHROW(meta.RegisterAnimInfo(resources));
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"))));
+        CHECK_NOTHROW(meta.RegisterAnimationInfo(resources));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"))));
     }
 
     SECTION("RejectsPresentEmptyResource")
     {
-        CheckModelAnimInfoRejected({});
+        CheckModelAnimationInfoRejected({});
     }
 
     SECTION("RejectsUnsupportedBoundsVersion")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument({}, "1"));
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument({}, "1"));
     }
 
     SECTION("RejectsInvalidAggregateBounds")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument({}, "2", "-3"));
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument({}, "2", "-3"));
     }
 
     SECTION("RejectsMismatchedDurationArrays")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument(strex("{}{}", R"(StateAnims = 1 1
-ActionAnims = 3
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument(strex("{}{}", R"(StateAnimations = 1 1
+ActionAnimations = 3
 DurationsMs = 500 250
 )",
             VALID_ANIMATION_BOUNDS)));
@@ -443,8 +443,8 @@ DurationsMs = 500 250
 
     SECTION("RejectsNonPositiveAnimationDuration")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument(strex("{}{}", R"(StateAnims = 1
-ActionAnims = 3
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument(strex("{}{}", R"(StateAnimations = 1
+ActionAnimations = 3
 DurationsMs = 0
 )",
             VALID_ANIMATION_BOUNDS)));
@@ -452,8 +452,8 @@ DurationsMs = 0
 
     SECTION("RejectsDuplicateDurationPair")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument(strex("{}{}", R"(StateAnims = 1 1
-ActionAnims = 3 3
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument(strex("{}{}", R"(StateAnimations = 1 1
+ActionAnimations = 3 3
 DurationsMs = 500 250
 )",
             VALID_ANIMATION_BOUNDS)));
@@ -461,16 +461,16 @@ DurationsMs = 500 250
 
     SECTION("RejectsPartialAnimationBoundsArrays")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument(strex("{}{}", VALID_ANIMATION_DURATIONS, R"(BoundsStateAnims = 1
-BoundsActionAnims = 1
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument(strex("{}{}", VALID_ANIMATION_DURATIONS, R"(BoundsStateAnimations = 1
+BoundsActionAnimations = 1
 BoundsMinX = -1
 )")));
     }
 
     SECTION("RejectsDuplicateAnimationBoundsPair")
     {
-        CheckModelAnimInfoRejected(MakeModelAnimInfoDocument(strex("{}{}", VALID_ANIMATION_DURATIONS, R"(BoundsStateAnims = 1 1
-BoundsActionAnims = 1 1
+        CheckModelAnimationInfoRejected(MakeModelAnimationInfoDocument(strex("{}{}", VALID_ANIMATION_DURATIONS, R"(BoundsStateAnimations = 1 1
+BoundsActionAnimations = 1 1
 BoundsMinX = -1 -1
 BoundsMinY = -1 -1
 BoundsMinZ = 0 0
@@ -483,13 +483,13 @@ BoundsMaxZ = 2 2
     SECTION("AcceptsAnimationDurationsWithoutAnimationBounds")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimInfoResources(MakeModelAnimInfoDocument(VALID_ANIMATION_DURATIONS));
-        meta.RegisterAnimInfo(resources);
+        FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS));
+        meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info = *info->Model;
         REQUIRE(model_info.AnimationDurations.size() == 1);
         CHECK(model_info.AnimationDurations.at({CritterStateAnim::Unarmed, CritterActionAnim::Walk}).milliseconds() == 500);
         CHECK(model_info.AnimationBounds.empty());
@@ -498,13 +498,13 @@ BoundsMaxZ = 2 2
     SECTION("AcceptsAnimationBoundsWithoutAnimationDurations")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimInfoResources(MakeModelAnimInfoDocument(VALID_ANIMATION_BOUNDS));
-        meta.RegisterAnimInfo(resources);
+        FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS));
+        meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info = *info->Model;
         CHECK(model_info.AnimationDurations.empty());
         REQUIRE(model_info.AnimationBounds.size() == 1);
 
@@ -519,7 +519,7 @@ BoundsMaxZ = 2 2
 
     SECTION("RejectsEntriesOutsideModelSection")
     {
-        CheckModelAnimInfoRejected(strex("Unexpected = value\n{}", MakeModelAnimInfoDocument({})));
+        CheckModelAnimationInfoRejected(strex("Unexpected = value\n{}", MakeModelAnimationInfoDocument({})));
     }
 }
 

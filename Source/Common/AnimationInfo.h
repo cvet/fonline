@@ -71,7 +71,7 @@ struct SpriteInfoFileEntry
 
 #if FO_ENABLE_3D
 
-struct ModelAnimInfo
+struct ModelAnimationInfo
 {
     ModelBounds3D ModelBounds {};
     ModelBounds3D ViewBounds {};
@@ -79,19 +79,19 @@ struct ModelAnimInfo
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, ModelBounds3D> AnimationBounds {};
 };
 
-auto ReadModelAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimInfo>;
+auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimationInfo>;
 
 #endif
 
-struct AnimInfo
+struct AnimationInfo
 {
     optional<SpriteInfo> Sprite {};
 #if FO_ENABLE_3D
-    optional<ModelAnimInfo> Model {};
+    optional<ModelAnimationInfo> Model {};
 #endif
 };
 
-auto ReadAnimInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimInfo>;
+auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimationInfo>;
 auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>;
 auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string;
 

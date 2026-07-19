@@ -103,7 +103,7 @@ FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> 
 FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
 #if FO_ENABLE_3D
-    const auto anim_info = engine->GetAnimInfo(modelName);
+    const auto anim_info = engine->GetAnimationInfo(modelName);
 
     if (!anim_info) {
         return {};
@@ -113,7 +113,7 @@ FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, 
         return {};
     }
 
-    const ModelAnimInfo& model_anim_info = *anim_info->Model;
+    const ModelAnimationInfo& model_anim_info = *anim_info->Model;
     const auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
     return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan {};
 #else

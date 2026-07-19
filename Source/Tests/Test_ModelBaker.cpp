@@ -1264,9 +1264,9 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(checks.size() == 3);
-        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimationInfo.foinfo", 50}) == 1);
         CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 50}) == 2);
-        CHECK(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
+        CHECK(rig.Outputs.count("ModelAnimationInfo.foinfo") == 1);
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/TEMPLATE_Anim.fo3d") == 0);
     }
@@ -1293,7 +1293,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(checks.size() == 2);
-        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 90}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimationInfo.foinfo", 90}) == 1);
         CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 90}) == 1);
         CHECK(rig.Outputs.empty());
     }
@@ -1317,7 +1317,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(checks.size() == 2);
-        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 40}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimationInfo.foinfo", 40}) == 1);
         CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 40}) == 1);
         CHECK(rig.Outputs.empty());
     }
@@ -1363,7 +1363,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
     }
 
-    SECTION("Returns cleanly for empty ModelAnimInfo input and skipped output")
+    SECTION("Returns cleanly for empty ModelAnimationInfo input and skipped output")
     {
         TestRig empty_rig;
         AddModelInfoMetadata(empty_rig);
@@ -1383,7 +1383,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(skipped_rig.Outputs.empty());
     }
 
-    SECTION("Writes model descriptions and ModelAnimInfo config with speed-adjusted durations")
+    SECTION("Writes model descriptions and ModelAnimationInfo config with speed-adjusted durations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
@@ -1403,15 +1403,15 @@ TEST_CASE("ModelInfoBakerOrchestration")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        CHECK(std::ranges::find(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50}) != checks.end());
-        REQUIRE(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
+        CHECK(std::ranges::find(checks, pair<string, uint64_t> {"ModelAnimationInfo.foinfo", 50}) != checks.end());
+        REQUIRE(rig.Outputs.count("ModelAnimationInfo.foinfo") == 1);
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/NoAnim.fo3d") == 1);
 
-        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        const string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
         CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
-        CHECK(config.find("StateAnims = 0 0\n") != string::npos);
-        CHECK(config.find("ActionAnims = 1 3\n") != string::npos);
+        CHECK(config.find("StateAnimations = 0 0\n") != string::npos);
+        CHECK(config.find("ActionAnimations = 1 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 250\n") != string::npos);
         CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
@@ -1438,15 +1438,15 @@ ActionAnimEqual 4 6
         ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
-        CHECK(config.find("StateAnims = 1 0 1 0\n") != string::npos);
-        CHECK(config.find("ActionAnims = 5 5 3 3\n") != string::npos);
+        const string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        CHECK(config.find("StateAnimations = 1 0 1 0\n") != string::npos);
+        CHECK(config.find("ActionAnimations = 5 5 3 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 500 200 200\n") != string::npos);
-        CHECK(config.find("ActionAnims = 4") == string::npos);
+        CHECK(config.find("ActionAnimations = 4") == string::npos);
         CHECK(config.find("DurationsMs = 250") == string::npos);
     }
 
-    SECTION("Rejects ModelAnimInfo millisecond overflow from duration or speed")
+    SECTION("Rejects ModelAnimationInfo millisecond overflow from duration or speed")
     {
         TestRig duration_rig;
         AddModelInfoMetadata(duration_rig);
@@ -1467,7 +1467,7 @@ ActionAnimEqual 4 6
         CHECK_THROWS_AS(speed_baker.BakeFiles(speed_rig.GetAllSourceFiles(), ""), ModelInfoBakerException);
     }
 
-    SECTION("Rejects ModelAnimInfo effective duration that rounds below one millisecond")
+    SECTION("Rejects ModelAnimationInfo effective duration that rounds below one millisecond")
     {
         // Default clip duration is 1.0s, so speed 1e6 yields 0.001ms, which rounds to a zero millisecond
         // count. The runtime model-anim-info load requires a positive duration, so baking must fail here
@@ -1513,7 +1513,7 @@ ActionAnimEqual 4 6
         CHECK(root_link.LinkBone == "Body");
     }
 
-    SECTION("Honors ModelAnimInfo target filtering")
+    SECTION("Honors ModelAnimationInfo target filtering")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);

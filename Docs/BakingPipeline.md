@@ -42,8 +42,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Common/ModelMeshData.cpp`
 - `Source/Tools/ModelInfoBaker.h`
 - `Source/Tools/ModelInfoBaker.cpp`
-- `Source/Common/AnimInfo.h`
-- `Source/Common/AnimInfo.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
 - `Source/Common/ModelBounds.cpp`
 - `Source/Common/ModelBounds.h`
 - `Source/Tools/ModelBoundsCalculator.h`
@@ -345,9 +345,9 @@ frame index, so the top lists remain deterministic under parallel baking.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
-Shared animation metadata uses `AnimInfo` as the aggregate record. The generic
+Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
 record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
-and resolved per-frame bounds, plus a `ModelAnimInfo` payload in
+and resolved per-frame bounds, plus a `ModelAnimationInfo` payload in
 `FO_ENABLE_3D` builds for model and animation AABBs and typed animation
 durations. `ReadSpriteResource` fills the sprite payload from the baked sprite
 header and frame table. For metadata queries that must not load pixel payloads,
@@ -360,14 +360,14 @@ entry. Pack-local previous outputs are mounted separately from the shared
 cross-pack baked-file registry so a pack can read its own aggregate before its
 first baker invocation. Introducing or losing the index is a full-rebake
 condition rather than a reason to decode all sprite pixels at runtime. The
-common `ReadAnimInfo` path reads those 2D indexes in every
-build, reads `ModelAnimInfo.foinfo` when 3D is enabled, and merges both payloads
+common `ReadAnimationInfo` path reads those 2D indexes in every
+build, reads `ModelAnimationInfo.foinfo` when 3D is enabled, and merges both payloads
 by resource name in `EngineMetadata`. Baker-local statistics follow the same
 ownership names (`SpriteInfoBakingStats` and
-`ModelAnimInfoBakingStats`) instead of using the aggregate `AnimInfo` name.
+`ModelAnimationInfoBakingStats`) instead of using the aggregate `AnimationInfo` name.
 
 When `FO_ENABLE_3D` is active, `ModelInfoBaker` emits the regular baked model
-descriptions together with a model-specific `ModelAnimInfo.foinfo` companion. Bounds
+descriptions together with a model-specific `ModelAnimationInfo.foinfo` companion. Bounds
 schema version 2 adds three
 required root-space contracts to every model section:
 
@@ -377,7 +377,7 @@ required root-space contracts to every model section:
 - `ViewBoundsMin*` / `ViewBoundsMax*` store a deterministic reference envelope:
   `Unarmed + Idle` first, then any Idle, then the first valid animation or the
   static fallback;
-- `BoundsStateAnims` / `BoundsActionAnims` and the parallel `BoundsMin*` /
+- `BoundsStateAnimations` / `BoundsActionAnimations` and the parallel `BoundsMin*` /
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
 
@@ -457,7 +457,7 @@ pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
 | `ModelAnimationData` | Common | Versioned little-endian LF animation envelopes and the native rig manifest: identity and signatures, canonical skeleton, base/clip remaps, clip payloads, presence/nearest data, and state/action bindings. |
 | `ModelMeshData` | Common | Passive mesh-wire DTOs plus the versioned `LFMODMSH` reader, writer, and shared structural validation. It contains no runtime animation implementation. |
 | `ModelMeshBaker` | Tools | Validates and writes mesh-only hierarchy, bind, vertex, index, influence, and drawable data. |
-| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimInfo.foinfo`. |
+| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. |
 
 The main data flow is:
 
@@ -470,7 +470,7 @@ Mesh data follows the parallel
 `ModelHierarchy` path. The two streams meet in `ModelInformation`; clips and
 mutable poses are never serialized into the shared mesh hierarchy.
 
-The model-specific bounds and duration contract is described immediately above; the Ozz conversion changes its source representation, not the common `AnimInfo` query surface.
+The model-specific bounds and duration contract is described immediately above; the Ozz conversion changes its source representation, not the common `AnimationInfo` query surface.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
 
@@ -753,7 +753,7 @@ description/include graph and every replacement-expanded `Model`, external
 `Anim`, direct `Attach`, and `Cut` source dependency. A missing referenced source
 is a hard error. This is required because an animation-only FBX change does not
 change the mesh-only `LFMODMSH` output by itself but must still rebuild the
-canonical Ozz rig and `ModelAnimInfo` data.
+canonical Ozz rig and `ModelAnimationInfo` data.
 
 The native model-animation format is implemented with the `ozz-animation`
 0.16.0 release tag, whose exact tagged commit is
