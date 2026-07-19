@@ -33,10 +33,12 @@
 
 #pragma once
 
-#include "Baker.h"
-#include "FileSystem.h"
+#include "Common.h"
 
 #if FO_ENABLE_3D
+
+#include "Baker.h"
+#include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE
 

@@ -157,8 +157,37 @@ TEST_CASE("DataSerialization")
         writer.Write<uint8_t>(static_cast<uint8_t>(10));
 
         DataReader reader {span {buf}};
+        CHECK(reader.GetUnreadSize() == sizeof(uint8_t));
         CHECK(reader.Read<uint8_t>() == 10);
+        CHECK(reader.GetUnreadSize() == 0);
         CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
+    }
+
+    SECTION("ReaderRejectsLengthAndCountBombsBeforeAllocation")
+    {
+        vector<uint8_t> buf;
+        DataWriter writer {buf};
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+
+        DataReader string_view_reader {span {buf}};
+        const uint32_t hostile_string_size = string_view_reader.Read<uint32_t>();
+        CHECK_THROWS_AS(string_view_reader.ReadStringView(hostile_string_size), DataReadingException);
+
+        DataReader payload_count_reader {span {buf}};
+        const uint32_t hostile_count = payload_count_reader.Read<uint32_t>();
+        CHECK_THROWS_AS(payload_count_reader.VerifyPayloadCount(numeric_cast<size_t>(hostile_count), sizeof(uint32_t)), DataReadingException);
+
+        DataReader string_reader {span {buf}};
+        CHECK_THROWS_AS(string_reader.ReadString(), DataReadingException);
+
+        DataReader string_vector_reader {span {buf}};
+        CHECK_THROWS_AS(string_vector_reader.ReadStringVector(), DataReadingException);
+
+        DataReader object_vector_reader {span {buf}};
+        CHECK_THROWS_AS(object_vector_reader.ReadSizedObjectVector<uint32_t>(), DataReadingException);
+
+        DataReader empty_reader {const_span<uint8_t> {}};
+        CHECK_THROWS_AS(empty_reader.VerifyPayloadCount(0, 0), VerificationException);
     }
 
     SECTION("VerifyEnd")
@@ -179,29 +208,6 @@ TEST_CASE("DataSerialization")
 
         DataReader reader {span {buf}};
         CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
-        CHECK_NOTHROW(reader.VerifyEnd());
-
-        MutableDataReader mutable_reader {span {buf}};
-        CHECK_FALSE(static_cast<bool>(mutable_reader.ReadPtr<uint8_t>(0)));
-        CHECK_NOTHROW(mutable_reader.VerifyEnd());
-    }
-
-    SECTION("MutableDataReader")
-    {
-        vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint32_t>(static_cast<uint32_t>(123));
-        writer.Write<uint8_t>(static_cast<uint8_t>(9));
-
-        MutableDataReader reader {span {buf}};
-        CHECK(reader.Read<uint32_t>() == 123);
-
-        auto value = reader.ReadPtr<uint8_t>(1);
-        REQUIRE(static_cast<bool>(value));
-        CHECK(*value == 9);
-        *value = 11;
-
-        CHECK(buf.back() == 11);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
@@ -261,46 +267,6 @@ TEST_CASE("DataSerialization")
 
         CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
         CHECK(target == array<uint8_t, 4> {1, 2, 3, 4});
-    }
-
-    SECTION("MutableDataReaderBounds")
-    {
-        vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint8_t>(static_cast<uint8_t>(5));
-
-        MutableDataReader reader {span {buf}};
-        CHECK(reader.Read<uint8_t>() == 5);
-        CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
-    }
-
-    SECTION("MutableZeroSizePointers")
-    {
-        vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint16_t>(static_cast<uint16_t>(0x1234));
-
-        MutableDataReader reader {span {buf}};
-        CHECK(reader.Read<uint16_t>() == static_cast<uint16_t>(0x1234));
-        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
-
-        array<uint8_t, 2> temp = {1, 2};
-        reader.ReadPtr(temp.data(), 0);
-        CHECK(temp == array<uint8_t, 2> {1, 2});
-        CHECK_NOTHROW(reader.VerifyEnd());
-    }
-
-    SECTION("MutableReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
-    {
-        vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint8_t>(static_cast<uint8_t>(42));
-
-        MutableDataReader reader {span {buf}};
-        array<uint8_t, 3> target = {9, 8, 7};
-
-        CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
-        CHECK(target == array<uint8_t, 3> {9, 8, 7});
     }
 
     SECTION("ZeroSizeWritePtrDoesNotGrowBuffer")

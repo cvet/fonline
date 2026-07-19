@@ -35,6 +35,10 @@ if(FO_BUILD_CLIENT)
                     "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_Client${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 COMMENT "Copy client runtime library to host-derived module name")
 
+            # A native client launch loads the sibling runtime module by default. Keep the
+            # runnable host target from leaving a stale module next to a fresh executable.
+            add_dependencies(${FO_DEV_NAME}_Client ${FO_DEV_NAME}_ClientLib)
+
             AddExecutableApplication(${FO_DEV_NAME}_ClientHeadless "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
                 OUTPUT_DIR ${FO_CLIENT_OUTPUT}
                 WORKING_DIRECTORY ${FO_OUTPUT_PATH}
@@ -59,6 +63,8 @@ if(FO_BUILD_CLIENT)
                     "$<TARGET_FILE:${FO_DEV_NAME}_ClientLibHeadless>"
                     "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_ClientHeadless${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 COMMENT "Copy headless client runtime library to host-derived module name")
+
+            add_dependencies(${FO_DEV_NAME}_ClientHeadless ${FO_DEV_NAME}_ClientLibHeadless)
         endif()
     else()
         AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"

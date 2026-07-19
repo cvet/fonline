@@ -76,7 +76,9 @@ void AssetExplorer::OnDraw()
         DrawSection(strex("Protos ({})", proto_ext).str(), proto_ext);
     }
 
+#if FO_ENABLE_3D
     DrawSection("Models", "fo3d");
+#endif
     DrawSection("Texts", "fotxt");
 
     DrawSection("Particles", "fopts");

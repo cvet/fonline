@@ -418,7 +418,7 @@ private:
     unique_arr_ptr<uint8_t> _podData {};
     unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};
 
-    vector<OverlayEntry> _overlayEntries {};
+    small_vector<OverlayEntry, 16> _overlayEntries {};
     vector<int32_t> _overlayEntryIndex {};
     unique_arr_ptr<uint8_t> _overlayData {};
     size_t _overlayDataSize {};

@@ -365,10 +365,12 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
         }
     }
 
-    // No suitable hole, extend the overlay tail
-    const size_t needed_size = align_offset(_overlayDataSize) + data_size;
+    // No suitable hole, extend the overlay tail. Repacking can increase the aligned tail size
+    // when variable-size entries move, so re-evaluate the required capacity after every repack.
+    size_t aligned_offset = align_offset(_overlayDataSize);
 
-    if (needed_size > _overlayDataCapacity) {
+    while (aligned_offset + data_size > _overlayDataCapacity) {
+        const size_t needed_size = aligned_offset + data_size;
         size_t new_capacity = _overlayDataCapacity != 0 ? _overlayDataCapacity : OVERLAY_START_CAPACITY;
 
         while (new_capacity < needed_size) {
@@ -376,9 +378,9 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
         }
 
         RepackOverlayData(new_capacity);
+        aligned_offset = align_offset(_overlayDataSize);
     }
 
-    const size_t aligned_offset = align_offset(_overlayDataSize);
     FO_STRONG_ASSERT(aligned_offset + data_size <= _overlayDataCapacity, "Overlay data allocation exceeds capacity", _registrator->GetTypeName(), aligned_offset, data_size, _overlayDataCapacity);
 
     _overlayGarbageSize += aligned_offset - _overlayDataSize;
@@ -573,7 +575,7 @@ void Properties::RemoveSyncedOverlayEntries() noexcept
         return;
     }
 
-    _overlayEntries.resize(write_pos);
+    _overlayEntries.erase(_overlayEntries.begin() + numeric_cast<ptrdiff_t>(write_pos), _overlayEntries.end());
     _overlayGarbageSize += removed_data_size;
 
     RebuildOverlayEntryIndex();

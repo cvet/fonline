@@ -59,6 +59,37 @@ auto GetPackagedRuntimeName() -> string
     return PackagedBuildName;
 }
 
+auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (type.IsPrimitive || type.IsEnum) {
+        FO_VERIFY_AND_THROW(type.Size != 0, "Remote call plain argument type has zero size", type.Name);
+        return type.Size;
+    }
+    if (type.IsString || type.IsRefType) {
+        return sizeof(uint32_t);
+    }
+    if (type.IsHashedString) {
+        return sizeof(hstring::hash_t);
+    }
+    if (type.IsStruct) {
+        FO_VERIFY_AND_THROW(type.StructLayout, "Remote call struct layout is null", type.Name);
+
+        size_t min_size = 0;
+
+        for (const auto& field : type.StructLayout->Fields) {
+            const size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
+            FO_VERIFY_AND_THROW(field_min_size <= std::numeric_limits<size_t>::max() - min_size, "Remote call struct minimum serialized size overflows", type.Name);
+            min_size += field_min_size;
+        }
+
+        return min_size;
+    }
+
+    throw NotSupportedException("Unsupported simple remote call argument type", type.Name);
+}
+
 static auto ReadPackagedBuildName() -> string
 {
     auto raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
