@@ -602,7 +602,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
     auto holder_entry = make_ptr(&holder_type.HolderEntries.at(*entry));
 
     if (entities && !entities->empty()) {
-        vector<ptr<Entity>> result_entities;
+        small_vector<ptr<Entity>, 8> result_entities;
         result_entities.reserve(entities->size());
 
         for (size_t i = 0; i < entities->size(); i++) {
@@ -936,7 +936,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     ScriptGenericCall(gen, false, method->Args, [&](FuncCallData& base_call) {
         FuncCallData call = base_call;
         nptr<Entity> engine_arg = engine;
-        vector<ptr<void>> args_data;
+        small_vector<ptr<void>, 2> args_data;
         args_data.reserve(base_call.ArgsData.size() + 1);
 
         args_data.emplace_back(make_ptr(engine_arg.get_pp()).void_cast());

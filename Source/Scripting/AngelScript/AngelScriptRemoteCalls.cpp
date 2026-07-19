@@ -376,7 +376,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
     const size_t args_count = inbound_call.Args.size() + (engine->GetSide() == EngineSideKind::ServerSide ? 1 : 0);
-    vector<ptr<void>> data_storage;
+    small_vector<ptr<void>, 16> data_storage;
     data_storage.reserve(args_count);
 
     size_t arg_index = 0;

@@ -573,7 +573,7 @@ void Properties::RemoveSyncedOverlayEntries() noexcept
         return;
     }
 
-    _overlayEntries.resize(write_pos);
+    _overlayEntries.erase(_overlayEntries.begin() + numeric_cast<ptrdiff_t>(write_pos), _overlayEntries.end());
     _overlayGarbageSize += removed_data_size;
 
     RebuildOverlayEntryIndex();

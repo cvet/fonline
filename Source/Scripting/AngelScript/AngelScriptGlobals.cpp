@@ -165,7 +165,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
     const auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
-    vector<ptr<void>> args_data;
+    small_vector<ptr<void>, 8> args_data;
     args_data.reserve(args_count);
     array<nptr<void>, MAX_CALL_ARGS> indirect_args {};
 

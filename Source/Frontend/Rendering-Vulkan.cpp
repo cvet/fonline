@@ -3397,7 +3397,7 @@ void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    vector<VkClearAttachment> attachments;
+    small_vector<VkClearAttachment, 2> attachments;
     attachments.reserve(2);
 
     if (color.has_value()) {
