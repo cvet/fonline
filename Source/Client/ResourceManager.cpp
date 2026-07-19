@@ -32,9 +32,11 @@
 //
 
 #include "ResourceManager.h"
-#include "3dStuff.h"
 #include "DataSource.h"
 #include "FileSystem.h"
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
+#include "ModelSprites.h"
 
 FO_BEGIN_NAMESPACE
 

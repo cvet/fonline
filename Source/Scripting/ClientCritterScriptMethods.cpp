@@ -38,6 +38,8 @@
 #include "CritterView.h"
 #include "Geometry.h"
 #include "MapView.h"
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE

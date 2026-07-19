@@ -287,14 +287,14 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     engine->SendRemoteCall(outbound_call->Name, caller, data);
 }
 
-static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
+static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(engine->GetSide() != EngineSideKind::MapperSide, "Remote calls are not supported on mapper side");
 
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
-    MutableDataReader reader(data);
+    DataReader reader(data);
 
     struct RemoteCallPlainArgData
     {
@@ -325,9 +325,8 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             const auto str_len = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(str_len >= 0, "Str len is negative", str_len);
             const size_t str_size = numeric_cast<size_t>(str_len);
-            string str;
-            str.resize(str_size);
-            reader.ReadStringBytes(str);
+            const string_view str_data = reader.ReadStringView(str_size);
+            string str {str_data};
 
             auto str_value = make_ptr(&std::get<string>(temp_data.emplace_back(std::move(str))));
             return str_value.void_cast();
@@ -340,7 +339,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         }
         else if (type.IsRefType) {
             const uint32_t raw_size = reader.Read<uint32_t>();
-            span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
+            const_span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
 
             auto ref_obj = CreateRefTypeScriptObjectFromRawData(type, ref_raw_data);
             ptr<refcount_ptr<DynamicRefTypeInstance>> ref_obj_ptr = &std::get<refcount_ptr<DynamicRefTypeInstance>>(temp_data.emplace_back(std::move(ref_obj)));
@@ -404,6 +403,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::Array) {
             const auto arr_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
+            reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType));
             auto arr_holder = CreateScriptArray(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto arr = arr_holder.as_ptr();
             ptr<refcount_ptr<ScriptArray>> arr_ref = &std::get<refcount_ptr<ScriptArray>>(temp_data.emplace_back(std::move(arr_holder)));
@@ -420,6 +420,10 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::Dict) {
             const auto dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
+            const size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.KeyType.value());
+            const size_t value_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType);
+            FO_VERIFY_AND_THROW(value_min_size <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict entry minimum serialized size overflows", arg->Name);
+            reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + value_min_size);
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
             ptr<refcount_ptr<ScriptDict>> dict_ref = &std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(std::move(dict_holder)));
@@ -435,6 +439,9 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::DictOfArray) {
             const auto dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
+            const size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.KeyType.value());
+            FO_VERIFY_AND_THROW(sizeof(int32_t) <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict-of-array entry minimum serialized size overflows", arg->Name);
+            reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + sizeof(int32_t));
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
             ptr<refcount_ptr<ScriptDict>> dict_ref = &std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(std::move(dict_holder)));
@@ -446,6 +453,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
                 const auto arr_size = reader.Read<int32_t>();
                 FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
+                reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType));
                 auto arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg->Type.BaseType)).c_str());
 
                 for (int32_t l = 0; l < arr_size; l++) {

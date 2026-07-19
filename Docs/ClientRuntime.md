@@ -36,10 +36,18 @@ Read this page together with:
 - `Source/Client/PlayerView.h`
 - `Source/Client/DefaultSprites.h`
 - `Source/Client/DefaultSprites.cpp`
-- `Source/Client/3dStuff.h`
-- `Source/Client/3dStuff.cpp`
-- `Source/Client/3dAnimation.h`
-- `Source/Client/3dAnimation.cpp`
+- `Source/Client/ModelAnimation.h`
+- `Source/Client/ModelAnimation.cpp`
+- `Source/Client/ModelBakedData.h`
+- `Source/Client/ModelBakedData.cpp`
+- `Source/Client/ModelManager.h`
+- `Source/Client/ModelManager.cpp`
+- `Source/Client/ModelInstance.h`
+- `Source/Client/ModelInstance.cpp`
+- `Source/Client/ModelInformation.h`
+- `Source/Client/ModelInformation.cpp`
+- `Source/Client/ModelHierarchy.h`
+- `Source/Client/ModelHierarchy.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ParticleSprites.h`
@@ -50,6 +58,7 @@ Read this page together with:
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_ModelAnimationRuntime.cpp`
 
 ## Runtime owner: `ClientEngine`
 
@@ -122,6 +131,51 @@ Primary view types:
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` keeps a cell only when the source returns the same handle instance; a replacement clone with the same entity id is rebound so item draw callbacks observe its current count and other projected properties.
 
+## 3D model runtime architecture
+
+The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The
+client 3D path now uses same-named `Model*.h` / `Model*.cpp` module pairs with
+one ownership boundary per module. There is no client-side `ModelMesh` utility
+module: mesh representation types live with `ModelHierarchy`. There is also no
+separate `ModelPoseRuntime` module: renderer-independent pose/link operations
+are part of `ModelAnimation`.
+
+| Module | Responsibility |
+| --- | --- |
+| `ModelManager` | Runtime entry point, model-description and hierarchy caches, baked mesh loading, and construction of model instances. |
+| `ModelHierarchy` | Shared loaded `ModelBone` topology, mesh/bind data, model textures/effects, and the mesh representation types used by hierarchy and instances. It does not own mutable animation pose output. |
+| `ModelInformation` | One resolved baked `.fo3d` description: hierarchy reference, canonical/runtime joint identities, animation lookup tables, cuts/links, draw metadata, and one immutable `ModelAnimationRuntimeRig`. |
+| `ModelInstance` | All mutable per-instance state: controller timelines, runtime pose, world-matrix snapshots, mesh state and batching, cuts, attachments, particles, procedural transforms, projection, and draw submission. |
+| `ModelAnimation` | Engine animation-controller timeline, transition, callback, reverse/freeze/play-once, and binding semantics together with the engine-owned clip/rig/pose contract, Ozz-backed sampling and blending behind PImpl, canonical-joint mapping, linked-pose resolution, and validated rest-pose matrix construction for direct raw models. |
+| `ModelBakedData` | Small defensive reader helpers shared by client model loaders, especially count-versus-unread-data preflight before allocation. |
+| `ModelSprites` | Adapter from `ModelManager` / `ModelInstance` to atlas-backed and direct-scene sprite rendering. |
+
+The ownership direction is deliberate:
+
+- `ModelManager` caches shared `ModelHierarchy` and `ModelInformation` objects;
+- every created `ModelInstance` references one `ModelInformation` but owns its
+  mutable controllers, pose buffers, matrices, mesh overrides, and children;
+- shared `ModelBone` nodes retain topology, rest/bind, and drawable data only;
+  pose results never flow back into the shared hierarchy;
+- canonical animation joints may exist without a physical `ModelBone`, so
+  canonical indexing and cross-model pose links belong to
+  `ModelAnimation`, not `ModelHierarchy`.
+
+This split removes the old include-everything dependency. A caller includes the
+manager, information, hierarchy, instance, animation, or baked-data contract it
+actually consumes. Small passive types stay with their owning module instead of
+forming empty translation units.
+
+`ModelAnimationRuntimeClip`, `ModelAnimationRuntimeRig`, and
+`ModelAnimationRuntimePose` keep their backend state behind PImpl. The public
+header exposes only engine-owned runtime values and spans; Ozz headers, archive
+objects, sampling contexts, and matrix buffers stay in
+`ModelAnimation.cpp`. `ModelAnimationData` defines the native versioned wire
+contract shared with the baker, while
+`ModelAnimationConverter` owns offline conversion. The engine API does not name
+or model interchangeable animation backends: Ozz is an implementation detail of
+the engine's native model-animation runtime and baked format.
+
 ## Critter model animation
 
 3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
@@ -129,6 +183,66 @@ animation-specific speed (`AnimSpeed`) to the body/action controller, while `Ref
 movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
 the model base/link/global speed only; it must not inherit the current body action's `AnimSpeed`, otherwise fast actions
 such as use/pick-up make the leg cycle run too quickly while the critter is moving.
+
+An animation name prefixed with `~` plays the source clip in reverse: playback time `t` samples the clip at
+`duration - fmod(t, duration)`, so an exact loop boundary restarts at the clip end. If interpolation is disabled, the
+same nearest-key rule is applied at that reversed source time.
+
+Every baked `.fo3d` has the required versioned `LFMODINF` schema-1 header and a
+required `LFOZZRIG` payload generated for pinned `ozz-animation` 0.16.0.
+`ModelInformation` strictly loads and owns one immutable
+`ModelAnimationRuntimeRig`. Its PImpl contains the canonical Ozz skeleton,
+unique clips, base/clip remaps, presence masks, nearest timelines, and resolved
+state/action binding table. The loader rejects old unversioned files and any
+partial or inconsistent rig; it never falls back to another payload after an
+Ozz load error. The final mesh-only wire transition uses compatibility marker
+`0.0.30` and requires a full resource rebake.
+
+Ozz is the production animated-pose path. The body and movement controllers
+advance timeline/event state only. Each registered animation stores direct Ozz
+clip index/duration/reverse metadata and an immutable bound-joint set derived
+from the clip presence mask. A joint is bound only when its canonical and exact
+runtime names match, so this gate deliberately keeps a resource-renamed model
+root out of a source-root animation. Per-track allowed-joint and transition-
+suppression masks further filter those bindings before the track state feeds the
+per-instance Ozz pose.
+Ozz performs clip sampling, body blending,
+movement-only joint replacement, procedural body/head pre-rotation, and
+local-to-model evaluation. Each `ModelInstance` snapshots the resulting world
+matrices, and skin palettes, linked children, particles, and bone queries read
+that owning instance snapshot. Link-all attachments override only the matched
+joint after evaluation and deliberately do not recompute its descendants,
+preserving the established attachment order.
+
+Canonical joint names, exact runtime lookup names, and name-to-index bindings
+are independent of the physical `ModelBone` hierarchy. Base joints retain a
+read-only physical bone for meshes and cuts; animation-contributed joints have
+no `ModelBone` and are never materialized into the shared cached hierarchy.
+The base root deliberately keeps its resource-path runtime alias, while
+contributed joints use their canonical names, preserving exact legacy lookup
+and root-animation suppression semantics. Runtime particles, attachment
+resolution, link-all matching, and bone-position queries operate on canonical
+indices; link-all can therefore bind contributed joints without physical
+bones. Authored one-bone link validation remains base-hierarchy-only in the
+current baking schema.
+
+Static `.fo3d` instances evaluate an empty Ozz track set so canonical rest and
+procedural body/head transforms follow the same runtime as animated instances.
+Only direct raw-model instances remain outside Ozz and build parent-ordered
+world matrices through the validation helpers owned by
+`ModelAnimation`.
+The former custom pose evaluator and shared mutable matrix-output table have
+been removed. Baked model meshes now begin with the mandatory `LFMODMSH`
+schema-1 header and contain only the recursive hierarchy/bind/drawable mesh
+payload. The client consumes it exactly and rejects headerless, mismatched,
+truncated, or trailing data; no serialized TRS tail and no legacy mesh fallback
+remain. Runtime clip identity, duration, joint presence, and sampling come
+exclusively from the baked Ozz rig.
+
+The nested LF archive hash detects accidental corruption but is not an
+authentication mechanism. Ozz deserialization assumes the baked resource pack
+is trusted; deployments that permit attacker-rewritable packs must authenticate
+the pack before this loader runs.
 
 ## `MapView`: map presentation and local spatial state
 

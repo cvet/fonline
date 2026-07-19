@@ -63,7 +63,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace CommonMethods
 {
@@ -153,7 +153,10 @@ namespace CommonMethods
         // Just verify no crash and offset is set
         return 0;
     }
+)");
 
+#if FO_ENABLE_3D
+        script_source += R"(
     int TestGetModelAnimDuration()
     {
         timespan walk = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
@@ -170,7 +173,10 @@ namespace CommonMethods
 
         return 0;
     }
+)";
+#endif
 
+        script_source += string(R"(
     // ========== Proto Getters ==========
 
     int TestGetProtoItems()
@@ -503,7 +509,7 @@ namespace CommonMethods
         any mapSizeAny = mapSize;
         if (string(mapSizeAny).length() == 0) return -33;
 )"
-                                          R"(
+                                R"(
         hdir dir = HDIR_SouthEast;
         if (dir.str.length() == 0) return -34;
         if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
@@ -515,7 +521,7 @@ namespace CommonMethods
         if (angle.angle != 60) return -38;
         if (!(angle == mdir(60))) return -39;
 )"
-                                          R"(
+                                R"(
         TextPackName pack = TextPackName("Dialogs".hstr());
         TextPackName packCopy(pack);
         if (!(packCopy == pack)) return -40;
@@ -542,7 +548,7 @@ namespace CommonMethods
         LanguageName russLang = LanguageName("russ".hstr());
         if (!(englLang < russLang || russLang < englLang)) return -50;
 )"
-                                          R"(
+                                R"(
 
         TextPackKey defaultKey;
         if (defaultKey.Collection.Name != EMPTY_HSTRING) return -51;
@@ -756,7 +762,7 @@ namespace CommonMethods
         return 0;
     }
 )"
-                                          R"(
+                                R"(
     int TestScriptDynamicRefTypeAccessors()
     {
         RouteSnapshot snapshot = RouteSnapshot();
@@ -1785,7 +1791,9 @@ namespace CommonMethods
         runtime_source->AddFile("CommonMethodsContainer.fopro-bin-server", container_blob);
         runtime_source->AddFile("CommonMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("CommonMethods.fos-bin-server", script_blob);
+#if FO_ENABLE_3D
         runtime_source->AddFile("ModelAnimInfo.foinfo", "[Critters/Test.fo3d]\nStateAnims = 1 1\nActionAnims = 3 5\nDurationsMs = 500 250\n");
+#endif
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -1917,6 +1925,7 @@ TEST_CASE("GeometryDirectionAngles")
     }
 }
 
+#if FO_ENABLE_3D
 TEST_CASE("ModelAnimationInfoLookup")
 {
     MAKE_CM_SERVER();
@@ -1924,6 +1933,7 @@ TEST_CASE("ModelAnimationInfoLookup")
     CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));
     RUN_CM_FUNC("TestGetModelAnimDuration");
 }
+#endif
 
 // ========== Proto Getter Tests ==========
 

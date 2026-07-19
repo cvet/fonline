@@ -36,7 +36,10 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
+#include "ModelAnimationData.h"
+#include "ModelMeshData.h"
 
+#include "meshoptimizer.h"
 #include "ufbx.h"
 
 extern "C" void* ufbx_malloc(size_t size)
@@ -72,158 +75,66 @@ extern "C" void ufbx_free(void* ptr, size_t old_size)
 
 FO_BEGIN_NAMESPACE
 
-struct BakerMeshData
+class ModelMeshOptimizationAllocator final
 {
-    void Save(DataWriter& writer) const
+public:
+    static auto MESHOPTIMIZER_ALLOC_CALLCONV Allocate(size_t size) noexcept -> void*
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        FO_VERIFY_AND_THROW(SkinBones.size() == SkinBoneOffsets.size(), "Skin bone list and inverse-bind offset list have different sizes", SkinBones.size(), SkinBoneOffsets.size());
-
-        auto len = numeric_cast<uint32_t>(Vertices.size());
-        writer.Write<uint32_t>(len);
-        writer.WriteObjectVector(Vertices);
-        len = numeric_cast<uint32_t>(Indices.size());
-        writer.Write<uint32_t>(len);
-        writer.WriteObjectVector(Indices);
-        len = numeric_cast<uint32_t>(DiffuseTexture.length());
-        writer.Write<uint32_t>(len);
-        writer.WriteStringBytes(DiffuseTexture);
-        len = numeric_cast<uint32_t>(SkinBones.size());
-        writer.Write<uint32_t>(len);
-        for (const auto& bone_name : SkinBones) {
-            len = numeric_cast<uint32_t>(bone_name.length());
-            writer.Write<uint32_t>(len);
-            writer.WriteStringBytes(bone_name);
-        }
-        len = numeric_cast<uint32_t>(SkinBoneOffsets.size());
-        writer.Write<uint32_t>(len);
-        writer.WriteObjectVector(SkinBoneOffsets);
+        constexpr SafeAllocator<uint8_t> allocator;
+        return allocator.allocate(size);
     }
 
-    vector<Vertex3D> Vertices {};
-    vector<vindex_t> Indices {};
-    string DiffuseTexture {};
-    vector<string> SkinBones {};
-    vector<mat44> SkinBoneOffsets {};
+    static void MESHOPTIMIZER_ALLOC_CALLCONV Deallocate(void* raw_memory) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        auto memory = make_nptr(raw_memory).reinterpret_as<uint8_t>();
+
+        if (memory) {
+            constexpr SafeAllocator<uint8_t> allocator;
+            allocator.deallocate(memory.get(), 0);
+        }
+    }
 };
 
-struct BakerBone
+static void PrepareModelMeshOptimizationRuntime()
 {
-    auto Find(const string& name) -> nptr<BakerBone>
-    {
-        FO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-        if (Name == name) {
-            return this;
-        }
+    // meshoptimizer exposes one allocator table per linked module. This synchronization has no
+    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs.
+    static std::once_flag init_once;
+    std::call_once(init_once, [] { meshopt_setAllocator(&ModelMeshOptimizationAllocator::Allocate, &ModelMeshOptimizationAllocator::Deallocate); });
+}
 
-        for (size_t i = 0; i != Children.size(); ++i) {
-            if (auto bone = Children[i]->Find(name)) {
-                return bone;
-            }
-        }
-
-        return nullptr;
-    }
-
-    void Save(DataWriter& writer) const
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(Name.length()));
-        writer.WriteStringBytes(Name);
-        writer.Write<mat44>(TransformationMatrix);
-        writer.Write<mat44>(GlobalTransformationMatrix);
-
-        if (AttachedMesh) {
-            writer.Write<uint8_t>(const_numeric_cast<uint8_t>(1));
-            AttachedMesh->Save(writer);
-        }
-        else {
-            writer.Write<uint8_t>(const_numeric_cast<uint8_t>(0));
-        }
-
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(Children.size()));
-
-        for (const auto& child : Children) {
-            child->Save(writer);
-        }
-    }
-
-    string Name {};
-    mat44 TransformationMatrix {};
-    mat44 GlobalTransformationMatrix {};
-    optional<BakerMeshData> AttachedMesh {};
-    vector<unique_ptr<BakerBone>> Children {};
-    mat44 CombinedTransformationMatrix {};
+struct FbxValidationContext
+{
+    string_view FileName {};
+    string_view ScopeName {};
+    string_view NodeName {};
+    string_view FieldName {};
+    size_t ElementIndex {};
 };
 
-struct BakerAnimSet
-{
-    struct BoneOutput
-    {
-        string Name {};
-        vector<float32_t> ScaleTime {};
-        vector<vec3> ScaleValue {};
-        vector<float32_t> RotationTime {};
-        vector<quaternion> RotationValue {};
-        vector<float32_t> TranslationTime {};
-        vector<vec3> TranslationValue {};
-    };
-
-    void Save(DataWriter& writer) const
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        auto len = numeric_cast<uint32_t>(AnimFileName.length());
-        writer.Write<uint32_t>(len);
-        writer.WriteStringBytes(AnimFileName);
-        len = numeric_cast<uint32_t>(AnimName.length());
-        writer.Write<uint32_t>(len);
-        writer.WriteStringBytes(AnimName);
-        writer.Write<float32_t>(Duration);
-        len = numeric_cast<uint32_t>(BonesHierarchy.size());
-        writer.Write<uint32_t>(len);
-        for (const auto& i : BonesHierarchy) {
-            len = numeric_cast<uint32_t>(i.size());
-            writer.Write<uint32_t>(len);
-            for (const auto& bone_name : i) {
-                len = numeric_cast<uint32_t>(bone_name.length());
-                writer.Write<uint32_t>(len);
-                writer.WriteStringBytes(bone_name);
-            }
-        }
-        len = numeric_cast<uint32_t>(BoneOutputs.size());
-        writer.Write<uint32_t>(len);
-        for (const auto& o : BoneOutputs) {
-            len = numeric_cast<uint32_t>(o.Name.length());
-            writer.Write<uint32_t>(len);
-            writer.WriteStringBytes(o.Name);
-            FO_VERIFY_AND_THROW(o.ScaleTime.size() == o.ScaleValue.size(), "Model bone scale keyframe times and values have different sizes", o.Name, o.ScaleTime.size(), o.ScaleValue.size());
-            FO_VERIFY_AND_THROW(o.RotationTime.size() == o.RotationValue.size(), "Model bone rotation keyframe times and values have different sizes", o.Name, o.RotationTime.size(), o.RotationValue.size());
-            FO_VERIFY_AND_THROW(o.TranslationTime.size() == o.TranslationValue.size(), "Model bone translation keyframe times and values have different sizes", o.Name, o.TranslationTime.size(), o.TranslationValue.size());
-            len = numeric_cast<uint32_t>(o.ScaleTime.size());
-            writer.Write<uint32_t>(len);
-            writer.WriteObjectVector(o.ScaleTime);
-            writer.WriteObjectVector(o.ScaleValue);
-            len = numeric_cast<uint32_t>(o.RotationTime.size());
-            writer.Write<uint32_t>(len);
-            writer.WriteObjectVector(o.RotationTime);
-            writer.WriteObjectVector(o.RotationValue);
-            len = numeric_cast<uint32_t>(o.TranslationTime.size());
-            writer.Write<uint32_t>(len);
-            writer.WriteObjectVector(o.TranslationTime);
-            writer.WriteObjectVector(o.TranslationValue);
-        }
-    }
-
-    string AnimFileName {};
-    string AnimName {};
-    float32_t Duration {};
-    vector<BoneOutput> BoneOutputs {};
-    vector<vector<string>> BonesHierarchy {};
-};
+static constexpr float32_t FBX_SKIN_WEIGHT_SUM_TOLERANCE = 1.0e-4f;
+static_assert(MODEL_MESH_MAX_JOINTS == MODEL_ANIMATION_RIG_MAX_JOINTS);
+static_assert(MODEL_MESH_MAX_SKIN_BONES == MODEL_MAX_BONES);
+static_assert(MODEL_MESH_BONES_PER_VERTEX == MODEL_BONES_PER_VERTEX);
+static_assert(std::same_as<ModelMeshIndexData, vindex_t>);
+static_assert(sizeof(ModelMeshVertexData) == sizeof(Vertex3D));
+static_assert(alignof(ModelMeshVertexData) == alignof(Vertex3D));
+static_assert(offsetof(ModelMeshVertexData, Position) == offsetof(Vertex3D, Position));
+static_assert(offsetof(ModelMeshVertexData, Normal) == offsetof(Vertex3D, Normal));
+static_assert(offsetof(ModelMeshVertexData, TexCoord) == offsetof(Vertex3D, TexCoord));
+static_assert(offsetof(ModelMeshVertexData, TexCoordBase) == offsetof(Vertex3D, TexCoordBase));
+static_assert(offsetof(ModelMeshVertexData, Tangent) == offsetof(Vertex3D, Tangent));
+static_assert(offsetof(ModelMeshVertexData, Bitangent) == offsetof(Vertex3D, Bitangent));
+static_assert(offsetof(ModelMeshVertexData, BlendWeights) == offsetof(Vertex3D, BlendWeights));
+static_assert(offsetof(ModelMeshVertexData, BlendIndices) == offsetof(Vertex3D, BlendIndices));
+static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color));
+static_assert(sizeof(ModelMeshVertexData) <= 256);
 
 ModelMeshBaker::ModelMeshBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -239,6 +150,8 @@ ModelMeshBaker::~ModelMeshBaker()
 void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
+
+    PrepareModelMeshOptimizationRuntime();
 
     // Collect files
     vector<File> filtered_files;
@@ -308,13 +221,16 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 }
 
-static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>;
-static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node);
-static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>;
-static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3;
-static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion;
-static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor;
-static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44;
+static auto FindBakedModelBone(ptr<const ModelMeshBoneData> bone, string_view name) -> nptr<const ModelMeshBoneData>;
+static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname, uint32_t depth) -> unique_ptr<ModelMeshBoneData>;
+static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBoneData> bone, ptr<const ufbx_node> fbx_node, string_view fname);
+static auto ConvertFbxFloat(double value, const FbxValidationContext& context, string_view component) -> float32_t;
+static auto ConvertFbxVec3(const ufbx_vec3& value, const FbxValidationContext& context) -> vec3;
+static auto ConvertFbxColorComponent(double value, const FbxValidationContext& context, string_view component) -> uint8_t;
+static auto ConvertFbxColor(const ufbx_vec4& value, const FbxValidationContext& context) -> ucolor;
+static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContext& context) -> mat44;
+static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bone_count, const FbxValidationContext& context);
+static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name);
 
 auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
 {
@@ -341,46 +257,100 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
     auto fbx_scene_holder = make_unique_del_ptr(fbx_scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
 
+    if (fbx_scene->nodes.count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
+        throw ModelMeshBakerException("FBX hierarchy has too many joints", fname, fbx_scene->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS);
+    }
+
     // Convert data
-    auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
-    ConvertFbxMeshes(root_bone, root_bone, fbx_scene->root_node);
-    const auto animations = ConvertFbxAnimations(fbx_scene, fname);
+    ModelMeshData mesh_data {.RootBone = ConvertFbxHierarchy(fbx_scene->root_node, fname, 0)};
+    ConvertFbxMeshes(mesh_data.RootBone, mesh_data.RootBone, fbx_scene->root_node, fname);
 
     // Write data
     vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    root_bone->Save(writer);
-
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(animations.size()));
-
-    for (const auto& loaded_animation : animations) {
-        loaded_animation->Save(writer);
-    }
+    WriteModelMeshData(writer, mesh_data, fname);
 
     return data;
 }
 
-static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>
+static auto FindBakedModelBone(ptr<const ModelMeshBoneData> bone, string_view name) -> nptr<const ModelMeshBoneData>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto bone = SafeAlloc::MakeUnique<BakerBone>();
+    if (bone->Name == name) {
+        return bone;
+    }
+
+    for (const auto& child : bone->Children) {
+        if (auto found = FindBakedModelBone(child, name)) {
+            return found;
+        }
+    }
+
+    return nullptr;
+}
+
+static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname, uint32_t depth) -> unique_ptr<ModelMeshBoneData>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
+        throw ModelMeshBakerException("FBX hierarchy exceeds the safe depth limit at node", fname, MODEL_MESH_MAX_HIERARCHY_DEPTH, fbx_node->name.data);
+    }
+
+    auto bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
 
     bone->Name = fbx_node->name.data;
-    bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent);
-    bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_world);
-    bone->CombinedTransformationMatrix = mat44();
+    bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent, FbxValidationContext {.FileName = fname, .ScopeName = "hierarchy", .NodeName = bone->Name, .FieldName = "node_to_parent"});
+    bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_world, FbxValidationContext {.FileName = fname, .ScopeName = "hierarchy", .NodeName = bone->Name, .FieldName = "node_to_world"});
     bone->Children.reserve(fbx_node->children.count);
 
     for (size_t i = 0; i < fbx_node->children.count; i++) {
-        bone->Children.emplace_back(ConvertFbxHierarchy(fbx_node->children[i]));
+        bone->Children.emplace_back(ConvertFbxHierarchy(fbx_node->children[i], fname, depth + 1));
     }
 
     return bone;
 }
 
-static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node)
+static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (vertices.empty()) {
+        throw ModelMeshBakerException("FBX mesh node has no indexed vertices to optimize", fname, node_name);
+    }
+    if (indices.empty() || indices.size() % 3 != 0) {
+        throw ModelMeshBakerException("FBX mesh node has invalid triangle index count", fname, node_name, indices.size());
+    }
+
+    for (size_t index_position = 0; index_position < indices.size(); index_position++) {
+        if (indices[index_position] >= vertices.size() || indices[index_position] > std::numeric_limits<ModelMeshIndexData>::max()) {
+            throw ModelMeshBakerException("FBX mesh node has generated index outside the indexed vertex/vindex_t bounds", fname, node_name, indices[index_position], index_position, vertices.size(), std::numeric_limits<ModelMeshIndexData>::max());
+        }
+    }
+
+    vector<uint32_t> optimized_indices(indices.size());
+    meshopt_optimizeVertexCache(optimized_indices.data(), indices.data(), indices.size(), vertices.size());
+
+    vector<ModelMeshVertexData> optimized_vertices(vertices.size());
+    const size_t optimized_vertex_count = meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(), vertices.data(), vertices.size(), sizeof(ModelMeshVertexData));
+
+    if (optimized_vertex_count != vertices.size()) {
+        throw ModelMeshBakerException("FBX mesh node vertex-fetch optimization retained fewer than all indexed vertices", fname, node_name, optimized_vertex_count, vertices.size());
+    }
+
+    for (size_t index_position = 0; index_position < optimized_indices.size(); index_position++) {
+        if (optimized_indices[index_position] >= optimized_vertex_count || optimized_indices[index_position] > std::numeric_limits<ModelMeshIndexData>::max()) {
+            throw ModelMeshBakerException("FBX mesh node optimization produced index outside the indexed vertex/vindex_t bounds", fname, node_name, optimized_indices[index_position], index_position, optimized_vertex_count, std::numeric_limits<ModelMeshIndexData>::max());
+        }
+    }
+
+    vertices = std::move(optimized_vertices);
+    indices = std::move(optimized_indices);
+}
+
+static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBoneData> bone, ptr<const ufbx_node> fbx_node, string_view fname)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -391,6 +361,13 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         auto mesh = make_ptr(&*bone->AttachedMesh);
         FO_VERIFY_AND_THROW(fbx_mesh->num_faces == fbx_mesh->num_triangles, "FBX mesh contains non-triangle faces", fbx_mesh->num_faces, fbx_mesh->num_triangles);
         nptr<const ufbx_skin_deformer> fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
+
+        if (fbx_skin && fbx_skin->clusters.count == 0) {
+            throw ModelMeshBakerException("FBX mesh node has a skin deformer without bone clusters", fname, bone->Name);
+        }
+        if (fbx_skin && fbx_skin->clusters.count > MODEL_MESH_MAX_SKIN_BONES) {
+            throw ModelMeshBakerException("Mesh has too many skin clusters, exceeds MODEL_MAX_BONES limit", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MESH_MAX_SKIN_BONES);
+        }
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
 
@@ -411,61 +388,76 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                     const uint32_t index = triangle_indices[i];
                     auto& v = mesh->Vertices.emplace_back();
 
-                    v.Position = ConvertFbxVec3(fbx_mesh->vertex_position[index]);
+                    v.Position = ConvertFbxVec3(fbx_mesh->vertex_position[index], FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "position", .ElementIndex = index});
 
                     if (fbx_mesh->vertex_normal.exists) {
-                        v.Normal = ConvertFbxVec3(fbx_mesh->vertex_normal[index]);
+                        v.Normal = ConvertFbxVec3(fbx_mesh->vertex_normal[index], FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "normal", .ElementIndex = index});
                     }
 
                     if (fbx_mesh->vertex_tangent.exists) {
-                        v.Tangent = ConvertFbxVec3(fbx_mesh->vertex_tangent[index]);
+                        v.Tangent = ConvertFbxVec3(fbx_mesh->vertex_tangent[index], FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "tangent", .ElementIndex = index});
                     }
 
                     if (fbx_mesh->vertex_bitangent.exists) {
-                        v.Bitangent = ConvertFbxVec3(fbx_mesh->vertex_bitangent[index]);
+                        v.Bitangent = ConvertFbxVec3(fbx_mesh->vertex_bitangent[index], FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "bitangent", .ElementIndex = index});
                     }
 
                     if (fbx_mesh->vertex_color.exists) {
-                        v.Color = ConvertFbxColor(fbx_mesh->vertex_color[index]);
+                        v.Color = ConvertFbxColor(fbx_mesh->vertex_color[index], FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "color", .ElementIndex = index});
                     }
 
                     if (fbx_mesh->vertex_uv.exists) {
-                        v.TexCoord[0] = numeric_cast<float32_t>(fbx_mesh->vertex_uv[index].x);
-                        v.TexCoord[1] = 1.0f - numeric_cast<float32_t>(fbx_mesh->vertex_uv[index].y);
+                        v.TexCoord[0] = ConvertFbxFloat(fbx_mesh->vertex_uv[index].x, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "uv", .ElementIndex = index}, "x");
+                        v.TexCoord[1] = 1.0f - ConvertFbxFloat(fbx_mesh->vertex_uv[index].y, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "uv", .ElementIndex = index}, "y");
                         v.TexCoordBase[0] = v.TexCoord[0];
                         v.TexCoordBase[1] = v.TexCoord[1];
                     }
 
                     if (fbx_skin) {
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
+                        FO_VERIFY_AND_THROW(v_index < fbx_skin->vertices.count, "FBX skin vertex index is outside the skin vertex table", fname, bone->Name, v_index, fbx_skin->vertices.count);
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
+                        FO_VERIFY_AND_THROW(fbx_skin_vertex.weight_begin <= fbx_skin->weights.count && fbx_skin_vertex.num_weights <= fbx_skin->weights.count - fbx_skin_vertex.weight_begin, "FBX skin weight range is outside the skin weight table", fname, bone->Name, v_index, fbx_skin_vertex.weight_begin, fbx_skin_vertex.num_weights, fbx_skin->weights.count);
                         const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), MODEL_BONES_PER_VERTEX);
+
+                        if (weights_count == 0) {
+                            throw ModelMeshBakerException("FBX mesh node has no retained skin influences at vertex", fname, bone->Name, v_index);
+                        }
 
                         float32_t total_weight = 0.0f;
 
                         for (size_t w = 0; w < weights_count; w++) {
                             const ufbx_skin_weight skin_weight = fbx_skin->weights[fbx_skin_vertex.weight_begin + w];
 
+                            if (skin_weight.cluster_index >= fbx_skin->clusters.count) {
+                                throw ModelMeshBakerException("FBX mesh node has skin cluster index outside cluster range at vertex/influence", fname, bone->Name, skin_weight.cluster_index, fbx_skin->clusters.count, v_index, w);
+                            }
+
                             v.BlendIndices[w] = numeric_cast<float32_t>(skin_weight.cluster_index);
-                            v.BlendWeights[w] = numeric_cast<float32_t>(skin_weight.weight);
+                            v.BlendWeights[w] = ConvertFbxFloat(skin_weight.weight, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "skin_weight", .ElementIndex = fbx_skin_vertex.weight_begin + w}, "weight");
 
-                            total_weight += numeric_cast<float32_t>(skin_weight.weight);
-                        }
+                            if (v.BlendWeights[w] < 0.0f) {
+                                throw ModelMeshBakerException("FBX mesh node has negative retained skin weight at vertex/influence", fname, bone->Name, v.BlendWeights[w], v_index, w);
+                            }
 
-                        if (total_weight > 0.0f) {
-                            for (size_t w = 0; w < weights_count; w++) {
-                                v.BlendWeights[w] /= total_weight;
+                            total_weight += v.BlendWeights[w];
+
+                            if (!std::isfinite(total_weight)) {
+                                throw ModelMeshBakerException("FBX has a non-finite accumulated skin weight for mesh node at vertex", fname, bone->Name, v_index);
                             }
                         }
-                        else if (weights_count != 0) {
-                            v.BlendIndices[0] = 0.0f;
-                            v.BlendWeights[0] = 1.0f;
 
-                            for (size_t w = 1; w < weights_count; w++) {
-                                v.BlendIndices[w] = 0.0f;
-                                v.BlendWeights[w] = 0.0f;
-                            }
+                        if (!(total_weight > 0.0f)) {
+                            throw ModelMeshBakerException("FBX mesh node has zero or negative retained skin-weight total at vertex", fname, bone->Name, total_weight, v_index);
                         }
+
+                        for (size_t w = 0; w < weights_count; w++) {
+                            v.BlendWeights[w] /= total_weight;
+                        }
+                    }
+                    else {
+                        v.BlendIndices[0] = 0.0f;
+                        v.BlendWeights[0] = 1.0f;
                     }
                 }
             }
@@ -473,42 +465,58 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
             FO_VERIFY_AND_THROW(mesh_triangles_count == fbx_mesh_part.num_triangles, "Baked mesh triangle count does not match FBX mesh part", mesh_triangles_count, fbx_mesh_part.num_triangles);
         }
 
+        if (mesh->Vertices.size() > std::numeric_limits<uint32_t>::max()) {
+            throw ModelMeshBakerException("Mesh has too many unindexed vertices, exceeds the uint32 writer count limit", fbx_node->name.data, mesh->Vertices.size(), std::numeric_limits<uint32_t>::max());
+        }
+
         vector<uint32_t> indices;
         indices.resize(mesh->Vertices.size());
+        size_t skin_bone_count = 1;
+
+        if (fbx_skin) {
+            skin_bone_count = fbx_skin->clusters.count;
+        }
+
+        for (size_t vertex_index = 0; vertex_index < mesh->Vertices.size(); vertex_index++) {
+            ValidateFbxVertex(mesh->Vertices[vertex_index], skin_bone_count, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "serialized_vertex", .ElementIndex = vertex_index});
+        }
 
         ufbx_error fbx_generate_indices_error;
         FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Baked mesh has no vertices");
         FO_VERIFY_AND_THROW(!indices.empty(), "Baked mesh has no indices");
         auto mesh_vertices_data = make_nptr(mesh->Vertices.data());
-        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_data.void_cast(), mesh->Vertices.size(), sizeof(Vertex3D)}};
+        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_data.void_cast(), mesh->Vertices.size(), sizeof(ModelMeshVertexData)}};
         const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
 
         if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
-            throw ModelMeshBakerException(strex("FBX index generation failed for mesh '{}': {}", fbx_node->name.data, fbx_generate_indices_error.description.data));
+            throw ModelMeshBakerException("FBX index generation failed for mesh", fbx_node->name.data, fbx_generate_indices_error.description.data);
         }
-        if (indices.size() > std::numeric_limits<vindex_t>::max()) {
-            throw ModelMeshBakerException(strex("Mesh '{}' has {} indices, exceeds vindex_t limit {}", fbx_node->name.data, indices.size(), std::numeric_limits<vindex_t>::max()));
+        if (result_vertices == 0 || result_vertices > mesh->Vertices.size()) {
+            throw ModelMeshBakerException("FBX index generation returned invalid vertex count for mesh", result_vertices, fbx_node->name.data, mesh->Vertices.size());
+        }
+        if (result_vertices > std::numeric_limits<uint32_t>::max()) {
+            throw ModelMeshBakerException("Mesh has too many indexed vertices, exceeds the uint32 writer count limit", fbx_node->name.data, result_vertices, std::numeric_limits<uint32_t>::max());
+        }
+        if (indices.size() > std::numeric_limits<uint32_t>::max()) {
+            throw ModelMeshBakerException("Mesh has too many indices, exceeds the uint32 writer count limit", fbx_node->name.data, indices.size(), std::numeric_limits<uint32_t>::max());
         }
 
         mesh->Vertices.resize(result_vertices);
+        OptimizeBakedMeshGeometry(mesh->Vertices, indices, fname, bone->Name);
         mesh->Indices.resize(indices.size());
-        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
+        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<ModelMeshIndexData>(index); });
 
         if (fbx_skin) {
-            if (fbx_skin->clusters.count > MODEL_MAX_BONES) {
-                throw ModelMeshBakerException(strex("Mesh '{}' has {} skin clusters, exceeds MODEL_MAX_BONES limit {}", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES));
-            }
-
-            mesh->SkinBones.reserve(fbx_skin->clusters.count);
+            mesh->SkinBoneNames.reserve(fbx_skin->clusters.count);
             mesh->SkinBoneOffsets.reserve(fbx_skin->clusters.count);
 
             for (ptr<const ufbx_skin_cluster> fbx_skin_cluster : fbx_skin->clusters) {
-                nptr<const BakerBone> skin_bone;
+                nptr<const ModelMeshBoneData> skin_bone;
                 nptr<const ufbx_node> fbx_skin_node = fbx_skin_cluster->bone_node;
 
                 if (fbx_skin_node) {
                     const string skin_bone_name = fbx_skin_node->name.data;
-                    skin_bone = root_bone->Find(skin_bone_name);
+                    skin_bone = FindBakedModelBone(root_bone, skin_bone_name);
 
                     if (!skin_bone) {
                         WriteLog("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
@@ -523,18 +531,13 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                 }
 
                 FO_VERIFY_AND_THROW(skin_bone, "Skin bone must resolve to a found or fallback mesh bone");
-                mesh->SkinBones.emplace_back(skin_bone->Name);
-                mesh->SkinBoneOffsets.emplace_back(ConvertFbxMatrix(fbx_skin_cluster->geometry_to_bone));
+                mesh->SkinBoneNames.emplace_back(skin_bone->Name);
+                mesh->SkinBoneOffsets.emplace_back(ConvertFbxMatrix(fbx_skin_cluster->geometry_to_bone, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "geometry_to_bone", .ElementIndex = mesh->SkinBoneOffsets.size()}));
             }
         }
         else {
-            mesh->SkinBones.emplace_back();
-            mesh->SkinBoneOffsets.emplace_back(ConvertFbxMatrix(fbx_node->geometry_to_node));
-
-            for (auto& v : mesh->Vertices) {
-                v.BlendIndices[0] = 0.0f;
-                v.BlendWeights[0] = 1.0f;
-            }
+            mesh->SkinBoneNames.emplace_back();
+            mesh->SkinBoneOffsets.emplace_back(ConvertFbxMatrix(fbx_node->geometry_to_node, FbxValidationContext {.FileName = fname, .ScopeName = "geometry", .NodeName = bone->Name, .FieldName = "geometry_to_node"}));
         }
 
         if (fbx_node->materials.count != 0) {
@@ -549,142 +552,143 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
     }
 
     for (size_t i = 0; i < fbx_node->children.count; i++) {
-        ConvertFbxMeshes(root_bone, bone->Children[i], fbx_node->children[i]);
+        ConvertFbxMeshes(root_bone, bone->Children[i], fbx_node->children[i], fname);
     }
 }
 
-static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>
+static auto ConvertFbxFloat(double value, const FbxValidationContext& context, string_view component) -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    vector<unique_ptr<BakerAnimSet>> result;
+    constexpr double min_float = static_cast<double>(std::numeric_limits<float32_t>::lowest());
+    constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
 
-    for (ptr<const ufbx_anim_stack> fbx_anim_stack : fbx_scene->anim_stacks) {
-        ptr<const ufbx_anim> fbx_anim = fbx_anim_stack->anim;
-
-        ufbx_bake_opts fbx_bake_opts = {};
-        fbx_bake_opts.trim_start_time = true;
-        ufbx_error fbx_error;
-        auto fbx_baked_anim = make_nptr(ufbx_bake_anim(fbx_scene.get(), fbx_anim.get(), &fbx_bake_opts, &fbx_error));
-        FO_VERIFY_AND_THROW(fbx_baked_anim, "Missing required fbx baked animation");
-        auto fbx_baked_anim_holder = make_unique_del_ptr(fbx_baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); });
-
-        auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
-        anim_set->AnimFileName = fname;
-        anim_set->AnimName = fbx_anim_stack->name.data;
-        anim_set->Duration = numeric_cast<float32_t>(fbx_baked_anim->playback_duration);
-
-        for (const ufbx_baked_node& fbx_baked_anim_node : fbx_baked_anim->nodes) {
-            vector<float32_t> tt;
-            vector<vec3> tv;
-            vector<float32_t> rt;
-            vector<quaternion> rv;
-            vector<float32_t> st;
-            vector<vec3> sv;
-
-            for (const ufbx_baked_vec3& translation_key : fbx_baked_anim_node.translation_keys) {
-                tt.emplace_back(numeric_cast<float32_t>(translation_key.time));
-                tv.emplace_back(ConvertFbxVec3(translation_key.value));
-            }
-            for (const ufbx_baked_quat& rotation_key : fbx_baked_anim_node.rotation_keys) {
-                rt.emplace_back(numeric_cast<float32_t>(rotation_key.time));
-                rv.emplace_back(ConvertFbxQuat(rotation_key.value));
-            }
-            for (const ufbx_baked_vec3& scale_key : fbx_baked_anim_node.scale_keys) {
-                st.emplace_back(numeric_cast<float32_t>(scale_key.time));
-                sv.emplace_back(ConvertFbxVec3(scale_key.value));
-            }
-
-            vector<string> hierarchy;
-
-            for (auto fbx_node = make_nptr(fbx_scene->nodes[fbx_baked_anim_node.typed_id]); fbx_node;) {
-                hierarchy.insert(hierarchy.begin(), fbx_node->name.data);
-                fbx_node = fbx_node->parent;
-            }
-
-            BakerAnimSet::BoneOutput& bone_output = anim_set->BoneOutputs.emplace_back();
-            bone_output.Name = hierarchy.back();
-            bone_output.TranslationTime = tt;
-            bone_output.TranslationValue = tv;
-            bone_output.RotationTime = rt;
-            bone_output.RotationValue = rv;
-            bone_output.ScaleTime = st;
-            bone_output.ScaleValue = sv;
-
-            anim_set->BonesHierarchy.emplace_back(hierarchy);
-        }
-
-        result.emplace_back(std::move(anim_set));
+    if (!std::isfinite(value) || value < min_float || value > max_float) {
+        throw ModelMeshBakerException("FBX has invalid numeric data that is not representable as a finite float", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
     }
 
-    return result;
+    return numeric_cast<float32_t>(value);
 }
 
-static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3
+static auto ConvertFbxVec3(const ufbx_vec3& value, const FbxValidationContext& context) -> vec3
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     vec3 result;
 
-    result.x = numeric_cast<float32_t>(v.x);
-    result.y = numeric_cast<float32_t>(v.y);
-    result.z = numeric_cast<float32_t>(v.z);
+    result.x = ConvertFbxFloat(value.x, context, "x");
+    result.y = ConvertFbxFloat(value.y, context, "y");
+    result.z = ConvertFbxFloat(value.z, context, "z");
 
     return result;
 }
 
-static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    quaternion result;
-
-    result.x = numeric_cast<float32_t>(q.x);
-    result.y = numeric_cast<float32_t>(q.y);
-    result.z = numeric_cast<float32_t>(q.z);
-    result.w = numeric_cast<float32_t>(q.w);
-
-    return result;
-}
-
-static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
+static auto ConvertFbxColor(const ufbx_vec4& value, const FbxValidationContext& context) -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     ucolor color;
 
-    color.comp.r = numeric_cast<uint8_t>(iround<int32_t>(c.x * 255.0));
-    color.comp.g = numeric_cast<uint8_t>(iround<int32_t>(c.y * 255.0));
-    color.comp.b = numeric_cast<uint8_t>(iround<int32_t>(c.z * 255.0));
-    color.comp.a = numeric_cast<uint8_t>(iround<int32_t>(c.w * 255.0));
+    color.comp.r = ConvertFbxColorComponent(value.x, context, "r");
+    color.comp.g = ConvertFbxColorComponent(value.y, context, "g");
+    color.comp.b = ConvertFbxColorComponent(value.z, context, "b");
+    color.comp.a = ConvertFbxColorComponent(value.w, context, "a");
 
     return color;
 }
 
-static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
+static auto ConvertFbxColorComponent(double value, const FbxValidationContext& context, string_view component) -> uint8_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    (void)ConvertFbxFloat(value, context, component);
+
+    if (value < 0.0 || value > 1.0) {
+        throw ModelMeshBakerException("FBX has an out-of-range color component outside [0, 1]", context.FileName, context.ScopeName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
+    }
+
+    return numeric_cast<uint8_t>(iround<int32_t>(value * 255.0));
+}
+
+static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContext& context) -> mat44
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     mat44 result {1.0f};
 
-    result[0][0] = numeric_cast<float32_t>(m.m00);
-    result[1][0] = numeric_cast<float32_t>(m.m01);
-    result[2][0] = numeric_cast<float32_t>(m.m02);
-    result[3][0] = numeric_cast<float32_t>(m.m03);
-    result[0][1] = numeric_cast<float32_t>(m.m10);
-    result[1][1] = numeric_cast<float32_t>(m.m11);
-    result[2][1] = numeric_cast<float32_t>(m.m12);
-    result[3][1] = numeric_cast<float32_t>(m.m13);
-    result[0][2] = numeric_cast<float32_t>(m.m20);
-    result[1][2] = numeric_cast<float32_t>(m.m21);
-    result[2][2] = numeric_cast<float32_t>(m.m22);
-    result[3][2] = numeric_cast<float32_t>(m.m23);
+    result[0][0] = ConvertFbxFloat(value.m00, context, "m00");
+    result[1][0] = ConvertFbxFloat(value.m01, context, "m01");
+    result[2][0] = ConvertFbxFloat(value.m02, context, "m02");
+    result[3][0] = ConvertFbxFloat(value.m03, context, "m03");
+    result[0][1] = ConvertFbxFloat(value.m10, context, "m10");
+    result[1][1] = ConvertFbxFloat(value.m11, context, "m11");
+    result[2][1] = ConvertFbxFloat(value.m12, context, "m12");
+    result[3][1] = ConvertFbxFloat(value.m13, context, "m13");
+    result[0][2] = ConvertFbxFloat(value.m20, context, "m20");
+    result[1][2] = ConvertFbxFloat(value.m21, context, "m21");
+    result[2][2] = ConvertFbxFloat(value.m22, context, "m22");
+    result[3][2] = ConvertFbxFloat(value.m23, context, "m23");
     result[0][3] = 0.0f;
     result[1][3] = 0.0f;
     result[2][3] = 0.0f;
     result[3][3] = 1.0f;
 
     return result;
+}
+
+static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bone_count, const FbxValidationContext& context)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(skin_bone_count != 0, "FBX vertex validation has no available skin bones", context.FileName, context.NodeName, context.ElementIndex);
+
+    const auto validate_vec3 = [&](const vec3& value, string_view field_name) {
+        auto field_context = context;
+        field_context.FieldName = field_name;
+        (void)ConvertFbxFloat(value.x, field_context, "x");
+        (void)ConvertFbxFloat(value.y, field_context, "y");
+        (void)ConvertFbxFloat(value.z, field_context, "z");
+    };
+
+    validate_vec3(vertex.Position, "position");
+    validate_vec3(vertex.Normal, "normal");
+    validate_vec3(vertex.Tangent, "tangent");
+    validate_vec3(vertex.Bitangent, "bitangent");
+
+    for (size_t component = 0; component < 2; component++) {
+        auto field_context = context;
+        field_context.FieldName = "uv";
+        (void)ConvertFbxFloat(vertex.TexCoord[component], field_context, component == 0 ? "x" : "y");
+        field_context.FieldName = "base_uv";
+        (void)ConvertFbxFloat(vertex.TexCoordBase[component], field_context, component == 0 ? "x" : "y");
+    }
+
+    float32_t total_weight = 0.0f;
+
+    for (size_t component = 0; component < MODEL_BONES_PER_VERTEX; component++) {
+        const string component_name = strex("{}", component);
+        auto field_context = context;
+        field_context.FieldName = "blend_weight";
+        (void)ConvertFbxFloat(vertex.BlendWeights[component], field_context, component_name);
+        field_context.FieldName = "blend_index";
+        (void)ConvertFbxFloat(vertex.BlendIndices[component], field_context, component_name);
+
+        const float32_t weight = vertex.BlendWeights[component];
+        const float32_t index = vertex.BlendIndices[component];
+
+        if (weight < 0.0f || weight > 1.0f) {
+            throw ModelMeshBakerException("FBX mesh node has normalized skin weight outside [0, 1] at serialized vertex/influence", context.FileName, context.NodeName, weight, context.ElementIndex, component);
+        }
+        if (index < 0.0f || index != std::floor(index) || index >= numeric_cast<float32_t>(skin_bone_count)) {
+            throw ModelMeshBakerException("FBX mesh node has normalized skin index outside integer range at serialized vertex/influence", context.FileName, context.NodeName, index, skin_bone_count, context.ElementIndex, component);
+        }
+
+        total_weight += weight;
+    }
+
+    if (!std::isfinite(total_weight) || !is_float_equal(total_weight, 1.0f, FBX_SKIN_WEIGHT_SUM_TOLERANCE)) {
+        throw ModelMeshBakerException("FBX mesh node has normalized skin-weight sum instead of 1 at serialized vertex", context.FileName, context.NodeName, total_weight, context.ElementIndex);
+    }
 }
 
 FO_END_NAMESPACE

@@ -35,6 +35,10 @@
 
 #include "Client.h"
 #include "ImGuiStuff.h"
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
+#include "ModelManager.h"
+#include "ModelSprites.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE

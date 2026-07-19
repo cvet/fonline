@@ -50,6 +50,17 @@ Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     FO_STACK_TRACE_ENTRY();
 }
 
+auto Sprite::GetDrawEffectOr(ptr<RenderEffect> defaultEffect) const noexcept -> ptr<RenderEffect>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_drawEffect) {
+        return _drawEffect;
+    }
+
+    return defaultEffect;
+}
+
 auto Sprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

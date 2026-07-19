@@ -1134,6 +1134,7 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
     return _protoMngr.GetProtoEntities(type_name);
 }
 
+#if FO_ENABLE_3D
 auto EngineMetadata::GetModelAnimDuration(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) const -> timespan
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1152,6 +1153,7 @@ auto EngineMetadata::GetModelAnimDuration(hstring model_name, CritterStateAnim s
 
     return anim_it->second;
 }
+#endif
 
 void EngineMetadata::RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
@@ -1171,6 +1173,7 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
     _protoMngr.LoadFromResources(resources);
 }
 
+#if FO_ENABLE_3D
 void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1222,6 +1225,7 @@ void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
 
     _modelAnimDurations = std::move(model_anim_durations);
 }
+#endif
 
 BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
@@ -1237,7 +1241,9 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FO_STACK_TRACE_ENTRY();
 
     RegisterProtos(Resources);
+#if FO_ENABLE_3D
     RegisterModelAnimInfo(Resources);
+#endif
     FinalizeRegistration();
 }
 

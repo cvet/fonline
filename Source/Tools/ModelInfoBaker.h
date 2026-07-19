@@ -33,10 +33,13 @@
 
 #pragma once
 
-#include "Baker.h"
-#include "FileSystem.h"
+#include "Common.h"
 
 #if FO_ENABLE_3D
+
+#include "Baker.h"
+#include "FileSystem.h"
+#include "ModelSourceLoader.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -47,7 +50,7 @@ class ModelInfoBaker final : public BaseBaker
 public:
     static constexpr string_view_nt NAME = "ModelInfo";
 
-    explicit ModelInfoBaker(shared_ptr<BakingContext> ctx);
+    explicit ModelInfoBaker(shared_ptr<BakingContext> ctx, ModelSourceAssetCache::LoadCallback model_source_loader = {});
     ModelInfoBaker(const ModelInfoBaker&) = delete;
     ModelInfoBaker(ModelInfoBaker&&) noexcept = delete;
     auto operator=(const ModelInfoBaker&) = delete;
@@ -58,6 +61,9 @@ public:
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
+
+private:
+    ModelSourceAssetCache::LoadCallback _modelSourceLoader {};
 };
 
 FO_END_NAMESPACE

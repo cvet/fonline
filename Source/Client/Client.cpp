@@ -35,7 +35,6 @@
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
-#include "ModelSprites.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
 

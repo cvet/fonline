@@ -32,10 +32,13 @@
 //
 
 #include "ModelSprites.h"
-#include "Application.h"
-#include "Geometry.h"
 
 #if FO_ENABLE_3D
+
+#include "Application.h"
+#include "Geometry.h"
+#include "ModelInstance.h"
+#include "ModelManager.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -46,6 +49,22 @@ ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> fa
     _atlasType {atlas_type}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+ModelSprite::~ModelSprite() = default;
+
+auto ModelSprite::GetModel() -> ptr<ModelInstance>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _model;
+}
+
+auto ModelSprite::IsPlaying() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _model->IsAnimationPlaying();
 }
 
 auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
@@ -183,6 +202,15 @@ ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSe
         [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); })}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+ModelSpriteFactory::~ModelSpriteFactory() = default;
+
+auto ModelSpriteFactory::GetModelMngr() -> ptr<ModelManager>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _modelMngr;
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
