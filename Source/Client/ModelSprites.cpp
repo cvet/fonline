@@ -36,6 +36,7 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
+#include "EngineBase.h"
 #include "Geometry.h"
 #include "ModelInstance.h"
 #include "ModelManager.h"
