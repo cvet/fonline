@@ -227,7 +227,7 @@ static void ApplyModelDescriptionAdd(float32_t& value, float32_t operand);
 static void ApplyModelDescriptionMul(float32_t& value, float32_t operand);
 
 ModelInfoBaker::ModelInfoBaker(shared_ptr<BakingContext> ctx, ModelSourceAssetCache::LoadCallback model_source_loader) :
-    BaseBaker(std::move(ctx)),
+    BaseBaker(std::move(ctx), NAME),
     _modelSourceLoader {std::move(model_source_loader)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -245,7 +245,10 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
     FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
     const ModelSourceAssetCache model_sources {files, _modelSourceLoader};
 
-    BakeModelAnimInfo(*_context, files, model_sources, target_path);
+    if (target_path == "ModelAnimInfo.foinfo") {
+        BakeModelAnimInfo(*_context, files, model_sources, target_path);
+        return;
+    }
 
     vector<File> filtered_files;
 
@@ -359,6 +362,10 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     if (errors != 0) {
         throw ModelInfoBakerException("Errors during model description baking");
+    }
+
+    if (target_path.empty()) {
+        BakeModelAnimInfo(*_context, files, model_sources, target_path);
     }
 }
 
@@ -1469,9 +1476,20 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
         }
 
         const File model_file = ctx.BakedFiles->ReadFile(description.Model);
-        FO_VERIFY_AND_THROW(model_file, "Baked model data for bounds is not readable", description.Model, file.GetPath());
-        auto model_reader = DataReader(model_file.GetDataSpan());
-        const ModelMeshData model_mesh = ReadModelMeshData(model_reader, description.Model);
+
+        if (!model_file) {
+            throw ModelInfoBakerException("Baked model data for bounds is not readable", description.Model, file.GetPath());
+        }
+
+        ModelMeshData model_mesh;
+
+        try {
+            auto model_reader = DataReader(model_file.GetDataSpan());
+            model_mesh = ReadModelMeshData(model_reader, description.Model);
+        }
+        catch (const std::exception& ex) {
+            throw ModelInfoBakerException("Invalid baked model mesh while calculating bounds", description.Model, file.GetPath(), ex.what());
+        }
         optional<ModelBounds3D> model_bounds;
         optional<ModelBounds3D> view_bounds;
         int32_t view_bounds_priority = -1;
@@ -1563,7 +1581,9 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             }
 
             const optional<ModelBounds3D>& bounds = bounds_it->second;
-            FO_VERIFY_AND_THROW(bounds, "Animation bounds could not be calculated", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath());
+            if (!bounds) {
+                throw ModelInfoBakerException("Animation bounds could not be calculated", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath());
+            }
             FO_VERIFY_AND_THROW(IncludeModelBounds(model_bounds, *bounds), "Calculated model animation bounds are invalid", file.GetPath(), anim_entry.StateAnim, anim_entry.ActionAnim);
 
             const bool idle = anim_entry.ActionAnim == static_cast<int32_t>(CritterActionAnim::Idle);
@@ -1651,11 +1671,15 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
                 throw ModelInfoBakerException("Failed to calculate static model bounds", file.GetPath(), ex.what());
             }
 
-            FO_VERIFY_AND_THROW(model_bounds, "Static model bounds could not be calculated", file.GetPath());
+            if (!model_bounds) {
+                throw ModelInfoBakerException("Static model bounds could not be calculated", file.GetPath());
+            }
             view_bounds = model_bounds;
         }
 
-        FO_VERIFY_AND_THROW(view_bounds, "Model view bounds were not selected", file.GetPath());
+        if (!view_bounds) {
+            throw ModelInfoBakerException("Model view bounds were not selected", file.GetPath());
+        }
         stats.ModelSections++;
         stats.ModelBounds++;
 
@@ -1704,7 +1728,7 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
     ctx.WriteData(output_path, data);
 
     if (ctx.Report) {
-        const shared_ptr<BakingReport> report = ctx.Report;
+        shared_ptr<BakingReport> report = ctx.Report;
         report->AddCounter(ctx.PackName, ctx.BakerName, "modelSections", stats.ModelSections);
         report->AddCounter(ctx.PackName, ctx.BakerName, "modelBounds", stats.ModelBounds);
         report->AddCounter(ctx.PackName, ctx.BakerName, "animationEntries", stats.AnimationEntries);

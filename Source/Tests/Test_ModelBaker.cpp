@@ -36,17 +36,34 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
     writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
 
     if (attached_mesh) {
-        writer.Write<uint32_t>(uint32_t {0}); // Vertices
-        writer.Write<uint32_t>(uint32_t {0}); // Indices
+        array<ModelMeshVertexData, 3> vertices {};
+        vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f};
+        vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f};
+        vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+
+        for (ModelMeshVertexData& vertex : vertices) {
+            vertex.BlendWeights[0] = 1.0f;
+        }
+
+        constexpr array<ModelMeshIndexData, 3> indices {0, 1, 2};
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
+        writer.WriteObjectArray(const_span<ModelMeshVertexData> {vertices});
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
+        writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
         writer.WriteString(diffuse_texture);
 
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bones
-        for (string_view skin_bone_name : skin_bone_names) {
+        vector<string_view> effective_skin_bone_names(skin_bone_names);
+
+        if (effective_skin_bone_names.empty()) {
+            effective_skin_bone_names.emplace_back();
+        }
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bones
+        for (string_view skin_bone_name : effective_skin_bone_names) {
             writer.WriteString(skin_bone_name);
         }
 
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bone offsets
-        for (size_t i = 0; i < skin_bone_names.size(); i++) {
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bone offsets
+        for (size_t i = 0; i < effective_skin_bone_names.size(); i++) {
             writer.Write<mat44>(matrix);
         }
     }
@@ -267,11 +284,26 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
     writer.Write<mat44>(matrix);
     writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(uint8_t {1});
-    writer.Write<uint32_t>(uint32_t {0}); // Vertices
-    writer.Write<uint32_t>(uint32_t {0}); // Indices
+
+    array<ModelMeshVertexData, 3> vertices {};
+    vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f};
+    vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f};
+    vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+
+    for (ModelMeshVertexData& vertex : vertices) {
+        vertex.BlendWeights[0] = 1.0f;
+    }
+
+    constexpr array<ModelMeshIndexData, 3> indices {0, 1, 2};
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
+    writer.WriteObjectArray(const_span<ModelMeshVertexData> {vertices});
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
+    writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
     writer.WriteString({});
-    writer.Write<uint32_t>(uint32_t {0}); // Skin bones
-    writer.Write<uint32_t>(uint32_t {0}); // Skin bone offsets
+    writer.Write<uint32_t>(uint32_t {1}); // Skin bones
+    writer.WriteString({});
+    writer.Write<uint32_t>(uint32_t {1}); // Skin bone offsets
+    writer.Write<mat44>(matrix);
     writer.Write<uint32_t>(uint32_t {1}); // Children
 
     WriteTestModelBone(writer, child_bone, false, {}, {});
@@ -1232,9 +1264,8 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(checks.size() == 3);
-        CHECK(checks[0] == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50});
-        CHECK(checks[1] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
-        CHECK(checks[2] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 50}) == 2);
         CHECK(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/TEMPLATE_Anim.fo3d") == 0);
@@ -1262,8 +1293,8 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(checks.size() == 2);
-        CHECK(checks[0] == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 90});
-        CHECK(checks[1] == pair<string, uint64_t> {"Critters/Test.fo3d", 90});
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 90}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 90}) == 1);
         CHECK(rig.Outputs.empty());
     }
 
@@ -1286,8 +1317,8 @@ TEST_CASE("ModelInfoBakerOrchestration")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(checks.size() == 2);
-        CHECK(checks[0] == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 40});
-        CHECK(checks[1] == pair<string, uint64_t> {"Critters/Test.fo3d", 40});
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 40}) == 1);
+        CHECK(std::ranges::count(checks, pair<string, uint64_t> {"Critters/Test.fo3d", 40}) == 1);
         CHECK(rig.Outputs.empty());
     }
 
@@ -1382,7 +1413,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("StateAnims = 0 0\n") != string::npos);
         CHECK(config.find("ActionAnims = 1 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 250\n") != string::npos);
-        CHECK(config.find("Critters/NoAnim.fo3d") == string::npos);
+        CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
 
     SECTION("Materializes model animation aliases with client lookup semantics")
@@ -1581,7 +1612,7 @@ TEST_CASE("ModelInfoBakerValidations")
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
 
-    SECTION("Rejects non-positive draw sizes")
+    SECTION("Rejects obsolete draw sizes")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
@@ -1591,7 +1622,7 @@ TEST_CASE("ModelInfoBakerValidations")
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
 
-    SECTION("Rejects non-positive view sizes")
+    SECTION("Rejects obsolete view sizes")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
@@ -2038,8 +2069,6 @@ Subset LegacySubset
 Root Link Body Mesh Body Texture 0 Body.tga Effect Effects/Test.fofx
 RotX 1 RotY+ 2 RotZ* 3 MoveX 4 MoveY+ 5 MoveZ* 6 Scale 2 Scale+ 0.5 ScaleX* 2 ScaleY 7 ScaleZ+ 8 Scale* 2 Speed 1.25 Speed+ 0.75 Speed* 2
 DisableLayer 2-3 DisableMesh All-Body Cut Cut.fbx All CutShape Body Body ~CutShape
-DrawSize 64 96
-ViewSize 33 44
 RotationBone Body
 FastTransitionBone Body
 DisableShadow
@@ -2077,10 +2106,10 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(reader.Read<uint8_t>() == 1);
         CHECK(reader.Read<uint8_t>() == 1);
         CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 64);
-        CHECK(reader.Read<int32_t>() == 96);
-        CHECK(reader.Read<int32_t>() == 33);
-        CHECK(reader.Read<int32_t>() == 44);
+        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.Read<int32_t>() == 0);
         CHECK(ReadSavedModelInfoString(reader) == "Body");
 
         const SavedModelInfoLink default_link = ReadSavedModelInfoLink(reader);

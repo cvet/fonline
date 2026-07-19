@@ -414,9 +414,11 @@ companion output is global, its incremental timestamp covers every input in the
 pack, including animation FBX files referenced by `.fo3d` data. The `ModelInfo`
 baking report records model sections, aggregate model bounds, duration entries,
 animation bounds, view-bound idle/fallback selection, calculator/cache counts,
-sections with/without bounds, and a
-maximum-axis-extent histogram (`<1`, `1-2`, `2-3`, `3-5`, `5-10`, `10+` model
-world units) for coverage and density analysis.
+and a maximum-axis-extent histogram (`<1`, `1-2`, `2-3`, `3-5`, `5-10`, `10+`
+model world units) for coverage and density analysis. Individual model
+descriptions are validated and baked before the aggregate companion, so a
+broken `.fo3d` is reported through the normal per-file diagnostic path and
+cannot leave a newly written companion beside rejected model descriptions.
 
 The companion also contains each model's effective `(state, action)` cycle
 durations after authored `AnimSpeed` is applied. The duration arrays materialize

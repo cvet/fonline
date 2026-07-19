@@ -1961,8 +1961,6 @@ TEST_CASE("ModelAnimationInfoLookup")
 }
 #endif
 
-#endif
-
 // ========== Proto Getter Tests ==========
 
 TEST_CASE("ProtoCollectionGetters")
