@@ -242,6 +242,17 @@ public:
 
     [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
 
+    // Preflights an untrusted element count before a caller allocates or loops. Variable-size items pass their
+    // minimum wire size; zero-size layouts are charged one byte of payload budget to cap count bombs.
+    void VerifyPayloadCount(size_t count, size_t minimum_item_size) const
+    {
+        const size_t effective_minimum_item_size = std::max(minimum_item_size, size_t {1});
+
+        if (count > GetUnreadSize() / effective_minimum_item_size) {
+            throw DataReadingException("Payload element count exceeds remaining buffer");
+        }
+    }
+
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     auto Read() -> T
@@ -300,9 +311,7 @@ public:
     {
         const uint32_t count = Read<uint32_t>();
 
-        if (count > GetUnreadSize() / sizeof(uint32_t)) {
-            throw DataReadingException("String vector count exceeds remaining buffer");
-        }
+        VerifyPayloadCount(numeric_cast<size_t>(count), sizeof(uint32_t));
 
         vector<string> values;
         values.reserve(count);
@@ -321,9 +330,7 @@ public:
         static_assert(std::is_trivially_copyable_v<T>);
 
         if (!out.empty()) {
-            if (out.size() > GetUnreadSize() / sizeof(T)) {
-                throw DataReadingException("Object array size exceeds remaining buffer");
-            }
+            VerifyPayloadCount(out.size(), sizeof(T));
 
             auto target = MutableObjectsPtr(out);
             ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
@@ -340,9 +347,7 @@ public:
 
         const uint32_t count = Read<uint32_t>();
 
-        if (count > GetUnreadSize() / sizeof(T)) {
-            throw DataReadingException("Object vector count exceeds remaining buffer");
-        }
+        VerifyPayloadCount(numeric_cast<size_t>(count), sizeof(T));
 
         vector<T> values;
         values.resize(count);
@@ -402,105 +407,6 @@ private:
     }
 
     const_span<uint8_t> _dataBuf;
-    size_t _readPos {};
-};
-
-class MutableDataReader
-{
-public:
-    explicit MutableDataReader(span<uint8_t> buf) :
-        _dataBuf {buf}
-    {
-    }
-
-    template<typename T>
-        requires(std::is_standard_layout_v<T>)
-    auto Read() -> T
-    {
-        static_assert(std::is_trivially_copyable_v<T>);
-
-        return span_read_object<T>(_dataBuf, _readPos);
-    }
-
-    auto ReadBytes(size_t size) -> span<uint8_t> { return span_read_bytes(_dataBuf, _readPos, size); }
-
-    void ReadBytes(span<uint8_t> out)
-    {
-        span<uint8_t> bytes = ReadBytes(out.size());
-        CopyBytesTo(out, bytes);
-    }
-
-    void ReadStringBytes(string& out)
-    {
-        if (!out.empty()) {
-            ReadBytes({make_ptr(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
-        }
-    }
-
-    template<typename T>
-        requires(std::is_standard_layout_v<T>)
-    void ReadObjectArray(span<T> out)
-    {
-        static_assert(std::is_trivially_copyable_v<T>);
-
-        if (!out.empty()) {
-            auto target = MutableObjectsPtr(out);
-            ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
-            ReadBytes({bytes.get(), out.size() * sizeof(T)});
-        }
-    }
-
-    template<typename T>
-    auto ReadPtr(size_t size) -> nptr<T>
-    {
-        span<uint8_t> bytes = ReadBytes(size);
-
-        if (bytes.empty()) {
-            return nullptr;
-        }
-
-        return make_ptr(bytes.data()).reinterpret_as<T>();
-    }
-
-    void ReadPtr(nptr<void> out, size_t size)
-    {
-        span<uint8_t> bytes = ReadBytes(size);
-
-        if (!bytes.empty()) {
-            FO_VERIFY_AND_THROW(out, "Output pointer is null");
-            auto target = ptr<void> {out};
-            auto target_bytes = target.reinterpret_as<uint8_t>();
-            CopyBytesTo({target_bytes.get(), bytes.size()}, bytes);
-        }
-    }
-
-    void VerifyEnd() const
-    {
-        if (_readPos != _dataBuf.size()) {
-            throw DataReadingException("Not all data read");
-        }
-    }
-
-private:
-    static void CopyBytesTo(span<uint8_t> out, span<uint8_t> bytes)
-    {
-        FO_VERIFY_AND_THROW(out.size() == bytes.size(), "Output and source sizes differ");
-
-        size_t pos = 0;
-        span_write_bytes(out, pos, bytes);
-    }
-
-    template<typename T>
-        requires(std::is_standard_layout_v<T>)
-    static auto MutableObjectsPtr(span<T> data) -> ptr<T>
-    {
-        static_assert(std::is_trivially_copyable_v<T>);
-        FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");
-
-        return data.data();
-    }
-
-    span<uint8_t> _dataBuf;
     size_t _readPos {};
 };
 
