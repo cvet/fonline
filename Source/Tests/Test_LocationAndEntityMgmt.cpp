@@ -1837,4 +1837,41 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     server->CrMngr.DestroyCritter(cr);
 }
 
+TEST_CASE("DestroyingEntityRejectsNewTimeEvents")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    bool finish_called = false;
+    bool timer_func_resolved = false;
+    string rejection;
+    Entity::EventCallbackData callback;
+    callback.Callback = [&server, &cr, &get_func, &finish_called, &timer_func_resolved, &rejection](FuncCallData&) {
+        finish_called = true;
+        auto timer_func = server->FindFunc<void>(get_func("LocEntity::OnUnloadTimer"));
+        timer_func_resolved = static_cast<bool>(timer_func);
+
+        if (timer_func) {
+            try {
+                (void)server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
+            }
+            catch (const std::exception& ex) {
+                rejection = ex.what();
+            }
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
+    server->OnCritterFinish.Subscribe(std::move(callback));
+    auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+
+    server->CrMngr.DestroyCritter(cr);
+
+    CHECK(finish_called);
+    CHECK(timer_func_resolved);
+    CHECK(rejection.find("Cannot start a time event for an entity that is being destroyed") != string::npos);
+    CHECK_FALSE(cr->HasTimeEvents());
+}
+
 FO_END_NAMESPACE

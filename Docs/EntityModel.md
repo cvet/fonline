@@ -173,6 +173,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 `TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
 
+`StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started.
+
 ## Serialization relationships
 
 Entity state is serialized through property data, not by hand-copying entity fields:

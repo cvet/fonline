@@ -89,6 +89,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
+    FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Cannot start a time event for an entity that is being destroyed", entity->GetTypeName(), entity->GetId());
 
     const auto event_id = ++_timeEventCounter;
     const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
