@@ -335,11 +335,18 @@ macro(CreatePackage package)
 endmacro()
 
 macro(AddToPackage package binary platform arch packType)
-	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
-endmacro()
+	set(addToPackageCustomConfig "")
+	set(addToPackageBinaryOutputPostfix "")
 
-macro(AddPackageOption package optionName optionValue)
-	set(Package_${package}_Option_${optionName} "${optionValue}")
+	if(${ARGC} GREATER 5)
+		set(addToPackageCustomConfig "${ARGV5}")
+	endif()
+
+	if(${ARGC} GREATER 6)
+		set(addToPackageBinaryOutputPostfix "${ARGV6}")
+	endif()
+
+	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${addToPackageCustomConfig},${addToPackageBinaryOutputPostfix}")
 endmacro()
 
 macro(DefinePackage package)
@@ -363,15 +370,22 @@ macro(DefinePackage package)
 			endif()
 
 			ListPopFront(packageArgs binary platform arch packType)
-			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType})
-		elseif(packageKeyword STREQUAL "OPTION")
-			ListLength(packageArgs packageArgsCount)
-			if(packageArgsCount LESS 2)
-				AbortMessage("DefinePackage ${package} OPTION expects name and value")
+			set(binaryOutputPostfix "")
+
+			if(packageArgs)
+				ListGet(packageArgs 0 binaryOption)
+
+				if(binaryOption STREQUAL "POSTFIX")
+					ListLength(packageArgs packageArgsCount)
+					if(packageArgsCount LESS 2)
+						AbortMessage("DefinePackage ${package} BINARY POSTFIX expects a value")
+					endif()
+
+					ListPopFront(packageArgs binaryOption binaryOutputPostfix)
+				endif()
 			endif()
 
-			ListPopFront(packageArgs optionName optionValue)
-			AddPackageOption(${package} ${optionName} "${optionValue}")
+			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType} "" "${binaryOutputPostfix}")
 		else()
 			AbortMessage("DefinePackage ${package} got unexpected keyword: ${packageKeyword}")
 		endif()
