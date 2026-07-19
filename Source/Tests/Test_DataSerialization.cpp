@@ -187,8 +187,7 @@ TEST_CASE("DataSerialization")
         CHECK_THROWS_AS(object_vector_reader.ReadSizedObjectVector<uint32_t>(), DataReadingException);
 
         DataReader empty_reader {const_span<uint8_t> {}};
-        CHECK_NOTHROW(empty_reader.VerifyPayloadCount(0, 0));
-        CHECK_THROWS_AS(empty_reader.VerifyPayloadCount(1, 0), DataReadingException);
+        CHECK_THROWS_AS(empty_reader.VerifyPayloadCount(0, 0), VerificationException);
     }
 
     SECTION("VerifyEnd")

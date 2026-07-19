@@ -243,12 +243,12 @@ public:
     [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
 
     // Preflights an untrusted element count before a caller allocates or loops. Variable-size items pass their
-    // minimum wire size; zero-size layouts are charged one byte of payload budget to cap count bombs.
+    // minimum wire size.
     void VerifyPayloadCount(size_t count, size_t minimum_item_size) const
     {
-        const size_t effective_minimum_item_size = std::max(minimum_item_size, size_t {1});
+        FO_VERIFY_AND_THROW(minimum_item_size != 0, "Payload minimum item size is zero");
 
-        if (count > GetUnreadSize() / effective_minimum_item_size) {
+        if (count > GetUnreadSize() / minimum_item_size) {
             throw DataReadingException("Payload element count exceeds remaining buffer");
         }
     }

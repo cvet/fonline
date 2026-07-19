@@ -59,9 +59,6 @@
 *.rtf      diff=astextplain
 *.RTF      diff=astextplain
 
-# Preserve upstream Markdown hard breaks byte-for-byte
-ThirdParty/ozz-animation/CHANGES.md -whitespace
-
 # Graphics
 *.tga      binary
 *.png      binary
