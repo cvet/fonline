@@ -59,6 +59,7 @@ struct FindPathInput
     int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
     int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
     bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset
+    function<bool(mpos)> CheckTarget {}; // Optional exact multi-target predicate; replaces ToHex/Cut when set
     function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
 };
 

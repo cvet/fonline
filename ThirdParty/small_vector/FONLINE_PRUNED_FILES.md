@@ -7,6 +7,7 @@ Removed paths:
 - source/bench/
 - source/support/python/
 - source/test/
+- .github/
 - .gitignore
 - CMakeLists.txt
 - conanfile.py

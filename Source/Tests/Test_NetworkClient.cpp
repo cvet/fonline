@@ -32,6 +32,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "ClientConnection.h"
 #include "NetworkClient.h"
 #include "Test_BakerHelpers.h"
 
@@ -214,6 +215,44 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
     CHECK_FALSE(conn->IsConnecting());
     CHECK_FALSE(conn->IsConnected());
     CHECK(conn->ReceiveData().empty());
+}
+
+TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
+{
+    auto settings = MakeClientNetworkSettings();
+    const auto port = TestClientPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.DisableZlibCompression, false);
+
+    InterthreadDataCallback server_send_to_client;
+    size_t client_disconnect_count = 0;
+
+    InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
+        server_send_to_client = std::move(client_receive);
+
+        return [&](const_span<uint8_t> buf) {
+            if (buf.empty()) {
+                client_disconnect_count++;
+            }
+        };
+    });
+
+    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+
+    optional<ClientConnection::ConnectResult> connect_result;
+    ClientConnection client {&settings};
+    client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
+    client.Connect();
+    REQUIRE(server_send_to_client);
+
+    const vector<uint8_t> invalid = {0x00, 0x00};
+    server_send_to_client(invalid);
+
+    CHECK_NOTHROW(client.Process());
+    CHECK_FALSE(client.IsConnecting());
+    CHECK_FALSE(client.IsConnected());
+    CHECK(connect_result == ClientConnection::ConnectResult::Failed);
+    CHECK(client_disconnect_count == 1);
 }
 
 TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")

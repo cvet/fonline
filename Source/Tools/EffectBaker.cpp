@@ -35,6 +35,7 @@
 #include "Application.h"
 #include "ConfigFile.h"
 
+FO_DISABLE_WARNINGS_PUSH()
 #include "../Include/Types.h"
 #include "GlslangToSpv.h"
 #include "ResourceLimits.h"
@@ -42,6 +43,7 @@
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
+FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 

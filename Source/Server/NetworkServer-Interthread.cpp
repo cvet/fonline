@@ -66,7 +66,7 @@ public:
     auto operator=(InterthreadServer&&) noexcept = delete;
     ~InterthreadServer() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
     uint16_t _virtualPort;
@@ -142,14 +142,19 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
         throw NetworkServerException("Port is busy", _virtualPort);
     }
 
-    InterthreadListeners.emplace(_virtualPort, [settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
+    auto connection_registry = GetConnectionRegistry();
+    InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
         auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
-        callback_(conn);
+
+        if (connection_registry_->TrackConnection(conn)) {
+            callback_(conn);
+        }
+
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });
 }
 
-void InterthreadServer::Shutdown()
+void InterthreadServer::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 

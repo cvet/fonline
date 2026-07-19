@@ -471,39 +471,17 @@ namespace MapOpsTest
         Game.CreateLocation("MissingLocation".hstr(), mapPids, props);
     }
 
-    int TestGameDestroyItemByIdCountOverload()
+    // An init script that cannot be resolved must fail loudly instead of leaving the entity silently uninitialized
+    void TestCreateLocationMissingInitScriptThrows()
     {
-        Location loc = CreateTestLocation();
-        if (loc is null) return -1;
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::MissingLocationInit".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
+    }
 
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) return -2;
-
-        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
-        if (cr is null) return -3;
-
-        Item item = cr.AddItem("TestItem".hstr(), 4);
-        if (item is null) return -4;
-
-        ident itemId = item.Id;
-
-        Game.DestroyItem(itemId, 0);
-
-        Item? unchanged = Game.GetItem(itemId);
-        if (unchanged is null) return -5;
-        if (unchanged.Count != 4) return -6;
-
-        Game.DestroyItem(itemId, 1);
-
-        Item? reduced = Game.GetItem(itemId);
-        if (reduced is null) return -7;
-        if (reduced.Count != 3) return -8;
-
-        Game.DestroyItem(itemId, 3);
-        if (Game.GetItem(itemId) !is null) return -9;
-
-        Game.DestroyLocation(loc);
-        return 0;
+    void TestCreateLocationMismatchedInitScriptThrows()
+    {
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::AllowItemPathGag".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
     }
 
     int TestMapGetItemOnHex()
@@ -1776,25 +1754,9 @@ namespace MapOpsTest
         if (Game.GetMap(destroyByHandleMapId) !is null) return -37;
         Game.DestroyLocation(destroyByHandleLoc);
 
-        Location destroyByIdLoc = Game.CreateLocation("TestLocation".hstr(), mapPids);
-        if (destroyByIdLoc is null) return -38;
-
-        Map destroyByIdMap = destroyByIdLoc.GetMapByIndex(0);
-        if (destroyByIdMap is null) return -39;
-
-        ident destroyByIdMapId = destroyByIdMap.Id;
-        Game.DestroyMap(destroyByIdMapId);
-        if (Game.GetMap(destroyByIdMapId) !is null) return -40;
-        Game.DestroyLocation(destroyByIdLoc);
-
         ident byProtoId = byProto.Id;
-        Game.DestroyLocation(byProtoId);
-        if (Game.GetLocation(byProtoId) !is null) return -41;
-
-        Game.DestroyMap(ZERO_IDENT);
-        Game.DestroyLocation(ZERO_IDENT);
-        if (Game.GetMap(ZERO_IDENT) !is null) return -42;
-        if (Game.GetLocation(ZERO_IDENT) !is null) return -43;
+        Game.DestroyLocation(byProto);
+        if (Game.GetLocation(byProtoId) !is null) return -38;
 
         Game.DestroyLocation(withMapProps2);
         Game.DestroyLocation(withMapProps1);
@@ -4974,11 +4936,6 @@ TEST_CASE("MapItemOperations")
         RUN_FUNC("MapOpsTest::TestGameMoveItemsOverloads");
     }
 
-    SECTION("GameDestroyItemByIdCountOverload")
-    {
-        RUN_FUNC("MapOpsTest::TestGameDestroyItemByIdCountOverload");
-    }
-
     SECTION("GetItemOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetItemOnHex");
@@ -5316,6 +5273,16 @@ TEST_CASE("MapLocationRelationship")
     SECTION("CreateLocationInvalidProtoMapPropsThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationInvalidProtoMapPropsThrows", "Invalid location proto id arg");
+    }
+
+    SECTION("CreateLocationMissingInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMissingInitScriptThrows", "Init function not found or has a mismatched signature");
+    }
+
+    SECTION("CreateLocationMismatchedInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMismatchedInitScriptThrows", "Init function not found or has a mismatched signature");
     }
 
     SECTION("GameGetLocations")

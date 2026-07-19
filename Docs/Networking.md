@@ -98,6 +98,8 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 
 `Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
 
+Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `StreamDecompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
+
 The public surface is transport-neutral:
 
 - `IsConnecting()` / `IsConnected()`;
@@ -135,6 +137,20 @@ The client runtime should depend on the abstract connection interface where poss
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
+
+`NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
+against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
+transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
+shutdown is either included in that snapshot or rejected and disconnected by `TrackConnection()`; it cannot
+escape between the accept callback and io-thread teardown. Repeated `Shutdown()` calls are no-ops.
+
+The server runtime applies two independent limits to connections that have not logged in:
+
+- `ServerNetwork.InactivityDisconnectTime` limits silence between any inbound messages;
+- `ServerNetwork.LoginTimeout` limits time without meaningful pre-login progress (0 disables it). Handshake,
+  authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
+  legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
+  answering pings.
 
 `NetworkServer` starts transport-specific servers through factories:
 
@@ -181,9 +197,9 @@ connection wrapper's lifetime must be disciplined:
   io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
   surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
 
-`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm, and a real
-websocketpp client that sends a frame then forces a server-side disconnect + shutdown); run it under the
-AddressSanitizer job to guard these lifetime rules.
+`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm and shutdown with an
+accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
+disconnect it); run it under the AddressSanitizer job to guard these lifetime rules.
 
 ## Ordered UDP transport
 

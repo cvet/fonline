@@ -344,10 +344,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
-    auto app_id = make_ptr(FO_DEV_NAME.c_str());
-    auto app_name = make_ptr(Settings.GameName.c_str());
-    SDL_SetHint(SDL_HINT_APP_ID, app_id.get());
-    SDL_SetHint(SDL_HINT_APP_NAME, app_name.get());
+    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
+    SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
     if (Settings.NullRenderer) {

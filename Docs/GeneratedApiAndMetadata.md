@@ -53,7 +53,7 @@ The stage creates normal and forced code-generation command targets and appends 
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — two-section header: the engine configuration macros (consumed at the top of `Source/Essentials/BasicCore.h`) and the typed build/version constants `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH` (re-included by `Source/Common/Common.h` with `FO_ENGINE_CONFIG_CONSTANTS` defined, after `fo::string_view_nt` exists). Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`

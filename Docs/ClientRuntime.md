@@ -27,6 +27,7 @@ Read this page together with:
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
+- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`
@@ -128,6 +129,8 @@ Primary view types:
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
 
+Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` keeps a cell only when the source returns the same handle instance; a replacement clone with the same entity id is rebound so item draw callbacks observe its current count and other projected properties.
+
 ## 3D model runtime architecture
 
 The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The
@@ -172,6 +175,8 @@ contract shared with the baker, while
 `ModelAnimationConverter` owns offline conversion. The engine API does not name
 or model interchangeable animation backends: Ozz is an implementation detail of
 the engine's native model-animation runtime and baked format.
+
+## Critter model animation
 
 3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
 animation-specific speed (`AnimSpeed`) to the body/action controller, while `RefreshMoveAnimation()` assigns gait and

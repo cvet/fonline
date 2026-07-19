@@ -957,6 +957,71 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
     return numeric_cast<int32_t>(output.Steps.size());
 }
 
+// SyncScope: requires self; pathing reads map blockers and optional gag callback items.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Item>> gagCallback)
+{
+    if (!self->GetSize().is_valid_pos(fromHex)) {
+        throw ScriptException("Invalid from hex arg");
+    }
+    if (targetHexes.empty()) {
+        throw ScriptException("Empty target hexes arg");
+    }
+    for (const mpos candidateHex : targetHexes) {
+        if (!self->GetSize().is_valid_pos(candidateHex)) {
+            throw ScriptException("Invalid target hex arg");
+        }
+    }
+
+    function<bool(ptr<const Item>)> gag_callback;
+
+    if (gagCallback) {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    }
+
+    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
+    pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
+
+    if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
+        return false;
+    }
+
+    targetHex = output.NewToHex;
+    return true;
+}
+
+// SyncScope: requires self + cr; pathing reads map blockers and cr state.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallback)
+{
+    if (targetHexes.empty()) {
+        throw ScriptException("Empty target hexes arg");
+    }
+    for (const mpos candidateHex : targetHexes) {
+        if (!self->GetSize().is_valid_pos(candidateHex)) {
+            throw ScriptException("Invalid target hex arg");
+        }
+    }
+
+    ValidateEntityAccess(cr);
+
+    function<bool(ptr<const Item>)> gag_callback;
+
+    if (gagCallback) {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    }
+
+    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));
+    pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
+
+    if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
+        return false;
+    }
+
+    targetHex = output.NewToHex;
+    return true;
+}
+
 // SyncScope: requires self; creates and attaches a new critter on the map under self cover.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId, mpos hex, mdir dir)

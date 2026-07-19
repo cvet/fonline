@@ -1059,9 +1059,10 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         return;
     }
 
-    // No-op if the entity's OWN lock is already held: EnsureEntitySynced is idempotent across a
-    // transfer/cascade that pulls the same entity in more than once.
-    if (lock->IsLockedByCurrentThread()) {
+    // Recursive ownership by another active context is not enough: this context must retain its own
+    // acquisition so the lock survives when that nested/inner context releases. This also keeps
+    // repeated expansion in the same context idempotent.
+    if (std::ranges::find(_heldLocks, lock) != _heldLocks.end() || std::ranges::find(_singletonLocks, lock) != _singletonLocks.end()) {
         return;
     }
 
@@ -1620,6 +1621,31 @@ auto SyncContext::GetOutermostOnThisThread() noexcept -> nptr<SyncContext>
     }
 
     return ctx;
+}
+
+void SyncContext::RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(first && second, "Missing entity in sync pair");
+
+    auto first_lock = first->GetEntityLock();
+    auto second_lock = second->GetEntityLock();
+
+    FO_VERIFY_AND_THROW(first_lock && second_lock, "Missing lock in sync pair");
+
+    // A nested operation can publish a new non-parented sync link, notably Player <-> Critter.
+    // Before publication, recursively retain both locks in every active context that already owns
+    // either half so the outer cover remains continuous after the temporary context releases.
+    for (auto ctx = CurrentContext; ctx; ctx = ctx->_previousContext) {
+        const bool owns_first = std::ranges::find(ctx->_heldLocks, first_lock) != ctx->_heldLocks.end();
+        const bool owns_second = std::ranges::find(ctx->_heldLocks, second_lock) != ctx->_heldLocks.end();
+
+        if (owns_first || owns_second) {
+            ctx->EnsureEntitySynced(first);
+            ctx->EnsureEntitySynced(second);
+        }
+    }
 }
 
 auto NextSyncTicket() noexcept -> uint64_t

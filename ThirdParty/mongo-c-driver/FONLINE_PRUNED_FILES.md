@@ -43,11 +43,13 @@ Removed paths:
 - .tsan-suppressions
 - .ubsan-suppressions
 - CONTRIBUTING.md
+- cyclonedx.sbom.json
 - Earthfile
 - justfile
 - lldb.pyi
 - lldb_bson.py
 - pyproject.toml
+- ssdlc_compliance_report.md
 - uv.lock
 - valgrind.suppressions
 

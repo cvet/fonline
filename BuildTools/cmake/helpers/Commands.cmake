@@ -170,6 +170,10 @@ macro(TargetCompileDefinitions)
 	target_compile_definitions(${ARGV})
 endmacro()
 
+macro(TargetCompileOptions)
+	target_compile_options(${ARGV})
+endmacro()
+
 macro(TargetIncludeDirectories)
 	target_include_directories(${ARGV})
 endmacro()

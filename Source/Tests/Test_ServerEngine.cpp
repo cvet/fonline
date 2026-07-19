@@ -1686,6 +1686,33 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
+
+    // Login begins with only the Player covered. PlayerInit switches to the restored critter inside
+    // its nested script context; SwitchPlayerCritter must retain the new pair in the outer context
+    // before the next OnPlayerLogin subscriber reads the critter inventory.
+    {
+        vector<nptr<ServerEntity>> attached_pair {player_a_holder, cr_a};
+        ctx.SyncEntities(attached_pair);
+        cr_a->DetachPlayer();
+    }
+    ctx.Release();
+
+    ctx.SyncEntity(player_a_holder);
+    server->RunScriptContext([&] {
+        auto attach_ctx = server->GetCurrentSyncContext();
+        REQUIRE(static_cast<bool>(attach_ctx));
+        vector<nptr<ServerEntity>> switch_scope {player_a_holder, cr_a, map, loc};
+        attach_ctx->SyncEntities(switch_scope);
+        server->SwitchPlayerCritter(player_a_holder, cr_a);
+    });
+
+    REQUIRE(player_a_holder->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(cr_a->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK_FALSE(item_a->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(item_a));
+    ctx.Release();
 }
 
 // ============================================================================
@@ -2334,6 +2361,29 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 
         CHECK(ancestor_done.load() == int64_t {ITERS});
         CHECK(sibling_done.load() == int64_t {ITERS});
+    }
+
+    SECTION("SingletonOwnedEntityEnsureIsIdempotent")
+    {
+        EntityLock singleton_lock;
+        auto registrator = server->GetPropertyRegistrator("Critter");
+        REQUIRE(registrator);
+        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrator, nullptr);
+        singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
+
+        SyncContext ctx;
+        ctx.Activate();
+        ctx.LockSingleton(make_ptr(&singleton_lock));
+
+        // Game-owned custom entities share Game's singleton lock. Engine operations such as
+        // DestroyEntity call EnsureEntitySynced while Game.Lock() is active; that must reuse the
+        // acquisition already tracked by this context instead of adding it to a second lock bucket.
+        ctx.EnsureEntitySynced(singleton_owned_entity);
+        ctx.UnlockSingleton(make_ptr(&singleton_lock));
+
+        CHECK_FALSE(singleton_lock.IsLockedByCurrentThread());
+        ctx.Release();
+        ctx.Deactivate();
     }
 
     // Detach so the map refcount drops cleanly before Shutdown.

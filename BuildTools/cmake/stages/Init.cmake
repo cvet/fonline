@@ -208,7 +208,6 @@ SetValue(expr_PrefixConfig $<NOT:$<CONFIG:Release,RelWithDebInfo,MinSizeRel,Rele
 SetValue(expr_TracyEnabled $<CONFIG:Profiling_Total,Profiling_OnDemand,Debug_Profiling_Total,Debug_Profiling_OnDemand>)
 SetValue(expr_TracyOnDemand $<CONFIG:Profiling_OnDemand,Debug_Profiling_OnDemand>)
 SetValue(expr_RpmallocEnabled $<NOT:${expr_SanitizerConfigs}>)
-SetValue(expr_StandaloneRpmallocEnabled $<AND:${expr_RpmallocEnabled},$<NOT:${expr_TracyEnabled}>>)
 
 AddCompileDefinitionsList(
 	$<${expr_DebugBuild}:DEBUG>
