@@ -619,6 +619,8 @@ struct RemoteCallDesc
     string SubsystemHint {}; // File extension: fos, cs
 };
 
+auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;
+
 template<typename Fn>
 void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 {

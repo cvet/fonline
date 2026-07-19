@@ -39,6 +39,11 @@
 #include "CritterView.h"
 #include "DataSerialization.h"
 #include "DefaultSprites.h"
+#include "ModelAnimationData.h"
+#include "ModelManager.h"
+#include "ModelMeshBaker.h"
+#include "ModelMeshData.h"
+#include "ModelSprites.h"
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
 
@@ -151,7 +156,7 @@ namespace ClientEngineTest
             });
     }
 
-    static auto MakeClientTestResources() -> FileSystem
+    static auto MakeClientTestResources(vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -171,16 +176,302 @@ namespace ClientEngineTest
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
 
+        for (auto& [resource_path, resource_data] : extra_resources) {
+            runtime_source->AddFile(resource_path, std::move(resource_data));
+        }
+
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
 
+    static auto MakeClientEngine(GlobalSettings& settings, FileSystem resources) -> refcount_ptr<ClientEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+    }
+
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
     {
-        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
+        return MakeClientEngine(settings, MakeClientTestResources());
+    }
+
+#if FO_ENABLE_3D
+    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.WriteString(name);
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+    }
+
+    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteModelMeshHeader(writer);
+        write_root(writer);
+        return data;
+    }
+
+    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return MakeRuntimeModelMesh([&](DataWriter& writer) {
+            WriteRuntimeModelBoneHeader(writer, "Root", true);
+            const array<Vertex3D, 1> vertices {vertex};
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+            writer.Write<uint32_t>(uint32_t {0});
+            writer.WriteString({});
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.WriteString({});
+            }
+
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.Write<mat44>(mat44 {1.0f});
+            }
+
+            writer.Write<uint32_t>(uint32_t {0});
+        });
+    }
+
+    static void WriteRuntimeModelDescriptionPrefix(DataWriter& writer)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.WriteString("Models/UnusedBase.fbx");
+        writer.Write<uint8_t>(uint8_t {0});
+        writer.Write<uint8_t>(uint8_t {0});
+        writer.Write<uint8_t>(uint8_t {0});
+        writer.Write<int32_t>(0);
+        writer.Write<int32_t>(0);
+        writer.Write<int32_t>(0);
+        writer.Write<int32_t>(0);
+        writer.WriteString({});
+    }
+
+    static void WriteRuntimeModelDescriptionLinkPrefix(DataWriter& writer)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.Write<int32_t>(0);
+        writer.Write<int32_t>(0);
+        writer.WriteString({});
+        writer.WriteString({});
+        writer.Write<uint8_t>(uint8_t {0});
+
+        for (size_t i = 0; i < 10; i++) {
+            writer.Write<float32_t>(0.0f);
+        }
+
+        writer.Write<uint32_t>(uint32_t {0});
+    }
+
+    static void WriteRuntimeModelDescriptionLink(DataWriter& writer)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+    }
+#endif
+}
+
+#if FO_ENABLE_3D
+TEST_CASE("ClientEngineLoadsModelMeshBakerOutputThroughRuntimeParser")
+{
+    constexpr string_view model_path = "Models/RuntimeParserTriangle.obj";
+
+    BakerTests::TestRig rig;
+    rig.AddSourceFile(model_path, R"(o RuntimeParserTriangle
+v 0 0 0
+v 1 0 0
+v 0 1 0
+f 1 2 3
+)");
+
+    ModelMeshBaker baker(rig.MakeContext());
+    baker.BakeFiles(rig.GetAllSourceFiles(), model_path);
+
+    const auto output_it = rig.Outputs.find(string(model_path));
+    REQUIRE(output_it != rig.Outputs.end());
+
+    auto resources = MakeClientTestResources({{string {model_path}, output_it->second}});
+    REQUIRE(resources.IsFileExists(model_path));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, std::move(resources));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    CHECK_NOTHROW(factory->GetModelMngr()->PreloadModel(model_path));
+}
+
+TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
+{
+    vector<pair<string, vector<uint8_t>>> malformed_resources;
+
+    malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", true);
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    }));
+
+    malformed_resources.emplace_back("Models/IndexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", true);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    }));
+
+    malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", true);
+        const array<Vertex3D, 1> vertices {};
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+        writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+        const array<vindex_t, 1> indices {vindex_t {1}};
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+        writer.WriteObjectArray(const_span<vindex_t> {indices});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<uint32_t>(uint32_t {0});
+    }));
+
+    malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", true);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.WriteString({});
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(MODEL_MAX_BONES + 1));
+    }));
+
+    malformed_resources.emplace_back("Models/SkinOffsetMismatch.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", true);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.WriteString({});
+        writer.Write<uint32_t>(uint32_t {0});
+    }));
+
+    Vertex3D valid_skin_vertex {};
+    valid_skin_vertex.BlendWeights[0] = 1.0f;
+
+    Vertex3D non_finite_skin_weight = valid_skin_vertex;
+    non_finite_skin_weight.BlendWeights[0] = std::numeric_limits<float32_t>::quiet_NaN();
+    malformed_resources.emplace_back("Models/NonFiniteSkinWeight.fbx", MakeRuntimeModelMeshWithVertex(non_finite_skin_weight));
+
+    Vertex3D out_of_range_skin_weight = valid_skin_vertex;
+    out_of_range_skin_weight.BlendWeights[0] = -0.25f;
+    malformed_resources.emplace_back("Models/OutOfRangeSkinWeight.fbx", MakeRuntimeModelMeshWithVertex(out_of_range_skin_weight));
+
+    Vertex3D non_finite_skin_index = valid_skin_vertex;
+    non_finite_skin_index.BlendIndices[0] = std::numeric_limits<float32_t>::infinity();
+    malformed_resources.emplace_back("Models/NonFiniteSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(non_finite_skin_index));
+
+    Vertex3D non_integral_skin_index = valid_skin_vertex;
+    non_integral_skin_index.BlendIndices[0] = 0.5f;
+    malformed_resources.emplace_back("Models/NonIntegralSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(non_integral_skin_index));
+
+    Vertex3D out_of_range_skin_index = valid_skin_vertex;
+    out_of_range_skin_index.BlendIndices[0] = 1.0f;
+    malformed_resources.emplace_back("Models/OutOfRangeSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(out_of_range_skin_index));
+
+    Vertex3D invalid_skin_weight_sum = valid_skin_vertex;
+    invalid_skin_weight_sum.BlendWeights[0] = 0.5f;
+    malformed_resources.emplace_back("Models/InvalidSkinWeightSum.fbx", MakeRuntimeModelMeshWithVertex(invalid_skin_weight_sum));
+
+    malformed_resources.emplace_back("Models/ChildCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        WriteRuntimeModelBoneHeader(writer, "Root", false);
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    }));
+
+    malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+        for (uint32_t depth = 0; depth <= MODEL_MESH_MAX_HIERARCHY_DEPTH; depth++) {
+            WriteRuntimeModelBoneHeader(writer, "Bone", false);
+            writer.Write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
+        }
+    }));
+
+    {
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        malformed_resources.emplace_back("Models/DescriptionStringBomb.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLink(writer);
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        malformed_resources.emplace_back("Models/DescriptionLinksBomb.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        malformed_resources.emplace_back("Models/DescriptionNestedCountBomb.fo3d", std::move(data));
+    }
+
+    const array<pair<string_view, string_view>, 16> expected_failures {{
+        {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
+        {"Models/IndexCountBomb.fbx", "mesh indices"},
+        {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
+        {"Models/SkinCountBomb.fbx", "skin bone count exceeds maximum"},
+        {"Models/SkinOffsetMismatch.fbx", "skin bone offset count mismatch"},
+        {"Models/NonFiniteSkinWeight.fbx", "non-finite skin weight"},
+        {"Models/OutOfRangeSkinWeight.fbx", "skin weight outside [0, 1]"},
+        {"Models/NonFiniteSkinIndex.fbx", "non-finite skin index"},
+        {"Models/NonIntegralSkinIndex.fbx", "non-integral skin index"},
+        {"Models/OutOfRangeSkinIndex.fbx", "skin index outside valid range"},
+        {"Models/InvalidSkinWeightSum.fbx", "skin-weight sum"},
+        {"Models/ChildCountBomb.fbx", "child count exceeds maximum"},
+        {"Models/HierarchyDepthBomb.fbx", "hierarchy depth"},
+        {"Models/DescriptionStringBomb.fo3d", "String length exceeds remaining buffer"},
+        {"Models/DescriptionLinksBomb.fo3d", "links"},
+        {"Models/DescriptionNestedCountBomb.fo3d", "disabled meshes"},
+    }};
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(malformed_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model_mngr = factory->GetModelMngr();
+
+    for (const auto& [model_path, expected_failure] : expected_failures) {
+        INFO(model_path);
+        CHECK_THROWS_WITH(model_mngr->PreloadModel(model_path), Catch::Matchers::ContainsSubstring(std::string {expected_failure}));
     }
 }
+#endif
 
 TEST_CASE("ClientEngineStartsAndRegistersEntities")
 {

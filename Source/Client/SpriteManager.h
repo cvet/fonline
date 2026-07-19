@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Geometry.h"

@@ -78,7 +78,6 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Web', 'wasm'): 'wasm',
 }
 
-
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
@@ -88,7 +87,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-target', dest='target', required=True, choices=TARGET_CHOICES, help='package target type')
 	parser.add_argument('-platform', dest='platform', required=True, choices=PLATFORM_CHOICES, help='platform type')
 	parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
-	# Windows: win32 win64
+	# Windows: win32 win64 win32-win7 win64-win7
 	# Linux: x64
 	# Android: arm32 arm64 x86
 	# macOS: x64
@@ -370,7 +369,10 @@ class Packager:
 		path = os.path.join(self.output_path, self.args.devname + '-' + self.args.target)
 		if self.args.target != self.args.config:
 			path += '-' + self.args.config
-		if self.args.platform != 'Windows':
+		if self.args.platform == 'Windows':
+			if self.args.binary_output_postfix and self.args.binary_output_postfix != self.args.config:
+				path += '-' + self.args.binary_output_postfix
+		else:
 			path += '-' + self.args.platform
 		return path
 
@@ -387,7 +389,12 @@ class Packager:
 		return normalized_arches
 
 	def build_binary_entry(self, arch: str, variant: BinaryVariant) -> str:
-		entry_arch = resolve_android_abi(arch) if self.args.platform == 'Android' else arch
+		if self.args.platform == 'Android':
+			entry_arch = resolve_android_abi(arch)
+		elif self.args.platform == 'Windows':
+			entry_arch = buildtools.resolve_windows_binary_arch(arch)
+		else:
+			entry_arch = arch
 		entry = self.args.target + '-' + self.args.platform + '-' + entry_arch
 		if variant.profiling == 'TotalProfiling':
 			entry += '-Profiling_Total'
@@ -881,13 +888,13 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
-		# Mirror of the suffix appended to server-side payloads in
-		# package_all_client_runtime_update_payloads: tagging the client output
-		# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
-		# under PlatformBinaries/<target>/<name>.dll for this variant.
-		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.binary_output_postfix else ''
-
 		for arch in self.iter_arches():
+			# Mirror of the suffix appended to server-side payloads in
+			# package_all_client_runtime_update_payloads: tagging the client output
+			# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
+			# under PlatformBinaries/<target>/<name>.dll for this variant.
+			binary_output_postfix = self.args.binary_output_postfix
+			client_postfix_suffix = '_' + binary_output_postfix if binary_output_postfix else ''
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
@@ -1380,7 +1387,13 @@ class Packager:
 		if icon_path:
 			assert os.path.isfile(icon_path), 'Packaging.AppIcon file not found: ' + icon_path
 
-		exe_name = self.args.nicename + '.exe'
+		arches = self.iter_arches()
+		assert len(arches) == 1, 'Wix pack requires exactly one Windows architecture per package entry'
+		input_arch = buildtools.resolve_windows_binary_arch(arches[0])
+		binary_output_postfix = self.args.binary_output_postfix
+		name_base = self.args.nicename + ('_' + binary_output_postfix if binary_output_postfix else '')
+
+		exe_name = name_base + '.exe'
 		command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
 		registry_entries = [
 			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
@@ -1397,14 +1410,14 @@ class Packager:
 			'product_name': game_name,
 			'manufacturer': game_name,
 			'name': game_name,
-			'name_base': self.args.nicename,
+			'name_base': name_base,
 			'version': version,
 			'comments': game_name + ' game client',
 			'installdir': self.args.nicename,
 			'license_file': '',
 			'upgrade_guid': upgrade_code,
 			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
-			'arch': 64,
+			'arch': 32 if input_arch == 'win32' else 64,
 			'registry_entries': registry_entries,
 			'startmenu_shortcut': exe_name,
 			'desktop_shortcut': exe_name,
@@ -1413,7 +1426,7 @@ class Packager:
 		if icon_path:
 			config['addremove_icon'] = icon_path
 
-		config_path = os.path.join(work_dir, self.args.nicename + '.wix.json')
+		config_path = os.path.join(work_dir, name_base + '.wix.json')
 		with open(config_path, 'w', encoding='utf-8') as config_file:
 			json.dump(config, config_file)
 

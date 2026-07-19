@@ -1561,7 +1561,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Derive ProjBuf/MainTexBuf from renderer state ONLY when a caller has not already supplied them.
-    // 3D model draws set ProjBuf externally to the per-frame model projection (3dStuff), so overwriting
+    // 3D model draws set ProjBuf externally to the per-frame model projection (ModelInstance.cpp), so overwriting
     // it here with the renderer's current 2D ortho would project the skinned mesh off-screen and it
     // would render nothing (only its 2D nameplate remained). The other externally fed buffers keep
     // their last value inside the optionals to emulate GPU-buffer persistence; ProjBuf/MainTexBuf are

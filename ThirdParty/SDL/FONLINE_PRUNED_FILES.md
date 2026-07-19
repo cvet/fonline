@@ -29,6 +29,8 @@ Removed paths:
 - .editorconfig
 - .gitignore
 - .wikiheaders-options
+- .git-hash
+- REVISION.txt
 - Android.mk
 - AGENTS.md
 - android-project/app/build.gradle

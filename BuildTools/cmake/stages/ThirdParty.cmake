@@ -79,11 +79,15 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         SOURCE_LIST FO_RPMALLOC_SOURCE
         APPEND_TO FO_ESSENTIALS_LIBS
         INCLUDE_DIRS "${FO_RPMALLOC_DIR}/rpmalloc")
-    AddCompileDefinitionsList(
-        FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
-        ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
+    AddCompileDefinitionsList(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
+    # The engine routes all allocation through its own global operator new/delete
+    # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
+    # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
+    TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    SetTargetProperty(rpmalloc C_STANDARD 11)
+    TargetCompileOptions(rpmalloc PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:MSVC>>:/experimental:c11atomics>")
 else()
     AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)
 endif()
@@ -308,6 +312,88 @@ StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
 AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
 
+# ozz-animation
+if(FO_ENABLE_3D AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    SetValue(FO_OZZ_DIR "${FO_ENGINE_ROOT}/ThirdParty/ozz-animation")
+    SetValue(FO_OZZ_BASE_SOURCE
+        "${FO_OZZ_DIR}/src/base/containers/string_archive.cc"
+        "${FO_OZZ_DIR}/src/base/encode/group_varint.cc"
+        "${FO_OZZ_DIR}/src/base/io/archive.cc"
+        "${FO_OZZ_DIR}/src/base/io/stream.cc"
+        "${FO_OZZ_DIR}/src/base/log.cc"
+        "${FO_OZZ_DIR}/src/base/maths/box.cc"
+        "${FO_OZZ_DIR}/src/base/maths/math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/soa_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/memory/allocator.cc"
+        "${FO_OZZ_DIR}/src/base/platform.cc")
+    SetValue(FO_OZZ_ANIMATION_SOURCE
+        "${FO_OZZ_DIR}/src/animation/runtime/animation.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/animation_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_aim_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_two_bone_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/local_to_model_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/motion_blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_triggering_job.cc")
+
+    AddStaticThirdPartyLibrary(ozz_base
+        SOURCE_LIST FO_OZZ_BASE_SOURCE
+        INCLUDE_DIRS "${FO_OZZ_DIR}/include")
+    AppendList(FO_COMMON_LIBS ozz_base)
+    AddStaticThirdPartyLibrary(ozz_animation
+        SOURCE_LIST FO_OZZ_ANIMATION_SOURCE
+        LINK_LIBS ozz_base)
+    TargetIncludeDirectories(ozz_animation PRIVATE "${FO_OZZ_DIR}/src")
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS ozz_animation)
+    endif()
+
+    if(FO_BUILD_BAKER_LIB)
+        SetValue(FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            "${FO_OZZ_DIR}/src/animation/offline/additive_animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_optimizer.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/motion_extractor.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/skeleton_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_optimizer.cc")
+        AddStaticThirdPartyLibrary(ozz_animation_offline
+            SOURCE_LIST FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            APPEND_TO FO_BAKER_LIBS
+            LINK_LIBS ozz_animation)
+        TargetIncludeDirectories(ozz_animation_offline PRIVATE "${FO_OZZ_DIR}/src")
+    endif()
+endif()
+
+# meshoptimizer
+if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
+    SetValue(FO_MESHOPTIMIZER_DIR "${FO_ENGINE_ROOT}/ThirdParty/meshoptimizer")
+    SetValue(FO_MESHOPTIMIZER_SOURCE
+        "${FO_MESHOPTIMIZER_DIR}/src/meshoptimizer.h"
+        "${FO_MESHOPTIMIZER_DIR}/src/allocator.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vcacheoptimizer.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vfetchoptimizer.cpp")
+    AddStaticThirdPartyLibrary(meshoptimizer
+        SOURCE_LIST FO_MESHOPTIMIZER_SOURCE
+        APPEND_TO FO_BAKER_LIBS)
+    TargetIncludeDirectories(meshoptimizer INTERFACE "${FO_MESHOPTIMIZER_DIR}/src")
+endif()
+
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
     SetValue(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
@@ -526,13 +612,9 @@ if(FO_BUILD_BAKER_LIB)
         GLSLANG_ENABLE_INSTALL OFF
         BUILD_EXTERNAL OFF
         BUILD_WERROR OFF
-        SKIP_GLSLANG_INSTALL ON
         ENABLE_SPIRV ON
         ENABLE_HLSL OFF
         ENABLE_GLSLANG_BINARIES OFF
-        ENABLE_SPVREMAPPER OFF
-        ENABLE_AMD_EXTENSIONS OFF
-        ENABLE_NV_EXTENSIONS OFF
         ENABLE_RTTI ON
         ENABLE_EXCEPTIONS ON
         ENABLE_OPT OFF
@@ -541,8 +623,6 @@ if(FO_BUILD_BAKER_LIB)
 
     if(FO_WEB)
         SetCacheValues(
-            ENABLE_GLSLANG_WEB ON
-            ENABLE_GLSLANG_WEB_DEVEL ON
             ENABLE_EMSCRIPTEN_SINGLE_FILE ON
             ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
@@ -579,8 +659,7 @@ if(FO_BUILD_BAKER_LIB)
         SPIRV_CROSS_ENABLE_REFLECT OFF
         SPIRV_CROSS_ENABLE_C_API OFF
         SPIRV_CROSS_ENABLE_UTIL OFF
-        SPIRV_CROSS_SKIP_INSTALL ON
-        SPIRV_SKIP_TESTS ON)
+        SPIRV_CROSS_SKIP_INSTALL ON)
     AddSubdirectory("${FO_SPIRV_CROSS_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)

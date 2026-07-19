@@ -34,6 +34,8 @@
 
 #include "Common.h"
 #include "ModelBounds.h"
+#include "ModelMeshData.h"
+#include "ModelSourceLoader.h"
 
 #if FO_ENABLE_3D
 
@@ -41,8 +43,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ModelBoundsException);
 
-auto CalculateModelStaticBounds(const_span<uint8_t> model_data, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
-auto CalculateModelAnimationBounds(const_span<uint8_t> model_data, const_span<uint8_t> animation_data, string_view animation_name, bool reversed, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
+auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
+auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelAnimationSource& animation, bool reversed, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
 
 FO_END_NAMESPACE
 

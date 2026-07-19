@@ -163,6 +163,10 @@ void ClientConnection::Process()
         WriteLog("Connection error: {}", ex.what());
         Disconnect();
     }
+    catch (const DecompressException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        Disconnect();
+    }
     catch (...) {
         safe_call([this] { Disconnect(); });
         throw;

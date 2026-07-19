@@ -479,6 +479,8 @@ namespace BakerTests
 
         void AddSourceFile(string_view path, string_view content, uint64_t write_time = 1) { _sourceData->AddFile(path, content, write_time); }
 
+        void AddSourceFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _sourceData->AddFile(path, std::move(content), write_time); }
+
         void AddBakedFile(string_view path, string_view content, uint64_t write_time = 1) { _bakedData->AddFile(path, content, write_time); }
 
         void AddBakedFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }

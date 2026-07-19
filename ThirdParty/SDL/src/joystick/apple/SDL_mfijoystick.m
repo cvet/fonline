@@ -616,7 +616,7 @@ static bool IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         // We don't know how to get input events from this device
         return false;
     }
-
+    
     device->name = SDL_CreateJoystickName(0, 0, NULL, name);
 
     Uint16 signature;

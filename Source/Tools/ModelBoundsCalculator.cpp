@@ -82,14 +82,12 @@ struct BoundsAnimation
 struct BoundsModel
 {
     vector<BoundsBone> Bones {};
-    vector<BoundsAnimation> Animations {};
 };
 
-static auto ReadBoundsModel(const_span<uint8_t> data) -> BoundsModel;
-static auto ReadBoundsBone(DataReader& reader, BoundsModel& model, optional<size_t> parent) -> size_t;
-static auto ReadBoundsMesh(DataReader& reader, size_t owner_bone) -> BoundsMesh;
-static auto ReadBoundsAnimation(DataReader& reader) -> BoundsAnimation;
-static auto FindBoundsAnimation(const BoundsModel& model, string_view animation_name) -> nptr<const BoundsAnimation>;
+static auto BuildBoundsModel(const ModelMeshData& data) -> BoundsModel;
+static void AppendBoundsBone(const ModelMeshBoneData& bone, BoundsModel& model, optional<size_t> parent);
+static auto BuildBoundsMesh(const ModelMeshGeometryData& data, size_t owner_bone) -> BoundsMesh;
+static auto BuildBoundsAnimation(const ModelAnimationSource& animation) -> BoundsAnimation;
 static auto BuildBoneIndex(const BoundsModel& model) -> optional<unordered_map<string, size_t>>;
 static auto BuildAnimationOutputIndex(const BoundsAnimation& animation) -> optional<unordered_map<string, size_t>>;
 static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<string, size_t>& bone_index, const vector<string>& disabled_meshes) -> optional<vector<BoundsDrawableMesh>>;
@@ -106,12 +104,12 @@ static auto IsFinite(const vec3& value) -> bool;
 static auto IsFinite(const quaternion& value) -> bool;
 static auto IsFinite(const mat44& value) -> bool;
 
-auto CalculateModelStaticBounds(const_span<uint8_t> model_data, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
+auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const BoundsModel model = ReadBoundsModel(model_data);
+        const BoundsModel model = BuildBoundsModel(model_data);
         const optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
 
         if (!bone_index) {
@@ -160,21 +158,16 @@ auto CalculateModelStaticBounds(const_span<uint8_t> model_data, const vector<str
     }
 }
 
-auto CalculateModelAnimationBounds(const_span<uint8_t> model_data, const_span<uint8_t> animation_data, string_view animation_name, bool reversed, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
+auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelAnimationSource& animation_source, bool reversed, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const BoundsModel model = ReadBoundsModel(model_data);
-        const BoundsModel animation_model = ReadBoundsModel(animation_data);
-        const auto animation = FindBoundsAnimation(animation_model, animation_name);
-
-        if (!animation) {
-            throw ModelBoundsException(strex("Animation '{}' was not found in baked model data", animation_name));
-        }
+        const BoundsModel model = BuildBoundsModel(model_data);
+        const BoundsAnimation animation = BuildBoundsAnimation(animation_source);
 
         const optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
-        const optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(*animation);
+        const optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
 
         if (!bone_index || !output_index) {
             return std::nullopt;
@@ -186,8 +179,8 @@ auto CalculateModelAnimationBounds(const_span<uint8_t> model_data, const_span<ui
             return std::nullopt;
         }
 
-        const vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(model, *animation, *output_index);
-        const optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(*animation, outputs, reversed);
+        const vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(model, animation, *output_index);
+        const optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
 
         if (!sample_times) {
             return std::nullopt;
@@ -197,7 +190,7 @@ auto CalculateModelAnimationBounds(const_span<uint8_t> model_data, const_span<ui
         optional<ModelBounds3D> result;
 
         for (const float32_t sample_time : *sample_times) {
-            if (!BuildCombinedTransforms(model, outputs, sample_time, animation->Duration, reversed, combined_transforms)) {
+            if (!BuildCombinedTransforms(model, outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
                 return std::nullopt;
             }
 
@@ -220,84 +213,62 @@ auto CalculateModelAnimationBounds(const_span<uint8_t> model_data, const_span<ui
     }
 }
 
-static auto ReadBoundsModel(const_span<uint8_t> data) -> BoundsModel
+static auto BuildBoundsModel(const ModelMeshData& data) -> BoundsModel
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader(data);
+    FO_VERIFY_AND_THROW(data.RootBone, "Baked model has no root bone");
+
     BoundsModel model;
-    (void)ReadBoundsBone(reader, model, {});
-
-    const uint32_t animation_count = reader.Read<uint32_t>();
-    model.Animations.reserve(animation_count);
-
-    for (uint32_t i = 0; i < animation_count; i++) {
-        model.Animations.emplace_back(ReadBoundsAnimation(reader));
-    }
-
-    reader.VerifyEnd();
+    AppendBoundsBone(*data.RootBone, model, std::nullopt);
     return model;
 }
 
-static auto ReadBoundsBone(DataReader& reader, BoundsModel& model, optional<size_t> parent) -> size_t
+static void AppendBoundsBone(const ModelMeshBoneData& bone, BoundsModel& model, optional<size_t> parent)
 {
     FO_STACK_TRACE_ENTRY();
 
     const size_t bone_index = model.Bones.size();
-    model.Bones.emplace_back();
-    model.Bones[bone_index].Name = reader.ReadString();
-    model.Bones[bone_index].BindTransform = reader.Read<mat44>();
-    (void)reader.Read<mat44>(); // Global bind transform is not used by the runtime skinning path.
-    model.Bones[bone_index].Parent = parent;
+    BoundsBone& bounds_bone = model.Bones.emplace_back();
+    bounds_bone.Name = bone.Name;
+    bounds_bone.BindTransform = bone.TransformationMatrix;
+    bounds_bone.Parent = parent;
 
-    if (!IsFinite(model.Bones[bone_index].BindTransform)) {
+    if (!IsFinite(bounds_bone.BindTransform)) {
         throw ModelBoundsException("Baked model contains a non-finite bind transform");
     }
 
-    if (reader.Read<uint8_t>() != 0) {
-        model.Bones[bone_index].Mesh.emplace(ReadBoundsMesh(reader, bone_index));
+    if (bone.AttachedMesh) {
+        bounds_bone.Mesh.emplace(BuildBoundsMesh(*bone.AttachedMesh, bone_index));
     }
 
-    const uint32_t child_count = reader.Read<uint32_t>();
-
-    for (uint32_t i = 0; i < child_count; i++) {
-        (void)ReadBoundsBone(reader, model, bone_index);
+    for (const auto& child : bone.Children) {
+        AppendBoundsBone(*child, model, bone_index);
     }
-
-    return bone_index;
 }
 
-static auto ReadBoundsMesh(DataReader& reader, size_t owner_bone) -> BoundsMesh
+static auto BuildBoundsMesh(const ModelMeshGeometryData& data, size_t owner_bone) -> BoundsMesh
 {
     FO_STACK_TRACE_ENTRY();
 
     BoundsMesh mesh;
     mesh.OwnerBone = owner_bone;
+    mesh.Vertices.reserve(data.Vertices.size());
 
-    const uint32_t vertex_count = reader.Read<uint32_t>();
-    mesh.Vertices.resize(vertex_count);
-    reader.ReadObjectArray(span {mesh.Vertices});
-
-    const uint32_t index_count = reader.Read<uint32_t>();
-    mesh.Indices.resize(index_count);
-    reader.ReadObjectArray(span {mesh.Indices});
-    (void)reader.ReadString();
-
-    const uint32_t skin_bone_count = reader.Read<uint32_t>();
-    mesh.SkinBoneNames.reserve(skin_bone_count);
-
-    for (uint32_t i = 0; i < skin_bone_count; i++) {
-        mesh.SkinBoneNames.emplace_back(reader.ReadString());
+    for (const ModelMeshVertexData& source_vertex : data.Vertices) {
+        Vertex3D& vertex = mesh.Vertices.emplace_back();
+        vertex.Position = source_vertex.Position;
+        std::ranges::copy(source_vertex.BlendWeights, vertex.BlendWeights);
+        std::ranges::copy(source_vertex.BlendIndices, vertex.BlendIndices);
     }
 
-    const uint32_t skin_offset_count = reader.Read<uint32_t>();
+    mesh.Indices.assign(data.Indices.begin(), data.Indices.end());
+    mesh.SkinBoneNames = data.SkinBoneNames;
+    mesh.SkinBoneOffsets = data.SkinBoneOffsets;
 
-    if (skin_offset_count != skin_bone_count) {
-        throw ModelBoundsException(strex("Skin bone count {} does not match inverse-bind offset count {}", skin_bone_count, skin_offset_count));
+    if (mesh.SkinBoneNames.size() != mesh.SkinBoneOffsets.size()) {
+        throw ModelBoundsException(strex("Skin bone count {} does not match inverse-bind offset count {}", mesh.SkinBoneNames.size(), mesh.SkinBoneOffsets.size()));
     }
-
-    mesh.SkinBoneOffsets.resize(skin_offset_count);
-    reader.ReadObjectArray(span {mesh.SkinBoneOffsets});
 
     for (const Vertex3D& vertex : mesh.Vertices) {
         if (!IsFinite(vertex.Position)) {
@@ -313,70 +284,27 @@ static auto ReadBoundsMesh(DataReader& reader, size_t owner_bone) -> BoundsMesh
     return mesh;
 }
 
-static auto ReadBoundsAnimation(DataReader& reader) -> BoundsAnimation
+static auto BuildBoundsAnimation(const ModelAnimationSource& source) -> BoundsAnimation
 {
     FO_STACK_TRACE_ENTRY();
 
-    (void)reader.ReadString();
-
     BoundsAnimation animation;
-    animation.Name = reader.ReadString();
-    animation.Duration = reader.Read<float32_t>();
+    animation.Name = source.Name;
+    animation.Duration = source.Duration;
+    animation.Outputs.reserve(source.Joints.size());
 
-    const uint32_t hierarchy_count = reader.Read<uint32_t>();
-
-    for (uint32_t i = 0; i < hierarchy_count; i++) {
-        const uint32_t bone_count = reader.Read<uint32_t>();
-
-        for (uint32_t j = 0; j < bone_count; j++) {
-            (void)reader.ReadString();
-        }
-    }
-
-    const uint32_t output_count = reader.Read<uint32_t>();
-    animation.Outputs.reserve(output_count);
-
-    for (uint32_t i = 0; i < output_count; i++) {
+    for (const ModelAnimationJointSource& source_joint : source.Joints) {
         BoundsAnimationOutput& output = animation.Outputs.emplace_back();
-        output.BoneName = reader.ReadString();
-
-        uint32_t count = reader.Read<uint32_t>();
-        output.ScaleTimes.resize(count);
-        output.ScaleValues.resize(count);
-        reader.ReadObjectArray(span {output.ScaleTimes});
-        reader.ReadObjectArray(span {output.ScaleValues});
-
-        count = reader.Read<uint32_t>();
-        output.RotationTimes.resize(count);
-        output.RotationValues.resize(count);
-        reader.ReadObjectArray(span {output.RotationTimes});
-        reader.ReadObjectArray(span {output.RotationValues});
-
-        count = reader.Read<uint32_t>();
-        output.TranslationTimes.resize(count);
-        output.TranslationValues.resize(count);
-        reader.ReadObjectArray(span {output.TranslationTimes});
-        reader.ReadObjectArray(span {output.TranslationValues});
+        output.BoneName = source_joint.OutputName;
+        output.ScaleTimes = source_joint.Scale.Times;
+        output.ScaleValues = source_joint.Scale.Values;
+        output.RotationTimes = source_joint.Rotation.Times;
+        output.RotationValues = source_joint.Rotation.Values;
+        output.TranslationTimes = source_joint.Translation.Times;
+        output.TranslationValues = source_joint.Translation.Values;
     }
 
     return animation;
-}
-
-static auto FindBoundsAnimation(const BoundsModel& model, string_view animation_name) -> nptr<const BoundsAnimation>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (animation_name == "Base") {
-        return !model.Animations.empty() ? &model.Animations.front() : nullptr;
-    }
-
-    for (const BoundsAnimation& animation : model.Animations) {
-        if (strex(animation.Name).compare_ignore_case(animation_name)) {
-            return &animation;
-        }
-    }
-
-    return nullptr;
 }
 
 static auto BuildBoneIndex(const BoundsModel& model) -> optional<unordered_map<string, size_t>>

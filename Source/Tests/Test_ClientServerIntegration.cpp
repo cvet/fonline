@@ -551,6 +551,46 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
+{
+    using namespace TestClientServerIntegration;
+
+    const uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.InactivityDisconnectTime, 0);
+    BakerTests::OverrideSetting(server_settings.LoginTimeout, 25);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    std::atomic_bool disconnected {};
+    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+        if (data.empty()) {
+            disconnected.store(true);
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    for (int32_t i = 0; i < 2000 && !disconnected.load(); i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(disconnected.load());
+    CHECK(WaitForServerConnectionCount(server, 0));
+}
+
 TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 {
     using namespace TestClientServerIntegration;

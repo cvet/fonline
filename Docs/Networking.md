@@ -66,12 +66,12 @@ Property synchronization and entity state transfer should go through these helpe
 
 The server treats all inbound bytes as hostile. Two layers guard against resource-exhaustion and malformed input:
 
-- **Length-before-allocation rule.** Any client-declared length/count must be validated against the bytes actually remaining in the buffer *before* a `resize()`. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message can no longer amplify into a multi-GB allocation. Hand-rolled reads that pop a size and then `resize()` (e.g. the server's remote-call payload read) must apply the same `GetUnreadSize()` precheck. A declared value can never legitimately exceed the unread bytes, so this never rejects a conforming client and therefore does **not** require a compatibility-version bump.
+- **Length-before-allocation rule.** Any peer-declared length/count must be validated against the bytes actually remaining in the buffer *before* allocation or iteration. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message can no longer amplify into a multi-GB allocation. Inbound remote-call decoding uses a read-only `DataReader`: string bytes are bounds-checked as a borrowed view before constructing the owned string, while array, dict, and dict-of-array counts are charged against the remaining payload using each value type's minimum wire size before `Reserve()`, container creation, or a count-driven loop. The server-side content validator performs the same count preflight. These checks reject prefixes that cannot fit their payload without imposing a separate fixed limit on conforming calls, so they do **not** require a compatibility-version bump.
 - **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
 
-The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, and enum/hash/proto resolution. It does not cap maximum string length or element count, so length/flood ceilings live in the buffer/transport layer above.
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, and enum/hash/proto resolution. It does not impose a fixed maximum string length or element count, so absolute length/flood ceilings still live in the buffer/transport layer above.
 
 ## Hashes
 
@@ -97,6 +97,8 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 ## Client connection abstraction
 
 `Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
+
+Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `StreamDecompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
 
 The public surface is transport-neutral:
 
@@ -135,6 +137,20 @@ The client runtime should depend on the abstract connection interface where poss
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
+
+`NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
+against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
+transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
+shutdown is either included in that snapshot or rejected and disconnected by `TrackConnection()`; it cannot
+escape between the accept callback and io-thread teardown. Repeated `Shutdown()` calls are no-ops.
+
+The server runtime applies two independent limits to connections that have not logged in:
+
+- `ServerNetwork.InactivityDisconnectTime` limits silence between any inbound messages;
+- `ServerNetwork.LoginTimeout` limits time without meaningful pre-login progress (0 disables it). Handshake,
+  authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
+  legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
+  answering pings.
 
 `NetworkServer` starts transport-specific servers through factories:
 
@@ -181,9 +197,9 @@ connection wrapper's lifetime must be disciplined:
   io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
   surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
 
-`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm, and a real
-websocketpp client that sends a frame then forces a server-side disconnect + shutdown); run it under the
-AddressSanitizer job to guard these lifetime rules.
+`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm and shutdown with an
+accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
+disconnect it); run it under the AddressSanitizer job to guard these lifetime rules.
 
 ## Ordered UDP transport
 

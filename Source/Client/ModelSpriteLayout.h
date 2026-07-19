@@ -47,6 +47,24 @@ struct ModelSpriteLayout
     irect32 ViewRect {};
 };
 
+struct ModelSpriteBoundsEnvelopeId
+{
+    array<int32_t, 2> BodyAnimationIndices {-1, -1};
+    array<int32_t, 2> MoveAnimationIndices {-1, -1};
+    uint64_t CombinedMeshGenerationRevision {};
+    uint8_t BodyAnimationCount {};
+    uint8_t MoveAnimationCount {};
+    bool ShadowEnabled {};
+    bool FullFrame {};
+};
+
+struct ModelSpriteBounds
+{
+    irect32 Rect {};
+    isize32 RequiredFrameSize {};
+    ModelSpriteBoundsEnvelopeId EnvelopeId {};
+};
+
 auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>;
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>;
 

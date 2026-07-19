@@ -3778,7 +3778,7 @@ class ItemView : Grid
             return false;
         }
 
-        return first.Id == second.Id;
+        return first == second;
     }
 };
 

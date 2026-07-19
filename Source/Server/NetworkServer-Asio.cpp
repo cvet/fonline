@@ -79,7 +79,7 @@ public:
     auto operator=(NetworkServer_Asio&&) noexcept = delete;
     ~NetworkServer_Asio() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
     void Run();
@@ -269,7 +269,7 @@ NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewC
     _runThread = run_thread("Network-Asio", [this] { Run(); });
 }
 
-void NetworkServer_Asio::Shutdown()
+void NetworkServer_Asio::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -315,7 +315,10 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
         try {
             auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
-            _connectionCallback(std::move(connection));
+
+            if (TrackConnection(connection)) {
+                _connectionCallback(std::move(connection));
+            }
         }
         catch (const std::exception&) {
             const auto exception = std::current_exception();

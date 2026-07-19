@@ -801,9 +801,16 @@ TIntermTyped* HlslParseContext::handleBracketDereference(const TSourceLoc& loc, 
         return result;  // it was handled as an operator[]
 
     bool flattened = false;
-    int indexValue = 0;
-    if (index->getQualifier().isFrontEndConstant())
-        indexValue = index->getAsConstantUnion()->getConstArray()[0].getIConst();
+    int64_t indexValue = 0;
+    if (index->getQualifier().isFrontEndConstant()) {
+        if (index->getType().contains64BitInt()) {
+            indexValue = index->getAsConstantUnion()->getConstArray()[0].getI64Const();
+        } else if (index->getType().getBasicType() == EbtUint) {
+            indexValue = index->getAsConstantUnion()->getConstArray()[0].getUConst();
+        } else {
+            indexValue = index->getAsConstantUnion()->getConstArray()[0].getIConst();
+        }
+    }
 
     variableCheck(base);
     if (! base->isArray() && ! base->isMatrix() && ! base->isVector()) {
@@ -1970,7 +1977,7 @@ void HlslParseContext::transferTypeAttributes(const TSourceLoc& loc, const TAttr
             if (it->getInt(value)) {
                 TSourceLoc loc;
                 loc.init();
-                setSpecConstantId(loc, type.getQualifier(), value);
+                setSpecConstantId(loc, type.getQualifier(), (unsigned)value);
             }
             break;
 
@@ -3515,6 +3522,10 @@ void HlslParseContext::decomposeStructBufferMethods(const TSourceLoc& loc, TInte
     case EOpMethodLoad:
         {
             TIntermTyped* argIndex = makeIntegerIndex(argAggregate->getSequence()[1]->getAsTyped());  // index
+            if (argIndex == nullptr) {
+                error(loc, "invalid index for Load", "", "");
+                return;
+            }
 
             const TType& bufferType = bufferObj->getType();
 
@@ -3547,6 +3558,10 @@ void HlslParseContext::decomposeStructBufferMethods(const TSourceLoc& loc, TInte
     case EOpMethodLoad4:
         {
             TIntermTyped* argIndex = makeIntegerIndex(argAggregate->getSequence()[1]->getAsTyped());  // index
+            if (argIndex == nullptr) {
+                error(loc, "invalid index for vector Load", "", "");
+                return;
+            }
 
             TOperator constructOp = EOpNull;
             int size = 0;
@@ -3614,6 +3629,10 @@ void HlslParseContext::decomposeStructBufferMethods(const TSourceLoc& loc, TInte
     case EOpMethodStore4:
         {
             TIntermTyped* argIndex = makeIntegerIndex(argAggregate->getSequence()[1]->getAsTyped());  // index
+            if (argIndex == nullptr) {
+                error(loc, "invalid index for Store", "", "");
+                return;
+            }
             TIntermTyped* argValue = argAggregate->getSequence()[2]->getAsTyped();  // value
 
             // Index into the array to find the item being loaded.
@@ -3733,6 +3752,10 @@ void HlslParseContext::decomposeStructBufferMethods(const TSourceLoc& loc, TInte
             TIntermSequence& sequence = argAggregate->getSequence();
 
             TIntermTyped* argIndex     = makeIntegerIndex(sequence[1]->getAsTyped());  // index
+            if (argIndex == nullptr) {
+                error(loc, "invalid destination address for interlocked operation", "", "");
+                return;
+            }
             argIndex = intermediate.addBinaryNode(EOpRightShift, argIndex, intermediate.addConstantUnion(2, loc, true),
                                                   loc, TType(EbtInt));
 
@@ -5559,6 +5582,7 @@ TIntermTyped* HlslParseContext::handleFunctionCall(const TSourceLoc& loc, TFunct
                 callerName = fnCandidate->getMangledName();
             else {
                 // get the explicit (full) name of the function
+                assert(currentTypePrefix.size() >= size_t(thisDepth));
                 callerName = currentTypePrefix[currentTypePrefix.size() - thisDepth];
                 callerName += fnCandidate->getMangledName();
                 // insert the implicit calling argument
@@ -7356,7 +7380,7 @@ void HlslParseContext::setLayoutQualifier(const TSourceLoc& loc, TQualifier& qua
         return;
     }
     if (id == "constant_id") {
-        setSpecConstantId(loc, qualifier, value);
+        setSpecConstantId(loc, qualifier, (unsigned)value);
         return;
     }
 
@@ -7451,9 +7475,9 @@ void HlslParseContext::setLayoutQualifier(const TSourceLoc& loc, TQualifier& qua
     error(loc, "there is no such layout identifier for this stage taking an assigned value", id.c_str(), "");
 }
 
-void HlslParseContext::setSpecConstantId(const TSourceLoc& loc, TQualifier& qualifier, int value)
+void HlslParseContext::setSpecConstantId(const TSourceLoc& loc, TQualifier& qualifier, unsigned value)
 {
-    if (value >= (int)TQualifier::layoutSpecConstantIdEnd) {
+    if (value >= TQualifier::layoutSpecConstantIdEnd) {
         error(loc, "specialization-constant id is too large", "constant_id", "");
     } else {
         qualifier.layoutSpecConstantId = value;

@@ -32,13 +32,13 @@
 //
 
 #include "Mapper.h"
-#include "3dStuff.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
+#include "ModelSprites.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE

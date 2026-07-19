@@ -93,6 +93,7 @@ FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP
 FIXED_SETTING(bool, ServerNetwork, UpdateFilesInMemory, false); // If true, updater files are served from memory, otherwise from disk
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
+FIXED_SETTING(int32_t, ServerNetwork, LoginTimeout, 0); // Maximum pre-login connection lifetime without handshake/auth/update progress in milliseconds (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)

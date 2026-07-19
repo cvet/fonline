@@ -32,6 +32,7 @@ foreach(package ${FO_PACKAGES})
         ListGet(entry 2 arch)
         ListGet(entry 3 pack)
         ListGet(entry 4 customConfig)
+        ListGet(entry 5 binaryOutputPostfix)
 
         AppendList(packageCommands -target "${target}")
         AppendList(packageCommands -platform "${platform}")
@@ -48,14 +49,8 @@ foreach(package ${FO_PACKAGES})
 
         AppendList(packageCommands -input "${FO_OUTPUT_PATH}")
 
-        if(DEFINED Package_${package}_Option_BINARY_OUTPUT_POSTFIX)
-            SetValue(packageBinaryOutputPostfix "${Package_${package}_Option_BINARY_OUTPUT_POSTFIX}")
-        else()
-            SetValue(packageBinaryOutputPostfix "${FO_BINARY_OUTPUT_POSTFIX}")
-        endif()
-
-        if(NOT "${packageBinaryOutputPostfix}" STREQUAL "")
-            AppendList(packageCommands -binary-output-postfix "${packageBinaryOutputPostfix}")
+        if(NOT "${binaryOutputPostfix}" STREQUAL "")
+            AppendList(packageCommands -binary-output-postfix "${binaryOutputPostfix}")
         endif()
 
         AppendList(packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
