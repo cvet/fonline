@@ -1184,7 +1184,7 @@ void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
         return;
     }
 
-    auto config = ConfigFile(resource_path, resources.ReadFileText(resource_path));
+    auto config = ConfigFile(resources.ReadFileText(resource_path));
     unordered_map<hstring, unordered_map<pair<CritterStateAnim, CritterActionAnim>, timespan>> model_anim_durations;
 
     for (const auto& [model_name, values] : *config.GetSections()) {

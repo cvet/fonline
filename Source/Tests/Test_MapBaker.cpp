@@ -330,17 +330,17 @@ TEST_CASE("MapBaker")
         local_rig.AddSourceFile("RichMap.fomap",
             "[ProtoMap]\n"
             "$Name = RichMap\n"
-            "[Critter]\n"
+            "[$Name/Critter]\n"
             "$Id = 11\n"
             "$Proto = MapBakerCritter\n"
             "Hex = 10 11\n"
             "ModelName = MapBakerCritterOverride\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 21\n"
             "$Proto = MapBakerVisibleItem\n"
             "Hex = 12 13\n"
             "PicMap = MapBakerVisibleItemOverride\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 22\n"
             "$Proto = MapBakerHiddenItem\n"
             "Hex = 14 15\n"
@@ -369,7 +369,7 @@ TEST_CASE("MapBaker")
         local_rig.AddSourceFile("InvalidResourceMap.fomap",
             "[ProtoMap]\n"
             "$Name = InvalidResourceMap\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 21\n"
             "$Proto = MapBakerVisibleItem\n"
             "Hex = 12 13\n"
@@ -411,6 +411,90 @@ TEST_CASE("MapBaker")
         REQUIRE(checks.size() == 2);
         CHECK(checks[0] == pair<string, uint64_t> {"UnitTestMap.fomap-bin-server", 123});
         CHECK(checks[1] == pair<string, uint64_t> {"UnitTestMap.fomap-bin-client", 123});
+    }
+
+    SECTION("BakesEveryMapFromMultiMapFile")
+    {
+        TestRig local_rig;
+        AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
+        local_rig.AddSourceFile("Nested/MultiMaps.fomap",
+            "[ProtoMap]\n"
+            "$Name = MultiMapOne\n"
+            "[ProtoMap]\n"
+            "$Name = MultiMapTwo\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.contains("MultiMapOne.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("MultiMapOne.fomap-bin-client"));
+        CHECK(local_rig.Outputs.contains("MultiMapTwo.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("MultiMapTwo.fomap-bin-client"));
+    }
+
+    SECTION("FindsMapInsideMultiMapFileForTargetedRuntimeBake")
+    {
+        TestRig local_rig;
+        AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
+        local_rig.AddSourceFile("Nested/MultiMaps.fomap",
+            "[ProtoMap]\n"
+            "$Name = MultiMapOne\n"
+            "[ProtoMap]\n"
+            "$Name = MultiMapTwo\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "MultiMapTwo.fomap-bin-server"));
+
+        CHECK(local_rig.Outputs.contains("MultiMapTwo.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("MultiMapTwo.fomap-bin-client"));
+        CHECK_FALSE(local_rig.Outputs.contains("MultiMapOne.fomap-bin-server"));
+        CHECK_FALSE(local_rig.Outputs.contains("MultiMapOne.fomap-bin-client"));
+    }
+
+    SECTION("SkipsProtoFilesWithoutMapAnchors")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Items/Plain.fopro",
+            "[ProtoItem]\n"
+            "$Name = PlainItem\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.empty());
+    }
+
+    SECTION("BakesMapsFromAnyProtoExtensionContainer")
+    {
+        TestRig local_rig;
+        AddMapBakerMetadataAndProto(local_rig, "FoproDeclaredMap");
+        local_rig.AddSourceFile("Protos/MixedContainer.fopro",
+            "[ProtoMap]\n"
+            "$Name = FoproDeclaredMap\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.contains("FoproDeclaredMap.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("FoproDeclaredMap.fomap-bin-client"));
+    }
+
+    SECTION("AnonymousAnchorBakesUnderFileStemAlongsideNamedOnes")
+    {
+        TestRig local_rig;
+        AddMapBakerMetadataAndProto(local_rig, "MixedMaps");
+        local_rig.AddSourceFile("Nested/MixedMaps.fomap",
+            "[ProtoMap]\n"
+            "Outside = True\n"
+            "[ProtoMap]\n"
+            "$Name = MixedMapTwo\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.contains("MixedMaps.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("MixedMaps.fomap-bin-client"));
+        CHECK(local_rig.Outputs.contains("MixedMapTwo.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("MixedMapTwo.fomap-bin-client"));
     }
 }
 

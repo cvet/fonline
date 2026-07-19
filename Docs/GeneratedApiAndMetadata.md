@@ -92,8 +92,6 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 - `ServerInitHook(ServerEngine*)`
 - `ClientInitHook(ClientEngine*)`
 - `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)`
-- `ConfigSectionParseHook(...)`
-- `ConfigEntryParseHook(...)`
 - `SetupBakersHook(...)`
 - `CheckCritterVisibilityHook(...)`
 - `CheckItemVisibilityHook(...)`

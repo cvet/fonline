@@ -824,7 +824,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Per-stage SDL binding slots and resource counts from the baked [EffectInfoSdl] section
         const string pass_info_fname = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
         const string pass_info_content = loader(pass_info_fname);
-        const auto pass_info = ConfigFile(pass_info_fname, pass_info_content);
+        const auto pass_info = ConfigFile(pass_info_content);
 
         if (!pass_info.HasSection("EffectInfoSdl")) {
             throw EffectLoadException("Effect info has no EffectInfoSdl section, rebake resources", name, pass_info_fname);

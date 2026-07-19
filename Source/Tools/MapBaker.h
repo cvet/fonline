@@ -60,7 +60,7 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    [[nodiscard]] static auto ResolveMapName(const File& file) -> string;
+    [[nodiscard]] static auto ResolveMapNames(const File& file) -> vector<string>;
 };
 
 FO_END_NAMESPACE

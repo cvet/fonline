@@ -287,7 +287,7 @@ public:
     auto JumpHistoryToIndex(int32_t target_index) -> bool;
     void ParseCommand(string_view command);
     auto LoadMap(string_view map_name) -> nptr<MapView>;
-    auto LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>;
+    auto LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>;
     void ShowMap(ptr<MapView> map);
     auto IsMapDirty(nptr<MapView> map) const -> bool;
     void SetMapDirty(nptr<MapView> map, bool dirty = true);
@@ -380,6 +380,8 @@ public:
     array<char, 128> ScriptCallFuncBuf {};
     array<char, 256> ScriptCallArgsBuf {};
     array<char, 128> MapBrowserFilterBuf {};
+    vector<string> MapBrowserNames {};
+    bool MapBrowserNamesStale {true};
     int32_t TabIndex[INT_MODE_COUNT] {};
     refcount_nptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};

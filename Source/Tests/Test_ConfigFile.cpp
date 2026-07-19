@@ -57,10 +57,10 @@ static auto BuildConfigBenchmarkInput(int32_t section_count, int32_t keys_per_se
 
 TEST_CASE("ConfigFile")
 {
-    SECTION("StoresViewsAndOwnedHookResults")
+    SECTION("StoresViewsIntoOwnedInput")
     {
         string source = "[ProtoItem]\n$Name = ItemOne\nName = Base\nName += Extra\n";
-        ConfigFile config {"Test.fomap", source};
+        ConfigFile config {source};
 
         CHECK(config.HasSection("ProtoItem"));
         CHECK(config.GetAsStr("ProtoItem", "$Name") == "ItemOne");
@@ -74,7 +74,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesViewsAfterMove")
     {
-        ConfigFile original {"Test.fomap", "[ProtoItem]\n$Name = One\nName = Value\n"};
+        ConfigFile original {"[ProtoItem]\n$Name = One\nName = Value\n"};
         ConfigFile moved {std::move(original)};
 
         CHECK(moved.HasSection("ProtoItem"));
@@ -84,8 +84,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesViewsAfterMoveAssignment")
     {
-        ConfigFile source {"Test.fomap", "[ProtoItem]\n$Name = Assigned\nName = Payload\n"};
-        ConfigFile target {"Other.fomap", "[Other]\nValue = Legacy\n"};
+        ConfigFile source {"[ProtoItem]\n$Name = Assigned\nName = Payload\n"};
+        ConfigFile target {"[Other]\nValue = Legacy\n"};
 
         target = std::move(source);
 
@@ -97,7 +97,7 @@ TEST_CASE("ConfigFile")
     SECTION("CollectsSectionContent")
     {
         const string source = "[ShaderCommon]\nline_1 \\\nline_2\nvalue # keep content before comment stripping\n\n[VertexShader]\nvoid main() {}\n";
-        const ConfigFile config {"Effect.fofx", source, ConfigFileOption::CollectContent};
+        const ConfigFile config {source, ConfigFileOption::CollectContent};
 
         CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\nvalue # keep content before comment stripping\n");
         CHECK(config.GetSectionContent("VertexShader") == "void main() {}\n");
@@ -106,7 +106,7 @@ TEST_CASE("ConfigFile")
     SECTION("CollectsSectionContentForTabContinuedLines")
     {
         const string source = "[ShaderCommon]\nline_1\t\\\nline_2\n";
-        const ConfigFile config {"Effect.fofx", source, ConfigFileOption::CollectContent};
+        const ConfigFile config {source, ConfigFileOption::CollectContent};
 
         CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
     }
@@ -114,7 +114,7 @@ TEST_CASE("ConfigFile")
     SECTION("ParsesCrLfLinesAndContinuation")
     {
         const string source = "[ShaderCommon]\r\nline_1 \\\r\nline_2\r\n[Section]\r\nKey = Value\r\n";
-        const ConfigFile config {"Effect.fofx", source, ConfigFileOption::CollectContent};
+        const ConfigFile config {source, ConfigFileOption::CollectContent};
 
         CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
         CHECK(config.GetAsStr("Section", "Key") == "Value");
@@ -123,9 +123,8 @@ TEST_CASE("ConfigFile")
     SECTION("ParsesBoolIntsAndDefaults")
     {
         const string source = "[Section]\nEnabled = true\nDisabled = FALSE\nCount = 42\nName = Value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
-        CHECK(config.GetNameHint() == "Test.cfg");
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
         CHECK(config.GetAsInt("Section", "Disabled") == 0);
         CHECK(config.GetAsInt("Section", "Enabled", 99) == 1);
@@ -141,7 +140,7 @@ TEST_CASE("ConfigFile")
     SECTION("TreatsFormFeedAndVerticalTabAsConfigWhitespace")
     {
         const string source = "[Section]\n\fCount\v=\f42\v\n\vEnabled\f=\vtrue\f\nText\f=\vValue\f\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsInt("Section", "Count") == 42);
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
@@ -151,7 +150,7 @@ TEST_CASE("ConfigFile")
     SECTION("PreservesEscapedCommentCharacters")
     {
         const string source = "[Section]\nText = keep\\#hash # strip this\nOther = value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsStr("Section", "Text") == "keep\\#hash");
         CHECK(config.GetAsStr("Section", "Other") == "value");
@@ -160,7 +159,7 @@ TEST_CASE("ConfigFile")
     SECTION("PreservesCommentCharactersInsideDoubleQuotes")
     {
         const string source = "[Section]\nText = \"quoted # hash\" # strip this\nOther = value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsStr("Section", "Text") == "\"quoted # hash\"");
         CHECK(config.GetAsStr("Section", "Other") == "value");
@@ -169,7 +168,7 @@ TEST_CASE("ConfigFile")
     SECTION("PreservesCommentCharactersInsideDoubleQuotesAcrossContinuedLines")
     {
         const string source = "[Section]\nText = \"quoted # hash\" \\\ncontinued # tail\nOther = value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsStr("Section", "Text") == "\"quoted # hash\" continued");
         CHECK(config.GetAsStr("Section", "Other") == "value");
@@ -178,7 +177,7 @@ TEST_CASE("ConfigFile")
     SECTION("PreservesCommentCharactersInsideQuotedAppendedValues")
     {
         const string source = "[Section]\nText = base\nText += \"quoted # hash\" # strip this\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsStr("Section", "Text") == "base \"quoted # hash\"");
     }
@@ -186,7 +185,7 @@ TEST_CASE("ConfigFile")
     SECTION("PreservesCommentCharactersAfterEscapedQuotesInsideDoubleQuotes")
     {
         const string source = "[Section]\nText = \"quoted \\\" # hash\" # strip this\nOther = value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK(config.GetAsStr("Section", "Text") == "\"quoted \\\" # hash\"");
         CHECK(config.GetAsStr("Section", "Other") == "value");
@@ -195,7 +194,7 @@ TEST_CASE("ConfigFile")
     SECTION("SkipsBraceFormatLines")
     {
         const string source = "[Section]\n{100}{20}{Payload}\nKey = Value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK_FALSE(config.HasKey("Section", "120"));
         CHECK(config.GetAsStr("Section", "Key") == "Value");
@@ -204,7 +203,7 @@ TEST_CASE("ConfigFile")
     SECTION("ReturnsRepeatedSections")
     {
         const string source = "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n";
-        ConfigFile config {"Items.fopro", source};
+        ConfigFile config {source};
         vector<ptr<map<string_view, string_view>>> sections = config.GetSections("ProtoItem");
 
         REQUIRE(sections.size() == 2);
@@ -215,7 +214,7 @@ TEST_CASE("ConfigFile")
     SECTION("ReturnsSectionViews")
     {
         string source = "[ProtoItem]\n$Name = One\nName = Base\nName += Two\n";
-        ConfigFile config {"Items.fopro", source};
+        ConfigFile config {source};
         vector<ptr<map<string_view, string_view>>> sections = config.GetSections("ProtoItem");
 
         source.assign("broken");
@@ -227,51 +226,103 @@ TEST_CASE("ConfigFile")
 
     SECTION("GetSectionReturnsFirstRepeatedSection")
     {
-        ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n"};
+        ConfigFile config {"[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n"};
 
         CHECK(config.GetSection("ProtoItem").at("$Name") == "One");
     }
 
     SECTION("AppendsIntoMissingKeyWithoutLeadingSpace")
     {
-        ConfigFile config {"Items.fopro", "[ProtoItem]\nName += Two\n"};
+        ConfigFile config {"[ProtoItem]\nName += Two\n"};
 
         CHECK(config.GetAsStr("ProtoItem", "Name") == "Two");
     }
 
     SECTION("IgnoresEmptyAppendedValueForExistingKey")
     {
-        ConfigFile config {"Items.fopro", "[ProtoItem]\nName = Base\nName +=    # ignored\n"};
+        ConfigFile config {"[ProtoItem]\nName = Base\nName +=    # ignored\n"};
 
         CHECK(config.GetAsStr("ProtoItem", "Name") == "Base");
     }
 
-    SECTION("StopsAfterFirstSectionWhenRequested")
+    SECTION("StoresNestedSectionNamesVerbatim")
     {
-        ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n", ConfigFileOption::ReadFirstSection};
+        const string source = "[ProtoMap]\n"
+                              "$Name = MapOne\n"
+                              "[$Name/Item]\n"
+                              "Kind = FromOne\n"
+                              "[MapOne/Item]\n"
+                              "Kind = ExplicitOne\n"
+                              "[/Item]\n"
+                              "Kind = BareSlash\n";
+        ConfigFile config {source};
 
-        CHECK(config.HasSection("ProtoItem"));
-        CHECK(config.GetAsStr("ProtoItem", "$Name") == "One");
-        CHECK(config.GetSections("ProtoItem").size() == 1);
-        CHECK(config.GetSections()->size() == 2);
+        // The parser resolves no prefix: a nested name is stored exactly as authored, so what
+        // "$Name" or any other prefix means is left entirely to the consuming format
+        CHECK(config.GetSections("$Name/Item").size() == 1);
+        CHECK(config.GetAsStr("$Name/Item", "Kind") == "FromOne");
+        CHECK(config.GetAsStr("MapOne/Item", "Kind") == "ExplicitOne");
+        CHECK(config.GetAsStr("/Item", "Kind") == "BareSlash");
     }
 
-    SECTION("CollectsContentWhenStoppingAfterFirstSection")
+    SECTION("ExposesSectionsInFileOrder")
     {
-        const auto options = static_cast<ConfigFileOption>(static_cast<uint8_t>(ConfigFileOption::CollectContent) | static_cast<uint8_t>(ConfigFileOption::ReadFirstSection));
+        const string source = "[ProtoMap]\n"
+                              "$Name = MapOne\n"
+                              "[$Name/Item]\n"
+                              "Kind = FromOne\n"
+                              "[ProtoMap]\n"
+                              "$Name = MapTwo\n"
+                              "[$Name/Item]\n"
+                              "Kind = FromTwo\n"
+                              "[$Name/Critter]\n"
+                              "Kind = TwosCritter\n";
+        ConfigFile config {source};
 
-        ConfigFile config {"Effect.fofx", "[ShaderCommon]\nline_1 \\\nline_2\n[VertexShader]\nvoid main() {}\n", options};
+        // Repeated names collapse in the by-name multimap, so the ordered view is what lets a
+        // consumer bind nested sections to the section they follow
+        const auto& ordered = config.GetOrderedSections();
+        REQUIRE(ordered.size() == 6); // default section + 2 anchors + 3 nested
 
-        CHECK(config.HasSection("ShaderCommon"));
-        CHECK_FALSE(config.HasSection("VertexShader"));
-        CHECK(config.GetSections("ShaderCommon").size() == 1);
-        CHECK(config.GetSections()->size() == 2);
-        CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
+        CHECK(ordered[0].first.empty());
+        CHECK(ordered[1].first == "ProtoMap");
+        CHECK(ordered[1].second->at("$Name") == "MapOne");
+        CHECK(ordered[2].first == "$Name/Item");
+        CHECK(ordered[2].second->at("Kind") == "FromOne");
+        CHECK(ordered[3].first == "ProtoMap");
+        CHECK(ordered[3].second->at("$Name") == "MapTwo");
+        CHECK(ordered[4].first == "$Name/Item");
+        CHECK(ordered[4].second->at("Kind") == "FromTwo");
+        CHECK(ordered[5].first == "$Name/Critter");
+        CHECK(ordered[5].second->at("Kind") == "TwosCritter");
+    }
+
+    SECTION("SkipsNestedSectionsWhenRequested")
+    {
+        const string source = "[ProtoMap]\n"
+                              "$Name = MapOne\n"
+                              "[$Name/Item]\n"
+                              "Kind = Skipped\n"
+                              "[MapOne/Critter]\n"
+                              "Kind = SkippedAsWell\n"
+                              "[ProtoMap]\n"
+                              "$Name = MapTwo\n";
+        ConfigFile config {source, ConfigFileOption::SkipNestedSections};
+
+        CHECK(config.GetSections("ProtoMap").size() == 2);
+        CHECK_FALSE(config.HasSection("$Name/Item"));
+        CHECK_FALSE(config.HasSection("MapOne/Critter"));
+        CHECK(config.GetSections()->size() == 3);
+        CHECK(config.GetOrderedSections().size() == 3); // default section + both anchors
+
+        vector<ptr<map<string_view, string_view>>> anchors = config.GetSections("ProtoMap");
+        CHECK(anchors[0]->at("$Name") == "MapOne");
+        CHECK(anchors[1]->at("$Name") == "MapTwo");
     }
 
     SECTION("ReturnsNullForMissingSectionKeyValues")
     {
-        ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n"};
+        ConfigFile config {"[ProtoItem]\n$Name = One\n"};
 
         const auto existing_section = config.GetSectionKeyValues("ProtoItem");
         const auto missing_section = config.GetSectionKeyValues("Missing");
@@ -291,7 +342,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("CollectsContentForRepeatedSections")
     {
-        ConfigFile config {"Effect.fofx", "[VertexShader]\nvoid main1() {}\n[VertexShader]\nvoid main2() {}\n", ConfigFileOption::CollectContent};
+        ConfigFile config {"[VertexShader]\nvoid main1() {}\n[VertexShader]\nvoid main2() {}\n", ConfigFileOption::CollectContent};
 
         vector<ptr<map<string_view, string_view>>> sections = config.GetSections("VertexShader");
 
@@ -302,7 +353,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("ReturnsEmptyCollectedContentForMissingOrEmptySections")
     {
-        ConfigFile config {"Effect.fofx", "[Empty]\n[Filled]\nvalue\n", ConfigFileOption::CollectContent};
+        ConfigFile config {"[Empty]\n[Filled]\nvalue\n", ConfigFileOption::CollectContent};
 
         CHECK(config.GetSectionContent("Empty").empty());
         CHECK(config.GetSectionContent("Missing").empty());
@@ -312,7 +363,7 @@ TEST_CASE("ConfigFile")
     SECTION("IgnoresMalformedSectionsAndEntries")
     {
         const string source = "[]\nNoSeparator\n[ValidSection\n[Good]\nKey = Value\n";
-        const ConfigFile config {"Test.cfg", source};
+        const ConfigFile config {source};
 
         CHECK_FALSE(config.HasSection("ValidSection"));
         CHECK(config.HasSection("Good"));
@@ -322,7 +373,7 @@ TEST_CASE("ConfigFile")
     SECTION("IgnoresEntriesWithEmptyTrimmedKeys")
     {
         const string source = "[Good]\n   = Ignored\n\t+= IgnoredToo\nKey = Value\n";
-        ConfigFile config {"Test.cfg", source};
+        ConfigFile config {source};
         const auto section = config.GetSectionKeyValues("Good");
 
         REQUIRE(static_cast<bool>(section));
@@ -335,7 +386,7 @@ TEST_CASE("ConfigFile")
 
     BENCHMARK("ParseLargeConfig")
     {
-        ConfigFile config {"Bench.fopro", benchmark_input};
+        ConfigFile config {benchmark_input};
         return numeric_cast<int32_t>(config.GetSections()->size());
     };
 }

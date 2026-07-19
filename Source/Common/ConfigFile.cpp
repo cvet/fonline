@@ -35,9 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto ConfigSectionParseHook(string_view fname, string_view section, string& out_section, map<string, string>& init_section_kv) -> bool;
-extern auto ConfigEntryParseHook(string_view fname, string_view section, string_view key, string_view value, string& out_key, string& out_value) -> bool;
-
 struct ConfigFile::Data
 {
     string Input {};
@@ -48,8 +45,7 @@ ConfigFile::~ConfigFile() = default;
 ConfigFile::ConfigFile(ConfigFile&&) noexcept = default;
 auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
 
-ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption options) :
-    _fileNameHint {name_hint},
+ConfigFile::ConfigFile(string str, ConfigFileOption options) :
     _options {options},
     _data {SafeAlloc::MakeUnique<Data>()}
 {
@@ -59,7 +55,9 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
 
     auto cur_section_it = _sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {});
     ptr<map<string_view, string_view>> cur_section = &cur_section_it->second;
-    string_view section_name_for_hook {};
+    bool skip_cur_section = false;
+
+    _orderedSections.emplace_back(string_view {}, cur_section);
 
     string section_content;
 
@@ -67,8 +65,6 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
         section_content.reserve(_data->Input.length());
     }
 
-    string key;
-    string value;
     string accum_line;
     size_t line_begin = 0;
 
@@ -113,10 +109,6 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
 
         // New section
         if (line.front() == '[') {
-            if (IsEnumSet(_options, ConfigFileOption::ReadFirstSection) && _sectionKeyValues.size() == 2) {
-                break;
-            }
-
             // Parse name
             const size_t end = line.find(']');
 
@@ -130,42 +122,36 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
                 continue;
             }
 
-            map<string, string> section_kv;
-            string section_name;
-            const bool section_changed = ConfigSectionParseHook(_fileNameHint, raw_section_name, section_name, section_kv);
-
-            if (!section_changed) {
-                section_name = string(raw_section_name);
+            // Store current section content
+            if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
+                (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
+                section_content.clear();
             }
 
-            if (section_name.empty()) {
+            // A name with a separator is a nested section; what its prefix means is up to the consumer
+            const bool nested_section = raw_section_name.find('/') != string_view::npos;
+
+            if (nested_section && IsEnumSet(_options, ConfigFileOption::SkipNestedSections)) {
+                skip_cur_section = true;
+                section_content.clear();
                 continue;
             }
 
-            // Store current section content
-            if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-                (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
-                section_content.clear();
+            skip_cur_section = false;
 
-                for (const auto& [existing_key, existing_value] : section_kv) {
-                    section_content += strex("{} = {}\n", existing_key, existing_value);
-                }
-            }
+            const string_view stored_section_name = line_stable ? raw_section_name : StoreOwnedString(raw_section_name);
 
             // Add new section
-            const bool section_name_unchanged = line_stable && section_name == raw_section_name;
-            const string_view stored_section_name = section_name_unchanged ? raw_section_name : StoreOwnedString(std::move(section_name));
-
             cur_section_it = _sectionKeyValues.emplace(stored_section_name, map<string_view, string_view> {});
             cur_section = &cur_section_it->second;
-            section_name_for_hook = stored_section_name;
-
-            for (const auto& [existing_key, existing_value] : section_kv) {
-                (*cur_section)[StoreOwnedString(existing_key)] = StoreOwnedString(existing_value);
-            }
+            _orderedSections.emplace_back(stored_section_name, cur_section);
         }
         // Section content
         else {
+            if (skip_cur_section) {
+                continue;
+            }
+
             // Store raw content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
                 section_content.append(line.data(), line.size()).append("\n");
@@ -179,19 +165,8 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
                 continue;
             }
 
-            key.clear();
-            value.clear();
-            const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
-
-            const string_view entry_key = entry_changed ? string_view {key} : raw_key;
-            const string_view entry_value = entry_changed ? string_view {value} : raw_value;
-
-            if (entry_key.empty()) {
-                continue;
-            }
-
-            const string_view stored_key = line_stable && !entry_changed ? raw_key : StoreOwnedString(entry_key);
-            const string_view stored_value = line_stable && !entry_changed ? raw_value : StoreOwnedString(entry_value);
+            const string_view stored_key = line_stable ? raw_key : StoreOwnedString(raw_key);
+            const string_view stored_value = line_stable ? raw_value : StoreOwnedString(raw_value);
 
             if (append_value) {
                 const auto existing_it = cur_section->find(stored_key);
@@ -217,7 +192,7 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
     }
 
     // Store current section content
-    if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+    if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
         (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
     }
 }

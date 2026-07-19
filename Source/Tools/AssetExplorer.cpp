@@ -71,10 +71,11 @@ void AssetExplorer::OnDraw()
     }
 
     DrawSection("Configs", "focfg");
-    DrawSection("Locations", "foloc");
-    DrawSection("Maps", "fomap");
-    DrawSection("Critters", "focr");
-    DrawSection("Items", "foitem");
+
+    for (const auto& proto_ext : _editor->Settings->ProtoFileExtensions) {
+        DrawSection(strex("Protos ({})", proto_ext).str(), proto_ext);
+    }
+
     DrawSection("Dialogs", "fodlg");
     DrawSection("Interface", "fogui");
     DrawSection("Models", "fo3d");

@@ -220,7 +220,7 @@ void MapView::EnableMapperMode()
     RefreshMinZoom();
 }
 
-void MapView::LoadFromFile(string_view map_name, const string& str)
+void MapView::LoadFromFile(string_view map_name, string_view file_name, const string& str)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,7 +231,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
-        map_name, str, *_engine, _engine->Hashes,
+        map_name, file_name, str, *_engine, _engine->Hashes,
         [this, &max_id, map_name](ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv) {
             FO_VERIFY_AND_THROW(id, "Critter id is empty");
             FO_VERIFY_AND_THROW(_crittersMap.count(id) == 0, "Map file contains duplicate critter id", map_name, id, proto->GetProtoId());
@@ -4183,9 +4183,12 @@ void MapView::SetHeaderExtraFields(map<string, string> fields)
     _headerExtraFields = std::move(fields);
 }
 
-auto MapView::SaveToText() const -> string
+auto MapView::SaveToText(string_view save_name) const -> string
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!save_name.empty(), "Map save name is empty");
+    FO_VERIFY_AND_THROW(save_name.find('/') == string_view::npos && save_name.find('$') == string_view::npos, "Map save name must not contain a slash or dollar sign, they are reserved for nested section addressing", save_name);
 
     string fomap;
     fomap.reserve(0x1000000); // 1mb
@@ -4228,18 +4231,20 @@ auto MapView::SaveToText() const -> string
         auto kv = cr->GetProperties()->SaveToText(cr->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", cr->GetId());
         kv["$Proto"] = cr->GetProto()->GetName();
-        fill_generic_section("Critter", kv);
+        fill_generic_section("$Name/Critter", kv);
     };
 
     const auto fill_item = [&fill_item_section](ptr<const ItemView> item) {
         auto kv = item->GetProperties()->SaveToText(item->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();
-        fill_item_section("Item", kv);
+        fill_item_section("$Name/Item", kv);
     };
 
     // Header
     auto proto_map_kv = GetProperties()->SaveToText(nullptr);
+
+    proto_map_kv["$Name"] = string(save_name);
 
     for (const auto& [key, value] : _headerExtraFields) {
         proto_map_kv.emplace(key, value);

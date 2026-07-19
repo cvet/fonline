@@ -4751,15 +4751,15 @@ namespace MapOpsTest
         rig.AddSourceFile("StaticMap.fomap",
             "[ProtoMap]\n"
             "$Name = StaticMap\n"
-            "[Critter]\n"
+            "[$Name/Critter]\n"
             "$Id = 11\n"
             "$Proto = TestStaticCritter\n"
             "Hex = 10 11\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 21\n"
             "$Proto = TestStaticItem\n"
             "Hex = 12 13\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 22\n"
             "$Proto = TestStaticHiddenItem\n"
             "Hex = 14 15\n");

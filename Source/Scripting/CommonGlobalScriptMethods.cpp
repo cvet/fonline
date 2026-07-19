@@ -84,7 +84,7 @@ FO_SCRIPT_API string Common_Game_ReadResource(ptr<BaseEngine> engine, string_vie
 FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> engine, string_view resourcePath, string_view sectionName)
 {
     string content = engine->Resources.ReadFileText(resourcePath);
-    ConfigFile config(resourcePath, std::move(content));
+    ConfigFile config(std::move(content));
 
     map<string, string> result;
 

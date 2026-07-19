@@ -309,7 +309,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
     FrameCollection collection;
 
-    ConfigFile fofrm("Image.fofrm", reader.GetStr());
+    ConfigFile fofrm(reader.GetStr());
 
     int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
     frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
