@@ -112,7 +112,7 @@ class ModelSpriteFactory : public SpriteFactory
     friend class ModelSprite;
 
 public:
-    ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver);
+    ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver);
     ModelSpriteFactory(const ModelSpriteFactory&) = delete;
     ModelSpriteFactory(ModelSpriteFactory&&) noexcept = delete;
     auto operator=(const ModelSpriteFactory&) = delete;

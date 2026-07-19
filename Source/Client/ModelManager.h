@@ -62,7 +62,7 @@ public:
     using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -85,8 +85,6 @@ private:
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
     ptr<GameTimer> _gameTime;
-    mutable ptr<HashResolver> _hashResolver;
-    ptr<NameResolver> _nameResolver;
     ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
     ParticleManager _particleMngr;

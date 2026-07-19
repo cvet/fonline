@@ -231,7 +231,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _hierarchy = hierarchy;
     IndexAnimationPoseJoints(*animation_runtime_rig);
 
-    const auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_hashResolver->ToHashedString(name));
+    const auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_engineMetadata->Hashes.ToHashedString(name));
     FO_VERIFY_AND_THROW(anim_info && anim_info->Model, "Baked model animation information was not found", name);
     _modelBounds = anim_info->Model->ModelBounds;
     _viewBounds = anim_info->Model->ViewBounds;
@@ -620,7 +620,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     }
 
     // Find substitute animation
-    const auto base_model_name = _modelMngr->_hashResolver->ToHashedString(_fileName);
+    const auto base_model_name = _modelMngr->_engineMetadata->Hashes.ToHashedString(_fileName);
     const auto base_state_anim = state_anim;
     const auto base_action_anim = action_anim;
 

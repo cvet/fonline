@@ -63,6 +63,7 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     FO_STACK_TRACE_ENTRY();
 
     other._atlas = nullptr;
+
     if (_atlasAllocation) {
         _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
     }

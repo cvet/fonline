@@ -71,7 +71,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, &Hashes, this, this));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
 
     ResMngr.IndexFiles();

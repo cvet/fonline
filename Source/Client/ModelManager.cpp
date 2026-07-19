@@ -63,15 +63,13 @@ static_assert(offsetof(ModelMeshVertexData, BlendWeights) == offsetof(Vertex3D, 
 static_assert(offsetof(ModelMeshVertexData, BlendIndices) == offsetof(Vertex3D, BlendIndices));
 static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color));
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
     _resources {resources},
     _engineMetadata {engine_metadata},
     _effectMngr {effect_mngr},
     _render {render},
     _gameTime {game_time},
-    _hashResolver {hash_resolver},
-    _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
@@ -98,7 +96,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _hashResolver->ToHashedString(name);
+    return _engineMetadata->Hashes.ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
@@ -106,7 +104,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _hashResolver->ToHashedString(fname);
+    auto name_hashed = _engineMetadata->Hashes.ToHashedString(fname);
 
     for (size_t i = 0; i != _loadedModels.size(); ++i) {
         auto root_bone = _loadedModels[i].as_ptr();
@@ -138,7 +136,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
         try {
             ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
             FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", fname);
-            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), *_hashResolver);
+            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), _engineMetadata->Hashes);
             FixModelBoneAfterLoad(loaded_root_bone, loaded_root_bone);
             return loaded_root_bone;
         }
