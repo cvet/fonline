@@ -66,8 +66,8 @@ TEST_CASE("Model animation controller copies share immutable metadata and own ti
     const int32_t second_index = prototype.RegisterAnimation(7, 4.0f, true, {bone});
 
     CHECK(prototype.GetAnimationsCount() == 2);
-    CHECK(prototype.GetAnimationDuration(first_index) == Catch::Approx(2.0f));
-    CHECK(prototype.GetAnimationDuration(second_index) == Catch::Approx(4.0f));
+    CHECK(prototype.GetAnimDuration(first_index) == Catch::Approx(2.0f));
+    CHECK(prototype.GetAnimDuration(second_index) == Catch::Approx(4.0f));
 
     ModelAnimationController first_instance = prototype.Copy();
     ModelAnimationController second_instance = prototype.Copy();

@@ -108,7 +108,7 @@ auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, float32_t 
     return animation_index;
 }
 
-auto ModelAnimationController::GetAnimationDuration(int32_t index) const -> float32_t
+auto ModelAnimationController::GetAnimDuration(int32_t index) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 

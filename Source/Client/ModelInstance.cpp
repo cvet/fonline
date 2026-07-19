@@ -703,7 +703,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     if (_bodyAnimController && anim_index >= 0) {
         const auto new_track = _curTrack == 0 ? 1 : 0;
-        _animDuration = _bodyAnimController->GetAnimationDuration(anim_index);
+        _animDuration = _bodyAnimController->GetAnimDuration(anim_index);
 
         // Turn off fast transition bones on other tracks
         if (!fast_transition_bones.empty()) {
@@ -901,7 +901,7 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
 
         if (_turnAnimPlaying) {
-            const auto anim_duration = _moveAnimController->GetAnimationDuration(anim_index);
+            const auto anim_duration = _moveAnimController->GetAnimDuration(anim_index);
             _moveAnimController->AddEventEnable(new_track, false, anim_duration / speed);
         }
 
@@ -1642,7 +1642,7 @@ auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAn
         return {};
     }
 
-    auto duration = _bodyAnimController->GetAnimationDuration(anim_index);
+    auto duration = _bodyAnimController->GetAnimDuration(anim_index);
 
     if (speed > 0.0f) {
         duration /= speed;
