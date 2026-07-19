@@ -4066,7 +4066,7 @@ namespace FOnline
                     return false;
                 }
 
-                return first.Id == second.Id;
+                return first == second;
             }
 
         }
