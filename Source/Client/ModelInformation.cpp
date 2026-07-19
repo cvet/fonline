@@ -57,11 +57,6 @@ ModelInformation::ModelInformation(ptr<ModelManager> model_mngr) :
     _modelMngr {model_mngr}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _drawSize.width = _modelMngr->_settings->DefaultModelDrawWidth;
-    _drawSize.height = _modelMngr->_settings->DefaultModelDrawHeight;
-    _viewSize.width = _modelMngr->_settings->DefaultModelViewWidth != 0 ? _modelMngr->_settings->DefaultModelViewWidth : _drawSize.width / 4;
-    _viewSize.height = _modelMngr->_settings->DefaultModelViewHeight != 0 ? _modelMngr->_settings->DefaultModelViewHeight : _viewSize.height / 2;
 }
 
 ModelInformation::ModelInformation(ModelInformation&&) noexcept = default;
@@ -110,6 +105,11 @@ auto ModelInformation::Load(string_view name) -> bool
     _hierarchy = hierarchy;
     IndexDirectPoseJoints();
 
+    const optional<ModelBounds3D> hierarchy_bounds = CalculateHierarchyBounds();
+    FO_VERIFY_AND_THROW(hierarchy_bounds, "Direct model hierarchy has no valid drawable bounds", name);
+    _modelBounds = *hierarchy_bounds;
+    _viewBounds = *hierarchy_bounds;
+
     return true;
 }
 
@@ -134,17 +134,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const int32_t view_width = reader.Read<int32_t>();
     const int32_t view_height = reader.Read<int32_t>();
 
-    FO_VERIFY_AND_THROW((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), "Baked model description contains invalid DrawSize", name, draw_width, draw_height);
-    FO_VERIFY_AND_THROW((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), "Baked model description contains invalid ViewSize", name, view_width, view_height);
-
-    if (draw_width != 0 && draw_height != 0) {
-        _drawSize.width = draw_width;
-        _drawSize.height = draw_height;
-    }
-    if (view_width != 0 && view_height != 0) {
-        _viewSize.width = view_width;
-        _viewSize.height = view_height;
-    }
+    FO_VERIFY_AND_THROW(draw_width == 0 && draw_height == 0 && view_width == 0 && view_height == 0, "Baked model description contains obsolete explicit sprite dimensions", name, draw_width, draw_height, view_width, view_height);
 
     const string rotation_bone = reader.ReadString();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
@@ -165,11 +155,11 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     const uint32_t anim_entries_count = reader.Read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, anim_entries_count, BAKED_MODEL_DESCRIPTION_ANIM_ENTRY_MIN_SIZE, "animation entries", name);
-    vector<BakedModelDescriptionAnimEntry> anim_entries;
+    vector<BakedModelDescriptionAnimationEntry> anim_entries;
     anim_entries.reserve(anim_entries_count);
 
     for (uint32_t i = 0; i < anim_entries_count; i++) {
-        anim_entries.emplace_back(ReadBakedModelDescriptionAnimEntry(reader));
+        anim_entries.emplace_back(ReadBakedModelDescriptionAnimationEntry(reader));
     }
 
     const uint32_t anim_speed_count = reader.Read<uint32_t>();
@@ -240,6 +230,13 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _fileName = name;
     _hierarchy = hierarchy;
     IndexAnimationPoseJoints(*animation_runtime_rig);
+
+    const auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_engineMetadata->Hashes.ToHashedString(name));
+    FO_VERIFY_AND_THROW(anim_info && anim_info->Model, "Baked model animation information was not found", name);
+    _modelBounds = anim_info->Model->ModelBounds;
+    _viewBounds = anim_info->Model->ViewBounds;
+    FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds) && IsValidModelBounds(_viewBounds), "Baked model contains invalid model or view bounds", name);
+    _animationBounds.resize(animation_runtime_rig->GetClipCount());
     FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
@@ -320,7 +317,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     set<pair<int32_t, int32_t>> expected_runtime_bindings;
 
-    for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
+    for (const BakedModelDescriptionAnimationEntry& anim_entry : anim_entries) {
         const pair<int32_t, int32_t> anim_pair {anim_entry.StateAnim, anim_entry.ActionAnim};
 
         if (!expected_runtime_bindings.emplace(anim_pair).second) {
@@ -330,11 +327,17 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         const auto binding = animation_runtime_rig->FindBinding(anim_entry.StateAnim, anim_entry.ActionAnim);
         FO_VERIFY_AND_THROW(binding, "Animation runtime rig is missing a baked animation binding", name, anim_entry.StateAnim, anim_entry.ActionAnim);
         FO_VERIFY_AND_THROW(binding->Reversed == anim_entry.Name.starts_with('~'), "Animation runtime rig binding has a reverse flag mismatch", name, anim_entry.StateAnim, anim_entry.ActionAnim, anim_entry.Name);
+
+        const auto bounds_it = anim_info->Model->AnimationBounds.find({static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim)});
+        FO_VERIFY_AND_THROW(bounds_it != anim_info->Model->AnimationBounds.end(), "Animation bounds are missing for a baked model binding", name, anim_entry.StateAnim, anim_entry.ActionAnim);
+        FO_VERIFY_AND_THROW(binding->ClipIndex < _animationBounds.size(), "Animation runtime clip index is outside the bounds table", name, binding->ClipIndex, _animationBounds.size());
+        FO_VERIFY_AND_THROW(IncludeModelBounds(_animationBounds[binding->ClipIndex], bounds_it->second), "Animation bounds are invalid", name, anim_entry.StateAnim, anim_entry.ActionAnim);
     }
 
     FO_VERIFY_AND_THROW(expected_runtime_bindings.size() == animation_runtime_rig->GetBindings().size(), "Animation runtime rig binding count does not match the baked model description", name, expected_runtime_bindings.size(), animation_runtime_rig->GetBindings().size());
+
     if (_animController) {
-        for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
+        for (const BakedModelDescriptionAnimationEntry& anim_entry : anim_entries) {
             const auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
 
             if (_animIndexes.count(anim_pair) != 0) {
@@ -370,6 +373,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         FO_VERIFY_AND_THROW(anim_count != 0, "No animations registered for a baked model description", name);
         FO_STRONG_ASSERT(numeric_cast<size_t>(anim_count) == _animIndexes.size(), "Animation controller metadata count differs from its state/action index", name, anim_count, _animIndexes.size());
     }
+
     _animationRuntimeRig = std::move(animation_runtime_rig);
 
     return true;
@@ -582,11 +586,11 @@ auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) cons
     return cut;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimEntry
+auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimationEntry
 {
     FO_STACK_TRACE_ENTRY();
 
-    BakedModelDescriptionAnimEntry anim_entry;
+    BakedModelDescriptionAnimationEntry anim_entry;
     anim_entry.StateAnim = reader.Read<int32_t>();
     anim_entry.ActionAnim = reader.Read<int32_t>();
     anim_entry.FileName = reader.ReadString();
@@ -618,7 +622,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     }
 
     // Find substitute animation
-    const auto base_model_name = _modelMngr->_hashResolver->ToHashedString(_fileName);
+    const auto base_model_name = _modelMngr->_engineMetadata->Hashes.ToHashedString(_fileName);
     const auto base_state_anim = state_anim;
     const auto base_action_anim = action_anim;
 
@@ -669,13 +673,84 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
     return -1;
 }
 
+auto ModelInformation::CalculateHierarchyBounds() const -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_hierarchy, "Missing model hierarchy while calculating bounds", _fileName);
+
+    optional<ModelBounds3D> bounds;
+
+    for (ptr<ModelBone> bone : _hierarchy->_allDrawBones) {
+        FO_VERIFY_AND_THROW(bone->AttachedMesh, "Drawable model bone has no mesh", bone->Name, _fileName);
+        const MeshData& mesh = *bone->AttachedMesh;
+        vector<bool> referenced_vertices(mesh.Vertices.size());
+
+        for (const vindex_t vertex_index : mesh.Indices) {
+            FO_VERIFY_AND_THROW(numeric_cast<size_t>(vertex_index) < mesh.Vertices.size(), "Model mesh index is out of range while calculating bounds", vertex_index, mesh.Vertices.size(), _fileName);
+            referenced_vertices[numeric_cast<size_t>(vertex_index)] = true;
+        }
+
+        FO_VERIFY_AND_THROW(mesh.SkinBones.size() == mesh.SkinBoneOffsets.size(), "Model skin bone and offset counts differ while calculating bounds", mesh.SkinBones.size(), mesh.SkinBoneOffsets.size(), _fileName);
+
+        for (size_t vertex_index = 0; vertex_index < mesh.Vertices.size(); vertex_index++) {
+            if (!referenced_vertices[vertex_index]) {
+                continue;
+            }
+
+            const Vertex3D& vertex = mesh.Vertices[vertex_index];
+            vec3 transformed_point;
+
+            if (mesh.SkinBones.empty()) {
+                const glm::vec4 transformed = bone->GlobalTransformationMatrix * glm::vec4 {vertex.Position, 1.0f};
+                FO_VERIFY_AND_THROW(is_float_equal(transformed.w, 1.0f), "Unskinned model vertex has invalid homogeneous coordinate", transformed.w, _fileName);
+                transformed_point = vec3 {transformed};
+            }
+            else {
+                glm::vec4 transformed {};
+                float64_t weight_sum = 0.0;
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    const float32_t weight = vertex.BlendWeights[influence];
+
+                    if (weight == 0.0f) {
+                        continue;
+                    }
+
+                    const float32_t raw_index = vertex.BlendIndices[influence];
+                    const int32_t index = iround<int32_t>(raw_index);
+                    FO_VERIFY_AND_THROW(std::isfinite(weight) && weight > 0.0f && std::isfinite(raw_index) && index >= 0 && numeric_cast<size_t>(index) < mesh.SkinBones.size() && is_float_equal(raw_index, numeric_cast<float32_t>(index)), "Model vertex has invalid skin influence while calculating bounds", weight, raw_index, mesh.SkinBones.size(), _fileName);
+                    const nptr<ModelBone> skin_bone = mesh.SkinBones[numeric_cast<size_t>(index)];
+                    FO_VERIFY_AND_THROW(skin_bone, "Model vertex references a missing skin bone while calculating bounds", index, _fileName);
+                    transformed += skin_bone->GlobalTransformationMatrix * mesh.SkinBoneOffsets[numeric_cast<size_t>(index)] * glm::vec4 {vertex.Position, 1.0f} * weight;
+                    weight_sum += weight;
+                }
+
+                FO_VERIFY_AND_THROW(std::abs(weight_sum - 1.0) <= MODEL_MESH_SKIN_WEIGHT_SUM_TOLERANCE, "Model vertex skin weights do not sum to one while calculating bounds", weight_sum, _fileName);
+                FO_VERIFY_AND_THROW(is_float_equal(transformed.w, 1.0f), "Skinned model vertex has invalid homogeneous coordinate", transformed.w, _fileName);
+                transformed_point = vec3 {transformed};
+            }
+
+            if (!IncludeModelBoundsPoint(bounds, transformed_point)) {
+                return std::nullopt;
+            }
+        }
+    }
+
+    if (!bounds) {
+        return std::nullopt;
+    }
+
+    return CalculateGuardedModelBounds(*bounds);
+}
+
 auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_hierarchy != nullptr, "Missing required hierarchy");
-    FO_VERIFY_AND_THROW(_drawSize.width > 0 && _drawSize.height > 0, "Model has invalid draw size", _fileName, _drawSize);
-    FO_VERIFY_AND_THROW(_viewSize.width > 0 && _viewSize.height > 0, "Model has invalid view size", _fileName, _viewSize);
+    FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds), "Model has invalid bounds", _fileName, _modelBounds.Min.x, _modelBounds.Min.y, _modelBounds.Min.z, _modelBounds.Max.x, _modelBounds.Max.y, _modelBounds.Max.z);
+    FO_VERIFY_AND_THROW(IsValidModelBounds(_viewBounds), "Model has invalid view bounds", _fileName, _viewBounds.Min.x, _viewBounds.Min.y, _viewBounds.Min.z, _viewBounds.Max.x, _viewBounds.Max.y, _viewBounds.Max.z);
     FO_VERIFY_AND_THROW(!_poseJointRuntimeNames.empty() && _poseJointRuntimeNames.size() == _poseJointCanonicalNames.size() && _poseJointRuntimeNames.size() == _poseBones.size(), "Model canonical pose metadata is incomplete", _fileName, _poseJointRuntimeNames.size(), _poseJointCanonicalNames.size(), _poseBones.size());
     FO_VERIFY_AND_THROW(_animationRuntimeRig || _restPoseJoints.size() == _poseJointRuntimeNames.size(), "Direct model rest-pose metadata count differs from its canonical pose", _fileName, _restPoseJoints.size(), _poseJointRuntimeNames.size());
     FO_VERIFY_AND_THROW(!_animController || _animationRuntimeRig, "Animated model has no animation runtime rig", _fileName);

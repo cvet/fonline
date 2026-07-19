@@ -80,7 +80,7 @@ public:
     ~ModelAnimationController() = default;
 
     [[nodiscard]] auto Copy() const -> ModelAnimationController;
-    [[nodiscard]] auto GetAnimationDuration(int32_t index) const -> float32_t;
+    [[nodiscard]] auto GetAnimDuration(int32_t index) const -> float32_t;
     [[nodiscard]] auto GetTrackEnable(int32_t track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(int32_t track) const -> float32_t;
     [[nodiscard]] auto GetTrackSpeed(int32_t track) const -> float32_t;

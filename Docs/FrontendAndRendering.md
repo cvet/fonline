@@ -31,12 +31,23 @@ Read this page together with:
 - `Source/Client/RenderTarget.cpp`
 - `Source/Client/SpriteManager.h`
 - `Source/Client/SpriteManager.cpp`
+- `Source/Client/3dStuff.h`
+- `Source/Client/3dStuff.cpp`
+- `Source/Client/ModelSprites.h`
+- `Source/Client/ModelSprites.cpp`
+- `Source/Client/ModelSpriteLayout.h`
+- `Source/Client/ModelSpriteLayout.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
+- `Source/Common/ModelBounds.h`
+- `Source/Common/ModelBounds.cpp`
 - `Source/Common/Geometry.h`
 - `Source/Common/Geometry.cpp`
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
 - `Source/Tests/Test_Geometry.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
 
 ## Layer map
 
@@ -154,6 +165,121 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 - `Renderer` — backend interface implemented by concrete renderers.
 
 `Source/Frontend/Rendering.cpp` owns backend-independent helper behavior, including draw-buffer allocation checks and effect configuration parsing. It reads effect sections such as `Effect` and `EffectInfo`, pass counts, blend settings, and script-visible buffers before backend-specific code consumes shader files.
+
+`EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex
+topology restriction. The sprite draw buffer is an indexed triangle list, and
+source-backed `AtlasSprite` frames may emit their baked silhouette vertices and
+indices instead of the implicit 4-vertex/6-index rectangle. All renderer
+backends consume the same buffer; no backend-specific polygon path exists.
+
+Local mesh coordinates are relative to the exact bounding box of the selected
+geometry. The baked frame carries the original logical bitmap size and the
+cropped-frame origin within it, while its individual sprite offset preserves
+the original logical root. Screen position and atlas UV are affine mappings of
+the same cropped coordinate, so scaling, rotation, map projection,
+standing-sprite depth, and egg flags continue to operate over every emitted
+vertex without retaining unused texture rows or columns. Map lighting also
+preserves the old full-bitmap quad plane: `DrawSprites` still provides the
+left/right endpoint colours, and a mesh vertex at cropped local X receives
+`lerp(left, right, clamp((localX + sourceOffsetX) / sourceWidth, 0, 1))`.
+The factor is the vertex's normalized horizontal position within the original
+bitmap — 0 at its left edge, 0.5 at its centre, 1 at its right edge — and is
+not measured from the cropped bounds or the opaque contour. Because
+`Vertex2D::Color` is RGBA8, intermediate mesh vertices may differ from ideal
+quad interpolation by at most one channel unit due to rounding.
+
+Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
+patterns, padded custom-effect/outline draws, fonts, texture/render-target
+blits, and runtime-generated model/particle atlas sprites retain explicit quads.
+Effects that need to create pixels outside the source silhouette must use such a
+padded/quad path rather than an ordinary full-sprite draw.
+
+Runtime model sprites may still use a cropped quad, but their logical layout is
+automatic. `.fo3d` no longer accepts `DrawSize` or `ViewSize`, and the
+corresponding default render settings no longer provide fallback dimensions.
+`ModelAnimationInfo.foinfo` bounds schema version 2 supplies an aggregate root-space
+model AABB, a dedicated idle-priority view AABB, and individual animation AABBs.
+In `FO_ENABLE_3D` builds, the common `EngineMetadata` loader parses and validates
+the complete companion once; rendering requests immutable model records from that registry rather than
+maintaining a second client-side config parser or bounds cache.
+
+The client projects enabled animation bounds through the active base transform
+and derives their extrema for every continuous facing angle. Body plus projected
+shadow determines the active logical scratch-frame dimensions. The separate
+view bound prefers `Unarmed + Idle`, then any Idle, then a deterministic
+animation/static fallback; projecting it over all directions yields the stable
+`ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
+`(DrawWidth / 2, 3 * DrawHeight / 4)`. The view rectangle deliberately excludes
+the shadow and remains independent from the changing atlas crop, so names,
+coarse picking, transparent eggs, and flying-text placement do not jitter when
+the model turns or changes animation.
+
+The automatic logical frame owns the reusable 2x scratch render target. After
+the pose is evaluated, the client combines its per-animation prediction with an
+exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
+their projected shadow. If that exact envelope needs a larger logical frame,
+the client expands the frame and rerenders before copying; a bounded retry loop
+rejects a layout that does not converge. Only the selected region is allocated
+and copied into the atlas. The crop origin is reflected in the sprite offset,
+preserving the automatic frame's root, hit-test coordinates, and map
+positioning. The idle-priority base view and aggregate lighting bounds are
+extended by the active layer/child-model tree. Left/right map-light colours are
+sampled at root-relative crop endpoints on that configuration envelope, so
+animation-driven scratch-size changes do not alter the light mix and wide gear
+does not clamp to a base-model endpoint colour.
+
+Within one active animation/combined-mesh envelope, later pose changes only
+expand the slot. The envelope identity changes when enabled body/movement
+tracks settle after a transition, generated mesh composition changes, or
+shadow coverage changes; that permits one shrink to the new stable envelope
+instead of accumulating every animation played during the sprite's lifetime.
+Direction is deliberately not part of the identity, so ordinary turns retain a
+stable high-water slot. New placements are reserved and copied before the
+sprite publishes its frame/crop/allocation; a failed copy leaves the previous
+allocation live and schedules a retry. Active model-attached particles use
+SPARK's live render AABB after the first update, fall back to the advertised
+canvas before it exists, and select the entire current frame. Scratch-frame
+changes rebase already emitted atlas-space particles before rerendering;
+non-default model effects also disable the tight crop.
+This protects ordinary skinned output but is not a shader-displacement bound:
+an effect that moves vertices outside the normal geometry needs a separate
+conservative contract. `Render.ModelDirectDraw` retains atlas-side preview and
+hit-test data while visible geometry continues to draw directly in the scene.
+
+`Game.DumpAtlases()` and the mapper's **Dump atlases** command annotate the
+read-back TGA copy with the live allocation geometry; the runtime atlas texture
+is not modified. Magenta lines show triangle edges, cyan pixels show mesh
+vertices, yellow rectangles identify implicit quad geometry, and a red X marks
+an explicitly empty baked frame. `AtlasSprite` owns its mesh metadata; the live
+atlas allocation keeps a nullable non-owning observer into that data and clears
+it when the space is released, so a dump cannot display stale geometry after an
+atlas slot is reused.
+
+Runtime atlas allocation remains per image, but `TextureAtlasLayout` uses
+dynamic MaxRects placement instead of an order-sensitive guillotine tree. It
+retains overlapping maximal free rectangles and chooses the best short-side
+fit, then long-side fit and wasted area, without rotating images. The manager
+evaluates that fit across every existing atlas of the requested type before it
+creates another page; equal page-level scores keep the older atlas. The packed
+rectangle already includes the one-pixel texture border, so the algorithm does
+not change filtering padding, sprite pixels, or UV calculation.
+
+Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
+stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
+observer in constant time and marks the derived free-rectangle list dirty. The
+next allocation rebuilds that list once from all still-live rectangles, in a
+deterministic order, so batches of unloads are coalesced and no surviving
+sprite, pixel region, or UV ever moves. This runtime-only layout change does
+not add settings or alter sprite-resource serialization.
+
+`Render.DrawWireframe` enables a backend-independent runtime geometry
+overlay. `SpriteManager` copies the actual submitted triangle edges after
+positioning, scaling, rotation, map projection, and standing-sprite depth
+adjustments, then draws them as an opaque magenta primitive line list over the
+normal sprite pass. This also exposes the two triangles of ordinary quad
+sprites, so it is independent of `SpriteMesh.Enabled`. The toggle is disabled
+by default and does not modify the sprite draw buffer, texture atlas, or baked
+resource.
 
 ## Render backends
 
@@ -362,7 +488,7 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
-`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 

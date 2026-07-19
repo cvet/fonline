@@ -38,8 +38,10 @@
 #if FO_ENABLE_3D
 
 #include "ModelAnimation.h"
+#include "ModelBounds.h"
 #include "ModelHierarchy.h"
 #include "ModelInformation.h"
+#include "ModelSpriteLayout.h"
 #include "VisualParticles.h"
 
 FO_BEGIN_NAMESPACE
@@ -64,7 +66,7 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
-    constexpr static int32_t FRAME_SCALE = 2;
+    constexpr static int32_t FRAME_SCALE = MODEL_SPRITE_FRAME_SCALE;
 
     ModelInstance() = delete;
     ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info);
@@ -85,7 +87,9 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
-    [[nodiscard]] auto GetViewSize() const -> isize32;
+    [[nodiscard]] auto GetLightingSize() const noexcept -> isize32 { return _lightingDrawSize; }
+    [[nodiscard]] auto GetSpriteBounds() const -> optional<ModelSpriteBounds>;
+    [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
@@ -94,6 +98,8 @@ public:
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
     void SetupFrame(isize32 draw_size);
+    void PrepareFrameLayout();
+    void RequestRedraw() noexcept;
     void StartMeshGeneration();
     void PrewarmParticles();
     auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool;
@@ -103,7 +109,7 @@ public:
     void SetRotation(float32_t rx, float32_t ry, float32_t rz);
     void SetScale(float32_t sx, float32_t sy, float32_t sz);
     void SetSpeed(float32_t speed);
-    void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
+    void EnableShadow(bool enabled);
     void Draw();
     void Draw(const mat44& proj, float32_t scale);
     void MoveModel(ipos32 offset);
@@ -143,6 +149,9 @@ private:
         vector<int32_t> MeshAnimLayers {};
         size_t CurBoneMatrix {};
         vector<SkinBinding> SkinBindings {};
+        vector<vindex_t> SpriteVertices {};
+        bool SpriteBoundsValid {};
+        bool HasSpriteGeometry {};
         nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
@@ -158,6 +167,7 @@ private:
     [[nodiscard]] auto GetWorldMatrix(uint32_t joint_index) const -> const mat44&;
     [[nodiscard]] auto GetProceduralJointRotationAngle(uint32_t joint_index) const noexcept -> optional<float32_t>;
     [[nodiscard]] auto FillAnimationProceduralRotations(array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS>& procedural_rotations) const -> size_t;
+    [[nodiscard]] auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
 
     void GenerateCombinedMeshes();
     void InvalidateCombinedMeshes() noexcept;
@@ -175,15 +185,24 @@ private:
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
+    void RefreshFrameLayout();
+    void RefreshConfigurationLayout();
 
     ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
+    isize32 _layoutDrawSize {};
+    isize32 _lightingDrawSize {};
+    irect32 _viewRect {};
+    optional<ModelBounds3D> _configurationModelBounds {};
+    optional<ModelBounds3D> _configurationViewBounds {};
+    uint64_t _configurationLayoutRevision {};
     mat44 _frameProj {};
     mat44 _drawProj {};
     CritterStateAnim _curStateAnim {};
     CritterActionAnim _curActionAnim {};
     vector<unique_ptr<CombinedMesh>> _combinedMeshes {};
     size_t _actualCombinedMeshesCount {};
+    uint64_t _combinedMeshGenerationRevision {};
     bool _disableCulling {};
     vector<unique_ptr<MeshInstance>> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
@@ -198,7 +217,7 @@ private:
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
     mat44 _matRot {};
-    mat44 _matScale {};
+    mat44 _matScale {1.0f};
     mat44 _matScaleBase {};
     mat44 _matRotBase {};
     mat44 _matTransBase {};
@@ -230,6 +249,8 @@ private:
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
+    bool _frameLayoutDirty {};
+    bool _spriteBoundsPoseReady {};
     bool _directSceneDraw {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 

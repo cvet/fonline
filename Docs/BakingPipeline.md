@@ -12,6 +12,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Applications/BakerLib.cpp`
 - `Source/Tools/Baker.h`
 - `Source/Tools/Baker.cpp`
+- `Source/Tools/BakingReport.h`
+- `Source/Tools/BakingReport.cpp`
 - `Source/Tools/MetadataBaker.h`
 - `Source/Tools/MetadataBaker.cpp`
 - `Source/Tools/ConfigBaker.h`
@@ -20,6 +22,10 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tools/RawCopyBaker.cpp`
 - `Source/Tools/ImageBaker.h`
 - `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/SpriteMeshing.h`
+- `Source/Tools/SpriteMeshing.cpp`
+- `Source/Common/SpriteResource.h`
+- `Source/Common/SpriteResource.cpp`
 - `Source/Tools/EffectBaker.h`
 - `Source/Tools/EffectBaker.cpp`
 - `Source/Tools/ProtoBaker.h`
@@ -36,6 +42,12 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Common/ModelMeshData.cpp`
 - `Source/Tools/ModelInfoBaker.h`
 - `Source/Tools/ModelInfoBaker.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
+- `Source/Common/ModelBounds.cpp`
+- `Source/Common/ModelBounds.h`
+- `Source/Tools/ModelBoundsCalculator.h`
+- `Source/Tools/ModelBoundsCalculator.cpp`
 - `Source/Tools/ModelSourceLoader.h`
 - `Source/Tools/ModelSourceLoader.cpp`
 - `Source/Tools/ModelAnimationConverter.h`
@@ -72,6 +84,7 @@ At runtime/source level, baking is owned by:
 - `Source/Applications/BakerApp.cpp` — executable app wrapper that constructs `MasterBaker` and calls `BakeAll()`.
 - `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. On Linux a linker export map makes this the shared library's only public symbol, and a post-build symbol check enforces that ABI. All allocator and engine implementation symbols bind locally, so loading a release baker into a sanitizer host cannot interpose on host allocation or global runtime state.
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
+- `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
 ## CMake entry points
 
@@ -100,6 +113,11 @@ Defined in `Source/Tools/Baker.h`. It carries shared bake state:
 - `BakedFiles` — existing baked file data source.
 - `ForceSyncMode` — optional override for synchronous execution.
 
+For a `MasterBaker` pass, the context also carries the shared report collector
+and the stable baker name used for attribution. `WriteData` returns a
+`BakingWriteResult`, which distinguishes a content-changing write from an
+unchanged file whose timestamp was refreshed.
+
 ### `BaseBaker`
 
 The abstract base for individual baker implementations. Each baker provides:
@@ -110,13 +128,203 @@ The abstract base for individual baker implementations. Each baker provides:
 
 `BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
 
+Each baker receives its own copy of the shared context. When a master-bake report
+is active, `BaseBaker` wraps that copy's check and write callbacks with the
+baker name. This keeps output attribution correct even when a baker performs
+work on its own asynchronous tasks. Built-in and project-provided bakers can add
+domain-specific counters and histograms through the protected report helpers;
+the helpers are no-ops when no report collector is attached.
+
 ### `MasterBaker`
 
-`MasterBaker` coordinates a full bake through `BakeAll()`. It is the app-facing type used by both `BakerApp.cpp` and `BakerLib.cpp`.
+`MasterBaker` coordinates a configured bake pass through `BakeAll()`. It is the app-facing type used by both `BakerApp.cpp` and `BakerLib.cpp`.
+
+`MasterBaker` also owns the one report collector for that bake attempt and
+finalizes the report after either success or failure.
+
+### `BakingReport`
+
+`BakingReport` is defined in its own `Source/Tools/BakingReport.h` / `.cpp`
+module. The header owns the common report DTOs and write-result contract; the
+implementation owns aggregation, sprite-mesh analysis, JSON construction, and
+the output report path. `Baker.cpp` only drives its lifecycle and forwards bake
+events to it.
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
+
+## Master bake report
+
+Every `MasterBaker::BakeAll()` attempt with a non-empty `BakeOutput` regenerates
+`Baking.report.json` in the output directory. A successful complete rebuild also
+updates `Baking.full.report.json`:
+
+```text
+BakeOutput = Baking
+runtime resource directory = Baking/
+report = Baking/Baking.report.json
+last complete-corpus report = Baking/Baking.full.report.json
+```
+
+The previous report is removed before baking starts. After the bake finishes,
+`MasterBaker` marks the new report `success` or `failed`, serializes all data
+collected up to that point, and writes it even when resource preparation or a
+baker failed. `failureMessage` carries the caught exception text, and baker
+entries that were registered but never reached remain `not_run`. Failure to
+write the report is itself a failed `BakeAll()` result, so every successful
+bake pass has its matching report.
+
+Incremental and failed passes never overwrite `Baking.full.report.json`. The
+full snapshot therefore remains available for corpus analysis after ordinary
+incremental development bakes. Both report names are excluded from outdated
+runtime-resource cleanup.
+
+The report is written directly into the `BakeOutput` root after runtime-resource
+cleanup finishes. It is never mounted in the baked `FileSystem`, registered as
+a baked output, or consumed as a runtime resource. It is removed before the next
+bake attempt starts, so analysis data does not change the resource set delivered
+to a client or server.
+
+The top-level lifecycle fields are:
+
+- `schemaVersion`, currently `1`;
+- `status` and `failureMessage`;
+- `buildHash`, `bakeOutput`, and total `durationMs`;
+- `mode.forceRequested`, `mode.fullRebuild`, `mode.rebuildReason`, and
+  `mode.singleThread`. Rebuild reasons are `incremental`, `requested`,
+  `build_hash_changed`, or `missing_build_hash`.
+
+`measurementScope` prevents incremental samples from being mistaken for corpus
+statistics. Input counts always describe the complete configured input
+collection. Output activity and baker-specific details describe work performed
+in the current pass. In particular, `Image.details.spriteMesh` measures only
+frames rebuilt in this pass. `completeCorpusDetails` is true only when
+`mode.fullRebuild` is true; run a force bake before using form percentages as a
+distribution over the complete art corpus.
+
+`totals` summarizes packs, distinct baker types, invocations, pack input files
+and bytes, output checks, scheduled and up-to-date artifacts, submitted files
+and bytes, changed and unchanged files, and removed outdated files. The same
+data is available in two analysis views:
+
+- `bakers` aggregates every baker name across all resource packs;
+- `packs` contains input/output statistics, duration, and a nested baker entry
+  for each individual resource pack.
+
+Every baker entry has its order, `success`/`failed`/`not_run` state, invocation
+counts, elapsed time, failure messages, and
+`availableInputFiles`/`availableInputBytes`. The latter
+describe the complete input collection visible to that baker, not only files
+that match its own extension filter. Output statistics distinguish:
+
+- `checked`: unique artifact paths passed to the incremental checker;
+- `scheduled`: checked paths selected for rebuilding;
+- `upToDate`: checked paths satisfied by the existing output;
+- `cacheHitPercent`: up-to-date check calls divided by all check calls;
+- `submitted`: unique paths produced by the baker;
+- `changed`: submitted content written because its bytes changed;
+- `unchanged`: byte-identical submitted content whose timestamp was refreshed.
+
+Raw `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitCalls`, and
+`submittedBytesAcrossCalls` remain available because some bakers intentionally
+check or submit a path more than once. File
+and byte groups include distributions by extension and the 25 largest paths.
+The `details.counters` and `details.histograms` objects hold optional
+baker-specific measurements while preserving the same common schema for every
+built-in or externally registered baker.
+
+### Image and sprite-mesh statistics
+
+`ImageBaker` adds collection, direction, frame-slot, unique-frame, and shared
+frame-reference counters plus a source-format histogram. Its detailed geometry
+analysis is stored under `details.spriteMesh` in both the aggregate `Image`
+baker entry and each per-pack `Image` entry.
+
+The `settings` object records the effective `Enabled`, `AlphaThreshold`,
+`MaxTriangles`, and `AreaSavingsWeight` values together with the internal
+base-dilation and maximum-padding policies used by that bake. Per-frame
+diagnostics separately record the actual dilation and simplification tolerance
+of the selected candidate, so expanded detailed candidates are not reported as
+if they used only the base dilation.
+
+`frames` separates unique serialized frames from shared animation references.
+The `mesh`, `quad`, and `empty` percentages use **unique, non-shared frames** as
+their denominator; shared references are reported in `slots` and
+`sharedReferences` but never inflate form percentages. The
+`triangleHistogram` likewise reports both `percentOfMeshes` and
+`percentOfUniqueFrames`. The vertex histogram uses mesh frames as its
+denominator. Source-alpha connected components are counted for every unique
+frame; dilated components have their own histogram and measured denominator.
+Selected-candidate tolerance and actual-dilation histograms make fallback usage
+visible without inspecting individual resources.
+
+`selectionOrigins` explains which winning candidate family produced each mesh:
+
+- `greedy_whole`, `greedy_components`, and `clustered_components`;
+- `enclosing_triangle` and `enclosing_quad`;
+- `detailed_constrained`, `detailed_simplified`, and `detailed_expanded`.
+
+`quadReasons` explains why a unique non-empty frame retained quad geometry:
+
+- `disabled` or `zero_dimensions`;
+- `dilation_fills_frame`;
+- `contour_extraction_failed` or `no_valid_candidate`;
+- `score_preferred_quad`, when valid candidates existed but did not beat the
+  quad score.
+
+For `score_preferred_quad`, `bestRejectedCandidates` summarizes the best valid
+candidate that lost to the quad: origin, triangle count, score, tolerance, and
+actual-dilation distributions. The same candidate's vertices and area are
+included in the affected top-list row. This is the direct diagnostic for
+checking whether `AreaSavingsWeight` exchanges alpha area for triangles as
+intended. Aggregate `geometry` and `area` blocks quantify the candidate
+triangles, additional triangles over quads, recoverable frame area, and saved
+pixels per additional triangle. Individual candidates also report the
+`breakEvenAreaSavingsWeight` at which their area saving balances their triangle
+cost.
+
+`geometry` compares the actual submitted vertex and triangle counts (mesh
+geometry plus four vertices/two triangles for every retained quad) with
+all-quad baselines of four vertices and two triangles per unique frame. Empty
+geometry submits no triangles, while the baseline intentionally represents how
+the same frame slot behaved before
+polygonal sprites. It also reports mesh-only vertices and triangles, the
+triangle delta, and averages per mesh.
+
+`area` keeps exact integer doubled areas as the canonical values, then adds
+pixel-area and percentage views. It compares original unpadded quad area,
+submitted geometry area, and visible pixels, and reports both total frame-area
+savings and reduction of transparent overdraw. `cropping` reports how many
+mesh frames serialize a smaller canvas than their source plus the saved RGBA
+pixels and bytes. `padding` separately reports the serialized texture canvas,
+frames that still expand beyond their source, added RGBA pixels and bytes,
+padded-frame count, maximum padding, and the padding histogram. Expansion and
+cropping are accumulated independently, so savings in one frame cannot hide
+padding overhead in another.
+
+The section also contains selection-score minimum/average/maximum values and
+the fixed quad score, plus a per-resource classification (`mesh_only`,
+`quad_only`, `empty_only`, or `mixed`). Five deterministic top-25 lists retain
+the frame identity and all relevant geometry fields for direct investigation:
+
+- `largestMissedSavings`: retained quads ranked by the absolute number of
+  source-frame pixels that are not visible; this is a diagnostic opportunity
+  estimate, not a claim that all of those pixels can be removed safely;
+- `largestRejectedCandidateSavings`: score-rejected candidates ranked by the
+  frame area they would actually save if selected;
+- `mostComplexMeshes`: meshes ranked by triangle count, then vertex count;
+- `largestCroppingSavings`: mesh frames ranked by serialized texture pixels
+  removed by their exact geometry bounds;
+- `largestPaddingOverhead`: frames ranked by added serialized canvas pixels.
+
+Each top-list row includes separate source and actual baked-output paths,
+direction, frame index, form, selection origin or quad reason, triangles,
+vertices, source and dilated components, padding, chosen tolerance/dilation,
+source and baked canvas pixels, visible pixels, submitted doubled area,
+potential transparent pixels, padding overhead, cropping savings, and selection
+score where one exists. Full tie-breaking includes both paths, direction, and
+frame index, so the top lists remain deterministic under parallel baking.
 
 During output discovery it visits resource packs in configured order so a later baker can read outputs declared by an earlier dependency (for example, model baking can load client metadata). When packs declare the same logical output path, the later registration replaces the earlier one; file resolution also searches packs from last to first, preserving the normal resource-overlay rule that later packs shadow earlier packs.
 
@@ -139,6 +347,102 @@ During output discovery it visits resource packs in configured order so a later 
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
+record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
+and resolved per-frame bounds, plus a `ModelAnimationInfo` payload in
+`FO_ENABLE_3D` builds for model and animation AABBs and typed animation
+durations. `ReadSpriteResource` fills the sprite payload from the baked sprite
+header and frame table. For metadata queries that must not load pixel payloads,
+`ImageBaker` also writes one compact version 1
+`SpriteInfo/<PackName>.foinfo` index per resource pack. The index is an
+aggregate output over every image source in that pack; normal scan baking
+merges changed entries with the existing complete index from the same pack's
+output directory, while an explicit request for the index rebuilds every
+entry. Pack-local previous outputs are mounted separately from the shared
+cross-pack baked-file registry so a pack can read its own aggregate before its
+first baker invocation. Introducing or losing the index is a full-rebake
+condition rather than a reason to decode all sprite pixels at runtime. The
+common `ReadAnimationInfo` path reads those 2D indexes in every
+build, reads `ModelAnimationInfo.foinfo` when 3D is enabled, and merges both payloads
+by resource name in `EngineMetadata`. Baker-local statistics follow the same
+ownership names (`SpriteInfoBakingStats` and
+`ModelAnimationInfoBakingStats`) instead of using the aggregate `AnimationInfo` name.
+
+When `FO_ENABLE_3D` is active, `ModelInfoBaker` emits the regular baked model
+descriptions together with a model-specific `ModelAnimationInfo.foinfo` companion. Bounds
+schema version 2 adds three
+required root-space contracts to every model section:
+
+- `ModelBoundsMin*` / `ModelBoundsMax*` store the aggregate of all emitted
+  animation envelopes, with exact static geometry used only when the model has
+  no animation mappings;
+- `ViewBoundsMin*` / `ViewBoundsMax*` store a deterministic reference envelope:
+  `Unarmed + Idle` first, then any Idle, then the first valid animation or the
+  static fallback;
+- `BoundsStateAnimations` / `BoundsActionAnimations` and the parallel `BoundsMin*` /
+  `BoundsMax*` arrays store the individual animation AABBs used by the runtime
+  tight-crop predictor.
+
+The baker samples animation keys, their midpoints, and a uniform timeline to
+build deterministic envelopes independent of camera angle, projection factor,
+model-sprite resolution, and renderer backend. Missing or invalid aggregate or
+animation bounds are baking errors in the version 2 contract. In
+`FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
+once at startup and strictly
+validates its version, required bounds, and every parallel duration/bounds
+array before publishing the parsed model records. Duration and animation-bounds
+groups are optional and validated independently: durations use the alias-expanded
+animation key domain, while bounds use the raw animation key domain, so either
+group can legitimately appear without the other. A static section can carry
+neither group; a present companion with no model sections is malformed.
+Enabled animation bounds size
+the logical scratch frame, the dedicated view bound seeds the stable body/name
+rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
+layer/child-model envelopes extend both contracts, while exact weighted
+current-pose geometry selects the atlas crop and expands/rerenders the scratch
+frame when sampled bounds are insufficient.
+
+`Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
+root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
+point and bounds accumulation, eight-corner transformed accumulation, and the
+common `max(0.01, maxAbs * 0.001)` guard. `ModelBoundsCalculator` is limited to
+reading baked model data and sampling geometry; it does not maintain a parallel
+bounds type or bounds-manipulation implementation. If the default link disables
+every base mesh, the baker retries against the unfiltered source model as a
+conservative layout envelope; genuinely empty or invalid geometry remains a
+baking error.
+
+`DrawSize` and `ViewSize` are no longer `.fo3d` grammar. `ModelInfoBaker`
+rejects those removed tokens instead of serializing authored dimensions; frame
+and view layout are runtime projections of the baked bounds. Because the
+companion output is global, its incremental timestamp covers every input in the
+pack, including animation FBX files referenced by `.fo3d` data. The `ModelInfo`
+baking report records model sections, aggregate model bounds, duration entries,
+animation bounds, view-bound idle/fallback selection, calculator/cache counts,
+and a maximum-axis-extent histogram (`<1`, `1-2`, `2-3`, `3-5`, `5-10`, `10+`
+model world units) for coverage and density analysis. Individual model
+descriptions are validated and baked before the aggregate companion, so a
+broken `.fo3d` is reported through the normal per-file diagnostic path and
+cannot leave a newly written companion beside rejected model descriptions.
+
+The companion also contains each model's effective `(state, action)` cycle
+durations after authored `AnimSpeed` is applied. The duration arrays materialize
+the same one-step `StateAnimEqual` / `ActionAnimEqual` resolution used by the
+client model runtime, including alias priority over an exact entry with the
+alias source key. Any pack can select `ModelInfo`; behavior never branches on
+`PackName`. Put that pack on every runtime side that needs model metadata.
+In `FO_ENABLE_3D` builds, `EngineMetadata` registers the complete parsed
+model-animation records alongside prototypes at startup, including aggregate/view bounds, the alias-resolved
+duration table, the raw-animation bounds table, and model names in hash storage.
+The duration and bounds key sets intentionally remain separate because aliases
+can produce duration-only keys while raw `.fo3d` entries can be bounds-only.
+Client model code requests the parsed record instead of reopening the config;
+common scripts query its duration table through
+`Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The script method
+returns a `timespan`, or zero when the resource, model, or resolved tuple is
+absent. The config representation is an internal baker/runtime contract and
+should not be parsed by embedding-project code.
+
 ## 3D model baking architecture
 
 The model pipeline is split into source extraction, compatibility analysis,
@@ -155,7 +459,7 @@ pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
 | `ModelAnimationData` | Common | Versioned little-endian LF animation envelopes and the native rig manifest: identity and signatures, canonical skeleton, base/clip remaps, clip payloads, presence/nearest data, and state/action bindings. |
 | `ModelMeshData` | Common | Passive mesh-wire DTOs plus the versioned `LFMODMSH` reader, writer, and shared structural validation. It contains no runtime animation implementation. |
 | `ModelMeshBaker` | Tools | Validates and writes mesh-only hierarchy, bind, vertex, index, influence, and drawable data. |
-| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimInfo.foinfo`. |
+| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. |
 
 The main data flow is:
 
@@ -168,7 +472,7 @@ Mesh data follows the parallel
 `ModelHierarchy` path. The two streams meet in `ModelInformation`; clips and
 mutable poses are never serialized into the shared mesh hierarchy.
 
-`ModelInfoBaker` emits the regular baked model descriptions together with a common `ModelAnimInfo.foinfo` table containing each model's effective `(state, action)` cycle durations after authored `AnimSpeed` is applied. The table materializes the same one-step `StateAnimEqual` / `ActionAnimEqual` resolution used by the client model runtime, including alias priority over an exact entry with the alias source key. Any pack can select `ModelInfo`; behavior never branches on `PackName`. Put that pack on every runtime side that needs model metadata. `EngineMetadata` registers the duration table alongside prototypes at startup, including model names in its hash storage; common scripts query it through `Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The method returns a `timespan`, or zero when the resource, model, or resolved tuple is absent. The config representation is an internal baker/runtime contract and should not be parsed by embedding-project scripts.
+The model-specific bounds and duration contract is described immediately above; the Ozz conversion changes its source representation, not the common `AnimationInfo` query surface.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
 
@@ -182,6 +486,139 @@ color-offset entries, using either commas or whitespace as separators, followed
 by the sequence name. BAM options accept a cycle index and optional cycle-frame
 selector separated by `-` (for example `$1` or `$1-3`); out-of-range cycle and
 frame selectors fall back to the first available cycle/frame.
+
+`ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
+frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
+by `BakingSettings`:
+
+- `Enabled` opts the embedding project into mesh generation;
+- `AlphaThreshold` defines the binary source mask (`alpha > threshold`);
+- `MaxTriangles` is the search and retention budget for enclosing and detailed
+  candidates;
+- `AreaSavingsWeight` converts the fraction of original quad area removed into
+  selection-score points; one point compensates one submitted triangle.
+
+The polygonization algorithm is isolated in `SpriteMeshing`. It accepts an
+RGBA frame, its dimensions, and the resolved mesh settings, then owns mask
+construction, component and contour analysis, candidate generation,
+triangulation, validation, scoring, and the diagnostic result. `ImageBaker`
+owns image-format decoding, frame sequences and shared frames, adaptive
+per-frame padding and cropping, mesh serialization, and baking-report
+integration. This
+keeps polygonization independent of `ImageBaker::FrameShot` and allows the
+geometry builder to be exercised without an image-resource container.
+
+Geometric safety is internal policy rather than project tuning. The baker uses
+a one-pixel mask guard band and may probe up to 20 pixels of temporary padding
+when a candidate needs room beyond the source bounds. After selecting a mesh,
+it takes the exact bounds of the final vertices, crops the RGBA payload to those
+bounds, and translates the vertices to the cropped frame origin. The serialized
+per-frame offset is adjusted on both axes so the logical root remains at the
+same screen position even when different animation frames have different
+bounds. A quad or empty result is not cropped or padded. Candidate profitability
+is always compared against the original unpadded frame, so increasing the
+search area cannot manufacture an artificial saving. Each unique frame is
+searched on the maximum temporary canvas, then the retained mesh is translated
+into its minimum required canvas without repeating candidate generation. A
+maximum-canvas quad is re-evaluated on the unpadded frame, because the bounded
+contour search can produce a useful border-sensitive candidate there.
+
+Mesh generation builds enclosing candidates for every reachable triangle count
+from one through `MaxTriangles`. It starts with exact convex-hull support lines.
+A greedy removal path quickly reaches the configured range, then a deterministic
+bounded beam explores alternate support-line removals and retains the smallest
+area found for every triangle count. The exhaustive minimum-area triangle and
+parallelogram candidates remain additional optimized cases. Candidates that do
+not contain the complete hull are rejected before triangulation.
+
+If the mask has multiple disconnected outer contours, the same candidate ladder
+is built for every component. Nearby components are also merged into a
+deterministic hierarchy. Every partition that can fit the triangle budget is
+evaluated, so the search compares one global primitive, all-independent
+primitives, and intermediate groupings such as two close door details plus a
+separate leaf. A bounded dynamic program keeps several low-area alternatives per
+triangle count while distributing the budget. The final validator rejects local
+primitives that overlap each other or miss any guarded visible pixel. Selection
+scores each valid candidate as
+`savedFrameAreaRatio * AreaSavingsWeight - triangleCount` and compares it with
+the ordinary quad score of `-2`. Equal scores prefer the smaller covered area.
+This lets projects explicitly trade submission complexity for fill-rate savings:
+for example, a weight of 64 makes each additional 1.5625% frame-area saving worth
+one extra triangle. A closed double door can still use one common primitive,
+while sufficiently separated leaves use independent primitives without covering
+the gap.
+
+The baker also traces exact pixel-cell boundaries, preserves disconnected opaque
+islands and transparent holes, and automatically tries a deterministic ladder
+of closed-contour simplification tolerances. Clipper2 normalizes touching paths,
+offsets simplified geometry by the internal guard band, unions it with the exact
+source polygon so no visible area can be clipped, and intersects it with the
+exact raster-dilated region so simplification cannot bridge arbitrary
+transparent pockets. A second constrained cleanup removes long pixel
+staircases. Every simplified outer-ring edge is moved to the supporting line
+that encloses its complete replaced source chain before adjacent lines are
+intersected; hole rings retain ordinary inward simplification. This keeps the
+cleanup from cutting across visible stair-step corners. Earcut only triangulates
+the resulting outer rings and holes.
+
+Every valid detailed result up to `MaxTriangles` competes directly with the
+enclosing and per-component candidates under the same score. At every tolerance,
+the constrained offset, guard-band simplified, and tolerance-expanded cover
+families are generated independently; finding a merely valid candidate in one
+family never suppresses another family. The tolerance ladder likewise runs to
+its deterministic bound instead of stopping after several early valid results.
+
+The simplified families use a bounded removal beam rather than probing only one
+vertex. Each step tries replacing an exterior corner with a supporting chord
+through that corner; adjacent edge intersections preserve coverage. The beam
+keeps the lowest-area distinct states and records the best result for every
+reachable triangle count. Tolerance-expanded covers convert the
+Douglas-Peucker error bound into an enclosure instead of clipping thin visible
+features. They still undergo exact pixel-cell coverage and topology validation,
+but their transparent overdraw competes through `AreaSavingsWeight` rather than
+a separate tolerance mask.
+
+Generated triangles must cover the complete unit-square area of every original
+visible pixel; the validator clips triangles against pixel cells and compares
+their accumulated area instead of relying on a finite set of sample points.
+For the constrained detailed-contour path, additional transparent coverage is
+limited to the internal one-pixel guard band plus one pixel for final staircase
+cleanup and integer vertex rounding. Expanded-cover and enclosing candidates are
+not controlled by a separate overdraw gate: their actual covered area is
+accounted for directly by the score.
+Failure reasons remain distinct internally
+(contour extraction/offset, vertex limit, triangulation, area, coverage, and
+tolerance-mask failures), so retry policy does not conflate complexity with
+geometric invalidity. An empty
+mask is recorded explicitly as empty geometry; a fully opaque, unprofitable,
+oversized, or otherwise unsafe result is recorded as the ordinary quad. The
+optional Earcut Delaunay refinement pass is deliberately not used: it changes
+neither triangle count nor covered area and does not promise bit-identical
+output across compilers.
+
+Baked sprite blobs have an explicit engine-owned magic/version and store each
+unique frame's individual draw offset before its cropped RGBA payload, followed
+by the mesh kind. `SpriteResource` owns this shared format contract, mesh data
+type, and strict whole-resource decoder used by the client, particle editor,
+and project-side server image loader. Its public entry point accepts the exact
+resource byte span and creates its own reader, so decoding is independent of
+any caller-owned stream position while footer and trailing-data checks remain
+scoped to that resource slice. The decoder returns animation timing,
+directions, per-frame offsets, shared-frame references, RGBA pixels, and
+optional mesh geometry. Mesh records use fixed-width cropped-frame coordinates
+and indices plus the original logical source size and the cropped-frame origin
+within that source. The origin may be negative when selected geometry uses the
+internal safety border. The decoder requires mesh vertices to occupy the exact
+serialized frame bounds. Shared animation frames continue to refer to the
+original frame and do not duplicate its offset, pixels, or geometry. The
+runtime rejects legacy or malformed blobs rather than guessing their layout.
+Consumers that sample the image as a plain rectangular texture rather than a
+sprite (`ParticleEditor` and project-side server image sampling) restore the
+cropped payload into the original logical canvas so their size and pixel-coordinate
+contracts do not change.
+After this format changes, or when `SpriteMesh.*` values change without a new
+build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
+that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
@@ -318,7 +755,7 @@ description/include graph and every replacement-expanded `Model`, external
 `Anim`, direct `Attach`, and `Cut` source dependency. A missing referenced source
 is a hard error. This is required because an animation-only FBX change does not
 change the mesh-only `LFMODMSH` output by itself but must still rebuild the
-canonical Ozz rig and `ModelAnimInfo` data.
+canonical Ozz rig and `ModelAnimationInfo` data.
 
 The native model-animation format is implemented with the `ozz-animation`
 0.16.0 release tag, whose exact tagged commit is

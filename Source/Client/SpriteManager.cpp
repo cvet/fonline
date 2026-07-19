@@ -38,6 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t EGG_ENABLED_FLAG = 1.0f;
+static constexpr ucolor SPRITE_MESH_WIREFRAME_COLOR {255, 0, 255, 255};
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET = 0.5f;
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS = static_cast<size_t>(DrawOrderType::Last) + 1;
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS = MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS);
@@ -50,7 +51,7 @@ Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto Sprite::GetDrawEffectOr(ptr<RenderEffect> defaultEffect) const noexcept -> ptr<RenderEffect>
+auto Sprite::GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -58,7 +59,7 @@ auto Sprite::GetDrawEffectOr(ptr<RenderEffect> defaultEffect) const noexcept -> 
         return _drawEffect;
     }
 
-    return defaultEffect;
+    return default_effect;
 }
 
 auto Sprite::IsHitTest(ipos32 pos) const -> bool
@@ -647,12 +648,86 @@ void SpriteManager::Flush()
 
     DisableScissor();
 
+    if (_settings->DrawWireframe) {
+        DrawSpriteWireframe();
+    }
+
     _dipQueue.clear();
 
     FO_VERIFY_AND_THROW(ipos == _spritesDrawBuf->IndCount, "Sprite index buffer position is out of sync with draw buffer");
 
     _spritesDrawBuf->VertCount = 0;
     _spritesDrawBuf->IndCount = 0;
+}
+
+void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(index_count % 3 == 0, "Sprite wireframe source indices are not grouped by triangles", start_index, index_count);
+    FO_VERIFY_AND_THROW(start_index <= _spritesDrawBuf->IndCount && index_count <= _spritesDrawBuf->IndCount - start_index, "Sprite wireframe source range is outside the index buffer", start_index, index_count, _spritesDrawBuf->IndCount);
+
+    _spriteWireframeVertices.reserve(_spriteWireframeVertices.size() + index_count * 2);
+
+    for (size_t i = start_index; i < start_index + index_count; i += 3) {
+        const vindex_t triangle_indices[3] = {
+            _spritesDrawBuf->Indices[i],
+            _spritesDrawBuf->Indices[i + 1],
+            _spritesDrawBuf->Indices[i + 2],
+        };
+
+        for (size_t edge = 0; edge < 3; edge++) {
+            const vindex_t from_index = triangle_indices[edge];
+            const vindex_t to_index = triangle_indices[(edge + 1) % 3];
+            FO_VERIFY_AND_THROW(from_index < _spritesDrawBuf->VertCount && to_index < _spritesDrawBuf->VertCount, "Sprite wireframe index is outside the vertex buffer", from_index, to_index, _spritesDrawBuf->VertCount);
+
+            Vertex2D from_vertex = _spritesDrawBuf->Vertices[from_index];
+            Vertex2D to_vertex = _spritesDrawBuf->Vertices[to_index];
+            from_vertex.Color = SPRITE_MESH_WIREFRAME_COLOR;
+            to_vertex.Color = SPRITE_MESH_WIREFRAME_COLOR;
+            from_vertex.TexU = from_vertex.TexV = 0.0f;
+            to_vertex.TexU = to_vertex.TexV = 0.0f;
+            from_vertex.EggFlags[0] = from_vertex.EggFlags[1] = 0.0f;
+            to_vertex.EggFlags[0] = to_vertex.EggFlags[1] = 0.0f;
+            _spriteWireframeVertices.emplace_back(from_vertex);
+            _spriteWireframeVertices.emplace_back(to_vertex);
+        }
+    }
+}
+
+void SpriteManager::DrawSpriteWireframe()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_spriteWireframeVertices.empty()) {
+        return;
+    }
+
+    nptr<RenderEffect> effect = _effectMngr->Effects.Primitive;
+    FO_VERIFY_AND_THROW(effect, "Primitive effect is unavailable for sprite wireframe rendering");
+    FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::Primitive, "Sprite wireframe effect is not a primitive effect", effect->GetUsage());
+
+    const size_t vertex_count = _spriteWireframeVertices.size();
+    FO_VERIFY_AND_THROW(vertex_count % 2 == 0, "Sprite wireframe vertex count is not grouped by line segments", vertex_count);
+    _primitiveDrawBuf->CheckAllocBuf(vertex_count, vertex_count);
+    _primitiveDrawBuf->VertCount = vertex_count;
+    _primitiveDrawBuf->IndCount = vertex_count;
+
+    for (size_t i = 0; i < vertex_count; i++) {
+        _primitiveDrawBuf->Vertices[i] = _spriteWireframeVertices[i];
+        _primitiveDrawBuf->Indices[i] = numeric_cast<vindex_t>(i);
+    }
+
+    _primitiveDrawBuf->PrimType = RenderPrimitiveType::LineList;
+    _primitiveDrawBuf->Upload(EffectUsage::Primitive, vertex_count, vertex_count);
+
+    EnableScissor();
+    effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
+    DisableScissor();
+
+    _primitiveDrawBuf->VertCount = 0;
+    _primitiveDrawBuf->IndCount = 0;
+    _spriteWireframeVertices.clear();
 }
 
 void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
@@ -663,9 +738,14 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
+    const size_t start_index = _spritesDrawBuf->IndCount;
     const auto ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
+        if (_settings->DrawWireframe) {
+            QueueSpriteWireframe(start_index, ind_count);
+        }
+
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
             _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
@@ -725,9 +805,14 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
 
     color = ApplyColorBrightness(color);
 
+    const size_t start_index = _spritesDrawBuf->IndCount;
     const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
+        if (_settings->DrawWireframe) {
+            QueueSpriteWireframe(start_index, ind_count);
+        }
+
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
             _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
@@ -1212,6 +1297,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
         const size_t start_vpos = _spritesDrawBuf->VertCount;
+        const size_t start_ipos = _spritesDrawBuf->IndCount;
         const size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
 
         auto& vbuf = _spritesDrawBuf->Vertices;
@@ -1268,6 +1354,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (ind_count != 0) {
+            if (_settings->DrawWireframe) {
+                QueueSpriteWireframe(start_ipos, ind_count);
+            }
+
             if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
                 _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
             }

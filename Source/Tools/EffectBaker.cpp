@@ -71,7 +71,7 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
 
 EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 

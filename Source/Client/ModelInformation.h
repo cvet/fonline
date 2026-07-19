@@ -38,6 +38,7 @@
 #if FO_ENABLE_3D
 
 #include "ModelAnimation.h"
+#include "ModelBounds.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -124,7 +125,7 @@ private:
         vector<BakedModelDescriptionCutInfo> CutInfo {};
     };
 
-    struct BakedModelDescriptionAnimEntry
+    struct BakedModelDescriptionAnimationEntry
     {
         int32_t StateAnim {};
         int32_t ActionAnim {};
@@ -144,12 +145,13 @@ private:
     [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
     [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> BakedModelDescriptionLink;
     [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> BakedModelDescriptionAnimationEntry;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();
     void IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig);
     void IndexPoseJointLookups();
+    [[nodiscard]] auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
     [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
     [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
     [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
@@ -172,6 +174,9 @@ private:
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32_t> _animIndexes {};
+    vector<optional<ModelBounds3D>> _animationBounds {};
+    ModelBounds3D _modelBounds {};
+    ModelBounds3D _viewBounds {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, float32_t> _animSpeed {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, vector<pair<int32_t, int32_t>>> _animLayerValues {};
     unordered_set<hstring> _fastTransitionBones {};
@@ -180,8 +185,6 @@ private:
     vector<unique_ptr<ModelCutData>> _cutData {};
     bool _shadowDisabled {};
     bool _disableBackwardAnim {};
-    isize32 _drawSize {};
-    isize32 _viewSize {};
     hstring _rotationBone {};
 };
 
