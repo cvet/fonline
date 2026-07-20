@@ -35,6 +35,7 @@
 #include "Application.h"
 #include "ConfigFile.h"
 
+FO_DISABLE_WARNINGS_PUSH()
 #include "../Include/Types.h"
 #include "GlslangToSpv.h"
 #include "ResourceLimits.h"
@@ -42,6 +43,7 @@
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
+FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
@@ -69,7 +71,7 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
 
 EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 

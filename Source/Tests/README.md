@@ -15,7 +15,7 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **81** `Test_*.cpp` suites.
+Current count: **93** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -80,6 +80,7 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
+- `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
@@ -92,8 +93,10 @@ Current count: **81** `Test_*.cpp` suites.
 
 ### Scripting and script-visible APIs
 
+- `Source/Tests/Test_AngelScriptAlignment.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -107,14 +110,35 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ModelMeshData.cpp`
+- `Source/Tests/Test_ModelAnimationData.cpp`
+- `Source/Tests/Test_ModelAnimationConverter.cpp`
+- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
+- `Source/Tests/Test_ModelAnimationRuntime.cpp`
+- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSourceLoader.cpp`
+- `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
+
+The model-animation coverage is intentionally split between wire-format corruption
+tests (`Test_ModelAnimationData.cpp`), offline conversion and production runtime
+ownership/type-tag tests (`Test_ModelAnimationConverter.cpp`), real
+baker-to-runtime/binding resolution (`Test_ModelBaker.cpp`), and the model
+animation controller/timeline contract (`Test_ModelAnimation.cpp`).
+Renderer-independent rest pose matrices and canonical joint links live in
+`Test_ModelAnimationRuntime.cpp`;
+bounded procedural rotations and exact link-matrix overrides live in
+`Test_ModelAnimationPoseProcedural.cpp`. Keep
+these boundaries green independently while the immutable production payload is
+staged ahead of the atomic sampler/matrix cutover.
 
 ### Rendering/frontend smoke tests
 

@@ -89,6 +89,7 @@ public:
     {
         bool HandshakeComplete {};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
         bool PingAnswerReceived {true};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
@@ -115,6 +116,7 @@ public:
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
@@ -123,6 +125,7 @@ public:
     void MarkHandshakeComplete() noexcept;
     void EnsureActivityTime(nanotime time) noexcept;
     void RegisterActivity(nanotime time) noexcept;
+    void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
@@ -144,6 +147,7 @@ private:
         nanotime NextPingTime {};
         bool PingAnswerReceived {true};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
     };
 
     struct UpdateFileTransferState

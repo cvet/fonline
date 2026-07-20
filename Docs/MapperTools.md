@@ -113,6 +113,7 @@ Single-process batching exists because the mapper's startup is the slowest step 
 | `Mapper.RenderPlanZooms` | empty | Optional semicolon-separated batch list of zoom values, aligned with `Mapper.RenderMaps`. |
 | `Mapper.RenderPlanOutputNames` | empty | Optional semicolon-separated batch list of screenshot base names, aligned with `Mapper.RenderMaps`. The preview tool uses this to load maps from subfolders while keeping `<MapPid>.tga/.png` output names. |
 | `Mapper.RenderHideHiddenSprites` | `True` | If true, hides `AlwaysHideSprite` items for a client-like render. Set false only for schematic debugging that needs blocker/ground markers. |
+| `Mapper.RenderDumpAtlases` | `False` | Dumps warmed texture atlases after each rendered map, including the polygon-sprite mesh overlay used for visual audits. |
 | `Mapper.RenderCenterHexX/Y` | `0 0` | Optional capture camera center. `0 0` means auto-center on the playable area; explicit values are used for tuned one-frame previews. |
 | `Mapper.RenderCenterRawHexX/Y` | `0 0` | Optional raw camera center. Takes precedence over `Mapper.RenderCenterHexX/Y` and can point outside the authored map rectangle for axial-border-aligned previews. |
 | `Mapper.RenderZoomOverride` | `0.0` | Optional capture zoom. `0.0` means auto-fit; positive values force a tuned zoom. |
@@ -129,6 +130,8 @@ LF_Mapper --Render.HeadlessWindow True \
 ```
 
 Or, if you prefer not to touch the CLI on every call, override `Mapper.RenderMaps` / `Mapper.RenderOutputDir` in a personal SubConfig and just pass `--ApplySubConfig MyMapperRender`.
+
+Set `Mapper.RenderDumpAtlases=True` for a reproducible atlas-mesh audit without interactive mapper hotkeys.
 
 ### Current limitations (known scope)
 

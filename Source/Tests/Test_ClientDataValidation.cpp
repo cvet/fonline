@@ -112,6 +112,15 @@ TEST_CASE("ClientDataValidation")
     const BaseTypeDesc& nested_ref_type = meta.GetBaseType("NestedRefType");
     const hstring known_hash = meta.Hashes.ToHashedString("KnownHash");
 
+    SECTION("Calculates minimum remote call wire sizes")
+    {
+        CHECK(GetRemoteCallSimpleValueMinWireSize(int_type) == sizeof(int32_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(string_type) == sizeof(uint32_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(hstring_type) == sizeof(hstring::hash_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(ref_type) == sizeof(uint32_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(struct_type) == sizeof(float32_t) + sizeof(uint8_t));
+    }
+
     SECTION("Accepts valid nested payload")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeSimpleArg(enum_type, "enum_value"), MakeSimpleArg(float_type, "float_value"), MakeSimpleArg(hstring_type, "hash_value"), MakeArrayArg(int_type, "numbers"), MakeDictOfArrayArg(hstring_type, uint16_type, "mapped_values"), MakeSimpleArg(struct_type, "packed_struct")});
@@ -167,6 +176,61 @@ TEST_CASE("ClientDataValidation")
         writer.WriteBytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+    }
+
+    SECTION("Rejects hostile remote call length and count prefixes")
+    {
+        const int32_t hostile_size = std::numeric_limits<int32_t>::max();
+
+        {
+            const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
+            vector<uint8_t> data;
+            DataWriter writer(data);
+            writer.Write<int32_t>(hostile_size);
+
+            CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+        }
+
+        {
+            const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(int_type)});
+            vector<uint8_t> data;
+            DataWriter writer(data);
+            writer.Write<int32_t>(hostile_size);
+
+            CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+        }
+
+        {
+            const StructLayoutDesc empty_layout {};
+            const BaseTypeDesc empty_struct_type {.Name = "EmptyStruct", .IsStruct = true, .StructLayout = &empty_layout};
+            const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(empty_struct_type)});
+            vector<uint8_t> data;
+            DataWriter writer(data);
+            writer.Write<int32_t>(hostile_size);
+
+            CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+        }
+
+        {
+            const ArgDesc dict_arg {.Name = "values", .Type = ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = int_type}};
+            const RemoteCallDesc call = MakeRemoteCall(meta, {dict_arg});
+            vector<uint8_t> data;
+            DataWriter writer(data);
+            writer.Write<int32_t>(hostile_size);
+
+            CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+        }
+
+        {
+            const RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(int_type, int_type)});
+            vector<uint8_t> data;
+            DataWriter writer(data);
+            writer.Write<int32_t>(1);
+            writer.Write<int32_t>(10);
+            writer.Write<int32_t>(hostile_size);
+
+            CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+        }
     }
 
     SECTION("Rejects invalid enum values")

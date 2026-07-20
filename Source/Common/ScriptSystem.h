@@ -190,10 +190,10 @@ namespace NativeDataProvider
         template<typename T>
             requires(vector_collection<T>)
         explicit ArrayDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> ptr<void> {
+            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
                 auto element = make_ptr(&e).void_cast();
                 return element;
-            })}
+            }))}
         {
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
@@ -203,10 +203,10 @@ namespace NativeDataProvider
         template<typename T>
             requires(vector_collection<T>)
         explicit ArrayDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> ptr<void> {
+            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
                 auto element = make_ptr(&e).void_cast();
                 return element;
-            })}
+            }))}
         {
             _clearCallback = [&]() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [&](ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };

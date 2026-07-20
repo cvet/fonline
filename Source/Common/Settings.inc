@@ -102,6 +102,7 @@ FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP
 FIXED_SETTING(bool, ServerNetwork, UpdateFilesInMemory, false); // If true, updater files are served from memory, otherwise from disk
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
+FIXED_SETTING(int32_t, ServerNetwork, LoginTimeout, 0); // Maximum pre-login connection lifetime without handshake/auth/update progress in milliseconds (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
@@ -170,6 +171,14 @@ FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
+SETTING_GROUP(SpriteMeshSettings, virtual BaseSettings);
+FIXED_SETTING(bool, SpriteMesh, Enabled, false); // If true, polygonal sprite meshes are generated during image baking
+FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold, 0); // Minimum alpha excluded from sprite mesh geometry (0-254)
+FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles, 4096); // Maximum triangle budget searched across whole-sprite, per-component, and detailed mesh candidates
+FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for removing a full frame area; one point offsets one submitted triangle
+SETTING_GROUP_END();
+
+///@ ExportSettings Common
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
@@ -189,6 +198,7 @@ FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); 
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
+VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite triangle edges are overlaid for geometry debugging
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
@@ -198,10 +208,6 @@ VARIABLE_SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 
 FIXED_SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
-FIXED_SETTING(int32_t, Render, DefaultModelViewWidth, 0); // Default model view width
-FIXED_SETTING(int32_t, Render, DefaultModelViewHeight, 0); // Default model view height
-FIXED_SETTING(int32_t, Render, DefaultModelDrawWidth, 128); // Default model draw width
-FIXED_SETTING(int32_t, Render, DefaultModelDrawHeight, 128); // Default model draw height
 FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base speed
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
@@ -266,7 +272,7 @@ FIXED_SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in mil
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual BaseSettings);
+SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings);
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist

@@ -35,19 +35,21 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "CritterView.h"
 #include "DefaultSprites.h"
 #include "EntityProtos.h"
 #include "Geometry.h"
 #include "HexView.h"
-#include "ModelSprites.h"
 #include "Movement.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
 
 class ItemView;
+#if FO_ENABLE_3D
+class ModelInstance;
+class ModelSprite;
+#endif
 
 class CritterHexView final : public CritterView, public HexView
 {

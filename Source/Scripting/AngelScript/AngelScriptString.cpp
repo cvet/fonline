@@ -877,13 +877,14 @@ static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -
     if (array->GetSize() != 0) {
         const auto size = numeric_cast<int32_t>(array->GetSize());
         size_t capacity = size * str.size();
+        const size_t max_capacity = numeric_cast<size_t>(std::numeric_limits<int32_t>::max());
 
         for (int32_t i = 0; i < size; i++) {
             ptr<const string> entry = array->AtAs<const string>(i);
             capacity += entry->length();
         }
 
-        FO_VERIFY_AND_THROW(capacity < std::numeric_limits<int32_t>::max(), "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), std::numeric_limits<int32_t>::max());
+        FO_VERIFY_AND_THROW(capacity < max_capacity, "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), max_capacity);
         result.reserve(capacity);
 
         for (int32_t i = 0; i < size - 1; i++) {

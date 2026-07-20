@@ -98,25 +98,45 @@ public:
         Disconnected,
     };
 
-    NetworkServer() = default;
+    NetworkServer();
     NetworkServer(const NetworkServer&) = delete;
     NetworkServer(NetworkServer&&) noexcept = delete;
     auto operator=(const NetworkServer&) = delete;
     auto operator=(NetworkServer&&) noexcept = delete;
     virtual ~NetworkServer() = default;
 
-    virtual void Shutdown() = 0;
+    void Shutdown();
 
-    [[nodiscard]] static auto StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
-    [[nodiscard]] static auto StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #if FO_HAVE_ASIO
-    [[nodiscard]] static auto StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 #if FO_HAVE_WEB_SOCKETS
-    [[nodiscard]] static auto StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 
-    [[nodiscard]] static auto CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
+    static auto CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
+
+protected:
+    class ConnectionRegistry final
+    {
+    public:
+        auto BeginShutdown() -> optional<vector<shared_ptr<NetworkServerConnection>>>;
+        auto TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool;
+
+    private:
+        mutex _connectionsLocker {};
+        vector<weak_ptr<NetworkServerConnection>> _connections FO_TSA_GUARDED_BY(_connectionsLocker) {};
+        bool _shutdownStarted FO_TSA_GUARDED_BY(_connectionsLocker) {};
+    };
+
+    auto GetConnectionRegistry() const noexcept -> shared_ptr<ConnectionRegistry>;
+    auto TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool;
+    virtual void ShutdownImpl() = 0;
+
+private:
+    shared_ptr<ConnectionRegistry> _connectionRegistry;
 };
 
 FO_END_NAMESPACE

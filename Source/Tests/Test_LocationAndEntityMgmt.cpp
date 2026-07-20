@@ -180,8 +180,8 @@ namespace LocEntity
 
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
-        array<ident> ids = {cr1.Id, cr2.Id, cr3.Id};
-        Game.DestroyEntities(ids);
+        array<Entity> entities = {cr1, cr2, cr3};
+        Game.DestroyEntities(entities);
         return 0;
     }
 
@@ -609,40 +609,6 @@ namespace LocEntity
         return 0;
     }
 
-    int TestDestroyEntityById()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Location loc = Game.CreateLocation("TestLocation".hstr());
-        if (loc is null) return -2;
-
-        Game.DestroyEntity(loc.Id);
-        Game.DestroyEntity(cr.Id);
-
-        return 0;
-    }
-
-    int TestMultipleBulkDestroyEntitiesById()
-    {
-        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr1 is null || cr2 is null || cr3 is null) return -1;
-
-        Location l1 = Game.CreateLocation("TestLocation".hstr());
-        Location l2 = Game.CreateLocation("TestLocation".hstr());
-        if (l1 is null || l2 is null) return -2;
-
-        array<ident> crIds = {cr1.Id, cr2.Id, cr3.Id};
-        Game.DestroyEntities(crIds);
-
-        array<ident> locIds = {l1.Id, l2.Id};
-        Game.DestroyEntities(locIds);
-
-        return 0;
-    }
-
     // ========== Math Operations ==========
 
     int TestMathOps()
@@ -1039,16 +1005,6 @@ TEST_CASE("NpcAndEntityQueries")
     SECTION("EntityGetById")
     {
         RUN_LEM_FUNC("TestEntityGetById");
-    }
-
-    SECTION("DestroyEntityById")
-    {
-        RUN_LEM_FUNC("TestDestroyEntityById");
-    }
-
-    SECTION("BulkDestroyEntitiesById")
-    {
-        RUN_LEM_FUNC("TestMultipleBulkDestroyEntitiesById");
     }
 }
 

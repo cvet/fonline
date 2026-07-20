@@ -28,9 +28,9 @@ Location? GetCritterLocation(Critter cr)
 }
 
 // Parameter may be null — body handles both cases
-void OnCritterUseWeapon(Critter cr, WeaponUseMode useMode, HitLocation aim, Critter? target, mpos targetHex)
+void ResolveTargetHex(Critter cr, Critter? target, mpos fallbackHex)
 {
-    mpos resolvedTargetHex = target != null ? target.Hex : targetHex;
+    mpos resolvedTargetHex = target != null ? target.Hex : fallbackHex;
     // ...
 }
 ```

@@ -23,8 +23,18 @@ parts.
 
 ## Update Workflow
 
+The whole `ThirdParty/` surface is refreshed in one sweep: every maintained
+vendored library and every root version pin is checked against upstream, and
+each dependency that moves gets its own commit. Prefer the freshest **stable**
+release; take a master/branch head or an upstream-designated tag only when that
+is the library's own release convention (no stable releases, or the project is
+deliberately tracked at a branch).
+
 1. Identify the upstream release, tag, archive, or package version from the
-   project homepage, official release feed, or package metadata.
+   project homepage, official release feed, or package metadata. Verify the
+   candidate against the project's own release channel, not raw git tags — a
+   repository may carry version tags that were never released (no archive, no
+   announcement); such tags are not update targets.
 2. Stage the upstream source outside the repository, usually under
    `Workspace/ThirdPartyUpdate/`, so the original download remains available
    while reviewing the vendored diff.
@@ -44,9 +54,35 @@ parts.
    platform workspace pins, update the matching plain file under `ThirdParty/`.
 8. Run at least `git diff --check` on the touched dependency. Then validate the
    smallest embedding-project configure/build/test path that exercises the
-   dependency.
+   dependency. For build-critical libraries (allocator, shader toolchain,
+   serialization), prefer a functional pass over the real data path — e.g. a
+   full resource bake or the engine unit-test suite — not just compile-and-link.
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
+
+## Root Version Pins
+
+The plain files directly under `ThirdParty/` (`emscripten`, `android-ndk`,
+`android-sdk`, `android-api`, `dotnet-runtime`, `iOS-sdk`, `xwin`) pin toolchain
+versions that `BuildTools/buildtools.py` downloads during workspace and package
+preparation. They are part of the regular update sweep: bump the pin file and
+the matching `ThirdParty/README.md` entry in one commit per pin, and validate
+through the platform build that consumes it (web, Android, iOS, or Windows
+cross build). Two pins are policy values rather than freshness targets:
+`android-api` is the deliberate minimum-supported-device floor, and `iOS-sdk`
+follows the embedding project's shipping requirements — change these only as an
+explicit product decision, not as part of a mechanical refresh.
+
+## Heavily Patched Forks
+
+A dependency whose vendored copy carries extensive semantic `(FOnline Patch)`
+edits (the current example is AngelScript, which embeds the engine's nullable
+`T?` type system, VM stack-alignment layout, an added bytecode instruction, and
+a modern-threads mode on top of an upstream fork) is **not** covered by the
+mechanical copy-then-prune workflow above. Re-vendoring it means reconciling
+every patched region against the new upstream — treat that as a dedicated task
+with its own plan and full script/VM regression validation, and skip such
+dependencies during a routine refresh sweep.
 
 ## Adding A New Engine Dependency
 

@@ -58,7 +58,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 - Typical responsibilities:
   - logging and debugger break helpers;
   - quit/invoke helpers;
-  - resource and config reads, plus typed lookup of baker-provided model animation durations (`Game.GetModelAnimDuration`);
+  - resource and config reads, plus the typed duration facade over complete baker-provided model animation metadata (`Game.GetModelAnimDuration`);
   - random, time, UTF-8, clipboard, open-link helpers;
   - geometry helpers such as distance, direction, line angle, intervals, trace line;
   - common serialization and formatting helpers.

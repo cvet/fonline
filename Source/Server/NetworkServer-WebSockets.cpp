@@ -107,15 +107,14 @@ public:
     auto operator=(NetworkServer_WebSockets&&) noexcept = delete;
     ~NetworkServer_WebSockets() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
     void Run();
     void OnOpen(const websocketpp::connection_hdl& hdl);
     void OnFail(const websocketpp::connection_hdl& hdl);
-
-    [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
-    [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
+    auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
+    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
     ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
@@ -372,7 +371,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
 }
 
 template<bool Secured>
-void NetworkServer_WebSockets<Secured>::Shutdown()
+void NetworkServer_WebSockets<Secured>::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -407,7 +406,10 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         try {
             auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
             ws_connection->Start();
-            _connectionCallback(std::move(ws_connection));
+
+            if (TrackConnection(ws_connection)) {
+                _connectionCallback(std::move(ws_connection));
+            }
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);

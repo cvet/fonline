@@ -1111,7 +1111,7 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
     return {};
 }
 
-auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector<refcount_ptr<Player>>
+auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> small_vector<refcount_ptr<Player>, 8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1119,7 +1119,7 @@ auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector
 
     auto spectators = GetMapSpectators();
 
-    vector<refcount_ptr<Player>> recipients;
+    small_vector<refcount_ptr<Player>, 8> recipients;
     recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (ptr<Critter> cr : _visibleCrWhoSeeMe) {
