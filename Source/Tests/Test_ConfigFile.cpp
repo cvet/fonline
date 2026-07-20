@@ -94,6 +94,24 @@ TEST_CASE("ConfigFile")
         CHECK(target.GetAsStr("ProtoItem", "Name") == "Payload");
     }
 
+    SECTION("PreservesViewsAfterMoveForShortInput")
+    {
+        // An input this small fits every implementation's small-string buffer, so holding it in a
+        // plain string member would move the characters inside the object and dangle every stored
+        // view. The input lives in the owned-node list precisely to keep its address stable here.
+        ConfigFile original {"[A]\nk = v\n"};
+        ConfigFile moved {std::move(original)};
+
+        CHECK(moved.HasSection("A"));
+        CHECK(moved.GetAsStr("A", "k") == "v");
+
+        ConfigFile assigned {"[B]\nx = y\n"};
+        assigned = std::move(moved);
+
+        CHECK(assigned.HasSection("A"));
+        CHECK(assigned.GetAsStr("A", "k") == "v");
+    }
+
     SECTION("CollectsSectionContent")
     {
         const string source = "[ShaderCommon]\nline_1 \\\nline_2\nvalue # keep content before comment stripping\n\n[VertexShader]\nvoid main() {}\n";

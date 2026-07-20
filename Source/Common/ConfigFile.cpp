@@ -35,23 +35,14 @@
 
 FO_BEGIN_NAMESPACE
 
-struct ConfigFile::Data
-{
-    string Input {};
-    list<string> OwnedStrings {};
-};
-
-ConfigFile::~ConfigFile() = default;
-ConfigFile::ConfigFile(ConfigFile&&) noexcept = default;
-auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
-
 ConfigFile::ConfigFile(string str, ConfigFileOption options) :
-    _options {options},
-    _data {SafeAlloc::MakeUnique<Data>()}
+    _options {options}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->Input = std::move(str);
+    // The input is the first owned node, so the section views into it keep a stable address even
+    // after this object is moved; appending further nodes never invalidates it
+    const string& input = _ownedStrings.emplace_back(std::move(str));
 
     auto cur_section_it = _sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {});
     ptr<map<string_view, string_view>> cur_section = &cur_section_it->second;
@@ -62,19 +53,19 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
     string section_content;
 
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-        section_content.reserve(_data->Input.length());
+        section_content.reserve(input.length());
     }
 
     string accum_line;
     size_t line_begin = 0;
 
-    while (line_begin <= _data->Input.length()) {
-        const size_t line_end = _data->Input.find('\n', line_begin);
-        const size_t view_end = line_end != string::npos ? line_end : _data->Input.length();
+    while (line_begin <= input.length()) {
+        const size_t line_end = input.find('\n', line_begin);
+        const size_t view_end = line_end != string::npos ? line_end : input.length();
         string_view line;
 
         if (view_end != line_begin) {
-            auto line_begin_ptr = make_ptr(_data->Input.data() + line_begin);
+            auto line_begin_ptr = make_ptr(input.data() + line_begin);
             line = {line_begin_ptr.get(), view_end - line_begin};
         }
 
@@ -85,7 +76,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
             line.remove_suffix(1);
         }
 
-        line_begin = line_end != string::npos ? line_end + 1 : _data->Input.length() + 1;
+        line_begin = line_end != string::npos ? line_end + 1 : input.length() + 1;
         line = strvex(line).trim();
 
         if (!accum_line.empty()) {
@@ -278,16 +269,16 @@ auto ConfigFile::StoreOwnedString(string_view value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedStrings.emplace_back(value);
-    return _data->OwnedStrings.back();
+    _ownedStrings.emplace_back(value);
+    return _ownedStrings.back();
 }
 
 auto ConfigFile::StoreOwnedString(string&& value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedStrings.emplace_back(std::move(value));
-    return _data->OwnedStrings.back();
+    _ownedStrings.emplace_back(std::move(value));
+    return _ownedStrings.back();
 }
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>
 {

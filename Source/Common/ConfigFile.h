@@ -55,10 +55,10 @@ class ConfigFile final
 public:
     explicit ConfigFile(string str, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
-    ConfigFile(ConfigFile&&) noexcept;
+    ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept -> ConfigFile&;
-    ~ConfigFile();
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    ~ConfigFile() = default;
 
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
@@ -74,8 +74,6 @@ public:
     [[nodiscard]] auto GetSectionContent(string_view section_name) const -> string_view;
 
 private:
-    struct Data;
-
     auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
     void TrimConfigRange(string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char ch) -> bool;
@@ -84,7 +82,7 @@ private:
     auto StoreOwnedString(string&& value) -> string_view;
 
     ConfigFileOption _options;
-    unique_ptr<Data> _data;
+    list<string> _ownedStrings {}; // List nodes keep their address across a move, an SSO string member would not
     multimap<string_view, map<string_view, string_view>> _sectionKeyValues {};
     vector<pair<string_view, ptr<map<string_view, string_view>>>> _orderedSections {};
 };
