@@ -620,4 +620,44 @@ TEST_CASE("Map camera world projection")
     }
 }
 
+TEST_CASE("GetHexScreenRow")
+{
+    SECTION("MatchesTheRowOfGetHexPos")
+    {
+        for (const mpos hex : {mpos {0, 0}, mpos {1, 0}, mpos {113, 108}, mpos {115, 107}, mpos {566, 931}, mpos {572, 928}}) {
+            CHECK(GeometryHelper::GetHexScreenRow(hex) * GameSettings::MAP_HEX_LINE_HEIGHT == GeometryHelper::GetHexPos(hex).y);
+        }
+    }
+
+    SECTION("EqualRowMeansEqualGroundDepth")
+    {
+        // Hexes related by +2X/-1Y share the screen row, so their ground view depth is equal — this is
+        // the equivalence class the standing-sprite painter order has to keep together
+        const mpos base {113, 108};
+        const mpos shifted {115, 107};
+
+        CHECK(GeometryHelper::GetHexScreenRow(base) == GeometryHelper::GetHexScreenRow(shifted));
+
+        const float32_t base_depth = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(base, ipos32 {}, 0.0f)).z;
+        const float32_t shifted_depth = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(shifted, ipos32 {}, 0.0f)).z;
+
+        CHECK(base_depth == shifted_depth);
+    }
+
+    SECTION("RowOrderFollowsGroundDepthOrder")
+    {
+        // The hex-row order does not: (hy-1, hx+4) is nearer than (hy, hx) yet sorts earlier by hex row
+        const mpos far_hex {113, 108};
+        const mpos near_hex {117, 107};
+
+        REQUIRE(GeometryHelper::GetHexScreenRow(near_hex) > GeometryHelper::GetHexScreenRow(far_hex));
+        CHECK(near_hex.y < far_hex.y);
+
+        const float32_t far_depth = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(far_hex, ipos32 {}, 0.0f)).z;
+        const float32_t near_depth = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(near_hex, ipos32 {}, 0.0f)).z;
+
+        CHECK(near_depth > far_depth);
+    }
+}
+
 FO_END_NAMESPACE
