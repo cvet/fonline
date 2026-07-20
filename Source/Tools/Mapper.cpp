@@ -55,8 +55,6 @@ static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t 
     return {left, top, right - left, bottom - top};
 }
 
-// Map files carry no dedicated extension: any ProtoFileExtensions file declaring [ProtoMap]
-// anchors is a map container, so candidate filtering goes by the configured extension list
 static auto IsProtoFileExtension(const vector<string>& proto_file_extensions, string_view path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -7067,9 +7065,11 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
 
     std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open the map file for writing", fomap_path, fomap_name, final_content.size());
+
     if (!final_content.empty()) {
         fomap_file.write(final_content.data(), static_cast<std::streamsize>(final_content.size()));
     }
+
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write the map file content", fomap_path, fomap_name, final_content.size());
 
     MapBrowserNamesStale = true;
