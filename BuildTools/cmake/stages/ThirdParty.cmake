@@ -86,6 +86,9 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
     TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
+    # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
+    TargetCompileOptions(rpmalloc PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:MSVC>>:/std:c17;/experimental:c11atomics>")
 else()
     AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)
 endif()
