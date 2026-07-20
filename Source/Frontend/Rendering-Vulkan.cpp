@@ -868,6 +868,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     VkResult vk_result = VK_SUCCESS;
     vector<ucolor> tex_region;
     VkDeviceSize region_size = size.square() * sizeof(ucolor);
+    size_t region_data_size = numeric_cast<size_t>(region_size);
 
     // Create staging buffer for reading from GPU
     VkBuffer staging_buf {};
@@ -906,7 +907,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     auto map_data = make_nptr(map_data_raw);
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
     tex_region.resize(size.square());
-    MemCopy(tex_region.data(), map_data, region_size);
+    MemCopy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
     // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
@@ -3396,7 +3397,7 @@ void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    vector<VkClearAttachment> attachments;
+    small_vector<VkClearAttachment, 2> attachments;
     attachments.reserve(2);
 
     if (color.has_value()) {

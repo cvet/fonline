@@ -35,12 +35,14 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "DefaultSprites.h"
-#include "ModelSprites.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
+
+#if FO_ENABLE_3D
+class ModelSprite;
+#endif
 
 class ResourceManager final
 {

@@ -19,6 +19,12 @@ struct Value
     Value(Value&&);
 };
 
+template<typename T>
+struct Wrapper
+{
+    T* value {};
+};
+
 void Consume(Value);
 void Read(const Value&);
 
@@ -29,6 +35,12 @@ void Validate()
     int value = 1;
     const int* pointee_const = &value;
     int* const const_pointer = &value;
+    const Wrapper<const int> wrapped_const {};
+    Wrapper<const int> const east_wrapped_const {};
+    Wrapper<const int> wrappers[1] {};
+    for (const Wrapper<const int> loop_wrapped_const : wrappers) {
+        (void)loop_wrapped_const;
+    }
     const int const_array[] = {1, 2};
     constexpr int constexpr_value = 1;
 
@@ -45,6 +57,8 @@ void Validate()
     (void)redundant;
     (void)pointee_const;
     (void)const_pointer;
+    (void)wrapped_const;
+    (void)east_wrapped_const;
     (void)const_array;
     (void)constexpr_value;
     (void)intentional_const;
@@ -149,9 +163,12 @@ class LocalVariableValidatorIntegrationTest(unittest.TestCase):
             applied = validator.apply_redundant_const_fixes(result.diagnostics)
             rewritten = source.read_text(encoding="utf-8")
 
-        self.assertEqual(applied, 2)
+        self.assertEqual(applied, 5)
         self.assertIn("int redundant = 1;", rewritten)
         self.assertIn("int* const_pointer = &value;", rewritten)
+        self.assertIn("Wrapper<const int> wrapped_const {};", rewritten)
+        self.assertIn("Wrapper<const int> east_wrapped_const {};", rewritten)
+        self.assertIn("for (Wrapper<const int> loop_wrapped_const : wrappers)", rewritten)
         self.assertIn("const int* pointee_const = &value;", rewritten)
         self.assertIn("const int const_array[] = {1, 2};", rewritten)
         self.assertIn("constexpr int constexpr_value = 1;", rewritten)

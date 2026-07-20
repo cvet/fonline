@@ -345,7 +345,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<shared_ptr<Entity::TimeEventData>> ready_events;
+    small_vector<shared_ptr<Entity::TimeEventData>, 8> ready_events;
     nanotime time = _engine->GameTime.GetFrameTime();
 
     {

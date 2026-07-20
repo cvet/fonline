@@ -37,15 +37,16 @@
 
 #include "Rendering.h"
 #include "SpriteManager.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
 
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data = std::nullopt);
     AtlasSprite(const AtlasSprite&) = delete;
-    AtlasSprite(AtlasSprite&&) noexcept = default;
+    AtlasSprite(AtlasSprite&& other) noexcept;
     auto operator=(const AtlasSprite&) = delete;
     auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = delete;
     ~AtlasSprite() override;
@@ -62,9 +63,10 @@ public:
 
 protected:
     nptr<TextureAtlas> _atlas {};
-    unique_del_nptr<TextureAtlas::SpaceNode> _atlasNode {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
+    optional<SpriteMeshData> _meshData {};
+    unique_del_nptr<TextureAtlasLayout::Allocation> _atlasAllocation {};
 };
 
 class SpriteSheet final : public Sprite
@@ -142,7 +144,7 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels) -> shared_ptr<AtlasSprite>;
+    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;
     vector<ucolor> _borderBuf {};

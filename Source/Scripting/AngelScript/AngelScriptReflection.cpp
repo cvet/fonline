@@ -392,15 +392,15 @@ void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
     auto out_type_info = GetRefTypeInfoById(engine, out_type_id);
 
     if (!out_type_info) {
-        throw ScriptException(strex("Invalid 'instance' argument, not an handle ({})", DescribeTypeId(engine, out_type_id)));
+        throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
     nptr<void> out_object = *out;
 
     if (out_object) {
-        throw ScriptException(strex("Invalid 'instance' argument, handle must be null ({})", DescribeTypeId(engine, out_type_id)));
+        throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
     }
     if (!_typeInfo->DerivesFrom(out_type_info.get())) {
-        throw ScriptException(strex("Invalid 'instance' argument, incompatible types (instance: {}, expected='{}')", DescribeTypeId(engine, out_type_id), _typeInfo->GetName()));
+        throw ScriptException("Invalid 'instance' argument, incompatible types", DescribeTypeId(engine, out_type_id), _typeInfo->GetName());
     }
 
     *out = engine->CreateScriptObject(_typeInfo.get());
@@ -415,30 +415,30 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     auto in_type_info = GetRefTypeInfoById(engine, in_type_id);
 
     if (!out_type_info) {
-        throw ScriptException(strex("Invalid 'instance' argument, not an handle ({})", DescribeTypeId(engine, out_type_id)));
+        throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
     nptr<void> out_object = *out;
 
     if (out_object) {
-        throw ScriptException(strex("Invalid 'instance' argument, handle must be null ({})", DescribeTypeId(engine, out_type_id)));
+        throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
     }
     if (!_typeInfo->DerivesFrom(out_type_info.get())) {
-        throw ScriptException(strex("Invalid 'instance' argument, incompatible types (instance: {}, expected='{}')", DescribeTypeId(engine, out_type_id), _typeInfo->GetName()));
+        throw ScriptException("Invalid 'instance' argument, incompatible types", DescribeTypeId(engine, out_type_id), _typeInfo->GetName());
     }
 
     if (!in_type_info) {
-        throw ScriptException(strex("Invalid 'copyFrom' argument, not an handle ({})", DescribeTypeId(engine, in_type_id)));
+        throw ScriptException("Invalid 'copyFrom' argument, not an handle", DescribeTypeId(engine, in_type_id));
     }
     auto in_object = NativeDataProvider::ReadHandleSlot(in);
 
     if (!in_object) {
-        throw ScriptException(strex("Invalid 'copyFrom' argument, handle must be not null ({})", DescribeTypeId(engine, in_type_id)));
+        throw ScriptException("Invalid 'copyFrom' argument, handle must be not null", DescribeTypeId(engine, in_type_id));
     }
 
     auto in_obj = in_object.reinterpret_as<const AngelScript::asIScriptObject>();
 
     if (in_obj->GetObjectType() != _typeInfo.get()) {
-        throw ScriptException(strex("Invalid 'copyFrom' argument, incompatible runtime type (copyFrom: {}, runtime: {}, expected='{}')", DescribeTypeId(engine, in_type_id), DescribeTypeInfo(engine, in_obj->GetObjectType()), _typeInfo->GetName()));
+        throw ScriptException("Invalid 'copyFrom' argument, incompatible runtime type", DescribeTypeId(engine, in_type_id), DescribeTypeInfo(engine, in_obj->GetObjectType()), _typeInfo->GetName());
     }
 
     *out = engine->CreateScriptObjectCopy(in_object.get(), _typeInfo.get());

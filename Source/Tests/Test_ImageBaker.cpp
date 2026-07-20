@@ -15,19 +15,20 @@ FO_BEGIN_NAMESPACE
 
 struct BakedImageFrame
 {
+    ipos32 Offset {};
     uint16_t Width {};
     uint16_t Height {};
     int16_t NextX {};
     int16_t NextY {};
     vector<uint8_t> Data {};
+    SpriteMeshKind MeshKind {SpriteMeshKind::Quad};
+    SpriteMeshData Mesh {};
 };
 
 struct BakedImageSequence
 {
     uint16_t SequenceSize {};
     uint16_t AnimTicks {};
-    int16_t OffsX {};
-    int16_t OffsY {};
     vector<BakedImageFrame> Frames {};
 };
 
@@ -817,19 +818,55 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     rig.AddSourceFile(path, bytes, write_time);
 }
 
+static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
+{
+    uint8_t mesh_kind = reader.Read<uint8_t>();
+    REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
+
+    if (frame.MeshKind != SpriteMeshKind::Mesh) {
+        return;
+    }
+
+    uint16_t vertex_count = reader.Read<uint16_t>();
+    uint32_t index_count = reader.Read<uint32_t>();
+    frame.Mesh.SourceSize.width = reader.Read<uint16_t>();
+    frame.Mesh.SourceSize.height = reader.Read<uint16_t>();
+    frame.Mesh.SourceOffset.x = reader.Read<int32_t>();
+    frame.Mesh.SourceOffset.y = reader.Read<int32_t>();
+    frame.Mesh.Vertices.reserve(vertex_count);
+    frame.Mesh.Indices.reserve(index_count);
+
+    for (uint16_t i = 0; i < vertex_count; i++) {
+        uint16_t x = reader.Read<uint16_t>();
+        uint16_t y = reader.Read<uint16_t>();
+        frame.Mesh.Vertices.emplace_back(x, y);
+    }
+    for (uint32_t i = 0; i < index_count; i++) {
+        frame.Mesh.Indices.emplace_back(reader.Read<uint16_t>());
+    }
+}
+
+static void SkipSpriteMesh(DataReader& reader)
+{
+    BakedImageFrame frame;
+    ReadSpriteMesh(reader, frame);
+}
+
 [[nodiscard]] static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
 {
     DataReader reader {baked_data};
 
-    CHECK(reader.Read<uint8_t>() == 42);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
     CHECK(reader.Read<uint16_t>() == 1);
     CHECK(reader.Read<uint16_t>() == 100);
     CHECK(reader.Read<uint8_t>() == 1);
-    CHECK(reader.Read<int16_t>() == 0);
-    CHECK(reader.Read<int16_t>() == 0);
     CHECK_FALSE(reader.Read<bool>());
 
     BakedImageFrame frame;
+    frame.Offset.x = reader.Read<int16_t>();
+    frame.Offset.y = reader.Read<int16_t>();
     frame.Width = reader.Read<uint16_t>();
     frame.Height = reader.Read<uint16_t>();
     frame.NextX = reader.Read<int16_t>();
@@ -838,8 +875,9 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
     auto frame_data = reader.ReadBytes(data_size);
     frame.Data.assign(frame_data.begin(), frame_data.end());
+    ReadSpriteMesh(reader, frame);
 
-    CHECK(reader.Read<uint8_t>() == 42);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
     CHECK_NOTHROW(reader.VerifyEnd());
 
     return frame;
@@ -849,20 +887,21 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
 {
     DataReader reader {baked_data};
 
-    CHECK(reader.Read<uint8_t>() == 42);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
 
     BakedImageSequence sequence;
     sequence.SequenceSize = reader.Read<uint16_t>();
     sequence.AnimTicks = reader.Read<uint16_t>();
     CHECK(reader.Read<uint8_t>() == 1);
-    sequence.OffsX = reader.Read<int16_t>();
-    sequence.OffsY = reader.Read<int16_t>();
     sequence.Frames.reserve(sequence.SequenceSize);
 
     for (uint16_t i = 0; i < sequence.SequenceSize; i++) {
         CHECK_FALSE(reader.Read<bool>());
 
         auto& frame = sequence.Frames.emplace_back();
+        frame.Offset.x = reader.Read<int16_t>();
+        frame.Offset.y = reader.Read<int16_t>();
         frame.Width = reader.Read<uint16_t>();
         frame.Height = reader.Read<uint16_t>();
         frame.NextX = reader.Read<int16_t>();
@@ -871,12 +910,118 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
         size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
         const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
         frame.Data.assign(frame_data.begin(), frame_data.end());
+        ReadSpriteMesh(reader, frame);
     }
 
-    CHECK(reader.Read<uint8_t>() == 42);
+    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
     CHECK_NOTHROW(reader.VerifyEnd());
 
     return sequence;
+}
+
+static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, int32_t alpha_threshold = 0, int32_t max_triangles = 4096, float32_t area_savings_weight = 64.0f)
+{
+    BakerTests::OverrideSetting(rig.Settings.Enabled, enabled);
+    BakerTests::OverrideSetting(rig.Settings.AlphaThreshold, alpha_threshold);
+    BakerTests::OverrideSetting(rig.Settings.MaxTriangles, max_triangles);
+    BakerTests::OverrideSetting(rig.Settings.AreaSavingsWeight, area_savings_weight);
+}
+
+[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
+{
+    REQUIRE(!rows.empty());
+    REQUIRE(!rows.front().empty());
+
+    uint16_t width = numeric_cast<uint16_t>(rows.front().size());
+    uint16_t height = numeric_cast<uint16_t>(rows.size());
+    vector<uint8_t> rgba(numeric_cast<size_t>(width) * height * 4);
+
+    for (uint16_t y = 0; y < height; y++) {
+        REQUIRE(rows[y].size() == width);
+
+        for (uint16_t x = 0; x < width; x++) {
+            uint8_t alpha = 0;
+
+            if (rows[y][x] == '#') {
+                alpha = 255;
+            }
+            else if (rows[y][x] == '+') {
+                alpha = 128;
+            }
+            else {
+                REQUIRE(rows[y][x] == '.');
+            }
+
+            size_t pixel_pos = (numeric_cast<size_t>(y) * width + x) * 4;
+            rgba[pixel_pos + 0] = 255;
+            rgba[pixel_pos + 1] = 255;
+            rgba[pixel_pos + 2] = 255;
+            rgba[pixel_pos + 3] = alpha;
+        }
+    }
+
+    rig.AddSourceFile(path, "mask");
+
+    ImageBaker baker {rig.MakeContext()};
+    baker.AddLoader(
+        [width, height, rgba, offset](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
+            ignore_unused(fname, opt, reader, files);
+
+            ImageBaker::FrameCollection collection;
+            collection.SequenceSize = 1;
+            collection.AnimTicks = 100;
+            collection.Main.OffsX = numeric_cast<int16_t>(offset.x);
+            collection.Main.OffsY = numeric_cast<int16_t>(offset.y);
+            collection.Main.Frames.resize(1);
+            collection.Main.Frames[0] = ImageBaker::FrameShot {.Width = width, .Height = height, .Data = rgba};
+            return collection;
+        },
+        {"mask"});
+    baker.BakeFiles(rig.GetAllSourceFiles(), path);
+
+    REQUIRE(rig.Outputs.contains(string(path)));
+    return rig.Outputs.at(string(path));
+}
+
+[[nodiscard]] static auto BakedMeshDoubleArea(const BakedImageFrame& frame) -> int64_t
+{
+    int64_t double_area = 0;
+
+    for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
+        REQUIRE(i + 2 < frame.Mesh.Indices.size());
+        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
+        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
+        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
+        int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x);
+        double_area += std::abs(cross);
+    }
+
+    return double_area;
+}
+
+[[nodiscard]] static auto IsPointInsideBakedMesh(const BakedImageFrame& frame, fpos32 point) -> bool
+{
+    for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
+        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
+        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
+        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
+        float32_t cross_ab = numeric_cast<float32_t>(b.x - a.x) * (point.y - a.y) - numeric_cast<float32_t>(b.y - a.y) * (point.x - a.x);
+        float32_t cross_bc = numeric_cast<float32_t>(c.x - b.x) * (point.y - b.y) - numeric_cast<float32_t>(c.y - b.y) * (point.x - b.x);
+        float32_t cross_ca = numeric_cast<float32_t>(a.x - c.x) * (point.y - c.y) - numeric_cast<float32_t>(a.y - c.y) * (point.x - c.x);
+        bool has_negative = cross_ab < 0.0f || cross_bc < 0.0f || cross_ca < 0.0f;
+        bool has_positive = cross_ab > 0.0f || cross_bc > 0.0f || cross_ca > 0.0f;
+
+        if (!(has_negative && has_positive)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+[[nodiscard]] static auto SourcePointToBakedMeshPoint(const BakedImageFrame& frame, fpos32 source_point) -> fpos32
+{
+    return {source_point.x - numeric_cast<float32_t>(frame.Mesh.SourceOffset.x), source_point.y - numeric_cast<float32_t>(frame.Mesh.SourceOffset.y)};
 }
 
 TEST_CASE("ImageBaker")
@@ -892,6 +1037,608 @@ TEST_CASE("ImageBaker")
         CHECK(bakers.front()->GetName() == ImageBaker::NAME);
         CHECK(bakers.front()->GetOrder() == 4);
         CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
+    }
+
+    SECTION("SpriteMeshMasterSwitchAndEmptyKind")
+    {
+        TestRig disabled;
+        ConfigureSpriteMesh(disabled, false);
+        BakedImageFrame disabled_frame = ReadSingleFrame(BakeAlphaMask(disabled, {"...", "...", "..."}));
+        CHECK(disabled_frame.MeshKind == SpriteMeshKind::Quad);
+        CHECK(disabled_frame.Mesh.Vertices.empty());
+        CHECK(disabled_frame.Mesh.Indices.empty());
+
+        TestRig enabled;
+        ConfigureSpriteMesh(enabled);
+        BakedImageFrame empty_frame = ReadSingleFrame(BakeAlphaMask(enabled, {"...", "...", "..."}));
+        CHECK(empty_frame.MeshKind == SpriteMeshKind::Empty);
+        CHECK(empty_frame.Mesh.Vertices.empty());
+        CHECK(empty_frame.Mesh.Indices.empty());
+
+        TestRig opaque;
+        ConfigureSpriteMesh(opaque);
+        CHECK(ReadSingleFrame(BakeAlphaMask(opaque, {"##", "##"})).MeshKind == SpriteMeshKind::Quad);
+
+        TestRig dilation_fills_frame;
+        ConfigureSpriteMesh(dilation_fills_frame);
+        BakedImageFrame dilation_fills_frame_result = ReadSingleFrame(BakeAlphaMask(dilation_fills_frame, {"...", ".#.", "..."}));
+        REQUIRE(dilation_fills_frame_result.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(dilation_fills_frame_result.Mesh.Indices.size() <= 6);
+    }
+
+    SECTION("SpriteMeshConcaveContour")
+    {
+        TestRig rig;
+        ConfigureSpriteMesh(rig);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}));
+        const BakedImageFrame& frame = sequence.Frames.front();
+
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(frame.Mesh.Indices.size() > 6);
+        CHECK(frame.Mesh.Indices.size() % 3 == 0);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 1.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
+    }
+
+    SECTION("SpriteMeshPreservesHole")
+    {
+        TestRig rig;
+        ConfigureSpriteMesh(rig);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}));
+        const BakedImageFrame& frame = sequence.Frames.front();
+
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {0.5f, 0.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
+    }
+
+    SECTION("SpriteMeshPreservesSeparateIslands")
+    {
+        TestRig rig;
+        ConfigureSpriteMesh(rig);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}));
+        const BakedImageFrame& frame = sequence.Frames.front();
+
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 2.5f})));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {7.5f, 2.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 2.5f})));
+    }
+
+    SECTION("SpriteMeshSettingsControlGeneration")
+    {
+        TestRig threshold;
+        ConfigureSpriteMesh(threshold, true, 128);
+        BakedImageFrame threshold_frame = ReadSingleFrame(BakeAlphaMask(threshold, {"...", ".+.", "..."}));
+        CHECK(threshold_frame.MeshKind == SpriteMeshKind::Empty);
+
+        TestRig below_threshold;
+        ConfigureSpriteMesh(below_threshold, true, 127);
+        BakedImageFrame below_threshold_frame = ReadSingleDirSequence(BakeAlphaMask(below_threshold, {".....", ".....", "..+..", ".....", "....."})).Frames.front();
+        CHECK(below_threshold_frame.MeshKind == SpriteMeshKind::Mesh);
+
+        TestRig dilation;
+        ConfigureSpriteMesh(dilation);
+        BakedImageFrame dilation_frame = ReadSingleFrame(BakeAlphaMask(dilation, {".....", ".....", "..#..", ".....", "....."}));
+        REQUIRE(dilation_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(BakedMeshDoubleArea(dilation_frame) == 2);
+
+        vector<string> diagonal_rows(40, string(40, '.'));
+        for (size_t i = 8; i < 32; i++) {
+            diagonal_rows[i][i] = '#';
+        }
+
+        TestRig simplified_diagonal;
+        ConfigureSpriteMesh(simplified_diagonal);
+        BakedImageFrame simplified_diagonal_frame = ReadSingleFrame(BakeAlphaMask(simplified_diagonal, diagonal_rows));
+
+        REQUIRE(simplified_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(simplified_diagonal_frame.Mesh.Vertices.size() <= 12);
+
+        vector<string> shallow_notch_rows(30, string(30, '#'));
+        for (size_t y = 23; y < 30; y++) {
+            for (size_t x = 5; x < 25; x++) {
+                shallow_notch_rows[y][x] = '.';
+            }
+        }
+
+        TestRig shallow_notch;
+        ConfigureSpriteMesh(shallow_notch);
+        BakedImageFrame shallow_notch_frame = ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows));
+
+        REQUIRE(shallow_notch_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
+
+        vector<string> shallow_diagonal_rows(40, string(80, '.'));
+        for (size_t x = 2; x < 78; x++) {
+            size_t y = 8 + (x - 2) * 19 / 75;
+            shallow_diagonal_rows[y][x] = '#';
+        }
+
+        TestRig shallow_diagonal;
+        ConfigureSpriteMesh(shallow_diagonal);
+        BakedImageFrame shallow_diagonal_frame = ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows));
+
+        REQUIRE(shallow_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
+        for (size_t y = 0; y < shallow_diagonal_rows.size(); y++) {
+            for (size_t x = 0; x < shallow_diagonal_rows[y].size(); x++) {
+                if (shallow_diagonal_rows[y][x] == '#') {
+                    CAPTURE(x, y);
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.01f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.01f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.99f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.99f})));
+                }
+            }
+        }
+
+        vector<string> edge_coverage_rows(40, string(80, '.'));
+        uint32_t edge_random_state = 3;
+        int32_t edge_y = 9;
+
+        for (size_t x = 2; x < 78; x++) {
+            edge_coverage_rows[numeric_cast<size_t>(edge_y)][x] = '#';
+            edge_random_state = edge_random_state * 1664525u + 1013904223u;
+            edge_y = std::clamp(edge_y + numeric_cast<int32_t>((edge_random_state >> 30u) & 3u) - 1, 1, 38);
+        }
+
+        TestRig edge_coverage;
+        ConfigureSpriteMesh(edge_coverage);
+        BakedImageSequence edge_coverage_sequence = ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows));
+        const BakedImageFrame& edge_coverage_frame = edge_coverage_sequence.Frames.front();
+
+        REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
+        for (size_t sample_y = 0; sample_y < edge_coverage_rows.size(); sample_y++) {
+            for (size_t sample_x = 0; sample_x < edge_coverage_rows[sample_y].size(); sample_x++) {
+                if (edge_coverage_rows[sample_y][sample_x] != '#') {
+                    continue;
+                }
+
+                CAPTURE(sample_x, sample_y);
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.01f, numeric_cast<float32_t>(sample_y) + 0.01f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.99f, numeric_cast<float32_t>(sample_y) + 0.01f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.01f, numeric_cast<float32_t>(sample_y) + 0.99f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.99f, numeric_cast<float32_t>(sample_y) + 0.99f})));
+            }
+        }
+
+        vector<string> diamond_rows(41, string(81, '.'));
+        for (size_t y = 0; y < diamond_rows.size(); y++) {
+            int32_t distance = std::abs(numeric_cast<int32_t>(y) - 20);
+            int32_t half_width = (20 - distance) * 2;
+            for (int32_t x = 40 - half_width; x <= 40 + half_width; x++) {
+                diamond_rows[y][numeric_cast<size_t>(x)] = '#';
+            }
+        }
+
+        TestRig preferred_quad;
+        ConfigureSpriteMesh(preferred_quad, true, 0, 2);
+        BakedImageSequence preferred_quad_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_quad, diamond_rows));
+        REQUIRE(preferred_quad_sequence.Frames.size() == 1);
+        const BakedImageFrame& preferred_quad_frame = preferred_quad_sequence.Frames.front();
+
+        REQUIRE(preferred_quad_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_quad_frame.Mesh.SourceSize == isize32 {81, 41});
+        CHECK(preferred_quad_frame.Width <= 91);
+        CHECK(preferred_quad_frame.Height <= 51);
+        CHECK(preferred_quad_frame.Mesh.Vertices.size() == 4);
+        CHECK(preferred_quad_frame.Mesh.Indices.size() == 6);
+
+        for (size_t y = 0; y < diamond_rows.size(); y++) {
+            for (size_t x = 0; x < diamond_rows[y].size(); x++) {
+                if (diamond_rows[y][x] == '#') {
+                    CAPTURE(x, y);
+                    CHECK(IsPointInsideBakedMesh(preferred_quad_frame, SourcePointToBakedMeshPoint(preferred_quad_frame, {numeric_cast<float32_t>(x) + 0.5f, numeric_cast<float32_t>(y) + 0.5f})));
+                }
+            }
+        }
+
+        vector<string> wedge_rows(61, string(61, '.'));
+        for (size_t y = 5; y <= 55; y++) {
+            size_t right = 60 - y;
+            for (size_t x = 5; x <= right; x++) {
+                wedge_rows[y][x] = '#';
+            }
+        }
+
+        TestRig preferred_triangle;
+        ConfigureSpriteMesh(preferred_triangle, true, 0, 1);
+        BakedImageSequence preferred_triangle_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_triangle, wedge_rows));
+        REQUIRE(preferred_triangle_sequence.Frames.size() == 1);
+        const BakedImageFrame& preferred_triangle_frame = preferred_triangle_sequence.Frames.front();
+
+        REQUIRE(preferred_triangle_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_triangle_frame.Mesh.SourceSize == isize32 {61, 61});
+        CHECK(preferred_triangle_frame.Mesh.Vertices.size() == 3);
+        CHECK(preferred_triangle_frame.Mesh.Indices.size() == 3);
+
+        vector<string> rectangle_rows(31, string(61, '.'));
+        for (size_t y = 5; y <= 25; y++) {
+            for (size_t x = 5; x <= 55; x++) {
+                rectangle_rows[y][x] = '#';
+            }
+        }
+
+        TestRig preferred_rectangle;
+        ConfigureSpriteMesh(preferred_rectangle, true, 0, 2);
+        BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front();
+
+        REQUIRE(preferred_rectangle_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_rectangle_frame.Width < 61);
+        CHECK(preferred_rectangle_frame.Height < 31);
+        CHECK(preferred_rectangle_frame.Mesh.SourceSize == isize32 {61, 31});
+        CHECK(preferred_rectangle_frame.Offset.x == 7 + numeric_cast<int32_t>(preferred_rectangle_frame.Width) / 2 - 61 / 2 + preferred_rectangle_frame.Mesh.SourceOffset.x);
+        CHECK(preferred_rectangle_frame.Offset.y == -8 + numeric_cast<int32_t>(preferred_rectangle_frame.Height) - 31 + preferred_rectangle_frame.Mesh.SourceOffset.y);
+        CHECK(preferred_rectangle_frame.Mesh.Vertices.size() == 4);
+        CHECK(preferred_rectangle_frame.Mesh.Indices.size() == 6);
+
+        vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
+        vector<string> adaptive_tree_rows(160, string(107, '.'));
+        for (size_t y = 0; y < adaptive_tree_rows.size(); y++) {
+            for (size_t x = 0; x < adaptive_tree_rows[y].size(); x++) {
+                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
+                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
+                bool inside = true;
+
+                for (size_t i = 0; i < adaptive_tree_hull.size(); i++) {
+                    ipos32 a = adaptive_tree_hull[i];
+                    ipos32 b = adaptive_tree_hull[(i + 1) % adaptive_tree_hull.size()];
+                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                    inside = inside && cross >= 0;
+                }
+
+                if (inside) {
+                    adaptive_tree_rows[y][x] = '#';
+                }
+            }
+        }
+
+        TestRig adaptive_padding;
+        ConfigureSpriteMesh(adaptive_padding, true, 0, 4096, 1.0f);
+        BakedImageSequence adaptive_padding_sequence = ReadSingleDirSequence(BakeAlphaMask(adaptive_padding, adaptive_tree_rows));
+        REQUIRE(adaptive_padding_sequence.Frames.size() == 1);
+        const BakedImageFrame& adaptive_padding_frame = adaptive_padding_sequence.Frames.front();
+
+        REQUIRE(adaptive_padding_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(adaptive_padding_frame.Mesh.SourceSize == isize32 {107, 160});
+        CHECK(adaptive_padding_frame.Mesh.SourceOffset.x >= -20);
+        CHECK(adaptive_padding_frame.Mesh.SourceOffset.y >= -20);
+        CHECK((adaptive_padding_frame.Mesh.SourceOffset.x < 0 || adaptive_padding_frame.Mesh.SourceOffset.y < 0 || adaptive_padding_frame.Mesh.SourceOffset.x + adaptive_padding_frame.Width > 107 || adaptive_padding_frame.Mesh.SourceOffset.y + adaptive_padding_frame.Height > 160));
+        CHECK(adaptive_padding_frame.Mesh.Vertices.size() == 3);
+        CHECK(adaptive_padding_frame.Mesh.Indices.size() == 3);
+
+        vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
+        vector<string> pentagon_rows(101, string(101, '.'));
+        for (size_t y = 0; y < pentagon_rows.size(); y++) {
+            for (size_t x = 0; x < pentagon_rows[y].size(); x++) {
+                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
+                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
+                bool inside = true;
+
+                for (size_t i = 0; i < pentagon_hull.size(); i++) {
+                    ipos32 a = pentagon_hull[i];
+                    ipos32 b = pentagon_hull[(i + 1) % pentagon_hull.size()];
+                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                    inside = inside && cross >= 0;
+                }
+
+                if (inside) {
+                    pentagon_rows[y][x] = '#';
+                }
+            }
+        }
+
+        TestRig enclosing_budget;
+        ConfigureSpriteMesh(enclosing_budget, true, 0, 3);
+        BakedImageFrame enclosing_budget_frame = ReadSingleDirSequence(BakeAlphaMask(enclosing_budget, pentagon_rows)).Frames.front();
+        REQUIRE(enclosing_budget_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(enclosing_budget_frame.Mesh.Indices.size() == 9);
+
+        vector<string> door_rows(61, string(101, '.'));
+        for (size_t y = 5; y <= 55; y++) {
+            for (size_t x = 5; x <= 19; x++) {
+                door_rows[y][x] = '#';
+            }
+            for (size_t x = 81; x <= 95; x++) {
+                door_rows[y][x] = '#';
+            }
+        }
+
+        TestRig component_budget;
+        ConfigureSpriteMesh(component_budget, true, 0, 4);
+        BakedImageFrame component_budget_frame = ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front();
+        REQUIRE(component_budget_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(component_budget_frame.Mesh.Indices.size() == 12);
+        CHECK_FALSE(IsPointInsideBakedMesh(component_budget_frame, SourcePointToBakedMeshPoint(component_budget_frame, {55.5f, 35.5f})));
+
+        TestRig low_area_weight;
+        ConfigureSpriteMesh(low_area_weight, true, 0, 4, 1.0f);
+        BakedImageFrame low_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front();
+        REQUIRE(low_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(low_area_weight_frame.Mesh.Indices.size() == 6);
+        CHECK(IsPointInsideBakedMesh(low_area_weight_frame, SourcePointToBakedMeshPoint(low_area_weight_frame, {55.5f, 35.5f})));
+
+        TestRig high_area_weight;
+        ConfigureSpriteMesh(high_area_weight, true, 0, 4, 64.0f);
+        BakedImageFrame high_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front();
+        REQUIRE(high_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(high_area_weight_frame.Mesh.Indices.size() == 12);
+        CHECK_FALSE(IsPointInsideBakedMesh(high_area_weight_frame, SourcePointToBakedMeshPoint(high_area_weight_frame, {55.5f, 35.5f})));
+
+        TestRig triangle_uncapped;
+        ConfigureSpriteMesh(triangle_uncapped);
+        BakedImageFrame triangle_uncapped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_uncapped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        REQUIRE(triangle_uncapped_frame.MeshKind == SpriteMeshKind::Mesh);
+
+        TestRig triangle_capped;
+        ConfigureSpriteMesh(triangle_capped, true, 0, 2);
+        BakedImageFrame triangle_capped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_capped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        REQUIRE(triangle_capped_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(triangle_capped_frame.Mesh.Indices.size() <= 6);
+
+        TestRig unprofitable;
+        ConfigureSpriteMesh(unprofitable);
+        BakedImageFrame unprofitable_frame = ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front();
+        CHECK(unprofitable_frame.MeshKind == SpriteMeshKind::Mesh);
+    }
+
+    SECTION("SpriteMeshAutomaticSimplificationPreservesLShape")
+    {
+        vector<string> rows(123, string(64, '.'));
+        for (size_t x = 0; x < 64; x++) {
+            size_t top = 17 - x * 15 / 63;
+            size_t bottom = 48 - x * 15 / 63;
+            for (size_t y = top; y <= bottom; y++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 17; y < 123; y++) {
+            for (size_t x = 0; x < 6; x++) {
+                rows[y][x] = '#';
+            }
+        }
+
+        TestRig rig;
+        ConfigureSpriteMesh(rig, true, 10, 16, 64.0f);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        const BakedImageFrame& frame = sequence.Frames.front();
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(frame.Mesh.Vertices.size() <= 6);
+        CHECK(frame.Mesh.Indices.size() <= 12);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
+    }
+
+    SECTION("SpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
+    {
+        vector<string> rows(123, string(64, '.'));
+        vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
+        for (size_t y = 2; y <= 17; y++) {
+            size_t left = top_left[y - 2];
+            for (size_t x = left; x < 64; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 18; y <= 32; y++) {
+            for (size_t x = 0; x < 64; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
+        for (size_t y = 33; y <= 46; y++) {
+            size_t right = bottom_right[y - 33];
+            for (size_t x = 0; x <= right; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 47; y <= 114; y++) {
+            for (size_t x = 0; x <= 4; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 115; y <= 122; y++) {
+            for (size_t x = 0; x <= 5; x++) {
+                rows[y][x] = '#';
+            }
+        }
+
+        TestRig rig;
+        ConfigureSpriteMesh(rig, true, 10, 16, 200.0f);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        const BakedImageFrame& frame = sequence.Frames.front();
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(frame.Mesh.Vertices.size() <= 7);
+        CHECK(frame.Mesh.Indices.size() >= 12);
+        CHECK(frame.Mesh.Indices.size() <= 15);
+        CHECK(BakedMeshDoubleArea(frame) < 8000);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
+    }
+
+    SECTION("SpriteMeshExpandedSimplificationEnclosesThinLShape")
+    {
+        vector<string> rows(123, string(64, '.'));
+        vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
+        for (size_t y = 0; y < top_left.size(); y++) {
+            for (size_t x = top_left[y]; x < 64; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 16; y <= 25; y++) {
+            for (size_t x = 0; x < 64; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
+        for (size_t y = 26; y <= 42; y++) {
+            for (size_t x = 0; x <= lower_right[y - 26]; x++) {
+                rows[y][x] = '#';
+            }
+        }
+        for (size_t y = 43; y < 123; y++) {
+            for (size_t x = 0; x <= 3; x++) {
+                rows[y][x] = '#';
+            }
+        }
+
+        TestRig rig;
+        ConfigureSpriteMesh(rig, true, 10, 16, 100.0f);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        const BakedImageFrame& frame = sequence.Frames.front();
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(frame.Mesh.Indices.size() > 6);
+        CHECK(frame.Mesh.Indices.size() <= 27);
+        CHECK(BakedMeshDoubleArea(frame) <= 5454);
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
+    }
+
+    SECTION("SpriteMeshClustersMoreComponentsThanTriangleBudget")
+    {
+        vector<string> rows(31, string(101, '.'));
+        for (size_t y = 5; y <= 25; y++) {
+            for (size_t x = 5; x <= 15; x++) {
+                rows[y][x] = '#';
+            }
+            for (size_t x = 21; x <= 31; x++) {
+                rows[y][x] = '#';
+            }
+            for (size_t x = 81; x <= 95; x++) {
+                rows[y][x] = '#';
+            }
+        }
+
+        TestRig rig;
+        ConfigureSpriteMesh(rig, true, 0, 4, 200.0f);
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        const BakedImageFrame& frame = sequence.Frames.front();
+        REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(frame.Mesh.Indices.size() <= 12);
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {55.5f, 15.5f})));
+    }
+
+    SECTION("SpriteMeshUnsafeTouchingTopologyFallsBackToQuad")
+    {
+        TestRig diagonal_islands;
+        ConfigureSpriteMesh(diagonal_islands);
+        CHECK(ReadSingleFrame(BakeAlphaMask(diagonal_islands, {"#.", ".#"})).MeshKind == SpriteMeshKind::Quad);
+
+        TestRig touching_hole;
+        ConfigureSpriteMesh(touching_hole);
+        CHECK(ReadSingleFrame(BakeAlphaMask(touching_hole, {".##", "#.#", "###"})).MeshKind == SpriteMeshKind::Quad);
+
+        TestRig diagonal_holes;
+        ConfigureSpriteMesh(diagonal_holes);
+        CHECK(ReadSingleFrame(BakeAlphaMask(diagonal_holes, {"#####", "#.###", "##.##", "#####", "#####"})).MeshKind == SpriteMeshKind::Quad);
+
+        TestRig checkerboard;
+        ConfigureSpriteMesh(checkerboard);
+        CHECK(ReadSingleFrame(BakeAlphaMask(checkerboard, {"#.#.", ".#.#", "#.#.", ".#.#"})).MeshKind == SpriteMeshKind::Quad);
+    }
+
+    SECTION("SpriteMeshOutputIsDeterministic")
+    {
+        vector<string> mask {"......", ".####.", ".#..#.", ".####.", "......"};
+
+        TestRig first;
+        ConfigureSpriteMesh(first);
+        vector<uint8_t> first_output = BakeAlphaMask(first, mask);
+
+        TestRig second;
+        ConfigureSpriteMesh(second);
+        vector<uint8_t> second_output = BakeAlphaMask(second, mask);
+
+        CHECK(first_output == second_output);
+    }
+
+    SECTION("SpriteMeshSharedFrameHasNoDuplicatePayload")
+    {
+        TestRig rig;
+        ConfigureSpriteMesh(rig);
+        rig.AddSourceFile("gfx/shared-mesh.toy", "payload");
+
+        vector<uint8_t> rgba(5 * 5 * 4);
+        rgba[(2 * 5 + 2) * 4 + 3] = 255;
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.AddLoader(
+            [rgba](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
+                ignore_unused(fname, opt, reader, files);
+
+                ImageBaker::FrameCollection collection;
+                collection.SequenceSize = 2;
+                collection.AnimTicks = 100;
+                collection.Main.Frames = {
+                    ImageBaker::FrameShot {.Width = 5, .Height = 5, .Data = rgba},
+                    ImageBaker::FrameShot {.Shared = true, .SharedIndex = 0},
+                };
+                return collection;
+            },
+            {"toy"});
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/shared-mesh.toy");
+
+        DataReader reader {rig.Outputs.at("gfx/shared-mesh.toy")};
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.Read<uint16_t>() == 2);
+        CHECK(reader.Read<uint16_t>() == 100);
+        CHECK(reader.Read<uint8_t>() == 1);
+        CHECK_FALSE(reader.Read<bool>());
+
+        BakedImageFrame first_frame;
+        first_frame.Offset.x = reader.Read<int16_t>();
+        first_frame.Offset.y = reader.Read<int16_t>();
+        first_frame.Width = reader.Read<uint16_t>();
+        first_frame.Height = reader.Read<uint16_t>();
+        (void)reader.Read<int16_t>();
+        (void)reader.Read<int16_t>();
+        (void)reader.ReadBytes(numeric_cast<size_t>(first_frame.Width) * first_frame.Height * 4);
+        ReadSpriteMesh(reader, first_frame);
+        CHECK(first_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(first_frame.Offset.x == numeric_cast<int32_t>(first_frame.Width) / 2 - 5 / 2 + first_frame.Mesh.SourceOffset.x);
+        CHECK(first_frame.Offset.y == numeric_cast<int32_t>(first_frame.Height) - 5 + first_frame.Mesh.SourceOffset.y);
+
+        CHECK(reader.Read<bool>());
+        CHECK(reader.Read<uint16_t>() == 0);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("SpriteMeshRejectsInvalidSettings")
+    {
+        TestRig rig;
+        ConfigureSpriteMesh(rig);
+
+        SECTION("AlphaThreshold")
+        {
+            OverrideSetting(rig.Settings.AlphaThreshold, 255);
+        }
+        SECTION("MaxTriangles")
+        {
+            OverrideSetting(rig.Settings.MaxTriangles, 0);
+        }
+        SECTION("AreaSavingsWeight")
+        {
+            OverrideSetting(rig.Settings.AreaSavingsWeight, -1.0f);
+        }
+
+        rig.AddSourceFile("gfx/invalid-settings.mask", "mask");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.AddLoader(
+            [](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
+                ignore_unused(fname, opt, reader, files);
+
+                ImageBaker::FrameCollection collection;
+                collection.SequenceSize = 1;
+                collection.AnimTicks = 100;
+                collection.Main.Frames = {ImageBaker::FrameShot {.Width = 1, .Height = 1, .Data = {255, 255, 255, 255}}};
+                return collection;
+            },
+            {"mask"});
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-settings.mask"), ImageBakerException);
+        CHECK(rig.Outputs.empty());
     }
 
     SECTION("BakesRawTgaTarget")
@@ -963,6 +1710,16 @@ TEST_CASE("ImageBaker")
         CHECK(raw_packet_frame.Width == 2);
         CHECK(raw_packet_frame.Height == 1);
         CHECK(raw_packet_frame.Data == vector<uint8_t> {0x10, 0x20, 0x30, 0xFF, 0x40, 0x50, 0x60, 0xFF});
+
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
+        vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
+        REQUIRE(sprite_info_entries.size() == 2);
+        CHECK(sprite_info_entries[0].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
+        CHECK(sprite_info_entries[1].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[1].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
     }
 
     SECTION("BakesFrmWithCritterNewNameAndCustomPalette")
@@ -986,9 +1743,9 @@ TEST_CASE("ImageBaker")
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
-        CHECK(sequence.OffsX == 7);
-        CHECK(sequence.OffsY == -8);
         REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Offset == ipos32 {7, -8});
+        CHECK(sequence.Frames[1].Offset == ipos32 {7, -8});
         CHECK(sequence.Frames[0].NextX == 2);
         CHECK(sequence.Frames[0].NextY == -3);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {4, 8, 12, 255});
@@ -1050,15 +1807,16 @@ TEST_CASE("ImageBaker")
         REQUIRE(rig.Outputs.contains("art/critters/rat.fofrm"));
 
         DataReader reader {rig.Outputs.at("art/critters/rat.fofrm")};
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
         CHECK(reader.Read<uint16_t>() == 1);
         CHECK(reader.Read<uint16_t>() == 200);
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<int16_t>() == 10 + dir);
             CHECK(reader.Read<int16_t>() == -20 - dir);
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<int16_t>() == dir + 1);
@@ -1073,9 +1831,10 @@ TEST_CASE("ImageBaker")
                 255,
             };
             CHECK(vector<uint8_t>(data.begin(), data.end()) == expected_data);
+            SkipSpriteMesh(reader);
         }
 
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
@@ -1100,12 +1859,14 @@ TEST_CASE("ImageBaker")
         REQUIRE(dirs.Outputs.contains("gfx/directional.frm"));
 
         DataReader reader {dirs.Outputs.at("gfx/directional.frm")};
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
         CHECK(reader.Read<uint16_t>() == 1);
         CHECK(reader.Read<uint16_t>() == 200);
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             if (dir == 0) {
                 CHECK(reader.Read<int16_t>() == 1);
                 CHECK(reader.Read<int16_t>() == -1);
@@ -1115,15 +1876,15 @@ TEST_CASE("ImageBaker")
                 CHECK(reader.Read<int16_t>() == -10 - dir);
             }
 
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<int16_t>() == 2);
             CHECK(reader.Read<int16_t>() == 3);
             CHECK(reader.ReadBytes(4).size() == 4);
+            SkipSpriteMesh(reader);
         }
 
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
         CHECK_NOTHROW(reader.VerifyEnd());
 
         TestRig truncated;
@@ -1153,9 +1914,8 @@ TEST_CASE("ImageBaker")
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
-        CHECK(sequence.OffsX == 3);
-        CHECK(sequence.OffsY == -4);
         REQUIRE(sequence.Frames.size() == 60);
+        CHECK(sequence.Frames.front().Offset == ipos32 {3, -4});
         CHECK(sequence.Frames.front().Width == 6);
         CHECK(sequence.Frames.front().Height == 1);
         CHECK(sequence.Frames.front().Data.size() == 24);
@@ -1459,15 +2219,16 @@ TEST_CASE("ImageBaker")
         REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
 
         DataReader reader {rig.Outputs.at("gfx/repeated.spr")};
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
         CHECK(reader.Read<uint16_t>() == 2);
         CHECK(reader.Read<uint16_t>() == 200);
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK(reader.Read<int16_t>() == 0);
-            CHECK(reader.Read<int16_t>() == 0);
             CHECK_FALSE(reader.Read<bool>());
+            CHECK(reader.Read<int16_t>() == 0);
+            CHECK(reader.Read<int16_t>() == 0);
 
             auto width = reader.Read<uint16_t>();
             auto height = reader.Read<uint16_t>();
@@ -1492,11 +2253,12 @@ TEST_CASE("ImageBaker")
                 CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
             }
 
+            SkipSpriteMesh(reader);
             CHECK(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 0);
         }
 
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
@@ -1530,9 +2292,9 @@ NextY_1=8
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
-        CHECK(sequence.OffsX == 3);
-        CHECK(sequence.OffsY == 4);
         REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Offset == ipos32 {3, 4});
+        CHECK(sequence.Frames[1].Offset == ipos32 {3, 4});
         CHECK(sequence.Frames[0].NextX == 5);
         CHECK(sequence.Frames[0].NextY == 6);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
@@ -1560,9 +2322,8 @@ OffsetX=5
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
-        CHECK(sequence.OffsX == 0);
-        CHECK(sequence.OffsY == 0);
         REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {});
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
 
         TestRig direction_gap;
@@ -1680,12 +2441,14 @@ Frm=one.toy
         REQUIRE(rig.Outputs.contains("gfx/custom.baked"));
 
         DataReader reader {rig.Outputs.at("gfx/custom.baked")};
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
         CHECK(reader.Read<uint16_t>() == 2);
         CHECK(reader.Read<uint16_t>() == 77);
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             int16_t offs_x = reader.Read<int16_t>();
             int16_t offs_y = reader.Read<int16_t>();
 
@@ -1698,18 +2461,18 @@ Frm=one.toy
                 CHECK(offs_y == 19 + dir);
             }
 
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             (void)reader.Read<int16_t>();
             (void)reader.Read<int16_t>();
             (void)reader.ReadBytes(4);
+            SkipSpriteMesh(reader);
 
             CHECK(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 0);
         }
 
-        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
@@ -1728,7 +2491,7 @@ Frm=one.toy
         CHECK(rig.Outputs.empty());
     }
 
-    SECTION("BakeCheckerSkipsScanModeFiles")
+    SECTION("ScanModeRejectsIncompleteSpriteInfoIndex")
     {
         TestRig rig;
         AddSourceBinaryFile(rig, "gfx/skipped-scan.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
@@ -1739,10 +2502,59 @@ Frm=one.toy
             checked.emplace_back(string {path}, write_time);
             return false;
         })};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), VerificationException);
 
         CHECK(rig.Outputs.empty());
-        CHECK(checked == vector<pair<string, uint64_t>> {{"gfx/skipped-scan.tga", 31}});
+        CHECK(checked ==
+            vector<pair<string, uint64_t>> {
+                {"gfx/skipped-scan.tga", 31},
+                {"SpriteInfo/TestPack.foinfo", 31},
+            });
+    }
+
+    SECTION("BakesSpriteInfoIndexAsRuntimeTarget")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/runtime-info.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 32);
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "SpriteInfo/TestPack.foinfo");
+
+        REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        REQUIRE(entries.size() == 1);
+        CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
+        CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
+        CHECK(entries.front().Info.FrameCount == 1);
+        CHECK(entries.front().Info.Directions.front().Frames.front().Size == isize32 {1, 1});
+    }
+
+    SECTION("ScanModeRemovesStaleSpriteInfoEntries")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
+
+        SpriteInfo info {
+            .FrameCount = 1,
+            .Duration = std::chrono::milliseconds {100},
+            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
+        };
+        rig.AddBakedFile("SpriteInfo/TestPack.foinfo",
+            WriteSpriteInfoFile({
+                SpriteInfoFileEntry {.SourcePath = "gfx/current.tga", .ResourcePath = "gfx/current.tga", .Info = info},
+                SpriteInfoFileEntry {.SourcePath = "gfx/removed.tga", .ResourcePath = "gfx/removed.tga", .Info = info},
+            }));
+
+        ImageBaker baker {rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; })};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
+        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        REQUIRE(entries.size() == 1);
+        CHECK(entries.front().SourcePath == "gfx/current.tga");
     }
 
     SECTION("InvalidTgaInputsAreReported")

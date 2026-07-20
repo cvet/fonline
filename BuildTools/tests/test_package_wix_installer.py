@@ -25,6 +25,8 @@ def _make_packager(
     nicename: str = "LastFrontier",
     platform: str = "Windows",
     target: str = "Client",
+    arch: str = "win64",
+    binary_output_postfix: str = "",
 ) -> _package.Packager:
     maincfg = tmp_path / "Main.fomain"
     maincfg.write_text("\n".join(fomain_lines) + "\n", encoding="utf-8")
@@ -32,7 +34,14 @@ def _make_packager(
     fomain.loadFromLines(fomain_lines)
     packager = _package.Packager.__new__(_package.Packager)
     packager.fomain = fomain
-    packager.args = SimpleNamespace(maincfg=str(maincfg), nicename=nicename, platform=platform, target=target)
+    packager.args = SimpleNamespace(
+        maincfg=str(maincfg),
+        nicename=nicename,
+        platform=platform,
+        target=target,
+        arch=arch,
+        binary_output_postfix=binary_output_postfix,
+    )
     return packager
 
 
@@ -83,6 +92,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     packager = _make_packager(tmp_path, fomain_lines)
     packager.target_output_path = str(staged)
     monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
 
     captured: dict[str, object] = {}
 
@@ -142,3 +152,38 @@ def test_make_wix_installer_rejects_missing_upgrade_code(tmp_path: Path, monkeyp
 
     with pytest.raises(AssertionError, match="MsiUpgradeCode"):
         packager.make_wix_installer()
+
+
+def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output_dir = tmp_path / "output"
+    staged = output_dir / "LF-Client-Win7"
+    staged.mkdir(parents=True)
+    (staged / "LastFrontier_Win7.exe").write_text("exe", encoding="utf-8")
+
+    fomain_lines = [
+        "Common.GameName = Last Frontier",
+        "Common.GameVersion = 0.3.422",
+        "Auth.UriScheme = lastfrontier",
+        "Packaging.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
+    ]
+    packager = _make_packager(tmp_path, fomain_lines, arch="win32-win7", binary_output_postfix="Win7")
+    packager.target_output_path = str(staged)
+    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+
+    captured: dict[str, object] = {}
+
+    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
+        captured["cmd"] = cmd
+        captured["cwd"] = cwd
+        assert (staged / "INSTALLED").is_file()
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(_package.subprocess, "run", fake_run)
+
+    packager.make_wix_installer()
+
+    assert captured["cmd"][-1] == "LastFrontier_Win7.wix.json"
+    config = json.loads((output_dir / "LastFrontier_Win7.wix.json").read_text(encoding="utf-8"))
+    assert config["name_base"] == "LastFrontier_Win7"
+    assert config["arch"] == 32
+    assert config["startmenu_shortcut"] == "LastFrontier_Win7.exe"

@@ -278,6 +278,79 @@ def _byte_offset_to_location(content: bytes, offset: int, template: SourceLocati
     return SourceLocation(template.path, line, offset - line_start + 1, template.absolute_path)
 
 
+def _find_top_level_const_offsets(content: bytes) -> list[int]:
+    candidates: list[tuple[int, int]] = []
+    angle_depth = 0
+    paren_depth = 0
+    bracket_depth = 0
+    brace_depth = 0
+    index = 0
+
+    while index < len(content):
+        if content.startswith(b"//", index):
+            newline = content.find(b"\n", index + 2)
+            index = len(content) if newline < 0 else newline + 1
+            continue
+        if content.startswith(b"/*", index):
+            comment_end = content.find(b"*/", index + 2)
+            index = len(content) if comment_end < 0 else comment_end + 2
+            continue
+
+        byte = content[index]
+        if byte in {ord('"'), ord("'")}:
+            quote = byte
+            index += 1
+            while index < len(content):
+                if content[index] == ord("\\"):
+                    index += 2
+                    continue
+                if content[index] == quote:
+                    index += 1
+                    break
+                index += 1
+            continue
+
+        if (ord("a") <= byte <= ord("z")) or (ord("A") <= byte <= ord("Z")) or byte == ord("_"):
+            token_start = index
+            index += 1
+            while index < len(content):
+                token_byte = content[index]
+                if not (
+                    (ord("a") <= token_byte <= ord("z"))
+                    or (ord("A") <= token_byte <= ord("Z"))
+                    or (ord("0") <= token_byte <= ord("9"))
+                    or token_byte == ord("_")
+                ):
+                    break
+                index += 1
+            if content[token_start:index] == b"const":
+                candidates.append((angle_depth + paren_depth + bracket_depth + brace_depth, token_start))
+            continue
+
+        if byte == ord("<"):
+            angle_depth += 1
+        elif byte == ord(">"):
+            angle_depth = max(0, angle_depth - 1)
+        elif byte == ord("("):
+            paren_depth += 1
+        elif byte == ord(")"):
+            paren_depth = max(0, paren_depth - 1)
+        elif byte == ord("["):
+            bracket_depth += 1
+        elif byte == ord("]"):
+            bracket_depth = max(0, bracket_depth - 1)
+        elif byte == ord("{"):
+            brace_depth += 1
+        elif byte == ord("}"):
+            brace_depth = max(0, brace_depth - 1)
+        index += 1
+
+    if not candidates:
+        return []
+    minimum_depth = min(depth for depth, _ in candidates)
+    return [offset for depth, offset in candidates if depth == minimum_depth]
+
+
 def _find_top_level_const_location(node: NodeBinding) -> SourceLocation | None:
     if node.location is None or node.declarator_location is None:
         return None
@@ -289,12 +362,12 @@ def _find_top_level_const_location(node: NodeBinding) -> SourceLocation | None:
         declarator_start = _location_to_byte_offset(content, node.declarator_location)
     except OSError:
         return None
-    matches = (
-        list(re.finditer(rb"\bconst\b", content[declaration_start:declarator_start]))
+    offsets = (
+        _find_top_level_const_offsets(content[declaration_start:declarator_start])
         if declaration_start <= declarator_start
         else []
     )
-    if not matches and node.name:
+    if not offsets and node.name:
         line_start = content.rfind(b"\n", 0, declaration_start) + 1
         line_end = content.find(b"\n", declaration_start)
         if line_end < 0:
@@ -303,11 +376,11 @@ def _find_top_level_const_location(node: NodeBinding) -> SourceLocation | None:
         name_match = re.search(rb"\b" + re.escape(encoded_name) + rb"\b", content[declaration_start:line_end])
         if name_match is not None:
             declarator_start = declaration_start + name_match.start()
-            matches = list(re.finditer(rb"\bconst\b", content[line_start:declarator_start]))
+            offsets = _find_top_level_const_offsets(content[line_start:declarator_start])
             declaration_start = line_start
-    if not matches:
+    if not offsets:
         return None
-    offset = declaration_start + matches[-1].start()
+    offset = declaration_start + offsets[-1]
     return _byte_offset_to_location(content, offset, node.location)
 
 

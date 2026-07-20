@@ -477,20 +477,6 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
     }
 }
 
-// SyncScope: requires entity + current parent when present; destroys the entity subtree.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t id)
-{
-    auto entity = server->EntityMngr.GetEntity(id);
-
-    if (entity) {
-        ValidateEntityAccess(entity);
-        ValidateEntityAccess(entity->GetParentRaw());
-
-        server->EntityMngr.DestroyEntity(entity);
-    }
-}
-
 // SyncScope: requires entity + current parent when entity is non-null; destroys the entity subtree.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<ServerEntity> entity)
@@ -500,22 +486,6 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<Serv
         ValidateEntityAccess(entity->GetParentRaw());
 
         server->EntityMngr.DestroyEntity(entity);
-    }
-}
-
-// SyncScope: requires every resolved entity + current parent when present; destroys each subtree.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<ident_t> ids)
-{
-    for (ident_t id : ids) {
-        auto entity = server->EntityMngr.GetEntity(id);
-
-        if (entity) {
-            ValidateEntityAccess(entity);
-            ValidateEntityAccess(entity->GetParentRaw());
-
-            server->EntityMngr.DestroyEntity(entity);
-        }
     }
 }
 
@@ -564,41 +534,6 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
     }
 }
 
-// SyncScope: requires resolved item + current item parent when present; destroys the item subtree.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId)
-{
-    auto item = server->EntityMngr.GetItem(itemId);
-
-    if (item) {
-        ValidateEntityAccess(item);
-        ValidateEntityAccess(item->GetParentRaw());
-
-        server->ItemMngr.DestroyItem(item);
-    }
-}
-
-// SyncScope: requires resolved item + current item parent when present; full-count destroy removes the item subtree.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId, int32_t count)
-{
-    auto item = server->EntityMngr.GetItem(itemId);
-
-    if (item && count > 0) {
-        ValidateEntityAccess(item);
-        ValidateEntityAccess(item->GetParentRaw());
-
-        int32_t cur_count = item->GetCount();
-
-        if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
-        }
-        else {
-            item->SetCount(cur_count - count);
-        }
-    }
-}
-
 // SyncScope: requires every non-null item + current item parent; destroys each item subtree.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<nptr<Item>> items)
@@ -609,24 +544,6 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
             ValidateEntityAccess(item->GetParentRaw());
 
             server->ItemMngr.DestroyItem(item);
-        }
-    }
-}
-
-// SyncScope: requires every resolved item + current item parent; destroys each item subtree.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<ident_t> itemIds)
-{
-    for (ident_t item_id : itemIds) {
-        if (item_id) {
-            auto item = server->EntityMngr.GetItem(item_id);
-
-            if (item) {
-                ValidateEntityAccess(item);
-                ValidateEntityAccess(item->GetParentRaw());
-
-                server->ItemMngr.DestroyItem(item);
-            }
         }
     }
 }
@@ -646,25 +563,6 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Cri
     }
 }
 
-// SyncScope: requires resolved cr + current source map when present and not player-controlled.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t crId)
-{
-    if (crId) {
-        auto cr = server->EntityMngr.GetCritter(crId);
-
-        if (cr) {
-            ValidateEntityAccess(cr);
-
-            if (!cr->GetControlledByPlayer()) {
-                ValidateEntityAccess(cr->GetParentRaw());
-
-                server->CrMngr.DestroyCritter(cr);
-            }
-        }
-    }
-}
-
 // SyncScope: requires every non-null cr + current source map when not player-controlled.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<nptr<Critter>> critters)
@@ -677,27 +575,6 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
                 ValidateEntityAccess(cr->GetParentRaw());
 
                 server->CrMngr.DestroyCritter(cr);
-            }
-        }
-    }
-}
-
-// SyncScope: requires every resolved cr + current source map when not player-controlled.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<ident_t> critterIds)
-{
-    for (ident_t id : critterIds) {
-        if (id) {
-            auto cr = server->EntityMngr.GetCritter(id);
-
-            if (cr) {
-                ValidateEntityAccess(cr);
-
-                if (!cr->GetControlledByPlayer()) {
-                    ValidateEntityAccess(cr->GetParentRaw());
-
-                    server->CrMngr.DestroyCritter(cr);
-                }
             }
         }
     }
@@ -796,38 +673,10 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, nptr<Lo
     }
 }
 
-// SyncScope: requires resolved loc when present; destroy cascade self-syncs covered child maps/entities.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t locId)
-{
-    auto loc = server->EntityMngr.GetLocation(locId);
-
-    if (loc) {
-        ValidateEntityAccess(loc);
-        ValidateEntityAccess(loc->GetParentRaw());
-
-        server->MapMngr.DestroyLocation(loc);
-    }
-}
-
 // SyncScope: requires map + parent location when map is non-null; destroy cascade self-syncs covered child entities.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, nptr<Map> map)
 {
-    if (map) {
-        ValidateEntityAccess(map);
-        ValidateEntityAccess(map->GetParentRaw());
-
-        server->MapMngr.DestroyMap(map);
-    }
-}
-
-// SyncScope: requires resolved map + parent location when present; destroy cascade self-syncs covered child entities.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, ident_t mapId)
-{
-    auto map = server->EntityMngr.GetMap(mapId);
-
     if (map) {
         ValidateEntityAccess(map);
         ValidateEntityAccess(map->GetParentRaw());

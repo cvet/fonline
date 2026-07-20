@@ -231,7 +231,7 @@ The client ships as `LF_Client.exe` (host) plus a sibling loadable runtime libra
 
 Quick validation when touching either side:
 
-1. Build both `LF_Client` and `LF_ClientLib`; confirm the host-derived runtime alias lands next to the host (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux).
+1. Build `LF_Client`; on native host/runtime platforms it depends on `LF_ClientLib`. Confirm the host-derived runtime alias lands next to the host (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly only when the host is not needed.
 2. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup.
 3. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
 4. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no embedded fallback when compatibility differs).

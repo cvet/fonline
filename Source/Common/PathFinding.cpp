@@ -358,7 +358,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             for (int32_t i = numeric_cast<int32_t>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
                 mpos next_hex = trace_hex;
-                vector<mdir> direct_steps;
+                small_vector<mdir, 64> direct_steps;
                 bool failed = false;
 
                 while (true) {

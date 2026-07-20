@@ -33,7 +33,6 @@
 
 #include "EngineBase.h"
 
-#include "ConfigFile.h"
 #include "ImGuiStuff.h"
 
 FO_BEGIN_NAMESPACE
@@ -1134,23 +1133,17 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
     return _protoMngr.GetProtoEntities(type_name);
 }
 
-auto EngineMetadata::GetModelAnimDuration(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) const -> timespan
+auto EngineMetadata::GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto model_it = _modelAnimDurations.find(model_name);
+    auto anim_it = _animationInfos.find(resource_name);
 
-    if (model_it == _modelAnimDurations.end()) {
-        return {};
+    if (anim_it == _animationInfos.end()) {
+        return nullptr;
     }
 
-    auto anim_it = model_it->second.find({state_anim, action_anim});
-
-    if (anim_it == model_it->second.end()) {
-        return {};
-    }
-
-    return anim_it->second;
+    return make_nptr(&anim_it->second);
 }
 
 void EngineMetadata::RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
@@ -1171,56 +1164,13 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
     _protoMngr.LoadFromResources(resources);
 }
 
-void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
+void EngineMetadata::RegisterAnimationInfo(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    constexpr string_view resource_path = "ModelAnimInfo.foinfo";
-
-    if (!resources.IsFileExists(resource_path)) {
-        WriteLog(LogType::Info, "Model animation durations document '{}' is not present", resource_path);
-        return;
-    }
-
-    auto config = ConfigFile(resource_path, resources.ReadFileText(resource_path));
-    unordered_map<hstring, unordered_map<pair<CritterStateAnim, CritterActionAnim>, timespan>> model_anim_durations;
-
-    for (const auto& [model_name, values] : *config.GetSections()) {
-        if (model_name.empty()) {
-            continue;
-        }
-
-        auto get_value = [&values](string_view key) -> string_view {
-            auto it = values.find(key);
-            return it != values.end() ? it->second : string_view {};
-        };
-
-        auto state_anims = strvex(get_value("StateAnims")).split_to_int32(' ');
-        auto action_anims = strvex(get_value("ActionAnims")).split_to_int32(' ');
-        auto durations_ms = strvex(get_value("DurationsMs")).split_to_int32(' ');
-
-        FO_VERIFY_AND_THROW(!state_anims.empty(), "Model animation info section has no entries", model_name);
-        FO_VERIFY_AND_THROW(state_anims.size() == action_anims.size() && action_anims.size() == durations_ms.size(), "Model animation info arrays have different sizes", model_name, state_anims.size(), action_anims.size(), durations_ms.size());
-
-        hstring model_name_hashed = Hashes.ToHashedString(model_name);
-        const auto [model_it, model_inserted] = model_anim_durations.try_emplace(model_name_hashed);
-        FO_VERIFY_AND_THROW(model_inserted, "Duplicate model animation info section", model_name);
-        auto& model_durations = model_it->second;
-
-        for (size_t i = 0; i < state_anims.size(); i++) {
-            auto state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
-            auto action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
-            FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", model_name, state_anims[i], action_anims[i], durations_ms[i]);
-
-            const auto [it, inserted] = model_durations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]});
-            ignore_unused(it);
-            FO_VERIFY_AND_THROW(inserted, "Duplicate model animation info entry", model_name, state_anims[i], action_anims[i]);
-        }
-    }
-
-    _modelAnimDurations = std::move(model_anim_durations);
+    _animationInfos = ReadAnimationInfo(resources, Hashes);
 }
 
 BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
@@ -1237,7 +1187,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FO_STACK_TRACE_ENTRY();
 
     RegisterProtos(Resources);
-    RegisterModelAnimInfo(Resources);
+    RegisterAnimationInfo(Resources);
     FinalizeRegistration();
 }
 

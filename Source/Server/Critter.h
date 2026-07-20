@@ -201,7 +201,7 @@ public:
 
 private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
-    auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> vector<refcount_ptr<Player>>;
+    auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
     uint32_t _movingUid {};
     refcount_nptr<MovingContext> _moving {};

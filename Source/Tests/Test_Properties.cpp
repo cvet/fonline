@@ -2435,6 +2435,35 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
     check_overlay_values(cloned);
 }
 
+TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OverlayGrowthEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto first_aligned_prop = registrator.RegisterProperty({"Common", "hstring[]", "FirstAligned", "Mutable", "Persistent", "PublicSync"});
+    auto second_aligned_prop = registrator.RegisterProperty({"Common", "hstring[]", "SecondAligned", "Mutable", "Persistent", "PublicSync"});
+    auto tail_prop = registrator.RegisterProperty({"Common", "string", "Tail", "Mutable", "Persistent", "PublicSync"});
+    auto growing_prop = registrator.RegisterProperty({"Common", "hstring[]", "Growing", "Mutable", "Persistent", "PublicSync"});
+    Properties base(&registrator);
+    Properties derived(&registrator, &base);
+
+    array<uint8_t, 1> first_data = {1};
+    array<uint8_t, 7> second_data = {2, 2, 2, 2, 2, 2, 2};
+    array<uint8_t, 5> tail_data = {3, 3, 3, 3, 3};
+    array<uint8_t, 16> growing_data = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+
+    // Allocation order produces a 14-byte tail. Stable alignment-first repacking changes it to
+    // 20 bytes, so a capacity selected only from the old tail is too small for the growing block.
+    derived.SetRawData(second_aligned_prop, second_data);
+    derived.SetRawData(first_aligned_prop, first_data);
+    derived.SetRawData(tail_prop, tail_data);
+
+    CHECK_NOTHROW(derived.SetRawData(growing_prop, growing_data));
+    CHECK(derived.GetRawData(growing_prop).size() == growing_data.size());
+    CHECK(std::ranges::equal(derived.GetRawData(growing_prop), growing_data));
+}
+
 TEST_CASE("PropertiesOverlayDataReusesAlignmentPaddings")
 {
     HashStorage hashes {};

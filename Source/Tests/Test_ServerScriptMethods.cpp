@@ -1068,27 +1068,6 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestGameDestroyItemPartialById()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Item item = cr.AddItem("TestItem".hstr(), 1);
-        if (item is null) return -2;
-
-        ident item_id = item.Id;
-
-        // Destroy by id
-        Game.DestroyItem(item_id);
-
-        // Verify destroyed
-        Item? check = Game.GetItem(item_id);
-        if (check !is null) return -3;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
     int TestGameGetItemZeroIdThrows()
     {
         try {
@@ -1242,21 +1221,6 @@ namespace ScriptMethodsTest
 
     // ========== Critter Destroy Operations ==========
 
-    int TestDestroyCritterById()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        ident cr_id = cr.Id;
-
-        Game.DestroyCritter(cr_id);
-
-        Critter? check = Game.GetCritter(cr_id);
-        if (check !is null) return -2;
-
-        return 0;
-    }
-
     int TestBulkDestroyCritters()
     {
         array<Critter> critters = {};
@@ -1295,61 +1259,7 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestDestroyIdListAndCountOverloads()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Item counted = cr.AddItem("TestItem".hstr(), 1);
-        if (counted is null) return -2;
-
-        ident countedId = counted.Id;
-        ident zeroId;
-
-        Game.DestroyItem(zeroId, 1);
-        Game.DestroyItem(countedId, 0);
-
-        Item? stillCounted = Game.GetItem(countedId);
-        if (stillCounted is null) return -3;
-        if (stillCounted.Count <= 0) return -4;
-
-        int countedAmount = stillCounted.Count;
-
-        Game.DestroyItem(countedId, countedAmount);
-        if (Game.GetItem(countedId) !is null) return -5;
-
-        Item item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
-        if (item1 is null || item2 is null) return -6;
-)"
-                    R"(
-        ident item1Id = item1.Id;
-        ident item2Id = item2.Id;
-        array<ident> itemIds = {zeroId, item1Id, item2Id};
-
-        Game.DestroyItems(itemIds);
-
-        if (Game.GetItem(item1Id) !is null) return -7;
-        if (Game.GetItem(item2Id) !is null) return -8;
-
-        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr1 is null || cr2 is null) return -9;
-
-        ident cr1Id = cr1.Id;
-        ident cr2Id = cr2.Id;
-        array<ident> critterIds = {zeroId, cr1Id, cr2Id};
-
-        Game.DestroyCritters(critterIds);
-
-        if (Game.GetCritter(cr1Id) !is null) return -10;
-        if (Game.GetCritter(cr2Id) !is null) return -11;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
-    int TestDestroyEntityNullableAndIdListOverloads()
+    int TestDestroyEntityNullableAndHandleListOverloads()
     {
         Entity? nullEntity = null;
         Game.DestroyEntity(nullEntity);
@@ -1368,12 +1278,11 @@ namespace ScriptMethodsTest
         Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -4;
 
-        ident zeroId;
         ident cr1Id = cr1.Id;
         ident cr2Id = cr2.Id;
-        array<ident> ids = {zeroId, cr1Id, cr2Id};
+        array<Entity> entities = {cr1, cr2};
 
-        Game.DestroyEntities(ids);
+        Game.DestroyEntities(entities);
 
         if (Game.GetCritter(cr1Id) !is null) return -5;
         if (Game.GetCritter(cr2Id) !is null) return -6;
@@ -2035,7 +1944,7 @@ namespace ScriptMethodsTest
         ident cr_id = cr.Id;
 
         // Destroy via generic entity destroy
-        Game.DestroyEntity(cr_id);
+        Game.DestroyEntity(cr);
 
         Critter? check = Game.GetCritter(cr_id);
         if (check !is null) return -2;
@@ -3272,14 +3181,6 @@ TEST_CASE("ServerGameItemOperations")
         CHECK(func.GetResult() == 0);
     }
 
-    SECTION("DestroyItemPartialById")
-    {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemPartialById"));
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
     SECTION("GetItemZeroIdThrows")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetItemZeroIdThrows"));
@@ -3360,14 +3261,6 @@ TEST_CASE("ServerEntityLifecycle")
         CHECK(func.GetResult() == 0);
     }
 
-    SECTION("DestroyCritterById")
-    {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyCritterById"));
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
     SECTION("BulkDestroyCritters")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"));
@@ -3379,14 +3272,6 @@ TEST_CASE("ServerEntityLifecycle")
     SECTION("BulkDestroyItems")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyItems"));
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
-    SECTION("DestroyIdListAndCountOverloads")
-    {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyIdListAndCountOverloads"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3408,9 +3293,9 @@ TEST_CASE("ServerEntityLifecycle")
         CHECK(func.GetResult() == 0);
     }
 
-    SECTION("DestroyEntityNullableAndIdListOverloads")
+    SECTION("DestroyEntityNullableAndHandleListOverloads")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityNullableAndIdListOverloads"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityNullableAndHandleListOverloads"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

@@ -76,7 +76,7 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
     FO_NO_STACK_TRACE_ENTRY();
 
     string_view file_name = strvex(file).extract_file_name().erase_file_extension();
-    throw ScriptCoreException(strex("File: {}", file_name), strex("Line: {}", line), strex("Result: {}", result));
+    throw ScriptCoreException("AngelScript core call failed", file_name, line, result);
 }
 
 template<typename T>

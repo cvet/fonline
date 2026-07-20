@@ -36,12 +36,26 @@ Read this page together with:
 - `Source/Client/PlayerView.h`
 - `Source/Client/DefaultSprites.h`
 - `Source/Client/DefaultSprites.cpp`
-- `Source/Client/3dStuff.h`
-- `Source/Client/3dStuff.cpp`
-- `Source/Client/3dAnimation.h`
-- `Source/Client/3dAnimation.cpp`
+- `Source/Client/ModelAnimation.h`
+- `Source/Client/ModelAnimation.cpp`
+- `Source/Client/ModelBakedData.h`
+- `Source/Client/ModelBakedData.cpp`
+- `Source/Client/ModelManager.h`
+- `Source/Client/ModelManager.cpp`
+- `Source/Client/ModelInstance.h`
+- `Source/Client/ModelInstance.cpp`
+- `Source/Client/ModelInformation.h`
+- `Source/Client/ModelInformation.cpp`
+- `Source/Client/ModelHierarchy.h`
+- `Source/Client/ModelHierarchy.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
+- `Source/Client/ModelSpriteLayout.h`
+- `Source/Client/ModelSpriteLayout.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
+- `Source/Common/ModelBounds.h`
+- `Source/Common/ModelBounds.cpp`
 - `Source/Client/ParticleSprites.h`
 - `Source/Client/ParticleSprites.cpp`
 - `Source/Client/RenderTarget.h`
@@ -50,6 +64,8 @@ Read this page together with:
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ModelAnimationRuntime.cpp`
 
 ## Runtime owner: `ClientEngine`
 
@@ -122,6 +138,51 @@ Primary view types:
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` keeps a cell only when the source returns the same handle instance; a replacement clone with the same entity id is rebound so item draw callbacks observe its current count and other projected properties.
 
+## 3D model runtime architecture
+
+The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The
+client 3D path now uses same-named `Model*.h` / `Model*.cpp` module pairs with
+one ownership boundary per module. There is no client-side `ModelMesh` utility
+module: mesh representation types live with `ModelHierarchy`. There is also no
+separate `ModelPoseRuntime` module: renderer-independent pose/link operations
+are part of `ModelAnimation`.
+
+| Module | Responsibility |
+| --- | --- |
+| `ModelManager` | Runtime entry point, model-description and hierarchy caches, baked mesh loading, and construction of model instances. |
+| `ModelHierarchy` | Shared loaded `ModelBone` topology, mesh/bind data, model textures/effects, and the mesh representation types used by hierarchy and instances. It does not own mutable animation pose output. |
+| `ModelInformation` | One resolved baked `.fo3d` description: hierarchy reference, canonical/runtime joint identities, animation lookup tables, cuts/links, draw metadata, and one immutable `ModelAnimationRuntimeRig`. |
+| `ModelInstance` | All mutable per-instance state: controller timelines, runtime pose, world-matrix snapshots, mesh state and batching, cuts, attachments, particles, procedural transforms, projection, and draw submission. |
+| `ModelAnimation` | Engine animation-controller timeline, transition, callback, reverse/freeze/play-once, and binding semantics together with the engine-owned clip/rig/pose contract, Ozz-backed sampling and blending behind PImpl, canonical-joint mapping, linked-pose resolution, and validated rest-pose matrix construction for direct raw models. |
+| `ModelBakedData` | Small defensive reader helpers shared by client model loaders, especially count-versus-unread-data preflight before allocation. |
+| `ModelSprites` | Adapter from `ModelManager` / `ModelInstance` to atlas-backed and direct-scene sprite rendering. |
+
+The ownership direction is deliberate:
+
+- `ModelManager` caches shared `ModelHierarchy` and `ModelInformation` objects;
+- every created `ModelInstance` references one `ModelInformation` but owns its
+  mutable controllers, pose buffers, matrices, mesh overrides, and children;
+- shared `ModelBone` nodes retain topology, rest/bind, and drawable data only;
+  pose results never flow back into the shared hierarchy;
+- canonical animation joints may exist without a physical `ModelBone`, so
+  canonical indexing and cross-model pose links belong to
+  `ModelAnimation`, not `ModelHierarchy`.
+
+This split removes the old include-everything dependency. A caller includes the
+manager, information, hierarchy, instance, animation, or baked-data contract it
+actually consumes. Small passive types stay with their owning module instead of
+forming empty translation units.
+
+`ModelAnimationRuntimeClip`, `ModelAnimationRuntimeRig`, and
+`ModelAnimationRuntimePose` keep their backend state behind PImpl. The public
+header exposes only engine-owned runtime values and spans; Ozz headers, archive
+objects, sampling contexts, and matrix buffers stay in
+`ModelAnimation.cpp`. `ModelAnimationData` defines the native versioned wire
+contract shared with the baker, while
+`ModelAnimationConverter` owns offline conversion. The engine API does not name
+or model interchangeable animation backends: Ozz is an implementation detail of
+the engine's native model-animation runtime and baked format.
+
 ## Critter model animation
 
 3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
@@ -129,6 +190,66 @@ animation-specific speed (`AnimSpeed`) to the body/action controller, while `Ref
 movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
 the model base/link/global speed only; it must not inherit the current body action's `AnimSpeed`, otherwise fast actions
 such as use/pick-up make the leg cycle run too quickly while the critter is moving.
+
+An animation name prefixed with `~` plays the source clip in reverse: playback time `t` samples the clip at
+`duration - fmod(t, duration)`, so an exact loop boundary restarts at the clip end. If interpolation is disabled, the
+same nearest-key rule is applied at that reversed source time.
+
+Every baked `.fo3d` has the required versioned `LFMODINF` schema-1 header and a
+required `LFOZZRIG` payload generated for pinned `ozz-animation` 0.16.0.
+`ModelInformation` strictly loads and owns one immutable
+`ModelAnimationRuntimeRig`. Its PImpl contains the canonical Ozz skeleton,
+unique clips, base/clip remaps, presence masks, nearest timelines, and resolved
+state/action binding table. The loader rejects old unversioned files and any
+partial or inconsistent rig; it never falls back to another payload after an
+Ozz load error. The final mesh-only wire transition uses compatibility marker
+`0.0.30` and requires a full resource rebake.
+
+Ozz is the production animated-pose path. The body and movement controllers
+advance timeline/event state only. Each registered animation stores direct Ozz
+clip index/duration/reverse metadata and an immutable bound-joint set derived
+from the clip presence mask. A joint is bound only when its canonical and exact
+runtime names match, so this gate deliberately keeps a resource-renamed model
+root out of a source-root animation. Per-track allowed-joint and transition-
+suppression masks further filter those bindings before the track state feeds the
+per-instance Ozz pose.
+Ozz performs clip sampling, body blending,
+movement-only joint replacement, procedural body/head pre-rotation, and
+local-to-model evaluation. Each `ModelInstance` snapshots the resulting world
+matrices, and skin palettes, linked children, particles, and bone queries read
+that owning instance snapshot. Link-all attachments override only the matched
+joint after evaluation and deliberately do not recompute its descendants,
+preserving the established attachment order.
+
+Canonical joint names, exact runtime lookup names, and name-to-index bindings
+are independent of the physical `ModelBone` hierarchy. Base joints retain a
+read-only physical bone for meshes and cuts; animation-contributed joints have
+no `ModelBone` and are never materialized into the shared cached hierarchy.
+The base root deliberately keeps its resource-path runtime alias, while
+contributed joints use their canonical names, preserving exact legacy lookup
+and root-animation suppression semantics. Runtime particles, attachment
+resolution, link-all matching, and bone-position queries operate on canonical
+indices; link-all can therefore bind contributed joints without physical
+bones. Authored one-bone link validation remains base-hierarchy-only in the
+current baking schema.
+
+Static `.fo3d` instances evaluate an empty Ozz track set so canonical rest and
+procedural body/head transforms follow the same runtime as animated instances.
+Only direct raw-model instances remain outside Ozz and build parent-ordered
+world matrices through the validation helpers owned by
+`ModelAnimation`.
+The former custom pose evaluator and shared mutable matrix-output table have
+been removed. Baked model meshes now begin with the mandatory `LFMODMSH`
+schema-1 header and contain only the recursive hierarchy/bind/drawable mesh
+payload. The client consumes it exactly and rejects headerless, mismatched,
+truncated, or trailing data; no serialized TRS tail and no legacy mesh fallback
+remain. Runtime clip identity, duration, joint presence, and sampling come
+exclusively from the baked Ozz rig.
+
+The nested LF archive hash detects accidental corruption but is not an
+authentication mechanism. Ozz deserialization assumes the baked resource pack
+is trusted; deployments that permit attacker-rewritable packs must authenticate
+the pack before this loader runs.
 
 ## `MapView`: map presentation and local spatial state
 
@@ -157,8 +278,53 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes sound-name mappings.
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
-- `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default image/animation resources.
-- `ModelSpriteFactory` turns model resources into atlas-backed sprites by rendering model frames into a render target.
+- `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
+  image/animation resources, including the optional per-frame silhouette mesh
+  produced by `ImageBaker`. The resource decoder also fills the `Sprite`
+  payload of the common `AnimationInfo` record with frame count, duration,
+  directions, and resolved per-frame bounds; this payload remains available in
+  builds without 3D support. `EngineMetadata` reads the matching compact
+  version 1 `SpriteInfo/<PackName>.foinfo` indexes at startup, so common sprite metadata
+  queries do not decode pixel payloads. A source-backed sprite uses its mesh for ordinary
+  full-image draws; an explicit empty mesh skips the draw, while a missing/quad
+  mesh keeps the four-vertex path used by runtime-generated atlas sprites.
+- With `FO_ENABLE_3D`, `ModelSpriteFactory` turns model resources into
+  atlas-backed sprites. It asks
+  `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
+  view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
+  layer never reopens or reparses that companion, and no authored `.fo3d`
+  `DrawSize` or `ViewSize` remains.
+  Enabled body/movement animation envelopes are projected through the active
+  model transform across every facing direction to derive a power-of-two
+  logical scratch frame large enough for the body and projected shadow. The
+  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
+  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
+  extend both the view/name rectangle and the aggregate horizontal-lighting
+  frame; the envelope resets when mesh composition changes and otherwise only
+  grows. Names, coarse picking, transparent eggs, flying text, and attachments
+  therefore stay inside automatically derived bounds without authored sizes.
+
+  The model is rendered into a reusable 2x scratch target for the automatic
+  frame. Per-animation prediction and exact weighted skinning of referenced
+  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
+  the factory expands it and rerenders before copying; the bounded retry loop
+  fails rather than accepting a clipped frame that does not converge. The
+  cropped sprite offset preserves the fixed model root, hit-test coordinates,
+  and stable horizontal lighting gradient. Scratch-frame setup does not reserve
+  atlas space; allocation happens only after the final crop is known. A changed
+  placement is prepared locally, rendered, and published only after the atlas
+  copy succeeds, while failures request an immediate redraw and retain the old
+  allocation. An atlas
+  slot only expands while its active animation/mesh/shadow envelope identity is
+  unchanged, then may shrink once when a transition settles or mesh composition
+  changes. Model-attached particles enable SPARK live-AABB computation; emitted
+  quads and trails drive bounded frame expansion after their first update, with
+  the advertised canvas retained as the pre-update fallback. Frame changes
+  rebase already emitted atlas-space particles so expansion does not move them,
+  and particles force a full-frame crop. A non-default model effect also disables the tight
+  crop; effects that displace vertices beyond ordinary skinned geometry need a
+  separate conservative rendering contract because bounds schema version 2 does
+  not encode shader displacement.
 - `ParticleSpriteFactory` does the same for particle resources.
 - `EffectManager` loads default/minimal effects, resolves script-selected effects, and updates per-frame effect buffers.
 - `FontManager` loads fonts and formats/draws text, including inline color tags.
@@ -167,6 +333,13 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
+
+Sprite mesh geometry is independent of the pixel-exact hit mask. `FillAtlas`
+still derives hit testing directly from source alpha and `Render.SpriteHitValue`;
+contour simplification/dilation only changes which triangles are submitted for
+drawing. Cropped regions, repeated patterns, fonts, render-target blits, and
+padded custom-effect/contour draws intentionally construct quads because their
+sampling rectangle is not the source sprite silhouette.
 
 ### Fonts and Inline Color Tags
 

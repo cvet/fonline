@@ -143,6 +143,42 @@ TEST_CASE("CommonHelpers")
         CHECK(copied.size() == 3);
     }
 
+    SECTION("VectorAlgorithmsPreserveContainerKind")
+    {
+        // rebind_vector maps a container kind to a new element type
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<vector<int32_t>, int64_t>, vector<int64_t>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<small_vector<int32_t, 4>, int64_t>, small_vector<int64_t, 4>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<const small_vector<int32_t, 4>&, int64_t>, small_vector<int64_t, 4>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<span<int32_t>, int64_t>, vector<int64_t>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<set<int32_t>, int64_t>, vector<int64_t>>);
+
+        // A small_vector input keeps its kind (and inline capacity) through every producing helper
+        small_vector<int32_t, 4> values = {5, 1, 3, 2};
+
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(filtered)>, small_vector<int32_t, 4>>);
+        CHECK(filtered == small_vector<int32_t, 4> {5, 1, 3});
+
+        auto transformed = vec_transform(values, [](int32_t v) -> int64_t { return v * 10; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(transformed)>, small_vector<int64_t, 4>>);
+        CHECK(transformed == small_vector<int64_t, 4> {50, 10, 30, 20});
+
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(sorted)>, small_vector<int32_t, 4>>);
+        CHECK(sorted == small_vector<int32_t, 4> {1, 2, 3, 5});
+
+        // A plain vector input still yields a vector (backward compatible)
+        vector<int32_t> vec_values = {5, 1, 3, 2};
+        auto vec_filtered = vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(vec_filtered)>, vector<int32_t>>);
+
+        // A non-vector range materializes as a plain vector
+        set<int32_t> set_values = {5, 1, 3, 2};
+        auto set_sorted = vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(set_sorted)>, vector<int32_t>>);
+        CHECK(set_sorted == vector<int32_t> {1, 2, 3, 5});
+    }
+
     SECTION("VecTransformSupportsPointerLikeValues")
     {
         vector<unique_ptr<TestDerived>> values;

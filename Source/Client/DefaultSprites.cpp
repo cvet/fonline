@@ -37,14 +37,38 @@
 
 FO_BEGIN_NAMESPACE
 
-AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
+AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
-    _atlasNode {std::move(atlas_node)},
     _atlasRect {atlas_rect},
-    _hitTestData {std::move(hit_data)}
+    _hitTestData {std::move(hit_data)},
+    _meshData {std::move(mesh_data)},
+    _atlasAllocation {std::move(atlas_allocation)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_atlasAllocation) {
+        _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
+    }
+}
+
+AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
+    Sprite(other._sprMngr, other._size, other._offset),
+    _atlas {other._atlas},
+    _atlasRect {other._atlasRect},
+    _hitTestData {std::move(other._hitTestData)},
+    _meshData {std::move(other._meshData)},
+    _atlasAllocation {std::move(other._atlasAllocation)}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _drawEffect = other._drawEffect;
+    other._drawEffect = nullptr;
+    other._atlas = nullptr;
+
+    if (_atlasAllocation) {
+        _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
+    }
 }
 
 AtlasSprite::~AtlasSprite()
@@ -57,13 +81,13 @@ AtlasSprite::~AtlasSprite()
             const auto rnd_color = ucolor {numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255))};
 
             vector<ucolor> color_data;
-            color_data.resize(_atlasNode->Size.square());
+            color_data.resize(_atlasAllocation->GetSize().square());
 
             for (size_t i = 0; i < color_data.size(); i++) {
                 color_data[i] = rnd_color;
             }
 
-            _atlas->_mainTex->UpdateTextureRegion(_atlasNode->Pos, _atlasNode->Size, color_data);
+            _atlas->_mainTex->UpdateTextureRegion(_atlasAllocation->GetPosition(), _atlasAllocation->GetSize(), color_data);
         }
         catch (...) {
         }
@@ -105,6 +129,59 @@ auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
 auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_meshData) {
+        const auto& mesh = *_meshData;
+
+        if (mesh.Indices.empty()) {
+            return 0;
+        }
+
+        dbuf->CheckAllocBuf(mesh.Vertices.size(), mesh.Indices.size());
+
+        auto& vbuf = dbuf->Vertices;
+        size_t& vpos = dbuf->VertCount;
+        auto& ibuf = dbuf->Indices;
+        size_t& ipos = dbuf->IndCount;
+        size_t base_vpos = vpos;
+        float32_t width = numeric_cast<float32_t>(_size.width);
+        float32_t height = numeric_cast<float32_t>(_size.height);
+        ucolor color_left = std::get<0>(colors);
+        ucolor color_right = std::get<1>(colors);
+        uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
+
+        for (ipos32 local_pos : mesh.Vertices) {
+            float32_t nx = numeric_cast<float32_t>(local_pos.x) / width;
+            float32_t ny = numeric_cast<float32_t>(local_pos.y) / height;
+            int32_t source_x = std::clamp(local_pos.x + mesh.SourceOffset.x, 0, mesh.SourceSize.width);
+            uint32_t color_x = numeric_cast<uint32_t>(source_x);
+            auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
+                uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
+                return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
+            };
+            auto& vertex = vbuf[vpos++];
+
+            vertex.PosX = pos.x + pos.width * nx;
+            vertex.PosY = pos.y + pos.height * ny;
+            vertex.PosZ = 0.0f;
+            vertex.TexU = _atlasRect.x + _atlasRect.width * nx;
+            vertex.TexV = _atlasRect.y + _atlasRect.height * ny;
+            vertex.EggFlags[0] = 0.0f;
+            vertex.EggFlags[1] = 0.0f;
+            vertex.Color = {
+                interpolate_component(color_left.comp.r, color_right.comp.r),
+                interpolate_component(color_left.comp.g, color_right.comp.g),
+                interpolate_component(color_left.comp.b, color_right.comp.b),
+                interpolate_component(color_left.comp.a, color_right.comp.a),
+            };
+        }
+
+        for (uint16_t local_index : mesh.Indices) {
+            ibuf[ipos++] = numeric_cast<vindex_t>(base_vpos + local_index);
+        }
+
+        return mesh.Indices.size();
+    }
 
     dbuf->CheckAllocBuf(4, 6);
 
@@ -428,108 +505,65 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         return nullptr;
     }
 
-    auto reader = file.GetReader();
+    SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
+    FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Sprite resource has no sprite animation info", path);
+    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
+    FO_VERIFY_AND_THROW(direction_count == 1 || direction_count == GameSettings::MAP_DIR_COUNT, "Sprite file direction count is unsupported", direction_count, GameSettings::MAP_DIR_COUNT);
 
-    uint8_t check_number = reader.GetUInt8();
-    FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
-    uint16_t frames_count = reader.GetLEUInt16();
-    FO_VERIFY_AND_THROW(frames_count != 0, "Sprite file contains no frames", frames_count);
-    uint16_t ticks = reader.GetLEUInt16();
-    uint8_t dirs = reader.GetUInt8();
-    FO_VERIFY_AND_THROW(dirs != 0, "Sprite file direction count is zero", dirs);
+    shared_ptr<Sprite> result;
 
-    if (frames_count > 1 || dirs > 1) {
-        auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
+    if (sprite_info.FrameCount > 1 || direction_count > 1) {
+        auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
 
-        for (uint8_t i = 0; i < dirs; i++) {
+        for (uint8_t i = 0; i < direction_count; i++) {
             mdir dir = hdir(i);
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
-            int16_t ox = reader.GetLEInt16();
-            int16_t oy = reader.GetLEInt16();
+            SpriteResourceDirectionData& direction = resource.Directions[i];
 
-            dir_anim->_offset.x = ox;
-            dir_anim->_offset.y = oy;
+            for (uint16_t j = 0; j < sprite_info.FrameCount; j++) {
+                SpriteResourceFrameData& frame = direction.Frames[j];
 
-            for (uint16_t j = 0; j < frames_count; j++) {
-                uint8_t is_spr_ref = reader.GetUInt8();
-
-                if (is_spr_ref == 0) {
-                    uint16_t width = reader.GetLEUInt16();
-                    uint16_t height = reader.GetLEUInt16();
-                    int16_t nx = reader.GetLEInt16();
-                    int16_t ny = reader.GetLEInt16();
-
-                    auto pixel_count = numeric_cast<size_t>(width) * height;
-                    vector<ucolor> pixels(pixel_count);
-                    auto pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
-                    MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
-                    reader.GoForward(pixel_data.size());
-
-                    dir_anim->_sprOffset[j].x = nx;
-                    dir_anim->_sprOffset[j].y = ny;
-
-                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
+                if (!frame.SharedFrameIndex.has_value()) {
+                    dir_anim->_sprOffset[j] = frame.NextOffset;
+                    auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
 
                     if (j == 0) {
-                        dir_anim->_size.width = width;
-                        dir_anim->_size.height = height;
+                        dir_anim->_size = frame.Size;
+                        dir_anim->_offset = frame.Offset;
                     }
 
                     dir_anim->_spr[j] = std::move(spr);
                 }
                 else {
-                    uint16_t index = reader.GetLEUInt16();
-
+                    uint16_t index = *frame.SharedFrameIndex;
                     dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
                     dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
                 }
             }
         }
 
-        uint8_t check_number2 = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
-
-        return anim;
+        result = std::move(anim);
     }
     else {
-        int16_t ox = reader.GetLEInt16();
-        int16_t oy = reader.GetLEInt16();
-
-        uint8_t is_spr_ref = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(is_spr_ref == 0, "Sprite file contains unsupported SPR reference record", is_spr_ref);
-
-        uint16_t width = reader.GetLEUInt16();
-        uint16_t height = reader.GetLEUInt16();
-        int16_t nx = reader.GetLEInt16();
-        int16_t ny = reader.GetLEInt16();
-
-        ignore_unused(nx);
-        ignore_unused(ny);
-
-        auto pixel_count = numeric_cast<size_t>(width) * height;
-        vector<ucolor> pixels(pixel_count);
-        const_span<uint8_t> pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
-        MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
-        reader.GoForward(pixel_data.size());
-
-        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
-
-        uint8_t check_number2 = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
-
-        return spr;
+        SpriteResourceDirectionData& direction = resource.Directions.front();
+        SpriteResourceFrameData& frame = direction.Frames.front();
+        FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame sprite resource cannot contain a shared-frame reference");
+        result = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
     }
+
+    return result;
 }
 
-auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels) -> shared_ptr<AtlasSprite>
+auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(size.width > 0, "Atlas sprite width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Atlas sprite height must be positive", size.height);
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
+    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
 
     vector<bool> hit_test_data;
 
@@ -582,7 +616,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
-    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_node), atlas_rect, std::move(hit_test_data));
+    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
 }
 
 FO_END_NAMESPACE
