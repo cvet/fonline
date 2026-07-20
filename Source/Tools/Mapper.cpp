@@ -6894,7 +6894,7 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
         line_begin = line_end + 1;
     }
 
-    // Anchors own themselves and set the [/X] context; the anchor identity is its $Name or the file stem
+    // Anchors own themselves and set the [$Name/X] context; the anchor identity is its $Name or the file stem
     const auto resolve_anchor_name = [&](const FomapSectionRange& range) -> string {
         size_t anchor_line_begin = range.Start;
 
