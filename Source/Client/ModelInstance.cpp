@@ -699,6 +699,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
     }
 
+    if (_bodyAnimController && anim_index >= 0) {
+        _playOnceAnimPlaying = IsEnumSet(flags, ModelAnimFlags::PlayOnce);
+    }
+
     RefreshMoveAnimation();
 
     if (_bodyAnimController && anim_index >= 0) {
@@ -810,6 +814,22 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
     if (!_isStayingPose) {
+        return;
+    }
+
+    // A one-shot body animation owns the whole skeleton while the critter
+    // stands still: release the movement-layer leg override (idle/turn on
+    // LegBones) until it finishes, otherwise full-body clips play only above
+    // the waist. Movement keeps the leg layer as usual.
+    if (!_isMoving && _playOnceAnimPlaying) {
+        if (_curMovingAnimIndex != -1) {
+            _moveAnimController->ResetEvents();
+            _moveAnimController->SetTrackEnable(_curMoveTrack, false);
+            _curMovingAnim = CritterActionAnim::None;
+            _curMovingAnimIndex = -1;
+        }
+
+        _turnAnimPlaying = false;
         return;
     }
 

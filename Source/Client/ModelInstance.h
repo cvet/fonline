@@ -241,6 +241,7 @@ private:
     int32_t _curMovingAnimIndex {-1};
     CritterActionAnim _curMovingAnim {};
     bool _turnAnimPlaying {};
+    bool _playOnceAnimPlaying {};
     int32_t _curMoveTrack {};
     float32_t _movingSpeedFactor {};
     bool _isRunning {};
