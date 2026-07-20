@@ -2136,7 +2136,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                 throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
             }
 
-            MutableDataReader reader(data);
+            DataReader reader(data);
             RemoteCallReadStorage storage;
             list<ManagedArrayBridgeData> array_bridges;
             list<refcount_ptr<DynamicRefTypeInstance>> ref_instances;

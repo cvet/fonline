@@ -77,7 +77,7 @@ void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDe
     }
 }
 
-auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>
+auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -101,7 +101,7 @@ auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& type, c
     else if (type.IsString) {
         const auto str_len = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
-        const nptr<char> s = reader.ReadPtr<char>(str_len);
+        const nptr<const char> s = reader.ReadPtr<char>(str_len);
         return storage.StoreString(string(s.get(), str_len));
     }
     else if (type.IsHashedString) {
@@ -110,7 +110,7 @@ auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& type, c
     }
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
-        const nptr<uint8_t> raw_data = reader.ReadPtr<uint8_t>(raw_size);
+        const nptr<const uint8_t> raw_data = reader.ReadPtr<uint8_t>(raw_size);
         return hooks.RawToRefType(type, {raw_data.get(), raw_size});
     }
     else if (type.IsStruct) {

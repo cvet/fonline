@@ -693,9 +693,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                             as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
 
                             if (call.Accessor->GetBackendIndex() == ScriptSystemBackend::MANAGED_BACKEND_INDEX) {
-                                call.RetValueOwner.Reset([as_engine, as_ret_type, ret_obj]() mutable noexcept {
-                                    as_engine->ReleaseScriptObject(ret_obj.get_no_const(), as_ret_type.get());
-                                });
+                                call.RetValueOwner.Reset([as_engine, as_ret_type, ret_obj]() mutable noexcept { as_engine->ReleaseScriptObject(ret_obj.get_no_const(), as_ret_type.get()); });
                             }
                         }
                     }

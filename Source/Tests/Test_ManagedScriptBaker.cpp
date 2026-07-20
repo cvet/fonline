@@ -456,7 +456,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static List<mpos> TraceHexLine") != string::npos);
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"TraceHexLine\",") != string::npos);
     CHECK(server_entities.find("return (List<mpos>)__result;") != string::npos);
-    CHECK(server_entities.find("public static void DestroyEntities(List<ident> ids)") != string::npos);
+    CHECK(server_entities.find("public static void DestroyEntities(List<Entity> entities)") != string::npos);
+    CHECK(server_entities.find("public static void DestroyEntities(List<ident> ids)") == string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"DestroyEntities\",") != string::npos);
     CHECK(server_entities.find("public static void Destroy<T>(T? entity) where T : Entity") != string::npos);
     CHECK(server_entities.find("public static void Destroy<T>(System.Collections.Generic.List<T>? entities) where T : Entity") != string::npos);

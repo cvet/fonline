@@ -33,11 +33,11 @@
 
 #include "ProtoBaker.h"
 #include "AngelScriptScripting.h"
-#include "ManagedScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "EntityProtos.h"
+#include "ManagedScripting.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE

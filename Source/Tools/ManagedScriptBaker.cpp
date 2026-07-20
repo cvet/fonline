@@ -165,7 +165,7 @@ static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_o
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition);
 
 ManagedScriptBaker::ManagedScriptBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 }
