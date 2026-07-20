@@ -1,0 +1,11 @@
+*               text=auto
+
+*.cs            text eol=crlf
+*.bat           text eol=crlf
+
+*.cpp           text eol=lf
+*.h             text eol=lf
+*.sh            text eol=lf
+
+*.md            text eol=lf
+CMakeLists.txt  text eol=lf
