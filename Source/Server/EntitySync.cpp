@@ -740,7 +740,16 @@ static void RollbackOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t c
     FO_NO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < count; i++) {
-        if (i != skip_index) {
+        if (i != skip_index && ops[i].second) {
+            ReleaseOp(ops[i]);
+        }
+    }
+
+    // Every descendant mark must outlive every exclusive descendant acquired by the partial pass.
+    // Releasing mixed address-ordered operations in one pass could otherwise expose an ancestor while
+    // this thread still owned a descendant that happened to sort later.
+    for (size_t i = 0; i < count; i++) {
+        if (i != skip_index && !ops[i].second) {
             ReleaseOp(ops[i]);
         }
     }
@@ -1521,12 +1530,16 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
             break; // full union held
         }
 
-        // Roll the partial pass back to zero — including the kept park grant (skipped by the
-        // rollback regardless of its position, so exactly one release) — the park below must hold
-        // NOTHING.
+        // Roll the partial pass back to zero — including the kept park grant (skipped by RollbackOps,
+        // so exactly one separate release) — the park below must hold NOTHING. All exclusive holds
+        // are released before any descendant mark, including the separately held park grant.
+        if (parked_index != std::numeric_limits<size_t>::max() && ops[parked_index].second) {
+            ReleaseOp(ops[parked_index]);
+        }
+
         RollbackOps(ops, acquired, parked_index);
 
-        if (parked_index != std::numeric_limits<size_t>::max()) {
+        if (parked_index != std::numeric_limits<size_t>::max() && !ops[parked_index].second) {
             ReleaseOp(ops[parked_index]);
         }
 
