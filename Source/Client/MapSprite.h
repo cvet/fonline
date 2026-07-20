@@ -198,7 +198,7 @@ public:
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
 
-    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
+    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
 
 private:
     void GrowPool() noexcept;
