@@ -141,12 +141,11 @@ public:
 	// See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
 	int  GetStackAlignmentDWords(bool isInlineValue) const;
 	// (FOnline Patch) Alignment-aware call-argument layout. Size of this parameter's slot in a call argument
-	// block, in DWORDs. On 64-bit targets every argument slot is rounded up to an even DWORD count, so each
-	// argument starts on an 8-byte-aligned stack position (pointers/handles/references and 8-byte primitives
-	// are then always aligned, and stacked argument blocks preserve the frame's 8-byte parity). On 32-bit
-	// targets this returns GetSizeOnStackDWords() unchanged, keeping the historical dense packing. Shared by
-	// the compiler (argument push/fixup offsets, callee parameter offsets), the VM (argument access, cleanup),
-	// asCGeneric/asCContext argument accessors, the native marshallers, and the bytecode serializer.
+	// block, in DWORDs. The pointer-carried part keeps the platform pointer size, while the by-value part is
+	// rounded up to an even DWORD count. Shared by the compiler (argument push/fixup offsets, callee parameter
+	// offsets), the VM (argument access, cleanup), asCGeneric/asCContext argument accessors, the native
+	// marshallers, and the bytecode serializer. Native x86 calls compact the padded value slots back to the
+	// platform ABI's dense argument block before dispatch.
 	int  GetArgSlotSizeOnStackDWords() const;
 
 	void SetTokenType(eTokenType tt)         {tokenType = tt;}

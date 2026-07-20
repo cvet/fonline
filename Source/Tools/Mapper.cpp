@@ -32,13 +32,13 @@
 //
 
 #include "Mapper.h"
-#include "3dStuff.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
+#include "ModelSprites.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
@@ -539,7 +539,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes, this, this));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
 
     ResMngr.IndexFiles();
@@ -5085,7 +5085,7 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
     // First merge to modified items
     for (ptr<ItemHexView> item : copy_hold_ref(map->GetItems())) {
         if (!item->IsDestroyed() && item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
-            auto ignore_props = vector<ptr<const Property>> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+            small_vector<ptr<const Property>, 2> ignore_props {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
             if (!item->GetProperties()->CompareData(*item->GetProto()->GetProperties(), ignore_props, true)) {
                 merges += CoalesceItemMultihexMesh(map, item, false);
@@ -5161,27 +5161,29 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
             continue;
         }
 
-        auto ignore_props = vector<ptr<const Property>> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+        small_vector<ptr<const Property>, 2> ignore_props {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
         auto& proto_groups = groups_by_proto[item->GetProtoId()];
-        UniqueGroup* match = nullptr;
+        nptr<UniqueGroup> match;
 
         for (auto& group : proto_groups) {
             if (group.survivor->GetProperties()->CompareData(*item->GetProperties(), ignore_props, true)) {
-                match = &group;
+                match = make_nptr(&group);
                 break;
             }
         }
 
-        if (match == nullptr) {
-            proto_groups.emplace_back(UniqueGroup {item, {}});
-        }
-        else if (item->GetId() < match->survivor->GetId()) {
-            // Keep the lowest id as the survivor (the original always merges into the lower id).
-            match->to_merge.emplace_back(match->survivor);
-            match->survivor = item;
+        if (match) {
+            if (item->GetId() < match->survivor->GetId()) {
+                // Keep the lowest id as the survivor (the original always merges into the lower id).
+                match->to_merge.emplace_back(match->survivor);
+                match->survivor = item;
+            }
+            else {
+                match->to_merge.emplace_back(item);
+            }
         }
         else {
-            match->to_merge.emplace_back(item);
+            proto_groups.emplace_back(UniqueGroup {item, {}});
         }
     }
 
@@ -5329,7 +5331,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
         }
     };
 
-    auto ignore_props = vector<ptr<const Property>> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+    small_vector<ptr<const Property>, 2> ignore_props {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
     rebuild();
 
@@ -5591,7 +5593,7 @@ auto MapperEngine::CompareMultihexItemForMerge(ptr<const ItemHexView> source_ite
     }
 
     // Our data is not modified (same as in proto)
-    auto ignore_props = vector<ptr<const Property>> {source_item->GetPropertyHex(), source_item->GetPropertyMultihexMesh()};
+    small_vector<ptr<const Property>, 2> ignore_props {source_item->GetPropertyHex(), source_item->GetPropertyMultihexMesh()};
 
     if (allow_clean_merge) {
         if (source_item->GetProperties()->CompareData(*source_item->GetProto()->GetProperties(), ignore_props, true)) {

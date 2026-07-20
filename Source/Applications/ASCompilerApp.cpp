@@ -93,6 +93,7 @@ int main(int argc, char** argv)
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);
@@ -154,6 +155,7 @@ int main(int argc, char** argv)
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);

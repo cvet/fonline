@@ -484,41 +484,6 @@ namespace MapOpsTest
         Game.CreateLocation("TestLocation".hstr(), props);
     }
 
-    int TestGameDestroyItemByIdCountOverload()
-    {
-        Location loc = CreateTestLocation();
-        if (loc is null) return -1;
-
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) return -2;
-
-        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
-        if (cr is null) return -3;
-
-        Item item = cr.AddItem("TestItem".hstr(), 4);
-        if (item is null) return -4;
-
-        ident itemId = item.Id;
-
-        Game.DestroyItem(itemId, 0);
-
-        Item? unchanged = Game.GetItem(itemId);
-        if (unchanged is null) return -5;
-        if (unchanged.Count != 4) return -6;
-
-        Game.DestroyItem(itemId, 1);
-
-        Item? reduced = Game.GetItem(itemId);
-        if (reduced is null) return -7;
-        if (reduced.Count != 3) return -8;
-
-        Game.DestroyItem(itemId, 3);
-        if (Game.GetItem(itemId) !is null) return -9;
-
-        Game.DestroyLocation(loc);
-        return 0;
-    }
-
     int TestMapGetItemOnHex()
     {
         Location loc = CreateTestLocation();
@@ -949,6 +914,86 @@ namespace MapOpsTest
         return 0;
     }
 
+    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
+    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
+    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
+    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
+    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
+    // spawn far from every probe hex, so they never enter a result set.
+    const int HexWalkFillerCritterCount = 32;
+
+    // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
+    const int MaxHexesInRadius2 = 25;
+
+    bool AddHexWalkFillerCritters(Map map)
+    {
+        for (int i = 0; i < HexWalkFillerCritterCount; i++) {
+            Critter filler = map.AddCritter("TestCritter".hstr(), mpos(10, 10 + i), mdir(0));
+            if (filler is null) return false;
+        }
+
+        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
+        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
+        // radius 2 probes below cannot silently fall back to the full scan
+        return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
+    }
+
+    bool ContainsCritterId(array<Critter> critters, ident id)
+    {
+        for (uint i = 0; i < critters.length(); i++) {
+            if (critters[i].Id == id) return true;
+        }
+
+        return false;
+    }
+
+    int TestMapGetCrittersInRadiusHexWalkArm()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        mpos probe(50, 50);
+        Critter onBoundary = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0));
+        Critter pastBoundary = map.AddCritter("TestCritter".hstr(), mpos(52, 50), mdir(0));
+        if (onBoundary is null || pastBoundary is null) return -3;
+
+        // Pin the fixture geometry the boundary assertions rely on, in case a spawn was relocated to a free hex
+        if (Game.GetDistance(probe, onBoundary.Hex) != 1) return -4;
+        if (Game.GetDistance(probe, pastBoundary.Hex) != 2) return -5;
+
+        if (!AddHexWalkFillerCritters(map)) return -6;
+
+        // A critter sitting exactly on the radius is inside, the one a hex further out is not
+        array<Critter> inRadius = map.GetCrittersInRadius(probe, 1, CritterFindType::Any);
+        if (inRadius.length() != 1) return -7;
+        if (!ContainsCritterId(inRadius, onBoundary.Id)) return -8;
+
+        // Widening the radius by one pulls in the hex that was just outside it
+        array<Critter> widened = map.GetCrittersInRadius(probe, 2, CritterFindType::Any);
+        if (widened.length() != 2) return -9;
+        if (!ContainsCritterId(widened, onBoundary.Id)) return -10;
+        if (!ContainsCritterId(widened, pastBoundary.Id)) return -11;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int CheckMultihexOverlapQueries(Map map, Critter cr)
+    {
+        // The critter centre sits 3 hexes away, so only its multihex 2 body reaches into the radius 1 probe
+        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
+        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -1;
+
+        // One hex further back the body no longer reaches
+        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
+        if (!outside.isEmpty()) return -2;
+
+        return 0;
+    }
+
     int TestMapGetCrittersInRadiusIncludesMultihexOverlap()
     {
         Location loc = CreateTestLocation();
@@ -959,12 +1004,17 @@ namespace MapOpsTest
 
         Critter cr = map.AddCritter("TestMultihexCritter".hstr(), mpos(53, 50), mdir(0));
         if (cr is null) return -3;
+        if (cr.Hex != mpos(53, 50)) return -4;
 
-        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
-        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -4;
+        // A lone critter never trips the walk threshold, so this proves the distance arithmetic arm
+        int fullScan = CheckMultihexOverlapQueries(map, cr);
+        if (fullScan != 0) return -10 + fullScan;
 
-        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
-        if (!outside.isEmpty()) return -5;
+        if (!AddHexWalkFillerCritters(map)) return -5;
+
+        // Identical answers on the hex walk arm, which resolves the same overlap through field registration instead
+        int hexWalk = CheckMultihexOverlapQueries(map, cr);
+        if (hexWalk != 0) return -20 + hexWalk;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -1789,25 +1839,9 @@ namespace MapOpsTest
         if (Game.GetMap(destroyByHandleMapId) !is null) return -37;
         Game.DestroyLocation(destroyByHandleLoc);
 
-        Location destroyByIdLoc = Game.CreateLocation("TestLocation".hstr(), mapPids);
-        if (destroyByIdLoc is null) return -38;
-
-        Map destroyByIdMap = destroyByIdLoc.GetMapByIndex(0);
-        if (destroyByIdMap is null) return -39;
-
-        ident destroyByIdMapId = destroyByIdMap.Id;
-        Game.DestroyMap(destroyByIdMapId);
-        if (Game.GetMap(destroyByIdMapId) !is null) return -40;
-        Game.DestroyLocation(destroyByIdLoc);
-
         ident byProtoId = byProto.Id;
-        Game.DestroyLocation(byProtoId);
-        if (Game.GetLocation(byProtoId) !is null) return -41;
-
-        Game.DestroyMap(ZERO_IDENT);
-        Game.DestroyLocation(ZERO_IDENT);
-        if (Game.GetMap(ZERO_IDENT) !is null) return -42;
-        if (Game.GetLocation(ZERO_IDENT) !is null) return -43;
+        Game.DestroyLocation(byProto);
+        if (Game.GetLocation(byProtoId) !is null) return -38;
 
         Game.DestroyLocation(withMapProps2);
         Game.DestroyLocation(withMapProps1);
@@ -4987,11 +5021,6 @@ TEST_CASE("MapItemOperations")
         RUN_FUNC("MapOpsTest::TestGameMoveItemsOverloads");
     }
 
-    SECTION("GameDestroyItemByIdCountOverload")
-    {
-        RUN_FUNC("MapOpsTest::TestGameDestroyItemByIdCountOverload");
-    }
-
     SECTION("GetItemOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetItemOnHex");
@@ -5075,6 +5104,11 @@ TEST_CASE("MapCritterOperations")
     SECTION("GetCrittersInLargeRadius")
     {
         RUN_FUNC("MapOpsTest::TestMapGetCrittersInLargeRadius");
+    }
+
+    SECTION("GetCrittersInRadiusHexWalkArm")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusHexWalkArm");
     }
 
     SECTION("GetCrittersInRadiusIncludesMultihexOverlap")

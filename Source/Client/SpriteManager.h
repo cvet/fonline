@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Geometry.h"
@@ -78,16 +77,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto GetOffset() const noexcept -> ipos32 { return _offset; }
-    [[nodiscard]] auto GetDrawEffectOr(ptr<RenderEffect> defaultEffect) const noexcept -> ptr<RenderEffect>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        if (_drawEffect) {
-            return _drawEffect;
-        }
-
-        return defaultEffect;
-    }
+    [[nodiscard]] auto GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>;
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTexture() const -> nptr<const RenderTexture> { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
@@ -257,6 +247,8 @@ private:
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
+    void QueueSpriteWireframe(size_t start_index, size_t index_count);
+    void DrawSpriteWireframe();
 
     ptr<RenderSettings> _settings;
     ptr<IAppWindow> _window;
@@ -280,6 +272,7 @@ private:
 
     vector<DipData> _dipQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};
+    vector<Vertex2D> _spriteWireframeVertices {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf;
     unique_ptr<RenderDrawBuffer> _primitiveDrawBuf;
     unique_ptr<RenderDrawBuffer> _flushDrawBuf;

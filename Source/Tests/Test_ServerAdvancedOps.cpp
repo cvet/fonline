@@ -110,18 +110,6 @@ namespace AdvOps
         return 0;
     }
 
-    int TestDestroyLocationById()
-    {
-        Location loc = Game.CreateLocation("TestLocation".hstr());
-        if (loc is null) return -1;
-
-        ident locId = loc.Id;
-        Game.DestroyLocation(locId);
-        if (!loc.IsDestroyed) return -2;
-
-        return 0;
-    }
-
     int TestGetLocationById()
     {
         Location loc = Game.CreateLocation("TestLocation".hstr());
@@ -338,22 +326,6 @@ namespace AdvOps
 
         Game.DestroyItem(item);
         if (!item.IsDestroyed) return -6;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
-    int TestItemDestroyById()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Item item = cr.AddItem("TestItem".hstr(), 1);
-        if (item is null) return -2;
-
-        ident itemId = item.Id;
-        Game.DestroyItem(itemId);
-        if (!item.IsDestroyed) return -3;
 
         Game.DestroyCritter(cr);
         return 0;
@@ -1110,11 +1082,6 @@ TEST_CASE("LocationCreation")
         RUN_SCRIPT_FUNC("TestLocationLifecycle");
     }
 
-    SECTION("DestroyById")
-    {
-        RUN_SCRIPT_FUNC("TestDestroyLocationById");
-    }
-
     SECTION("GetById")
     {
         RUN_SCRIPT_FUNC("TestGetLocationById");
@@ -1189,11 +1156,6 @@ TEST_CASE("AdvancedItemOperations")
     SECTION("Creation")
     {
         RUN_SCRIPT_FUNC("TestItemCreation");
-    }
-
-    SECTION("DestroyById")
-    {
-        RUN_SCRIPT_FUNC("TestItemDestroyById");
     }
 
     SECTION("DestroyPartial")

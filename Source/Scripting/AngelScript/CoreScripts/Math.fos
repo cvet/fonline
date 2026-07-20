@@ -149,6 +149,27 @@ fpos Lerp(fpos v1, fpos v2, float t)
     return fpos(LerpF(v1.x, v2.x, t), LerpF(v1.y, v2.y, t));
 }
 
+// Signed shortest difference between two directions in degrees, wrapped to [-180, 180]
+float AngleDelta(float from, float to)
+{
+    float delta = to - from;
+
+    while (delta > 180.0) {
+        delta -= 360.0;
+    }
+    while (delta < -180.0) {
+        delta += 360.0;
+    }
+
+    return delta;
+}
+
+// Middle of the smaller arc between two directions in degrees
+float AngleBisect(float a, float b)
+{
+    return a + AngleDelta(a, b) * 0.5;
+}
+
 float MoveTowards(float current, float target, float step)
 {
     float delta = target - current;
