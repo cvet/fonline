@@ -52,10 +52,6 @@ class ServerEntity;
 // (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there.
 [[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 
-// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
-// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
-// sync context (script/job execution) and throws if there is none.
-
 class EntityLock final
 {
 public:
@@ -73,7 +69,7 @@ public:
     // count), or 0 if it is not the exclusive owner. Used by the globally-ordered escalation in
     // `SyncContext::AcquireLocks` to release a parent-held lock down to zero and re-acquire it the
     // same number of times, restoring the parent context's recursion bookkeeping exactly.
-    [[nodiscard]] auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
+    auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
 
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
     // `_recursionCount`. Blocks until no shared holders and no other exclusive owner remain.
@@ -110,7 +106,7 @@ public:
     // Number of descendant-holds the calling thread currently has on this lock (0 if none). Mirrors
     // GetExclusiveRecursionForCurrentThread: lets the globally-ordered escalation release a marked
     // ancestor down to zero and re-mark it the same number of times, restoring intention bookkeeping.
-    [[nodiscard]] auto GetDescendantHoldCountForCurrentThread() const noexcept -> int32_t;
+    auto GetDescendantHoldCountForCurrentThread() const noexcept -> int32_t;
 
     // Marks this lock as shutting down and force-aborts every parked waiter. Each `WaitEntry`'s
     // state atomic CAS-flips from "waiting" to "aborted", then `notify_one` wakes its single
@@ -118,6 +114,16 @@ public:
     // future `Acquire` so a tick that fires after shutdown started can't deadlock on the empty
     // owner field. `Server::Shutdown` walks every entity once and calls this on each lock.
     void AbortPendingWaiters() noexcept;
+
+    // Internal state-mutex handles plus a single Ensure operation split into a read-only
+    // compatibility check and a no-throw ownership commit. SyncContext's one-shot multi-op Ensure
+    // transaction and lock-contention tests drive these; hold the state mutex only across the
+    // paired check/commit, never across a blocking operation.
+    void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
+    [[nodiscard]] bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
+    void UnlockStateMutex() noexcept FO_TSA_RELEASE(_mutex);
+    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
+    void CommitEnsureOp(bool is_exclusive) noexcept FO_TSA_REQUIRES(_mutex);
 
 private:
     // Which kind of acquisition a queued waiter wants. Exclusive and Shared are the classic
@@ -171,7 +177,7 @@ private:
         [[nodiscard]] auto end() noexcept { return _entries.end(); }
         [[nodiscard]] auto end() const noexcept { return _entries.end(); }
 
-        auto operator[](std::thread::id id) -> int32_t&
+        [[nodiscard]] auto operator[](std::thread::id id) -> int32_t&
         {
             if (auto it = find(id); it != _entries.end()) {
                 return it->second;
@@ -196,10 +202,10 @@ private:
     // True if a thread OTHER than `self` currently holds a descendant-mark on this lock — i.e. some
     // other thread is working inside this entity's subtree, so an exclusive Acquire here must wait.
     // Caller holds `_mutex`. Own marks (escalating up into a subtree you already hold) never block.
-    [[nodiscard]] bool HasForeignDescendantHolder(std::thread::id self) const noexcept FO_TSA_REQUIRES(_mutex);
+    bool HasForeignDescendantHolder(std::thread::id self) const noexcept FO_TSA_REQUIRES(_mutex);
     // True if an exclusive waiter is already parked ahead — a new Shared/DescendantHold request queues
     // behind it so a writer is not starved by a stream of readers/sibling marks. Caller holds `_mutex`.
-    [[nodiscard]] bool HasWaitingExclusive() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool HasWaitingExclusive() const noexcept FO_TSA_REQUIRES(_mutex);
 
     mutable mutex _mutex {};
     std::atomic<std::thread::id> _ownerThread {};
@@ -235,6 +241,10 @@ public:
     void SyncEntities(span<const nptr<ServerEntity>> entities);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
+    // Trusted creation/registration boundary. Unlike ordinary EnsureEntitySynced, this may capture
+    // an unpublished parentless entity that has no existing caller cover; the native sync boundary
+    // audit pins its exact allowed callers.
+    void EnsureFreshEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;
 
     // Singleton-lock acquisition (e.g. `Game.Lock()`). Acquires the supplied EntityLock and
@@ -247,6 +257,13 @@ public:
     void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
+    void EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
+
+    // EnsureEntitySynced's one-shot transaction over the sorted-unique op batch: every state mutex
+    // is try-locked before compatibility is checked or any ownership state is committed, so failure
+    // is genuinely non-blocking and mutation-free.
+    static auto FO_TSA_NO_ANALYSIS TryAcquireEnsureOpsAtomically(span<const pair<ptr<EntityLock>, bool>> ops) -> bool;
+
     // Acquire the exclusive cover (`locks`/`owners`) AND register the hierarchical intention marks
     // (`holds`/`hold_owners` — the cover owners' separate-lock ancestors) in ONE deadlock-free
     // ascending-address pass: exclusive locks via Acquire/TryAcquire, intention marks via
@@ -314,9 +331,10 @@ private:
     SyncContext _ctx {};
 };
 
-// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
-// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
-// sync context (script/job execution) and throws if there is none.
+// Null-tolerant own-lock retention for an entity already covered by the active script/job context.
+// Makes one non-blocking attempt and never releases/reacquires, blocks, waits, retries, yields, sleeps,
+// or obtains missing caller cover; throws when there is no active context, the entity is uncovered,
+// or the one try is contended.
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

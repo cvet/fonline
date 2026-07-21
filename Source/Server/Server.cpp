@@ -774,15 +774,29 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
     FO_STACK_TRACE_ENTRY();
 
     const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
+    ScopedSyncContext ctx;
+
+    // The connection shell is still private to CreateUnloginedPlayer here. Capture its own lock
+    // before publishing it through the session list or a worker job.
+    ctx.GetContext().EnsureFreshEntitySynced(unlogined_player);
+    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
     {
-        ScopedSyncContext ctx;
-
-        ctx.Sync(unlogined_player);
-        unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+        scoped_lock locker {_unloginedPlayersLocker};
+        _unloginedPlayers.emplace_back(unlogined_player.hold_ref());
     }
 
+    scope_fail rollback_publication {[&]() noexcept {
+        safe_call([&] {
+            scoped_lock locker {_unloginedPlayersLocker};
+            vec_remove_unique_value(_unloginedPlayers, unlogined_player.hold_ref());
+        });
+        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+    }};
+
     _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_); });
+    rollback_publication.release();
 }
 
 auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>

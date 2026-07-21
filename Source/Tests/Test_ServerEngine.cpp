@@ -99,6 +99,47 @@ namespace
         return map_data;
     }
 
+    static auto ExpectEnsureStateMutexContentionIsNonBlocking(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock) -> std::chrono::steady_clock::duration
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        std::atomic<bool> state_locked {};
+        std::atomic<bool> release_state {};
+        std::atomic<bool> ensure_finished {};
+        std::jthread state_owner {[&](std::stop_token) {
+            state_lock->LockStateMutex();
+            state_locked.store(true, std::memory_order_release);
+
+            while (!release_state.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+
+            state_lock->UnlockStateMutex();
+        }};
+        auto release_state_guard = scope_exit([&release_state]() noexcept { release_state.store(true, std::memory_order_release); });
+
+        while (!state_locked.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        std::jthread contention_watchdog {[&](std::stop_token) {
+            for (int32_t i = 0; i < 2000 && !ensure_finished.load(std::memory_order_acquire); i++) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+
+            release_state.store(true, std::memory_order_release);
+        }};
+
+        const auto ensure_begin = std::chrono::steady_clock::now();
+        CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
+        const auto ensure_elapsed = std::chrono::steady_clock::now() - ensure_begin;
+        ensure_finished.store(true, std::memory_order_release);
+        release_state.store(true, std::memory_order_release);
+        state_owner.join();
+        contention_watchdog.join();
+        return ensure_elapsed;
+    }
+
     static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
         vector<uint8_t> props_data;
@@ -494,6 +535,7 @@ namespace ServerEngineInitGateTest
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
+        server->RequireCurrentSyncContext()->SyncEntity(unlogined_player);
 
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
@@ -1312,7 +1354,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 // ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
 // tests in Test_EntitySync.cpp cannot reach this - they have no entity hierarchy
 // (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under an
-// external ServerEngine::Lock; entity registration self-syncs newly created entities.
+// external ServerEngine::Lock; trusted registration captures newly created entities before publication.
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
@@ -1335,6 +1377,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
     const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
     const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    const auto item_pid = server->Hashes.ToHashedString("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -1354,10 +1397,15 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
     auto cr_c = server->CreateCritter(critter_pid, false);
+    auto nested_item = server->ItemMngr.CreateItem(item_pid, 1, nullptr).hold_ref();
+    ptr<ServerEntity> cr_a_entity = cr_a;
+    ptr<ServerEntity> cr_b_entity = cr_b;
+    ptr<ServerEntity> nested_item_entity = nested_item.as_ptr();
 
     server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_c, map, mpos {14, 14}, mdir {}, std::nullopt);
+    server->CrMngr.AddItemToCritter(cr_a, nested_item, false);
 
     // Parent wiring (Critter._parent = Map) must be established for the cover logic.
     auto cr_a_parent = cr_a->GetParentRaw();
@@ -1369,6 +1417,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     REQUIRE(cr_a_parent == map_entity);
     REQUIRE(cr_b_parent == map_entity);
     REQUIRE(cr_c_parent == map_entity);
+    REQUIRE(nested_item->GetParentRaw() == cr_a);
 
     server->Unlock();
     locked = false;
@@ -1461,22 +1510,15 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
     ctx.Release();
 
-    // EnsureEntitySynced ALWAYS takes the entity's own lock, including under a still-empty context:
-    // a freshly registered entity is a real, uncovered lock the moment it exists, and leaving it
-    // unlocked would let a concurrent job mutate it while the creator is still initializing it.
-    // The context thereby becomes restricted — the pulled entity is covered, an unrelated sibling
-    // is not. With a singleton lock held it likewise adds the one lock and stays idempotent.
-    ctx.EnsureEntitySynced(cr_a);
-    CHECK_FALSE(ctx.IsEmpty());
-    CHECK(ctx.ValidateAccess(cr_a));
-    CHECK(IsEntityAccessValid(cr_a));
-    CHECK_FALSE(IsEntityAccessValid(cr_b));
-    ctx.Release();
+    // Ordinary EnsureEntitySynced only retains the own lock of an entity that is already covered. It never turns an
+    // empty context or an unrelated held entity into implicit synchronization.
+    CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("neither locked nor covered"));
+    CHECK(ctx.IsEmpty());
 
     ctx.LockSingleton(server->GetEntityLock());
-    ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a));
-    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("neither locked nor covered"));
+    CHECK_FALSE(ctx.ValidateAccess(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK_FALSE(IsEntityAccessValid(cr_b));
     ctx.Release();
 
@@ -1485,10 +1527,211 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(ctx.ValidateAccess(cr_a));
     ctx.EnsureEntitySynced(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
-    ctx.EnsureEntitySynced(cr_b);
-    CHECK(ctx.ValidateAccess(cr_b));
+    CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_b), Catch::Matchers::ContainsSubstring("neither locked nor covered"));
+    CHECK_FALSE(ctx.ValidateAccess(cr_b));
     CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_b));
+    ctx.Release();
+
+    // Distinct covered children can each be retained once without changing or releasing the parent cover.
+    // This is the runtime counterpart of the allowed structural-loop contract: one non-blocking attempt
+    // per newly visited entity is not a retry of the same target.
+    ctx.SyncEntity(map);
+    ctx.EnsureEntitySynced(cr_a);
+    ctx.EnsureEntitySynced(cr_b);
+    CHECK(ctx.ValidateAccess(map));
+    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(ctx.ValidateAccess(cr_b));
     CHECK(IsEntityAccessValid(cr_b));
+    const auto retained_children = ctx.GetHeldEntities();
+    CHECK(std::ranges::find(retained_children, cr_a_entity) != retained_children.end());
+    CHECK(std::ranges::find(retained_children, cr_b_entity) != retained_children.end());
+    ctx.Release();
+
+    // A successful multi-op retention commits both the nested target's exclusive lock and the
+    // intermediate ancestor mark, and Release balances both counters.
+    ctx.SyncEntity(map);
+    auto successful_item_lock = nested_item->GetEntityLock();
+    auto successful_cr_lock = cr_a->GetEntityLock();
+    REQUIRE(successful_item_lock);
+    REQUIRE(successful_cr_lock);
+    REQUIRE(successful_item_lock != successful_cr_lock);
+    CHECK(successful_item_lock->GetExclusiveRecursionForCurrentThread() == 0);
+    CHECK(successful_cr_lock->GetDescendantHoldCountForCurrentThread() == 0);
+    REQUIRE_NOTHROW(ctx.EnsureEntitySynced(nested_item));
+    CHECK(successful_item_lock->GetExclusiveRecursionForCurrentThread() == 1);
+    CHECK(successful_cr_lock->GetDescendantHoldCountForCurrentThread() == 1);
+    CHECK(ctx.ValidateAccess(map));
+    CHECK(ctx.ValidateAccess(nested_item));
+    ctx.Release();
+    CHECK(successful_item_lock->GetExclusiveRecursionForCurrentThread() == 0);
+    CHECK(successful_cr_lock->GetDescendantHoldCountForCurrentThread() == 0);
+
+    // A violated hierarchy contract must fail one non-blocking retention attempt without releasing
+    // the valid caller cover. Directly taking the child's raw lock simulates the impossible foreign
+    // contention while bypassing ancestor intention marks; the watchdog only prevents a broken
+    // blocking implementation from hanging the test forever.
+    ctx.SyncEntity(map);
+    auto cr_lock = cr_a->GetEntityLock();
+    REQUIRE(cr_lock);
+    std::atomic<bool> child_locked {};
+    std::atomic<bool> release_child {};
+    std::atomic<bool> ensure_finished {};
+    std::jthread child_owner {[&](std::stop_token) {
+        cr_lock->Acquire(NextSyncTicket());
+        child_locked.store(true, std::memory_order_release);
+
+        while (!release_child.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        cr_lock->Release();
+    }};
+
+    while (!child_locked.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+
+    std::jthread contention_watchdog {[&](std::stop_token) {
+        for (int32_t i = 0; i < 2000 && !ensure_finished.load(std::memory_order_acquire); i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {1});
+        }
+
+        release_child.store(true, std::memory_order_release);
+    }};
+    const auto ensure_begin = std::chrono::steady_clock::now();
+    CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
+    const auto ensure_elapsed = std::chrono::steady_clock::now() - ensure_begin;
+    ensure_finished.store(true, std::memory_order_release);
+    release_child.store(true, std::memory_order_release);
+    child_owner.join();
+    contention_watchdog.join();
+    CHECK(ensure_elapsed < std::chrono::milliseconds {500});
+    CHECK(ctx.ValidateAccess(map));
+    const auto retained_cover = ctx.GetHeldEntities();
+    CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
+    CHECK(std::ranges::find(retained_cover, cr_a_entity) == retained_cover.end());
+    ctx.Release();
+
+    // A busy target's internal state mutex is itself contention. Ensure must fail without waiting for
+    // the holder or changing the valid parent cover.
+    {
+        ctx.SyncEntity(map);
+        auto target_lock = cr_a->GetEntityLock();
+        REQUIRE(target_lock);
+        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, cr_a, target_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
+        CHECK(ctx.ValidateAccess(map));
+        const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
+        CHECK(std::ranges::find(cover_after_target_state_mutex_contention, map_entity) != cover_after_target_state_mutex_contention.end());
+        CHECK(std::ranges::find(cover_after_target_state_mutex_contention, cr_a_entity) == cover_after_target_state_mutex_contention.end());
+        ctx.Release();
+    }
+
+    // The same guarantee applies to an intermediate ancestor mark. Failing its state-mutex try-lock
+    // must not leave either the descendant's exclusive count or the intermediate mark incremented.
+    {
+        ctx.SyncEntity(map);
+        auto target_lock = nested_item->GetEntityLock();
+        auto intermediate_lock = cr_a->GetEntityLock();
+        REQUIRE(target_lock);
+        REQUIRE(intermediate_lock);
+        REQUIRE(target_lock != intermediate_lock);
+        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, nested_item, intermediate_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
+        CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
+        CHECK(ctx.ValidateAccess(map));
+        const auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
+        CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, map_entity) != cover_after_intermediate_state_mutex_contention.end());
+        CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, nested_item_entity) == cover_after_intermediate_state_mutex_contention.end());
+        ctx.Release();
+    }
+
+    // Deterministically contend the second address-ordered state mutex. The failed one-shot attempt
+    // must release the first state mutex it already try-locked and leave both ownership counters at zero.
+    {
+        ctx.SyncEntity(map);
+        auto target_lock = nested_item->GetEntityLock();
+        auto intermediate_lock = cr_a->GetEntityLock();
+        REQUIRE(target_lock);
+        REQUIRE(intermediate_lock);
+        REQUIRE(target_lock != intermediate_lock);
+        auto first_lock = target_lock < intermediate_lock ? target_lock : intermediate_lock;
+        auto second_lock = target_lock < intermediate_lock ? intermediate_lock : target_lock;
+        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, nested_item, second_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
+        CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
+        const bool first_state_mutex_free = first_lock->TryLockStateMutex();
+        REQUIRE(first_state_mutex_free);
+        if (first_state_mutex_free) {
+            first_lock->UnlockStateMutex();
+        }
+        CHECK(ctx.ValidateAccess(map));
+        const auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
+        CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
+        CHECK(std::ranges::find(cover_after_second_state_mutex_contention, nested_item_entity) == cover_after_second_state_mutex_contention.end());
+        ctx.Release();
+    }
+
+    // A failed multi-op atomic preflight must leave every operation unchanged.
+    // The nested item contributes its exclusive own-lock op and a descendant-mark op on its critter;
+    // raw-locking whichever sorts second proves that compatibility is checked for the complete batch
+    // before either earlier operation can be committed.
+    ctx.SyncEntity(map);
+    auto item_lock = nested_item->GetEntityLock();
+    auto nested_cr_lock = cr_a->GetEntityLock();
+    REQUIRE(item_lock);
+    REQUIRE(nested_cr_lock);
+    REQUIRE(item_lock != nested_cr_lock);
+    auto later_lock = item_lock < nested_cr_lock ? nested_cr_lock : item_lock;
+    std::atomic<bool> later_locked {};
+    std::atomic<bool> release_later {};
+    std::jthread later_owner {[&](std::stop_token) {
+        later_lock->Acquire(NextSyncTicket());
+        later_locked.store(true, std::memory_order_release);
+
+        while (!release_later.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        later_lock->Release();
+    }};
+    auto release_later_guard = scope_exit([&release_later]() noexcept { release_later.store(true, std::memory_order_release); });
+
+    while (!later_locked.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+
+    CHECK_THROWS_WITH(ctx.EnsureEntitySynced(nested_item), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
+    CHECK(item_lock->GetExclusiveRecursionForCurrentThread() == 0);
+    CHECK(nested_cr_lock->GetDescendantHoldCountForCurrentThread() == 0);
+
+    if (item_lock < nested_cr_lock) {
+        REQUIRE(item_lock->TryAcquire());
+        item_lock->Release();
+    }
+    else {
+        REQUIRE(nested_cr_lock->TryRegisterDescendantHold());
+        nested_cr_lock->UnregisterDescendantHold();
+    }
+
+    CHECK(ctx.ValidateAccess(map));
+    const auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
+    CHECK(std::ranges::find(retained_cover_after_partial_rollback, map_entity) != retained_cover_after_partial_rollback.end());
+    CHECK(std::ranges::find(retained_cover_after_partial_rollback, nested_item_entity) == retained_cover_after_partial_rollback.end());
+    release_later.store(true, std::memory_order_release);
+    later_owner.join();
+    ctx.Release();
+
+    // Fresh registration uses the dedicated trusted capture path and therefore remains safe under an
+    // otherwise empty context without weakening ordinary EnsureEntitySynced.
+    auto fresh_cr = server->CreateCritter(critter_pid, false);
+    CHECK(ctx.ValidateAccess(fresh_cr));
+    CHECK(IsEntityAccessValid(fresh_cr));
+    server->CrMngr.DestroyCritter(fresh_cr);
     ctx.Release();
 
     // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
@@ -1968,9 +2211,9 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
 
 // ============================================================================
 // Item-transfer conservation (#12 launch MT gap): concurrent MoveItem of stackable units between
-// holders must conserve the total count. ItemManager::SplitItem reads the pre-split count, then
-// CreateItem can release+re-acquire the sync cover (EnsureEntitySynced) so a concurrent split/merge
-// of the same stack lands a lost update (199/200). Red before the leaf-lock fix, green after. Mirrors
+// holders must conserve the total count. The historical ItemManager::SplitItem path read the pre-split
+// count across a cover-changing initialization boundary, so a concurrent split/merge of the same stack
+// could land a lost update (199/200). Red before the leaf-lock fix, green after. Mirrors
 // the script-stress sync_stress.concurrent_item_transfer_conserves_total. High-contention iteration
 // rather than a strict-deterministic interleave: many threads × many moves so the window is hit.
 // ============================================================================
@@ -2369,6 +2612,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         auto registrator = server->GetPropertyRegistrator("Critter");
         REQUIRE(registrator);
         auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrator, nullptr);
+        CHECK_FALSE(singleton_owned_entity->GetEntityLock());
         singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
 
         SyncContext ctx;

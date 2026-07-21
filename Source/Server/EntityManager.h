@@ -157,6 +157,7 @@ private:
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
     auto StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Document;
 
+    void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
     void RegisterEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
     void UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_db) FO_TSA_REQUIRES(_registryLock);
 

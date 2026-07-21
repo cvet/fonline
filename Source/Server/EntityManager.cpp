@@ -1090,10 +1090,13 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(player);
+    // Connection shells are covered before publication. Registration validates that caller-owned
+    // cover; it is not a trusted fresh-entity publication boundary.
+    ValidateEntityAccess(player);
 
-    const ident_t requested_id = id ? id : player->GetId();
-
+    const ident_t assigned_id = player->GetId();
+    FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
+    const ident_t requested_id = id ? id : assigned_id;
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1130,15 +1133,12 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(loc);
+    scoped_lock lock {_registryLock};
+    CaptureFreshEntity(loc);
 
-    {
-        scoped_lock lock {_registryLock};
-
-        RegisterEntity(loc);
-        const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
-        FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
-    }
+    RegisterEntity(loc);
+    const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
+    FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
 }
 
 void EntityManager::UnregisterLocation(ptr<Location> loc)
@@ -1157,15 +1157,12 @@ void EntityManager::RegisterMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(map);
+    scoped_lock lock {_registryLock};
+    CaptureFreshEntity(map);
 
-    {
-        scoped_lock lock {_registryLock};
-
-        RegisterEntity(map);
-        const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
-        FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
-    }
+    RegisterEntity(map);
+    const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
+    FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
 }
 
 void EntityManager::UnregisterMap(ptr<Map> map)
@@ -1184,15 +1181,12 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(cr);
+    scoped_lock lock {_registryLock};
+    CaptureFreshEntity(cr);
 
-    {
-        scoped_lock lock {_registryLock};
-
-        RegisterEntity(cr);
-        const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
-        FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
-    }
+    RegisterEntity(cr);
+    const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
+    FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
 }
 
 void EntityManager::UnregisterCritter(ptr<Critter> cr)
@@ -1211,15 +1205,12 @@ void EntityManager::RegisterItem(ptr<Item> item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(item);
+    scoped_lock lock {_registryLock};
+    CaptureFreshEntity(item);
 
-    {
-        scoped_lock lock {_registryLock};
-
-        RegisterEntity(item);
-        const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
-        FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
-    }
+    RegisterEntity(item);
+    const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
+    FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
 }
 
 void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
@@ -1238,14 +1229,47 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(custom_entity);
+    FO_VERIFY_AND_THROW(!custom_entity->IsDestroying(), "Cannot publish a custom entity that is being destroyed", custom_entity->GetName(), custom_entity->GetId());
+    FO_VERIFY_AND_THROW(!custom_entity->IsDestroyed(), "Cannot publish a destroyed custom entity", custom_entity->GetName(), custom_entity->GetId());
+    FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderEntry(), "Custom entity publication requires a holder entry", custom_entity->GetName(), custom_entity->GetId());
+
+    auto holder = custom_entity->GetParentRaw();
+
+    if (holder) {
+        auto holder_lock = holder->GetEntityLock();
+
+        while (!holder_lock) {
+            holder = holder->GetParentRaw();
+            FO_VERIFY_AND_THROW(holder, "Custom entity publication requires a lockable holder", custom_entity->GetName(), custom_entity->GetId());
+            holder_lock = holder->GetEntityLock();
+        }
+
+        FO_VERIFY_AND_THROW(custom_entity->GetEntityLock() == holder_lock, "Custom entity must use its nearest holder lock", custom_entity->GetName(), custom_entity->GetId());
+        FO_VERIFY_AND_THROW(holder_lock->IsLockedByCurrentThread(), "Custom entity publication requires its holder lock", custom_entity->GetName(), custom_entity->GetId());
+    }
+    else {
+        auto engine_lock = _engine->GetEntityLock();
+        FO_VERIFY_AND_THROW(custom_entity->GetEntityLock() == engine_lock, "Engine-held custom entity must use the engine lock", custom_entity->GetName(), custom_entity->GetId());
+        FO_VERIFY_AND_THROW(engine_lock->IsLockedByCurrentThread(), "Engine-held custom entity publication requires the engine lock", custom_entity->GetName(), custom_entity->GetId());
+    }
+
+    ValidateEntityAccess(custom_entity);
 
     scoped_lock lock {_registryLock};
 
     RegisterEntity(custom_entity);
-    auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
-    const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
-    FO_STRONG_ASSERT(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
+
+    try {
+        auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
+        const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
+        FO_STRONG_ASSERT(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
+    }
+    catch (...) {
+        const auto entity_it = _allEntities.find(custom_entity->GetId());
+        FO_STRONG_ASSERT(entity_it != _allEntities.end() && entity_it->second == custom_entity, "Custom entity global registration cannot be rolled back", custom_entity->GetTypeName(), custom_entity->GetId());
+        _allEntities.erase(entity_it);
+        throw;
+    }
 }
 
 void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool delete_from_db)
@@ -1398,6 +1422,15 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
         auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
         return doc;
     }
+}
+
+void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ident_t id = entity->GetId();
+    FO_VERIFY_AND_THROW(!id || !_allEntities.contains(id), "Fresh entity is already published in the global entity registry", entity->GetTypeName(), id);
+    _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
 
 void EntityManager::RegisterEntity(ptr<ServerEntity> entity)

@@ -57,12 +57,6 @@ static constexpr int32_t MAX_SYNC_RETRIES = 128;
 // without ever parking; past it, contention is genuine and FIFO fairness matters more than latency.
 static constexpr int32_t NON_PARKING_SPIN_BUDGET = 64;
 
-// EnsureEntitySynced expansion retries. Under the no-camping protocol a covered entity's lock can be
-// contended only by microsecond-scale try-windows of other threads' non-blocking passes, so a small
-// budget with BackoffBeforeSyncRetry pacing absorbs every legitimate race; exhausting it throws and
-// can only mean corruption (see the comment at the retry loop).
-static constexpr int32_t MAX_CONTENDED_EXPANSION_ATTEMPTS = 16;
-
 // BackoffBeforeSyncRetry pacing: the first attempts only yield (the contending operation usually
 // completes within a scheduler slice), later attempts sleep 50us doubled per attempt and capped at
 // 50us << BACKOFF_MAX_SHIFT (= 3.2ms), so a longer contention window can settle without busy-spin.
@@ -491,6 +485,66 @@ auto EntityLock::TryAcquire() -> bool
     return true;
 }
 
+void EntityLock::LockStateMutex()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _mutex.lock();
+}
+
+bool EntityLock::TryLockStateMutex()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _mutex.try_lock();
+}
+
+void EntityLock::UnlockStateMutex() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _mutex.unlock();
+}
+
+bool EntityLock::IsEnsureOpCompatible(bool is_exclusive) const noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto this_thread = std::this_thread::get_id();
+    const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
+
+    if (is_exclusive) {
+        return owner_thread == this_thread || (owner_thread == std::thread::id {} && _sharedHolders.empty() && !HasForeignDescendantHolder(this_thread));
+    }
+
+    return owner_thread == this_thread || _descendantHolders.contains(this_thread) || (owner_thread == std::thread::id {} && !HasWaitingExclusive());
+}
+
+void EntityLock::CommitEnsureOp(bool is_exclusive) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto this_thread = std::this_thread::get_id();
+    const auto owner_thread = _ownerThread.load(std::memory_order_relaxed);
+
+    if (is_exclusive) {
+        if (owner_thread == this_thread) {
+            _recursionCount++;
+        }
+        else {
+            _ownerThread.store(this_thread, std::memory_order_release);
+            _recursionCount = 1;
+            TSanAcquire(this);
+        }
+    }
+    else if (owner_thread == this_thread || _descendantHolders.contains(this_thread)) {
+        _descendantHolders[this_thread]++;
+    }
+    else {
+        _descendantHolders.emplace(this_thread, 1);
+    }
+}
+
 auto EntityLock::IsLockedByCurrentThread() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -565,7 +619,8 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
 // because false is the expected answer for a deliberate foreign-entity probe.
 //
 // One pass is authoritative because the reparent contract holds the entity's own lock during any reparent
-// (MapManager::Transfer self-syncs the moving critter via EnsureEntitySynced), so while a thread holds a
+// (the script caller covers the transfer graph and MapManager::Transfer retains the already-covered
+// moving critter's own lock via EnsureEntitySynced), so while a thread holds a
 // lock covering the entity no concurrent reparent can move it out of that cover — the cover cannot flap
 // mid-walk. The former retry/verify loop (and the brief containment-sequence seqlock) existed only to
 // tolerate lock-free reparenting, which is now out of contract. The per-step coverage rule: a
@@ -695,9 +750,9 @@ static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
     }
 }
 
-// The shared non-blocking acquisition pass and its rollback, used by every retrying acquire in this
-// file (AcquireLocks stage 1, EnsureEntitySynced's expansion, AcquireLocksOrderedFair's no-camping
-// loop). An op is one recursion unit of a lock: exclusive (`TryAcquire`) or a descendant-mark
+// The shared non-blocking acquisition pass and its rollback, used by AcquireLocks stage 1 and
+// AcquireLocksOrderedFair's no-camping loop.
+// An op is one recursion unit of a lock: exclusive (`TryAcquire`) or a descendant-mark
 // (`TryRegisterDescendantHold`). `skip_index` marks an op the caller already holds (a kept park
 // grant); pass SIZE_MAX for none.
 
@@ -852,7 +907,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // Sync {cr1, cr2}, we hold cr1's and cr2's OWN locks — we do NOT collapse two siblings onto their
         // shared parent (map/location). Escalation used to do that (`Sync(cr1, cr2)` → `{map}`), but it
         // left each sibling only *covered*, not exclusively held: a concurrent worker could then transiently
-        // hold that sibling's own lock (racing an `EnsureEntitySynced` expansion into it), and a per-item
+        // hold that sibling's own lock (racing an `EnsureEntitySynced` retention attempt), and a per-item
         // operation ended up running under a coarse map lock the caller never requested — coupling
         // unrelated work and manufacturing contention out of thin air. Locking precisely the requested set
         // keeps each entity exclusively held and genuinely uncontended, and is still deadlock-free (the
@@ -1053,15 +1108,33 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         return;
     }
 
-    // The entity's own lock is ALWAYS taken here, including under a still-empty context. A freshly
-    // registered/created entity is a real, uncovered lock the moment it exists; leaving it unlocked
-    // let another worker legitimately Sync it (its content's time events, a peer job) and mutate its
-    // properties while the creating thread was still initializing it uncovered — the CreateLocation
-    // Properties data race. Taking the lock makes the creator hold its fresh subtree exclusively for
-    // the rest of the job, so those concurrent jobs queue until it is done. Consequence: a job that
-    // creates and registers an entity thereby becomes restricted (its later accesses are validated
-    // against the held set), so a former empty-context path that touches an *unrelated* entity after
-    // a create must Sync that entity explicitly.
+    if (!IsEntityAccessValid(entity, true)) {
+        throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered — its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
+    }
+
+    EnsureEntitySyncedImpl(entity);
+}
+
+void SyncContext::EnsureFreshEntitySynced(nptr<ServerEntity> entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(entity, "Fresh entity capture requires a non-null entity");
+    FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Fresh entity capture cannot retain an entity that is being destroyed", entity->GetName(), entity->GetId());
+    FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Fresh entity capture cannot retain a destroyed entity", entity->GetName(), entity->GetId());
+    FO_VERIFY_AND_THROW(!entity->GetParentRaw(), "Fresh entity capture requires an unpublished parentless entity", entity->GetName(), entity->GetId());
+
+    EnsureEntitySyncedImpl(entity);
+}
+
+void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The trusted fresh-entity entry point may take a private unpublished entity's own lock under an
+    // otherwise empty context. The ordinary entry point reaches this implementation only after proving
+    // that the entity is already covered by the caller. Both paths retain the lock in this context so
+    // publication/reparenting cannot leave the native call operating on an unprotected entity.
     auto lock = entity->GetEntityLock();
 
     if (!lock) {
@@ -1070,20 +1143,20 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
 
     // Recursive ownership by another active context is not enough: this context must retain its own
     // acquisition so the lock survives when that nested/inner context releases. This also keeps
-    // repeated expansion in the same context idempotent.
+    // repeated retention in the same context idempotent.
     if (std::ranges::find(_heldLocks, lock) != _heldLocks.end() || std::ranges::find(_singletonLocks, lock) != _singletonLocks.end()) {
         return;
     }
 
-    // EnsureEntitySynced is a pure NON-BLOCKING lock EXPANSION — never a release-and-reacquire. It pulls
-    // an entity that is already covered by a lock this thread holds (a locked ancestor on its parent
-    // chain, or a locked widen-linked entity) — or a freshly created, still-parentless entity — into our
-    // own held set, so we may then reparent or mutate it while our exclusive hold keeps every other thread
-    // out. We take its own lock plus a descendant-mark on each separate-lock ancestor between it and the
-    // cover, all NON-BLOCKING (`TryAcquire` / `TryRegisterDescendantHold`) in ascending-address order, so
-    // no wait-for cycle forms even though the new lock may sit *below* locks we already hold. We never
-    // release what we already hold, so a covered entity stays covered the whole time and cannot be moved
-    // out from under us.
+    // EnsureEntitySynced is pure NON-BLOCKING own-lock RETENTION — never a release-and-reacquire. It
+    // retains an entity already covered by a lock this thread holds (a locked ancestor on its parent
+    // chain, or a locked widen-linked entity) — or, through the private trusted entry point only, a fresh
+    // still-parentless entity — in our own held set, so we may then reparent or mutate it while our exclusive
+    // hold keeps every other thread out. We take its own lock plus a descendant-mark on each separate-lock
+    // ancestor between it and the cover through one all-or-nothing state-mutex try-lock transaction in
+    // ascending-address order, so no wait-for cycle forms even though the new lock may sit *below* locks
+    // we already hold. We never release what we already hold, so a covered entity stays covered the whole
+    // time and cannot be moved out from under us.
     vector<ptr<EntityLock>> add_marks;
     vector<refcount_ptr<ServerEntity>> add_mark_owners;
 
@@ -1107,6 +1180,16 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         add_mark_owners.emplace_back(require_refcount_ptr(parent));
     }
 
+    // Finish every potentially allocating bookkeeping operation before touching a lock. Once the
+    // non-blocking acquire succeeds, recording the retained cover must be a no-throw commit; otherwise
+    // an allocation failure could leave a successfully acquired lock absent from this context's release
+    // lists. Pinning the lock owner up front also keeps the backing EntityLock alive for the whole attempt.
+    auto lock_owner = FindLockOwner(entity, lock);
+    _heldLocks.reserve(_heldLocks.size() + 1);
+    _heldLockOwners.reserve(_heldLockOwners.size() + 1);
+    _heldDescendantHolds.reserve(_heldDescendantHolds.size() + add_marks.size());
+    _heldDescendantHoldOwners.reserve(_heldDescendantHoldOwners.size() + add_mark_owners.size());
+
     vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive
     ops.reserve(add_marks.size() + 1);
     ops.emplace_back(lock, true);
@@ -1117,7 +1200,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
 
     std::ranges::sort(ops, [](const auto& a, const auto& b) { return a.first < b.first; });
 
-    // NON-BLOCKING attempts with bounded back-off — no release, no block-acquire. Because `SyncEntities`
+    // One NON-BLOCKING attempt — no release, retry, back-off, yield, or block-acquire. Because `SyncEntities`
     // locks exactly the requested set (there is no sibling-to-parent escalation), the entity is covered by
     // an ancestor this thread holds EXCLUSIVELY, which excludes every other thread from the whole subtree —
     // so the entity's own lock and each intermediate ancestor mark are ours to take uncontended, and this
@@ -1126,43 +1209,73 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
     // the subtree would have blocked our exclusive ancestor via its root mark, an in-flight one either
     // rolls back its transient try-pass or is parked empty-handed — so a miss here can only mean the
     // entity is not actually covered (a contract violation — the caller must `Game.Sync` its subtree in
-    // advance) or a microsecond-scale try-window race. The uncovered case throws immediately; the
-    // transient case is retried in place (roll the prefix back, back off, try again) because many callers
-    // are script-initiated engine operations (DestroyCritter, Transfer) with no outer retry loop.
-    // Exhausting the budget throws rather than block-acquiring — waiting while holding the ancestor would
-    // be hold-and-wait outside the global order — and by the protocol above can only fire on corruption.
-    for (int32_t attempt = 0;; attempt++) {
-        const size_t acquired = TryAcquireOps(ops, std::numeric_limits<size_t>::max());
-
-        if (acquired == ops.size()) {
-            // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a shared/
-            // propagated lock `entity` is a child that could be reparented out mid-hold, which would free
-            // the owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
-            _heldLocks.emplace_back(lock);
-            _heldLockOwners.emplace_back(FindLockOwner(entity, lock));
-
-            for (size_t i = 0; i < add_marks.size(); i++) {
-                _heldDescendantHolds.emplace_back(add_marks[i]);
-                _heldDescendantHoldOwners.emplace_back(std::move(add_mark_owners[i]));
-            }
-
-            return;
-        }
-
-        RollbackOps(ops, acquired, std::numeric_limits<size_t>::max());
-
-        if (!IsEntityAccessValid(entity, true)) {
-            throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered — its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
-        }
-
-        if (attempt >= MAX_CONTENDED_EXPANSION_ATTEMPTS) {
-            break;
-        }
-
-        BackoffBeforeSyncRetry(attempt);
+    // advance) or a transient try-window race. Both fail immediately. An ordinary native call must
+    // propagate that failure rather than retry the same target; a script may prepare and revalidate a new
+    // invocation explicitly.
+    if (!TryAcquireEnsureOpsAtomically(ops)) {
+        throw EntitySyncException("EnsureEntitySynced: covered entity lock is contended", entity->GetName(), entity->GetId());
     }
 
-    throw EntitySyncException("EnsureEntitySynced: covered entity is persistently contended", entity->GetName(), entity->GetId());
+    // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a shared/
+    // propagated lock `entity` is a child that could be reparented out mid-hold, which would free
+    // the owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
+    _heldLocks.emplace_back(lock);
+    _heldLockOwners.emplace_back(std::move(lock_owner));
+
+    for (size_t i = 0; i < add_marks.size(); i++) {
+        _heldDescendantHolds.emplace_back(add_marks[i]);
+        _heldDescendantHoldOwners.emplace_back(std::move(add_mark_owners[i]));
+    }
+}
+
+
+auto FO_TSA_NO_ANALYSIS SyncContext::TryAcquireEnsureOpsAtomically(span<const pair<ptr<EntityLock>, bool>> ops) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 1; i < ops.size(); i++) {
+        FO_VERIFY_AND_THROW(ops[i - 1].first < ops[i].first, "Ensure acquisition operations must be sorted and unique", i);
+    }
+
+    vector<ptr<EntityLock>> state_locked;
+    state_locked.reserve(ops.size());
+
+    auto unlock_state = scope_exit([&state_locked]() FO_TSA_NO_ANALYSIS noexcept {
+        for (auto it = state_locked.rbegin(); it != state_locked.rend(); ++it) {
+            (*it)->UnlockStateMutex();
+        }
+    });
+
+    // This is the only acquisition phase: a busy internal state mutex is contention, not permission
+    // to wait. Retaining every successful try-lock until the whole batch has been checked also makes
+    // the later ownership-state commit atomic with respect to ordinary EntityLock operations.
+    for (const auto& [const_lock, is_exclusive] : ops) {
+        ignore_unused(is_exclusive);
+        auto lock = const_lock;
+
+        if (!lock->TryLockStateMutex()) {
+            return false;
+        }
+
+        state_locked.emplace_back(lock);
+    }
+
+    // Preflight the complete batch before changing a recursion counter, owner, or descendant mark.
+    for (const auto& [lock, is_exclusive] : ops) {
+        if (!lock->IsEnsureOpCompatible(is_exclusive)) {
+            return false;
+        }
+    }
+
+    // All internal state mutexes are still held and every operation is compatible. Allocation in the
+    // inline holder table follows the engine-wide terminate-on-OOM policy, so no recoverable failure
+    // can split this no-throw commit.
+    for (const auto& [const_lock, is_exclusive] : ops) {
+        auto lock = const_lock;
+        lock->CommitEnsureOp(is_exclusive);
+    }
+
+    return true;
 }
 
 void SyncContext::Release() noexcept
@@ -1186,9 +1299,7 @@ auto SyncContext::GetHeldEntities() -> vector<ptr<ServerEntity>>
     entities.reserve(_heldLockOwners.size());
 
     for (auto& owner : _heldLockOwners) {
-        if (owner->GetId()) {
-            entities.emplace_back(owner);
-        }
+        entities.emplace_back(owner);
     }
 
     return entities;
@@ -1449,8 +1560,8 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     //     then parked HOLDING that descendant until the root was released — livelocking any root-
     //     exclusive operation (location destroy) that tried to expand onto the descendant. Now the
     //     exclusive-root invariant is strict: whoever holds an entity's lock exclusively owns the
-    //     whole subtree outright, and `EnsureEntitySynced` expansions meet only bounded transient
-    //     try-windows (see its retry loop).
+    //     whole subtree outright, and `EnsureEntitySynced` either succeeds in its single transient
+    //     try-window or fails immediately without changing the caller's cover.
     // Progress: parked waiters are FIFO per lock and every re-park re-uses the operation's original
     // ticket (allocated once below), so a waiter that loses a re-try race re-enters each queue ahead
     // of later-arriving operations.
