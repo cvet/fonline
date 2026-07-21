@@ -205,10 +205,10 @@ maintaining a second client-side config parser or bounds cache.
 
 The client projects enabled animation bounds through the active base transform
 and derives their extrema for every continuous facing angle. Body plus projected
-shadow determines the active logical scratch-frame dimensions. The separate
-view bound prefers `Unarmed + Idle`, then any Idle, then a deterministic
-animation/static fallback; projecting it over all directions yields the stable
-`ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
+shadow determines both the animation-wide `DrawRect` and the active logical
+scratch-frame dimensions. The separate view bound prefers `Unarmed + Idle`,
+then any Idle, then a deterministic animation/static fallback; projecting it
+over all directions yields the stable `ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
 `(DrawWidth / 2, 3 * DrawHeight / 4)`. The view rectangle deliberately excludes
 the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
@@ -222,8 +222,12 @@ the client expands the frame and rerenders before copying; a bounded retry loop
 rejects a layout that does not converge. Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
-positioning. The idle-priority base view and aggregate lighting bounds are
-extended by the active layer/child-model tree. Left/right map-light colours are
+positioning. The active layer/child-model tree extends the idle-priority base
+view and aggregate lighting bounds. Animation switches may refresh `DrawRect`
+and the logical scratch frame, but `ViewRect` keeps using the accumulated
+model-and-layers view envelope rather than temporarily replacing it with the
+root model's smaller idle view; the name anchor therefore remains stable
+throughout turn animations. Left/right map-light colours are
 sampled at root-relative crop endpoints on that configuration envelope, so
 animation-driven scratch-size changes do not alter the light mix and wide gear
 does not clamp to a base-model endpoint colour.
