@@ -32,6 +32,7 @@
 //
 
 #include "NetworkServer.h"
+#include "NetSockets.h"
 
 #if FO_HAVE_WEB_SOCKETS
 
@@ -224,10 +225,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, net_sockets::error_text(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, net_sockets::error_text(error));
     }
 }
 
@@ -315,7 +316,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, error.message());
+            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, net_sockets::error_text(error));
             Disconnect();
         }
     }
@@ -355,6 +356,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
 
     _server.init_asio();
     _server.clear_access_channels(websocketpp::log::alevel::all);
+    _server.clear_error_channels(websocketpp::log::elevel::all);
     _server.set_access_channels(websocketpp::log::alevel::access_core);
     _server.set_open_handler([this](auto&& hdl) FO_DEFERRED { OnOpen(hdl); });
     _server.set_fail_handler([this](auto&& hdl) FO_DEFERRED { OnFail(hdl); });
@@ -364,7 +366,13 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort));
+    websocketpp::lib::error_code listen_error;
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort), listen_error);
+
+    if (listen_error) {
+        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, net_sockets::error_text(listen_error));
+    }
+
     _server.start_accept();
 
     _runThread = run_thread("Network-WebSockets", [this] { Run(); });
@@ -431,9 +439,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     const auto remote_endpoint = connection->get_remote_endpoint();
-    const auto error_message = ec.message();
-
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
+    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), net_sockets::error_text(ec));
 }
 
 template<bool Secured>
