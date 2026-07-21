@@ -284,6 +284,15 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
     return nullptr;
 }
 
+auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
+    FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
+    return factory->LoadSpriteAsQuad(path, atlas_type);
+}
+
 void SpriteManager::BeginScene()
 {
     FO_STACK_TRACE_ENTRY();

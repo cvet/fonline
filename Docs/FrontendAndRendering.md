@@ -264,6 +264,13 @@ creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
 
+Font sheets are rectangular image consumers, not drawable polygon sprites.
+`FontManager` loads both normal and bordered sheets through
+`SpriteManager::LoadSpriteAsQuad`, which uses the baked mesh metadata only to
+restore the original logical canvas before atlas upload. Loading a font sheet as
+an ordinary `AtlasSprite` would expose mesh padding/cropping dimensions to the
+authored glyph coordinates and shift every glyph UV.
+
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
 stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
 observer in constant time and marks the derived free-rectangle list dirty. The
