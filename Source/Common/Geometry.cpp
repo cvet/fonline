@@ -658,6 +658,20 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
     }
 }
 
+auto GeometryHelper::GetHexScreenRow(mpos hex) noexcept -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Row index of GetHexPos().y in MAP_HEX_LINE_HEIGHT units: hexes sharing it project to the same
+    // screen row and therefore the same ground view depth (+2X/-1Y walks along one such row)
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        return hex.y + hex.x / 2;
+    }
+    else {
+        return hex.y + hex.x;
+    }
+}
+
 auto GeometryHelper::GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
     FO_NO_STACK_TRACE_ENTRY();

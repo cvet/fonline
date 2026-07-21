@@ -613,9 +613,11 @@ serialized frame bounds. Shared animation frames continue to refer to the
 original frame and do not duplicate its offset, pixels, or geometry. The
 runtime rejects legacy or malformed blobs rather than guessing their layout.
 Consumers that sample the image as a plain rectangular texture rather than a
-sprite (`ParticleEditor` and project-side server image sampling) restore the
-cropped payload into the original logical canvas so their size and pixel-coordinate
-contracts do not change.
+sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
+restore the cropped payload into the original logical canvas so their size and
+pixel-coordinate contracts do not change. In particular, font glyph positions
+are authored against the original sheet dimensions; `SpriteManager::LoadSpriteAsQuad`
+must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.

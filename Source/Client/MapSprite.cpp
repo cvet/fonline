@@ -293,6 +293,20 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     mspr->_extraChainParent = last_spr;
 }
 
+auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Bit layout: [group 16][primary 24][secondary 16][sub-layer 8]
+    uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
+    bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
+    uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
+    uint64_t secondary = hex.x;
+    uint64_t sub_layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
+
+    return (group << 48) | (primary << 24) | (secondary << 8) | sub_layer;
+}
+
 void MapSpriteList::GrowPool() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -318,20 +332,8 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_owner = this;
     mspr->_index = static_cast<uint32_t>(_activeSprites.size());
     mspr->_globalPos = ++_globalCounter;
-
     mspr->_drawOrder = draw_order;
-
-    if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32_t>(draw_order) + //
-            hex.y * GameSettings::MAX_MAP_SIZE + hex.x;
-    }
-    else {
-        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32_t>(DrawOrderType::NormalBegin) + //
-            hex.y * static_cast<int32_t>(DrawOrderType::NormalBegin) * GameSettings::MAX_MAP_SIZE + //
-            hex.x * static_cast<int32_t>(DrawOrderType::NormalBegin) + //
-            (static_cast<int32_t>(draw_order) - static_cast<int32_t>(DrawOrderType::NormalBegin));
-    }
-
+    mspr->_drawOrderPos = MakeDrawOrderPos(draw_order, hex);
     mspr->_hex = hex;
     mspr->_hexOffset = hex_offset;
     mspr->_pHexOffset = phex_offset;

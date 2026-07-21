@@ -556,6 +556,27 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     return result;
 }
 
+auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = _sprMngr->GetResources()->ReadFile(path);
+
+    if (!file) {
+        return nullptr;
+    }
+
+    SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
+    FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Image resource must contain exactly one direction", path, resource.Directions.size());
+    SpriteResourceDirectionData& direction = resource.Directions.front();
+    FO_VERIFY_AND_THROW(direction.Frames.size() == 1, "Image resource must contain exactly one frame", path, direction.Frames.size());
+    SpriteResourceFrameData& frame = direction.Frames.front();
+    FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame image resource cannot contain a shared-frame reference", path);
+
+    SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
+    return FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
+}
+
 auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
 {
     FO_STACK_TRACE_ENTRY();

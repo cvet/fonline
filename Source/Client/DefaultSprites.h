@@ -142,6 +142,7 @@ public:
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fofrm", "frm", "fr0", "rix", "art", "zar", "til", "mos", "bam", "png", "tga"}; }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
 private:
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;

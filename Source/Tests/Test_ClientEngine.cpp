@@ -745,6 +745,11 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     mesh.Indices = {0, 1, 2};
 
     vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
+    SpriteMeshData cropped_mesh;
+    cropped_mesh.SourceSize = {4, 3};
+    cropped_mesh.SourceOffset = {1, -1};
+    cropped_mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
+    cropped_mesh.Indices = {0, 1, 2};
     constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
     constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
     constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
@@ -768,6 +773,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
     source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
     source->AddFile("ValidMesh.png", valid_blob);
+    source->AddFile("CroppedMesh.png", BakerTests::MakeMinimalBakedSprite(3, 3, SpriteMeshKind::Mesh, cropped_mesh));
 
     vector<uint8_t> bad_version = valid_blob;
     bad_version[1]++;
@@ -831,6 +837,12 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     REQUIRE(static_cast<bool>(valid_sprite));
     auto valid_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
     CHECK(valid_sprite->FillData(valid_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
+
+    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.ToHashedString("CroppedMesh.png"), AtlasType::IfaceSprites);
+    REQUIRE(restored_image);
+    CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
+    auto restored_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    CHECK(restored_image->FillData(restored_draw_buf, frect32 {0.0f, 0.0f, 4.0f, 3.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 6);
 
     auto quad_sprite = load("Quad.png");
     REQUIRE(static_cast<bool>(quad_sprite));
