@@ -332,13 +332,13 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
     BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
 
-    auto server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) {});
+    auto server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
     const auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 
     string error_message;
 
     try {
-        ignore_unused(NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) {}));
+        NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
     }
     catch (const std::exception& ex) {
         error_message = ex.what();
