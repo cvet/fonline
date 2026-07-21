@@ -188,9 +188,15 @@ not measured from the cropped bounds or the opaque contour. Because
 `Vertex2D::Color` is RGBA8, intermediate mesh vertices may differ from ideal
 quad interpolation by at most one channel unit due to rounding.
 
-Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
-patterns, padded custom-effect/outline draws, fonts, texture/render-target
-blits, and runtime-generated model/particle atlas sprites retain explicit quads.
+Only ordinary full-image sprite draws submit baked polygon meshes. Every atlas
+allocation still has a valid rectangular `GetAtlasRect()`; polygon baking can
+make that physical frame smaller than, and offset within, the original logical
+image. Region crops, tiled patterns, padded custom-effect/outline draws, and
+mapper previews map that physical rectangle into logical coordinates through
+`SourceOffset`. Region UVs remain normalized to the original logical image, and
+transparent cropped margins are clipped out of the destination rectangle. A
+polygon crop therefore cannot shift or stretch a GUI 9-slice, repeated pattern,
+preview, or source-region composition.
 Effects that need to create pixels outside the source silhouette must use such a
 padded/quad path rather than an ordinary full-sprite draw.
 
@@ -276,12 +282,16 @@ creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
 
-Font sheets are rectangular image consumers, not drawable polygon sprites.
-`FontManager` loads both normal and bordered sheets through
-`SpriteManager::LoadSpriteAsQuad`, which uses the baked mesh metadata only to
-restore the original logical canvas before atlas upload. Loading a font sheet as
-an ordinary `AtlasSprite` would expose mesh padding/cropping dimensions to the
-authored glyph coordinates and shift every glyph UV.
+Font sheets, model material textures, particle texture maps, and Spine
+attachment textures are rectangular image consumers, not drawable polygon
+sprites. Their authored glyph or normalized UV coordinates address the complete
+source bitmap and their consumers receive only an atlas rectangle, without a
+`SourceOffset`. They therefore load through `SpriteManager::LoadSpriteAsQuad`,
+which uses the baked mesh metadata only to restore the original logical canvas
+before atlas upload. Loading them as ordinary `AtlasSprite` instances would
+expose mesh padding/cropping dimensions to the authored coordinates and shift
+their UVs. Runtime-generated model and particle sprites already occupy ordinary
+rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
 stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
