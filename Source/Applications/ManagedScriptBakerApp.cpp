@@ -81,16 +81,23 @@ int main(int argc, char** argv)
 
                 if (!dir.empty()) {
                     const auto dir_ok = fs_create_directories(dir);
-                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create bake output directory");
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed metadata output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
-                FO_VERIFY_AND_THROW(file, "Failed to open bake output file for writing");
-                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-                FO_VERIFY_AND_THROW(file, "Failed to write bake output file");
+                FO_VERIFY_AND_THROW(file, "Failed to open managed metadata output file for writing", output_path, res_pack.Name, path, data.size());
+
+                if (!data.empty()) {
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
+                FO_VERIFY_AND_THROW(file, "Failed while writing managed metadata output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &GetApp()->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
@@ -98,7 +105,7 @@ int main(int argc, char** argv)
                 metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
-                const auto& params = ex.params();
+                const_span<string> params = ex.params();
 
                 if (params.size() >= 2 && !params.front().empty()) {
                     WriteLog("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
@@ -136,16 +143,24 @@ int main(int argc, char** argv)
 
                 if (!dir.empty()) {
                     const auto dir_ok = fs_create_directories(dir);
-                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create bake output directory");
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed script output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
-                FO_VERIFY_AND_THROW(file, "Failed to open bake output file for writing");
-                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-                FO_VERIFY_AND_THROW(file, "Failed to write bake output file");
+                FO_VERIFY_AND_THROW(file, "Failed to open managed script output file for writing", output_path, res_pack.Name, path, data.size());
+
+                if (!data.empty()) {
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
+                FO_VERIFY_AND_THROW(file, "Failed while writing managed script output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &GetApp()->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
+            auto metadata_files_ptr = make_nptr(&metadata_files);
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto managed_baker = ManagedScriptBaker(std::move(baking_ctx));
 
             try {
