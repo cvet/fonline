@@ -515,7 +515,10 @@ it takes the exact bounds of the final vertices, crops the RGBA payload to those
 bounds, and translates the vertices to the cropped frame origin. The serialized
 per-frame offset is adjusted on both axes so the logical root remains at the
 same screen position even when different animation frames have different
-bounds. A quad or empty result is not cropped or padded. Candidate profitability
+bounds. At runtime `AtlasSprite` reverses that storage adjustment for its public
+logical size and offset, maps mesh positions through the stored source origin,
+and keeps UVs local to the cropped atlas allocation. A quad or empty result is
+not cropped or padded. Candidate profitability
 is always compared against the original unpadded frame, so increasing the
 search area cannot manufacture an artificial saving. Each unique frame is
 searched on the maximum temporary canvas, then the retained mesh is translated
@@ -612,6 +615,10 @@ internal safety border. The decoder requires mesh vertices to occupy the exact
 serialized frame bounds. Shared animation frames continue to refer to the
 original frame and do not duplicate its offset, pixels, or geometry. The
 runtime rejects legacy or malformed blobs rather than guessing their layout.
+Drawable atlas sprites retain the original logical size, anchor, scaling, and
+hit-test coordinate space while using the cropped pixels and mesh for texture
+storage and rendering. Thus transparent-canvas cropping is an internal storage
+optimization rather than a change to the authored sprite contract.
 Consumers that sample the image as a plain rectangular texture rather than a
 sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
 restore the cropped payload into the original logical canvas so their size and

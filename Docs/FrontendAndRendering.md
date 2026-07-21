@@ -255,6 +255,14 @@ atlas allocation keeps a nullable non-owning observer into that data and clears
 it when the space is released, so a dump cannot display stale geometry after an
 atlas slot is reused.
 
+`AtlasSprite` keeps the authored logical size and offset separate from the
+cropped atlas allocation. Mesh vertices are positioned through their
+`SourceOffset` in logical-canvas coordinates while UVs remain local to the
+cropped allocation. `GetSize()`, `GetOffset()`, scaling, and hit testing
+therefore retain the source-image contract even when baking removes transparent
+border pixels. Atlas cropping reduces texture memory without becoming visible
+to GUI layout, sprite anchoring, or input routing.
+
 Runtime atlas allocation remains per image, but `TextureAtlasLayout` uses
 dynamic MaxRects placement instead of an order-sensitive guillotine tree. It
 retains overlapping maximal free rectangles and chooses the best short-side
