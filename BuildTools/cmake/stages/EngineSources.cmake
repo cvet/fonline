@@ -215,6 +215,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/CritterView.h"
     "${FO_ENGINE_ROOT}/Source/Client/DefaultSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/DefaultSprites.h"
+    "${FO_ENGINE_ROOT}/Source/Client/EffekseerExtension.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/EffekseerExtension.h"
     "${FO_ENGINE_ROOT}/Source/Client/EffectManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/EffectManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/FogOfWar.cpp"
@@ -254,6 +256,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Sockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-UdpSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.h"
+    "${FO_ENGINE_ROOT}/Source/Client/ParticleRuntime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/ParticleRuntime.h"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.h"
     "${FO_ENGINE_ROOT}/Source/Client/PlayerView.cpp"
@@ -264,6 +268,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/SoundManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SoundManager.h"
+    "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/TextureAtlas.cpp"
@@ -274,8 +280,6 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/VideoClip.h"
     "${FO_ENGINE_ROOT}/Source/Client/VisualParticles.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/VisualParticles.h"
-    "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientImGuiScriptMethods.cpp"
@@ -293,26 +297,13 @@ AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
-AppendList(FO_EDITOR_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/Editor.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.cpp"
-
-    # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ProtoEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ProtoEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ModelEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ModelEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/EffectEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/EffectEditor.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.cpp")
-
 AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/SparkParticleEditor.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/SparkParticleEditor.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.gen.cpp")
 
@@ -327,6 +318,8 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/EffekseerCompiler.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/EffekseerCompiler.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/SpriteMeshing.h"
@@ -345,6 +338,8 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ModelMeshBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelSourceLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelSourceLoader.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoTextBaker.h"
@@ -470,6 +465,8 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetworkServer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetworkUdp.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetSockets.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ParticleBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EffekseerParticleRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoTextBaker.cpp"

@@ -58,12 +58,14 @@ public:
     [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
+
+    virtual auto Reindex() -> bool { return false; }
 };
 
-class DataSourceRef : public DataSource
+class DataSourceRef final : public DataSource
 {
 public:
-    explicit DataSourceRef(ptr<const DataSource> ds) :
+    explicit DataSourceRef(ptr<DataSource> ds) :
         _dataSource {ds}
     {
         FO_STACK_TRACE_ENTRY();
@@ -81,8 +83,10 @@ public:
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override { return _dataSource->OpenFile(path, size, write_time); }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _dataSource->GetFileNames(dir, recursive, ext); }
 
+    auto Reindex() -> bool override { return _dataSource->Reindex(); }
+
 private:
-    ptr<const DataSource> _dataSource;
+    ptr<DataSource> _dataSource;
 };
 
 FO_END_NAMESPACE

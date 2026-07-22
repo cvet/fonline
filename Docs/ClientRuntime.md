@@ -349,6 +349,74 @@ For 3D critter views, idle refresh plays alive-state animations from the beginni
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
 
+`ParticleManager` and `ParticleSystem` are backend-neutral dispatch facades used
+by sprites and model attachments. `ParticleRuntime.cpp` is the composition point:
+it creates the enabled `ParticleRuntimeBackend` implementations, and the manager
+selects one by resource extension. Every live particle owns exactly one
+`ParticleRuntimeSystem`; common timing, scale, and render scheduling stay in
+`ParticleSystem`, while simulation and backend-specific rendering are virtual
+runtime operations.
+
+Resource invalidation follows the same neutral boundary:
+`SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
+backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
+changed file may be a dependency rather than a backend-owned root asset. SPARK
+drops the matching parsed graph for a changed `.spk` and clears its graph
+cache when a texture or render-effect dependency changes, so the next particle
+creation reloads both graph and dependency. Failed loads are not cached.
+Backends without a parsed-asset cache keep the invalidation operation as a
+no-op.
+
+`VisualParticles.h` / `.cpp` contain no particle-backend names or feature guards.
+Concrete types and capabilities live in their extension files. The SPARK editor
+performs its checked typed access only after crossing the neutral
+`GetRuntimeSystem()` boundary, so adding another runtime does not add another
+branch, enum value, or vendor type to the common facade.
+
+Particle backends are independent build features: `FO_SPARK_PARTICLES` and
+`FO_EFFEKSEER_PARTICLES` both default to `OFF`. The embedding project may enable
+one or both; the particle sprite factory advertises only the extensions owned by
+enabled backends, and a disabled backend does not compile or link its upstream
+runtime.
+
+SPARK `.spark` sources are baked to `.spk` binaries.
+`SparkParticleRuntimeBackend` accepts only `.spk` and loads it through SPARK's
+binary `loadFromBuffer` path; XML never reaches runtime. The binary path must remain
+behaviorally equivalent to its stream loader; truncated/oversized payloads,
+unknown object types, descriptor-signature mismatches, zero/out-of-range object
+references, and references to an incompatible object class invalidate the graph.
+Custom FOnline SPARK object registration is shared by the baker, editor, and
+client through the thread-safe `EnsureSparkParticleObjectsRegistered()` path.
+`SparkQuadRenderer::Setup()` resolves the effect and texture before a particle
+is returned; missing render dependencies produce a normal load failure instead
+of a later exception on the first draw. A renderer newly added in the SPARK
+editor is bound to the owning runtime before the preview graph is initialized;
+while its effect or texture is still unassigned it draws nothing, allowing the
+author to complete the renderer without dereferencing an incomplete backend
+state.
+
+Baked raw `.efk` resources select `EffekseerParticleRuntimeBackend` behind the
+same facade. The client never
+loads `.efkproj` XML or invokes the build-time compiler. This includes Web:
+the host pipeline must bake `.efk` before packaging. Each `ClientEngine` or
+Mapper instance owns an Effekseer core manager; each `Create` parses a new
+effect, while the shared particle sprite factory separately caches successfully
+loaded atlas textures. Effekseer advances hierarchy, emission, and lifetime
+state; custom renderer callbacks copy the evaluated render snapshot into
+FOnline-owned packets. No Effekseer graphics backend participates. The initial
+capability gate is CPU Sprite/Ring-only and rejects unsupported renderer or
+material families before returning a particle system. Dynamic callback checks
+still fail closed on non-finite evaluated data, invalid UV ranges, or an atlas
+filter mismatch and retire that already-created handle. Simulation update is
+separate from draw, so effect lifetime does not pause when a direct-scene sprite
+is outside the rendered viewport; stopped handles are advanced through
+Effekseer's deferred removal queues before their wrapper is released.
+
+The exception is an explicit direct-scene prewarm request: it remains pending
+until the first `DrawInScene` can provide the current transform, and scheduled
+updates pause meanwhile. Effekseer prewarm advances exactly one second, then
+resynchronizes the update clock before ordinary simulation resumes so the
+offscreen wait is not double-counted.
 Sprite mesh geometry is independent of the pixel-exact hit mask. `FillAtlas`
 still derives hit testing directly from source alpha and `Render.SpriteHitValue`;
 contour simplification/dilation only changes which triangles are submitted for

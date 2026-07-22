@@ -37,19 +37,10 @@
 
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "ParticleRuntime.h"
 #include "Rendering.h"
 #include "Settings.h"
 #include "Timer.h"
-
-namespace SPK
-{
-    class System;
-
-    namespace FO
-    {
-        class SparkQuadRenderer;
-    }
-}
 
 FO_BEGIN_NAMESPACE
 
@@ -67,17 +58,16 @@ class ParticleSystem final
     friend class SafeAlloc;
 
 public:
-    static constexpr float32_t PREWARM_STEP = 0.5f;
-
     ParticleSystem(const ParticleSystem&) = delete;
     ParticleSystem(ParticleSystem&&) noexcept;
     auto operator=(const ParticleSystem&) = delete;
     auto operator=(ParticleSystem&&) noexcept = delete;
     ~ParticleSystem();
 
+    [[nodiscard]] auto GetRuntimeSystem() -> ptr<ParticleRuntimeSystem>;
+    [[nodiscard]] auto GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>;
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
-    [[nodiscard]] auto GetBaseSystem() -> nptr<SPK::System>;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
     [[nodiscard]] auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
@@ -89,60 +79,56 @@ public:
     void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
+    auto Respawn(int32_t seed) -> bool;
+    void Update();
+    void RefreshRenderTransform();
     void Draw();
-    void SetBaseSystem(nptr<SPK::System> system);
+    void SetScale(float32_t scale);
 
 private:
-    explicit ParticleSystem(ptr<ParticleManager> particle_mngr);
-
-    struct Impl;
+    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
     [[nodiscard]] auto GetRenderViewMatrix() const noexcept -> mat44;
 
-    unique_ptr<Impl> _impl;
+    void ApplyRuntimeSetup();
+    void ResetTiming();
+
+    unique_ptr<ParticleRuntimeSystem> _runtimeSystem;
     ptr<ParticleManager> _particleMngr;
-    mat44 _projMatrix {};
-    vec3 _viewOffset {};
-    bool _tiltInProj {};
+    optional<ParticleRuntimeSetup> _runtimeSetup {};
     float64_t _elapsedTime {};
+    float32_t _scale {1.0f};
     bool _forceDraw {};
-    bool _boundsDirty {};
-    nanotime _lastDrawTime {};
+    bool _renderPending {};
+    nanotime _lastUpdateTime {};
+    nanotime _lastRenderTime {};
 };
 
 class ParticleManager final
 {
     friend class ParticleSystem;
-    friend class SPK::FO::SparkQuadRenderer;
 
 public:
-    using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
-
-    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, TextureLoader tex_loader);
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;
     auto operator=(ParticleManager&&) noexcept = delete;
     ~ParticleManager();
 
-    [[nodiscard]] auto CreateParticle(string_view name) -> optional<ParticleSystem>;
+    [[nodiscard]] auto GetExtensions() const -> vector<string>;
+
+    void InvalidateResource(string_view name);
+    auto CreateParticle(string_view name) -> optional<ParticleSystem>;
 
 private:
     struct Impl;
-    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
 
     unique_ptr<Impl> _impl;
     ptr<RenderSettings> _settings;
-    ptr<EffectManager> _effectMngr;
-    ptr<IAppRender> _render;
-    ptr<FileSystem> _resources;
     ptr<GameTimer> _gameTime;
-    TextureLoader _textureLoader;
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     int32_t _animUpdateThreshold {};
-    mat44 _viewProjMatrix {};
-    mat44 _viewMatrix {};
 };
 
 FO_END_NAMESPACE

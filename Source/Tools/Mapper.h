@@ -50,6 +50,7 @@
 #include "MapLoader.h"
 #include "MapView.h"
 #include "NetBuffer.h"
+#include "ParticleEditor.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
@@ -324,6 +325,7 @@ public:
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
     FileSystem MapsFileSys {};
+    ParticleEditorManager ParticleEditors;
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unordered_set<ptr<MapView>> DirtyMaps {};
     unordered_map<ptr<MapView>, UndoContext> UndoContexts {};
@@ -381,6 +383,7 @@ public:
     string ScriptCallFunc {};
     string ScriptCallArgs {};
     string MapBrowserFilter {};
+    bool MapperWindowFocused {};
     int32_t TabIndex[INT_MODE_COUNT] {};
     refcount_nptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};

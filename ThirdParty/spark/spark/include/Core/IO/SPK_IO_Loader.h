@@ -32,15 +32,20 @@ namespace SPK
 
 namespace IO
 {
+	class IOManager;
+
 	/** @brief An abstract class to load an entire particle system from a resource */
 	class SPK_PREFIX Loader
 	{
+	friend class IOManager;
+
 	public :
 
 		//////////////////////////////
 		// Constructor / Destructor //
 		//////////////////////////////
 
+		Loader();
 		virtual ~Loader() {}
 
 		/////////////////////
@@ -106,8 +111,10 @@ namespace IO
 
 		private :
 
-			Graph();
+			explicit Graph(IOManager& manager);
 			~Graph();
+
+			IOManager& manager;
 
 			std::map<size_t,Node*> key2Ptr;
 			std::list<Node*> nodes;
@@ -122,6 +129,9 @@ namespace IO
 		};
 
 	private :
+		IOManager* manager;
+
+		void setManager(IOManager* manager);
 
 		/**
 		* @brief The inner load method to be implemented in derived classes

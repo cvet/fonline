@@ -266,7 +266,7 @@ namespace SPK
 
 		// methods to compute X
 		typedef float (GraphInterpolator<T>::*computeXFn)(const Particle&) const;
-		static computeXFn COMPUTE_X_FN[4];
+		static const computeXFn COMPUTE_X_FN[4];
 
 		float computeXLifeTime(const Particle& particle) const;
 		float computeXAge(const Particle& particle) const;
@@ -306,7 +306,7 @@ namespace SPK
 	SPK_END_DESCRIPTION
 
 	template<typename T>
-	typename GraphInterpolator<T>::computeXFn GraphInterpolator<T>::COMPUTE_X_FN[4] =
+	const typename GraphInterpolator<T>::computeXFn GraphInterpolator<T>::COMPUTE_X_FN[4] =
 	{
 		&GraphInterpolator<T>::computeXLifeTime,
 		&GraphInterpolator<T>::computeXAge,
@@ -474,9 +474,9 @@ namespace SPK
 		// Inits the newly created data
 		for (size_t i = 0; i < group.getNbParticles(); ++i)
 		{
-			(*offsetXDataPtr)[i] = SPK_RANDOM(-offsetXVariation,offsetXVariation);
-			(*scaleXDataPtr)[i] = 1.0f + SPK_RANDOM(-scaleXVariation,scaleXVariation);
-			(*ratioYDataPtr)[i] = SPK_RANDOM(0.0f,1.0f);
+			(*offsetXDataPtr)[i] = SPK_RANDOM(this->getContext(),-offsetXVariation,offsetXVariation);
+			(*scaleXDataPtr)[i] = 1.0f + SPK_RANDOM(this->getContext(),-scaleXVariation,scaleXVariation);
+			(*ratioYDataPtr)[i] = SPK_RANDOM(this->getContext(),0.0f,1.0f);
 		}
 	}
 
@@ -565,9 +565,9 @@ namespace SPK
 		FloatArrayData& scaleXData = SPK_GET_DATA(FloatArrayData,dataSet,SCALE_X_DATA_INDEX);
 		FloatArrayData& ratioYData = SPK_GET_DATA(FloatArrayData,dataSet,RATIO_Y_DATA_INDEX);
 
-		offsetXData[index] = SPK_RANDOM(-offsetXVariation,offsetXVariation);
-		scaleXData[index] = 1.0f + SPK_RANDOM(-scaleXVariation,scaleXVariation);
-		ratioYData[index] = SPK_RANDOM(0.0f,1.0f);
+		offsetXData[index] = SPK_RANDOM(this->getContext(),-offsetXVariation,offsetXVariation);
+		scaleXData[index] = 1.0f + SPK_RANDOM(this->getContext(),-scaleXVariation,scaleXVariation);
+		ratioYData[index] = SPK_RANDOM(this->getContext(),0.0f,1.0f);
 		interpolateParticle(data,particle,offsetXData[index],scaleXData[index],ratioYData[index]);
 	}
 
