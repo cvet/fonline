@@ -345,7 +345,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<shared_ptr<Entity::TimeEventData>> ready_events;
+    small_vector<shared_ptr<Entity::TimeEventData>, 8> ready_events;
     const auto time = _engine->GameTime.GetFrameTime();
 
     {
@@ -474,7 +474,8 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
     };
 
     if (result.Context) {
-        auto context = result.Context.as_ptr();
+        auto context = result.Context;
+        FO_VERIFY_AND_THROW(context, "Context is null");
 
         if (context->IsStopped()) {
             remove_event();
@@ -527,45 +528,37 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
     auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
     bool call_result = false;
 
-    if (nptr<ScriptFunc<void>> nullable_func1 = std::get_if<ScriptFunc<void>>(&te->Func); nullable_func1) {
-        auto func1 = nullable_func1.as_ptr();
+    if (auto func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1) {
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func1->Call();
     }
-    else if (nptr<ScriptFunc<void, any_t>> nullable_func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); nullable_func2) {
-        auto func2 = nullable_func2.as_ptr();
+    else if (auto func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); func2) {
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func2->Call(data.empty() ? _emptyAnyValue : data.front());
     }
-    else if (nptr<ScriptFunc<void, vector<any_t>>> nullable_func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); nullable_func3) {
-        auto func3 = nullable_func3.as_ptr();
+    else if (auto func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); func3) {
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func3->Call(data);
     }
-    else if (nptr<ScriptFunc<void, TimeEventContext*>> nullable_func4 = std::get_if<ScriptFunc<void, TimeEventContext*>>(&te->Func); nullable_func4) {
-        auto func4 = nullable_func4.as_ptr();
+    else if (auto func4 = std::get_if<ScriptFunc<void, ptr<TimeEventContext>>>(&te->Func); func4) {
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
-        call_result = func4->Call(context.get());
+        call_result = func4->Call(context);
     }
-    else if (nptr<ScriptFunc<void, ScriptSelfEntity*>> nullable_func5 = std::get_if<ScriptFunc<void, ScriptSelfEntity*>>(&te->Func); nullable_func5) {
-        auto func5 = nullable_func5.as_ptr();
+    else if (auto func5 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>>>(&te->Func); func5) {
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func5->Call(entity.get());
+        call_result = func5->Call(entity);
     }
-    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, any_t>> nullable_func6 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, any_t>>(&te->Func); nullable_func6) {
-        auto func6 = nullable_func6.as_ptr();
+    else if (auto func6 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, any_t>>(&te->Func); func6) {
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func6->Call(entity.get(), data.empty() ? _emptyAnyValue : data.front());
+        call_result = func6->Call(entity, data.empty() ? _emptyAnyValue : data.front());
     }
-    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>> nullable_func7 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>(&te->Func); nullable_func7) {
-        auto func7 = nullable_func7.as_ptr();
+    else if (auto func7 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>>>(&te->Func); func7) {
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func7->Call(entity.get(), data);
+        call_result = func7->Call(entity, data);
     }
-    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>> nullable_func8 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>(&te->Func); nullable_func8) {
-        auto func8 = nullable_func8.as_ptr();
+    else if (auto func8 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>>>(&te->Func); func8) {
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func8->Call(entity.get(), context.get());
+        call_result = func8->Call(entity, context);
     }
     else {
         FO_UNREACHABLE_PLACE();

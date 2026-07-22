@@ -46,6 +46,12 @@ FO_BEGIN_NAMESPACE
 
 class ParticleManager;
 
+struct ParticleBounds3D
+{
+    vec3 Min {};
+    vec3 Max {};
+};
+
 class ParticleSystem final
 {
     friend class ParticleManager;
@@ -64,9 +70,12 @@ public:
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
+    [[nodiscard]] auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
+    void EnableBoundsComputation() noexcept;
+    void RebaseWorldParticles(vec3 delta) noexcept;
     void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
@@ -80,6 +89,7 @@ private:
     explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
+    [[nodiscard]] auto GetRenderViewMatrix() const noexcept -> mat44;
 
     void ApplyRuntimeSetup();
     void ResetTiming();

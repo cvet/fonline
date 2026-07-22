@@ -72,7 +72,7 @@ static auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_pt
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const uint8_t> released_buf = std::move(buf).release();
+    auto released_buf = make_ptr<const uint8_t*>(buf.release());
     return make_unique_del_ptr(released_buf, [](const uint8_t* raw_buf) noexcept {
         unique_arr_ptr<const uint8_t> owned_buf {raw_buf};
         ignore_unused(owned_buf);
@@ -210,7 +210,7 @@ private:
     string _fileName {};
     mutable mutex _zipHandleLocker {};
     mutable nptr<void> _zipHandle FO_TSA_GUARDED_BY(_zipHandleLocker) {};
-    unique_nptr<std::ifstream> _fileStream {};
+    unique_ptr<std::ifstream> _fileStream;
     uint64_t _writeTime {};
 };
 
@@ -644,21 +644,21 @@ bool FalloutDat::ReadTree()
         auto tree_span = make_span(tree_data, tree_size);
 
         while (tree_pos < tree_size) {
-            auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
+            auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
             uint32_t fnsz = 0;
-            auto fnsz_target = ptr<uint32_t> {&fnsz}.reinterpret_as<uint8_t>();
+            auto fnsz_target = make_ptr(&fnsz).reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
             MemCopy(fnsz_target, fnsz_source, sizeof(fnsz));
 
             uint32_t type = 0;
-            auto type_target = ptr<uint32_t> {&type}.reinterpret_as<uint8_t>();
+            auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
             auto type_source = tree_entry.offset(4 + fnsz + 4);
             MemCopy(type_target, type_source, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
-                auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+                auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
                 auto raw_name_source = tree_entry.offset(4);
                 MemCopy(raw_name_target, raw_name_source, raw_name.size());
                 string name = strex(raw_name).normalize_path_slashes();
@@ -746,9 +746,9 @@ bool FalloutDat::ReadTree()
     auto tree_span = make_span(tree_data, tree_size);
 
     while (tree_pos < tree_size) {
-        auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
+        auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
         uint32_t name_len = 0;
-        auto name_len_target = ptr<uint32_t> {&name_len}.reinterpret_as<uint8_t>();
+        auto name_len_target = make_ptr(&name_len).reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
         MemCopy(name_len_target, name_len_source, sizeof(name_len));
 
@@ -759,7 +759,7 @@ bool FalloutDat::ReadTree()
         if (name_len != 0) {
             string raw_name;
             raw_name.resize(numeric_cast<size_t>(name_len));
-            auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+            auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
             auto raw_name_source = tree_entry.offset(4);
             MemCopy(raw_name_target, raw_name_source, raw_name.size());
             string name = strex(raw_name).normalize_path_slashes();
@@ -798,9 +798,9 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
         return false;
     }
 
-    ptr<const uint8_t> file_info = it->second;
+    auto file_info = it->second;
     uint32_t real_size = 0;
-    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target, real_size_source, sizeof(real_size));
 
@@ -821,24 +821,24 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 
     scoped_lock locker {_datFileLocker};
 
-    ptr<const uint8_t> file_info = it->second;
+    auto file_info = it->second;
     uint8_t type = 0;
-    auto type_target = ptr<uint8_t> {&type}.reinterpret_as<uint8_t>();
-    ptr<const uint8_t> type_source = file_info;
+    auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
+    auto type_source = file_info;
     MemCopy(type_target, type_source, sizeof(type));
 
     uint32_t real_size = 0;
-    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target, real_size_source, sizeof(real_size));
 
     uint32_t packed_size = 0;
-    auto packed_size_target = ptr<uint32_t> {&packed_size}.reinterpret_as<uint8_t>();
+    auto packed_size_target = make_ptr(&packed_size).reinterpret_as<uint8_t>();
     auto packed_size_source = file_info.offset(5);
     MemCopy(packed_size_target, packed_size_source, sizeof(packed_size));
 
     int32_t offset = 0;
-    auto offset_target = ptr<int32_t> {&offset}.reinterpret_as<uint8_t>();
+    auto offset_target = make_ptr(&offset).reinterpret_as<uint8_t>();
     auto offset_source = file_info.offset(9);
     MemCopy(offset_target, offset_source, sizeof(offset));
 
@@ -865,7 +865,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         };
         stream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8_t> allocator;
-            allocator.deallocate(cast_from_void<uint8_t*>(address), 0);
+            allocator.deallocate(cast_from_void<uint8_t*>(address).get(), 0);
         };
 
         if (inflateInit(&stream) != Z_OK) {
@@ -884,7 +884,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 const auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
-                nptr<uint8_t> read_buf = _readBuf.data();
+                auto read_buf = make_nptr(_readBuf.data());
                 stream.next_in = read_buf.get();
 
                 if (!stream_read_exact(_datFile, make_span(read_buf, len))) {
@@ -916,25 +916,15 @@ struct EmbeddedZipMemStream
     uint32_t Pos;
 };
 
-static void CleanupEmbeddedZipMemStream(ptr<EmbeddedZipMemStream> mem_stream) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto owned_mem_stream = adopt_unique_ptr(mem_stream);
-    ignore_unused(owned_mem_stream);
-}
-
-ZipFile::ZipFile(string_view fname)
+ZipFile::ZipFile(string_view fname) :
+    _fileName {fname},
+    _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName))}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _fileName = fname;
 
     scoped_lock locker {_zipHandleLocker};
 
     zlib_filefunc_def ffunc;
-
-    _fileStream = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
 
     if (!*_fileStream) {
         throw DataSourceException("Can't open zip file", _fileName);
@@ -948,9 +938,8 @@ ZipFile::ZipFile(string_view fname)
         return opaque;
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_file, "Zip read callback received a null file stream");
-        auto file = nullable_file.as_ptr();
+        auto file = cast_from_void<std::ifstream*>(stream);
+        FO_VERIFY_AND_THROW(file, "Zip read callback received a null file stream");
         if (size == 0) {
             return 0;
         }
@@ -959,15 +948,13 @@ ZipFile::ZipFile(string_view fname)
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_file, "Zip tell callback received a null file stream");
-        auto file = nullable_file.as_ptr();
+        auto file = cast_from_void<std::ifstream*>(stream);
+        FO_VERIFY_AND_THROW(file, "Zip tell callback received a null file stream");
         return numeric_cast<long>(stream_get_read_pos(*file));
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
-        nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_file, "Zip seek callback received a null file stream");
-        auto file = nullable_file.as_ptr();
+        auto file = cast_from_void<std::ifstream*>(stream);
+        FO_VERIFY_AND_THROW(file, "Zip seek callback received a null file stream");
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             return stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::beg) ? 0 : -1;
@@ -991,9 +978,9 @@ ZipFile::ZipFile(string_view fname)
         return 0;
     };
 
-    ffunc.opaque = cast_to_void(_fileStream.get());
+    ffunc.opaque = _fileStream.void_cast();
 
-    nptr<void> zip_handle = unzOpen2(string(_fileName).c_str(), &ffunc);
+    auto zip_handle = make_nptr(unzOpen2(string(_fileName).c_str(), &ffunc));
     const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
@@ -1147,24 +1134,23 @@ EmbeddedFile::EmbeddedFile()
 
         uint32_t embedded_size = 0;
 
-        auto embedded_size_target = ptr<uint32_t> {&embedded_size}.reinterpret_as<uint8_t>();
+        auto embedded_size_target = make_ptr(&embedded_size).reinterpret_as<uint8_t>();
         MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
-        ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
-        return cast_to_void(mem_stream.get());
+        auto mem_stream = SafeAlloc::MakeUnique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
+
+        return mem_stream.release().void_cast();
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        nptr<EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_mem_stream, "Embedded zip read callback received a null memory stream");
-        auto mem_stream = nullable_mem_stream.as_ptr();
-        nptr<uint8_t> nullable_out_buf = cast_from_void<uint8_t*>(buf);
+        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        FO_VERIFY_AND_THROW(mem_stream, "Embedded zip read callback received a null memory stream");
+        auto out_buf = cast_from_void<uint8_t*>(buf);
 
         if (size == 0) {
             return 0;
         }
 
-        FO_VERIFY_AND_THROW(!!nullable_out_buf, "Embedded zip read callback received a null output buffer");
-        auto out_buf = nullable_out_buf.as_ptr();
+        FO_VERIFY_AND_THROW(out_buf, "Embedded zip read callback received a null output buffer");
         for (size_t i = 0; i < size; i++) {
             out_buf[i] = mem_stream->Buf[mem_stream->Pos + i];
         }
@@ -1173,15 +1159,13 @@ EmbeddedFile::EmbeddedFile()
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        nptr<const EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_mem_stream, "Embedded zip tell callback received a null memory stream");
-        auto mem_stream = nullable_mem_stream.as_ptr();
+        auto mem_stream = cast_from_void<const EmbeddedZipMemStream*>(stream);
+        FO_VERIFY_AND_THROW(mem_stream, "Embedded zip tell callback received a null memory stream");
         return numeric_cast<long>(mem_stream->Pos);
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
-        nptr<EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_mem_stream, "Embedded zip seek callback received a null memory stream");
-        auto mem_stream = nullable_mem_stream.as_ptr();
+        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        FO_VERIFY_AND_THROW(mem_stream, "Embedded zip seek callback received a null memory stream");
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             mem_stream->Pos = numeric_cast<uint32_t>(offset);
@@ -1198,10 +1182,11 @@ EmbeddedFile::EmbeddedFile()
         return 0;
     };
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32_t {
-        nptr<EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
-        FO_VERIFY_AND_THROW(!!nullable_mem_stream, "Embedded zip close callback received a null memory stream");
-        auto mem_stream = nullable_mem_stream.as_ptr();
-        CleanupEmbeddedZipMemStream(mem_stream);
+        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        FO_VERIFY_AND_THROW(mem_stream, "Embedded zip close callback received a null memory stream");
+
+        auto owned_mem_stream = adopt_unique_ptr(mem_stream);
+        ignore_unused(owned_mem_stream);
         return 0;
     };
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
@@ -1212,15 +1197,21 @@ EmbeddedFile::EmbeddedFile()
     };
     ffunc.opaque = nullptr;
 
-    _zipHandle = unzOpen2("", &ffunc);
+    auto zip_handle = make_nptr(unzOpen2("", &ffunc));
+    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+        if (zip_handle) {
+            unzClose(zip_handle.get());
+            zip_handle = nullptr;
+        }
+    });
 
-    if (!_zipHandle) {
+    if (!zip_handle) {
         throw DataSourceException("Can't read embedded file");
     }
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(_zipHandle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
+    if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
         throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)");
     }
 
@@ -1230,11 +1221,11 @@ EmbeddedFile::EmbeddedFile()
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
+        if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetFilePos)");
         }
 
-        if (unzGetCurrentFileInfo(_zipHandle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+        if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)");
         }
 
@@ -1247,10 +1238,12 @@ EmbeddedFile::EmbeddedFile()
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle.get()) != UNZ_OK) {
+        if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)");
         }
     }
+
+    _zipHandle = std::move(zip_handle);
 }
 
 EmbeddedFile::~EmbeddedFile()
@@ -1356,7 +1349,7 @@ FilesList::FilesList()
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
     }
 
-    ptr<const string> str = &*files_tree_content;
+    auto str = make_ptr(&*files_tree_content);
 
     for (string_view name : strvex(*str).split('\n')) {
         name = strvex(name).trim();

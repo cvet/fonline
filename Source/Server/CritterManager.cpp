@@ -61,11 +61,9 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
     EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
-        auto nullable_item_already = cr->GetInvItemByPid(item->GetProtoId());
+        auto item_already = cr->GetInvItemByPid(item->GetProtoId());
 
-        if (nullable_item_already) {
-            auto item_already = nullable_item_already.as_ptr();
-
+        if (item_already) {
             if (item_already == item) {
                 return item;
             }
@@ -123,6 +121,10 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 
     cr->RemoveItem(item);
 
+    auto item_ids = cr->GetItemIds();
+    vec_remove_unique_value(item_ids, item->GetId());
+    cr->SetItemIds(item_ids);
+
     item->SetOwnership(ItemOwnership::Nowhere);
 
     if (send) {
@@ -136,10 +138,6 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 
     item->SetCritterId(ident_t {});
     item->SetCritterSlot(CritterItemSlot::Inventory);
-
-    auto item_ids = cr->GetItemIds();
-    vec_remove_unique_value(item_ids, item->GetId());
-    cr->SetItemIds(item_ids);
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
@@ -199,7 +197,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Create critter
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto.as_ptr(), props);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterCritter(cr);
 
@@ -262,9 +260,9 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
         auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
         if (cr->GetMapId()) {
-            auto nullable_map = cr->GetParent<Map>();
-            FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-            ValidateEntityAccess(nullable_map.as_ptr());
+            auto map = cr->GetParent<Map>();
+            FO_VERIFY_AND_THROW(map, "Missing map instance");
+            ValidateEntityAccess(map);
         }
 
         for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
@@ -286,9 +284,8 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
 
                 if (cr->GetMapId()) {
-                    auto nullable_map = cr->GetParent<Map>();
-                    FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-                    auto map = nullable_map.as_ptr();
+                    auto map = cr->GetParent<Map>();
+                    FO_VERIFY_AND_THROW(map, "Missing map instance");
                     ValidateEntityAccess(map);
                     _engine->MapMngr.RemoveCritterFromMap(cr, map);
                 }

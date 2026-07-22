@@ -36,6 +36,7 @@
 #include "Common.h"
 #include "RenderTarget.h"
 #include "Rendering.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -47,31 +48,97 @@ enum class AtlasType : uint8_t
     OneImage,
 };
 
+class TextureAtlasLayout final
+{
+public:
+    struct FitScore
+    {
+        int32_t ShortSideFit {};
+        int32_t LongSideFit {};
+        size_t AreaWaste {};
+        int32_t Y {};
+        int32_t X {};
+        int32_t FreeWidth {};
+        int32_t FreeHeight {};
+    };
+
+    class Allocation final
+    {
+        friend class SafeAlloc;
+        friend class TextureAtlasLayout;
+
+    public:
+        Allocation(const Allocation&) = delete;
+        Allocation(Allocation&&) noexcept = delete;
+        auto operator=(const Allocation&) = delete;
+        auto operator=(Allocation&&) noexcept -> Allocation& = delete;
+        ~Allocation() = default;
+
+        [[nodiscard]] auto GetPosition() const noexcept -> ipos32 { return _rectangle.pos(); }
+        [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _rectangle.size(); }
+        [[nodiscard]] auto IsActive() const noexcept -> bool { return _active; }
+        [[nodiscard]] auto GetSpriteMesh() const noexcept -> nptr<const SpriteMeshData> { return _spriteMesh; }
+
+        void SetSpriteMesh(nptr<const SpriteMeshData> sprite_mesh) noexcept;
+
+    private:
+        explicit Allocation(ptr<TextureAtlasLayout> layout) noexcept;
+        void Free() noexcept;
+
+        ptr<TextureAtlasLayout> _layout;
+        irect32 _rectangle {};
+        nptr<const SpriteMeshData> _spriteMesh {};
+        size_t _activeIndex {};
+        bool _active {};
+    };
+
+    explicit TextureAtlasLayout(isize32 size) noexcept;
+    TextureAtlasLayout(const TextureAtlasLayout&) = delete;
+    TextureAtlasLayout(TextureAtlasLayout&&) noexcept = delete;
+    auto operator=(const TextureAtlasLayout&) = delete;
+    auto operator=(TextureAtlasLayout&&) noexcept -> TextureAtlasLayout& = delete;
+    ~TextureAtlasLayout() = default;
+
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
+    [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _usedArea == 0; }
+    [[nodiscard]] auto GetUsedArea() const noexcept -> size_t { return _usedArea; }
+
+    auto FindBestFitScore(isize32 size) -> optional<FitScore>;
+    auto Allocate(isize32 size) -> unique_del_nptr<Allocation>;
+    void DrawDumpOverlay(span<ucolor> pixels) const;
+
+private:
+    struct Placement
+    {
+        irect32 Rectangle {};
+        FitScore Score {};
+    };
+
+    auto FindBestPlacement(isize32 size) const noexcept -> optional<Placement>;
+    auto AcquireAllocation() -> ptr<Allocation>;
+    void Release(ptr<Allocation> allocation) noexcept;
+    void RebuildFreeRectangles();
+    void DrawAllocationOverlay(const Allocation& allocation, span<ucolor> pixels) const;
+
+    static void SplitFreeRectangles(vector<irect32>& free_rectangles, irect32 used_rectangle);
+    static void PruneFreeRectangles(vector<irect32>& free_rectangles);
+    static void DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_size, ipos32 from, ipos32 to, ucolor color) noexcept;
+    static auto Intersects(irect32 first, irect32 second) noexcept -> bool;
+    static auto Contains(irect32 outer, irect32 inner) noexcept -> bool;
+    static auto GetArea(isize32 size) noexcept -> size_t;
+
+    isize32 _size;
+    vector<irect32> _freeRectangles {};
+    vector<unique_ptr<Allocation>> _allocations {};
+    vector<ptr<Allocation>> _activeAllocations {};
+    vector<ptr<Allocation>> _availableAllocations {};
+    size_t _usedArea {};
+    bool _freeRectanglesDirty {};
+};
+
 class TextureAtlas final
 {
 public:
-    class SpaceNode final
-    {
-    public:
-        SpaceNode(nptr<SpaceNode> parent, ipos32 pos, isize32 size);
-        SpaceNode(const SpaceNode&) = delete;
-        SpaceNode(SpaceNode&&) noexcept = default;
-        auto operator=(const SpaceNode&) = delete;
-        auto operator=(SpaceNode&&) noexcept -> SpaceNode& = default;
-        ~SpaceNode() = default;
-
-        [[nodiscard]] auto IsBusyRecursively() const noexcept -> bool;
-
-        auto FindPosition(isize32 size) -> nptr<SpaceNode>;
-        void Free() noexcept;
-
-        nptr<SpaceNode> Parent {};
-        ipos32 Pos {};
-        isize32 Size {};
-        bool Busy {};
-        vector<unique_ptr<SpaceNode>> Children {};
-    };
-
     explicit TextureAtlas(AtlasType type, ptr<RenderTarget> rt) noexcept;
     TextureAtlas(const TextureAtlas&) = delete;
     TextureAtlas(TextureAtlas&&) noexcept = delete;
@@ -85,12 +152,13 @@ public:
     [[nodiscard]] auto GetRenderTarget() noexcept -> ptr<RenderTarget> { return _rt; }
     [[nodiscard]] auto GetTexture() const noexcept -> ptr<const RenderTexture> { return _rt->GetTexture(); }
     [[nodiscard]] auto GetTexture() noexcept -> ptr<RenderTexture> { return _rt->GetTexture(); }
-    [[nodiscard]] auto GetLayout() noexcept -> ptr<SpaceNode> { return &_rootNode; }
+    [[nodiscard]] auto GetLayout() const noexcept -> ptr<const TextureAtlasLayout> { return &_layout; }
+    [[nodiscard]] auto GetLayout() noexcept -> ptr<TextureAtlasLayout> { return &_layout; }
 
 private:
     AtlasType _type;
     ptr<RenderTarget> _rt;
-    SpaceNode _rootNode;
+    TextureAtlasLayout _layout;
 };
 
 class TextureAtlasManager
@@ -103,11 +171,12 @@ public:
     auto operator=(TextureAtlasManager&&) noexcept -> TextureAtlasManager& = delete;
     ~TextureAtlasManager() = default;
 
-    auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;
-    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, ptr<TextureAtlas::SpaceNode>, ipos32>;
+    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, unique_del_ptr<TextureAtlasLayout::Allocation>, ipos32>;
     void DumpAtlases() const;
 
 private:
+    auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;
+
     ptr<RenderSettings> _settings;
     ptr<RenderTargetManager> _rtMngr;
     vector<unique_ptr<TextureAtlas>> _allAtlases {};

@@ -221,6 +221,95 @@ auto ParticleSystem::GetDrawInScene() const -> bool
     return _runtimeSystem->GetDrawInScene();
 }
 
+auto ParticleSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->System->isAABBComputationEnabled() || _boundsDirty || _impl->System->getNbParticles() == 0) {
+        return std::nullopt;
+    }
+
+    const SPK::Vector3D& aabb_min = _impl->System->getAABBMin();
+    const SPK::Vector3D& aabb_max = _impl->System->getAABBMax();
+    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+
+    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
+        return std::nullopt;
+    }
+
+    const mat44 view = GetRenderViewMatrix();
+    ParticleBounds3D result;
+    bool initialized = false;
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        const vec3 corner {
+            (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
+            (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
+            (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
+        };
+        const glm::vec4 transformed = view * glm::vec4 {corner, 1.0f};
+
+        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
+            return std::nullopt;
+        }
+
+        const vec3 point {transformed};
+
+        if (!initialized) {
+            result.Min = point;
+            result.Max = point;
+            initialized = true;
+        }
+        else {
+            result.Min = glm::min(result.Min, point);
+            result.Max = glm::max(result.Max, point);
+        }
+    }
+
+    return result;
+}
+
+void ParticleSystem::EnableBoundsComputation() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->System->isAABBComputationEnabled()) {
+        _impl->System->enableAABBComputation(true);
+        _boundsDirty = true;
+    }
+}
+
+void ParticleSystem::RebaseWorldParticles(vec3 delta) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_tiltInProj) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
+
+    if (delta == vec3 {}) {
+        return;
+    }
+
+    const SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
+
+    for (size_t group_index = 0; group_index < _impl->System->getNbGroups(); group_index++) {
+        auto&& group = _impl->System->getGroup(group_index);
+
+        for (SPK::GroupIterator particle_it(*group); !particle_it.end(); ++particle_it) {
+            particle_it->position() += spark_delta;
+            particle_it->oldPosition() += spark_delta;
+        }
+    }
+
+    if (_impl->System->isAABBComputationEnabled()) {
+        _boundsDirty = true;
+    }
+}
+
 auto ParticleSystem::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();

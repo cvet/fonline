@@ -58,9 +58,8 @@ auto ScriptDataAccessor::GetArrayElement(ptr<void> data, size_t index) const -> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
-    FO_VERIFY_AND_THROW(nullable_arr, "Missing AngelScript array");
-    auto arr = nullable_arr.as_ptr();
+    auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
+    FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     return arr->At(numeric_cast<int32_t>(index));
 }
 
@@ -76,9 +75,8 @@ auto ScriptDataAccessor::GetDictElement(ptr<void> data, size_t index) const -> p
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
-    FO_VERIFY_AND_THROW(nullable_dict, "Missing AngelScript dictionary");
-    auto dict = nullable_dict.as_ptr();
+    auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
+    FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     const auto it = std::next(dict->GetMap()->begin(), static_cast<ptrdiff_t>(index));
     return pair<ptr<void>, ptr<void>>(it->first, it->second);
 }
@@ -87,10 +85,9 @@ auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<Sc
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(data);
+    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(data);
 
-    if (nullable_func) {
-        auto func = nullable_func.as_ptr();
+    if (func) {
         auto func_desc = IndexScriptFunc(func);
         FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
         return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()));
@@ -103,9 +100,8 @@ void ScriptDataAccessor::ClearArray(ptr<void> data) const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
-    FO_VERIFY_AND_THROW(nullable_arr, "Missing AngelScript array");
-    auto arr = nullable_arr.as_ptr();
+    auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
+    FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     arr->Resize(0);
 }
 
@@ -113,9 +109,8 @@ void ScriptDataAccessor::AddArrayElement(ptr<void> data, ptr<void> value) const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
-    FO_VERIFY_AND_THROW(nullable_arr, "Missing AngelScript array");
-    auto arr = nullable_arr.as_ptr();
+    auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
+    FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     arr->InsertLast(value);
 }
 
@@ -123,9 +118,8 @@ void ScriptDataAccessor::ClearDict(ptr<void> data) const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
-    FO_VERIFY_AND_THROW(nullable_dict, "Missing AngelScript dictionary");
-    auto dict = nullable_dict.as_ptr();
+    auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
+    FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     dict->Clear();
 }
 
@@ -133,9 +127,8 @@ void ScriptDataAccessor::AddDictElement(ptr<void> data, ptr<void> key, ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
-    FO_VERIFY_AND_THROW(nullable_dict, "Missing AngelScript dictionary");
-    auto dict = nullable_dict.as_ptr();
+    auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
+    FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     dict->Set(key.get(), value.get());
 }
 
@@ -195,7 +188,7 @@ auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t 
 
         if (string_view(value_name) == "array") {
             nptr<AngelScript::asITypeInfo> value_type_info = as_type_info->GetSubType(1);
-            FO_VERIFY_AND_THROW(!!value_type_info, "Missing dictionary value type info");
+            FO_VERIFY_AND_THROW(value_type_info, "Missing dictionary value type info");
             const auto value_name2 = get_type_name(value_type_info->GetSubTypeId());
 
             if (!meta->IsValidBaseType(value_name2)) {
@@ -253,8 +246,8 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<ScriptFuncDesc> nullable_func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData()); nullable_func_desc) {
-        return nullable_func_desc.as_ptr();
+    if (auto func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData())) {
+        return func_desc;
     }
 
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
@@ -284,6 +277,21 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
 
     if (!is_void_ret) {
         func_desc->Ret = ResolveScriptFuncType(as_engine, ret_type_id, ret_flags, true);
+
+        if (func_desc->Ret.Kind == ComplexTypeKind::Simple) {
+            nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
+
+            if (as_ret_type && (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0) {
+                func_desc->ReturnValueCleaner = [as_engine, as_ret_type](ptr<void> ret_data) mutable {
+                    auto cur_obj = NativeDataProvider::ReadHandleSlot(ret_data);
+
+                    if (cur_obj) {
+                        as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
+                        NativeDataProvider::WriteHandleSlot(ret_data, nullptr);
+                    }
+                };
+            }
+        }
     }
 
     const bool call_supported = (is_void_ret || !!func_desc->Ret) && !std::ranges::any_of(func_desc->Args, [](auto&& a) { return !a.Type; });
@@ -292,11 +300,11 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
         func_desc->Call = [func](FuncCallData& call) FO_DEFERRED { ScriptFuncCall(func, call); };
     }
 
-    ptr<ScriptFuncDesc> released_func_desc = std::move(func_desc).release();
-    func->SetUserData(cast_to_void(released_func_desc.get()));
-    nptr<ScriptFuncDesc> nullable_func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
-    FO_VERIFY_AND_THROW(!!nullable_func_desc, "Script function descriptor was not stored");
-    return nullable_func_desc.as_ptr();
+    auto released_func_desc = func_desc.release();
+    func->SetUserData(released_func_desc.void_cast());
+    auto stored_func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
+    FO_VERIFY_AND_THROW(stored_func_desc, "Script function descriptor was not stored");
+    return stored_func_desc;
 }
 
 // AngelScript passes reference parameters as a pointer on the stack: GetAddressOfArg() returns the
@@ -311,9 +319,9 @@ static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScrip
     FO_NO_STACK_TRACE_ENTRY();
 
     if (arg_type.IsMutable) {
-        nptr<void> arg_address = GetGenericArgAddress(gen, arg_index);
+        auto arg_address = GetGenericArgAddress(gen, arg_index);
         FO_VERIFY_AND_THROW(arg_address, "Reference argument address is null");
-        return arg_address.as_ptr();
+        return arg_address;
     }
 
     return GetGenericAddressArg(gen, arg_index);
@@ -326,10 +334,10 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(gen->GetArgCount()) == args_desc.size(), "Generic call argument count does not match descriptor", gen->GetArgCount(), args_desc.size());
 
     int32_t as_result = 0;
-    ptr<const DataAccessor> accessor = &SCRIPT_DATA_ACCESSOR;
+    auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
     const size_t args_count = gen->GetArgCount() + (add_obj ? 1 : 0);
-    vector<ptr<void>> args_data;
+    small_vector<ptr<void>, 16> args_data;
     args_data.reserve(args_count);
     array<nptr<void>, 1> this_obj_storage {};
 
@@ -353,9 +361,9 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
     const auto ret_type_id = gen->GetReturnTypeId();
 
     if (ret_type_id != AngelScript::asTYPEID_VOID) {
-        nptr<void> nullable_ret_location = gen->GetAddressOfReturnLocation();
-        FO_STRONG_ASSERT(nullable_ret_location, "Generic call return location is null");
-        call.RetData = nullable_ret_location.as_ptr();
+        nptr<void> ret_location = gen->GetAddressOfReturnLocation();
+        FO_STRONG_ASSERT(ret_location, "Generic call return location is null");
+        call.RetData = ret_location;
         ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
 
         if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
@@ -369,10 +377,10 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             if (is_array || is_dict) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
                 FO_VERIFY_AND_THROW(ret_obj, "Missing AngelScript return object");
-                *NativeDataProvider::GetHandleSlot(call.RetData.as_ptr()) = ret_obj.get();
+                NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
             }
             else if (is_ref_type) {
-                *NativeDataProvider::GetHandleSlot(call.RetData.as_ptr()) = nullptr;
+                NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
             }
             else if (is_value_type) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
@@ -402,14 +410,14 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             nptr<void> ret_obj = call.RetData;
 
             if (is_ref_type) {
-                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData.as_ptr());
+                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
             }
 
             if (ret_obj) {
                 as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
 
                 if (is_ref_type) {
-                    *NativeDataProvider::GetHandleSlot(call.RetData.as_ptr()) = nullptr;
+                    NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
                 }
             }
         }
@@ -428,11 +436,12 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
     int32_t as_result = 0;
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
     auto backend = GetScriptBackend(as_engine);
-    nptr<AngelScriptContextManager> context_mngr = backend->GetContextMngr();
+    auto context_mngr = backend->GetContextMngr();
+    FO_VERIFY_AND_THROW(context_mngr, "Missing script context manager");
     auto ctx = context_mngr->PrepareContext(func);
     const uint64_t ctx_generation = context_mngr->GetContextGeneration(ctx);
     auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
-    nptr<const ScriptFuncDesc> func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
+    auto func_desc = cast_from_void<const ScriptFuncDesc*>(func->GetUserData());
     FO_VERIFY_AND_THROW(func_desc, "Missing script function descriptor");
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
@@ -451,14 +460,14 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
     };
 
     for (AngelScript::asUINT i = 0; i < call.ArgsData.size() && !any_destroyed; i++) {
-        ptr<const ComplexTypeDesc> arg_type = &func_desc->Args[i].Type;
+        auto arg_type = make_ptr(&func_desc->Args[i].Type);
 
         if (arg_type->BaseType.IsEntity) {
             if (arg_type->Kind == ComplexTypeKind::Simple) {
                 check_entity(NativeDataProvider::ReadTypedHandleSlot<Entity>(call.ArgsData[i]));
             }
             else if (arg_type->Kind == ComplexTypeKind::Array) {
-                ptr<void> arr_data = call.ArgsData[i];
+                auto arr_data = call.ArgsData[i];
                 const size_t arr_size = call.Accessor->GetArraySize(arr_data);
 
                 for (size_t j = 0; j < arr_size && !any_destroyed; j++) {
@@ -466,12 +475,12 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
             }
             else if (arg_type->Kind == ComplexTypeKind::DictOfArray) {
-                ptr<void> dict_data = call.ArgsData[i];
+                auto dict_data = call.ArgsData[i];
                 const size_t dict_size = call.Accessor->GetDictSize(dict_data);
 
                 for (size_t j = 0; j < dict_size && !any_destroyed; j++) {
                     const auto kv = call.Accessor->GetDictElement(dict_data, j);
-                    ptr<void> array_data = kv.second;
+                    auto array_data = kv.second;
                     const size_t inner_size = call.Accessor->GetArraySize(array_data);
 
                     for (size_t k = 0; k < inner_size && !any_destroyed; k++) {
@@ -480,7 +489,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
             }
             else if (arg_type->Kind == ComplexTypeKind::Dict) {
-                ptr<void> dict_data = call.ArgsData[i];
+                auto dict_data = call.ArgsData[i];
                 const size_t dict_size = call.Accessor->GetDictSize(dict_data);
 
                 for (size_t j = 0; j < dict_size && !any_destroyed; j++) {
@@ -498,9 +507,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
     if (call.Accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX) {
         // Direct call AS to AS
         for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {
-            ptr<const ComplexTypeDesc> arg_type = &func_desc->Args[i].Type;
-            ptr<const BaseTypeDesc> base_type = &arg_type->BaseType;
-            ptr<void> arg_data = call.ArgsData[i];
+            auto arg_type = make_ptr(&func_desc->Args[i].Type);
+            auto base_type = make_ptr(&arg_type->BaseType);
+            auto arg_data = call.ArgsData[i];
 
             if (arg_type->Kind == ComplexTypeKind::Simple) {
                 if (arg_type->IsMutable) {
@@ -539,14 +548,13 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     nptr<void> ret_obj = ctx->GetReturnObject();
 
                     if (is_ref_type) {
-                        auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
-                        nptr<void> cur_obj = *cur_obj_slot;
+                        nptr<void> cur_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
 
                         if (cur_obj) {
                             as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
                         }
 
-                        *cur_obj_slot = ret_obj.get();
+                        NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
                         as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
                     }
                     else {
@@ -566,14 +574,14 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
         array<int32_t, MAX_CALL_ARGS> enum_mutable_data = {};
 
         for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {
-            ptr<const ComplexTypeDesc> arg_type = &func_desc->Args[i].Type;
-            ptr<const BaseTypeDesc> base_type = &arg_type->BaseType;
-            ptr<void> arg_data = call.ArgsData[i];
+            auto arg_type = make_ptr(&func_desc->Args[i].Type);
+            auto base_type = make_ptr(&arg_type->BaseType);
+            auto arg_data = call.ArgsData[i];
 
             if (arg_type->Kind == ComplexTypeKind::Simple) {
                 if (arg_type->IsMutable) {
                     if (base_type->IsEnum && base_type->EnumUnderlyingType->Size != sizeof(int32_t)) {
-                        mutable_data[i] = cast_to_void(&enum_mutable_data[i]);
+                        mutable_data[i] = make_nptr(&enum_mutable_data[i]).void_cast();
                         MemCopy(mutable_data[i], arg_data, base_type->Size);
                         FO_AS_VERIFY(ctx->SetArgAddress(i, mutable_data[i].get()));
                     }
@@ -605,14 +613,14 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 arr->Reserve(numeric_cast<int32_t>(arr_size));
 
                 for (size_t j = 0; j < arr_size; j++) {
-                    ptr<void> elem = call.Accessor->GetArrayElement(arg_data, j);
+                    auto elem = call.Accessor->GetArrayElement(arg_data, j);
                     arr->InsertLast(elem);
                 }
 
                 if (arg_type->IsMutable) {
                     mutable_data[i] = arr;
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
-                    (void)ReleaseScriptOwnership(std::move(arr));
+                    (void)arr.release_ownership();
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, arr.get()));
@@ -630,7 +638,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if (arg_type->IsMutable) {
                     mutable_data[i] = dict;
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
-                    (void)ReleaseScriptOwnership(std::move(dict));
+                    (void)dict.release_ownership();
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, dict.get()));
@@ -652,15 +660,34 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
                     nptr<void> ret_obj = ctx->GetReturnObject();
 
-                    if (is_ref_type) {
-                        auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
-                        const nptr<void> cur_obj = *cur_obj_slot;
+                    if (is_ref_type && func_desc->Ret.Kind == ComplexTypeKind::Array) {
+                        auto arr = cast_from_void<ScriptArray*>(ret_obj.get());
+                        FO_VERIFY_AND_THROW(arr, "Returned AngelScript array handle is null");
+                        const int32_t arr_size = arr->GetSize();
+                        call.Accessor->ClearArray(call.RetData);
+
+                        for (int32_t j = 0; j < arr_size; j++) {
+                            call.Accessor->AddArrayElement(call.RetData, arr->At(j));
+                        }
+                    }
+                    else if (is_ref_type && (func_desc->Ret.Kind == ComplexTypeKind::Dict || func_desc->Ret.Kind == ComplexTypeKind::DictOfArray)) {
+                        auto dict = cast_from_void<ScriptDict*>(ret_obj.get());
+                        FO_VERIFY_AND_THROW(dict, "Returned AngelScript dictionary handle is null");
+                        ptr<const map<void*, void*, ScriptDict::ScriptDictComparator>> dict_map = dict->GetMap();
+                        call.Accessor->ClearDict(call.RetData);
+
+                        for (const auto& kv : *dict_map) {
+                            call.Accessor->AddDictElement(call.RetData, kv.first, kv.second);
+                        }
+                    }
+                    else if (is_ref_type) {
+                        auto cur_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
 
                         if (cur_obj) {
-                            as_engine->ReleaseScriptObject(cur_obj.get_no_const(), as_ret_type.get());
+                            as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
                         }
 
-                        *cur_obj_slot = ret_obj.get();
+                        NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
                         as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
                     }
                     else {
@@ -679,19 +706,18 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 const nptr<void> mutable_entry = mutable_data[i];
 
                 if (mutable_entry) {
-                    ptr<const ComplexTypeDesc> arg_type = &func_desc->Args[i].Type;
-                    ptr<void> arg_data = call.ArgsData[i];
+                    auto arg_type = make_ptr(&func_desc->Args[i].Type);
+                    auto arg_data = call.ArgsData[i];
                     FO_VERIFY_AND_THROW(arg_type->IsMutable, "Argument type is not mutable");
 
                     if (arg_type->Kind == ComplexTypeKind::Simple) {
-                        ptr<const BaseTypeDesc> base_type = &arg_type->BaseType;
+                        auto base_type = make_ptr(&arg_type->BaseType);
                         FO_VERIFY_AND_THROW(base_type->IsEnum, "Mutable AngelScript argument base type is not enum");
                         MemCopy(arg_data, mutable_entry, base_type->Size);
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Array) {
-                        nptr<ScriptArray> nullable_arr = cast_from_void<ScriptArray*>(mutable_entry.get_no_const());
-                        FO_VERIFY_AND_THROW(!!nullable_arr, "Mutable argument array handle is null");
-                        auto arr = nullable_arr.as_ptr();
+                        auto arr = cast_from_void<ScriptArray*>(mutable_entry);
+                        FO_VERIFY_AND_THROW(arr, "Mutable argument array handle is null");
                         const int32_t arr_size = arr->GetSize();
                         call.Accessor->ClearArray(arg_data);
 
@@ -702,10 +728,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         arr->Release();
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Dict) {
-                        nptr<ScriptDict> nullable_dict = cast_from_void<ScriptDict*>(mutable_entry.get_no_const());
-                        FO_VERIFY_AND_THROW(!!nullable_dict, "Mutable argument dictionary handle is null");
-                        auto dict = nullable_dict.as_ptr();
-                        ptr<const map<void*, void*, ScriptDict::ScriptDictComparator>> dict_map = dict->GetMap();
+                        auto dict = cast_from_void<ScriptDict*>(mutable_entry);
+                        FO_VERIFY_AND_THROW(dict, "Mutable argument dictionary handle is null");
+                        auto dict_map = dict->GetMap();
                         call.Accessor->ClearDict(arg_data);
 
                         for (const auto& kv : *dict_map) {

@@ -66,7 +66,7 @@ The parser stores owned strings internally and returns `string_view` values from
 
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
 
-- `ResourcePackInfo` — name, input directories/files, recursive flag, side flags, and baker list.
+- `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.
 - `SubConfigInfo` — named config overlays and setting maps.
 - `GlobalSettings` — combined client/server/baking/base settings with apply/save/custom-setting operations.
 
@@ -89,6 +89,14 @@ Client startup has one extra resolution step for installed layouts: `ResolveUser
 ## Resource packs and data sources
 
 `ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
+
+Resource-pack input directories are mounted recursively. `IncludePatterns` and `ExcludePatterns` are optional space-separated glob lists applied to normalized resource-relative paths before any baker runs. An empty include list accepts every path; exclusion is evaluated after inclusion and wins. Patterns are case-sensitive and support:
+
+- `*` — zero or more characters other than `/`;
+- `?` — exactly one character other than `/`;
+- `**` — zero or more characters including `/`; `**/` also matches zero directory levels.
+
+Both `/` and `\` are accepted as pattern separators and normalized to `/`. For example, `IncludePatterns = **/*.fomap` selects maps at any depth, while `ExcludePatterns = **/_*.fomap` removes scratch maps such as `Generated/_compose.fomap`. Multiple packs may mount the same `InputDirs` and select disjoint resources with different pattern lists. Use `IncludePatterns = *` to reproduce the former top-level-only input behavior.
 
 `DataSource` provides two built-in mount shapes:
 

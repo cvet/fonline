@@ -1,10 +1,12 @@
 # 2D_WithoutEgg — plain textured-sprite shader with no egg reveal.
 # Where: textured-sprite shader without the egg reveal; available alternate (the engine binds 2D_Default / 2D_NoDepth to the live sprite slots).
 # How: vertex transforms the sprite and forwards colour and UV only; fragment samples MainTex, multiplies by vertex colour with a 2x brightness scale, and discards near-zero alpha — no egg flags, screen position or radial falloff. Depth test LessEqual.
+# Depth: writes depth but does not test it (DepthFunc = Always); sprite-vs-sprite occlusion comes from the
+# painter order, see 2D_Default.fofx for the rationale.
 # Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
 
 [Effect]
-DepthFunc = LessEqual
+DepthFunc = Always
 
 [VertexShader]
 layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };

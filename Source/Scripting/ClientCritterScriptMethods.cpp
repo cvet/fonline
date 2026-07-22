@@ -38,6 +38,8 @@
 #include "CritterView.h"
 #include "Geometry.h"
 #include "MapView.h"
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -46,13 +48,13 @@ static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_hex_cr = cr.dyn_cast<CritterHexView>();
+    auto hex_cr = cr.dyn_cast<CritterHexView>();
 
-    if (!nullable_hex_cr) {
+    if (!hex_cr) {
         throw ScriptException("Critter is not on map");
     }
 
-    return nullable_hex_cr.as_ptr();
+    return hex_cr;
 }
 
 ///@ ExportMethod
@@ -150,9 +152,8 @@ FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self
         return {};
     }
 
-    auto nullable_model = hex_cr->GetModel();
-    FO_VERIFY_AND_THROW(nullable_model, "Critter reports model but has no model instance");
-    auto model = nullable_model.as_ptr();
+    auto model = hex_cr->GetModel();
+    FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
     return model->GetAnimDuration(stateAnim, actionAnim);
 
@@ -181,7 +182,7 @@ FO_SCRIPT_API void Client_Critter_Animate(ptr<CritterView> self, CritterStateAni
         hex_cr->StopAnim();
     }
 
-    nptr<Entity> context_item = contextItem;
+    auto context_item = contextItem;
     hex_cr->AppendAnim(stateAnim, actionAnim, context_item);
 }
 
@@ -243,13 +244,12 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstring protoId)
 {
-    auto nullable_proto = self->GetEngine()->GetProtoItem(protoId);
+    auto proto = self->GetEngine()->GetProtoItem(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     auto inv_items = self->GetInvItems();
 
     if (proto->GetStackable()) {
@@ -382,8 +382,7 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
     auto hex_cr = RequireHexCritter(self);
 
 #if FO_ENABLE_3D
-    if (nptr<ModelInstance> nullable_model = hex_cr->GetModel(); nullable_model) {
-        auto model = nullable_model.as_ptr();
+    if (auto model = hex_cr->GetModel(); model) {
         model->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
     }
     else
@@ -399,20 +398,19 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, ptr<CritterView>> animCallback)
 {
     auto hex_cr = RequireHexCritter(self);
 
 #if FO_ENABLE_3D
-    if (nptr<ModelInstance> nullable_model = hex_cr->GetModel(); nullable_model) {
-        auto model = nullable_model.as_ptr();
+    if (auto model = hex_cr->GetModel(); model) {
         ModelAnimationCallback anim_callback;
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
-        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, CritterView*>>(std::move(animCallback))]() mutable FO_DEFERRED {
+        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
-                animCallback->Call(self.get());
+                animCallback->Call(self);
             }
         };
 
@@ -440,9 +438,8 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
         return false;
     }
 
-    auto nullable_model = hex_cr->GetModel();
-    FO_VERIFY_AND_THROW(nullable_model, "Critter reports model but has no model instance");
-    auto model = nullable_model.as_ptr();
+    auto model = hex_cr->GetModel();
+    FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
     const auto bone_pos = model->GetBonePos(boneName);
     if (!bone_pos.has_value()) {
@@ -509,14 +506,12 @@ FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 {
 #if FO_ENABLE_3D
-    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr = self.dyn_cast<CritterHexView>();
 
-    if (nullable_hex_cr) {
-        auto hex_cr = nullable_hex_cr.as_ptr();
-        auto nullable_model = hex_cr->GetModel();
+    if (hex_cr) {
+        auto model = hex_cr->GetModel();
 
-        if (nullable_model) {
-            auto model = nullable_model.as_ptr();
+        if (model) {
             float32_t a = 180.0f - model->GetMoveDirAngle();
             a = std::fmod(a, 360.0f);
 
@@ -543,23 +538,21 @@ FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
 {
-    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr = self.dyn_cast<CritterHexView>();
 
-    if (!nullable_hex_cr) {
+    if (!hex_cr) {
         return 0xFF;
     }
 
-    auto hex_cr = nullable_hex_cr.as_ptr();
     return hex_cr->GetCurAlpha();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 {
-    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr = self.dyn_cast<CritterHexView>();
 
-    if (nullable_hex_cr) {
-        auto hex_cr = nullable_hex_cr.as_ptr();
+    if (hex_cr) {
         hex_cr->SetTargetAlpha(alpha);
     }
 }
@@ -567,24 +560,22 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
-    auto nullable_item = self->GetInvItem(itemId);
-    nptr<ItemView> nullable_swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+    auto item = self->GetInvItem(itemId);
+    auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
 
-    if (!nullable_item) {
+    if (!item) {
         throw ScriptException("Item not found");
     }
-    if (swapItemId && !nullable_swap_item) {
+    if (swapItemId && !swap_item) {
         throw ScriptException("Swap item not found");
     }
 
-    auto item = nullable_item.as_ptr();
     auto old_item = item->CreateRefClone();
     const CritterItemSlot from_slot = item->GetCritterSlot();
-    auto nullable_map_cr = self.dyn_cast<CritterHexView>();
+    auto map_cr = self.dyn_cast<CritterHexView>();
 
     if (toSlot == CritterItemSlot::Outside) {
-        if (nullable_map_cr) {
-            auto map_cr = nullable_map_cr.as_ptr();
+        if (map_cr) {
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
@@ -598,25 +589,21 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
     else {
         item->SetCritterSlot(toSlot);
 
-        if (nullable_swap_item) {
-            auto swap_item = nullable_swap_item.as_ptr();
+        if (swap_item) {
             swap_item->SetCritterSlot(from_slot);
         }
 
-        if (nullable_map_cr) {
-            auto map_cr = nullable_map_cr.as_ptr();
+        if (map_cr) {
             map_cr->Action(CritterAction::MoveItem, static_cast<int32_t>(from_slot), item, true);
 
-            if (nullable_swap_item) {
-                auto swap_item = nullable_swap_item.as_ptr();
+            if (swap_item) {
                 map_cr->Action(CritterAction::SwapItems, static_cast<int32_t>(toSlot), swap_item, true);
             }
         }
     }
 
     // Light
-    if (nullable_map_cr) {
-        auto map_cr = nullable_map_cr.as_ptr();
+    if (map_cr) {
         map_cr->GetMap()->RebuildFog();
         map_cr->GetMap()->UpdateCritterLightSource(map_cr);
     }

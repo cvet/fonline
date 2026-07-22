@@ -381,10 +381,6 @@ extern auto AllocatorGetInUseBytes() noexcept -> size_t
 #if FO_TRACY
     tracy::rpmalloc_global_statistics_t stats {};
     tracy::rpmalloc_global_statistics(&stats);
-#else
-    rpmalloc_global_statistics_t stats {};
-    ::rpmalloc_global_statistics(&stats);
-#endif
 
     const size_t mapped = stats.mapped;
     const size_t cached = stats.cached;
@@ -393,6 +389,12 @@ extern auto AllocatorGetInUseBytes() noexcept -> size_t
         return mapped - cached;
     }
     return mapped;
+#else
+    rpmalloc_global_statistics_t stats {};
+    ::rpmalloc_global_statistics(&stats);
+
+    return stats.active;
+#endif
 
 #else
     return 0;
@@ -403,16 +405,13 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto make_backup_array = []<typename T>(size_t count) -> unique_arr_ptr<T> { //
-        return unique_arr_ptr<T> {new T[count]()};
-    };
-
-    BackupMemoryChunks = make_backup_array.operator()<unique_arr_ptr<uint8_t>>(BACKUP_MEMORY_CHUNKS);
+    unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        BackupMemoryChunks[i] = make_backup_array.operator()<uint8_t>(BACKUP_MEMORY_CHUNK_SIZE);
+        new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
     }
 
+    BackupMemoryChunks = std::move(new_chunks);
     BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
 }
 

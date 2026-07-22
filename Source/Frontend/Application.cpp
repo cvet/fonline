@@ -78,8 +78,7 @@ static auto GetActiveRenderer(auto&& ctx)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx->ActiveRenderer, "No active renderer is selected");
-    auto active_renderer = ctx->ActiveRenderer.as_ptr();
-    return active_renderer;
+    return ctx->ActiveRenderer.as_ptr();
 }
 
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>
@@ -209,7 +208,7 @@ static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>
     };
 }
 
-static auto WindowPosToScreenPos(ptr<Renderer> renderer, isize32 screen_size, ipos32 pos) -> ipos32
+static auto WindowPosToScreenPos(ptr<const Renderer> renderer, isize32 screen_size, ipos32 pos) -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -221,7 +220,7 @@ static auto WindowPosToScreenPos(ptr<Renderer> renderer, isize32 screen_size, ip
     return {screen_x, screen_y};
 }
 
-static auto ScreenPosToWindowPos(ptr<Renderer> renderer, isize32 screen_size, ipos32 pos) -> ipos32
+static auto ScreenPosToWindowPos(ptr<const Renderer> renderer, isize32 screen_size, ipos32 pos) -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,15 +230,6 @@ static auto ScreenPosToWindowPos(ptr<Renderer> renderer, isize32 screen_size, ip
     const auto win_y = vp.y + iround<int32_t>(numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(screen_size.height) * numeric_cast<float32_t>(vp.height));
 
     return {win_x, win_y};
-}
-
-static auto GetSdlWindow(nptr<WindowInternalHandle> handle) -> ptr<SDL_Window>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<SDL_Window> nullable_sdl_window = handle ? cast_from_void<SDL_Window*>(handle.get()) : nullptr;
-    FO_VERIFY_AND_THROW(nullable_sdl_window, "Window handle does not reference a valid SDL window");
-    return nullable_sdl_window.as_ptr();
 }
 
 static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_ptr<SDL_Window>
@@ -280,11 +270,11 @@ static auto TryCreateTemporarySdlWindowRenderer(ptr<const char> title, int32_t w
 
     if (!created) {
         if (renderer_out) {
-            auto renderer = MakeSdlRendererHolder(renderer_out.as_ptr());
+            auto renderer = MakeSdlRendererHolder(renderer_out);
             ignore_unused(renderer);
         }
         if (window_out) {
-            auto window = MakeSdlWindowHolder(window_out.as_ptr());
+            auto window = MakeSdlWindowHolder(window_out);
             ignore_unused(window);
         }
 
@@ -294,16 +284,16 @@ static auto TryCreateTemporarySdlWindowRenderer(ptr<const char> title, int32_t w
     FO_VERIFY_AND_THROW(window_out, "SDL returned a null window despite successful creation");
     FO_VERIFY_AND_THROW(renderer_out, "SDL returned a null renderer despite successful creation");
 
-    return TemporarySdlWindowRenderer {MakeSdlWindowHolder(window_out.as_ptr()), MakeSdlRendererHolder(renderer_out.as_ptr())};
+    return TemporarySdlWindowRenderer {MakeSdlWindowHolder(window_out), MakeSdlRendererHolder(renderer_out)};
 }
 
 static auto GetSdlDisplayMode(SDL_DisplayID display_id) -> ptr<const SDL_DisplayMode>
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<const SDL_DisplayMode> nullable_display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
-    FO_VERIFY_AND_THROW(nullable_display_mode, "SDL current display mode is unavailable");
-    return nullable_display_mode.as_ptr();
+    nptr<const SDL_DisplayMode> display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
+    FO_VERIFY_AND_THROW(display_mode, "SDL current display mode is unavailable");
+    return display_mode;
 }
 
 static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_DisplayMode> display_mode) noexcept
@@ -344,20 +334,18 @@ static void SdlMemFree(void* mem) noexcept
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
-    MainWindow {ptr<Application> {this}},
-    Render {ptr<Application> {this}},
-    Input {ptr<Application> {this}},
-    Audio {ptr<Application> {this}},
+    MainWindow {make_ptr(this)},
+    Render {make_ptr(this)},
+    Input {make_ptr(this)},
+    Audio {make_ptr(this)},
     _ctx {SafeAlloc::MakeUnique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
 
     SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
-    ptr<const char> app_id = FO_DEV_NAME.c_str();
-    ptr<const char> app_name = Settings.GameName.c_str();
-    SDL_SetHint(SDL_HINT_APP_ID, app_id.get());
-    SDL_SetHint(SDL_HINT_APP_NAME, app_name.get());
+    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
+    SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
     if (Settings.NullRenderer) {
@@ -394,14 +382,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     if (!Settings.DisableAudio) {
         if (SDL_WasInit(SDL_INIT_AUDIO) != 0 || SDL_InitSubSystem(SDL_INIT_AUDIO)) {
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32_t additional_amount, int32_t total_amount) FO_DEFERRED {
-                nptr<Application> nullable_app = cast_from_void<Application*>(userdata);
-                FO_VERIFY_AND_THROW(nullable_app, "Audio stream callback received a null application pointer");
-                ptr<Application> app = nullable_app.as_ptr();
+                auto app = cast_from_void<Application*>(userdata);
+                FO_VERIFY_AND_THROW(app, "Audio stream callback received a null application pointer");
                 ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
-                    nptr<SDL_AudioStream> audio_stream = stream;
-                    FO_VERIFY_AND_THROW(!!audio_stream, "Audio stream callback received a null stream");
+                    auto audio_stream = make_nptr(stream);
+                    FO_VERIFY_AND_THROW(audio_stream, "Audio stream callback received a null stream");
 
                     if (numeric_cast<size_t>(additional_amount) > app->_ctx->AudioStreamBuf.size()) {
                         app->_ctx->AudioStreamBuf.resize(numeric_cast<size_t>(additional_amount) * 2);
@@ -421,12 +408,12 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                 }
             };
 
-            nptr<SDL_AudioStream> nullable_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, cast_to_void(this));
+            auto opened_audio_stream = make_nptr(SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, make_nptr(this).void_cast()));
 
-            if (nullable_audio_stream) {
-                auto audio_stream = make_unique_del_ptr(nullable_audio_stream.as_ptr(), [](SDL_AudioStream* raw_audio_stream) {
+            if (opened_audio_stream) {
+                auto audio_stream = make_unique_del_ptr(opened_audio_stream, [](SDL_AudioStream* raw_audio_stream) {
                     if (raw_audio_stream != nullptr) {
-                        ptr<SDL_AudioStream> audio_stream = raw_audio_stream;
+                        auto audio_stream = make_ptr(raw_audio_stream);
                         SDL_DestroyAudioStream(audio_stream.get());
                     }
                 });
@@ -463,18 +450,21 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
+
 #if FO_HAVE_DIRECT_3D
     else if (Settings.ForceDirect3D) {
         _ctx->ActiveRendererType = RenderType::Direct3D;
         _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
+
 #if FO_HAVE_METAL
     else if (Settings.ForceMetal) {
         _ctx->ActiveRendererType = RenderType::Metal;
         throw NotImplementedException(FO_LINE_STR);
     }
 #endif
+
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
@@ -495,17 +485,20 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
+
 #if FO_HAVE_METAL
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Metal;
     }
 #endif
+
 #if FO_HAVE_VULKAN
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
         _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
+
 #if FO_HAVE_OPENGL
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::OpenGL;
@@ -563,14 +556,16 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._title = Settings.GameName;
     MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
 
     if (_ctx->ActiveRendererType != RenderType::Null && !Settings.Fullscreen) {
         int32_t actual_width = Settings.ScreenWidth;
         int32_t actual_height = Settings.ScreenHeight;
-        SDL_GetWindowSizeInPixels(GetSdlWindow(MainWindow._windowHandle).get(), &actual_width, &actual_height);
+        auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        SDL_GetWindowSizeInPixels(sdl_window.get(), &actual_width, &actual_height);
 
         if (actual_width > 0 && actual_height > 0) {
             Settings.ScreenWidth = actual_width;
@@ -581,7 +576,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (_ctx->ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
-        auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
+        auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
         if (SDL_SetWindowFullscreen(sdl_window.get(), true)) {
             _mainWindowFullscreenBackbufferMode = true;
@@ -601,7 +597,9 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (_ctx->ActiveRendererType != RenderType::Null && !_isTablet) {
-        SDL_StartTextInput(GetSdlWindow(MainWindow._windowHandle).get());
+        auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        SDL_StartTextInput(sdl_window.get());
     }
 
     // Init Dear ImGui
@@ -641,7 +639,9 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
 #if FO_WINDOWS
     if (_ctx->ActiveRendererType != RenderType::Null) {
-        const auto sdl_windows_props = SDL_GetWindowProperties(GetSdlWindow(MainWindow._windowHandle).get());
+        auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        const auto sdl_windows_props = SDL_GetWindowProperties(sdl_window.get());
         ImGui::GetMainViewport()->PlatformHandleRaw = SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     }
 #endif
@@ -688,7 +688,7 @@ Application::~Application()
     }
 
     _childWindows.clear();
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
     _activeWindow = main_window;
     _currentRenderingWindow = nullptr;
     _previousRenderTarget = nullptr;
@@ -702,7 +702,7 @@ Application::~Application()
 
     if (MainWindow._windowHandle) {
         if (_ctx->ActiveRendererType != RenderType::Null) {
-            auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
+            auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
             SDL_StopTextInput(sdl_window.get());
             auto owned_window = MakeSdlWindowHolder(sdl_window);
             ignore_unused(owned_window);
@@ -720,7 +720,7 @@ void Application::OpenLink(string_view link)
     FO_STACK_TRACE_ENTRY();
 
     const string link_text = string(link);
-    ptr<const char> link_ptr = link_text.c_str();
+    auto link_ptr = make_ptr(link_text.c_str());
     SDL_OpenURL(link_ptr.get());
 }
 
@@ -743,7 +743,9 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 {
     FO_STACK_TRACE_ENTRY();
 
-    SDL_SetiOSAnimationCallback(GetSdlWindow(MainWindow._windowHandle).get(), 1, callback, nullptr);
+    auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+    FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+    SDL_SetiOSAnimationCallback(sdl_window.get(), 1, callback, nullptr);
 }
 #endif
 
@@ -762,26 +764,23 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     window->_virtualLayoutSize = size;
     window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
 
-    auto window_ptr = window.as_ptr();
-    _allWindows.emplace_back(window_ptr);
+    _allWindows.emplace_back(window);
     _childWindows.emplace_back(std::move(window));
 
-    _activeWindow = window_ptr;
+    _activeWindow = _allWindows.back();
 
-    return window_ptr;
+    return _allWindows.back();
 }
 
-void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
+void Application::DestroyChildWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
 
-    if (!nullable_window || nullable_window == main_window) {
+    if (!window || window == main_window) {
         return;
     }
-
-    auto window = nullable_window.as_ptr();
 
     std::erase_if(_allWindows, [&](auto&& entry) { return entry == window; });
 
@@ -792,7 +791,12 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
     }
 
     if (_activeWindow == window) {
-        _activeWindow = !_childWindows.empty() && !(nptr<AppWindow> {_childWindows.front()} == window) ? nptr<AppWindow> {_childWindows.front()} : main_window.as_nptr();
+        if (!_childWindows.empty() && _childWindows.front() != window) {
+            _activeWindow = _childWindows.front();
+        }
+        else {
+            _activeWindow = main_window;
+        }
     }
 
     if (_currentRenderingWindow == window) {
@@ -812,7 +816,7 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
     FO_STACK_TRACE_ENTRY();
 
     if (!window) {
-        ptr<AppWindow> main_window = &MainWindow;
+        auto main_window = make_ptr(&MainWindow);
         _activeWindow = main_window;
         return;
     }
@@ -833,18 +837,16 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
         isize32 {Settings.ScreenWidth, Settings.ScreenHeight};
 
     bool recreate_texture = true;
-    auto nullable_virtual_render_tex = window->GetRenderTexture();
+    auto existing_render_tex = window->GetRenderTexture();
 
-    if (nullable_virtual_render_tex) {
-        auto virtual_render_tex = nullable_virtual_render_tex.as_ptr();
-        recreate_texture = virtual_render_tex->Size != desired;
+    if (existing_render_tex) {
+        recreate_texture = existing_render_tex->Size != desired;
     }
 
     if (recreate_texture) {
         auto active_renderer = GetActiveRenderer(_ctx);
         window->_virtualRenderTex = active_renderer->CreateTexture(desired, true, true);
-        auto virtual_render_tex = window->_virtualRenderTex.as_ptr();
-        virtual_render_tex->FlippedHeight = active_renderer->IsRenderTargetFlipped();
+        window->_virtualRenderTex->FlippedHeight = active_renderer->IsRenderTargetFlipped();
     }
 }
 
@@ -856,7 +858,8 @@ auto Application::IsMainWindowActuallyFullscreen() const -> bool
         return MainWindow._windowHandle ? MainWindow.ResolveWindowStub()->Fullscreen : false;
     }
 
-    auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
+    auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+    FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
     return (SDL_GetWindowFlags(sdl_window.get()) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
@@ -868,7 +871,8 @@ auto Application::IsMainWindowDisplayModeSize(isize32 size) const -> bool
         return false;
     }
 
-    auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
+    auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+    FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
     const SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window.get());
     auto display_mode = (display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr);
     return display_mode && display_mode->w == size.width && display_mode->h == size.height;
@@ -882,7 +886,8 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
         return {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
+    auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+    FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
     if (Settings.Fullscreen || _mainWindowFullscreenBackbufferMode || IsMainWindowActuallyFullscreen()) {
         int32_t window_width = Settings.ScreenWidth;
@@ -1071,27 +1076,25 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AppWindow> window = _activeWindow;
-
-    if (!window || !window->_isVirtual) {
+    if (!_activeWindow || !_activeWindow->_isVirtual) {
         return delta;
     }
 
-    const auto& rect = window->_displayRect;
+    const auto& rect = _activeWindow->_displayRect;
 
-    if (rect.width <= 0 || rect.height <= 0 || window->_virtualSize.width <= 0 || window->_virtualSize.height <= 0) {
+    if (rect.width <= 0 || rect.height <= 0 || _activeWindow->_virtualSize.width <= 0 || _activeWindow->_virtualSize.height <= 0) {
         return delta;
     }
 
-    const isize32 screen_size = window->GetScreenSize();
-    const irect32 content_rect = MakeAspectFitRect(screen_size, window->_virtualSize);
+    const isize32 screen_size = _activeWindow->GetScreenSize();
+    const irect32 content_rect = MakeAspectFitRect(screen_size, _activeWindow->_virtualSize);
 
     if (content_rect.width <= 0 || content_rect.height <= 0) {
         return delta;
     }
 
-    const int32_t local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(window->_virtualSize.width) * numeric_cast<float32_t>(screen_size.width) / (numeric_cast<float32_t>(rect.width) * numeric_cast<float32_t>(content_rect.width)));
-    const int32_t local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(window->_virtualSize.height) * numeric_cast<float32_t>(screen_size.height) / (numeric_cast<float32_t>(rect.height) * numeric_cast<float32_t>(content_rect.height)));
+    const int32_t local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(_activeWindow->_virtualSize.width) * numeric_cast<float32_t>(screen_size.width) / (numeric_cast<float32_t>(rect.width) * numeric_cast<float32_t>(content_rect.width)));
+    const int32_t local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(_activeWindow->_virtualSize.height) * numeric_cast<float32_t>(screen_size.height) / (numeric_cast<float32_t>(rect.height) * numeric_cast<float32_t>(content_rect.height)));
 
     return {local_dx, local_dy};
 }
@@ -1107,7 +1110,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
         auto headless_window = handle.as_ptr();
         _ctx->NullWindowStubs.emplace_back(std::move(handle));
 
-        return cast_to_void(headless_window.get());
+        return headless_window.reinterpret_as<WindowInternalHandle>();
     }
 
     // Initialize window
@@ -1170,18 +1173,16 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
     }
 
-    ptr<const char> window_title = Settings.GameName.c_str();
+    auto window_title = make_ptr(Settings.GameName.c_str());
     SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, window_title.get());
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
 
-    nptr<SDL_Window> nullable_sdl_window = SDL_CreateWindowWithProperties(props);
+    auto sdl_window = make_nptr(SDL_CreateWindowWithProperties(props));
 
-    if (!nullable_sdl_window) {
+    if (!sdl_window) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
-
-    auto sdl_window = nullable_sdl_window.as_ptr();
 
     if (!_isTablet) {
         SDL_SetWindowFullscreenMode(sdl_window.get(), nullptr);
@@ -1191,7 +1192,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
     auto display_mode = GetSdlDisplayMode(display_id);
     UpdateMonitorSettings(Settings, display_mode);
 
-    return cast_to_void(sdl_window.get());
+    return sdl_window.void_cast();
 }
 
 auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32
@@ -1202,7 +1203,8 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     int32_t window_height = Settings.ScreenHeight;
 
     if (_ctx->ActiveRendererType != RenderType::Null && MainWindow._windowHandle) {
-        SDL_GetWindowSizeInPixels(GetSdlWindow(MainWindow.ResolveWindowHandle()).get(), &window_width, &window_height);
+        auto sdl_window = MainWindow.ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_GetWindowSizeInPixels(sdl_window.get(), &window_width, &window_height);
     }
 
     const auto max_x = window_width > 0 ? window_width - 1 : 0;
@@ -1214,7 +1216,7 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
         return {window_x, window_y};
     }
 
-    auto active_renderer = GetActiveRenderer(GetApp()->_ctx);
+    auto active_renderer = GetActiveRenderer(_ctx);
     return WindowPosToScreenPos(active_renderer, {Settings.ScreenWidth, Settings.ScreenHeight}, {window_x, window_y});
 }
 
@@ -1414,7 +1416,7 @@ void Application::CloseGamepad()
     FO_STACK_TRACE_ENTRY();
 
     if (_gamepadHandle) {
-        SDL_CloseGamepad(cast_from_void<SDL_Gamepad*>(_gamepadHandle.get()));
+        SDL_CloseGamepad(cast_from_void<SDL_Gamepad*>(_gamepadHandle.get()).get());
         _gamepadHandle = nullptr;
     }
 
@@ -1431,30 +1433,25 @@ void Application::RefreshGamepadConnection()
     }
 
     int count = 0;
-    nptr<SDL_JoystickID> nullable_gamepads = SDL_GetGamepads(&count);
+    auto queried_gamepads = make_nptr(SDL_GetGamepads(&count));
 
-    if (!nullable_gamepads) {
+    if (!queried_gamepads) {
         return;
     }
 
-    auto gamepads = make_unique_del_ptr(nullable_gamepads.as_ptr(), [](SDL_JoystickID* raw_data) {
-        FO_NO_STACK_TRACE_ENTRY();
-
+    auto gamepads = make_unique_del_ptr(queried_gamepads, [](SDL_JoystickID* raw_data) {
         if (raw_data != nullptr) {
-            ptr<SDL_JoystickID> data = raw_data;
+            auto data = make_ptr(raw_data);
             SDL_free(data.get());
         }
     });
-    auto gamepad_ids = gamepads.as_ptr();
 
     for (int i = 0; i < count; i++) {
-        nptr<SDL_Gamepad> nullable_gamepad = SDL_OpenGamepad(gamepad_ids[numeric_cast<size_t>(i)]);
+        auto gamepad = make_nptr(SDL_OpenGamepad(gamepads[numeric_cast<size_t>(i)]));
 
-        if (!nullable_gamepad) {
+        if (!gamepad) {
             continue;
         }
-
-        auto gamepad = nullable_gamepad.as_ptr();
 
         _gamepadHandle = gamepad;
         _gamepadInstanceId = numeric_cast<int32_t>(SDL_GetGamepadID(gamepad.get()));
@@ -1608,13 +1605,11 @@ void Application::BeginFrame()
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
     const auto host_pos_inside_active_virtual = [&](ipos32 host_pos) -> bool {
-        auto aw = _activeWindow;
-
-        if (!aw || !aw->_isVirtual) {
+        if (!_activeWindow || !_activeWindow->_isVirtual) {
             return false;
         }
 
-        const auto& r = aw->_displayRect;
+        const auto& r = _activeWindow->_displayRect;
         return r.width > 0 && r.height > 0 && //
             host_pos.x >= r.x && host_pos.x < r.x + r.width && //
             host_pos.y >= r.y && host_pos.y < r.y + r.height;
@@ -1622,12 +1617,11 @@ void Application::BeginFrame()
 
     const auto switch_active_to_hovered_child = [&](ipos32 host_pos) {
         for (size_t i = 0; i != _childWindows.size(); ++i) {
-            auto child = _childWindows[i].as_ptr();
-            const auto& r = child->_displayRect;
+            const auto& r = _childWindows[i]->_displayRect;
 
             if (r.width > 0 && r.height > 0 && host_pos.x >= r.x && host_pos.x < r.x + r.width && host_pos.y >= r.y && host_pos.y < r.y + r.height) {
-                if (!(_activeWindow == child.as_nptr())) {
-                    _activeWindow = child.as_nptr();
+                if (_activeWindow != _childWindows[i]) {
+                    _activeWindow = _childWindows[i];
                 }
                 break;
             }
@@ -1746,15 +1740,14 @@ void Application::BeginFrame()
                     }
                 }
 
-                auto nullable_touch = AcquireTouchPoint(finger_id);
+                auto touch = AcquireTouchPoint(finger_id);
 
-                if (!nullable_touch) {
+                if (!touch) {
                     ResetTouchGestures();
-                    nullable_touch = AcquireTouchPoint(finger_id);
+                    touch = AcquireTouchPoint(finger_id);
                 }
 
-                FO_VERIFY_AND_THROW(nullable_touch, "Failed to acquire a touch point slot");
-                auto touch = nullable_touch.as_ptr();
+                FO_VERIFY_AND_THROW(touch, "Failed to acquire a touch point slot");
                 touch->FingerId = finger_id;
                 touch->StartPos = touch_pos;
                 touch->LastPos = touch_pos;
@@ -1766,8 +1759,7 @@ void Application::BeginFrame()
                     QueueTouchDown(finger_id, touch_pos);
                 }
 
-                if (auto nullable_other_touch = FindOtherTouchPoint(finger_id)) {
-                    auto other_touch = nullable_other_touch.as_ptr();
+                if (auto other_touch = FindOtherTouchPoint(finger_id)) {
                     _touchPinchActive = true;
                     _touchTapSuppressed = true;
                     _touchLastPinchDistance = GetTouchDistance(touch_pos, other_touch->LastPos);
@@ -1775,13 +1767,12 @@ void Application::BeginFrame()
                 }
             }
             else if (sdl_event.type == SDL_EVENT_FINGER_MOTION) {
-                auto nullable_touch = FindTouchPoint(finger_id);
+                auto touch = FindTouchPoint(finger_id);
 
-                if (!nullable_touch) {
+                if (!touch) {
                     break;
                 }
 
-                auto touch = nullable_touch.as_ptr();
                 const auto delta = ipos32 {touch_pos.x - touch->LastPos.x, touch_pos.y - touch->LastPos.y};
                 touch->LastPos = touch_pos;
 
@@ -1790,15 +1781,14 @@ void Application::BeginFrame()
                 }
 
                 if (_touchPinchActive) {
-                    auto nullable_other_touch = FindOtherTouchPoint(finger_id);
+                    auto other_touch = FindOtherTouchPoint(finger_id);
 
-                    if (!nullable_other_touch) {
+                    if (!other_touch) {
                         _touchPinchActive = false;
                         _touchLastPinchDistance = 0.0f;
                         break;
                     }
 
-                    auto other_touch = nullable_other_touch.as_ptr();
                     const auto pinch_distance = GetTouchDistance(touch->LastPos, other_touch->LastPos);
 
                     if (_touchLastPinchDistance > 1.0f && pinch_distance > 1.0f) {
@@ -1827,13 +1817,12 @@ void Application::BeginFrame()
                 }
             }
             else {
-                auto nullable_touch = FindTouchPoint(finger_id);
+                auto touch = FindTouchPoint(finger_id);
 
-                if (!nullable_touch) {
+                if (!touch) {
                     break;
                 }
 
-                auto touch = nullable_touch.as_ptr();
                 touch->LastPos = touch_pos;
 
                 if (!imgui_capture_mouse) {
@@ -1846,8 +1835,7 @@ void Application::BeginFrame()
                     _touchLastPinchDistance = 0.0f;
                     _pendingTouchTap = {};
 
-                    if (auto nullable_remaining_touch = FindOtherTouchPoint(finger_id)) {
-                        auto remaining_touch = nullable_remaining_touch.as_ptr();
+                    if (auto remaining_touch = FindOtherTouchPoint(finger_id)) {
                         const auto cur_time = SDL_GetPerformanceCounter();
                         remaining_touch->StartPos = remaining_touch->LastPos;
                         remaining_touch->StartTime = cur_time;
@@ -1958,13 +1946,13 @@ void Application::BeginFrame()
                 if (ev.Code == KeyCode::V && (sdl_event.key.mod & SDL_KMOD_CTRL) != 0 && !imgui_capture_keyboard) {
                     InputEvent::KeyDownEvent paste_ev;
                     paste_ev.Code = KeyCode::Text;
-                    nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
-                    if (nullable_clipboard_text) {
-                        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
+                    auto sdl_clipboard_text = make_nptr(SDL_GetClipboardText());
+                    if (sdl_clipboard_text) {
+                        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text, [](char* raw_data) {
                             FO_NO_STACK_TRACE_ENTRY();
 
                             if (raw_data != nullptr) {
-                                ptr<char> data = raw_data;
+                                auto data = make_ptr(raw_data);
                                 SDL_free(data.get());
                             }
                         });
@@ -2096,14 +2084,16 @@ void Application::BeginFrame()
             ResetTouchGestures();
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
-            nptr<SDL_Window> resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
+            auto resized_window = make_nptr(SDL_GetWindowFromID(sdl_event.window.windowID));
             FO_VERIFY_AND_THROW(resized_window, "Resize event references an unknown window id");
 
             int32_t width = 0;
             int32_t height = 0;
             SDL_GetWindowSizeInPixels(resized_window.get(), &width, &height);
 
-            const bool is_main = (resized_window == GetSdlWindow(MainWindow._windowHandle).get());
+            auto main_sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+            FO_VERIFY_AND_THROW(main_sdl_window, "Window handle does not reference a valid SDL window");
+            const bool is_main = resized_window == main_sdl_window.get();
             const isize32 event_size {width, height};
             const bool fullscreen_backbuffer_resize = is_main && (Settings.Fullscreen || _mainWindowFullscreenBackbufferMode || MainWindow.IsFullscreen() || _mainWindowFullscreenTransition || IsMainWindowDisplayModeSize(event_size));
             bool screen_size_changed = false;
@@ -2146,7 +2136,7 @@ void Application::BeginFrame()
             }
 
             for (ptr<AppWindow> window : copy(_allWindows)) {
-                if ((window->_windowHandle ? cast_from_void<SDL_Window*>(window->_windowHandle.get()) : nullptr) == resized_window) {
+                if ((window->_windowHandle ? window->_windowHandle.reinterpret_as<SDL_Window>() : nullptr) == resized_window) {
                     window->_onWindowSizeChangedDispatcher();
 
                     if (screen_size_changed || !is_main) {
@@ -2157,9 +2147,8 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
         case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED: {
-            nptr<SDL_Window> nullable_window = SDL_GetWindowFromID(sdl_event.window.windowID);
-            FO_VERIFY_AND_THROW(nullable_window, "Display change event references an unknown window id");
-            auto window = nullable_window.as_ptr();
+            auto window = make_nptr(SDL_GetWindowFromID(sdl_event.window.windowID));
+            FO_VERIFY_AND_THROW(window, "Display change event references an unknown window id");
             const auto display_id = SDL_GetDisplayForWindow(window.get());
             auto display_mode = GetSdlDisplayMode(display_id);
             UpdateMonitorSettings(Settings, display_mode);
@@ -2196,12 +2185,14 @@ void Application::BeginFrame()
             _pendingMouseLeaveFrame = 0;
         }
 
-        SDL_SetWindowMouseGrab(GetSdlWindow(MainWindow._windowHandle).get(), MainWindow._grabbed);
+        auto main_sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(main_sdl_window, "Window handle does not reference a valid SDL window");
+        SDL_SetWindowMouseGrab(main_sdl_window.get(), MainWindow._grabbed);
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-        const bool is_app_focused = GetSdlWindow(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
+        const bool is_app_focused = main_sdl_window == SDL_GetKeyboardFocus();
 #else
-        const bool is_app_focused = (SDL_GetWindowFlags(GetSdlWindow(MainWindow._windowHandle).get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        const bool is_app_focused = (SDL_GetWindowFlags(main_sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
 
         if (is_app_focused) {
@@ -2222,7 +2213,7 @@ void Application::BeginFrame()
 
                     int32_t window_x;
                     int32_t window_y;
-                    SDL_GetWindowPosition(GetSdlWindow(MainWindow._windowHandle).get(), &window_x, &window_y);
+                    SDL_GetWindowPosition(main_sdl_window.get(), &window_x, &window_y);
 
                     const auto screen_pos = WindowPosToScreenPos(active_renderer, {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(mouse_x_global) - window_x, iround<int32_t>(mouse_y_global) - window_y});
                     if (!mouse_motion_event_seen && (!_lastMouseMoveHostPosValid || screen_pos != _lastMouseMoveHostPos)) {
@@ -2278,9 +2269,8 @@ void Application::EndFrame()
     ImGui::Render();
     UpdateNativeCursorVisibility(ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantTextInput);
 
-    nptr<ImDrawData> nullable_draw_data = ImGui::GetDrawData();
-    FO_VERIFY_AND_THROW(nullable_draw_data, "ImGui produced no draw data after rendering");
-    auto draw_data = nullable_draw_data.as_ptr();
+    auto draw_data = make_nptr(ImGui::GetDrawData());
+    FO_VERIFY_AND_THROW(draw_data, "ImGui produced no draw data after rendering");
 
     if (draw_data->Textures != nullptr) {
         for (ptr<ImTextureData> im_tex : *draw_data->Textures) {
@@ -2289,35 +2279,33 @@ void Application::EndFrame()
                     const auto tex_size = isize(im_tex->Width, im_tex->Height);
                     FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
                     auto font_tex = active_renderer->CreateTexture(tex_size, true, false);
-                    nptr<const ucolor> nullable_tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
-                    FO_VERIFY_AND_THROW(nullable_tex_data, "ImGui texture pixel data is null");
-                    auto tex_data = nullable_tex_data.as_ptr();
+                    auto tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
+                    FO_VERIFY_AND_THROW(tex_data, "ImGui texture pixel data is null");
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
-                    const auto tex_pixels = make_span(tex_data, tex_pixels_count);
+                    auto tex_data_ptr = tex_data.as_ptr();
+                    const auto tex_pixels = make_span(tex_data_ptr, tex_pixels_count);
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
-                    im_tex->SetTexID(cast_to_void(font_tex.get()));
+                    im_tex->SetTexID(make_nptr(font_tex.get()).void_cast());
                     im_tex->SetStatus(ImTextureStatus_OK);
                     _imguiTextures.emplace_back(std::move(font_tex));
                 }
                 else if (im_tex->Status == ImTextureStatus_WantUpdates) {
                     const auto update_pos = ipos32(im_tex->UpdateRect.x, im_tex->UpdateRect.y);
                     const auto update_size = isize32(im_tex->UpdateRect.w, im_tex->UpdateRect.h);
-                    nptr<const ucolor> nullable_update_data = cast_from_void<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
-                    FO_VERIFY_AND_THROW(nullable_update_data, "ImGui texture pixel data is null");
-                    auto update_data = nullable_update_data.as_ptr();
+                    auto update_data = cast_from_void<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
+                    FO_VERIFY_AND_THROW(update_data, "ImGui texture pixel data is null");
                     const size_t update_pitch = numeric_cast<size_t>(im_tex->Width);
                     const size_t update_size_in_pixels = update_size.height != 0 ? (numeric_cast<size_t>(update_size.height - 1) * update_pitch) + numeric_cast<size_t>(update_size.width) : 0;
-                    nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
-                    FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
-                    auto tex = nullable_tex.as_ptr();
-                    const auto update_pixels = make_span(update_data, update_size_in_pixels);
+                    auto tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
+                    FO_VERIFY_AND_THROW(tex, "ImGui texture id does not reference a render texture");
+                    auto update_data_ptr = update_data.as_ptr();
+                    const auto update_pixels = make_span(update_data_ptr, update_size_in_pixels);
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
                 else if (im_tex->Status == ImTextureStatus_WantDestroy) {
-                    nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
-                    FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
-                    auto tex = nullable_tex.as_ptr();
+                    auto tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
+                    FO_VERIFY_AND_THROW(tex, "ImGui texture id does not reference a render texture");
                     const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), tex.get());
                     FO_VERIFY_AND_THROW(it != _imguiTextures.end(), "Lookup failed in imgui textures");
                     _imguiTextures.erase(it);
@@ -2332,9 +2320,6 @@ void Application::EndFrame()
     const auto fb_height = iround<int32_t>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
-        auto imgui_effect = _imguiEffect.as_ptr();
-        auto imgui_draw_buf = _imguiDrawBuf.as_ptr();
-
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
         const auto clip_scale = draw_data->FramebufferScale;
@@ -2343,11 +2328,11 @@ void Application::EndFrame()
         for (int32_t cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
             ptr<const ImDrawList> cmd_list = draw_data->CmdLists[cmd];
 
-            imgui_draw_buf->Vertices.resize(cmd_list->VtxBuffer.Size);
-            imgui_draw_buf->VertCount = imgui_draw_buf->Vertices.size();
+            _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
 
             for (int32_t i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-                auto& v = imgui_draw_buf->Vertices[i];
+                auto& v = _imguiDrawBuf->Vertices[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
                 v.PosX = iv.pos.x;
                 v.PosY = iv.pos.y;
@@ -2356,17 +2341,17 @@ void Application::EndFrame()
                 v.Color = ucolor {iv.col};
             }
 
-            imgui_draw_buf->Indices.resize(cmd_list->IdxBuffer.Size);
-            imgui_draw_buf->IndCount = imgui_draw_buf->Indices.size();
+            _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
+            _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
 
             for (int32_t i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-                imgui_draw_buf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
+                _imguiDrawBuf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
 
-            imgui_draw_buf->Upload(imgui_effect->GetUsage());
+            _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
 
             for (int32_t cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
-                ptr<const ImDrawCmd> pcmd = &cmd_list->CmdBuffer[cmd_i];
+                auto pcmd = make_ptr(&cmd_list->CmdBuffer[cmd_i]);
                 FO_VERIFY_AND_THROW(pcmd->UserCallback == nullptr, "Unexpected ImGui user callback in draw command");
 
                 const auto clip_rect_l = iround<int32_t>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
@@ -2376,10 +2361,9 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    nptr<RenderTexture> nullable_texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
-                    FO_VERIFY_AND_THROW(nullable_texture, "ImGui texture id does not reference a render texture");
-                    auto texture = nullable_texture.as_ptr();
-                    imgui_effect->DrawBuffer(imgui_draw_buf, pcmd->IdxOffset, pcmd->ElemCount, texture);
+                    auto texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
+                    FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, texture);
                     active_renderer->DisableScissor();
                 }
             }
@@ -2454,7 +2438,8 @@ auto AppWindow::GetSize() const -> isize32
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32_t width = 1000;
         int32_t height = 1000;
-        SDL_GetWindowSizeInPixels(GetSdlWindow(ResolveWindowHandle()).get(), &width, &height);
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_GetWindowSizeInPixels(sdl_window.get(), &width, &height);
         return {width, height};
     }
 
@@ -2472,7 +2457,8 @@ void AppWindow::SetSize(isize32 size)
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowSize(GetSdlWindow(ResolveWindowHandle()).get(), size.width, size.height);
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_SetWindowSize(sdl_window.get(), size.width, size.height);
     }
     else {
         ResolveWindowStub()->Size = size;
@@ -2488,7 +2474,7 @@ auto AppWindow::GetScreenSize() const -> isize32
         return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
     }
 
-    return {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
+    return {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight};
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -2502,10 +2488,10 @@ void AppWindow::SetScreenSize(isize32 size)
         }
     }
     else {
-        if (size.width != GetApp()->Settings.ScreenWidth || size.height != GetApp()->Settings.ScreenHeight) {
-            GetApp()->Settings.ScreenWidth = size.width;
-            GetApp()->Settings.ScreenHeight = size.height;
-            WebRelated::ApplyCanvasLayout(GetApp()->Settings);
+        if (size.width != _app->Settings.ScreenWidth || size.height != _app->Settings.ScreenHeight) {
+            _app->Settings.ScreenWidth = size.width;
+            _app->Settings.ScreenHeight = size.height;
+            WebRelated::ApplyCanvasLayout(_app->Settings);
             _onScreenSizeChangedDispatcher();
         }
     }
@@ -2522,7 +2508,8 @@ auto AppWindow::GetPosition() const -> ipos32
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32_t x = 0;
         int32_t y = 0;
-        SDL_GetWindowPosition(GetSdlWindow(ResolveWindowHandle()).get(), &x, &y);
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_GetWindowPosition(sdl_window.get(), &x, &y);
         return {x, y};
     }
 
@@ -2539,7 +2526,8 @@ void AppWindow::SetPosition(ipos32 pos)
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowPosition(GetSdlWindow(ResolveWindowHandle()).get(), pos.x, pos.y);
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_SetWindowPosition(sdl_window.get(), pos.x, pos.y);
     }
     else {
         ResolveWindowStub()->Position = pos;
@@ -2555,7 +2543,8 @@ auto AppWindow::IsFocused() const -> bool
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(GetSdlWindow(ResolveWindowHandle()).get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        return (SDL_GetWindowFlags(sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     return true;
@@ -2571,7 +2560,8 @@ void AppWindow::Minimize()
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
-        SDL_MinimizeWindow(GetSdlWindow(ResolveWindowHandle()).get());
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        SDL_MinimizeWindow(sdl_window.get());
     }
     else {
         ResolveWindowStub()->Minimized = true;
@@ -2591,7 +2581,8 @@ auto AppWindow::IsFullscreen() const -> bool
             return _app->_mainWindowFullscreenTransition ? _app->Settings.Fullscreen : _app->IsMainWindowActuallyFullscreen();
         }
 
-        return (SDL_GetWindowFlags(GetSdlWindow(ResolveWindowHandle()).get()) & SDL_WINDOW_FULLSCREEN) != 0;
+        auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+        return (SDL_GetWindowFlags(sdl_window.get()) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
     return ResolveWindowStub()->Fullscreen;
@@ -2618,7 +2609,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     }
 
     const bool is_fullscreen = IsFullscreen();
-    auto sdl_window = GetSdlWindow(ResolveWindowHandle());
+    auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
 
     if (is_fullscreen == enable) {
         _app->Settings.Fullscreen = is_fullscreen;
@@ -2683,7 +2674,8 @@ void AppWindow::Blink()
         return;
     }
 
-    SDL_FlashWindow(GetSdlWindow(ResolveWindowHandle()).get(), SDL_FLASH_UNTIL_FOCUSED);
+    auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+    SDL_FlashWindow(sdl_window.get(), SDL_FLASH_UNTIL_FOCUSED);
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
@@ -2700,7 +2692,8 @@ void AppWindow::AlwaysOnTop(bool enable)
         return;
     }
 
-    SDL_SetWindowAlwaysOnTop(GetSdlWindow(ResolveWindowHandle()).get(), enable);
+    auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+    SDL_SetWindowAlwaysOnTop(sdl_window.get(), enable);
 }
 
 void AppWindow::SetTitle(string_view title)
@@ -2711,8 +2704,10 @@ void AppWindow::SetTitle(string_view title)
 
     // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
     if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
-        ptr<const char> title_ptr = _title.c_str();
-        SDL_SetWindowTitle(GetSdlWindow(_windowHandle).get(), title_ptr.get());
+        auto title_ptr = make_ptr(_title.c_str());
+        auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        SDL_SetWindowTitle(sdl_window.get(), title_ptr.get());
     }
 }
 
@@ -2736,7 +2731,7 @@ auto AppWindow::ResolveWindowStub() const -> ptr<HeadlessWindowStub>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return cast_from_void<HeadlessWindowStub*>(ResolveWindowHandle().get());
+    return ResolveWindowHandle().reinterpret_as<HeadlessWindowStub>();
 }
 
 void AppWindow::Destroy()
@@ -2750,8 +2745,7 @@ void AppWindow::Destroy()
 
     if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         if (_windowHandle && this != &_app->MainWindow) {
-            auto window_handle = _windowHandle.as_ptr();
-            ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
+            auto window_stub = _windowHandle.reinterpret_as<const HeadlessWindowStub>();
             std::erase_if(_app->_ctx->NullWindowStubs, [window_stub](const auto& entry) { return window_stub == entry; });
             _windowHandle = nullptr;
         }
@@ -2760,8 +2754,9 @@ void AppWindow::Destroy()
     }
 
     if (_windowHandle && this != &_app->MainWindow) {
-        auto window_handle = _windowHandle.as_ptr();
-        auto owned_window = MakeSdlWindowHolder(GetSdlWindow(window_handle));
+        auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        auto owned_window = MakeSdlWindowHolder(sdl_window);
         ignore_unused(owned_window);
         _windowHandle = nullptr;
     }
@@ -2782,9 +2777,7 @@ void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
     // While a virtual window is active, redirect the implicit "back buffer" target (nullptr)
     // to the window's offscreen texture so the existing render-target stack walks back into it.
     if (!tex) {
-        if (nptr<AppWindow> nullable_virt = _app->_currentRenderingWindow; nullable_virt) {
-            auto virt = nullable_virt.as_ptr();
-
+        if (auto virt = _app->_currentRenderingWindow; virt) {
             if (virt->IsVirtual()) {
                 if (auto virt_tex = virt->GetRenderTexture()) {
                     tex = virt_tex;
@@ -2849,7 +2842,7 @@ auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bot
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
@@ -2857,7 +2850,7 @@ auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->IsRenderTargetFlipped();
 }
 
@@ -2865,7 +2858,7 @@ auto AppRender::GetProjMatrix() const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->GetProjMatrix();
 }
 
@@ -2909,7 +2902,9 @@ auto AppInput::GetMousePosition() const -> ipos32
 
         int32_t window_x;
         int32_t window_y;
-        SDL_GetWindowPosition(GetSdlWindow(_app->MainWindow._windowHandle).get(), &window_x, &window_y);
+        auto sdl_window = _app->MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+        FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+        SDL_GetWindowPosition(sdl_window.get(), &window_x, &window_y);
 
         x = mouse_x_global - numeric_cast<float32_t>(window_x);
         y = mouse_y_global - numeric_cast<float32_t>(window_y);
@@ -2918,10 +2913,9 @@ auto AppInput::GetMousePosition() const -> ipos32
         SDL_GetMouseState(&x, &y);
     }
 
-    ptr<Application> app {_app.get_no_const()};
-    auto active_renderer = GetActiveRenderer(GetApp()->_ctx);
-    const auto host_pos = WindowPosToScreenPos(active_renderer, {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
-    return GetApp()->TranslateHostPosToActiveWindow(host_pos);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
+    const auto host_pos = WindowPosToScreenPos(active_renderer, {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
+    return _app->TranslateHostPosToActiveWindow(host_pos);
 }
 
 void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
@@ -2936,6 +2930,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         _lastMousePos = pos;
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
+        auto restore_mouse_motion = scope_exit([]() noexcept { SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true); });
 
         // When the active window is virtual, `pos` is in that window's local screen coords —
         // remap it back into host (ImGui display) coords before handing it to SDL.
@@ -2945,15 +2940,15 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
             auto active_renderer = GetActiveRenderer(_app->_ctx);
             const auto window_pos = ScreenPosToWindowPos(active_renderer, {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, host_pos);
 
-            if (nptr<WindowInternalHandle> handle = relative_to->GetWindowHandleForInput(); handle) {
-                SDL_WarpMouseInWindow(GetSdlWindow(handle).get(), numeric_cast<float32_t>(window_pos.x), numeric_cast<float32_t>(window_pos.y));
+            if (auto handle = relative_to->GetWindowHandleForInput(); handle) {
+                auto sdl_window = handle.reinterpret_as<SDL_Window>();
+                FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
+                SDL_WarpMouseInWindow(sdl_window.get(), numeric_cast<float32_t>(window_pos.x), numeric_cast<float32_t>(window_pos.y));
             }
         }
         else {
             SDL_WarpMouseGlobal(numeric_cast<float32_t>(host_pos.x), numeric_cast<float32_t>(host_pos.y));
         }
-
-        SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
     }
 }
 
@@ -2996,7 +2991,8 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
         return;
     }
 
-    auto window = GetSdlWindow(_app->MainWindow._windowHandle);
+    auto window = _app->MainWindow._windowHandle.reinterpret_as<SDL_Window>();
+    FO_VERIFY_AND_THROW(window, "Window handle does not reference a valid SDL window");
     const bool text_input_active = SDL_TextInputActive(window.get());
 
     if (text_input_active == enabled) {
@@ -3016,7 +3012,7 @@ void AppInput::SetClipboardText(string_view text)
     FO_STACK_TRACE_ENTRY();
 
     const string clipboard_text = string(text);
-    ptr<const char> clipboard_text_ptr = clipboard_text.c_str();
+    auto clipboard_text_ptr = make_ptr(clipboard_text.c_str());
     SDL_SetClipboardText(clipboard_text_ptr.get());
     WebRelated::SyncClipboardToSystem(text);
 }
@@ -3025,11 +3021,11 @@ auto AppInput::GetClipboardText() -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
-    if (nullable_clipboard_text) {
-        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
+    auto sdl_clipboard_text = make_nptr(SDL_GetClipboardText());
+    if (sdl_clipboard_text) {
+        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text, [](char* raw_data) {
             if (raw_data != nullptr) {
-                ptr<char> data = raw_data;
+                auto data = make_ptr(raw_data);
                 SDL_free(data.get());
             }
         });
@@ -3076,20 +3072,19 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     }
 
     if (spec.format != _app->_ctx->AudioSpec.format || spec.channels != _app->_ctx->AudioSpec.channels || spec.freq != _app->_ctx->AudioSpec.freq) {
-        nptr<uint8_t> nullable_dst_data {};
+        nptr<uint8_t> dst_data {};
         int32_t dst_len {};
 
-        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, nullable_dst_data.get_pp(), &dst_len)) {
+        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, dst_data.get_pp(), &dst_len)) {
             return false;
         }
 
-        FO_VERIFY_AND_THROW(nullable_dst_data, "SDL audio conversion returned null output data");
-        auto dst_data = nullable_dst_data.as_ptr();
+        FO_VERIFY_AND_THROW(dst_data, "SDL audio conversion returned null output data");
         auto converted_data = make_unique_del_ptr(dst_data, [](uint8_t* raw_data) {
             FO_NO_STACK_TRACE_ENTRY();
 
             if (raw_data != nullptr) {
-                ptr<uint8_t> data = raw_data;
+                auto data = make_ptr(raw_data);
                 SDL_free(data.get());
             }
         });
@@ -3097,8 +3092,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         buf.resize(numeric_cast<size_t>(dst_len));
 
         if (!buf.empty()) {
-            auto converted_data_ptr = converted_data.as_ptr();
-            MemCopy(buf.data(), converted_data_ptr, buf.size());
+            MemCopy(buf.data(), converted_data, buf.size());
         }
     }
 
@@ -3122,7 +3116,7 @@ void AppAudio::LockDevice()
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
-    auto audio_stream = _app->_ctx->AudioStream.as_ptr();
+    ptr<SDL_AudioStream> audio_stream = _app->_ctx->AudioStream;
     SDL_LockAudioStream(audio_stream.get());
 }
 
@@ -3132,7 +3126,7 @@ void AppAudio::UnlockDevice()
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
-    auto audio_stream = _app->_ctx->AudioStream.as_ptr();
+    ptr<SDL_AudioStream> audio_stream = _app->_ctx->AudioStream;
     SDL_UnlockAudioStream(audio_stream.get());
 }
 
@@ -3149,14 +3143,15 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     const string_view title = fatal_error ? "Fatal Error" : "Error";
 
 #if FO_WEB || FO_ANDROID || FO_IOS
+
 #if FO_WEB
     const auto web_message = traceback.empty() ? string(message) : strex("{}\n\n{}", message, traceback);
     WebRelated::ShowError(title, web_message);
 #else
     const string title_text = string(title);
     const string message_text = string(message);
-    ptr<const char> title_ptr = title_text.c_str();
-    ptr<const char> message_ptr = message_text.c_str();
+    auto title_ptr = make_ptr(title_text.c_str());
+    auto message_ptr = make_ptr(message_text.c_str());
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title_ptr.get(), message_ptr.get(), nullptr);
 #endif
 
@@ -3207,8 +3202,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    ptr<const char> title_ptr = title_text.c_str();
-    ptr<const char> message_ptr = verb_message.c_str();
+    auto title_ptr = make_ptr(title_text.c_str());
+    auto message_ptr = make_ptr(verb_message.c_str());
     data.title = title_ptr.get();
     data.message = message_ptr.get();
     data.numbuttons = fatal_error ? 2 : 4;
@@ -3251,15 +3246,15 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
         const auto text_x = numeric_cast<float32_t>(window_width / 2 - numeric_cast<int32_t>((text.length() * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2));
         constexpr auto text_y = numeric_cast<float32_t>(window_height / 2 - SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2);
         const string window_text = string(text);
-        ptr<const char> window_text_ptr = window_text.c_str();
+        auto window_text_ptr = make_ptr(window_text.c_str());
 
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
         optional<TemporarySdlWindowRenderer> window_renderer = TryCreateTemporarySdlWindowRenderer(window_text_ptr, window_width, window_height, flags);
 
         if (window_renderer) {
-            auto window = window_renderer->Window.as_ptr();
-            auto renderer = window_renderer->Renderer.as_ptr();
+            ptr<SDL_Window> window = window_renderer->Window;
+            ptr<SDL_Renderer> renderer = window_renderer->Renderer;
 
             SDL_SetWindowPosition(window.get(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
@@ -3312,15 +3307,15 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
         const auto window_width = numeric_cast<int32_t>(std::max(max_options_text, numeric_cast<int32_t>(title.length() * char_size)) + 50);
         const auto window_height = numeric_cast<int32_t>((options.size() + 2) * line_height);
         const string title_text = string(title);
-        ptr<const char> title_ptr = title_text.c_str();
+        auto title_ptr = make_ptr(title_text.c_str());
 
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
         optional<TemporarySdlWindowRenderer> window_renderer = TryCreateTemporarySdlWindowRenderer(title_ptr, window_width, window_height, flags);
 
         if (window_renderer) {
-            auto window = window_renderer->Window.as_ptr();
-            auto renderer = window_renderer->Renderer.as_ptr();
+            ptr<SDL_Window> window = window_renderer->Window;
+            ptr<SDL_Renderer> renderer = window_renderer->Renderer;
 
             SDL_SetWindowPosition(window.get(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
@@ -3422,7 +3417,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 
                     const auto text_x = numeric_cast<float32_t>(window_width / 2 - numeric_cast<int32_t>((text.length() * char_size) / 2));
                     const auto text_y = numeric_cast<float32_t>(i * line_height + line_height / 2 - char_size / 2);
-                    ptr<const char> text_ptr = text.c_str();
+                    auto text_ptr = make_ptr(text.c_str());
                     SDL_RenderDebugText(renderer.get(), text_x, text_y, text_ptr.get());
                 }
 

@@ -38,11 +38,19 @@
 FO_BEGIN_NAMESPACE
 
 CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
+
+    auto unregister_on_fail = scope_fail([this]() noexcept {
+        safe_call([this]() {
+            if (GetId()) {
+                _engine->UnregisterEntity(this);
+            }
+        });
+    });
 
     _name = strex("{}_{}", proto->GetName(), id);
 

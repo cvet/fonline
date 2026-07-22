@@ -113,12 +113,12 @@ public:
     [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
-    [[nodiscard]] auto GetSprite() const noexcept -> nptr<const Sprite> { return _pSpr ? *_pSpr.as_ptr() : _spr; }
+    [[nodiscard]] auto GetSprite() const noexcept -> nptr<const Sprite> { return _pSpr ? *_pSpr : _spr; }
     [[nodiscard]] auto GetHex() const noexcept -> mpos { return _hex; }
     [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
     [[nodiscard]] auto GetPHexOffset() const noexcept -> nptr<const ipos32> { return _pHexOffset; }
     [[nodiscard]] auto GetPSprOffset() const noexcept -> nptr<const ipos32> { return _pSprOffset; }
-    [[nodiscard]] auto GetRootOffset() const noexcept -> ipos32 { return _pRootOffset ? *_pRootOffset.as_ptr() : ipos32 {}; }
+    [[nodiscard]] auto GetRootOffset() const noexcept -> ipos32 { return _pRootOffset ? *_pRootOffset : ipos32 {}; }
     [[nodiscard]] auto GetAlpha() const noexcept -> nptr<const uint8_t> { return _alpha; }
     [[nodiscard]] auto GetLight() const noexcept -> nptr<const ucolor> { return _light; }
     [[nodiscard]] auto GetLightRight() const noexcept -> nptr<const ucolor> { return _lightRight; }
@@ -147,7 +147,7 @@ private:
     void Reset() noexcept;
 
     nptr<MapSpriteList> _owner {};
-    uint32_t _drawOrderPos {};
+    uint64_t _drawOrderPos {};
     uint32_t _globalPos {};
     uint32_t _index {};
     DrawOrderType _drawOrder {};
@@ -197,6 +197,8 @@ public:
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
+
+    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
 
 private:
     void GrowPool() noexcept;

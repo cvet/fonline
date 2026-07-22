@@ -150,7 +150,19 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
         if (pool.Pending.size() > pool.IdleCount && can_spawn_worker) {
             // Reserve/register the worker while still holding the pool lock so concurrent
             // submitters see the updated size and cannot overshoot MaxWorkers.
-            spawn_pool_worker(pool, strex("{}-{}", pool.NamePrefix, pool.Workers.size()));
+            try {
+                spawn_pool_worker(pool, strex("{}-{}", pool.NamePrefix, pool.Workers.size()));
+            }
+            catch (...) {
+                // OS thread creation can genuinely fail (std::thread -> std::system_error on thread
+                // exhaustion) — that is NOT the terminate-on-OOM allocation case, it is a recoverable
+                // throw. Undo the task we just queued so a failed submit leaves the pool exactly as
+                // before: the invariant is "a queued task has a worker that will run it". Otherwise the
+                // orphaned task keeps a dangling capture of a caller (e.g. a NetworkServer_WebSockets
+                // whose constructor is now unwinding) and a later worker would dereference it.
+                pool.Pending.pop_back();
+                throw;
+            }
         }
     }
 
@@ -158,7 +170,9 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
     return true;
 }
 
-// Caller must hold `pool.Locker`.
+// Caller must hold `pool.Locker`. NOT noexcept: constructing a std::thread can throw std::system_error
+// on OS thread-resource exhaustion. That is a genuinely recoverable failure — unlike SafeAlloc memory
+// allocation (§1), thread creation is not terminate-on-failure — so callers (submit_impl) roll back.
 static void spawn_pool_worker(Pool& pool, const string& worker_name)
 {
     FO_STACK_TRACE_ENTRY();

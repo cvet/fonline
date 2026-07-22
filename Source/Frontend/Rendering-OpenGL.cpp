@@ -48,6 +48,7 @@
 #endif
 
 #if FO_OPENGL_ES
+
 #if FO_IOS
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
@@ -55,6 +56,7 @@
 #include <GLES3/gl3.h>
 #include <GLES3/gl3platform.h>
 #endif
+
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -253,19 +255,12 @@ struct OpenGL_Renderer::Context
     // ReSharper restore CppInconsistentNaming
 };
 
-static auto GetOpenGlContext(ptr<OpenGL_Renderer::Context> ctx) noexcept -> ptr<OpenGL_Renderer::Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return ctx;
-}
-
-static auto GetOpenGlContext(const unique_nptr<OpenGL_Renderer::Context>& ctx) -> ptr<const OpenGL_Renderer::Context>
+static auto GetOpenGlContext(nptr<OpenGL_Renderer::Context> ctx) -> ptr<OpenGL_Renderer::Context>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx, "OpenGL renderer context is not initialized");
-    return ctx.as_ptr();
+    return ctx;
 }
 
 class OpenGL_Texture final : public RenderTexture
@@ -289,15 +284,6 @@ public:
 private:
     ptr<OpenGL_Renderer::Context> _ctx;
 };
-
-static auto GetDummyTexture(ptr<OpenGL_Renderer::Context> ctx) -> ptr<RenderTexture>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(ctx->DummyTexture, "OpenGL dummy texture is not created");
-    auto dummy_texture = ctx->DummyTexture.as_ptr();
-    return dummy_texture;
-}
 
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
@@ -335,29 +321,11 @@ private:
     ptr<OpenGL_Renderer::Context> _ctx;
 };
 
-template<typename T, typename U>
-static auto RenderBackendCast(ptr<U> value) -> ptr<T>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto nullable_casted = value.template cast<T>();
-    FO_VERIFY_AND_THROW(nullable_casted, "Render backend object is not of the expected OpenGL type");
-    return nullable_casted.as_ptr();
-}
-
-static auto GetSdlWindow(nptr<WindowInternalHandle> window) -> ptr<SDL_Window>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(window, "Window handle is null");
-    return cast_from_void<SDL_Window*>(window.get());
-}
-
 static auto GetOpenGlString(GLenum name) noexcept -> nptr<const char>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const GLubyte> chars = glGetString(name);
+    const auto chars = make_nptr(glGetString(name));
 
     if (!chars) {
         return nullptr;
@@ -388,24 +356,24 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!!window, "Frontend window handle is null");
+    FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = SafeAlloc::MakeUnique<Context>();
-    auto ctx = _ctx.as_ptr();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     WriteLog("Used OpenGL rendering");
 
-    ctx->Settings = &settings;
-    ctx->RenderDebug = settings.RenderDebug;
-    ctx->ForceGlslEsProfile = settings.ForceGlslEsProfile;
-    ctx->SdlWindow = GetSdlWindow(window);
+    _ctx->Settings = &settings;
+    _ctx->RenderDebug = settings.RenderDebug;
+    _ctx->ForceGlslEsProfile = settings.ForceGlslEsProfile;
+    _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     // Create context
 #if !FO_WEB
-    ctx->GlContext = SDL_GL_CreateContext(ctx->SdlWindow.get());
-    FO_VERIFY_AND_THROW(ctx->GlContext, "OpenGL context was not created", SDL_GetError());
+    _ctx->GlContext = SDL_GL_CreateContext(_ctx->SdlWindow.get());
+    FO_VERIFY_AND_THROW(_ctx->GlContext, "OpenGL context was not created", SDL_GetError());
 
-    const auto make_current = SDL_GL_MakeCurrent(ctx->SdlWindow.get(), ctx->GlContext);
+    const auto make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
     FO_VERIFY_AND_THROW(make_current, "OpenGL context could not be made current", SDL_GetError());
 
     if (settings.VSync) {
@@ -434,14 +402,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    ptr<const char> canvas_selector = WebRelated::CanvasSelector.c_str();
+    auto canvas_selector = make_ptr(WebRelated::CanvasSelector.c_str());
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(canvas_selector.get(), &attr);
     FO_VERIFY_AND_THROW(gl_context > 0, "WebGL2 context creation failed", static_cast<int32_t>(gl_context));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
     FO_VERIFY_AND_THROW(r >= 0, "WebGL context could not be made current", r);
 
-    ctx->GlContext = WebGlContextHandleAsSdlContext(gl_context);
+    _ctx->GlContext = WebGlContextHandleAsSdlContext(gl_context);
 #endif
 
     // Load OpenGL function pointers via SDL and detect capabilities from GL_VERSION + extension strings
@@ -488,26 +456,26 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     const auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
     const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
 
-    ctx->OGL_version_2_0 = at_least(2, 0);
-    ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
-    ctx->OGL_framebuffer_object = at_least(3, 0) || has_extension("GL_ARB_framebuffer_object");
-    ctx->OGL_framebuffer_object_ext = has_extension("GL_EXT_framebuffer_object");
+    _ctx->OGL_version_2_0 = at_least(2, 0);
+    _ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
+    _ctx->OGL_framebuffer_object = at_least(3, 0) || has_extension("GL_ARB_framebuffer_object");
+    _ctx->OGL_framebuffer_object_ext = has_extension("GL_EXT_framebuffer_object");
 #if FO_MAC
-    ctx->OGL_vertex_array_object = has_extension("GL_APPLE_vertex_array_object");
+    _ctx->OGL_vertex_array_object = has_extension("GL_APPLE_vertex_array_object");
 #else
-    ctx->OGL_vertex_array_object = at_least(3, 0) || has_extension("GL_ARB_vertex_array_object");
+    _ctx->OGL_vertex_array_object = at_least(3, 0) || has_extension("GL_ARB_vertex_array_object");
 #endif
-    ctx->OGL_uniform_buffer_object = at_least(3, 1) || has_extension("GL_ARB_uniform_buffer_object");
+    _ctx->OGL_uniform_buffer_object = at_least(3, 1) || has_extension("GL_ARB_uniform_buffer_object");
 #endif
 
     // OpenGL ES extensions
 #if FO_OPENGL_ES
-    ctx->OGL_version_2_0 = true;
-    ctx->OGL_vertex_buffer_object = true;
-    ctx->OGL_framebuffer_object = true;
-    ctx->OGL_framebuffer_object_ext = false;
-    ctx->OGL_vertex_array_object = true; // No in es 2 / webgl 1
-    ctx->OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
+    _ctx->OGL_version_2_0 = true;
+    _ctx->OGL_vertex_buffer_object = true;
+    _ctx->OGL_framebuffer_object = true;
+    _ctx->OGL_framebuffer_object_ext = false;
+    _ctx->OGL_vertex_array_object = true; // No in es 2 / webgl 1
+    _ctx->OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
 #endif
 
     // Check OpenGL extensions
@@ -523,21 +491,21 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
     };
 
-    check_extension("version_2_0", GL_HAS_CTX(version_2_0, ctx.get()), true);
-    check_extension("vertex_buffer_object", GL_HAS_CTX(vertex_buffer_object, ctx.get()), true);
-    check_extension("uniform_buffer_object", GL_HAS_CTX(uniform_buffer_object, ctx.get()), true);
-    check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, ctx.get()), false);
-    check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, ctx.get()), false);
-    if (!GL_HAS_CTX(framebuffer_object, ctx.get())) {
-        check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, ctx.get()), true);
+    check_extension("version_2_0", GL_HAS_CTX(version_2_0, _ctx.get()), true);
+    check_extension("vertex_buffer_object", GL_HAS_CTX(vertex_buffer_object, _ctx.get()), true);
+    check_extension("uniform_buffer_object", GL_HAS_CTX(uniform_buffer_object, _ctx.get()), true);
+    check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, _ctx.get()), false);
+    check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, _ctx.get()), false);
+    if (!GL_HAS_CTX(framebuffer_object, _ctx.get())) {
+        check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, _ctx.get()), true);
     }
     FO_VERIFY_AND_THROW(!extension_errors, "Extension errors is already set");
 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
-    if (GL_HAS_CTX(framebuffer_object_ext, ctx.get()) && !GL_HAS_CTX(framebuffer_object, ctx.get())) {
+    if (GL_HAS_CTX(framebuffer_object_ext, _ctx.get()) && !GL_HAS_CTX(framebuffer_object, _ctx.get())) {
         WriteLog("Map framebuffer_object_ext pointers");
-        ctx->OGL_framebuffer_object = true;
+        _ctx->OGL_framebuffer_object = true;
         glGenFramebuffers = glGenFramebuffersEXT;
         glGenRenderbuffers = glGenRenderbuffersEXT;
         glBindFramebuffer = glBindFramebufferEXT;
@@ -567,17 +535,17 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     GL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 #endif
 
-    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &ctx->BaseFrameBufObj));
-    ctx->BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
+    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_ctx->BaseFrameBufObj));
+    _ctx->BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
     // Shared bump-allocated uniform buffer (see the Context field comment)
-    if (GL_HAS_CTX(uniform_buffer_object, ctx.get())) {
-        GL(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &ctx->UniformOffsetAlignment));
-        ctx->UniformOffsetAlignment = std::max(ctx->UniformOffsetAlignment, 1);
-        ctx->UniformBumpCapacity = numeric_cast<size_t>(4 * 1024 * 1024); // 4 MB
-        GL(glGenBuffers(1, &ctx->UniformBumpBuf));
-        GL(glBindBuffer(GL_UNIFORM_BUFFER, ctx->UniformBumpBuf));
-        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+    if (GL_HAS_CTX(uniform_buffer_object, _ctx.get())) {
+        GL(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &_ctx->UniformOffsetAlignment));
+        _ctx->UniformOffsetAlignment = std::max(_ctx->UniformOffsetAlignment, 1);
+        _ctx->UniformBumpCapacity = numeric_cast<size_t>(4 * 1024 * 1024); // 4 MB
+        GL(glGenBuffers(1, &_ctx->UniformBumpBuf));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
         GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
     }
 
@@ -597,6 +565,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     // Check max bones
 #if FO_ENABLE_3D
+
 #if !FO_OPENGL_ES
     GLint max_uniform_components;
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
@@ -605,13 +574,13 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
+
 #endif
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    ctx->DummyTexture = CreateTexture({1, 1}, false, false);
-    auto dummy_texture = GetDummyTexture(ctx);
-    dummy_texture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
+    _ctx->DummyTexture = CreateTexture({1, 1}, false, false);
+    _ctx->DummyTexture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
     // Init render target
     SetRenderTarget(nullptr);
@@ -625,48 +594,46 @@ OpenGL_Renderer::~OpenGL_Renderer()
         return;
     }
 
-    auto ctx = _ctx.as_ptr();
-
-    ctx->DummyTexture.reset();
+    _ctx->DummyTexture.reset();
 
     // The GL context must still be current for this delete.
-    if (ctx->UniformBumpBuf != 0) {
-        glDeleteBuffers(1, &ctx->UniformBumpBuf);
-        ctx->UniformBumpBuf = 0;
+    if (_ctx->UniformBumpBuf != 0) {
+        glDeleteBuffers(1, &_ctx->UniformBumpBuf);
+        _ctx->UniformBumpBuf = 0;
     }
 
 #if !FO_WEB
-    if (ctx->GlContext) {
-        if (ctx->SdlWindow) {
-            SDL_GL_MakeCurrent(ctx->SdlWindow.get(), ctx->GlContext);
+    if (_ctx->GlContext) {
+        if (_ctx->SdlWindow) {
+            SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
         }
 
-        SDL_GL_DestroyContext(ctx->GlContext);
-        ctx->GlContext = nullptr;
+        SDL_GL_DestroyContext(_ctx->GlContext);
+        _ctx->GlContext = nullptr;
     }
 #else
-    ctx->GlContext = nullptr;
+    _ctx->GlContext = nullptr;
 #endif
 
-    ctx->Settings = nullptr;
-    ctx->SdlWindow = nullptr;
-    ctx->BaseFrameBufObj = 0;
-    ctx->BaseFrameBufObjBinded = false;
-    ctx->BaseFrameBufSize = {};
-    ctx->TargetSize = {};
-    ctx->ProjMatrix = {};
-    ctx->ViewPortRect = {};
-    ctx->CurrentRenderTarget = nullptr;
-    ctx->CurrentRenderTargetValid = false;
-    ctx->UniformBumpOffset = 0;
-    ctx->UniformBumpCapacity = 0;
-    ctx->UniformScratch.clear();
-    ctx->OGL_version_2_0 = false;
-    ctx->OGL_vertex_buffer_object = false;
-    ctx->OGL_framebuffer_object = false;
-    ctx->OGL_framebuffer_object_ext = false;
-    ctx->OGL_vertex_array_object = false;
-    ctx->OGL_uniform_buffer_object = false;
+    _ctx->Settings = nullptr;
+    _ctx->SdlWindow = nullptr;
+    _ctx->BaseFrameBufObj = 0;
+    _ctx->BaseFrameBufObjBinded = false;
+    _ctx->BaseFrameBufSize = {};
+    _ctx->TargetSize = {};
+    _ctx->ProjMatrix = {};
+    _ctx->ViewPortRect = {};
+    _ctx->CurrentRenderTarget = nullptr;
+    _ctx->CurrentRenderTargetValid = false;
+    _ctx->UniformBumpOffset = 0;
+    _ctx->UniformBumpCapacity = 0;
+    _ctx->UniformScratch.clear();
+    _ctx->OGL_version_2_0 = false;
+    _ctx->OGL_vertex_buffer_object = false;
+    _ctx->OGL_framebuffer_object = false;
+    _ctx->OGL_framebuffer_object_ext = false;
+    _ctx->OGL_vertex_array_object = false;
+    _ctx->OGL_uniform_buffer_object = false;
 
     _ctx.reset();
 }
@@ -675,10 +642,10 @@ void OpenGL_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
 #if !FO_WEB
-    SDL_GL_SwapWindow(ctx->SdlWindow.get());
+    SDL_GL_SwapWindow(_ctx->SdlWindow.get());
 #endif
 
     if (const auto err = glGetError(); err != GL_NO_ERROR) {
@@ -686,11 +653,11 @@ void OpenGL_Renderer::Present()
     }
 
     // Rewind the bump buffer with fresh (orphaned) storage; the driver keeps the old one alive
-    if (ctx->UniformBumpBuf != 0) {
-        GL(glBindBuffer(GL_UNIFORM_BUFFER, ctx->UniformBumpBuf));
-        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+    if (_ctx->UniformBumpBuf != 0) {
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
         GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
-        ctx->UniformBumpOffset = 0;
+        _ctx->UniformBumpOffset = 0;
     }
 }
 
@@ -698,11 +665,12 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, ctx);
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
     GL(glGenTextures(1, &opengl_tex->TexId));
 
     GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
@@ -734,12 +702,13 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 
     // Restore the actual current target's framebuffer (creation can happen mid-frame while a
     // texture target is selected)
-    if (ctx->CurrentRenderTargetValid && ctx->CurrentRenderTarget) {
-        auto cur_target = RenderBackendCast<OpenGL_Texture>(ctx->CurrentRenderTarget.as_ptr());
+    if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget) {
+        auto cur_target = _ctx->CurrentRenderTarget.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(cur_target, "OpenGL render target texture is not of the expected backend type");
         GL(glBindFramebuffer(GL_FRAMEBUFFER, cur_target->FramebufObj));
     }
     else {
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, ctx->BaseFrameBufObj));
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
     }
 
     return std::move(opengl_tex);
@@ -749,8 +718,8 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, ctx);
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, _ctx);
 
     return std::move(opengl_dbuf);
 }
@@ -759,8 +728,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, ctx);
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -768,7 +737,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         if constexpr (FO_OPENGL_ES) {
             ext = "glsl_es";
         }
-        if (ctx->ForceGlslEsProfile) {
+        if (_ctx->ForceGlslEsProfile) {
             ext = "glsl_es";
         }
 
@@ -782,12 +751,12 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Create shaders
         GLuint vs;
         GL(vs = glCreateShader(GL_VERTEX_SHADER));
-        nptr<const GLchar> vs_source = vert_content.c_str();
+        auto vs_source = make_nptr(vert_content.c_str());
         GL(glShaderSource(vs, 1, vs_source.get_pp(), nullptr));
 
         GLuint fs;
         GL(fs = glCreateShader(GL_FRAGMENT_SHADER));
-        nptr<const GLchar> fs_source = frag_content.c_str();
+        auto fs_source = make_nptr(frag_content.c_str());
         GL(glShaderSource(fs, 1, fs_source.get_pp(), nullptr));
 
         // Info parser
@@ -799,7 +768,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                nptr<GLchar> log_buf = buf.data();
+                auto log_buf = make_nptr(buf.data());
                 int32_t chars = 0;
                 glGetShaderInfoLog(shader, len, &chars, log_buf.get());
                 result.assign(log_buf.get(), numeric_cast<size_t>(len));
@@ -816,7 +785,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                nptr<GLchar> log_buf = buf.data();
+                auto log_buf = make_nptr(buf.data());
                 int32_t chars = 0;
                 glGetProgramInfoLog(program, len, &chars, log_buf.get());
                 result.assign(log_buf.get(), numeric_cast<size_t>(len));
@@ -939,21 +908,23 @@ auto OpenGL_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-    return ctx->ViewPortRect;
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    return _ctx->ViewPortRect;
 }
 
 void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     // The requested target is already fully applied (bind, viewport, projection); the projection
     // stays valid across the skip because SetOrthoDepthRange keeps OrthoNear/OrthoFar in sync.
-    if (ctx->CurrentRenderTargetValid && tex == ctx->CurrentRenderTarget) {
+    if (_ctx->CurrentRenderTargetValid && tex == _ctx->CurrentRenderTarget) {
         return;
     }
+
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
 
     int32_t vp_ox;
     int32_t vp_oy;
@@ -963,9 +934,10 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     int32_t screen_height;
 
     if (tex) {
-        auto opengl_tex = RenderBackendCast<OpenGL_Texture>(tex.as_ptr());
+        auto opengl_tex = tex.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(opengl_tex, "OpenGL render target texture is not of the expected backend type");
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
-        ctx->BaseFrameBufObjBinded = false;
+        _ctx->BaseFrameBufObjBinded = false;
 
         vp_ox = 0;
         vp_oy = 0;
@@ -975,49 +947,47 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         screen_height = vp_height;
     }
     else {
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, ctx->BaseFrameBufObj));
-        ctx->BaseFrameBufObjBinded = true;
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
+        _ctx->BaseFrameBufObjBinded = true;
 
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(ctx->BaseFrameBufSize.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(ctx->BaseFrameBufSize.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(ctx->BaseFrameBufSize.width) / screen_aspect);
+        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
+        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
+        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
 
-        vp_ox = (ctx->BaseFrameBufSize.width - fit_width) / 2;
-        vp_oy = (ctx->BaseFrameBufSize.height - fit_height) / 2;
+        vp_ox = (_ctx->BaseFrameBufSize.width - fit_width) / 2;
+        vp_oy = (_ctx->BaseFrameBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = ctx->Settings->ScreenWidth;
-        screen_height = ctx->Settings->ScreenHeight;
+        screen_width = _ctx->Settings->ScreenWidth;
+        screen_height = _ctx->Settings->ScreenHeight;
     }
 
-    ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
+    _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
 
-    ctx->TargetSize = {screen_width, screen_height};
-    ctx->CurrentRenderTarget = tex;
-    ctx->CurrentRenderTargetValid = true;
+    _ctx->TargetSize = {screen_width, screen_height};
+    _ctx->CurrentRenderTarget = tex;
+    _ctx->CurrentRenderTargetValid = true;
 }
 
 void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-
-    ctx->OrthoNear = nearp;
-    ctx->OrthoFar = farp;
-    ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, nearp, farp);
+    _ctx->OrthoNear = nearp;
+    _ctx->OrthoFar = farp;
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
 }
 
 auto OpenGL_Renderer::GetProjMatrix() const -> mat44
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
-    return ctx->ProjMatrix;
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    return _ctx->ProjMatrix;
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -1054,31 +1024,31 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     int32_t l;
     int32_t t;
     int32_t r;
     int32_t b;
 
-    if (ctx->ViewPortRect.width != ctx->TargetSize.width || ctx->ViewPortRect.height != ctx->TargetSize.height) {
-        const float32_t x_ratio = numeric_cast<float32_t>(ctx->ViewPortRect.width) / numeric_cast<float32_t>(ctx->TargetSize.width);
-        const float32_t y_ratio = numeric_cast<float32_t>(ctx->ViewPortRect.height) / numeric_cast<float32_t>(ctx->TargetSize.height);
+    if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
+        const float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
+        const float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
 
-        l = ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
-        t = ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
-        r = ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x + rect.width) * x_ratio);
-        b = ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y + rect.height) * y_ratio);
+        l = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
+        t = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
+        r = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x + rect.width) * x_ratio);
+        b = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y + rect.height) * y_ratio);
     }
     else {
-        l = ctx->ViewPortRect.x + rect.x;
-        t = ctx->ViewPortRect.y + rect.y;
-        r = ctx->ViewPortRect.x + rect.x + rect.width;
-        b = ctx->ViewPortRect.y + rect.y + rect.height;
+        l = _ctx->ViewPortRect.x + rect.x;
+        t = _ctx->ViewPortRect.y + rect.y;
+        r = _ctx->ViewPortRect.x + rect.x + rect.width;
+        b = _ctx->ViewPortRect.y + rect.y + rect.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(l, ctx->TargetSize.height - b, r - l, b - t));
+    GL(glScissor(l, _ctx->TargetSize.height - b, r - l, b - t));
 }
 
 void OpenGL_Renderer::DisableScissor()
@@ -1092,14 +1062,14 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = _ctx.as_ptr();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    ctx->BaseFrameBufSize = size;
+    _ctx->BaseFrameBufSize = size;
 
     // The back-buffer viewport math depends on the new size; drop the elision cache
-    ctx->CurrentRenderTargetValid = false;
+    _ctx->CurrentRenderTargetValid = false;
 
-    if (ctx->BaseFrameBufObjBinded) {
+    if (_ctx->BaseFrameBufObjBinded) {
         SetRenderTarget(nullptr);
     }
 }
@@ -1185,8 +1155,8 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, Size.width));
     }
 
-    nptr<const ucolor> source_data = data.data();
-    FO_VERIFY_AND_THROW(required_size == 0 || !!source_data, "Texture update source data is null for a non-empty region");
+    auto source_data = make_nptr(data.data());
+    FO_VERIFY_AND_THROW(required_size == 0 || source_data, "Texture update source data is null for a non-empty region");
 
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
     GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, source_data.get()));
@@ -1284,8 +1254,6 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    StaticDataChanged = false;
-
     const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
     // Fill vertex buffer
@@ -1297,21 +1265,21 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     if (usage == EffectUsage::Model) {
         FO_VERIFY_AND_THROW(Vertices.empty(), "Vertices must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
-        nptr<const Vertex3D> source_vertices = Vertices3D.data();
-        FO_VERIFY_AND_THROW(upload_vertices == 0 || !!source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+        auto source_vertices = make_nptr(Vertices3D.data());
+        FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), source_vertices.get(), buf_type));
     }
     else {
         FO_VERIFY_AND_THROW(Vertices3D.empty(), "Vertices3 d must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
-        nptr<const Vertex2D> source_vertices = Vertices.data();
-        FO_VERIFY_AND_THROW(upload_vertices == 0 || !!source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+        auto source_vertices = make_nptr(Vertices.data());
+        FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), source_vertices.get(), buf_type));
     }
 #else
     upload_vertices = custom_vertices_size.value_or(VertCount);
-    nptr<const Vertex2D> source_vertices = Vertices.data();
-    FO_VERIFY_AND_THROW(upload_vertices == 0 || !!source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+    auto source_vertices = make_nptr(Vertices.data());
+    FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
     GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), source_vertices.get(), buf_type));
 #endif
 
@@ -1321,8 +1289,8 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     const auto upload_indices = custom_indices_size.value_or(IndCount);
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-    nptr<const vindex_t> source_indices = Indices.data();
-    FO_VERIFY_AND_THROW(upload_indices == 0 || !!source_indices, "Index upload source pointer is null for a non-empty buffer");
+    auto source_indices = make_nptr(Indices.data());
+    FO_VERIFY_AND_THROW(upload_indices == 0 || source_indices, "Index upload source pointer is null for a non-empty buffer");
     GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), source_indices.get(), buf_type));
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
@@ -1337,6 +1305,8 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
+
+    StaticDataChanged = false;
 }
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
@@ -1436,7 +1406,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto opengl_dbuf = RenderBackendCast<OpenGL_DrawBuffer>(dbuf);
+    auto opengl_dbuf = dbuf.dyn_cast<OpenGL_DrawBuffer>();
+    FO_VERIFY_AND_THROW(opengl_dbuf, "OpenGL draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
     if (!custom_tex && ModelTex[0]) {
@@ -1447,8 +1418,10 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         custom_tex = MainTex;
     }
 
-    auto main_tex_source = custom_tex ? custom_tex.as_ptr() : GetDummyTexture(_ctx);
-    auto main_tex = RenderBackendCast<const OpenGL_Texture>(main_tex_source);
+    nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
+    FO_VERIFY_AND_THROW(main_tex_source, "OpenGL dummy texture is not created");
+    auto main_tex = main_tex_source.dyn_cast<const OpenGL_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "OpenGL main texture is not of the expected backend type");
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1502,15 +1475,15 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
-        ptr<const float32_t> projection_matrix_values = glm::value_ptr(_ctx->ProjMatrix);
+        auto projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-        ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -1664,8 +1637,10 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         if (_posIndoorMaskTex[pass] != -1) {
-            auto indoor_tex_source = IndoorMaskTex ? IndoorMaskTex.as_ptr() : GetDummyTexture(_ctx);
-            auto indoor_tex = RenderBackendCast<const OpenGL_Texture>(indoor_tex_source);
+            nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(indoor_tex_source, "OpenGL dummy texture is not created");
+            auto indoor_tex = indoor_tex_source.dyn_cast<const OpenGL_Texture>();
+            FO_VERIFY_AND_THROW(indoor_tex, "OpenGL indoor mask texture is not of the expected backend type");
             GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));
             GL(glActiveTexture(GL_TEXTURE0));
@@ -1675,11 +1650,10 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    auto model_tex_source = GetDummyTexture(_ctx);
-                    if (ModelTex[i]) {
-                        model_tex_source = ModelTex[i].as_ptr();
-                    }
-                    auto model_tex = RenderBackendCast<OpenGL_Texture>(model_tex_source);
+                    nptr<RenderTexture> model_tex_source = ModelTex[i] ? ModelTex[i] : _ctx->DummyTexture;
+                    FO_VERIFY_AND_THROW(model_tex_source, "OpenGL dummy texture is not created");
+                    auto model_tex = model_tex_source.dyn_cast<OpenGL_Texture>();
+                    FO_VERIFY_AND_THROW(model_tex, "OpenGL model texture is not of the expected backend type");
                     GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
                     GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
                     GL(glActiveTexture(GL_TEXTURE0));

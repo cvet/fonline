@@ -43,6 +43,31 @@
 
 FO_BEGIN_NAMESPACE
 
+// Reinterpret an opaque `void` pointer back to a typed nullable borrow. Lives here (not in BasicCore) because
+// the nullable-borrow return type `nptr<T>` needs the smart-pointer vocabulary. The pointer type is spelled as
+// the caller expects (`cast_from_void<T*>(vp)`), and the result is `nptr<T>` — deref/pass it through the wrapper
+// vocabulary. Raw `void*`, `ptr<void>`, and `nptr<void>` sources are accepted.
+template<typename T, typename U>
+    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
+[[nodiscard]] inline auto cast_from_void(U ptr) noexcept -> nptr<std::remove_pointer_t<T>>
+{
+    return nptr<std::remove_pointer_t<T>>(static_cast<T>(ptr));
+}
+
+template<typename T, typename U>
+    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_void_v<std::remove_const_t<U>>)
+[[nodiscard]] inline auto cast_from_void(ptr<U> ptr) noexcept -> nptr<std::remove_pointer_t<T>>
+{
+    return cast_from_void<T>(ptr.get());
+}
+
+template<typename T, typename U>
+    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_void_v<std::remove_const_t<U>>)
+[[nodiscard]] inline auto cast_from_void(nptr<U> ptr) noexcept -> nptr<std::remove_pointer_t<T>>
+{
+    return cast_from_void<T>(ptr.get());
+}
+
 // Noexcept wrappers
 template<typename T, typename... Args>
 inline void safe_call(const T& callable, Args&&... args) noexcept
@@ -91,14 +116,6 @@ public:
     static_assert(std::is_pointer_v<T> || requires { typename T::element_type; });
 
     explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
-    explicit ref_hold_vector(vector<T>&& vec) noexcept :
-        _vec {std::move(vec)}
-    {
-        for (T& ref : _vec) {
-            add_ref(ref);
-        }
-    }
-
     ref_hold_vector(const ref_hold_vector&) = delete;
     ref_hold_vector(ref_hold_vector&&) noexcept = default;
     auto operator=(const ref_hold_vector&) -> ref_hold_vector& = delete;
@@ -135,27 +152,25 @@ private:
             return nptr<element_type> {ref.get_no_const()};
         }
         else {
-            return ref.as_nptr();
+            return ref;
         }
     }
 
     static void add_ref(T& ref)
     {
-        auto nullable_ref = get_ref(ref);
-        FO_VERIFY_AND_THROW(nullable_ref, "Missing required reference");
-        auto ref_ptr = nullable_ref.as_ptr();
+        auto ref_ptr = get_ref(ref);
+        FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
         ref_ptr->AddRef();
     }
 
     static void release_ref(T& ref)
     {
-        auto nullable_ref = get_ref(ref);
-        FO_VERIFY_AND_THROW(nullable_ref, "Missing required reference");
-        auto ref_ptr = nullable_ref.as_ptr();
+        auto ref_ptr = get_ref(ref);
+        FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
         ref_ptr->Release();
     }
 
-    vector<T> _vec {};
+    small_vector<T, 8> _vec {};
 };
 
 template<typename T>
@@ -328,10 +343,31 @@ constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexc
     return false;
 }
 
-template<std::ranges::range T, typename U>
-[[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+// Maps a vector-like container type to the same kind holding a different element type:
+//   vector<T>          -> vector<U>
+//   small_vector<T, N> -> small_vector<U, N>   (inline capacity preserved)
+template<std::ranges::range Cont, typename U>
+struct rebind_vector
 {
-    vector<std::ranges::range_value_t<T>> vec;
+    using type = vector<U>;
+};
+template<typename T, typename Alloc, typename U>
+struct rebind_vector<std::vector<T, Alloc>, U>
+{
+    using type = vector<U>;
+};
+template<typename T, unsigned InlineCapacity, typename Alloc, typename U>
+struct rebind_vector<gch::small_vector<T, InlineCapacity, Alloc>, U>
+{
+    using type = small_vector<U, InlineCapacity>;
+};
+template<typename Cont, typename U>
+using rebind_vector_t = typename rebind_vector<std::remove_cvref_t<Cont>, U>::type;
+
+template<std::ranges::range T, typename U>
+[[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+{
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         if (static_cast<bool>(filter(value))) {
@@ -345,7 +381,7 @@ template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
-    vector<result_type> vec;
+    rebind_vector_t<T, result_type> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));
@@ -365,9 +401,9 @@ template<std::ranges::range T, typename U>
 }
 
 template<std::ranges::range T, typename U>
-[[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+[[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    vector<std::ranges::range_value_t<T>> vec;
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
     vec.assign(cont.begin(), cont.end());
     std::ranges::stable_sort(vec, predicate);
@@ -403,12 +439,12 @@ template<typename T>
 
 [[nodiscard]] inline auto make_span(void* data, size_t byte_size) noexcept -> span<uint8_t>
 {
-    return span<uint8_t> {cast_from_void<uint8_t*>(data), byte_size};
+    return span<uint8_t> {cast_from_void<uint8_t*>(data).get(), byte_size};
 }
 
 [[nodiscard]] inline auto make_span(const void* data, size_t byte_size) noexcept -> const_span<uint8_t>
 {
-    return const_span<uint8_t> {cast_from_void<const uint8_t*>(data), byte_size};
+    return const_span<uint8_t> {cast_from_void<const uint8_t*>(data).get(), byte_size};
 }
 
 template<typename P>
@@ -470,9 +506,8 @@ template<typename T>
     }
 
     FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
-    nptr<uint8_t> nullable_bytes = data.data();
-    FO_STRONG_ASSERT(nullable_bytes, "Byte span has a null pointer");
-    auto bytes = nullable_bytes.as_ptr();
+    auto bytes = make_nptr(data.data());
+    FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
     ptr<T> values = bytes.reinterpret_as<T>();
     return make_span(values, data.size() / sizeof(T));
 }
@@ -480,8 +515,16 @@ template<typename T>
 template<typename T>
 [[nodiscard]] inline auto object_to_bytes(T& object) noexcept -> span<uint8_t>
 {
-    ptr<T> object_ptr = &object;
+    auto object_ptr = make_ptr(&object);
     ptr<uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
+    return make_span(bytes, sizeof(T));
+}
+
+template<typename T>
+[[nodiscard]] inline auto object_to_bytes(const T& object) noexcept -> const_span<uint8_t>
+{
+    auto object_ptr = make_ptr(&object);
+    ptr<const uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
     return make_span(bytes, sizeof(T));
 }
 

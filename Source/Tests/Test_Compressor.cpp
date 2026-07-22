@@ -104,6 +104,30 @@ TEST_CASE("Compressor")
         compressor.Reset();
         decompressor.Reset();
     }
+
+    SECTION("StreamRejectsMalformedInitialInputWithTypedException")
+    {
+        StreamDecompressor decompressor;
+        vector<uint8_t> result;
+        const vector<uint8_t> invalid = {0x00, 0x00};
+
+        CHECK_THROWS_AS(decompressor.Decompress(invalid, result), DecompressException);
+    }
+
+    SECTION("StreamRejectsMalformedContinuationInputWithTypedException")
+    {
+        const vector<uint8_t> source(4096, 0x2A);
+        StreamCompressor compressor;
+        vector<uint8_t> compressed;
+        compressor.Compress(source, compressed);
+        REQUIRE(compressed.size() * 2 < source.size());
+
+        compressed.emplace_back(0x06);
+
+        StreamDecompressor decompressor;
+        vector<uint8_t> result;
+        CHECK_THROWS_AS(decompressor.Decompress(compressed, result), DecompressException);
+    }
 }
 
 FO_END_NAMESPACE

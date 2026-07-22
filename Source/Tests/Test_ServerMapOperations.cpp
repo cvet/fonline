@@ -471,39 +471,17 @@ namespace MapOpsTest
         Game.CreateLocation("MissingLocation".hstr(), mapPids, props);
     }
 
-    int TestGameDestroyItemByIdCountOverload()
+    // An init script that cannot be resolved must fail loudly instead of leaving the entity silently uninitialized
+    void TestCreateLocationMissingInitScriptThrows()
     {
-        Location loc = CreateTestLocation();
-        if (loc is null) return -1;
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::MissingLocationInit".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
+    }
 
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) return -2;
-
-        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
-        if (cr is null) return -3;
-
-        Item item = cr.AddItem("TestItem".hstr(), 4);
-        if (item is null) return -4;
-
-        ident itemId = item.Id;
-
-        Game.DestroyItem(itemId, 0);
-
-        Item? unchanged = Game.GetItem(itemId);
-        if (unchanged is null) return -5;
-        if (unchanged.Count != 4) return -6;
-
-        Game.DestroyItem(itemId, 1);
-
-        Item? reduced = Game.GetItem(itemId);
-        if (reduced is null) return -7;
-        if (reduced.Count != 3) return -8;
-
-        Game.DestroyItem(itemId, 3);
-        if (Game.GetItem(itemId) !is null) return -9;
-
-        Game.DestroyLocation(loc);
-        return 0;
+    void TestCreateLocationMismatchedInitScriptThrows()
+    {
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::AllowItemPathGag".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
     }
 
     int TestMapGetItemOnHex()
@@ -906,6 +884,137 @@ namespace MapOpsTest
         // Get critters in radius
         array<Critter> inRadius = map.GetCrittersInRadius(hex, 5, CritterFindType::Any);
         if (inRadius.length() < 1) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapGetCrittersInLargeRadius()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter first = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter second = map.AddCritter("TestCritter".hstr(), mpos(90, 90), mdir(0));
+        if (first is null || second is null) return -3;
+
+        nanotime start = Game.GetPrecisionTime();
+
+        for (int i = 0; i < 41; i++) {
+            array<Critter> critters = map.GetCrittersInRadius(mpos(50, 50), 500, CritterFindType::Any);
+            if (critters.length() != 2) return -4;
+        }
+
+        if ((Game.GetPrecisionTime() - start).milliseconds >= 100) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
+    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
+    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
+    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
+    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
+    // spawn far from every probe hex, so they never enter a result set.
+    const int HexWalkFillerCritterCount = 32;
+
+    // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
+    const int MaxHexesInRadius2 = 25;
+
+    bool AddHexWalkFillerCritters(Map map)
+    {
+        for (int i = 0; i < HexWalkFillerCritterCount; i++) {
+            Critter filler = map.AddCritter("TestCritter".hstr(), mpos(10, 10 + i), mdir(0));
+            if (filler is null) return false;
+        }
+
+        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
+        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
+        // radius 2 probes below cannot silently fall back to the full scan
+        return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
+    }
+
+    bool ContainsCritterId(array<Critter> critters, ident id)
+    {
+        for (uint i = 0; i < critters.length(); i++) {
+            if (critters[i].Id == id) return true;
+        }
+
+        return false;
+    }
+
+    int TestMapGetCrittersInRadiusHexWalkArm()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        mpos probe(50, 50);
+        Critter onBoundary = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0));
+        Critter pastBoundary = map.AddCritter("TestCritter".hstr(), mpos(52, 50), mdir(0));
+        if (onBoundary is null || pastBoundary is null) return -3;
+
+        // Pin the fixture geometry the boundary assertions rely on, in case a spawn was relocated to a free hex
+        if (Game.GetDistance(probe, onBoundary.Hex) != 1) return -4;
+        if (Game.GetDistance(probe, pastBoundary.Hex) != 2) return -5;
+
+        if (!AddHexWalkFillerCritters(map)) return -6;
+
+        // A critter sitting exactly on the radius is inside, the one a hex further out is not
+        array<Critter> inRadius = map.GetCrittersInRadius(probe, 1, CritterFindType::Any);
+        if (inRadius.length() != 1) return -7;
+        if (!ContainsCritterId(inRadius, onBoundary.Id)) return -8;
+
+        // Widening the radius by one pulls in the hex that was just outside it
+        array<Critter> widened = map.GetCrittersInRadius(probe, 2, CritterFindType::Any);
+        if (widened.length() != 2) return -9;
+        if (!ContainsCritterId(widened, onBoundary.Id)) return -10;
+        if (!ContainsCritterId(widened, pastBoundary.Id)) return -11;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int CheckMultihexOverlapQueries(Map map, Critter cr)
+    {
+        // The critter centre sits 3 hexes away, so only its multihex 2 body reaches into the radius 1 probe
+        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
+        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -1;
+
+        // One hex further back the body no longer reaches
+        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
+        if (!outside.isEmpty()) return -2;
+
+        return 0;
+    }
+
+    int TestMapGetCrittersInRadiusIncludesMultihexOverlap()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestMultihexCritter".hstr(), mpos(53, 50), mdir(0));
+        if (cr is null) return -3;
+        if (cr.Hex != mpos(53, 50)) return -4;
+
+        // A lone critter never trips the walk threshold, so this proves the distance arithmetic arm
+        int fullScan = CheckMultihexOverlapQueries(map, cr);
+        if (fullScan != 0) return -10 + fullScan;
+
+        if (!AddHexWalkFillerCritters(map)) return -5;
+
+        // Identical answers on the hex walk arm, which resolves the same overlap through field registration instead
+        int hexWalk = CheckMultihexOverlapQueries(map, cr);
+        if (hexWalk != 0) return -20 + hexWalk;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -1730,25 +1839,9 @@ namespace MapOpsTest
         if (Game.GetMap(destroyByHandleMapId) !is null) return -37;
         Game.DestroyLocation(destroyByHandleLoc);
 
-        Location destroyByIdLoc = Game.CreateLocation("TestLocation".hstr(), mapPids);
-        if (destroyByIdLoc is null) return -38;
-
-        Map destroyByIdMap = destroyByIdLoc.GetMapByIndex(0);
-        if (destroyByIdMap is null) return -39;
-
-        ident destroyByIdMapId = destroyByIdMap.Id;
-        Game.DestroyMap(destroyByIdMapId);
-        if (Game.GetMap(destroyByIdMapId) !is null) return -40;
-        Game.DestroyLocation(destroyByIdLoc);
-
         ident byProtoId = byProto.Id;
-        Game.DestroyLocation(byProtoId);
-        if (Game.GetLocation(byProtoId) !is null) return -41;
-
-        Game.DestroyMap(ZERO_IDENT);
-        Game.DestroyLocation(ZERO_IDENT);
-        if (Game.GetMap(ZERO_IDENT) !is null) return -42;
-        if (Game.GetLocation(ZERO_IDENT) !is null) return -43;
+        Game.DestroyLocation(byProto);
+        if (Game.GetLocation(byProtoId) !is null) return -38;
 
         Game.DestroyLocation(withMapProps2);
         Game.DestroyLocation(withMapProps1);
@@ -4641,7 +4734,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4672,7 +4765,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4783,7 +4876,15 @@ namespace MapOpsTest
         const auto client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
         const auto client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        const auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
+        REQUIRE(static_cast<bool>(critter_registrator));
+        const auto multihex_property = critter_registrator->FindProperty("Multihex");
+        REQUIRE(static_cast<bool>(multihex_property));
+        const vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
+            {"TestCritter", {}},
+            {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
+        };
+        const auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         const auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
         const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
         const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
@@ -4920,11 +5021,6 @@ TEST_CASE("MapItemOperations")
         RUN_FUNC("MapOpsTest::TestGameMoveItemsOverloads");
     }
 
-    SECTION("GameDestroyItemByIdCountOverload")
-    {
-        RUN_FUNC("MapOpsTest::TestGameDestroyItemByIdCountOverload");
-    }
-
     SECTION("GetItemOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetItemOnHex");
@@ -5003,6 +5099,21 @@ TEST_CASE("MapCritterOperations")
     SECTION("GetCrittersOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetCrittersOnHex");
+    }
+
+    SECTION("GetCrittersInLargeRadius")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInLargeRadius");
+    }
+
+    SECTION("GetCrittersInRadiusHexWalkArm")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusHexWalkArm");
+    }
+
+    SECTION("GetCrittersInRadiusIncludesMultihexOverlap")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusIncludesMultihexOverlap");
     }
 
     SECTION("GetCrittersInRadiusNegativeRadiusThrows")
@@ -5180,7 +5291,7 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     const auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 
-    auto static_map = server->MapMngr.GetStaticMap(map_proto.as_ptr());
+    auto static_map = server->MapMngr.GetStaticMap(map_proto);
 
     REQUIRE(static_map->CritterBillets.size() == 1);
     CHECK(static_map->CritterBillets.front().first == ident_t {11});
@@ -5252,6 +5363,16 @@ TEST_CASE("MapLocationRelationship")
     SECTION("CreateLocationInvalidProtoMapPropsThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationInvalidProtoMapPropsThrows", "Invalid location proto id arg");
+    }
+
+    SECTION("CreateLocationMissingInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMissingInitScriptThrows", "Init function not found or has a mismatched signature");
+    }
+
+    SECTION("CreateLocationMismatchedInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMismatchedInitScriptThrows", "Init function not found or has a mismatched signature");
     }
 
     SECTION("GameGetLocations")

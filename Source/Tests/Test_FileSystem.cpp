@@ -52,7 +52,11 @@ TEST_CASE("FileSystem")
         ignore_unused(removed_before);
 
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/a.txt").str(), string_view {"alpha"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/aroot.txt").str(), string_view {"not-root"}));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/b.bin").str(), string_view {"beta"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/nested/c.txt").str(), string_view {"gamma"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("maps/Generated/_compose.fomap").str(), string_view {"scratch"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("maps/Generated/Authored.fomap").str(), string_view {"authored"}));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
 
         FileSystem fs;
@@ -74,15 +78,46 @@ TEST_CASE("FileSystem")
         CHECK(file.GetStr() == "beta");
 
         const FileCollection txt_files = fs.FilterFiles("txt");
-        CHECK(txt_files.GetFilesCount() == 2);
+        CHECK(txt_files.GetFilesCount() == 4);
         CHECK(txt_files.FindFileByName("a").GetStr() == "alpha");
         CHECK(txt_files.FindFileByPath("root.txt").GetStr() == "root");
 
         const FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
-        CHECK(text_dir_files.GetFilesCount() == 2);
+        CHECK(text_dir_files.GetFilesCount() == 3);
 
         const FileCollection all_files = fs.GetAllFiles();
-        CHECK(all_files.GetFilesCount() == 3);
+        CHECK(all_files.GetFilesCount() == 7);
+
+        const vector<string> no_patterns;
+        const vector<string> root_txt_patterns = {"*.txt"};
+        const FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
+        REQUIRE(root_txt_files.GetFilesCount() == 1);
+        CHECK(root_txt_files.FindFileByPath("root.txt"));
+
+        const vector<string> recursive_txt_patterns = {"**/*.txt"};
+        const FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
+        CHECK(recursive_txt_files.GetFilesCount() == 4);
+        CHECK(recursive_txt_files.FindFileByPath("texts/nested/c.txt"));
+
+        const vector<string> direct_text_patterns = {"texts/*.txt"};
+        const FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
+        REQUIRE(direct_text_files.GetFilesCount() == 2);
+        CHECK(direct_text_files.FindFileByPath("texts/a.txt"));
+
+        const vector<string> root_name_patterns = {"**/root.txt"};
+        const FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
+        REQUIRE(root_name_files.GetFilesCount() == 1);
+        CHECK(root_name_files.FindFileByPath("root.txt"));
+
+        const vector<string> map_patterns = {"maps\\**\\*.fomap"};
+        const vector<string> scratch_map_patterns = {"**/_*.fomap"};
+        const FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
+        REQUIRE(authored_maps.GetFilesCount() == 1);
+        CHECK(authored_maps.FindFileByPath("maps/Generated/Authored.fomap"));
+
+        const vector<string> single_character_patterns = {"**/?.txt"};
+        const FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
+        CHECK(single_character_names.GetFilesCount() == 2);
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

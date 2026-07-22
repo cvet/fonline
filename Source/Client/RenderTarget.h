@@ -95,7 +95,7 @@ public:
     void PushRenderTarget(ptr<RenderTarget> rt);
     void PopRenderTarget();
     void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);
-    void DeleteRenderTarget(nptr<RenderTarget> nullable_rt);
+    void DeleteRenderTarget(nptr<RenderTarget> rt);
     void ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size);
 
     void ClearStack();
@@ -108,7 +108,6 @@ private:
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<ptr<RenderTarget>> _rtStack {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE

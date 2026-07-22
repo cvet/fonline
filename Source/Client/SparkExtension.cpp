@@ -780,7 +780,7 @@ namespace SPK::FO
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->MainTex = _texture;
 
-        spark_render_buffer->Render(group.getNbParticles() << 2, _effect.as_ptr());
+        spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
     }
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
@@ -952,8 +952,7 @@ namespace SPK::FO
         lookVector.set(0.0f, 0.0f, 1.0f);
         upVector.set(0.0f, 1.0f, 0.0f);
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("draw size"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
             const auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
@@ -969,23 +968,19 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("draw in scene"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("draw in scene"); attrib) {
             _drawInScene = attrib->getValue<bool>();
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("effect"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("effect"); attrib) {
             SetEffectName(string(attrib->getValue<std::string>()));
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("texture"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("texture"); attrib) {
             SetTextureName(string(attrib->getValue<std::string>()));
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("scale"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("scale"); attrib) {
             const auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
@@ -1000,8 +995,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("atlas dimensions"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib) {
             const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
 
             switch (tmpAtlasDimensions.size()) {
@@ -1016,8 +1010,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("look orientation"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("look orientation"); attrib) {
             const auto lookOrient = attrib->getValue<std::string>();
 
             if (lookOrient == "LOOK_CAMERA_PLANE") {
@@ -1034,8 +1027,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("up orientation"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("up orientation"); attrib) {
             const auto upOrient = attrib->getValue<std::string>();
 
             if (upOrient == "UP_CAMERA") {
@@ -1052,8 +1044,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked axis"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked axis"); attrib) {
             const auto lockAx = attrib->getValue<std::string>();
 
             if (lockAx == "LOCK_LOOK") {
@@ -1064,13 +1055,11 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked look vector"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked look vector"); attrib) {
             lookVector = attrib->getValue<Vector3D>();
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked up vector"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked up vector"); attrib) {
             upVector = attrib->getValue<Vector3D>();
         }
     }

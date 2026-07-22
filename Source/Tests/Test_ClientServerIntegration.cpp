@@ -504,6 +504,175 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK(disconnected_calls >= 1);
 }
 
+TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    const auto previous_exception_callback = GetExceptionCallback();
+    std::atomic_int exception_reports {};
+    SetExceptionCallback([&exception_reports](string_view, const CatchedStackTraceData&, bool) { exception_reports.fetch_add(1); });
+    const auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
+
+    std::atomic_bool disconnected {};
+    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+        if (data.empty()) {
+            disconnected.store(true);
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    auto malformed_handshake = NetOutBuffer(64);
+    malformed_handshake.StartMsg(NetMessage::Handshake);
+    malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    malformed_handshake.Write<uint16_t>(uint16_t {0});
+    malformed_handshake.EndMsg();
+    send_to_server(malformed_handshake.GetData());
+
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+    CHECK(disconnected.load());
+    CHECK(exception_reports.load() == 0);
+}
+
+TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
+{
+    using namespace TestClientServerIntegration;
+
+    const uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.InactivityDisconnectTime, 0);
+    BakerTests::OverrideSetting(server_settings.LoginTimeout, 25);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    std::atomic_bool disconnected {};
+    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+        if (data.empty()) {
+            disconnected.store(true);
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    for (int32_t i = 0; i < 2000 && !disconnected.load(); i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(disconnected.load());
+    CHECK(WaitForServerConnectionCount(server, 0));
+}
+
+TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
+{
+    using namespace TestClientServerIntegration;
+
+    const uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    mutex received_data_lock;
+    vector<uint8_t> received_data;
+    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+        if (!data.empty()) {
+            scoped_lock locker {received_data_lock};
+            received_data.insert(received_data.end(), data.begin(), data.end());
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    static_assert(FO_UPDATER_VERSION > 1);
+    auto handshake = NetOutBuffer(128);
+    handshake.StartMsg(NetMessage::Handshake);
+    handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
+    handshake.Write<string_view>("Linux-x64");
+    handshake.Write<uint32_t>(0x12345678);
+    handshake.EndMsg();
+    send_to_server(handshake.GetData());
+
+    bool received_rejection = false;
+    for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
+        vector<uint8_t> response_data;
+        {
+            scoped_lock locker {received_data_lock};
+            response_data = received_data;
+        }
+
+        if (!response_data.empty()) {
+            NetInBuffer response {response_data.size()};
+            response.AddData(response_data);
+
+            if (response.NeedProcess()) {
+                REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<bool>());
+                const uint32_t response_encrypt_key = response.Read<uint32_t>();
+                CHECK(response_encrypt_key != 0);
+                response.SetEncryptKey(response_encrypt_key);
+
+                if (response.NeedProcess()) {
+                    REQUIRE(response.ReadMsg() == NetMessage::Disconnect);
+                    response.ShrinkReadBuf();
+                    CHECK(response.GetDataSize() == 0);
+                    received_rejection = true;
+                }
+            }
+        }
+
+        if (!received_rejection) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    REQUIRE(received_rejection);
+    send_to_server({});
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
 TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;
@@ -738,23 +907,20 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
     const auto reported = server->Hashes.ToHashedString("integration_test_lazy_hash");
 
-    auto nullable_critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
-    REQUIRE(static_cast<bool>(nullable_critter_registrator));
+    auto critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
+    REQUIRE(static_cast<bool>(critter_registrator));
 
-    auto critter_registrator = nullable_critter_registrator.as_ptr();
     auto critter_props = Properties(critter_registrator);
-    auto nullable_model_name_prop = nullable_critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
-    REQUIRE(static_cast<bool>(nullable_model_name_prop));
-    auto model_name_prop = nullable_model_name_prop.as_ptr();
+    auto model_name_prop = critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
+    REQUIRE(static_cast<bool>(model_name_prop));
 
     const hstring::hash_t unresolved_hash = reported.as_hash();
     critter_props.SetRawData(model_name_prop, {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
 
-    auto nullable_proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));
-    REQUIRE(static_cast<bool>(nullable_proto));
+    auto proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));
+    REQUIRE(static_cast<bool>(proto));
 
-    auto proto = nullable_proto.as_ptr();
-    nptr<const Properties> critter_props_ptr = &critter_props;
+    auto critter_props_ptr = make_nptr(&critter_props);
     auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
     const auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
@@ -769,7 +935,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     CHECK(GetServerConnectionCount(server) == 1);
 
     string model_name;
-    REQUIRE(client->CallFunc<string, CritterView*>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter.get(), model_name));
+    REQUIRE(client->CallFunc<string, ptr<CritterView>>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter, model_name));
     CHECK(model_name == "integration_test_lazy_hash");
 }
 

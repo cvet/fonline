@@ -31,6 +31,7 @@
 // SOFTWARE.
 //
 
+#include "NetSockets.h"
 #include "NetworkServer.h"
 
 #if FO_HAVE_WEB_SOCKETS
@@ -107,15 +108,14 @@ public:
     auto operator=(NetworkServer_WebSockets&&) noexcept = delete;
     ~NetworkServer_WebSockets() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
     void Run();
     void OnOpen(const websocketpp::connection_hdl& hdl);
     void OnFail(const websocketpp::connection_hdl& hdl);
-
-    [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
-    [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
+    auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
+    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
     ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
@@ -185,7 +185,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
         return;
     }
 
-    const weak_ptr<NetworkServerConnection> weak_self = weak_from_this();
+    const auto weak_self = weak_from_this();
 
     connection->set_message_handler([weak_self, this](auto&&, auto&& msg) FO_DEFERRED {
         const auto self = weak_self.lock();
@@ -225,10 +225,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, net_sockets::error_text(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, net_sockets::error_text(error));
     }
 }
 
@@ -316,7 +316,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, error.message());
+            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, net_sockets::error_text(error));
             Disconnect();
         }
     }
@@ -356,6 +356,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
 
     _server.init_asio();
     _server.clear_access_channels(websocketpp::log::alevel::all);
+    _server.clear_error_channels(websocketpp::log::elevel::all);
     _server.set_access_channels(websocketpp::log::alevel::access_core);
     _server.set_open_handler([this](auto&& hdl) FO_DEFERRED { OnOpen(hdl); });
     _server.set_fail_handler([this](auto&& hdl) FO_DEFERRED { OnFail(hdl); });
@@ -365,14 +366,20 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort));
+    websocketpp::lib::error_code listen_error;
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort), listen_error);
+
+    if (listen_error) {
+        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, net_sockets::error_text(listen_error));
+    }
+
     _server.start_accept();
 
     _runThread = run_thread("Network-WebSockets", [this] { Run(); });
 }
 
 template<bool Secured>
-void NetworkServer_WebSockets<Secured>::Shutdown()
+void NetworkServer_WebSockets<Secured>::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -407,7 +414,10 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         try {
             auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
             ws_connection->Start();
-            _connectionCallback(std::move(ws_connection));
+
+            if (TrackConnection(ws_connection)) {
+                _connectionCallback(std::move(ws_connection));
+            }
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -429,9 +439,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     const auto remote_endpoint = connection->get_remote_endpoint();
-    const auto error_message = ec.message();
-
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
+    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), net_sockets::error_text(ec));
 }
 
 template<bool Secured>
@@ -451,7 +459,7 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
 
     ignore_unused(hdl);
 
-    websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tls_server));
+    websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::make_shared<ssl_context>(ssl_context::tls_server);
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
     ctx->use_certificate_chain_file(std::string(_settings->WssCertificate));

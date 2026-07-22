@@ -131,6 +131,7 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
     texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
     auto prev_tex = _render->GetRenderTarget();
+    auto restore_target = scope_fail([&]() noexcept { safe_call([&] { _render->SetRenderTarget(prev_tex); }); });
     _render->SetRenderTarget(texture);
     _render->ClearRenderTarget(ucolor::clear, with_depth);
     _render->SetRenderTarget(prev_tex);
@@ -146,14 +147,11 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 
     if (!redundant) {
         _flush();
-    }
-
-    _rtStack.emplace_back(rt);
-
-    if (!redundant) {
         _render->SetRenderTarget(rt->_texture);
         rt->_lastPixelPicks.clear();
     }
+
+    _rtStack.emplace_back(rt);
 }
 
 void RenderTargetManager::PopRenderTarget()
@@ -164,18 +162,18 @@ void RenderTargetManager::PopRenderTarget()
 
     if (!redundant) {
         _flush();
-    }
 
-    _rtStack.pop_back();
-
-    if (!redundant) {
-        if (!_rtStack.empty()) {
-            _render->SetRenderTarget(_rtStack.back()->_texture);
+        // Bind the target that will become the new stack top (the entry under the current top) before
+        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged.
+        if (_rtStack.size() >= 2) {
+            _render->SetRenderTarget(_rtStack[_rtStack.size() - 2]->_texture);
         }
         else {
             _render->SetRenderTarget(nullptr);
         }
     }
+
+    _rtStack.pop_back();
 }
 
 auto RenderTargetManager::GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor
@@ -218,15 +216,14 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
     _render->ClearRenderTarget(color, with_depth);
 }
 
-void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> nullable_rt)
+void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_rt) {
+    if (!rt) {
         return;
     }
 
-    auto rt = nullable_rt.as_ptr();
     const auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
         auto check_rt_ptr = check_rt.as_ptr();
         return check_rt_ptr == rt;
@@ -254,7 +251,7 @@ void RenderTargetManager::DumpTextures() const
     }
 
     const auto time = nanotime::now().desc(true);
-    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 

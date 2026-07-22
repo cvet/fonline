@@ -46,7 +46,13 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, op
     _owner->_outBufLocker.lock();
 
     if (_msg) {
-        _outBuf->StartMsg(_msg.value());
+        try {
+            _outBuf->StartMsg(_msg.value());
+        }
+        catch (...) {
+            _owner->_outBufLocker.unlock();
+            throw;
+        }
     }
 }
 
@@ -126,13 +132,13 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
         AsyncReceiveData({});
     };
 
-    _netConnection->SetAsyncCallbacks(send, receive, disconnect);
-
     if (_settings->MaxMessageSize != 0) {
         _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
     }
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+
+    _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 }
 
 ServerConnection::~ServerConnection()
@@ -183,6 +189,7 @@ auto ServerConnection::GetDiagnostics() const -> Diagnostics
     Diagnostics result;
     result.HandshakeComplete = _activity.HandshakeComplete;
     result.LastActivityTime = _activity.LastActivityTime;
+    result.LastLoginProgressTime = _activity.LastLoginProgressTime;
     result.PingAnswerReceived = _activity.PingAnswerReceived;
 
     if (_updateFileTransfer.PendingFileIndex) {
@@ -205,6 +212,13 @@ auto ServerConnection::IsInactive(nanotime time) const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _settings->InactivityDisconnectTime != 0 && time - _activity.LastActivityTime >= std::chrono::milliseconds {_settings->InactivityDisconnectTime};
+}
+
+auto ServerConnection::IsLoginTimedOut(nanotime time) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _settings->LoginTimeout != 0 && time - _activity.LastLoginProgressTime >= std::chrono::milliseconds {_settings->LoginTimeout};
 }
 
 auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
@@ -242,6 +256,9 @@ void ServerConnection::EnsureActivityTime(nanotime time) noexcept
     if (!_activity.LastActivityTime) {
         _activity.LastActivityTime = time;
     }
+    if (!_activity.LastLoginProgressTime) {
+        _activity.LastLoginProgressTime = time;
+    }
 }
 
 void ServerConnection::RegisterActivity(nanotime time) noexcept
@@ -249,6 +266,13 @@ void ServerConnection::RegisterActivity(nanotime time) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     _activity.LastActivityTime = time;
+}
+
+void ServerConnection::RegisterLoginProgress(nanotime time) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _activity.LastLoginProgressTime = time;
 }
 
 void ServerConnection::RegisterPingRequest(nanotime time) noexcept

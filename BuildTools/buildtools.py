@@ -15,7 +15,7 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, NotRequired, Sequence, TypedDict
+from typing import Callable, Iterable, Mapping, NamedTuple, NotRequired, Sequence, TypedDict
 
 
 EnvMap = dict[str, str]
@@ -154,11 +154,20 @@ ANDROID_ABI_BY_PLATFORM = {
 	'android-x86': 'x86',
 }
 
+
+class WindowsBuildSpec(NamedTuple):
+	cmake_arch: str
+	toolset: str | None
+	binary_arch: str
+
+
 WINDOWS_BUILD_BY_PLATFORM = {
-	'win32': ('Win32', None),
-	'win64': ('x64', None),
-	'win32-clang': ('Win32', 'ClangCL'),
-	'win64-clang': ('x64', 'ClangCL'),
+	'win32': WindowsBuildSpec('Win32', None, 'win32'),
+	'win32-clang': WindowsBuildSpec('Win32', 'ClangCL', 'win32'),
+	'win32-win7': WindowsBuildSpec('Win32', 'v143,version=14.44', 'win32'),
+	'win64': WindowsBuildSpec('x64', None, 'win64'),
+	'win64-clang': WindowsBuildSpec('x64', 'ClangCL', 'win64'),
+	'win64-win7': WindowsBuildSpec('x64', 'v143,version=14.44', 'win64'),
 }
 
 FORMAT_PATTERNS = [
@@ -805,7 +814,12 @@ def resolve_windows_build(platform_name: str) -> tuple[str, str | None]:
 	build = WINDOWS_BUILD_BY_PLATFORM.get(platform_name)
 	if build is None:
 		raise SystemExit(f'Invalid Windows build platform: {platform_name}')
-	return build
+	return build.cmake_arch, build.toolset
+
+
+def resolve_windows_binary_arch(platform_name: str) -> str:
+	build = WINDOWS_BUILD_BY_PLATFORM.get(platform_name)
+	return build.binary_arch if build is not None else platform_name
 
 
 def join_shell_args(args: Iterable[str]) -> str:
@@ -1692,6 +1706,8 @@ def make_platform_configure_cmd(
 		ios_toolchain = resolve_buildtools_path(env, 'cmake', 'toolchains', 'ios.toolchain.cmake')
 		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(ios_toolchain)}', *toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name.startswith('win'):
+		if platform_name.endswith('-win7') and os.name != 'nt':
+			raise SystemExit(f'The {platform_name} platform requires a native Windows MSVC build host')
 		if os.name != 'nt':
 			return make_windows_cross_configure_cmd(platform_name, env, *configure_args, to_cmake_path(source_path))
 		return make_windows_configure_cmd(platform_name, *configure_args, to_cmake_path(source_path))

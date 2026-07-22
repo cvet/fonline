@@ -337,7 +337,18 @@ macro(CreatePackage package)
 endmacro()
 
 macro(AddToPackage package binary platform arch packType)
-	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
+	set(addToPackageCustomConfig "")
+	set(addToPackageBinaryOutputPostfix "")
+
+	if(${ARGC} GREATER 5)
+		set(addToPackageCustomConfig "${ARGV5}")
+	endif()
+
+	if(${ARGC} GREATER 6)
+		set(addToPackageBinaryOutputPostfix "${ARGV6}")
+	endif()
+
+	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${addToPackageCustomConfig},${addToPackageBinaryOutputPostfix}")
 endmacro()
 
 macro(AddIncludeToPackage package sourceGlob targetPath)
@@ -370,7 +381,22 @@ macro(DefinePackage package)
 			endif()
 
 			ListPopFront(packageArgs binary platform arch packType)
-			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType})
+			set(binaryOutputPostfix "")
+
+			if(packageArgs)
+				ListGet(packageArgs 0 binaryOption)
+
+				if(binaryOption STREQUAL "POSTFIX")
+					ListLength(packageArgs packageArgsCount)
+					if(packageArgsCount LESS 2)
+						AbortMessage("DefinePackage ${package} BINARY POSTFIX expects a value")
+					endif()
+
+					ListPopFront(packageArgs binaryOption binaryOutputPostfix)
+				endif()
+			endif()
+
+			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType} "" "${binaryOutputPostfix}")
 		elseif(packageKeyword STREQUAL "INCLUDE")
 			ListLength(packageArgs packageArgsCount)
 			if(packageArgsCount LESS 2)
@@ -691,6 +717,14 @@ macro(AddSharedApplication target sourceFile)
 	endif()
 
 	SetupApplicationTarget(${target} ${appSharedArgs})
+
+	if(FO_LINUX)
+		# Runtime modules are dlopen'ed by an engine host executable that exports its own engine
+		# symbols (-rdynamic for stack traces). Bind the module's global references to its own
+		# definitions so it keeps private global data and allocator state instead of interposing
+		# on the host's copies; the host/runtime C ABI never transfers ownership across modules.
+		TargetLinkOptions(${target} PRIVATE -Wl,-Bsymbolic)
+	endif()
 
 	if(APP_SHARED_NO_PREFIX)
 		set_target_properties(${target} PROPERTIES PREFIX "")

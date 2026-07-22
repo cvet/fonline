@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 static void EmitLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st);
 static void FlushLogMessageRepeatsLocked();
 static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool;
-static void RememberLastLogMessage(LogType type, string_view message);
+static void RememberLastLogMessage(LogType type, string_view message) noexcept;
 static void ClearLastLogMessage() noexcept;
 static void FlushLogAtExit();
 
@@ -188,7 +188,7 @@ static void EmitLogMessage(LogType type, string_view message, nptr<const Catched
     }
 
 #if FO_TRACY
-    ptr<const char> tracy_message = result.c_str();
+    auto tracy_message = make_ptr(result.c_str());
     TracyMessage(tracy_message.get(), result.length());
 #endif
 }
@@ -240,7 +240,7 @@ static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool
     return Logging->LastLogType.has_value() && *Logging->LastLogType == type && string_view {Logging->LastLogMessage} == message;
 }
 
-static void RememberLastLogMessage(LogType type, string_view message)
+static void RememberLastLogMessage(LogType type, string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

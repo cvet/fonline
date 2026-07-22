@@ -112,7 +112,7 @@ auto Entity::EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCal
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     if (!_events) {
         _events.emplace();
@@ -129,7 +129,7 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     auto callbacks = EnsureEventCallbacks(event_name);
     SubscribeEvent(callbacks, std::move(callback));
@@ -175,7 +175,7 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_RETURN_VALUE(!_isDestroyed, EventResult::ContinueChain, "Destroyed entity tried to fire an event", GetName(), GetTypeName(), GetId(), event_name);
+    FO_VERIFY_AND_RETURN_VALUE(!IsDestroyed(), EventResult::ContinueChain, "Destroyed entity tried to fire an event", GetName(), GetTypeName(), GetId(), event_name);
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
@@ -190,7 +190,7 @@ void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallb
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
         throw GenericException("Highest callback already added");
@@ -221,7 +221,7 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_RETURN_VALUE(!_isDestroyed, EventResult::ContinueChain, "Destroyed entity tried to fire cached event callbacks", GetName(), GetTypeName(), GetId());
+    FO_VERIFY_AND_RETURN_VALUE(!IsDestroyed(), EventResult::ContinueChain, "Destroyed entity tried to fire cached event callbacks", GetName(), GetTypeName(), GetId());
 
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
@@ -229,7 +229,9 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
 
     bool had_exception = false;
 
-    for (const auto& cb : copy(callbacks)) {
+    const small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+
+    for (const auto& cb : callbacks_snapshot) {
         EventResult result = EventResult::ContinueChain;
 
         try {
@@ -257,23 +259,23 @@ void Entity::MarkAsDestroying() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_CONTINUE(!_isDestroying, "Entity is already marked as destroying", GetName(), GetTypeName(), GetId());
-    FO_VERIFY_AND_CONTINUE(!_isDestroyed, "Entity is already destroyed before MarkAsDestroying", GetName(), GetTypeName(), GetId());
+    FO_VERIFY_AND_CONTINUE(!IsDestroying(), "Entity is already marked as destroying", GetName(), GetTypeName(), GetId());
+    FO_VERIFY_AND_CONTINUE(!IsDestroyed(), "Entity is already destroyed before MarkAsDestroying", GetName(), GetTypeName(), GetId());
 
-    _isDestroying = true;
+    _isDestroying.store(true, std::memory_order_release);
 }
 
 void Entity::MarkAsDestroyed() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_CONTINUE(!_isDestroyed, "Entity is already destroyed before MarkAsDestroyed", GetName(), GetTypeName(), GetId());
+    FO_VERIFY_AND_CONTINUE(!IsDestroyed(), "Entity is already destroyed before MarkAsDestroyed", GetName(), GetTypeName(), GetId());
 
     UnsubscribeAllEvents();
     ClearAllTimeEvents();
 
-    _isDestroying = true;
-    _isDestroyed = true;
+    _isDestroying.store(true, std::memory_order_release);
+    _isDestroyed.store(true, std::memory_order_release);
 }
 
 auto Entity::StoreData(bool with_protected) const -> Properties::StoredData
@@ -287,7 +289,7 @@ void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.RestoreData(props_data);
 }
@@ -296,7 +298,7 @@ void Entity::SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_da
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.SetValueFromData(prop, prop_data);
 }
@@ -333,7 +335,7 @@ void Entity::SetValueAsInt(ptr<const Property> prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
@@ -342,7 +344,7 @@ void Entity::SetValueAsInt(int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.SetValueAsInt(prop_index, value);
 }
@@ -351,7 +353,7 @@ void Entity::SetValueAsAny(ptr<const Property> prop, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.SetPlainDataValueAsAny(prop, value);
 }
@@ -360,7 +362,7 @@ void Entity::SetValueAsAny(int32_t prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _props.SetValueAsAny(prop_index, value);
 }
@@ -418,8 +420,8 @@ void Entity::AddInnerEntity(hstring entry, ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Cannot add an inner entity to an already destroyed object");
-    FO_VERIFY_AND_THROW(!_isDestroying, "Cannot add an inner entity to an object that is being destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an inner entity to an already destroyed object");
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an inner entity to an object that is being destroyed");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     if (!_innerEntities) {
@@ -440,7 +442,7 @@ void Entity::RemoveInnerEntity(hstring entry, ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
     FO_VERIFY_AND_THROW(_innerEntities, "Missing required inner entities");
     FO_VERIFY_AND_THROW(entry, "Missing required entry");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
@@ -464,7 +466,7 @@ void Entity::ClearInnerEntities()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     _innerEntities.reset();
 }
@@ -484,7 +486,7 @@ auto Entity::EnsureTimeEvents() -> ptr<TimeEventList>
         _timeEvents.emplace();
     }
 
-    return ptr<TimeEventList> {&*_timeEvents};
+    return make_ptr(&*_timeEvents);
 }
 
 EntityEvent::EntityEvent(ptr<Entity> entity, string_view callback_name) noexcept :
@@ -511,7 +513,7 @@ auto EntityEvent::CheckCallbacks() -> bool
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), false, "Destroyed entity tried to check callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    if (nptr<vector<Entity::EventCallbackData>> callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
+    if (auto callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
         return !callbacks->empty();
     }
 

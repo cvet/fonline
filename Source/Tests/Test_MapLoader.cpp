@@ -15,9 +15,9 @@ static void InitTestMapLoaderMetadata(EngineMetadata& meta)
 
 static auto GetTestMapLoaderRegistrator(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrator>
 {
-    auto nullable_registrator = meta.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(nullable_registrator));
-    return nullable_registrator.as_ptr();
+    auto registrator = meta.GetPropertyRegistrator(type_name);
+    REQUIRE(static_cast<bool>(registrator));
+    return registrator;
 }
 
 TEST_CASE("MapLoader")

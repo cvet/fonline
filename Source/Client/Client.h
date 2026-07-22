@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "Application.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
@@ -51,6 +50,8 @@
 #include "ItemView.h"
 #include "LocationView.h"
 #include "MapView.h"
+#include "ModelInstance.h"
+#include "ModelSprites.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
@@ -351,9 +352,9 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void ReceiveCustomEntities(nptr<Entity> nullable_holder);
+    void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
-    void ReceiveCritterMoving(nptr<CritterHexView> nullable_cr);
+    void ReceiveCritterMoving(nptr<CritterHexView> cr);
 
     void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
     void OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop);
@@ -377,7 +378,7 @@ protected:
     ClientConnection _conn;
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
-    TextPack _curLang {ptr<HashResolver> {&Hashes}};
+    TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
     unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};

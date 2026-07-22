@@ -125,10 +125,9 @@ private:
         FO_NO_STACK_TRACE_ENTRY();
 
         FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
-        ptr<AngelScript::asIScriptContext> ctx = raw_ctx;
-        nptr<DebuggerEndpointServer::Impl> nullable_debugger = cast_from_void<DebuggerEndpointServer::Impl*>(param);
-        FO_VERIFY_AND_THROW(!!nullable_debugger, "Missing debugger line callback user data");
-        auto debugger = nullable_debugger.as_ptr();
+        auto ctx = make_ptr(raw_ctx);
+        auto debugger = cast_from_void<DebuggerEndpointServer::Impl*>(param);
+        FO_VERIFY_AND_THROW(debugger, "Missing debugger line callback user data");
         debugger->ProcessLine(ctx);
     }
 
@@ -306,12 +305,12 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
 
     if (reason == AngelScriptContextSetupReason::Create) {
         int32_t as_result = 0;
-        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), cast_to_void(this), AngelScript::asCALL_CDECL));
+        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), make_nptr(this).void_cast(), AngelScript::asCALL_CDECL));
         ctx_ext->StepState = SafeAlloc::MakeShared<DebuggerStepState>();
     }
     else if (reason == AngelScriptContextSetupReason::Request) {
         if (ctx_ext->Parent) {
-            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.as_ptr());
+            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
             FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::In ? DebuggerStepMode::In : DebuggerStepMode::None;
@@ -319,7 +318,7 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
     }
     else if (reason == AngelScriptContextSetupReason::Return) {
         if (ctx_ext->Parent) {
-            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.as_ptr());
+            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
             FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             if (ctx_ext->StepState->Mode == DebuggerStepMode::None) {
@@ -352,7 +351,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
     const auto resolve_debug_location = [&]() {
         const uint32_t ctx_line = numeric_cast<uint32_t>(ctx->GetLineNumber());
         ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        nptr<const Preprocessor::LineNumberTranslator> lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
+        auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
         const string_view orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt.get());
         const uint32_t orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt.get());
         const uint32_t debugger_line = orig_line > 0 ? numeric_cast<uint32_t>(orig_line - 1) : 0u;
@@ -416,22 +415,22 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
                 ignore_unused(is_var_on_heap);
                 ignore_unused(stack_offset);
                 const nptr<const char> var_decl = ctx->GetVarDeclaration(as_var_index, as_stack_level, true);
-                nptr<void> nullable_var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level, false, false);
+                nptr<void> var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level, false, false);
 
                 LocalVariableInfo var;
                 var.Name = var_name && *var_name != '\0' ? string {var_name.get()} : strex("var{}", var_index).str();
                 var.Type = var_decl ? string {var_decl.get()} : string {};
 
-                if (nullable_var_addr) {
+                if (var_addr) {
                     const bool is_handle = (var_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
                     const int32_t base_type_id = var_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
 
                     if (is_handle) {
-                        auto nullable_obj = NativeDataProvider::ReadHandleSlot(nullable_var_addr.as_ptr());
-                        var.Value = nullable_obj ? GetScriptObjectInfo(nullable_obj.as_ptr(), base_type_id) : string {"null"};
+                        auto obj = NativeDataProvider::ReadHandleSlot(var_addr);
+                        var.Value = obj ? GetScriptObjectInfo(obj, base_type_id) : string {"null"};
                     }
                     else {
-                        var.Value = GetScriptObjectInfo(nullable_var_addr.as_ptr(), base_type_id);
+                        var.Value = GetScriptObjectInfo(var_addr, base_type_id);
                     }
                 }
                 else {
@@ -443,9 +442,8 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
         }
     };
 
-    nptr<DebuggerStepState> nullable_step_state = ctx_ext->StepState.get();
-    FO_VERIFY_AND_THROW(!!nullable_step_state, "Missing debugger step state for context");
-    auto step_state = nullable_step_state.as_ptr();
+    nptr<DebuggerStepState> step_state = ctx_ext->StepState.get();
+    FO_VERIFY_AND_THROW(step_state, "Missing debugger step state for context");
 
     if (ConsumePauseStart()) {
         const auto [source_path, source_line] = resolve_debug_location();
@@ -858,7 +856,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                     continue;
                 }
 
-                ptr<const StackTraceFrame> entry = &script_frames[numeric_cast<size_t>(logical_raw_index)];
+                auto entry = make_ptr(&script_frames[numeric_cast<size_t>(logical_raw_index)]);
 
                 nlohmann::json frame;
                 frame["id"] = i + 1;

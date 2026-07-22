@@ -48,6 +48,19 @@ namespace
         }
     };
 
+    class TestLifecycleEntity final : public Entity
+    {
+    public:
+        explicit TestLifecycleEntity(ptr<const PropertyRegistrator> registrator) noexcept :
+            Entity(registrator, nullptr, nullptr)
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+        }
+        ~TestLifecycleEntity() override = default;
+
+        [[nodiscard]] auto GetName() const noexcept -> string_view override { return "TestLifecycleEntity"; }
+    };
+
     static void InitEntityProtoTestMetadata(EngineMetadata& meta)
     {
         meta.RegisterSide(EngineSideKind::ServerSide);
@@ -66,13 +79,11 @@ TEST_CASE("EntityProtos")
 
         const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
-        auto nullable_item_registrator = meta.GetPropertyRegistrator("Item");
-        auto nullable_critter_registrator = meta.GetPropertyRegistrator("Critter");
+        auto item_registrator = meta.GetPropertyRegistrator("Item");
+        auto critter_registrator = meta.GetPropertyRegistrator("Critter");
 
-        REQUIRE(static_cast<bool>(nullable_item_registrator));
-        REQUIRE(static_cast<bool>(nullable_critter_registrator));
-        auto item_registrator = nullable_item_registrator.as_ptr();
-        auto critter_registrator = nullable_critter_registrator.as_ptr();
+        REQUIRE(static_cast<bool>(item_registrator));
+        REQUIRE(static_cast<bool>(critter_registrator));
 
         ProtoItem item_proto {knife_pid, item_registrator};
         ProtoCritter critter_proto {raider_pid, critter_registrator};
@@ -91,9 +102,8 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        auto nullable_registrator = meta.GetPropertyRegistrator("TestEntity");
-        REQUIRE(static_cast<bool>(nullable_registrator));
-        auto registrator = nullable_registrator.as_ptr();
+        auto registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(registrator));
 
         const hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
         ProtoCustomEntity proto {custom_pid, registrator};
@@ -109,9 +119,8 @@ TEST_CASE("EntityProtos")
         InitEntityProtoTestMetadata(meta);
 
         const hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
-        auto nullable_registrator = meta.GetPropertyRegistrator("TestEntity");
-        REQUIRE(static_cast<bool>(nullable_registrator));
-        auto registrator = nullable_registrator.as_ptr();
+        auto registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(registrator));
 
         optional<TestEntityHolder> holder;
 
@@ -126,6 +135,46 @@ TEST_CASE("EntityProtos")
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
         CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+    }
+
+    SECTION("LifecycleLatchesAreVisibleAcrossThreads")
+    {
+        EngineMetadata meta {[] { }};
+        InitEntityProtoTestMetadata(meta);
+
+        auto registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(registrator));
+
+        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrator);
+        std::atomic_bool reader_started {false};
+        std::atomic_bool saw_destroying {false};
+        std::atomic_bool saw_destroyed {false};
+
+        std::thread reader {[&] {
+            reader_started.store(true, std::memory_order_release);
+
+            const nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+            while (!entity->IsDestroying() && nanotime::now() < deadline) {
+                std::this_thread::yield();
+            }
+            saw_destroying.store(entity->IsDestroying(), std::memory_order_release);
+
+            while (!entity->IsDestroyed() && nanotime::now() < deadline) {
+                std::this_thread::yield();
+            }
+            saw_destroyed.store(entity->IsDestroyed(), std::memory_order_release);
+        }};
+
+        while (!reader_started.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        entity->MarkAsDestroying();
+        entity->MarkAsDestroyed();
+        reader.join();
+
+        CHECK(saw_destroying.load(std::memory_order_acquire));
+        CHECK(saw_destroyed.load(std::memory_order_acquire));
     }
 }
 

@@ -55,7 +55,7 @@ public:
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor() noexcept(false) FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf.as_ptr(); }
+        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf; }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
@@ -75,7 +75,7 @@ public:
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor() FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf.as_ptr(); }
+        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf; }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock() FO_TSA_ACQUIRE();
         void Unlock() noexcept FO_TSA_RELEASE();
@@ -89,6 +89,7 @@ public:
     {
         bool HandshakeComplete {};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
         bool PingAnswerReceived {true};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
@@ -115,6 +116,7 @@ public:
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
@@ -123,6 +125,7 @@ public:
     void MarkHandshakeComplete() noexcept;
     void EnsureActivityTime(nanotime time) noexcept;
     void RegisterActivity(nanotime time) noexcept;
+    void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
@@ -130,9 +133,9 @@ public:
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
     // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
-    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(ptr<ServerConnection>(this), msg); }
-    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(ptr<ServerConnection>(this), std::nullopt); }
-    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(ptr<ServerConnection>(this)); }
+    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), msg); }
+    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), std::nullopt); }
+    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(make_ptr(this)); }
 
     void HardDisconnect();
     void GracefulDisconnect();
@@ -144,6 +147,7 @@ private:
         nanotime NextPingTime {};
         bool PingAnswerReceived {true};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
     };
 
     struct UpdateFileTransferState

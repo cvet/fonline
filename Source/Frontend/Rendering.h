@@ -335,7 +335,7 @@ public:
     //   LightColor       = RGBA tint of the current map light.
     //   GroundPosition.xyz = world-space ground position; .w reserved (0).
     //   WorldMatrices    = per-bone skinning matrices, count == effect->MatrixCount.
-    // (3dStuff::Combined3dMeshDraw.)
+    // (ModelInstance::DrawCombinedMesh in ModelInstance.cpp.)
     struct ModelBuffer
     {
         float32_t LightColor[4] {};
@@ -357,7 +357,7 @@ public:
     //   AnimNormalizedTime.x = current anim progress in [0,1].
     //   AnimAbsoluteTime.x   = absolute anim time in seconds (looped).
     //   Both .yzw reserved.
-    // (3dStuff sets these when an effect declares ModelAnimBuf.)
+    // (ModelInstance.cpp sets these when an effect declares ModelAnimBuf.)
     struct ModelAnimBuffer
     {
         float32_t AnimNormalizedTime[4] {};

@@ -31,6 +31,7 @@
 // SOFTWARE.
 //
 
+#include "NetSockets.h"
 #include "NetworkServer.h"
 
 #if FO_HAVE_ASIO
@@ -79,7 +80,7 @@ public:
     auto operator=(NetworkServer_Asio&&) noexcept = delete;
     ~NetworkServer_Asio() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
     void Run();
@@ -99,7 +100,12 @@ auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConn
 
     WriteLog("Listen TCP connections on port {}", settings->ServerPort);
 
-    return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
+    try {
+        return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
+    }
+    catch (const std::system_error& ex) {
+        throw NetworkServerException("Can't listen for TCP connections", settings->ServerPort, net_sockets::error_text(ex.code()));
+    }
 }
 
 NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSettings> settings, unique_ptr<asio::ip::tcp::socket> socket) :
@@ -136,10 +142,10 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, net_sockets::error_text(error));
     }
     else {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, net_sockets::error_text(error));
     }
 }
 
@@ -221,6 +227,8 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
+
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
@@ -267,7 +275,7 @@ NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewC
     _runThread = run_thread("Network-Asio", [this] { Run(); });
 }
 
-void NetworkServer_Asio::Shutdown()
+void NetworkServer_Asio::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -313,7 +321,10 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
         try {
             auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
-            _connectionCallback(std::move(connection));
+
+            if (TrackConnection(connection)) {
+                _connectionCallback(std::move(connection));
+            }
         }
         catch (const std::exception&) {
             const auto exception = std::current_exception();
@@ -338,7 +349,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     }
     else {
         if (error != asio::error::operation_aborted) {
-            WriteLog(LogType::Warning, "Accept error: {}", error.message());
+            WriteLog(LogType::Warning, "Accept error: {}", net_sockets::error_text(error));
         }
     }
 }

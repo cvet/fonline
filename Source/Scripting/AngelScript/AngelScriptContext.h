@@ -85,6 +85,8 @@ struct AngelScriptContextExtendedData
 
     static auto Get(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
     static auto Get(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
+    static auto Get(nptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+    static auto Get(nptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 };
 
 class AngelScriptContextManager final

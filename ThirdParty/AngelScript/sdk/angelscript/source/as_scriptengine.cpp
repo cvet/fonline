@@ -1160,6 +1160,34 @@ int asCScriptEngine::ShutDownAndRelease()
 	// the process, and will also allow the engine to warn about invalid calls
 	shuttingDown = true;
 
+	// (FOnline Patch) Release module globals and collect destructor cascades while
+	// the modules still own the types and behaviours needed by their objects.
+	for( asUINT n = (asUINT)scriptModules.GetLength(); n-- > 0; )
+		if( scriptModules[n] )
+			scriptModules[n]->CallExit();
+
+	// (FOnline Patch)
+	const auto collectGarbageUntilStable = [this]()
+	{
+		for( ;; )
+		{
+			asUINT sizeBefore = 0;
+			asUINT destroyedBefore = 0;
+			GetGCStatistics(&sizeBefore, &destroyedBefore, 0, 0, 0);
+
+			GarbageCollect();
+
+			asUINT sizeAfter = 0;
+			asUINT destroyedAfter = 0;
+			asUINT newObjectsAfter = 0;
+			GetGCStatistics(&sizeAfter, &destroyedAfter, 0, &newObjectsAfter, 0);
+
+			if( sizeAfter == 0 || (sizeAfter == sizeBefore && destroyedAfter == destroyedBefore && newObjectsAfter == 0) )
+				break;
+		}
+	};
+	collectGarbageUntilStable();
+
 	// Clear the context callbacks. If new context's are needed for the clean-up the engine will take care of this itself.
 	// Context callbacks are normally used for pooling contexts, and if we allow new contexts to be created without being
 	// immediately destroyed afterwards it means the engine's refcount will increase. This is turn may cause memory access
@@ -1173,9 +1201,11 @@ int asCScriptEngine::ShutDownAndRelease()
 			scriptModules[n]->Discard();
 	scriptModules.SetLength(0);
 
-	// Do another full garbage collection to destroy the object types/functions
-	// that may have been placed in the gc when destroying the modules
-	GarbageCollect();
+	// (FOnline Patch) Do another full garbage collection to destroy the object types/functions
+	// that may have been placed in the gc when destroying the modules. Module
+	// discard can release the last external references to an entire object graph,
+	// and its destructors can in turn expose more collectable objects.
+	collectGarbageUntilStable();
 
 	// Do another sweep to delete discarded modules, that may not have
 	// been deleted earlier due to still having external references

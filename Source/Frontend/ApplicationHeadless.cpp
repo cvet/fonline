@@ -50,10 +50,10 @@ const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
-    MainWindow {ptr<Application> {this}},
-    Render {ptr<Application> {this}},
-    Input {ptr<Application> {this}},
-    Audio {ptr<Application> {this}},
+    MainWindow {make_ptr(this)},
+    Render {make_ptr(this)},
+    Input {make_ptr(this)},
+    Audio {make_ptr(this)},
     _ctx {SafeAlloc::MakeUnique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -74,7 +74,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._title = Settings.GameName;
     MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
 }
@@ -94,7 +94,7 @@ Application::~Application()
 
     _childWindows.clear();
     _allWindows.clear();
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
     _activeWindow = main_window;
     _currentRenderingWindow = nullptr;
     _previousRenderTarget = nullptr;
@@ -140,17 +140,15 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     return window_ptr;
 }
 
-void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
+void Application::DestroyChildWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<AppWindow> main_window = &MainWindow;
+    auto main_window = make_ptr(&MainWindow);
 
-    if (!nullable_window || nullable_window == main_window) {
+    if (!window || window == main_window) {
         return;
     }
-
-    auto window = nullable_window.as_ptr();
 
     std::erase_if(_allWindows, [&](const auto& entry) { return entry == window; });
 
@@ -177,7 +175,7 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
     FO_STACK_TRACE_ENTRY();
 
     if (!window) {
-        ptr<AppWindow> main_window = &MainWindow;
+        auto main_window = make_ptr(&MainWindow);
         _activeWindow = main_window;
         return;
     }
@@ -198,10 +196,9 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
     window->_virtualLayoutSize = size;
 
     bool recreate_texture = true;
-    auto nullable_virtual_render_tex = window->GetRenderTexture();
+    auto virtual_render_tex = window->GetRenderTexture();
 
-    if (nullable_virtual_render_tex) {
-        auto virtual_render_tex = nullable_virtual_render_tex.as_ptr();
+    if (virtual_render_tex) {
         recreate_texture = virtual_render_tex->Size != size;
     }
 
@@ -288,7 +285,7 @@ void Application::EndWindowRender()
     }
 
     const bool was_virtual = _currentRenderingWindow->_isVirtual;
-    nptr<RenderTexture> prev = _previousRenderTarget;
+    auto prev = _previousRenderTarget;
 
     _previousRenderTarget = nullptr;
     _currentRenderingWindow = nullptr;
@@ -335,7 +332,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
     auto headless_window = handle.as_ptr();
     _ctx->HeadlessWindowStubs.emplace_back(std::move(handle));
 
-    return cast_to_void(headless_window.get());
+    return make_nptr(headless_window.get()).void_cast();
 }
 
 auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32
@@ -688,8 +685,7 @@ void AppWindow::Destroy()
     }
 
     if (_windowHandle && !(this == &GetApp()->MainWindow)) {
-        auto window_handle = _windowHandle.as_ptr();
-        ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
+        auto window_stub = _windowHandle.reinterpret_as<const HeadlessWindowStub>();
         std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return ptr<const HeadlessWindowStub> {entry} == window_stub; });
         _windowHandle = nullptr;
     }
@@ -709,7 +705,7 @@ auto AppWindow::ResolveWindowStub() const -> ptr<HeadlessWindowStub>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return cast_from_void<HeadlessWindowStub*>(ResolveWindowHandle().get());
+    return ResolveWindowHandle().reinterpret_as<HeadlessWindowStub>();
 }
 
 auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>

@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 ItemView::ItemView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(*GetInitRef())
 {
@@ -62,8 +62,7 @@ void ItemView::OnDestroySelf()
     SetCritterSlot(CritterItemSlot::Inventory);
 
     for (auto& inner_item : _innerItems) {
-        auto item = inner_item.as_ptr();
-        safe_call([&] { item->DestroySelf(); });
+        safe_call([&] { inner_item->DestroySelf(); });
     }
 
     _innerItems.clear();

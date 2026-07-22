@@ -88,8 +88,7 @@ auto FileHeader::GetDiskPath() const -> string
     FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
     FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
 
-    auto data_source = _dataSource.as_ptr();
-    return strex(data_source->GetPackName()).combine_path(_filePath);
+    return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -116,7 +115,7 @@ auto FileHeader::GetDataSource() const -> ptr<const DataSource>
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    return _dataSource.as_ptr();
+    return _dataSource;
 }
 
 auto FileHeader::Copy() const -> FileHeader
@@ -125,8 +124,7 @@ auto FileHeader::Copy() const -> FileHeader
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    auto data_source = _dataSource.as_ptr();
-    return FileHeader(_filePath, _fileSize, _writeTime, data_source);
+    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource);
 }
 
 File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
@@ -161,8 +159,7 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        auto source = _fileBuf.as_ptr();
-        MemCopy(result.data(), source, result.size());
+        MemCopy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -179,8 +176,7 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        auto source = _fileBuf.as_ptr();
-        MemCopy(result.data(), source, result.size());
+        MemCopy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -193,8 +189,7 @@ auto File::GetDataSpan() const -> const_span<uint8_t>
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf.as_ptr();
-    return const_span<uint8_t> {file_data.get(), _fileSize};
+    return const_span<uint8_t> {_fileBuf.get(), _fileSize};
 }
 
 auto File::GetReader() const -> FileReader
@@ -204,8 +199,7 @@ auto File::GetReader() const -> FileReader
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf.as_ptr();
-    const_span<uint8_t> file_span = {file_data.get(), _fileSize};
+    const_span<uint8_t> file_span = {_fileBuf.get(), _fileSize};
     return FileReader(file_span);
 }
 
@@ -223,7 +217,7 @@ auto FileReader::GetStr() const -> string
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()};
+        auto source = make_ptr(_buf.data());
         MemCopy(result.data(), source, result.size());
     }
 
@@ -238,7 +232,7 @@ auto FileReader::GetData() const -> vector<uint8_t>
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()};
+        auto source = make_ptr(_buf.data());
         MemCopy(result.data(), source, result.size());
     }
 
@@ -271,7 +265,7 @@ auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
         throw FileSystemExeption("Invalid read size");
     }
 
-    auto data = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+    auto data = make_ptr(_buf.data()).offset(_curPos);
     return const_span<uint8_t> {data.get(), size};
 }
 
@@ -351,7 +345,7 @@ void FileReader::CopyData(span<uint8_t> buf)
         throw FileSystemExeption("Invalid read size");
     }
 
-    auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+    auto source = make_ptr(_buf.data()).offset(_curPos);
     MemCopy(buf.data(), source, buf.size());
     _curPos += buf.size();
 }
@@ -383,7 +377,7 @@ auto FileReader::GetStrNT() -> string
             throw FileSystemExeption("Invalid null terminated string length");
         }
 
-        auto cur_byte = ptr<const uint8_t> {_buf.data()}.offset(_curPos + len);
+        auto cur_byte = make_ptr(_buf.data()).offset(_curPos + len);
 
         if (*cur_byte == 0) {
             break;
@@ -396,7 +390,7 @@ auto FileReader::GetStrNT() -> string
     str.resize(numeric_cast<size_t>(len));
 
     if (!str.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+        auto source = make_ptr(_buf.data()).offset(_curPos);
         MemCopy(str.data(), source, str.size());
     }
 
@@ -640,6 +634,104 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
     }
 
     return FileCollection(std::move(files));
+}
+
+static auto MatchResourcePathGlob(string_view path, string_view pattern) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const size_t path_length = path.length();
+    const size_t pattern_length = pattern.length();
+    vector<int8_t> memo((path_length + 1) * (pattern_length + 1), -1);
+
+    const auto match = [&](auto&& self, size_t pattern_pos, size_t path_pos) -> bool {
+        int8_t& cached = memo[pattern_pos * (path_length + 1) + path_pos];
+
+        if (cached != -1) {
+            return cached != 0;
+        }
+
+        bool result = false;
+
+        if (pattern_pos == pattern_length) {
+            result = path_pos == path_length;
+        }
+        else if (pattern[pattern_pos] == '*') {
+            size_t next_pattern_pos = pattern_pos;
+
+            while (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '*') {
+                ++next_pattern_pos;
+            }
+
+            const bool is_globstar = next_pattern_pos - pattern_pos >= 2;
+
+            if (is_globstar) {
+                if (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '/') {
+                    result = self(self, next_pattern_pos + 1, path_pos);
+
+                    for (size_t next_path_pos = path_pos; !result && next_path_pos < path_length; ++next_path_pos) {
+                        if (path[next_path_pos] == '/') {
+                            result = self(self, pattern_pos, next_path_pos + 1);
+                        }
+                    }
+                }
+                else {
+                    result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && self(self, pattern_pos, path_pos + 1));
+                }
+            }
+            else {
+                result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos, path_pos + 1));
+            }
+        }
+        else if (pattern[pattern_pos] == '?') {
+            result = path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos + 1, path_pos + 1);
+        }
+        else {
+            result = path_pos < path_length && pattern[pattern_pos] == path[path_pos] && self(self, pattern_pos + 1, path_pos + 1);
+        }
+
+        cached = result ? 1 : 0;
+        return result;
+    };
+
+    return match(match, 0, 0);
+}
+
+auto FileSystem::FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> normalized_include_patterns;
+    normalized_include_patterns.reserve(include_patterns.size());
+
+    for (const string& pattern : include_patterns) {
+        normalized_include_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    vector<string> normalized_exclude_patterns;
+    normalized_exclude_patterns.reserve(exclude_patterns.size());
+
+    for (const string& pattern : exclude_patterns) {
+        normalized_exclude_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    const auto matches_any = [](string_view path, const vector<string>& patterns) -> bool { return std::ranges::any_of(patterns, [path](const string& pattern) { return MatchResourcePathGlob(path, pattern); }); };
+
+    const FileCollection all_files = GetAllFiles();
+    vector<FileHeader> filtered_files;
+    filtered_files.reserve(all_files.GetFilesCount());
+
+    for (const FileHeader& file : all_files) {
+        const string_view path = file.GetPath();
+        const bool included = normalized_include_patterns.empty() || matches_any(path, normalized_include_patterns);
+        const bool excluded = matches_any(path, normalized_exclude_patterns);
+
+        if (included && !excluded) {
+            filtered_files.emplace_back(file.Copy());
+        }
+    }
+
+    return FileCollection {std::move(filtered_files)};
 }
 
 auto FileSystem::IsFileExists(string_view path) const -> bool

@@ -63,7 +63,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace CommonMethods
 {
@@ -153,29 +153,49 @@ namespace CommonMethods
         // Just verify no crash and offset is set
         return 0;
     }
+)");
 
+#if FO_ENABLE_3D
+        script_source += R"(
+    int TestGetModelAnimDuration()
+    {
+        timespan walk = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        if (walk.milliseconds != 500) return -1;
+
+        timespan run = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Run);
+        if (run.milliseconds != 250) return -2;
+
+        timespan missingAction = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Idle);
+        if (missingAction.milliseconds != 0) return -3;
+
+        timespan missingModel = Game.GetModelAnimDuration("Critters/Missing.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        if (missingModel.milliseconds != 0) return -4;
+
+        return 0;
+    }
+)";
+#endif
+
+        script_source += string(R"(
     // ========== Proto Getters ==========
 
     int TestGetProtoItems()
     {
         array<ProtoItem> protos = Game.GetProtoItems();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
     int TestGetProtoCritters()
     {
         array<ProtoCritter> protos = Game.GetProtoCritters();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
     int TestGetProtoMaps()
     {
         array<ProtoMap> protos = Game.GetProtoMaps();
-        if (protos is null) return -1;
         // Maps may be 0 if none defined in test setup - just verify no crash
         return 0;
     }
@@ -183,8 +203,7 @@ namespace CommonMethods
     int TestGetProtoLocations()
     {
         array<ProtoLocation> protos = Game.GetProtoLocations();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
@@ -490,7 +509,7 @@ namespace CommonMethods
         any mapSizeAny = mapSize;
         if (string(mapSizeAny).length() == 0) return -33;
 )"
-                                          R"(
+                                R"(
         hdir dir = HDIR_SouthEast;
         if (dir.str.length() == 0) return -34;
         if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
@@ -502,7 +521,7 @@ namespace CommonMethods
         if (angle.angle != 60) return -38;
         if (!(angle == mdir(60))) return -39;
 )"
-                                          R"(
+                                R"(
         TextPackName pack = TextPackName("Dialogs".hstr());
         TextPackName packCopy(pack);
         if (!(packCopy == pack)) return -40;
@@ -529,7 +548,7 @@ namespace CommonMethods
         LanguageName russLang = LanguageName("russ".hstr());
         if (!(englLang < russLang || russLang < englLang)) return -50;
 )"
-                                          R"(
+                                R"(
 
         TextPackKey defaultKey;
         if (defaultKey.Collection.Name != EMPTY_HSTRING) return -51;
@@ -743,7 +762,7 @@ namespace CommonMethods
         return 0;
     }
 )"
-                                          R"(
+                                R"(
     int TestScriptDynamicRefTypeAccessors()
     {
         RouteSnapshot snapshot = RouteSnapshot();
@@ -1772,6 +1791,35 @@ namespace CommonMethods
         runtime_source->AddFile("CommonMethodsContainer.fopro-bin-server", container_blob);
         runtime_source->AddFile("CommonMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("CommonMethods.fos-bin-server", script_blob);
+#if FO_ENABLE_3D
+        runtime_source->AddFile("ModelAnimationInfo.foinfo", R"([Critters/Test.fo3d]
+BoundsVersion = 2
+ModelBoundsMinX = -2
+ModelBoundsMinY = -1
+ModelBoundsMinZ = 0
+ModelBoundsMaxX = 2
+ModelBoundsMaxY = 1
+ModelBoundsMaxZ = 4
+ViewBoundsMinX = -1
+ViewBoundsMinY = -0.5
+ViewBoundsMinZ = 0
+ViewBoundsMaxX = 1
+ViewBoundsMaxY = 0.5
+ViewBoundsMaxZ = 3
+StateAnimations = 1 1
+ActionAnimations = 3 5
+DurationsMs = 500 250
+BoundsStateAnimations = 1
+BoundsActionAnimations = 7
+BoundsMinX = -1.5
+BoundsMinY = -0.75
+BoundsMinZ = 0.25
+BoundsMaxX = 1.5
+BoundsMaxY = 0.75
+BoundsMaxZ = 3.5
+
+)");
+#endif
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -1805,9 +1853,8 @@ namespace CommonMethods
         FO_STACK_TRACE_ENTRY();
 
         auto backend = GetScriptBackend(server);
-        auto nullable_context_mngr = backend->GetContextMngr();
-        REQUIRE(nullable_context_mngr);
-        auto context_mngr = nullable_context_mngr.as_ptr();
+        auto context_mngr = backend->GetContextMngr();
+        REQUIRE(context_mngr);
 
         auto ctx = context_mngr->RequestContext();
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
@@ -1903,6 +1950,16 @@ TEST_CASE("GeometryDirectionAngles")
         RUN_CM_FUNC("TestGetHexInterval");
     }
 }
+
+#if FO_ENABLE_3D
+TEST_CASE("ModelAnimationInfoLookup")
+{
+    MAKE_CM_SERVER();
+
+    CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));
+    RUN_CM_FUNC("TestGetModelAnimDuration");
+}
+#endif
 
 // ========== Proto Getter Tests ==========
 
@@ -2316,16 +2373,14 @@ TEST_CASE("CommonCppApiTests")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
-        auto nullable_item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        auto nullable_item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
-        REQUIRE(static_cast<bool>(nullable_item1));
-        REQUIRE(static_cast<bool>(nullable_item2));
+        auto item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
+        auto item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
+        REQUIRE(static_cast<bool>(item1));
+        REQUIRE(static_cast<bool>(item2));
 
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
-        auto item2 = nullable_item2.as_ptr();
-        auto item1 = nullable_item1.as_ptr();
         server->ItemMngr.DestroyItem(item2);
         server->ItemMngr.DestroyItem(item1);
         server->CrMngr.DestroyCritter(cr);

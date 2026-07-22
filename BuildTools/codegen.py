@@ -56,6 +56,7 @@ class RefTypeMethod:
     args: list[MethodArg]
     comment: CommentLines
     ret_wrapper: bool = False
+    ret_nullable: bool = False
 
 
 @dataclass(slots=True)
@@ -856,9 +857,10 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
         assert separator != -1, 'Invalid argument declaration: ' + arg
         raw_type_text = arg[:separator].rstrip()
         type_text, wrapper, wrapper_nullable = strip_pointer_wrapper(raw_type_text)
-        arg_type = engine_type_to_meta_type(type_text, valid_types)
-        # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
-        nullable = wrapper_nullable if wrapper else is_validated_pointer_meta_type(arg_type)
+        arg_type = engine_type_to_meta_type(type_text, valid_types, allow_raw_handle_pointer=wrapper)
+        if is_validated_pointer_meta_type(arg_type):
+            assert wrapper, 'Raw pointer script ABI argument is not supported; use ptr<T> or nptr<T>: ' + arg
+        nullable = wrapper_nullable if wrapper else False
         default_value = normalize_default_arg_value(raw_default_value, arg_type) if raw_default_value is not None else None
         arg_name = arg[separator + 1:]
         assert arg_name, 'Argument name is empty: ' + arg
@@ -878,9 +880,10 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     return_tokens = line_tokens[1:function_token_index - 1]
     raw_ret_type_text = ''.join(return_tokens)
     ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
-    ret = engine_type_to_meta_type(ret_type_text, valid_types)
-    # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
-    ret_nullable = ret_wrapper_nullable if ret_wrapper else is_validated_pointer_meta_type(ret)
+    ret = engine_type_to_meta_type(ret_type_text, valid_types, allow_raw_handle_pointer=ret_wrapper)
+    if is_validated_pointer_meta_type(ret):
+        assert ret_wrapper, 'Raw pointer script ABI return value is not supported; use ptr<T> or nptr<T>: ' + raw_ret_type_text
+    ret_nullable = ret_wrapper_nullable if ret_wrapper else False
 
     function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
@@ -898,6 +901,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     if receiver_args:
         first_arg = receiver_args[0].rsplit(' ', 1)[0] if ' ' in receiver_args[0] else receiver_args[0]
         _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
+        assert receiver_wrapper, 'Raw pointer script ABI receiver is not supported; use ptr<T> or nptr<T>: ' + receiver_args[0]
 
     return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper
 
@@ -927,9 +931,10 @@ def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tup
                 separator = arg.find('/')
                 type_part = arg[:separator - 1].rstrip()
                 type_part, _wrapper, wrapper_nullable = strip_pointer_wrapper(type_part)
-                arg_type = engine_type_to_meta_type(type_part, valid_types)
-                # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
-                nullable = wrapper_nullable if _wrapper else is_validated_pointer_meta_type(arg_type)
+                arg_type = engine_type_to_meta_type(type_part, valid_types, allow_raw_handle_pointer=_wrapper)
+                if is_validated_pointer_meta_type(arg_type):
+                    assert _wrapper, 'Raw pointer script event argument is not supported; use ptr<T> or nptr<T>: ' + arg
+                nullable = wrapper_nullable if _wrapper else False
                 arg_name = arg[separator + 2:-2]
                 event_args.append(MethodArg(arg_type, arg_name, nullable=nullable))
 
@@ -1035,8 +1040,11 @@ def parse_exported_ref_type_method(stripped_line: str, line_tokens: list[str], f
 
     function_args = stripped_line[function_begin + 1:function_end]
     result_args = parse_method_args(function_args, valid_types)
-    stripped_return_type, ret_wrapper, _ = strip_pointer_wrapper(return_type)
-    return RefTypeMethod(line_tokens[function_token_index - 1], engine_type_to_meta_type(stripped_return_type, valid_types), result_args, [], ret_wrapper)
+    stripped_return_type, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(return_type)
+    ret = engine_type_to_meta_type(stripped_return_type, valid_types, allow_raw_handle_pointer=ret_wrapper)
+    if is_validated_pointer_meta_type(ret):
+        assert ret_wrapper, 'Raw pointer script ABI ref-type return value is not supported; use ptr<T> or nptr<T>: ' + return_type
+    return RefTypeMethod(line_tokens[function_token_index - 1], ret, result_args, [], ret_wrapper, ret_wrapper_nullable)
 
 
 def parse_exported_ref_type_members(tag_context: list[str], export_flags: list[str], valid_types: set[str]) -> tuple[list[RefTypeField], list[RefTypeMethod]]:
@@ -1125,7 +1133,7 @@ def unified_type_to_meta_type(unified_type: str, valid_types: set[str]) -> str:
     return unified_type
 
 
-def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
+def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_raw_handle_pointer: bool = False) -> str:
     type_map = {
         'int8_t': 'int8', 'uint8_t': 'uint8', 'int16_t': 'int16', 'uint16_t': 'uint16',
         'int32_t': 'int32', 'uint32_t': 'uint32', 'int64_t': 'int64', 'uint64_t': 'uint64',
@@ -1136,7 +1144,7 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
     # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
     for prefix in ('ptr<', 'nptr<'):
         if engine_type.startswith(prefix) and engine_type.endswith('>'):
-            return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types)
+            return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types, allow_raw_handle_pointer=True)
     if engine_type.startswith('ScriptFunc<'):
         function_args = split_engine_args(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')])
         return 'callback(' + ','.join([engine_type_to_unified_type(arg.strip(), valid_types) for arg in function_args]) + ')'
@@ -1177,20 +1185,24 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
     if engine_type[-1] == '*' and engine_type not in type_map:
         entity_type = engine_type[:-1]
         if entity_type in ref_types or entity_type in entity_relatives:
+            assert allow_raw_handle_pointer, 'Raw pointer script ABI type is not supported; use ptr<T> or nptr<T>: ' + engine_type
             return entity_type
         for entity_name, entity_info in game_entities_info.items():
             if entity_type == entity_info.server or entity_type == entity_info.client:
+                assert allow_raw_handle_pointer, 'Raw pointer script ABI type is not supported; use ptr<T> or nptr<T>: ' + engine_type
                 return entity_name
         if entity_type in ['ServerEntity', 'ClientEntity', 'Entity']:
+            assert allow_raw_handle_pointer, 'Raw pointer script ABI type is not supported; use ptr<T> or nptr<T>: ' + engine_type
             return 'Entity'
         if entity_type == 'ScriptSelfEntity':
+            assert allow_raw_handle_pointer, 'Raw pointer script ABI type is not supported; use ptr<T> or nptr<T>: ' + engine_type
             return 'SELF_ENTITY'
         assert False, entity_type
     assert False, 'Invalid engine type ' + engine_type
 
 
-def engine_type_to_meta_type(engine_type: str, valid_types: set[str]) -> str:
-    return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types), valid_types)
+def engine_type_to_meta_type(engine_type: str, valid_types: set[str], allow_raw_handle_pointer: bool = False) -> str:
+    return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types, allow_raw_handle_pointer), valid_types)
 
 
 def is_validated_pointer_meta_type(meta_type: str) -> bool:
@@ -1745,13 +1757,8 @@ def make_arg_desc_initializer(arg: MethodArg, type_expr: str) -> str:
     return '{' + cpp_string_literal(arg.name) + ', ' + type_expr + ', ' + cpp_bool(arg.nullable) + ', ' + cpp_string_literal(arg.default_value or '') + '}'
 
 
-def apply_pointer_wrapper(engine_type: str, wrapper: bool, nullable: bool) -> str:
-    # Re-spell a raw pointer engine type as the ptr<T> / nptr<T> wrapper when the source
-    # signature used one. Keeps the generated extern declaration and function-pointer cast
-    # byte-identical to the hand-written FO_SCRIPT_API definition.
-    if not wrapper:
-        return engine_type
-    assert engine_type.endswith('*'), 'ptr/nptr wrapper requires a pointer engine type: ' + engine_type
+def wrap_handle_engine_type(engine_type: str, nullable: bool) -> str:
+    assert engine_type.endswith('*'), 'handle wrapper requires a pointer engine type: ' + engine_type
     inner = engine_type[:-1].rstrip()
     return ('nptr<' if nullable else 'ptr<') + inner + '>'
 
@@ -1781,8 +1788,15 @@ def apply_container_element_wrapper(engine_type: str, element_wrapper: str) -> s
     close_pos = engine_type.rfind('>')
     assert open_pos != -1 and close_pos > open_pos, 'container element wrapper requires a container type: ' + engine_type
     element = engine_type[open_pos + 1:close_pos].strip()
-    assert element.endswith('*'), 'container element wrapper requires a pointer element: ' + element
-    inner = element[:-1].rstrip()
+    inner = ''
+    for wrapper in ('nptr', 'ptr'):
+        prefix = wrapper + '<'
+        if element.startswith(prefix) and element.endswith('>'):
+            inner = element[len(prefix):-1].strip()
+            break
+    if not inner:
+        assert element.endswith('*'), 'container element wrapper requires a pointer element: ' + element
+        inner = element[:-1].rstrip()
     return engine_type[:open_pos + 1] + element_wrapper + '<' + inner + '>' + engine_type[close_pos:]
 
 
@@ -1799,10 +1813,11 @@ def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, t
             engine_entity_type_extern = 'BaseEngine*'
         elif method_tag.target == 'Mapper':
             engine_entity_type_extern = 'MapperEngine*'
+    assert method_tag.receiver_wrapper, 'ExportMethod receiver must use ptr<T> or nptr<T>: ' + method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name
     return MethodRegistrationInfo(
         function_name=method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name,
-        engine_entity_type_extern=apply_pointer_wrapper(engine_entity_type_extern, method_tag.receiver_wrapper, False),
-        return_type=apply_container_element_wrapper(apply_pointer_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'), method_tag.ret_wrapper, method_tag.ret_nullable), method_tag.ret_container_element_wrapper),
+        engine_entity_type_extern=wrap_handle_engine_type(engine_entity_type_extern, False),
+        return_type=apply_container_element_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity', wrap_handles=True, nullable=method_tag.ret_nullable), method_tag.ret_container_element_wrapper),
     )
 
 
@@ -1815,33 +1830,38 @@ def resolve_engine_entity_type(entity_name: str, target: str) -> str:
     return entity_info.client + '*'
 
 
-def meta_type_to_engine_type(meta_type: str, target: str, pass_in: bool, ref_as_ptr: bool = False, self_entity: str | None = None, no_ref: bool = False) -> str:
+def meta_type_to_engine_type(meta_type: str, target: str, pass_in: bool, ref_as_ptr: bool = False, self_entity: str | None = None, no_ref: bool = False, wrap_handles: bool = False, nullable: bool = False) -> str:
     type_parts = meta_type.split('.')
+    is_handle_type = False
     if type_parts[0] == 'string':
         result = 'string_view' if pass_in and type_parts[-1] != 'ref' else 'string'
     elif type_parts[0] == 'dict':
         value_type = type_parts[2] if type_parts[2] != 'arr' else type_parts[2] + '.' + type_parts[3]
         if pass_in and type_parts[-1] != 'ref':
-            result = 'readonly_map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity) + '>'
+            result = 'readonly_map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity, wrap_handles=wrap_handles) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity, wrap_handles=wrap_handles) + '>'
         else:
-            result = 'map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity) + '>'
+            result = 'map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity, wrap_handles=wrap_handles) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity, wrap_handles=wrap_handles) + '>'
     elif type_parts[0] == 'arr':
         if pass_in and type_parts[-1] != 'ref':
-            result = 'readonly_vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + '>'
+            result = 'readonly_vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity, wrap_handles=wrap_handles) + '>'
         else:
-            result = 'vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + '>'
+            result = 'vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity, wrap_handles=wrap_handles) + '>'
     elif type_parts[0] == 'callback':
-        callback_signature = '<' + ', '.join([meta_type_to_engine_type(arg, target, False, ref_as_ptr=True, self_entity=self_entity) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + '>'
+        callback_signature = '<' + ', '.join([meta_type_to_engine_type(arg, target, False, ref_as_ptr=True, self_entity=self_entity, wrap_handles=True) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + '>'
         result = 'ScriptFunc' + callback_signature
     elif type_parts[0] == 'Entity':
         result = get_entity_from_target(target)
+        is_handle_type = True
     elif type_parts[0] == 'SELF_ENTITY':
         assert self_entity
         result = resolve_engine_entity_type(self_entity, target) if self_entity != 'Entity' else 'ScriptSelfEntity*'
+        is_handle_type = True
     elif type_parts[0] in game_entities:
         result = resolve_engine_entity_type(type_parts[0], target)
+        is_handle_type = True
     elif type_parts[0] in ref_types or type_parts[0] in entity_relatives:
         result = type_parts[0] + '*'
+        is_handle_type = True
     elif type_parts[0] in custom_types:
         result = ''
         for exported_value_type in codegen_tags['ExportValueType']:
@@ -1851,6 +1871,8 @@ def meta_type_to_engine_type(meta_type: str, target: str, pass_in: bool, ref_as_
         assert result, 'Invalid native type ' + type_parts[0]
     else:
         result = map_meta_type(type_parts[0])
+    if wrap_handles and is_handle_type:
+        result = wrap_handle_engine_type(result, nullable)
     if type_parts[-1] == 'ref' and not no_ref:
         result += '&' if not ref_as_ptr else '*'
     return result
@@ -1974,6 +1996,7 @@ def append_ref_method_registration(
     params: list[MethodArg],
     is_stub: bool,
     ret_wrapper: bool = False,
+    ret_nullable: bool = False,
     getter: bool = False,
     setter: bool = False,
 ) -> None:
@@ -1987,11 +2010,11 @@ def append_ref_method_registration(
         register_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::' + method_name +
                 (' (Getter)' if getter else '') + (' (Setter)' if setter else '') + '");')
         register_lines.append('        struct Wrapped { static ' +
-                ('auto' if ret != 'void' else 'void') + ' Call(' + ref_type_tag.name + '* self' + (', ' if params else '') +
-        ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True) + ' ' + p.name for p in params]) + ') ' +
-            ('-> ' + meta_type_to_engine_type(ret, ref_type_tag.target, False) if ret != 'void' else '') +
+                ('auto' if ret != 'void' else 'void') + ' Call(ptr<' + ref_type_tag.name + '> self' + (', ' if params else '') +
+        ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True, wrap_handles=True, nullable=p.nullable) + ' ' + p.name for p in params]) + ') ' +
+            ('-> ' + meta_type_to_engine_type(ret, ref_type_tag.target, False, wrap_handles=True, nullable=ret_nullable) if ret != 'void' else '') +
                 ' { ' + ('return ' if ret != 'void' else '') + 'self->' + method_name +
-        ('(' if not is_property else ' = ' if setter else '') + ', '.join([p.name for p in params]) + (')' if not is_property else '') + ('.get()' if ret_wrapper and not is_property else '') + '; } };')
+        ('(' if not is_property else ' = ' if setter else '') + ', '.join([p.name for p in params]) + (')' if not is_property else '') + '; } };')
         register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
         register_lines.append('    }' + (', .Getter = true' if getter else '') + (', .Setter = true' if setter else '') + ' },')
     else:
@@ -2117,11 +2140,11 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         function_name = make_unique_cpp_identifier(used_names, 'RegisterRefType_', ref_type_tag.name)
         body_lines = ['meta->RegisterRefType("' + ref_type_tag.name + '");',
                 '',
-                'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
+        'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
         if 'RefCounted' in ref_type_tag.flags:
-            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(' + ref_type_tag.name + '* self) { self->AddRef(); }', is_stub)
-            append_ref_call_registration(body_lines, '__Release', 'static void Call(' + ref_type_tag.name + '* self) { self->Release(); }', is_stub)
+            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->AddRef(); }', is_stub)
+            append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->Release(); }', is_stub)
 
         if 'HasFactory' in ref_type_tag.flags:
             body_lines.append('    MethodDesc{ .Name = "__Factory", ' +
@@ -2129,7 +2152,8 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
                     (' ignore_unused(call); } },' if is_stub else ''))
             if not is_stub:
                 body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
-                body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ' + ref_type_tag.name + '* ' +
+
+                body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
                         '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')
@@ -2138,7 +2162,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
             append_ref_method_registration(body_lines, ref_type_tag, field.name, field.field_type, [], is_stub, getter=True)
             append_ref_method_registration(body_lines, ref_type_tag, field.name, 'void', [MethodArg(field.field_type, 'value')], is_stub, setter=True)
         for method in ref_type_tag.methods:
-            append_ref_method_registration(body_lines, ref_type_tag, method.name, method.ret, method.args, is_stub, ret_wrapper=method.ret_wrapper)
+            append_ref_method_registration(body_lines, ref_type_tag, method.name, method.ret, method.args, is_stub, ret_wrapper=method.ret_wrapper, ret_nullable=method.ret_nullable)
         body_lines.append('});')
 
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
@@ -2215,7 +2239,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
             registration_info = resolve_method_registration_info(entity, method_tag, target)
             if not is_stub:
                 extern_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(apply_pointer_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity'), p.wrapper, p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ');')
+                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ');')
 
             resolved_args = ', '.join(make_arg_desc_initializer(p, 'meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")') for p in method_tag.args)
             method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
@@ -2231,7 +2255,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(apply_pointer_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity'), p.wrapper, p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
                 if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
@@ -2399,38 +2423,24 @@ def try_get_git_branch() -> str:
 
 def write_engine_config() -> None:
     def write_engine_config_impl() -> None:
-        # Single generated header with two sections, selected by FO_ENGINE_CONFIG_CONSTANTS:
-        #   * default branch  - configuration macros, pulled in at the very top of BasicCore.h instead of
-        #     cluttering the compiler command line (these must exist before BasicCore.h uses FO_USE_NAMESPACE);
-        #   * #else branch    - typed build/version constants, re-included by Common.h once fo::string_view_nt
-        #     exists and inside the fo namespace.
+        # Single generated header with configuration and build/version macros, pulled in at the very top of
+        # BasicCore.h instead of cluttering the compiler command line.
         generated_output.create_file('EngineConfig.gen.h', args.genoutput)
         generated_output.write_line('// FOnline Engine generated configuration. Do not edit.')
-        generated_output.write_line('//')
-        generated_output.write_line('// BasicCore.h includes this for the configuration macros; Common.h re-includes it with')
-        generated_output.write_line('// FO_ENGINE_CONFIG_CONSTANTS defined to emit the typed build/version constants.')
-        generated_output.write_line('')
-        generated_output.write_line('#ifndef FO_ENGINE_CONFIG_CONSTANTS')
         generated_output.write_line('')
 
         for define in args.enginedefine:
             name, separator, value = define.partition('=')
             generated_output.write_line('#define ' + name.strip() + (' ' + value if separator else ''))
 
-        generated_output.write_line('')
-        generated_output.write_line('#else')
-        generated_output.write_line('')
-        generated_output.write_line('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
+        generated_output.write_line('#define FO_BUILD_HASH "' + args.buildhash + '"')
+        generated_output.write_line('#define FO_DEV_NAME "' + args.devname + '"')
+        generated_output.write_line('#define FO_NICE_NAME "' + args.nicename + '"')
 
         compatibility_version = compatibility_hasher.hexdigest()[:16]
-        generated_output.write_line('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatibility_version + '";')
+        generated_output.write_line('#define FO_COMPATIBILITY_VERSION "' + compatibility_version + '"')
         log('Compatibility version: ' + compatibility_version)
-        generated_output.write_line('static constexpr string_view_nt FO_GIT_BRANCH = "' + try_get_git_branch() + '";')
-
-        generated_output.write_line('')
-        generated_output.write_line('#endif')
+        generated_output.write_line('#define FO_GIT_BRANCH "' + try_get_git_branch() + '"')
 
     run_codegen_step(write_engine_config_impl, 'Can\'t write engine config')
 

@@ -38,6 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t EGG_ENABLED_FLAG = 1.0f;
+static constexpr ucolor SPRITE_MESH_WIREFRAME_COLOR {255, 0, 255, 255};
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET = 0.5f;
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS = static_cast<size_t>(DrawOrderType::Last) + 1;
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS = MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS);
@@ -48,6 +49,17 @@ Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _offset {offset}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+auto Sprite::GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_drawEffect) {
+        return _drawEffect;
+    }
+
+    return default_effect;
 }
 
 auto Sprite::IsHitTest(ipos32 pos) const -> bool
@@ -62,7 +74,7 @@ void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _sprMngr->_updateSprites.emplace(ptr<const Sprite>(this), weak_from_this());
+    _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
 SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<HashResolver> hash_resolver) :
@@ -110,8 +122,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
         const isize32 new_screen_size = _window->GetScreenSize();
 
         if (_rtMain) {
-            auto rt_main = _rtMain.as_ptr();
-            _rtMngr.ResizeRenderTarget(rt_main, new_screen_size);
+            _rtMngr.ResizeRenderTarget(_rtMain, new_screen_size);
         }
     };
 }
@@ -273,6 +284,15 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
     return nullptr;
 }
 
+auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
+    FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
+    return factory->LoadSpriteAsQuad(path, atlas_type);
+}
+
 void SpriteManager::BeginScene()
 {
     FO_STACK_TRACE_ENTRY();
@@ -281,8 +301,7 @@ void SpriteManager::BeginScene()
     _scissorStack.clear();
 
     if (_rtMain) {
-        auto rt_main = _rtMain.as_ptr();
-        _rtMngr.PushRenderTarget(rt_main);
+        _rtMngr.PushRenderTarget(_rtMain);
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
@@ -308,15 +327,14 @@ void SpriteManager::EndScene()
 
     if (_rtMain) {
         FO_VERIFY_AND_THROW(_rtMain == _rtMngr.GetCurrentRenderTarget(), "Sprite manager render target was changed unexpectedly");
-        auto rt_main = _rtMain.as_ptr();
         _rtMngr.PopRenderTarget();
 
         if (_window->IsVirtual()) {
-            const irect32 region_to = MakeAspectFitRect(rt_main->GetTexture()->Size, _window->GetSize());
-            DrawRenderTarget(rt_main, false, nullptr, &region_to);
+            const irect32 region_to = MakeAspectFitRect(_rtMain->GetTexture()->Size, _window->GetSize());
+            DrawRenderTarget(_rtMain, false, nullptr, &region_to);
         }
         else {
-            DrawRenderTarget(rt_main, false);
+            DrawRenderTarget(_rtMain, false);
         }
     }
 
@@ -439,7 +457,8 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
         vbuf[vpos].EggFlags[1] = 0.0f;
     }
 
-    auto effect = custom_effect ? custom_effect.as_ptr() : _effectMngr->Effects.FlushRenderTarget.as_ptr();
+    auto effect = custom_effect ? custom_effect : _effectMngr->Effects.FlushRenderTarget;
+    FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
@@ -506,9 +525,7 @@ void SpriteManager::EnableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->EnableScissor(_scissorRect);
     }
 }
@@ -517,9 +534,7 @@ void SpriteManager::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->DisableScissor();
     }
 }
@@ -565,7 +580,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    shared_ptr<Sprite> spr = it->second->LoadSprite(path, atlas_type);
+    auto spr = it->second->LoadSprite(path, atlas_type);
 
     if (!spr) {
         if (!no_warn_if_not_exists) {
@@ -679,6 +694,10 @@ void SpriteManager::Flush()
 
     DisableScissor();
 
+    if (_settings->DrawWireframe) {
+        DrawSpriteWireframe();
+    }
+
     _dipQueue.clear();
 
     FO_VERIFY_AND_THROW(ipos == _spritesDrawBuf->IndCount, "Sprite index buffer position is out of sync with draw buffer");
@@ -687,17 +706,92 @@ void SpriteManager::Flush()
     _spritesDrawBuf->IndCount = 0;
 }
 
+void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(index_count % 3 == 0, "Sprite wireframe source indices are not grouped by triangles", start_index, index_count);
+    FO_VERIFY_AND_THROW(start_index <= _spritesDrawBuf->IndCount && index_count <= _spritesDrawBuf->IndCount - start_index, "Sprite wireframe source range is outside the index buffer", start_index, index_count, _spritesDrawBuf->IndCount);
+
+    _spriteWireframeVertices.reserve(_spriteWireframeVertices.size() + index_count * 2);
+
+    for (size_t i = start_index; i < start_index + index_count; i += 3) {
+        const vindex_t triangle_indices[3] = {
+            _spritesDrawBuf->Indices[i],
+            _spritesDrawBuf->Indices[i + 1],
+            _spritesDrawBuf->Indices[i + 2],
+        };
+
+        for (size_t edge = 0; edge < 3; edge++) {
+            const vindex_t from_index = triangle_indices[edge];
+            const vindex_t to_index = triangle_indices[(edge + 1) % 3];
+            FO_VERIFY_AND_THROW(from_index < _spritesDrawBuf->VertCount && to_index < _spritesDrawBuf->VertCount, "Sprite wireframe index is outside the vertex buffer", from_index, to_index, _spritesDrawBuf->VertCount);
+
+            Vertex2D from_vertex = _spritesDrawBuf->Vertices[from_index];
+            Vertex2D to_vertex = _spritesDrawBuf->Vertices[to_index];
+            from_vertex.Color = SPRITE_MESH_WIREFRAME_COLOR;
+            to_vertex.Color = SPRITE_MESH_WIREFRAME_COLOR;
+            from_vertex.TexU = from_vertex.TexV = 0.0f;
+            to_vertex.TexU = to_vertex.TexV = 0.0f;
+            from_vertex.EggFlags[0] = from_vertex.EggFlags[1] = 0.0f;
+            to_vertex.EggFlags[0] = to_vertex.EggFlags[1] = 0.0f;
+            _spriteWireframeVertices.emplace_back(from_vertex);
+            _spriteWireframeVertices.emplace_back(to_vertex);
+        }
+    }
+}
+
+void SpriteManager::DrawSpriteWireframe()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_spriteWireframeVertices.empty()) {
+        return;
+    }
+
+    nptr<RenderEffect> effect = _effectMngr->Effects.Primitive;
+    FO_VERIFY_AND_THROW(effect, "Primitive effect is unavailable for sprite wireframe rendering");
+    FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::Primitive, "Sprite wireframe effect is not a primitive effect", effect->GetUsage());
+
+    const size_t vertex_count = _spriteWireframeVertices.size();
+    FO_VERIFY_AND_THROW(vertex_count % 2 == 0, "Sprite wireframe vertex count is not grouped by line segments", vertex_count);
+    _primitiveDrawBuf->CheckAllocBuf(vertex_count, vertex_count);
+    _primitiveDrawBuf->VertCount = vertex_count;
+    _primitiveDrawBuf->IndCount = vertex_count;
+
+    for (size_t i = 0; i < vertex_count; i++) {
+        _primitiveDrawBuf->Vertices[i] = _spriteWireframeVertices[i];
+        _primitiveDrawBuf->Indices[i] = numeric_cast<vindex_t>(i);
+    }
+
+    _primitiveDrawBuf->PrimType = RenderPrimitiveType::LineList;
+    _primitiveDrawBuf->Upload(EffectUsage::Primitive, vertex_count, vertex_count);
+
+    EnableScissor();
+    effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
+    DisableScissor();
+
+    _primitiveDrawBuf->VertCount = 0;
+    _primitiveDrawBuf->IndCount = 0;
+    _spriteWireframeVertices.clear();
+}
+
 void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
+    const size_t start_index = _spritesDrawBuf->IndCount;
     const auto ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
+        if (_settings->DrawWireframe) {
+            QueueSpriteWireframe(start_index, ind_count);
+        }
+
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
             _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
@@ -753,13 +847,18 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
         hf = size.height;
     }
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
+    const size_t start_index = _spritesDrawBuf->IndCount;
     const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
+        if (_settings->DrawWireframe) {
+            QueueSpriteWireframe(start_index, ind_count);
+        }
+
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
             _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
@@ -777,10 +876,9 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Sprite> source_spr = spr;
+    auto source_spr = spr;
 
-    if (nptr<const SpriteSheet> nullable_sheet = spr.dyn_cast<const SpriteSheet>()) {
-        auto sheet = nullable_sheet.as_ptr();
+    if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
         source_spr = sheet->GetCurSpr();
     }
 
@@ -790,79 +888,23 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
         return false;
     }
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
-    const frect32 atlas_rect = atlas_spr->GetAtlasRect();
-    const auto tex_left = atlas_rect.x + atlas_rect.width * uv0.x;
-    const auto tex_top = atlas_rect.y + atlas_rect.height * uv0.y;
-    const auto tex_right = atlas_rect.x + atlas_rect.width * uv1.x;
-    const auto tex_bottom = atlas_rect.y + atlas_rect.height * uv1.y;
+    const size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, uv0, uv1, frect32 {pos, size}, color);
 
-    _spritesDrawBuf->CheckAllocBuf(4, 6);
+    if (ind_count != 0) {
+        if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
+        }
+        else {
+            _dipQueue.back().IndicesCount += ind_count;
+        }
 
-    auto& vbuf = _spritesDrawBuf->Vertices;
-    auto& vpos = _spritesDrawBuf->VertCount;
-    auto& ibuf = _spritesDrawBuf->Indices;
-    auto& ipos = _spritesDrawBuf->IndCount;
-
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-
-    auto& v0 = vbuf[vpos++];
-    v0.PosX = pos.x;
-    v0.PosY = pos.y + size.height;
-    v0.PosZ = 0.0f;
-    v0.TexU = tex_left;
-    v0.TexV = tex_bottom;
-    v0.EggFlags[0] = 0.0f;
-    v0.EggFlags[1] = 0.0f;
-    v0.Color = color;
-
-    auto& v1 = vbuf[vpos++];
-    v1.PosX = pos.x;
-    v1.PosY = pos.y;
-    v1.PosZ = 0.0f;
-    v1.TexU = tex_left;
-    v1.TexV = tex_top;
-    v1.EggFlags[0] = 0.0f;
-    v1.EggFlags[1] = 0.0f;
-    v1.Color = color;
-
-    auto& v2 = vbuf[vpos++];
-    v2.PosX = pos.x + size.width;
-    v2.PosY = pos.y;
-    v2.PosZ = 0.0f;
-    v2.TexU = tex_right;
-    v2.TexV = tex_top;
-    v2.EggFlags[0] = 0.0f;
-    v2.EggFlags[1] = 0.0f;
-    v2.Color = color;
-
-    auto& v3 = vbuf[vpos++];
-    v3.PosX = pos.x + size.width;
-    v3.PosY = pos.y + size.height;
-    v3.PosZ = 0.0f;
-    v3.TexU = tex_right;
-    v3.TexV = tex_bottom;
-    v3.EggFlags[0] = 0.0f;
-    v3.EggFlags[1] = 0.0f;
-    v3.Color = color;
-
-    if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = 6});
-    }
-    else {
-        _dipQueue.back().IndicesCount += 6;
-    }
-
-    if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-        Flush();
+        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+            Flush();
+        }
     }
 
     return true;
@@ -880,107 +922,51 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
         return;
     }
 
-    auto width = numeric_cast<float32_t>(atlas_spr->GetSize().width);
-    auto height = numeric_cast<float32_t>(atlas_spr->GetSize().height);
+    float32_t width = numeric_cast<float32_t>(atlas_spr->GetSize().width);
+    float32_t height = numeric_cast<float32_t>(atlas_spr->GetSize().height);
 
     if (spr_size.width != 0 && spr_size.height != 0) {
         width = numeric_cast<float32_t>(spr_size.width);
         height = numeric_cast<float32_t>(spr_size.height);
     }
     else if (spr_size.width != 0) {
-        const auto ratio = numeric_cast<float32_t>(spr_size.width) / width;
+        const float32_t ratio = numeric_cast<float32_t>(spr_size.width) / width;
         width = numeric_cast<float32_t>(spr_size.width);
         height *= ratio;
     }
     else if (spr_size.height != 0) {
-        const auto ratio = numeric_cast<float32_t>(spr_size.height) / height;
+        const float32_t ratio = numeric_cast<float32_t>(spr_size.height) / height;
         height = numeric_cast<float32_t>(spr_size.height);
         width *= ratio;
     }
 
     color = ApplyColorBrightness(color);
 
-    auto effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
+    const float32_t end_x = numeric_cast<float32_t>(pos.x + size.width);
+    const float32_t end_y = numeric_cast<float32_t>(pos.y + size.height);
 
-    const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
-    const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;
+    for (float32_t yy = numeric_cast<float32_t>(pos.y); yy < end_y; yy += height) {
+        const float32_t local_height = std::min(height, end_y - yy);
 
-    for (auto yy = numeric_cast<float32_t>(pos.y), end_y = numeric_cast<float32_t>(pos.y + size.height); yy < end_y;) {
-        const auto last_y = yy + height >= end_y;
+        for (float32_t xx = numeric_cast<float32_t>(pos.x); xx < end_x; xx += width) {
+            const float32_t local_width = std::min(width, end_x - xx);
+            const fpos32 uv1 {local_width / width, local_height / height};
+            const size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, {}, uv1, {xx, yy, local_width, local_height}, color);
 
-        for (auto xx = numeric_cast<float32_t>(pos.x), end_x = numeric_cast<float32_t>(pos.x + size.width); xx < end_x;) {
-            const auto last_x = xx + width >= end_x;
+            if (ind_count != 0) {
+                if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                    _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
+                }
+                else {
+                    _dipQueue.back().IndicesCount += ind_count;
+                }
 
-            const auto local_width = last_x ? end_x - xx : width;
-            const auto local_height = last_y ? end_y - yy : height;
-            const auto local_right = last_x ? atlas_spr->GetAtlasRect().x + last_right_offs * local_width : atlas_spr->GetAtlasRect().x + atlas_spr->GetAtlasRect().width;
-            const auto local_bottom = last_y ? atlas_spr->GetAtlasRect().y + last_bottom_offs * local_height : atlas_spr->GetAtlasRect().y + atlas_spr->GetAtlasRect().height;
-
-            _spritesDrawBuf->CheckAllocBuf(4, 6);
-
-            auto& vbuf = _spritesDrawBuf->Vertices;
-            auto& vpos = _spritesDrawBuf->VertCount;
-            auto& ibuf = _spritesDrawBuf->Indices;
-            auto& ipos = _spritesDrawBuf->IndCount;
-
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-
-            vbuf[vpos].PosX = xx;
-            vbuf[vpos].PosY = yy + local_height;
-            vbuf[vpos].PosZ = 0.0f;
-            vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
-            vbuf[vpos].TexV = local_bottom;
-            vbuf[vpos].EggFlags[0] = 0.0f;
-            vbuf[vpos].EggFlags[1] = 0.0f;
-            vbuf[vpos++].Color = color;
-
-            vbuf[vpos].PosX = xx;
-            vbuf[vpos].PosY = yy;
-            vbuf[vpos].PosZ = 0.0f;
-            vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
-            vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
-            vbuf[vpos].EggFlags[0] = 0.0f;
-            vbuf[vpos].EggFlags[1] = 0.0f;
-            vbuf[vpos++].Color = color;
-
-            vbuf[vpos].PosX = xx + local_width;
-            vbuf[vpos].PosY = yy;
-            vbuf[vpos].PosZ = 0.0f;
-            vbuf[vpos].TexU = local_right;
-            vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
-            vbuf[vpos].EggFlags[0] = 0.0f;
-            vbuf[vpos].EggFlags[1] = 0.0f;
-            vbuf[vpos++].Color = color;
-
-            vbuf[vpos].PosX = xx + local_width;
-            vbuf[vpos].PosY = yy + local_height;
-            vbuf[vpos].PosZ = 0.0f;
-            vbuf[vpos].TexU = local_right;
-            vbuf[vpos].TexV = local_bottom;
-            vbuf[vpos].EggFlags[0] = 0.0f;
-            vbuf[vpos].EggFlags[1] = 0.0f;
-            vbuf[vpos++].Color = color;
-
-            if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = 6});
+                if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                    Flush();
+                }
             }
-            else {
-                _dipQueue.back().IndicesCount += 6;
-            }
-
-            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-                Flush();
-            }
-
-            xx += width;
         }
-
-        yy += height;
     }
 }
 
@@ -1156,9 +1142,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             continue;
         }
 
-        auto nullable_spr = mspr->GetSprite();
-        FO_VERIFY_AND_THROW(nullable_spr, "Missing required sprite");
-        auto spr = nullable_spr.as_ptr();
+        auto spr = mspr->GetSprite();
+        FO_VERIFY_AND_THROW(spr, "Missing required sprite");
 
         irect32 mspr_rect = mspr->GetDrawRect();
         mspr_rect.x -= draw_area.x;
@@ -1198,14 +1183,14 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Light
-        auto nullable_light = mspr->GetLight();
+        auto light = mspr->GetLight();
 
-        if (nullable_light) {
-            const auto mix_light = [](ucolor& c, ptr<const ucolor> l, nptr<const ucolor> nullable_l2) {
-                ptr<const ucolor> l2 = l;
+        if (light) {
+            const auto mix_light = [](ucolor& c, ptr<const ucolor> l, nptr<const ucolor> l2_opt) {
+                auto l2 = l;
 
-                if (nullable_l2) {
-                    l2 = nullable_l2.as_ptr();
+                if (l2_opt) {
+                    l2 = l2_opt;
                 }
 
                 c.comp.r = numeric_cast<uint8_t>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
@@ -1213,7 +1198,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
                 c.comp.b = numeric_cast<uint8_t>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
             };
 
-            auto light = nullable_light.as_ptr();
             mix_light(color_r, light, mspr->GetLightRight());
             mix_light(color_l, light, mspr->GetLightLeft());
         }
@@ -1247,6 +1231,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
         const size_t start_vpos = _spritesDrawBuf->VertCount;
+        const size_t start_ipos = _spritesDrawBuf->IndCount;
         const size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
 
         auto& vbuf = _spritesDrawBuf->Vertices;
@@ -1303,6 +1288,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (ind_count != 0) {
+            if (_settings->DrawWireframe) {
+                QueueSpriteWireframe(start_ipos, ind_count);
+            }
+
             if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
                 _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
             }
@@ -1378,7 +1367,8 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
 
     Flush();
 
-    auto effect = custom_effect ? custom_effect.as_ptr() : _effectMngr->Effects.Primitive.as_ptr();
+    auto effect = custom_effect ? custom_effect : _effectMngr->Effects.Primitive;
+    FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     // Check primitives
     const auto count = points.size();
@@ -1460,10 +1450,9 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
     FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
     FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::QuadSprite, "Effect usage is not quad sprite");
 
-    ptr<const Sprite> source_spr = spr;
+    auto source_spr = spr;
 
-    if (nptr<const SpriteSheet> nullable_sheet = spr.dyn_cast<const SpriteSheet>()) {
-        auto sheet = nullable_sheet.as_ptr();
+    if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
         source_spr = sheet->GetCurSpr();
     }
 
@@ -1473,15 +1462,21 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
         return;
     }
 
+    const optional<AtlasSpriteRegion> region = atlas_spr->ResolveRegion({}, {1.0f, 1.0f}, {fpos32(pos), fsize32(atlas_spr->GetSize())});
+
+    if (!region.has_value()) {
+        return;
+    }
+
     Flush();
 
     auto texture = atlas_spr->GetAtlas()->GetTexture();
-    const frect32 sr = atlas_spr->GetAtlasRect();
+    const frect32 sr = region->TextureRect;
     const float32_t padding_f = numeric_cast<float32_t>(padding);
     const float32_t txw = texture->SizeData[2] * padding_f;
     const float32_t txh = texture->SizeData[3] * padding_f;
     const frect32 textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
-    const frect32 borders = frect32(irect32(pos.x - padding, pos.y - padding, atlas_spr->GetSize().width + padding * 2, atlas_spr->GetSize().height + padding * 2));
+    const frect32 borders = frect32(region->DrawRect.x - padding_f, region->DrawRect.y - padding_f, region->DrawRect.width + padding_f * 2.0f, region->DrawRect.height + padding_f * 2.0f);
 
     color = ApplyColorBrightness(color);
 

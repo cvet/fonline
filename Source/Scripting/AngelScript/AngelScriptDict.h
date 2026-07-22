@@ -187,7 +187,7 @@ private:
     explicit ScriptDict(const ScriptDict& other);
     ~ScriptDict();
 
-    auto PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> nullable_ti) const -> nptr<ScriptDictTypeData>;
+    auto PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> ti) const -> nptr<ScriptDictTypeData>;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32_t _keyTypeId;

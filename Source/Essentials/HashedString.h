@@ -92,9 +92,13 @@ private:
     static entry _zeroEntry;
 
     ptr<const entry> _entry {&_zeroEntry};
+#if UINTPTR_MAX == UINT32_MAX
+    // hstring participates in fixed value-type layouts whose slots are hash-sized.
+    uint32_t _padding {};
+#endif
 };
 static_assert(sizeof(hstring::hash_t) == 8);
-static_assert(sizeof(hstring) == sizeof(const hstring::entry*));
+static_assert(sizeof(hstring) == sizeof(hstring::hash_t));
 static_assert(std::is_standard_layout_v<hstring>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 

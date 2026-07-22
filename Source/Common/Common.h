@@ -43,13 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 28
-
-// Emit the typed build/version constants from EngineConfig.gen.h here, where fo::string_view_nt exists.
-// The configuration macros from the same file were already pulled in at the top of BasicCore.h.
-#define FO_ENGINE_CONFIG_CONSTANTS
-#include "EngineConfig.gen.h"
-#undef FO_ENGINE_CONFIG_CONSTANTS
+///@ MigrationRule Version 0 0 32
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -381,7 +375,7 @@ struct GameSettings
     static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
     static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
     static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = FO_MAP_CAMERA_ANGLE;
+    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
     static constexpr float32_t MIN_ZOOM = 0.05f;
     static constexpr float32_t MAX_ZOOM = 20.0f;
     static constexpr int32_t DEFAULT_MAP_SIZE = 200;
@@ -436,7 +430,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 1;
+static constexpr uint32_t FO_UPDATER_VERSION = 2;
 
 enum class UpdatePlatform : uint8_t
 {
@@ -625,6 +619,8 @@ struct RemoteCallDesc
     string SubsystemHint {}; // File extension: fos, cs
 };
 
+auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;
+
 template<typename Fn>
 void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 {
@@ -698,7 +694,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;
@@ -780,7 +776,7 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;

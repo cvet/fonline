@@ -51,18 +51,17 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         auto pstr = SafeAlloc::MakeUnique<string>(data, length);
-        ptr<string> released_string = std::move(pstr).release();
-        ptr<void> string_constant = cast_to_void(released_string.get());
-        return string_constant.get();
+        auto released_string = pstr.release();
+        return released_string.void_cast();
     }
 
     auto ReleaseStringConstant(const void* str) -> int override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        nptr<const string> nullable_pstr = cast_from_void<const string*>(str);
-        FO_VERIFY_AND_THROW(nullable_pstr, "String pointer is null");
-        const auto owned_string = adopt_unique_ptr(nullable_pstr.as_ptr());
+        auto pstr = cast_from_void<const string*>(str);
+        FO_VERIFY_AND_THROW(pstr, "String pointer is null");
+        const auto owned_string = adopt_unique_ptr(pstr);
         ignore_unused(owned_string);
         return 0;
     }
@@ -71,9 +70,8 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        nptr<const string> nullable_pstr = cast_from_void<const string*>(str);
-        FO_VERIFY_AND_THROW(nullable_pstr, "String pointer is null");
-        auto pstr = nullable_pstr.as_ptr();
+        auto pstr = cast_from_void<const string*>(str);
+        FO_VERIFY_AND_THROW(pstr, "String pointer is null");
 
         if (raw_length != nullptr) {
             *raw_length = numeric_cast<AngelScript::asUINT>(pstr->size());
@@ -100,8 +98,8 @@ static auto ScriptStringCStrAt(const string& str, size_t offset) noexcept -> ptr
 
     FO_STRONG_ASSERT(offset <= str.size(), "String offset is out of bounds");
 
-    ptr<const char> str_begin = str.c_str();
-    return str_begin.get() + offset;
+    auto str_begin = make_ptr(str.c_str());
+    return str_begin.offset(offset);
 }
 
 static auto ScriptStringHasParsedNumber(ptr<const char> str_begin, nptr<char> end_str) noexcept -> bool
@@ -585,7 +583,7 @@ static void ScriptString_RawResize(string& str, int32_t length)
     FO_NO_STACK_TRACE_ENTRY();
 
     if (length < 0) {
-        nptr<AngelScript::asIScriptContext> ctx = AngelScript::asGetActiveContext();
+        auto ctx = make_nptr(AngelScript::asGetActiveContext());
 
         if (ctx) {
             ctx->SetException("String resize length must not be negative");
@@ -818,7 +816,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<AngelScript::asIScriptContext> ctx = AngelScript::asGetActiveContext();
+    auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
     auto array = CreateScriptArray(as_engine, "array<string>");
@@ -831,7 +829,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
             ptr<void> entry_slot = array->At(count);
-            ptr<string> entry = cast_from_void<string*>(entry_slot.get());
+            auto entry = entry_slot.reinterpret_as<string>();
             auto entry_begin = ScriptStringCStrAt(str, prev);
             entry->assign(entry_begin.get(), pos - prev);
             count++;
@@ -843,7 +841,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
     if (str.size() - prev > 0 || !remove_empty_entries) {
         array->Resize(array->GetSize() + 1);
         ptr<void> entry_slot = array->At(count);
-        ptr<string> entry = cast_from_void<string*>(entry_slot.get());
+        auto entry = entry_slot.reinterpret_as<string>();
         auto entry_begin = ScriptStringCStrAt(str, prev);
         entry->assign(entry_begin.get());
     }
@@ -856,7 +854,7 @@ static auto ScriptString_Split(const string& str, const string& delim) -> Script
     FO_NO_STACK_TRACE_ENTRY();
 
     auto array = CreateScriptStringSplit(str, delim, false);
-    return ReleaseScriptOwnership(std::move(array));
+    return array.release_ownership();
 }
 
 static auto ScriptString_SplitExt(const string& str, const string& delim, bool remove_empty_entries) -> ScriptArray*
@@ -864,29 +862,29 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     FO_NO_STACK_TRACE_ENTRY();
 
     auto array = CreateScriptStringSplit(str, delim, remove_empty_entries);
-    return ReleaseScriptOwnership(std::move(array));
+    return array.release_ownership();
 }
 
-static auto ScriptString_Join(const string& str, const ScriptArray* array) -> string
+static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!array) {
-        throw ScriptException("Array is null");
-    }
+    auto array = make_nptr(raw_array);
+    FO_VERIFY_AND_THROW(array, "Script string join array is null");
 
     string result;
 
     if (array->GetSize() != 0) {
         const auto size = numeric_cast<int32_t>(array->GetSize());
         size_t capacity = size * str.size();
+        const size_t max_capacity = numeric_cast<size_t>(std::numeric_limits<int32_t>::max());
 
         for (int32_t i = 0; i < size; i++) {
             ptr<const string> entry = array->AtAs<const string>(i);
             capacity += entry->length();
         }
 
-        FO_VERIFY_AND_THROW(capacity < std::numeric_limits<int32_t>::max(), "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), std::numeric_limits<int32_t>::max());
+        FO_VERIFY_AND_THROW(capacity < max_capacity, "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), max_capacity);
         result.reserve(capacity);
 
         for (int32_t i = 0; i < size - 1; i++) {
@@ -943,7 +941,7 @@ void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>()));
     FO_AS_VERIFY(as_engine->RegisterStringFactory("string", string_factory.get()));
-    ptr<ScriptStringFactory> released_string_factory = std::move(string_factory).release();
+    auto released_string_factory = string_factory.release();
     backend->AddPostCleanupCallback([released_string_factory] { CleanupScriptStringFactory(released_string_factory); });
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(ConstructString), FO_SCRIPT_FUNC_THIS_CONV));
@@ -957,8 +955,8 @@ void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", FO_SCRIPT_FUNC_THIS(AddStringToString), FO_SCRIPT_FUNC_THIS_CONV));
 
     nptr<AngelScript::asITypeInfo> string_type = as_engine->GetTypeInfoByName("string");
-    FO_VERIFY_AND_THROW(!!string_type, "Missing type info for registered string type");
-    SetScriptTypeFastCompare(string_type.as_ptr(), &StringFastCompare);
+    FO_VERIFY_AND_THROW(string_type, "Missing type info for registered string type");
+    SetScriptTypeFastCompare(string_type, &StringFastCompare);
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(double)", FO_SCRIPT_FUNC_THIS(AssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(double)", FO_SCRIPT_FUNC_THIS(AddAssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));

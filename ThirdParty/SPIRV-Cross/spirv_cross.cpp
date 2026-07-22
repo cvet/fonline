@@ -31,7 +31,7 @@
 #include <utility>
 
 using namespace std;
-using namespace spv;
+using namespace SPIRV_CROSS_SPV_HEADER_NAMESPACE;
 using namespace SPIRV_CROSS_NAMESPACE;
 
 Compiler::Compiler(vector<uint32_t> ir_)
@@ -78,6 +78,11 @@ string Compiler::compile()
 bool Compiler::variable_storage_is_aliased(const SPIRVariable &v)
 {
 	auto &type = get<SPIRType>(v.basetype);
+
+	// Untyped pointer, assume full aliasing.
+	if (type.basetype == SPIRType::Void)
+		return true;
+
 	bool ssbo = v.storage == StorageClassStorageBuffer ||
 	            ir.meta[type.self].decoration.decoration_flags.get(DecorationBufferBlock);
 	bool image = type.basetype == SPIRType::Image;
@@ -376,6 +381,7 @@ void Compiler::register_global_read_dependencies(const SPIRBlock &block, uint32_
 
 		case OpLoad:
 		case OpCooperativeMatrixLoadKHR:
+		case OpCooperativeVectorLoadNV:
 		case OpImageRead:
 		{
 			// If we're in a storage class which does not get invalidated, adding dependencies here is no big deal.
@@ -410,20 +416,37 @@ SPIRVariable *Compiler::maybe_get_backing_variable(uint32_t chain)
 	{
 		auto *cexpr = maybe_get<SPIRExpression>(chain);
 		if (cexpr)
+		{
 			var = maybe_get<SPIRVariable>(cexpr->loaded_from);
+			if (!var && cexpr->loaded_from != chain)
+				var = maybe_get_backing_variable(cexpr->loaded_from);
+		}
 
 		auto *access_chain = maybe_get<SPIRAccessChain>(chain);
 		if (access_chain)
+		{
 			var = maybe_get<SPIRVariable>(access_chain->loaded_from);
+			if (!var && access_chain->loaded_from != chain)
+				var = maybe_get_backing_variable(access_chain->loaded_from);
+		}
 	}
 
 	return var;
+}
+
+SPIRExpression *Compiler::maybe_get_backing_buffer_pointer(uint32_t chain)
+{
+	auto *expr = maybe_get<SPIRExpression>(chain);
+	while (expr && !expr->buffer_pointer && expr->loaded_from)
+		expr = maybe_get<SPIRExpression>(expr->loaded_from);
+	return expr && expr->buffer_pointer ? expr : nullptr;
 }
 
 void Compiler::register_read(uint32_t expr, uint32_t chain, bool forwarded)
 {
 	auto &e = get<SPIRExpression>(expr);
 	auto *var = maybe_get_backing_variable(chain);
+	auto *buffer_pointer = maybe_get_backing_buffer_pointer(chain);
 
 	if (var)
 	{
@@ -437,6 +460,13 @@ void Compiler::register_read(uint32_t expr, uint32_t chain, bool forwarded)
 		// The default is "in" however, so we never invalidate our compilation by reading.
 		if (var && var->parameter)
 			var->parameter->read_count++;
+	}
+	else if (buffer_pointer)
+	{
+		e.loaded_from = buffer_pointer->self;
+		// If the backing variable is immutable, we do not need to depend on the variable.
+		if (forwarded && !is_immutable(buffer_pointer->self))
+			buffer_pointer->buffer_pointer_dependees.push_back(e.self);
 	}
 }
 
@@ -454,6 +484,8 @@ void Compiler::register_write(uint32_t chain)
 		if (access_chain && access_chain->loaded_from)
 			var = maybe_get<SPIRVariable>(access_chain->loaded_from);
 	}
+
+	auto *buffer_pointer = maybe_get_backing_buffer_pointer(chain);
 
 	auto &chain_type = expression_type(chain);
 
@@ -499,6 +531,10 @@ void Compiler::register_write(uint32_t chain)
 			force_recompile();
 		}
 	}
+	else if (buffer_pointer)
+	{
+		flush_dependees(*buffer_pointer);
+	}
 	else if (chain_type.pointer)
 	{
 		// If we stored through a variable pointer, then we don't know which
@@ -520,6 +556,16 @@ void Compiler::flush_dependees(SPIRVariable &var)
 	var.dependees.clear();
 }
 
+void Compiler::flush_dependees(SPIRExpression &expr)
+{
+	// A little ugly to split things up like this since BufferPointerEXT is a weird case
+	// where it's both an expression (chain into global heap) and a memory declaration at the same time ...
+	assert(expr.buffer_pointer);
+	for (auto dep : expr.buffer_pointer_dependees)
+		invalid_expressions.insert(dep);
+	expr.buffer_pointer_dependees.clear();
+}
+
 void Compiler::flush_all_aliased_variables()
 {
 	for (auto aliased : aliased_variables)
@@ -530,6 +576,8 @@ void Compiler::flush_all_atomic_capable_variables()
 {
 	for (auto global : global_variables)
 		flush_dependees(get<SPIRVariable>(global));
+	for (auto global : buffer_pointer_variables)
+		flush_dependees(get<SPIRExpression>(global));
 	flush_all_aliased_variables();
 }
 
@@ -551,6 +599,8 @@ void Compiler::flush_all_active_variables()
 		flush_dependees(get<SPIRVariable>(arg.id));
 	for (auto global : global_variables)
 		flush_dependees(get<SPIRVariable>(global));
+	for (auto global : buffer_pointer_variables)
+		flush_dependees(get<SPIRExpression>(global));
 
 	flush_all_aliased_variables();
 }
@@ -627,7 +677,7 @@ bool Compiler::is_immutable(uint32_t id) const
 		return false;
 }
 
-static inline bool storage_class_is_interface(spv::StorageClass storage)
+static inline bool storage_class_is_interface(StorageClass storage)
 {
 	switch (storage)
 	{
@@ -660,8 +710,8 @@ bool Compiler::is_hidden_variable(const SPIRVariable &var, bool include_builtins
 
 	// In SPIR-V 1.4 and up we must also use the active variable interface to disable global variables
 	// which are not part of the entry point.
-	if (ir.get_spirv_version() >= 0x10400 && var.storage != spv::StorageClassGeneric &&
-	    var.storage != spv::StorageClassFunction && !interface_variable_exists_in_entry_point(var.self))
+	if (ir.get_spirv_version() >= 0x10400 && var.storage != StorageClassGeneric &&
+	    var.storage != StorageClassFunction && !interface_variable_exists_in_entry_point(var.self))
 	{
 		return true;
 	}
@@ -733,12 +783,20 @@ bool Compiler::is_array(const SPIRType &type) const
 
 bool Compiler::is_pointer(const SPIRType &type) const
 {
-	return type.op == OpTypePointer && type.basetype != SPIRType::Unknown; // Ignore function pointers.
+	return (type.op == OpTypePointer || type.op == OpTypeUntypedPointerKHR) && type.basetype != SPIRType::Unknown; // Ignore function pointers.
 }
 
 bool Compiler::is_physical_pointer(const SPIRType &type) const
 {
-	return type.op == OpTypePointer && type.storage == StorageClassPhysicalStorageBuffer;
+	return (type.op == OpTypePointer || type.op == OpTypeUntypedPointerKHR) && type.storage == StorageClassPhysicalStorageBuffer;
+}
+
+bool Compiler::is_physical_or_buffer_pointer(const SPIRType &type) const
+{
+	return (type.op == OpTypePointer || type.op == OpTypeUntypedPointerKHR) &&
+	       (type.storage == StorageClassPhysicalStorageBuffer || type.storage == StorageClassUniform ||
+	        type.storage == StorageClassStorageBuffer || type.storage == StorageClassWorkgroup ||
+	        type.storage == StorageClassPushConstant);
 }
 
 bool Compiler::is_physical_pointer_to_buffer_block(const SPIRType &type) const
@@ -1177,11 +1235,8 @@ bool Compiler::type_is_top_level_block(const SPIRType &type) const
 	return has_decoration(type.self, DecorationBlock) || has_decoration(type.self, DecorationBufferBlock);
 }
 
-bool Compiler::type_is_block_like(const SPIRType &type) const
+bool Compiler::type_is_explicit_layout(const SPIRType &type) const
 {
-	if (type_is_top_level_block(type))
-		return true;
-
 	if (type.basetype == SPIRType::Struct)
 	{
 		// Block-like types may have Offset decorations.
@@ -1191,6 +1246,14 @@ bool Compiler::type_is_block_like(const SPIRType &type) const
 	}
 
 	return false;
+}
+
+bool Compiler::type_is_block_like(const SPIRType &type) const
+{
+	if (type_is_top_level_block(type))
+		return true;
+	else
+		return type_is_explicit_layout(type);
 }
 
 void Compiler::parse_fixup()
@@ -1335,7 +1398,7 @@ const SPIRType &Compiler::get_pointee_type(uint32_t type_id) const
 
 uint32_t Compiler::get_variable_data_type_id(const SPIRVariable &var) const
 {
-	if (var.phi_variable || var.storage == spv::StorageClass::StorageClassAtomicCounter)
+	if (var.phi_variable || var.storage == StorageClassAtomicCounter)
 		return var.basetype;
 	return get_pointee_type_id(var.basetype);
 }
@@ -1372,7 +1435,7 @@ bool Compiler::is_sampled_image_type(const SPIRType &type)
 	       type.image.dim != DimBuffer;
 }
 
-void Compiler::set_member_decoration_string(TypeID id, uint32_t index, spv::Decoration decoration,
+void Compiler::set_member_decoration_string(TypeID id, uint32_t index, Decoration decoration,
                                             const std::string &argument)
 {
 	ir.set_member_decoration_string(id, index, decoration, argument);
@@ -1433,7 +1496,7 @@ void Compiler::unset_member_decoration(TypeID id, uint32_t index, Decoration dec
 	ir.unset_member_decoration(id, index, decoration);
 }
 
-void Compiler::set_decoration_string(ID id, spv::Decoration decoration, const std::string &argument)
+void Compiler::set_decoration_string(ID id, Decoration decoration, const std::string &argument)
 {
 	ir.set_decoration_string(id, decoration, argument);
 }
@@ -1596,7 +1659,7 @@ void Compiler::unset_decoration(ID id, Decoration decoration)
 	ir.unset_decoration(id, decoration);
 }
 
-bool Compiler::get_binary_offset_for_decoration(VariableID id, spv::Decoration decoration, uint32_t &word_offset) const
+bool Compiler::get_binary_offset_for_decoration(VariableID id, Decoration decoration, uint32_t &word_offset) const
 {
 	auto *m = ir.find_meta(id);
 	if (!m)
@@ -1901,6 +1964,15 @@ bool Compiler::traverse_all_reachable_opcodes(const SPIRBlock &block, OpcodeHand
 	handler.set_current_block(block);
 	handler.rearm_current_block(block);
 
+	if (handler.enable_result_types)
+	{
+		for (auto &phi: block.phi_variables)
+		{
+			auto &v = get<SPIRVariable>(phi.function_variable);
+			handler.result_types[phi.function_variable] = v.basetype;
+		}
+	}
+
 	// Ideally, perhaps traverse the CFG instead of all blocks in order to eliminate dead blocks,
 	// but this shouldn't be a problem in practice unless the SPIR-V is doing insane things like recursing
 	// inside dead blocks ...
@@ -1912,11 +1984,24 @@ bool Compiler::traverse_all_reachable_opcodes(const SPIRBlock &block, OpcodeHand
 		if (!handler.handle(op, ops, i.length))
 			return false;
 
+		if (handler.enable_result_types)
+		{
+			// If it has one, keep track of the instruction's result type, mapped by ID
+			uint32_t result_type, result_id;
+			if (instruction_to_result_type(result_type, result_id, op, ops, i.length))
+				handler.result_types[result_id] = result_type;
+		}
+
 		if (op == OpFunctionCall)
 		{
 			auto &func = get<SPIRFunction>(ops[2]);
 			if (handler.follow_function_call(func))
 			{
+				if (handler.enable_result_types)
+					for (auto &arg : func.arguments)
+						if (!arg.alias_global_variable)
+							handler.result_types[arg.id] = arg.type;
+
 				if (!handler.begin_function_scope(ops, i.length))
 					return false;
 				if (!traverse_all_reachable_opcodes(get<SPIRFunction>(ops[2]), handler))
@@ -2024,7 +2109,7 @@ size_t Compiler::get_declared_struct_size_runtime_array(const SPIRType &type, si
 
 	size_t size = get_declared_struct_size(type);
 	auto &last_type = get<SPIRType>(type.member_types.back());
-	if (!last_type.array.empty() && last_type.array_size_literal[0] && last_type.array[0] == 0) // Runtime array
+	if (!last_type.array.empty() && last_type.array_size_literal.back() && last_type.array.back() == 0) // Runtime array
 		size += array_size * type_struct_member_array_stride(type, uint32_t(type.member_types.size() - 1));
 
 	return size;
@@ -2451,7 +2536,7 @@ uint32_t Compiler::get_work_group_size_specialization_constants(SpecializationCo
 	return execution.workgroup_size.constant;
 }
 
-uint32_t Compiler::get_execution_mode_argument(spv::ExecutionMode mode, uint32_t index) const
+uint32_t Compiler::get_execution_mode_argument(ExecutionMode mode, uint32_t index) const
 {
 	auto &execution = get_entry_point();
 	switch (mode)
@@ -2637,14 +2722,14 @@ SmallVector<EntryPoint> Compiler::get_entry_points_and_stages() const
 	return entries;
 }
 
-void Compiler::rename_entry_point(const std::string &old_name, const std::string &new_name, spv::ExecutionModel model)
+void Compiler::rename_entry_point(const std::string &old_name, const std::string &new_name, ExecutionModel model)
 {
 	auto &entry = get_entry_point(old_name, model);
 	entry.orig_name = new_name;
 	entry.name = new_name;
 }
 
-void Compiler::set_entry_point(const std::string &name, spv::ExecutionModel model)
+void Compiler::set_entry_point(const std::string &name, ExecutionModel model)
 {
 	auto &entry = get_entry_point(name, model);
 	ir.default_entry_point = entry.self;
@@ -3340,7 +3425,7 @@ void Compiler::analyze_parameter_preservation(
 
 Compiler::AnalyzeVariableScopeAccessHandler::AnalyzeVariableScopeAccessHandler(Compiler &compiler_,
                                                                                SPIRFunction &entry_)
-    : compiler(compiler_)
+    : OpcodeHandler(compiler_)
     , entry(entry_)
 {
 }
@@ -3458,11 +3543,11 @@ bool Compiler::AnalyzeVariableScopeAccessHandler::handle_terminator(const SPIRBl
 	return true;
 }
 
-bool Compiler::AnalyzeVariableScopeAccessHandler::handle(spv::Op op, const uint32_t *args, uint32_t length)
+bool Compiler::AnalyzeVariableScopeAccessHandler::handle(Op op, const uint32_t *args, uint32_t length)
 {
 	// Keep track of the types of temporaries, so we can hoist them out as necessary.
 	uint32_t result_type = 0, result_id = 0;
-	if (compiler.instruction_to_result_type(result_type, result_id, op, args, length))
+	if (instruction_to_result_type(result_type, result_id, op, args, length))
 	{
 		// For some opcodes, we will need to override the result id.
 		// If we need to hoist the temporary, the temporary type is the input, not the result.
@@ -3575,7 +3660,7 @@ bool Compiler::AnalyzeVariableScopeAccessHandler::handle(spv::Op op, const uint3
 
 	case OpCopyObject:
 	{
-		// OpCopyObject copies the underlying non-pointer type, 
+		// OpCopyObject copies the underlying non-pointer type,
 		// so any temp variable should be declared using the underlying type.
 		// If the type is a pointer, get its base type and overwrite the result type mapping.
 		auto &type = compiler.get<SPIRType>(result_type);
@@ -3805,7 +3890,7 @@ bool Compiler::AnalyzeVariableScopeAccessHandler::handle(spv::Op op, const uint3
 }
 
 Compiler::StaticExpressionAccessHandler::StaticExpressionAccessHandler(Compiler &compiler_, uint32_t variable_id_)
-    : compiler(compiler_)
+    : OpcodeHandler(compiler_)
     , variable_id(variable_id_)
 {
 }
@@ -3815,7 +3900,7 @@ bool Compiler::StaticExpressionAccessHandler::follow_function_call(const SPIRFun
 	return false;
 }
 
-bool Compiler::StaticExpressionAccessHandler::handle(spv::Op op, const uint32_t *args, uint32_t length)
+bool Compiler::StaticExpressionAccessHandler::handle(Op op, const uint32_t *args, uint32_t length)
 {
 	switch (op)
 	{
@@ -4346,6 +4431,7 @@ bool Compiler::may_read_undefined_variable_in_block(const SPIRBlock &block, uint
 
 		case OpCopyObject:
 		case OpLoad:
+		case OpCooperativeVectorLoadNV:
 		case OpCooperativeMatrixLoadKHR:
 			if (ops[2] == var)
 				return true;
@@ -4374,7 +4460,7 @@ bool Compiler::may_read_undefined_variable_in_block(const SPIRBlock &block, uint
 	return true;
 }
 
-bool Compiler::GeometryEmitDisocveryHandler::handle(spv::Op opcode, const uint32_t *, uint32_t)
+bool Compiler::GeometryEmitDisocveryHandler::handle(Op opcode, const uint32_t *, uint32_t)
 {
 	if (opcode == OpEmitVertex || opcode == OpEndPrimitive)
 	{
@@ -4392,8 +4478,9 @@ bool Compiler::GeometryEmitDisocveryHandler::begin_function_scope(const uint32_t
 	return true;
 }
 
-bool Compiler::GeometryEmitDisocveryHandler::end_function_scope([[maybe_unused]] const uint32_t *stream, uint32_t)
+bool Compiler::GeometryEmitDisocveryHandler::end_function_scope(const uint32_t *stream, uint32_t)
 {
+	(void)stream;
 	assert(function_stack.back() == &compiler.get<SPIRFunction>(stream[2]));
 	function_stack.pop_back();
 
@@ -4514,7 +4601,7 @@ void Compiler::ActiveBuiltinHandler::add_if_builtin_or_block(uint32_t id)
 	add_if_builtin(id, true);
 }
 
-bool Compiler::ActiveBuiltinHandler::handle(spv::Op opcode, const uint32_t *args, uint32_t length)
+bool Compiler::ActiveBuiltinHandler::handle(Op opcode, const uint32_t *args, uint32_t length)
 {
 	switch (opcode)
 	{
@@ -4709,7 +4796,7 @@ void Compiler::analyze_image_and_sampler_usage()
 			comparison_ids.insert(combined.combined_id);
 }
 
-bool Compiler::CombinedImageSamplerDrefHandler::handle(spv::Op opcode, const uint32_t *args, uint32_t)
+bool Compiler::CombinedImageSamplerDrefHandler::handle(Op opcode, const uint32_t *args, uint32_t)
 {
 	// Mark all sampled images which are used with Dref.
 	switch (opcode)
@@ -4818,11 +4905,11 @@ void Compiler::build_function_control_flow_graphs_and_analyze()
 }
 
 Compiler::CFGBuilder::CFGBuilder(Compiler &compiler_)
-    : compiler(compiler_)
+    : OpcodeHandler(compiler_)
 {
 }
 
-bool Compiler::CFGBuilder::handle(spv::Op, const uint32_t *, uint32_t)
+bool Compiler::CFGBuilder::handle(Op, const uint32_t *, uint32_t)
 {
 	return true;
 }
@@ -4998,7 +5085,7 @@ void Compiler::make_constant_null(uint32_t id, uint32_t type)
 	}
 }
 
-const SmallVector<spv::Capability> &Compiler::get_declared_capabilities() const
+const SmallVector<Capability> &Compiler::get_declared_capabilities() const
 {
 	return ir.declared_capabilities;
 }
@@ -5040,12 +5127,12 @@ std::string Compiler::get_remapped_declared_block_name(uint32_t id, bool fallbac
 
 bool Compiler::reflection_ssbo_instance_name_is_significant() const
 {
-	if (ir.source.known)
+	if (!ir.sources.empty() && ir.sources[0].known)
 	{
 		// UAVs from HLSL source tend to be declared in a way where the type is reused
 		// but the instance name is significant, and that's the name we should report.
 		// For GLSL, SSBOs each have their own block type as that's how GLSL is written.
-		return ir.source.hlsl;
+		return ir.sources[0].hlsl;
 	}
 
 	unordered_set<uint32_t> ssbo_type_ids;
@@ -5073,7 +5160,7 @@ bool Compiler::reflection_ssbo_instance_name_is_significant() const
 	return aliased_ssbo_types;
 }
 
-bool Compiler::instruction_to_result_type(uint32_t &result_type, uint32_t &result_id, spv::Op op,
+bool Compiler::instruction_to_result_type(uint32_t &result_type, uint32_t &result_id, Op op,
                                           const uint32_t *args, uint32_t length)
 {
 	if (length < 2)
@@ -5120,7 +5207,7 @@ Bitset Compiler::combined_decoration_for_member(const SPIRType &type, uint32_t i
 	return flags;
 }
 
-bool Compiler::is_desktop_only_format(spv::ImageFormat format)
+bool Compiler::is_desktop_only_format(ImageFormat format)
 {
 	switch (format)
 	{
@@ -5190,7 +5277,7 @@ void Compiler::clear_force_recompile()
 }
 
 Compiler::PhysicalStorageBufferPointerHandler::PhysicalStorageBufferPointerHandler(Compiler &compiler_)
-    : compiler(compiler_)
+    : OpcodeHandler(compiler_)
 {
 }
 
@@ -5239,7 +5326,7 @@ bool Compiler::PhysicalStorageBufferPointerHandler::type_is_bda_block_entry(uint
 
 uint32_t Compiler::PhysicalStorageBufferPointerHandler::get_minimum_scalar_alignment(const SPIRType &type) const
 {
-	if (type.storage == spv::StorageClassPhysicalStorageBuffer)
+	if (type.storage == StorageClassPhysicalStorageBuffer)
 		return 8;
 	else if (type.basetype == SPIRType::Struct)
 	{
@@ -5383,6 +5470,212 @@ void Compiler::analyze_non_block_pointer_types()
 	physical_storage_type_to_alignment = std::move(handler.physical_block_type_meta);
 }
 
+void Compiler::analyze_descriptor_heap_types()
+{
+	struct HeapHandler : OpcodeHandler
+	{
+		bool handle(Op opcode, const uint32_t *args, uint32_t) override
+		{
+			switch (opcode)
+			{
+			case OpBufferPointerEXT:
+			{
+				auto &ptr_type = compiler.get<SPIRType>(args[0]);
+				// BufferPointerEXT can return untyped or typed pointers.
+				// If it's typed, we resolve it here.
+				if (ptr_type.basetype == SPIRType::Struct)
+				{
+					DescriptorHeapMeta meta = {};
+					meta.type = ptr_type.self;
+					meta.hlsl_style_stride = hlsl_style_stride_access_chains.count(args[2]);
+					meta.buffer_pointer_id = args[1];
+					meta.storage = ptr_type.storage;
+					meta.nonreadable = compiler.has_decoration(args[1], DecorationNonReadable);
+					meta.nonwritable = compiler.has_decoration(args[1], DecorationNonWritable);
+					meta.coherent = compiler.has_decoration(args[1], DecorationCoherent);
+					meta.is_restrict = compiler.has_decoration(args[1], DecorationRestrict);
+					meta.is_volatile = compiler.has_decoration(args[1], DecorationVolatile);
+					add_unique_type(meta);
+				}
+				buffer_pointers[args[1]] = { args[0], hlsl_style_stride_access_chains.count(args[2]) != 0 };
+				break;
+			}
+
+			case OpUntypedAccessChainKHR:
+			case OpUntypedInBoundsAccessChainKHR:
+			case OpUntypedArrayLengthKHR:
+			{
+				auto &data_type = compiler.get<SPIRType>(args[2]);
+
+				if (compiler.is_pointer(data_type))
+					SPIRV_CROSS_THROW("pointer type not allowed.");
+
+				bool hlsl_style_stride = false;
+
+				// Need to validate the array stride and types. HLLs are not flexible enough to support the full flexibility of SPIR-V.
+				if (BuiltIn(compiler.get_decoration(args[3], DecorationBuiltIn)) == BuiltInResourceHeapEXT)
+				{
+					if (!compiler.is_runtime_size_array(data_type))
+						SPIRV_CROSS_THROW("Descriptor heap must be accessed as a runtime array.");
+
+					// The only meaningful use of this is ArrayStride equal to sizeof(type) right now.
+					uint32_t array_stride_id = compiler.get_decoration(args[2], DecorationArrayStrideIdEXT);
+					if (!array_stride_id)
+						SPIRV_CROSS_THROW("Expected ArrayStrideIdEXT to be set for resource heap.");
+
+					auto *spec_c = compiler.maybe_get<SPIRConstantOp>(array_stride_id);
+					auto *c = compiler.maybe_get<SPIRConstant>(array_stride_id);
+
+					if (!spec_c && !c)
+						SPIRV_CROSS_THROW("Array stride must be some constant expression.");
+
+					if (spec_c)
+					{
+						// This gets potentially infinitely weird, but if we get HLSL-style shaders
+						// we expect the array stride to be max(buffer, image) since all descriptors have equal size in D3D12.
+						// We just have to be a bit loose here since it's impossible to anticipate every theoretical formulation.
+						// Anything non-conforming to strict GLSL is flagged in the codegen output.
+						if (spec_c->opcode == OpSelect)
+						{
+							auto *true_value = compiler.maybe_get<SPIRConstant>(spec_c->arguments[1]);
+							auto *false_value = compiler.maybe_get<SPIRConstant>(spec_c->arguments[2]);
+							hlsl_style_stride = true_value && true_value->size_of_type &&
+							                    false_value && false_value->size_of_type;
+						}
+
+						if (!hlsl_style_stride)
+							SPIRV_CROSS_THROW("Unusual pattern of descriptor stride detected. This probably cannot be expressed in current GLSL.");
+					}
+
+					if (c && !c->size_of_type)
+						SPIRV_CROSS_THROW("Resource heap array stride must be ConstantSizeOfEXT for high level languages.");
+
+					auto &element_type = compiler.get<SPIRType>(data_type.parent_type);
+
+					if (element_type.basetype == SPIRType::DescriptorHeapBuffer)
+					{
+						if (c && compiler.get<SPIRType>(c->size_of_type).basetype != SPIRType::DescriptorHeapBuffer)
+							SPIRV_CROSS_THROW("Buffer descriptors in heap must be ConstantSizeOfEXT(OpTypeBufferEXT) for GLSL.");
+					}
+					else if (data_type.basetype == SPIRType::Image)
+					{
+						if (c && compiler.get<SPIRType>(c->size_of_type).basetype != SPIRType::Image)
+							SPIRV_CROSS_THROW("Image descriptors in heap must be ConstantSizeOfEXT(OpTypeImage) for GLSL.");
+					}
+					else if (data_type.basetype == SPIRType::AccelerationStructure)
+					{
+						if (c && compiler.get<SPIRType>(c->size_of_type).basetype != SPIRType::AccelerationStructure)
+							SPIRV_CROSS_THROW("RTAS descriptors in heap must be ConstantSizeOfEXT(OpTypeAccelerationStructure) for GLSL.");
+					}
+				}
+				else if (BuiltIn(compiler.get_decoration(args[3], DecorationBuiltIn)) == BuiltInSamplerHeapEXT)
+				{
+					if (!compiler.is_runtime_size_array(data_type))
+						SPIRV_CROSS_THROW("Descriptor heap must be accessed as a runtime array.");
+
+					// The only meaningful use of this is ArrayStride equal to sizeof(sampler) right now.
+					uint32_t array_stride_id = compiler.get_decoration(args[2], DecorationArrayStrideIdEXT);
+					if (!array_stride_id)
+						SPIRV_CROSS_THROW("Expected ArrayStrideIdEXT to be set for sampler heap.");
+
+					auto *c = compiler.maybe_get<SPIRConstant>(array_stride_id);
+					if (!c || !c->size_of_type || compiler.get<SPIRType>(c->size_of_type).basetype != SPIRType::Sampler)
+						SPIRV_CROSS_THROW("Sampler heap array stride must be ConstantSizeOfEXT(OpTypeSampler) for high level languages.");
+				}
+
+				// Remember this for OpBufferPointerEXT.
+				if (hlsl_style_stride)
+					hlsl_style_stride_access_chains.insert(args[1]);
+
+				if (data_type.basetype == SPIRType::SampledImage)
+				{
+					SPIRV_CROSS_THROW("Attempting to access heap as combined sampler image. This does not make sense.");
+				}
+				else if (data_type.basetype == SPIRType::Image ||
+				         data_type.basetype == SPIRType::AccelerationStructure ||
+				         data_type.basetype == SPIRType::Sampler)
+				{
+					DescriptorHeapMeta meta = {};
+					meta.type = data_type.self;
+					meta.hlsl_style_stride = hlsl_style_stride;
+					add_unique_type(meta);
+				}
+				else if (buffer_pointers.count(args[3]) != 0)
+				{
+					if (!compiler.has_decoration(data_type.self, DecorationBlock) &&
+					    !compiler.has_decoration(data_type.self, DecorationBufferBlock))
+					{
+						SPIRV_CROSS_THROW("BufferPointerEXT must reference a block type.");
+					}
+
+					auto &pointer_meta = buffer_pointers[args[3]];
+					auto &buffer_type = compiler.get<SPIRType>(pointer_meta.type);
+					if (buffer_type.basetype == SPIRType::Void)
+					{
+						// This is where the pointer becomes typed, so register it here.
+						DescriptorHeapMeta meta = {};
+						meta.type = data_type.self;
+						meta.hlsl_style_stride = pointer_meta.hlsl_style_stride;
+						meta.buffer_pointer_id = args[3];
+						meta.storage = buffer_type.storage;
+						meta.nonreadable = compiler.has_decoration(args[3], DecorationNonReadable);
+						meta.nonwritable = compiler.has_decoration(args[3], DecorationNonWritable);
+						meta.coherent = compiler.has_decoration(args[3], DecorationCoherent);
+						meta.is_volatile = compiler.has_decoration(args[3], DecorationVolatile);
+						meta.is_restrict = compiler.has_decoration(args[3], DecorationRestrict);
+						add_unique_type(meta);
+					}
+				}
+				break;
+			}
+
+			default:
+				break;
+			}
+
+			return true;
+		}
+
+		explicit HeapHandler(Compiler &compiler_) : OpcodeHandler(compiler_) {}
+
+		std::vector<DescriptorHeapMeta> heap_types;
+
+		struct BufferPointerMeta
+		{
+			TypeID type;
+			bool hlsl_style_stride;
+		};
+		std::unordered_map<uint32_t, BufferPointerMeta> buffer_pointers;
+		std::unordered_set<uint32_t> hlsl_style_stride_access_chains;
+
+		void add_unique_type(const DescriptorHeapMeta &meta)
+		{
+			assert(meta.type != 0);
+
+			for (auto &type : heap_types)
+			{
+				if (type.type == meta.type && type.storage == meta.storage &&
+				    type.buffer_pointer_id == meta.buffer_pointer_id &&
+				    type.nonreadable == meta.nonreadable &&
+				    type.nonwritable == meta.nonwritable &&
+				    type.coherent == meta.coherent &&
+				    type.is_restrict == meta.is_restrict &&
+				    type.hlsl_style_stride == meta.hlsl_style_stride &&
+				    type.is_volatile == meta.is_volatile)
+				{
+					return;
+				}
+			}
+
+			heap_types.push_back(meta);
+		}
+	};
+
+	HeapHandler handler(*this);
+	traverse_all_reachable_opcodes(get<SPIRFunction>(ir.default_entry_point), handler);
+	descriptor_heap_types = std::move(handler.heap_types);
+}
+
 bool Compiler::InterlockedResourceAccessPrepassHandler::handle(Op op, const uint32_t *, uint32_t)
 {
 	if (op == OpBeginInvocationInterlockEXT || op == OpEndInvocationInterlockEXT)
@@ -5481,6 +5774,7 @@ bool Compiler::InterlockedResourceAccessHandler::handle(Op opcode, const uint32_
 	{
 	case OpLoad:
 	case OpCooperativeMatrixLoadKHR:
+	case OpCooperativeVectorLoadNV:
 	{
 		if (length < 3)
 			return false;
@@ -5559,6 +5853,7 @@ bool Compiler::InterlockedResourceAccessHandler::handle(Op opcode, const uint32_
 	case OpImageWrite:
 	case OpAtomicStore:
 	case OpCooperativeMatrixStoreKHR:
+	case OpCooperativeVectorStoreNV:
 	{
 		if (length < 1)
 			return false;
@@ -5754,4 +6049,13 @@ bool Compiler::flush_phi_required(BlockID from, BlockID to) const
 void Compiler::add_loop_level()
 {
 	current_loop_level++;
+}
+
+const SPIRType *Compiler::OpcodeHandler::get_expression_result_type(uint32_t id) const
+{
+	auto itr = result_types.find(id);
+	if (itr == result_types.end())
+		return nullptr;
+
+	return &compiler.get<SPIRType>(itr->second);
 }

@@ -155,6 +155,14 @@ TEST_CASE("StringUtils")
         CHECK(strex("12").is_number());
         CHECK(strex("12.0f").is_number());
         CHECK(strex("1.0f").is_number());
+        CHECK_FALSE(strex("nan").is_number());
+        CHECK_FALSE(strex("inf").is_number());
+        CHECK_FALSE(strex("-inf").is_number());
+        CHECK(strex("nan").is_non_finite_number());
+        CHECK(strex(" inf ").is_non_finite_number());
+        CHECK(strex("-INFINITY").is_non_finite_number());
+        CHECK(strex("nan(payload)").is_non_finite_number());
+        CHECK_FALSE(strex("NaNish").is_non_finite_number());
         CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).is_number());
         CHECK_FALSE(strex(string(strex::MAX_NUMBER_STRING_LENGTH + 1, '5')).is_number());
 
@@ -219,6 +227,8 @@ TEST_CASE("StringUtils")
         CHECK(is_float_equal(strex("34567774455.65745678555").to_float64(), 34567774455.65745678555));
         CHECK(is_float_equal(strex("{}", std::numeric_limits<float64_t>::min()).to_float64(), std::numeric_limits<float64_t>::min()));
         CHECK(is_float_equal(strex("{}", std::numeric_limits<float64_t>::max()).to_float64(), std::numeric_limits<float64_t>::max()));
+        CHECK(is_float_equal(strex("nan").to_float32(), 0.0f));
+        CHECK(is_float_equal(strex("inf").to_float64(), 0.0));
 
         CHECK(strex(" true ").to_bool() == true);
         CHECK(strex(" 1 ").to_bool() == true);

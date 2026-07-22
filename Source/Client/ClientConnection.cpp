@@ -78,7 +78,7 @@ void ClientConnection::CreateNetworkConnection(bool use_udp)
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_ptr<NetworkClientConnection> connection = use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings);
+    auto connection = use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings);
 
     _connectingOverUdp = use_udp;
     _netConnection = std::move(connection);
@@ -163,6 +163,10 @@ void ClientConnection::Process()
         WriteLog("Connection error: {}", ex.what());
         Disconnect();
     }
+    catch (const DecompressException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        Disconnect();
+    }
     catch (...) {
         safe_call([this] { Disconnect(); });
         throw;
@@ -177,14 +181,12 @@ void ClientConnection::ProcessConnection()
         return;
     }
 
-    auto net_connection = _netConnection.as_ptr();
-
     // Wait for connecting result
-    if (net_connection->IsConnecting()) {
-        net_connection->CheckStatus(true);
+    if (_netConnection->IsConnecting()) {
+        _netConnection->CheckStatus(true);
 
         // Connecting status may change
-        if (net_connection->IsConnecting()) {
+        if (_netConnection->IsConnecting()) {
             return;
         }
     }
@@ -193,7 +195,7 @@ void ClientConnection::ProcessConnection()
     if (!_connectingHandled) {
         _connectingHandled = true;
 
-        if (net_connection->IsConnected()) {
+        if (_netConnection->IsConnected()) {
             Net_SendHandshake();
         }
         else if (TryFallbackToTcp()) {
@@ -220,8 +222,8 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    net_connection->CheckStatus(false);
-    net_connection->CheckStatus(true);
+    _netConnection->CheckStatus(false);
+    _netConnection->CheckStatus(true);
 
     // Receive and send data
     if (ReceiveData()) {
@@ -265,7 +267,7 @@ void ClientConnection::ProcessConnection()
     SendData();
 
     // Handle disconnect
-    if (!net_connection->IsConnected()) {
+    if (!_netConnection->IsConnected()) {
         Disconnect();
     }
 }
@@ -278,8 +280,7 @@ void ClientConnection::Disconnect()
         return;
     }
 
-    auto net_connection = _netConnection.as_ptr();
-    net_connection->Disconnect();
+    _netConnection->Disconnect();
     _netConnection.reset();
 
     _connectingOverUdp = false;
@@ -334,14 +335,13 @@ void ClientConnection::SendData()
         }
 
         FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
-        auto net_connection = _netConnection.as_ptr();
 
-        if (!net_connection->CheckStatus(true)) {
+        if (!_netConnection->CheckStatus(true)) {
             break;
         }
 
         const auto send_buf = _netOut.GetData();
-        const auto actual_send = net_connection->SendData(send_buf);
+        const auto actual_send = _netConnection->SendData(send_buf);
 
         _netOut.DiscardWriteBuf(actual_send);
         _bytesSend += actual_send;
@@ -353,10 +353,9 @@ auto ClientConnection::ReceiveData() -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
-    auto net_connection = _netConnection.as_ptr();
 
-    if (net_connection->CheckStatus(false)) {
-        const auto recv_buf = net_connection->ReceiveData();
+    if (_netConnection->CheckStatus(false)) {
+        const auto recv_buf = _netConnection->ReceiveData();
         FO_VERIFY_AND_THROW(!recv_buf.empty(), "Client connection reported readable network data but returned an empty receive buffer", _bytesReceived, _bytesRealReceived);
 
         _netIn.ShrinkReadBuf();

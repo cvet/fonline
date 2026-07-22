@@ -450,7 +450,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     const string name = setting_value.substr(pos, end_pos - pos);
 
                     if (is_env || is_target_env) {
-                        const nptr<const char> env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        const auto env = make_nptr(!name.empty() ? std::getenv(name.c_str()) : nullptr);
 
                         if (env) {
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());
@@ -566,8 +566,11 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
                 pack_info.InputFiles.emplace_back(std::move(path));
             }
         }
-        if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strvex(recursive_input).to_bool();
+        if (auto include_patterns = get_map_value("IncludePatterns"); !include_patterns.empty()) {
+            pack_info.IncludePatterns = strex(include_patterns).split(' ');
+        }
+        if (auto exclude_patterns = get_map_value("ExcludePatterns"); !exclude_patterns.empty()) {
+            pack_info.ExcludePatterns = strex(exclude_patterns).split(' ');
         }
 
         if (pack_info.ServerOnly) {

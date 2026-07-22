@@ -34,6 +34,9 @@
 #include "catch_amalgamated.hpp"
 
 #include "Common.h"
+#include "DataSerialization.h"
+#include "FileSystem.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -149,6 +152,128 @@ TEST_CASE("CommonUtilities")
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
+}
+
+TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
+{
+    vector<uint8_t> data;
+    DataWriter writer {data};
+    const vector<ucolor> pixels {ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}};
+
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.Write<uint16_t>(uint16_t {2});
+    writer.Write<uint16_t>(uint16_t {75});
+    writer.Write<uint8_t>(uint8_t {1});
+
+    writer.Write<uint8_t>(uint8_t {0});
+    writer.Write<int16_t>(int16_t {-3});
+    writer.Write<int16_t>(int16_t {4});
+    writer.Write<uint16_t>(uint16_t {2});
+    writer.Write<uint16_t>(uint16_t {1});
+    writer.Write<int16_t>(int16_t {5});
+    writer.Write<int16_t>(int16_t {-6});
+    writer.WriteObjectVector(pixels);
+    writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    writer.Write<uint16_t>(uint16_t {3});
+    writer.Write<uint32_t>(uint32_t {3});
+    writer.Write<uint16_t>(uint16_t {2});
+    writer.Write<uint16_t>(uint16_t {1});
+    writer.Write<int32_t>(int32_t {0});
+    writer.Write<int32_t>(int32_t {0});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint16_t>(uint16_t {2});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint16_t>(uint16_t {1});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint16_t>(uint16_t {1});
+    writer.Write<uint16_t>(uint16_t {2});
+
+    writer.Write<uint8_t>(uint8_t {1});
+    writer.Write<uint16_t>(uint16_t {0});
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> containing_data {0xAA, 0xBB, 0xCC};
+    containing_data.insert(containing_data.end(), data.begin(), data.end());
+    containing_data.insert(containing_data.end(), {0xDD, 0xEE});
+    const const_span<uint8_t> resource_data = const_span<uint8_t> {containing_data}.subspan(3, data.size());
+    const SpriteResourceData resource = ReadSpriteResource(resource_data);
+
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    CHECK(sprite_info.FrameCount == 2);
+    CHECK(sprite_info.Duration == std::chrono::milliseconds {75});
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
+    CHECK(sprite_info.Directions.front().Frames[0].Offset == ipos32 {-3, 4});
+    CHECK(sprite_info.Directions.front().Frames[0].Size == isize32 {2, 1});
+    CHECK(sprite_info.Directions.front().Frames[0].NextOffset == ipos32 {5, -6});
+    REQUIRE(sprite_info.Directions.front().Frames[1].SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames[1].SharedFrameIndex == 0);
+    CHECK(sprite_info.Directions.front().Frames[1].Offset == ipos32 {-3, 4});
+    CHECK(sprite_info.Directions.front().Frames[1].Size == isize32 {2, 1});
+    CHECK(sprite_info.Directions.front().Frames[1].NextOffset == ipos32 {5, -6});
+    REQUIRE(resource.Directions.size() == 1);
+
+    const SpriteResourceDirectionData& direction = resource.Directions.front();
+    REQUIRE(direction.Frames.size() == 2);
+
+    const SpriteResourceFrameData& frame = direction.Frames[0];
+    CHECK_FALSE(frame.SharedFrameIndex.has_value());
+    CHECK(frame.Offset == ipos32 {-3, 4});
+    CHECK(frame.Size == isize32 {2, 1});
+    CHECK(frame.NextOffset == ipos32 {5, -6});
+    CHECK(frame.Pixels == pixels);
+    REQUIRE(frame.Mesh.has_value());
+    CHECK(frame.Mesh->SourceSize == isize32 {2, 1});
+    CHECK(frame.Mesh->SourceOffset == ipos32 {});
+    CHECK(frame.Mesh->Vertices == vector<ipos32> {{0, 0}, {2, 0}, {0, 1}});
+    CHECK(frame.Mesh->Indices == vector<uint16_t> {0, 1, 2});
+
+    const SpriteResourceFrameData& shared_frame = direction.Frames[1];
+    REQUIRE(shared_frame.SharedFrameIndex.has_value());
+    CHECK(*shared_frame.SharedFrameIndex == 0);
+    CHECK(shared_frame.Pixels.empty());
+    CHECK_FALSE(shared_frame.Mesh.has_value());
+
+    SpriteResourceFrameData cropped_frame;
+    cropped_frame.Size = {3, 3};
+    cropped_frame.Pixels = {
+        ucolor {1, 0, 0},
+        ucolor {2, 0, 0},
+        ucolor {3, 0, 0},
+        ucolor {4, 0, 0},
+        ucolor {5, 0, 0},
+        ucolor {6, 0, 0},
+        ucolor {7, 0, 0},
+        ucolor {8, 0, 0},
+        ucolor {9, 0, 0},
+    };
+    cropped_frame.Mesh = SpriteMeshData {
+        .SourceSize = {4, 3},
+        .SourceOffset = {1, -1},
+        .Indices = {0, 1, 2},
+    };
+
+    const SpriteResourceImageData restored_image = ExtractSpriteResourceFrameImage(std::move(cropped_frame));
+    CHECK(restored_image.Size == isize32 {4, 3});
+    CHECK(restored_image.Pixels ==
+        vector<ucolor> {
+            ucolor {},
+            ucolor {4, 0, 0},
+            ucolor {5, 0, 0},
+            ucolor {6, 0, 0},
+            ucolor {},
+            ucolor {7, 0, 0},
+            ucolor {8, 0, 0},
+            ucolor {9, 0, 0},
+            ucolor {},
+            ucolor {},
+            ucolor {},
+            ucolor {},
+        });
 }
 
 FO_END_NAMESPACE

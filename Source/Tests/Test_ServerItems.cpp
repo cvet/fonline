@@ -180,6 +180,7 @@ namespace ServerItemsTest
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
+
         return player;
     }
 
@@ -223,9 +224,9 @@ TEST_CASE("ServerItemCreationAndDestruction")
 
     const auto item_id = item->GetId();
     CHECK(item->GetProtoId() == item_pid);
-    auto nullable_item = server->EntityMngr.GetItem(item_id);
-    REQUIRE(nullable_item);
-    CHECK(nullable_item.as_ptr() == item);
+    auto found_item = server->EntityMngr.GetItem(item_id);
+    REQUIRE(found_item);
+    CHECK(found_item == item);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > initial_entity_count);
 
@@ -303,9 +304,9 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     CHECK(inv_items2.size() >= 2);
 
     // Check via script
-    auto cr_item_count_func = server->FindFunc<int64_t, Critter*>(fn("ServerItemsTest::GetCritterItemCount"));
+    auto cr_item_count_func = server->FindFunc<int64_t, ptr<Critter>>(fn("ServerItemsTest::GetCritterItemCount"));
     REQUIRE(cr_item_count_func);
-    REQUIRE(cr_item_count_func.Call(cr.get()));
+    REQUIRE(cr_item_count_func.Call(cr));
     CHECK(cr_item_count_func.GetResult() >= 2);
 
     // SubItemCritter removes by pid/count
@@ -369,20 +370,20 @@ TEST_CASE("ServerCritterLifecycleOperations")
 
     // Entity lookup
     CHECK(static_cast<bool>(server->EntityMngr.GetEntity(cr1->GetId())));
-    auto nullable_cr1 = server->EntityMngr.GetCritter(cr1->GetId());
-    auto nullable_cr2 = server->EntityMngr.GetCritter(cr2->GetId());
-    auto nullable_cr3 = server->EntityMngr.GetCritter(cr3->GetId());
-    REQUIRE(nullable_cr1);
-    REQUIRE(nullable_cr2);
-    REQUIRE(nullable_cr3);
-    CHECK(nullable_cr1.as_ptr() == cr1);
-    CHECK(nullable_cr2.as_ptr() == cr2);
-    CHECK(nullable_cr3.as_ptr() == cr3);
+    auto found_cr1 = server->EntityMngr.GetCritter(cr1->GetId());
+    auto found_cr2 = server->EntityMngr.GetCritter(cr2->GetId());
+    auto found_cr3 = server->EntityMngr.GetCritter(cr3->GetId());
+    REQUIRE(found_cr1);
+    REQUIRE(found_cr2);
+    REQUIRE(found_cr3);
+    CHECK(found_cr1 == cr1);
+    CHECK(found_cr2 == cr2);
+    CHECK(found_cr3 == cr3);
 
     // Script alive/dead check
-    auto is_alive_func = server->FindFunc<bool, Critter*>(fn("ServerItemsTest::TestCritterIsAlive"));
+    auto is_alive_func = server->FindFunc<bool, ptr<Critter>>(fn("ServerItemsTest::TestCritterIsAlive"));
     REQUIRE(is_alive_func);
-    REQUIRE(is_alive_func.Call(cr1.get()));
+    REQUIRE(is_alive_func.Call(cr1));
     CHECK(is_alive_func.GetResult() == true);
 
     // Player login allocates persistent ids through the entity manager

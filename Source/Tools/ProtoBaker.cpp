@@ -42,7 +42,7 @@
 FO_BEGIN_NAMESPACE
 
 ProtoBaker::ProtoBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -193,9 +193,8 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
 
     const auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
-        auto nullable_registrator = meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
-        auto registrator = nullable_registrator.as_ptr();
+        auto registrator = meta->GetPropertyRegistrator(type_name);
+        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
             return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
@@ -313,7 +312,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
                 proto->GetProperties()->StoreAllData(props_data, str_hashes);
                 writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-                ptr<DataWriter> writer_ptr = &writer;
+                auto writer_ptr = make_ptr(&writer);
                 writer_ptr->WriteByteVector(props_data);
             }
         }
@@ -332,7 +331,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
             final_writer.WriteStringBytes(str);
         }
 
-        ptr<DataWriter> final_writer_ptr = &final_writer;
+        auto final_writer_ptr = make_ptr(&final_writer);
         final_writer_ptr->WriteByteVector(protos_data);
     }
 

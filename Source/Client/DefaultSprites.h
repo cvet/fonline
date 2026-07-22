@@ -37,15 +37,22 @@
 
 #include "Rendering.h"
 #include "SpriteManager.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
+
+struct AtlasSpriteRegion
+{
+    frect32 DrawRect {};
+    frect32 TextureRect {};
+};
 
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data = std::nullopt);
     AtlasSprite(const AtlasSprite&) = delete;
-    AtlasSprite(AtlasSprite&&) noexcept = default;
+    AtlasSprite(AtlasSprite&& other) noexcept;
     auto operator=(const AtlasSprite&) = delete;
     auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = delete;
     ~AtlasSprite() override;
@@ -57,14 +64,17 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
+    [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
 protected:
     nptr<TextureAtlas> _atlas {};
-    nptr<TextureAtlas::SpaceNode> _atlasNode {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
+    optional<SpriteMeshData> _meshData {};
+    unique_del_nptr<TextureAtlasLayout::Allocation> _atlasAllocation {};
 };
 
 class SpriteSheet final : public Sprite
@@ -140,9 +150,10 @@ public:
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fofrm", "frm", "fr0", "rix", "art", "zar", "til", "mos", "bam", "png", "tga"}; }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
 private:
-    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> nullable_pixels) -> shared_ptr<AtlasSprite>;
+    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;
     vector<ucolor> _borderBuf {};

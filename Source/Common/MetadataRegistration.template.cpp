@@ -93,11 +93,11 @@ void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem>
 
     if (resources) {
 #if SERVER_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Server"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Server"));
 #elif CLIENT_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Client"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Client"));
 #elif MAPPER_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Mapper"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Mapper"));
 #endif
     }
 }

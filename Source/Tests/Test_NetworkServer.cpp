@@ -185,6 +185,45 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     CHECK(InterthreadListeners.count(port) == 0);
 }
 
+TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
+{
+    auto settings = MakeServerNetworkSettings();
+    const auto port = TestServerPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.ServerPort, port);
+
+    size_t accepted_count = 0;
+    size_t client_disconnect_count = 0;
+    function<InterthreadDataCallback(InterthreadDataCallback)> copied_listener;
+    {
+        auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection>) { accepted_count++; });
+        const auto cleanup = scope_exit([&server, port]() noexcept {
+            safe_call([&server] { server->Shutdown(); });
+            safe_call([port] {
+                scoped_lock locker {InterthreadListenersLocker};
+                InterthreadListeners.erase(port);
+            });
+        });
+
+        {
+            scoped_lock locker {InterthreadListenersLocker};
+            copied_listener = InterthreadListeners.at(port);
+        }
+
+        server->Shutdown();
+    }
+    REQUIRE(copied_listener);
+
+    auto client_send = copied_listener([&](const_span<uint8_t> buf) {
+        if (buf.empty()) {
+            client_disconnect_count++;
+        }
+    });
+
+    CHECK(client_send);
+    CHECK(accepted_count == 0);
+    CHECK(client_disconnect_count == 1);
+}
+
 #if FO_HAVE_ASIO
 TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 {
@@ -243,15 +282,80 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
     second_connection->Disconnect();
     second_client.close();
 }
+
+TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    const uint16_t port = TestServerPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.ServerPort, port);
+
+    std::promise<shared_ptr<NetworkServerConnection>> accepted_connection_promise;
+    auto accepted_connection_future = accepted_connection_promise.get_future();
+    unique_ptr<NetworkServer> server = NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_connection_promise.set_value(std::move(conn)); });
+    bool server_shutdown = false;
+    const auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
+        if (!server_shutdown) {
+            safe_call([&server] { server->Shutdown(); });
+        }
+    });
+
+    tcp_socket client;
+    REQUIRE(client.connect("127.0.0.1", port));
+    REQUIRE(accepted_connection_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+
+    shared_ptr<NetworkServerConnection> accepted_connection = accepted_connection_future.get();
+    REQUIRE(accepted_connection);
+
+    std::atomic_int disconnect_count {};
+    accepted_connection->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; }, [](const_span<uint8_t>) {}, [&disconnect_count] { disconnect_count.fetch_add(1); });
+    CHECK_FALSE(accepted_connection->IsDisconnected());
+
+    server->Shutdown();
+    server_shutdown = true;
+
+    CHECK(accepted_connection->IsDisconnected());
+    CHECK(disconnect_count.load() == 1);
+
+    client.close();
+}
 #endif
 
 #if FO_HAVE_WEB_SOCKETS
+TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    const auto port = TestServerPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+
+    auto server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    const auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    string error_message;
+
+    try {
+        NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    }
+    catch (const std::exception& ex) {
+        error_message = ex.what();
+    }
+
+    REQUIRE_FALSE(error_message.empty());
+    CHECK(error_message.find("Address already in use") != string::npos);
+    CHECK(error_message.find(std::to_string(port)) != string::npos);
+    CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
+}
+
 // End-to-end WebSocket transport coverage (previously none, which is what let the transport's threading
 // bugs ship). A real websocketpp client connects and sends a binary frame that must reach the connection's
-// receive callback (the flaky inbound-delivery regression), then a server-side Disconnect() from the engine
-// thread plus Shutdown() must tear the connection down without racing the websocketpp io thread - the
-// terminate()->close() teardown and the weak_from_this() handler lifetime. The sanitizer CI jobs turn any
-// residual use-after-free in this path into a hard failure.
+// receive callback (the flaky inbound-delivery regression), then Shutdown() itself must disconnect the
+// accepted wrapper and tear the transport down without racing the websocketpp io thread - the
+// close() teardown, tracked-connection shutdown, and weak_from_this() handler lifetime. The sanitizer CI
+// jobs turn any residual use-after-free in this path into a hard failure.
 TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 {
     REQUIRE(net_sockets::startup());
@@ -333,15 +437,13 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
         connection_to_close = accepted_conn;
     }
 
-    connection_to_close->Disconnect();
+    server->Shutdown();
     CHECK(connection_to_close->IsDisconnected());
 
     client.stop();
     if (client_thread.joinable()) {
         client_thread.join();
     }
-
-    server->Shutdown();
 }
 #endif
 

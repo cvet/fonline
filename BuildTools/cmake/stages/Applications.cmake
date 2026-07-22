@@ -35,6 +35,10 @@ if(FO_BUILD_CLIENT)
                     "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_Client${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 COMMENT "Copy client runtime library to host-derived module name")
 
+            # A native client launch loads the sibling runtime module by default. Keep the
+            # runnable host target from leaving a stale module next to a fresh executable.
+            add_dependencies(${FO_DEV_NAME}_Client ${FO_DEV_NAME}_ClientLib)
+
             AddExecutableApplication(${FO_DEV_NAME}_ClientHeadless "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
                 OUTPUT_DIR ${FO_CLIENT_OUTPUT}
                 WORKING_DIRECTORY ${FO_OUTPUT_PATH}
@@ -59,6 +63,8 @@ if(FO_BUILD_CLIENT)
                     "$<TARGET_FILE:${FO_DEV_NAME}_ClientLibHeadless>"
                     "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_ClientHeadless${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 COMMENT "Copy headless client runtime library to host-derived module name")
+
+            add_dependencies(${FO_DEV_NAME}_ClientHeadless ${FO_DEV_NAME}_ClientLibHeadless)
         endif()
     else()
         AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
@@ -156,9 +162,31 @@ if(FO_BUILD_BAKER)
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
             TESTING_APP 0
             LINK_LIBS PRIVATE BakerLib
-            EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
+            EXTRA_PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
+                CXX_VISIBILITY_PRESET hidden
+                VISIBILITY_INLINES_HIDDEN YES
             NO_PREFIX
             WRITE_BUILD_HASH)
+
+        if(FO_LINUX)
+            # The baker is loaded into hosts built with different allocator/sanitizer settings. Keep
+            # every implementation symbol local so the plugin cannot interpose its allocator or
+            # engine globals on the host; FO_BakeResources is the complete C ABI boundary.
+            SetValue(bakerLibExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/exports/BakerLib.map")
+            SetValue(verifyDynamicExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/VerifyDynamicExports.cmake")
+            TargetLinkOptions(${FO_DEV_NAME}_BakerLib PRIVATE
+                -Wl,--exclude-libs,ALL
+                "-Wl,--version-script,${bakerLibExports}")
+            AddCustomCommand(TARGET ${FO_DEV_NAME}_BakerLib POST_BUILD
+                COMMAND ${CMAKE_COMMAND}
+                    "-DNM_EXECUTABLE=${CMAKE_NM}"
+                    "-DLIBRARY_PATH=$<TARGET_FILE:${FO_DEV_NAME}_BakerLib>"
+                    "-DEXPECTED_EXPORTS=FO_BakeResources"
+                    -P "${verifyDynamicExports}"
+                COMMENT "Verify ${FO_DEV_NAME}_BakerLib public exports"
+                VERBATIM)
+        endif()
     endif()
 endif()
 
@@ -235,9 +263,22 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run code coverage and generate report")
         else()
-            AddCommandTarget(Run${name}
-                COMMAND_ARGS COMMAND ${target}
-                COMMENT "Run ${name}")
+            if(MSVC)
+                AddCommandTarget(Run${name}
+                    COMMAND_ARGS
+                    COMMAND "${CMAKE_COMMAND}"
+                        "-DFO_RUN_COMMAND=$<TARGET_FILE:${target}>"
+                        "-DFO_RUN_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+                        "-DFO_RUN_LOG=${CMAKE_CURRENT_BINARY_DIR}/${target}.log"
+                        -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/RunAndLog.cmake"
+                    DEPENDS ${target}
+                    COMMENT "Run ${name}")
+            else()
+                AddCommandTarget(Run${name}
+                    COMMAND_ARGS COMMAND ${target}
+                    DEPENDS ${target}
+                    COMMENT "Run ${name}")
+            endif()
         endif()
     endmacro()
 

@@ -212,6 +212,17 @@ private:
     list<WaitEntry> _waitQueue FO_TSA_GUARDED_BY(_mutex) {};
 };
 
+// Per-Sync cover/held lock lists are tiny (cover = requested entities + widen partners, ~1-4;
+// intention marks = their separate-lock ancestors, ~1-3) and rebuilt on every Sync job, so inline
+// storage keeps the hottest server path (21M Sync ops in a full gameplay-test run) off the heap.
+// Capacity 4 sized to the measured cover; larger covers (shutdown-only SyncWholeWorld) spill harmlessly.
+// NOTE: the PARALLEL owner lists (`_heldLockOwners` etc.) deliberately stay `vector` — their element
+// `refcount_ptr<ServerEntity>` needs `ServerEntity` complete for small_vector inline storage (its dtor
+// calls `Release()`), but this header forward-declares `ServerEntity` as a compile firewall. Only the
+// `ptr<EntityLock>` lists (a complete type, trivial dtor) go inline; the asymmetric container types are
+// forced by that constraint, and each list's move-assign partner must share its type.
+using SyncLockList = small_vector<ptr<EntityLock>, 4>;
+
 class SyncContext final
 {
 public:
@@ -224,6 +235,7 @@ public:
 
     [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
     [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
+    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
 
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
@@ -242,8 +254,8 @@ public:
     // feet. Recursion is supported per the EntityLock primitive — repeated LockSingleton calls
     // bump recursion, matched UnlockSingleton calls release. Job-exit (SyncContext destructor)
     // drains both buckets so leaked singleton locks can't outlive a worker job.
-    void LockSingleton(EntityLock* lock);
-    void UnlockSingleton(EntityLock* lock);
+    void LockSingleton(ptr<EntityLock> lock);
+    void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
     // Acquire the exclusive cover (`locks`/`owners`) AND register the hierarchical intention marks
@@ -251,7 +263,7 @@ private:
     // ascending-address pass: exclusive locks via Acquire/TryAcquire, intention marks via
     // RegisterDescendantHold/TryRegisterDescendantHold. A single total order over the union of both
     // makes the mixed acquire cycle-free. Replaces the whole held set (cover + intentions).
-    void AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<ServerEntity>>&& owners, vector<EntityLock*>& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners);
+    void AcquireLocks(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>&& owners, SyncLockList& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners);
     // Deadlock-breaking escalation used by AcquireLocks when the non-parking back-off cannot make
     // progress (typically a nested context cross-holding locks against another thread's parent
     // cover). Releases the full thread-held union (this context's prefix is already released by the
@@ -262,32 +274,32 @@ private:
     // union makes this fair acquire deadlock-free regardless of what the thread (or its ancestors) held.
     // If the blocking re-acquire is aborted by shutdown, it rolls the whole union back to zero and
     // clears the ancestor bookkeeping so the unwinding contexts don't release locks they no longer hold.
-    void AcquireLocksOrderedFair(const vector<EntityLock*>& locks, const vector<EntityLock*>& holds);
+    void AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 
-    vector<EntityLock*> _heldLocks {};
+    SyncLockList _heldLocks {};
     // Parallel to `_heldLocks`. Each entry pins the ServerEntity whose `_ownedLock` (or whose
-    // SetParent-chain reaches it) backs the corresponding `EntityLock*`. Without this, an entity
+    // SetParent-chain reaches it) backs the corresponding lock borrow. Without this, an entity
     // destroyed by the same thread that holds its lock (e.g. `Game.DestroyCritter(cr)` from inside
-    // a `Sync::Lock(cr)` block) leaves a dangling `EntityLock*` here; the next SyncEntities call
+    // a `Sync::Lock(cr)` block) leaves a dangling lock borrow here; the next SyncEntities call
     // would `ReleaseLocks` and crash. Keeping the owner alive via refcount until `ReleaseLocks`
-    // runs guarantees the EntityLock storage outlives the held-lock list. May be null for the
-    // engine singleton lock (the engine is not a ServerEntity).
+    // runs guarantees the EntityLock storage outlives the held-lock list. Entries are never null:
+    // the engine singleton lock lives in the separate `_singletonLocks` bucket, not here.
     vector<refcount_ptr<ServerEntity>> _heldLockOwners {};
     // Hierarchical intention marks: the SEPARATE-lock ancestors of every cover owner (a critter's map
     // and location, an item's map/location, …). Registered as descendant-holds so no other thread can
     // take any of those ancestors exclusively while we hold their descendant; compatible among siblings
     // marking the same ancestor. The parallel owner vector pins the ancestor entities so their
     // `_ownedLock` storage outlives the hold. Reset together with `_heldLocks` (derived from the cover).
-    vector<EntityLock*> _heldDescendantHolds {};
+    SyncLockList _heldDescendantHolds {};
     vector<refcount_ptr<ServerEntity>> _heldDescendantHoldOwners {};
     // Singleton locks acquired via LockSingleton; survive SyncEntities replacement. Each entry
     // is one outstanding LockSingleton call (so recursion tracking matches paired Unlock calls).
-    vector<EntityLock*> _singletonLocks {};
+    SyncLockList _singletonLocks {};
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
     // event-callback's nested context can pop back to the dispatcher's primary context cleanly.
-    SyncContext* _previousContext {nullptr};
+    nptr<SyncContext> _previousContext {};
 };
 
 class ScopedSyncContext final

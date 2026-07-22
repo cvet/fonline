@@ -53,7 +53,7 @@ static auto IsSameScriptFunction(nptr<AngelScript::asIScriptFunction> lhs, ptr<A
         return false;
     }
 
-    return lhs.as_ptr() == rhs;
+    return lhs == rhs;
 }
 
 static auto IsInstructionAtOrBefore(nptr<const AngelScript::asDWORD> lhs, ptr<const AngelScript::asDWORD> rhs) noexcept -> bool
@@ -64,8 +64,7 @@ static auto IsInstructionAtOrBefore(nptr<const AngelScript::asDWORD> lhs, ptr<co
         return false;
     }
 
-    auto lhs_ptr = lhs.as_ptr();
-    return lhs_ptr == rhs || lhs_ptr < rhs;
+    return lhs == rhs || lhs < rhs;
 }
 
 static auto IsInstructionAtOrAfter(nptr<const AngelScript::asDWORD> lhs, ptr<const AngelScript::asDWORD> rhs) noexcept -> bool
@@ -76,15 +75,14 @@ static auto IsInstructionAtOrAfter(nptr<const AngelScript::asDWORD> lhs, ptr<con
         return false;
     }
 
-    auto lhs_ptr = lhs.as_ptr();
-    return lhs_ptr == rhs || rhs < lhs_ptr;
+    return lhs == rhs || rhs < lhs;
 }
 
 static auto InstructionWordAt(ptr<const AngelScript::asDWORD> instruction, size_t word_offset) noexcept -> ptr<const AngelScript::asDWORD>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<const AngelScript::asDWORD> instruction_word = instruction.get() + word_offset;
+    ptr<const AngelScript::asDWORD> instruction_word = instruction.offset(word_offset);
     return instruction_word;
 }
 
@@ -264,7 +262,7 @@ static auto CountNewlines(LexemIt begin, LexemIt end) -> uint32_t
     uint32_t count = 0;
 
     for (auto it = begin; it != end; ++it) {
-        ptr<const Preprocessor::Lexem> lex = &*it;
+        auto lex = make_ptr(&*it);
 
         if (lex->Type == Preprocessor::NEWLINE) {
             count += 1;
@@ -570,6 +568,20 @@ static auto TryParseFunctionDecl(LexemIt start, const Preprocessor::LexemList& l
     return std::nullopt;
 }
 
+static auto GetMutableFunctionAttributesUserData(ptr<AngelScript::asIScriptFunction> func) noexcept -> nptr<ScriptFunctionAttributeUserData>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA));
+}
+
+static auto SetFunctionAttributesUserData(ptr<AngelScript::asIScriptFunction> func, ptr<ScriptFunctionAttributeUserData> user_data) noexcept -> nptr<ScriptFunctionAttributeUserData>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<ScriptFunctionAttributeUserData*>(func->SetUserData(user_data.void_cast(), AS_FUNC_ATTRIBUTES_USER_DATA));
+}
+
 void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vector<string>& attributes)
 {
     FO_STACK_TRACE_ENTRY();
@@ -578,8 +590,7 @@ void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vecto
         return;
     }
 
-    if (nptr<ScriptFunctionAttributeUserData> nullable_old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA)); nullable_old_user_data) {
-        auto old_user_data = nullable_old_user_data.as_ptr();
+    if (auto old_user_data = GetMutableFunctionAttributesUserData(func)) {
         FO_VERIFY_AND_THROW(old_user_data->Attributes == attributes, "AngelScript function attributes were registered twice with different data");
         return;
     }
@@ -589,29 +600,26 @@ void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vecto
     auto user_data = SafeAlloc::MakeUnique<ScriptFunctionAttributeUserData>();
     user_data->Attributes = attributes;
 
-    ptr<ScriptFunctionAttributeUserData> released_user_data = std::move(user_data).release();
-    nptr<const ScriptFunctionAttributeUserData> old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->SetUserData(cast_to_void(released_user_data.get()), AS_FUNC_ATTRIBUTES_USER_DATA));
+    auto released_user_data = user_data.release();
+    auto old_user_data = SetFunctionAttributesUserData(func, released_user_data);
     FO_VERIFY_AND_THROW(!old_user_data, "Old user data is already set");
 }
 
-static void SetFunctionAttributesWithVirtualMirror(nptr<AngelScript::asIScriptFunction> nullable_func, const vector<string>& attributes, nptr<const vector<string>> project_blocking_extras)
+static void SetFunctionAttributesWithVirtualMirror(nptr<AngelScript::asIScriptFunction> func, const vector<string>& attributes, nptr<const vector<string>> project_blocking_extras)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return;
     }
 
-    auto func = nullable_func.as_ptr();
     SetFunctionAttributes(func, attributes);
 
-    nptr<AngelScript::asITypeInfo> nullable_ti = func->GetObjectType();
+    nptr<AngelScript::asITypeInfo> ti = func->GetObjectType();
 
-    if (!nullable_ti) {
+    if (!ti) {
         return;
     }
-
-    auto ti = nullable_ti.as_ptr();
 
     vector<string> blocking_only;
     blocking_only.reserve(attributes.size());
@@ -627,16 +635,15 @@ static void SetFunctionAttributesWithVirtualMirror(nptr<AngelScript::asIScriptFu
     }
 
     for (AngelScript::asUINT i = 0; i < ti->GetMethodCount(); i++) {
-        nptr<AngelScript::asIScriptFunction> method_func = ti->GetMethodByIndex(i, false);
+        auto method_func = make_ptr(ti->GetMethodByIndex(i, false));
 
         if (!IsSameScriptFunction(method_func, func)) {
             continue;
         }
 
-        nptr<AngelScript::asIScriptFunction> nullable_virtual_func = ti->GetMethodByIndex(i, true);
+        auto virtual_func = make_nptr(ti->GetMethodByIndex(i, true));
 
-        if (nullable_virtual_func && !IsSameScriptFunction(nullable_virtual_func, func)) {
-            auto virtual_func = nullable_virtual_func.as_ptr();
+        if (virtual_func && !IsSameScriptFunction(virtual_func, func)) {
             SetFunctionAttributes(virtual_func, blocking_only);
         }
 
@@ -644,15 +651,14 @@ static void SetFunctionAttributesWithVirtualMirror(nptr<AngelScript::asIScriptFu
     }
 }
 
-static auto IsAttributedScriptFunction(nptr<const AngelScript::asIScriptFunction> nullable_func) noexcept -> bool
+static auto IsAttributedScriptFunction(nptr<const AngelScript::asIScriptFunction> func) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return false;
     }
 
-    auto func = nullable_func.as_ptr();
     return func->GetFuncType() == AngelScript::asFUNC_SCRIPT || func->GetFuncType() == AngelScript::asFUNC_VIRTUAL;
 }
 
@@ -663,28 +669,20 @@ static auto CollectModuleScriptFunctions(ptr<AngelScript::asIScriptModule> mod) 
     vector<ptr<AngelScript::asIScriptFunction>> funcs;
 
     for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-        nptr<AngelScript::asIScriptFunction> nullable_func = mod->GetFunctionByIndex(i);
+        auto func = make_ptr(mod->GetFunctionByIndex(i));
 
-        if (IsAttributedScriptFunction(nullable_func)) {
-            auto func = nullable_func.as_ptr();
+        if (IsAttributedScriptFunction(func)) {
             funcs.emplace_back(func);
         }
     }
 
     for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-        nptr<AngelScript::asITypeInfo> nullable_ti = mod->GetObjectTypeByIndex(i);
-
-        if (!nullable_ti) {
-            continue;
-        }
-
-        auto ti = nullable_ti.as_ptr();
+        auto ti = make_ptr(mod->GetObjectTypeByIndex(i));
 
         for (AngelScript::asUINT j = 0; j < ti->GetMethodCount(); j++) {
-            nptr<AngelScript::asIScriptFunction> nullable_func = ti->GetMethodByIndex(j, false);
+            auto func = make_ptr(ti->GetMethodByIndex(j, false));
 
-            if (IsAttributedScriptFunction(nullable_func)) {
-                auto func = nullable_func.as_ptr();
+            if (IsAttributedScriptFunction(func)) {
                 funcs.emplace_back(func);
             }
         }
@@ -698,13 +696,7 @@ static auto FindModuleObjectType(ptr<AngelScript::asIScriptModule> mod, string_v
     FO_STACK_TRACE_ENTRY();
 
     for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-        nptr<AngelScript::asITypeInfo> nullable_ti = mod->GetObjectTypeByIndex(i);
-
-        if (!nullable_ti) {
-            continue;
-        }
-
-        auto ti = nullable_ti.as_ptr();
+        auto ti = make_ptr(mod->GetObjectTypeByIndex(i));
 
         const nptr<const char> current_name_ptr = ti->GetName();
         const nptr<const char> current_ns_ptr = ti->GetNamespace();
@@ -719,15 +711,13 @@ static auto FindModuleObjectType(ptr<AngelScript::asIScriptModule> mod, string_v
     return nullptr;
 }
 
-static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScriptFunction> nullable_func, nptr<const Preprocessor::LineNumberTranslator> lnt) -> optional<pair<string, uint32_t>>
+static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScriptFunction> func, nptr<const Preprocessor::LineNumberTranslator> lnt) -> optional<pair<string, uint32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return std::nullopt;
     }
-
-    auto func = nullable_func.as_ptr();
 
     int row = 0;
     int column = 1;
@@ -745,15 +735,13 @@ static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScr
     return pair {section ? string {section.get()} : string {}, numeric_cast<uint32_t>(row)};
 }
 
-static auto HasAttribute(nptr<const ScriptFunctionAttributeUserData> nullable_user_data, string_view attribute) noexcept -> bool
+static auto HasAttribute(nptr<const ScriptFunctionAttributeUserData> user_data, string_view attribute) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_user_data) {
+    if (!user_data) {
         return false;
     }
-
-    auto user_data = nullable_user_data.as_ptr();
 
     for (const auto& attr : user_data->Attributes) {
         if (GetAttributeBaseName(attr) == attribute) {
@@ -764,15 +752,13 @@ static auto HasAttribute(nptr<const ScriptFunctionAttributeUserData> nullable_us
     return false;
 }
 
-static auto FindAttribute(nptr<const ScriptFunctionAttributeUserData> nullable_user_data, string_view attribute) noexcept -> nptr<const string>
+static auto FindAttribute(nptr<const ScriptFunctionAttributeUserData> user_data, string_view attribute) noexcept -> nptr<const string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_user_data) {
+    if (!user_data) {
         return nullptr;
     }
-
-    auto user_data = nullable_user_data.as_ptr();
 
     for (const auto& attr : user_data->Attributes) {
         if (GetAttributeBaseName(attr) == attribute) {
@@ -783,15 +769,14 @@ static auto FindAttribute(nptr<const ScriptFunctionAttributeUserData> nullable_u
     return nullptr;
 }
 
-static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> nullable_func) -> string
+static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return "<unknown>";
     }
 
-    auto func = nullable_func.as_ptr();
     const nptr<const char> declaration = func->GetDeclaration(true, true, false);
     return declaration ? declaration.get() : "<unknown>";
 }
@@ -814,7 +799,7 @@ static auto ResolveInstructionLocation(ptr<const AngelScript::asIScriptFunction>
             continue;
         }
 
-        if (IsInstructionAtOrBefore(line_instruction, instruction) && (!best_instruction || IsInstructionAtOrAfter(line_instruction, best_instruction.as_ptr()))) {
+        if (IsInstructionAtOrBefore(line_instruction, instruction) && (!best_instruction || IsInstructionAtOrAfter(line_instruction, best_instruction))) {
             best_instruction = line_instruction;
             best_location = ScriptBytecodeLocation {
                 .Section = section ? section.get() : "<unknown>",
@@ -930,10 +915,10 @@ void CleanupScriptFunctionAttributes(AngelScript::asIScriptFunction* raw_func)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(raw_func != nullptr, "Missing script function for attribute cleanup");
-    ptr<AngelScript::asIScriptFunction> func = raw_func;
-    nptr<ScriptFunctionAttributeUserData> user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA));
-    if (user_data) {
-        CleanupScriptFunctionAttributeUserData(user_data.as_ptr());
+    auto func = make_ptr(raw_func);
+
+    if (auto user_data = GetMutableFunctionAttributesUserData(func)) {
+        CleanupScriptFunctionAttributeUserData(user_data);
     }
 }
 
@@ -941,7 +926,7 @@ auto GetFunctionAttributesUserData(ptr<const AngelScript::asIScriptFunction> fun
 {
     FO_STACK_TRACE_ENTRY();
 
-    return cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA));
+    return cast_from_void<const ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA));
 }
 
 auto FindFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, string_view attribute) noexcept -> string_view
@@ -1175,22 +1160,21 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
     }
 
     ptr<AngelScript::asIScriptEngine> engine = mod->GetEngine();
-    nptr<const Preprocessor::LineNumberTranslator> lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
 
     for (const auto& record : records) {
-        nptr<AngelScript::asIScriptFunction> nullable_target_func {};
+        nptr<AngelScript::asIScriptFunction> target_func {};
 
         if (record.ObjectType.empty()) {
             uint32_t ordinal = 0;
 
             for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-                nptr<AngelScript::asIScriptFunction> nullable_func = mod->GetFunctionByIndex(i);
+                auto func = make_ptr(mod->GetFunctionByIndex(i));
 
-                if (!IsAttributedScriptFunction(nullable_func)) {
+                if (!IsAttributedScriptFunction(func)) {
                     continue;
                 }
 
-                auto func = nullable_func.as_ptr();
                 const nptr<const char> func_name = func->GetName();
                 const nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
 
@@ -1206,23 +1190,21 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                 }
 
                 if (ordinal++ == record.OverloadIndex) {
-                    nullable_target_func = nullable_func;
+                    target_func = func;
                     break;
                 }
             }
         }
-        else if (nptr<AngelScript::asITypeInfo> nullable_ti = FindModuleObjectType(mod, record.Namespace, record.ObjectType); nullable_ti) {
-            auto ti = nullable_ti.as_ptr();
+        else if (auto ti = FindModuleObjectType(mod, record.Namespace, record.ObjectType); ti) {
             uint32_t ordinal = 0;
 
             for (AngelScript::asUINT j = 0; j < ti->GetMethodCount(); j++) {
-                nptr<AngelScript::asIScriptFunction> nullable_func = ti->GetMethodByIndex(j, false);
+                auto func = make_ptr(ti->GetMethodByIndex(j, false));
 
-                if (!IsAttributedScriptFunction(nullable_func)) {
+                if (!IsAttributedScriptFunction(func)) {
                     continue;
                 }
 
-                auto func = nullable_func.as_ptr();
                 const nptr<const char> func_name = func->GetName();
 
                 if (!func_name || string_view {func_name.get()} != record.Name) {
@@ -1230,13 +1212,13 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                 }
 
                 if (ordinal++ == record.OverloadIndex) {
-                    nullable_target_func = nullable_func;
+                    target_func = func;
                     break;
                 }
             }
         }
 
-        if (!nullable_target_func && !record.SourceFile.empty()) {
+        if (!target_func && !record.SourceFile.empty()) {
             nptr<AngelScript::asIScriptFunction> fallback_func {};
 
             for (ptr<AngelScript::asIScriptFunction> func : CollectModuleScriptFunctions(mod)) {
@@ -1260,10 +1242,10 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                 fallback_func = func;
             }
 
-            nullable_target_func = fallback_func;
+            target_func = fallback_func;
         }
 
-        if (!nullable_target_func) {
+        if (!target_func) {
             if (!record.SourceFile.empty()) {
                 return strex("{}({},1): error : Can't bind attributes to function {} [overload {}]", record.SourceFile, record.SourceLine, FormatRecordFunctionName(record), record.OverloadIndex).str();
             }
@@ -1271,7 +1253,6 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
             return strex("Can't bind attributes to function {} [overload {}]", FormatRecordFunctionName(record), record.OverloadIndex).str();
         }
 
-        auto target_func = nullable_target_func.as_ptr();
         SetFunctionAttributesWithVirtualMirror(target_func, record.Attributes, project_blocking_extras);
     }
 
@@ -1285,22 +1266,16 @@ static auto ClassifyFunctionAttributes(ptr<const AngelScript::asIScriptFunction>
     has_blocking = false;
     markers.clear();
 
-    nptr<const ScriptFunctionAttributeUserData> nullable_user_data = GetFunctionAttributesUserData(func);
+    if (auto user_data = GetFunctionAttributesUserData(func)) {
+        for (const auto& attr : user_data->Attributes) {
+            const auto base = GetAttributeBaseName(attr);
 
-    if (!nullable_user_data) {
-        return;
-    }
-
-    auto user_data = nullable_user_data.as_ptr();
-
-    for (const auto& attr : user_data->Attributes) {
-        const auto base = GetAttributeBaseName(attr);
-
-        if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
-            has_blocking = true;
-        }
-        else {
-            markers.emplace_back(base);
+            if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
+                has_blocking = true;
+            }
+            else {
+                markers.emplace_back(base);
+            }
         }
     }
 }
@@ -1326,7 +1301,7 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
             continue;
         }
 
-        const_span<AngelScript::asDWORD> bytecode = ByteCodeSpan(bc.as_ptr(), bc_length);
+        const_span<AngelScript::asDWORD> bytecode = ByteCodeSpan(bc, bc_length);
         ClassifyFunctionAttributes(caller, caller_has_blocking, caller_markers, project_blocking_extras);
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
@@ -1335,10 +1310,9 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
             const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
 
             if (opcode == AngelScript::asBC_CALL || opcode == AngelScript::asBC_CALLSYS || opcode == AngelScript::asBC_CALLINTF || opcode == AngelScript::asBC_Thiscall1) {
-                nptr<const AngelScript::asIScriptFunction> nullable_target = engine->GetFunctionById(ReadInstructionFunctionId(instruction, 1));
-                FO_VERIFY_AND_THROW(nullable_target, "Called function not found");
+                nptr<const AngelScript::asIScriptFunction> target = engine->GetFunctionById(ReadInstructionFunctionId(instruction, 1));
+                FO_VERIFY_AND_THROW(target, "Called function not found");
 
-                auto target = nullable_target.as_ptr();
                 ClassifyFunctionAttributes(target, target_has_blocking, target_markers, project_blocking_extras);
 
                 // Rule 1: direct-call-blocking attribute → caller must live in an allowed namespace.
@@ -1480,13 +1454,12 @@ static auto IsScriptTypeNamed(ptr<AngelScript::asIScriptEngine> engine, int32_t 
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<const AngelScript::asITypeInfo> nullable_type_info = engine->GetTypeInfoById(type_id);
+    nptr<const AngelScript::asITypeInfo> type_info = engine->GetTypeInfoById(type_id);
 
-    if (!nullable_type_info) {
+    if (!type_info) {
         return false;
     }
 
-    auto type_info = nullable_type_info.as_ptr();
     return string_view(type_info->GetName()) == type_name;
 }
 
@@ -1595,15 +1568,14 @@ static auto IsSameSourceLine(const optional<ScriptBytecodeLocation>& left, const
     return left.has_value() && right.has_value() && left->Row == right->Row && left->Section == right->Section;
 }
 
-static auto MatchesCallbackAttributeRule(nptr<const AngelScript::asIScriptFunction> nullable_func, const CallbackAttributeRule& rule) noexcept -> bool
+static auto MatchesCallbackAttributeRule(nptr<const AngelScript::asIScriptFunction> func, const CallbackAttributeRule& rule) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return false;
     }
 
-    auto func = nullable_func.as_ptr();
     const nptr<const char> func_name = func->GetName();
 
     if ((func->GetFuncType() != AngelScript::asFUNC_SYSTEM && func->GetFuncType() != AngelScript::asFUNC_IMPORTED) || !func_name || string_view {func_name.get()} != rule.MethodName) {
@@ -1652,15 +1624,13 @@ static auto IsFunctionCallInstruction(AngelScript::asEBCInstr opcode) noexcept -
     }
 }
 
-static auto IsDelegateFactoryFunction(nptr<const AngelScript::asIScriptFunction> nullable_func) noexcept -> bool
+static auto IsDelegateFactoryFunction(nptr<const AngelScript::asIScriptFunction> func) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_func) {
+    if (!func) {
         return false;
     }
-
-    auto func = nullable_func.as_ptr();
 
     if (func->GetFuncType() != AngelScript::asFUNC_SYSTEM) {
         return false;
@@ -1738,17 +1708,14 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
                 return;
             }
 
-            auto pending_target = pending.Target.as_ptr();
-
-            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
-                auto restricted_rule = nullable_restricted_rule.as_ptr();
-                append_error(MakeRestrictedCallbackUsageError(caller, pending_target, pending.Location, *restricted_rule, lnt));
+            if (auto restricted_rule = FindCallbackAttributeRuleByAttribute(pending.Target)) {
+                append_error(MakeRestrictedCallbackUsageError(caller, pending.Target, pending.Location, *restricted_rule, lnt));
             }
         };
 
         const auto clear_pending = [&]() { pending = {}; };
 
-        const_span<AngelScript::asDWORD> bytecode = ByteCodeSpan(bc.as_ptr(), bc_length);
+        const_span<AngelScript::asDWORD> bytecode = ByteCodeSpan(bc, bc_length);
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
             auto instruction = ByteCodeInstructionAt(bytecode, pos);
@@ -1778,43 +1745,38 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
                 }
 
                 if (pending.Target) {
-                    auto pending_target = pending.Target.as_ptr();
                     const auto call_location = ResolveInstructionLocation(caller, instruction);
                     const auto same_line = pending.WrappedInDelegate || (!pending.Location.has_value() || !call_location.has_value()) ? true : IsSameSourceLine(pending.Location, call_location);
-                    auto nullable_usage_rule = FindCallbackAttributeRuleByUsage(target);
+                    auto usage_rule = FindCallbackAttributeRuleByUsage(target);
 
-                    if (nullable_usage_rule && same_line) {
-                        auto usage_rule = nullable_usage_rule.as_ptr();
-
+                    if (usage_rule && same_line) {
                         if (usage_rule->AttributeName == "Event") {
-                            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
-                                auto restricted_rule = nullable_restricted_rule.as_ptr();
+                            if (auto restricted_rule = FindCallbackAttributeRuleByAttribute(pending.Target)) {
                                 if (restricted_rule->AttributeName == usage_rule->AttributeName) {
                                     clear_pending();
                                 }
                                 else {
-                                    append_error(MakeRestrictedCallbackUsageError(caller, pending_target, pending.Location, *restricted_rule, lnt));
+                                    append_error(MakeRestrictedCallbackUsageError(caller, pending.Target, pending.Location, *restricted_rule, lnt));
                                     clear_pending();
                                 }
                             }
                             else {
-                                append_error(MakeMissingCallbackAttributeError(caller, pending_target, pending.Location, *usage_rule, lnt));
+                                append_error(MakeMissingCallbackAttributeError(caller, pending.Target, pending.Location, *usage_rule, lnt));
                                 clear_pending();
                             }
                         }
                         else {
-                            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
-                                auto restricted_rule = nullable_restricted_rule.as_ptr();
+                            if (auto restricted_rule = FindCallbackAttributeRuleByAttribute(pending.Target)) {
                                 if (restricted_rule->AttributeName == usage_rule->AttributeName) {
                                     clear_pending();
                                 }
                                 else {
-                                    append_error(MakeRestrictedCallbackUsageError(caller, pending_target, pending.Location, *restricted_rule, lnt));
+                                    append_error(MakeRestrictedCallbackUsageError(caller, pending.Target, pending.Location, *restricted_rule, lnt));
                                     clear_pending();
                                 }
                             }
                             else {
-                                append_error(MakeMissingCallbackAttributeError(caller, pending_target, pending.Location, *usage_rule, lnt));
+                                append_error(MakeMissingCallbackAttributeError(caller, pending.Target, pending.Location, *usage_rule, lnt));
                                 clear_pending();
                             }
                         }

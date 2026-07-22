@@ -58,7 +58,7 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
     T value {};
 
     if (!data.empty()) {
-        ptr<uint8_t> target = ptr<T> {&value}.template reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).template reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), sizeof(T));
     }
 
@@ -74,7 +74,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     int32_t value = 0;
 
     if (!data.empty()) {
-        ptr<uint8_t> target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), data.size());
     }
 
@@ -191,6 +191,8 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
             throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
         }
 
+        reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
+
         for (int32_t i = 0; i < arr_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
         }
@@ -201,6 +203,11 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         if (dict_size < 0) {
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
+
+        const size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
+        const size_t value_min_size = GetRemoteCallSimpleValueMinWireSize(type.BaseType);
+        FO_VERIFY_AND_THROW(value_min_size <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict entry minimum serialized size overflows", type.BaseType.Name);
+        reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + value_min_size);
 
         for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
@@ -214,6 +221,10 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
 
+        const size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
+        FO_VERIFY_AND_THROW(sizeof(int32_t) <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict-of-array entry minimum serialized size overflows", type.BaseType.Name);
+        reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + sizeof(int32_t));
+
         for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
 
@@ -222,6 +233,8 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
             if (arr_size < 0) {
                 throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
             }
+
+            reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
 
             for (int32_t j = 0; j < arr_size; j++) {
                 ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
@@ -335,7 +348,8 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
     FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type descriptor");
     FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    auto fields_registrator = ref_type.RefType->FieldsRegistrator.as_ptr();
+    auto fields_registrator = ref_type.RefType->FieldsRegistrator;
+    FO_VERIFY_AND_THROW(fields_registrator, "Reference type fields registrator is null");
     size_t offset = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {

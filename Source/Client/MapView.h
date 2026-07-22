@@ -197,7 +197,7 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return _hexLight.data(); }
+    [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
@@ -212,10 +212,10 @@ public:
     void DrawMap();
     auto DrawEntitySprite(ptr<ClientEntity> entity, ptr<RenderEffect> effect, ucolor color, int32_t padding) -> bool;
 
-    auto FindPath(nptr<CritterHexView> nullable_cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
+    auto FindPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
     auto CutPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
-    void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> nullable_critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks);
+    void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks);
 
     void SetShowMapperOverlay(bool show);
     void SetShowMapperHiddenSprites(bool show);

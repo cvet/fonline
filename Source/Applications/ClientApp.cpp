@@ -69,21 +69,12 @@ struct RequestedClientRuntime
     bool CheckCompatibilityVersion {};
     bool ExplicitPath {};
     bool ForceEmbedded {}; // ForceEmbeddedRuntime setting (command-line form): skip the implicit bundled-DLL load
-    string PreviousBuildHash {}; // Set only on a reload pass: build hash of the module that requested it
-};
-
-struct HostClientRuntimeResult
-{
-    ClientRuntimeResult Result {};
-    string RequestedRuntimePath {};
-    string RequestedCompatibilityVersion {};
-    string LoadedBuildHash {}; // Build hash of the runtime module that actually ran
 };
 
 static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool;
-static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<HostClientRuntimeResult>;
+static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<ClientRuntimeHostResult>;
 static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool;
-static auto RunEmbeddedClient(CommandLineArgs args) -> HostClientRuntimeResult;
+static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult;
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult;
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
@@ -91,7 +82,10 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime;
 static auto ResolveBundledRuntimePath() -> string;
-static void CaptureRuntimeResultStrings(HostClientRuntimeResult& runtime_result);
+static auto IsInstalledClientLayout() -> bool;
+static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>;
+static auto GetCurrentClientRuntimeFileName() -> string;
+static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result);
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
@@ -127,16 +121,11 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     const bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
 
     if (can_load_bundled_runtime) {
-        const auto loaded = RunClientFromLibrary(args, requested_runtime);
+        const auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime);
+        const auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
 
-        if (loaded.has_value()) {
-            if (loaded->Result.ResultKind == ClientRuntimeResultKind::ReloadRequested) {
-                WriteLog("Client runtime host: DLL build {} staged a self-update at {} with compatibility {}", loaded->LoadedBuildHash, loaded->RequestedRuntimePath, loaded->RequestedCompatibilityVersion);
-                return PromoteStagedReloadForRestart(loaded->RequestedRuntimePath);
-            }
-
-            WriteLog("Client runtime host: DLL build {} finished with {}, success {}", loaded->LoadedBuildHash, ClientRuntimeResultKindToString(loaded->Result.ResultKind), loaded->Result.Success ? "yes" : "no");
-            return loaded->Result.Success;
+        if (loaded_result.has_value()) {
+            return loaded_result.value();
         }
 
         WriteLog("Client runtime host: bundled DLL did not start, trying embedded fallback");
@@ -150,22 +139,18 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
         return false;
     }
 
-    const auto embedded = RunEmbeddedClient(args);
+    const auto embedded_runtime_result = RunEmbeddedClient(args);
+    const auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
 
-    if (embedded.Result.ResultKind == ClientRuntimeResultKind::ReloadRequested) {
-        WriteLog("Client runtime host: embedded build {} staged a self-update at {} with compatibility {}", embedded.LoadedBuildHash, embedded.RequestedRuntimePath, embedded.RequestedCompatibilityVersion);
-        return PromoteStagedReloadForRestart(embedded.RequestedRuntimePath);
-    }
-
-    WriteLog("Client runtime host: embedded build {} finished with {}, success {}", embedded.LoadedBuildHash, ClientRuntimeResultKindToString(embedded.Result.ResultKind), embedded.Result.Success ? "yes" : "no");
-    return embedded.Result.Success;
+    FO_VERIFY_AND_THROW(embedded_result.has_value(), "Embedded client runtime pass did not return a result");
+    return embedded_result.value();
 }
 
-static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<HostClientRuntimeResult>
+static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<ClientRuntimeHostResult>
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client runtime host: preparing DLL {}, compatibility check {}, previous build {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled", requested_runtime.PreviousBuildHash.empty() ? "none" : requested_runtime.PreviousBuildHash);
+    WriteLog("Client runtime host: preparing DLL {}, compatibility check {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled");
 
     if (!ApplyStagedBinaryUpdate(requested_runtime.Path)) {
         WriteLog("Client runtime host: failed to apply staged binary update before loading {}", requested_runtime.Path);
@@ -178,14 +163,12 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     }
 
     ClientRuntimeExports exports {};
-    auto nullable_runtime_module = TryLoadRuntime(requested_runtime, exports);
+    auto runtime_module = TryLoadRuntime(requested_runtime, exports);
 
-    if (!nullable_runtime_module) {
+    if (!runtime_module) {
         WriteLog("Client runtime host: failed to load DLL {}", requested_runtime.Path);
         return std::nullopt;
     }
-
-    auto runtime_module = nullable_runtime_module.as_ptr();
 
     string loaded_runtime_name = exports.Metadata.RuntimeName != nullptr ? string(exports.Metadata.RuntimeName) : string();
     string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
@@ -199,20 +182,10 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
         WriteLog("Client runtime host: unloaded DLL {}", requested_runtime.Path);
     });
 
-    // A reload must map a different module than the one that asked for it. If LoadModule returned a
-    // still-resident copy of the previous runtime (same live path, not fully unloaded by the OS),
-    // running it would re-enter InitApp in an already-initialized module and trip its once-guard with
-    // an opaque StrongAssertionException. Abort the reload cleanly; the next launch maps the swapped
-    // module from a fresh process.
-    if (!requested_runtime.PreviousBuildHash.empty() && requested_runtime.PreviousBuildHash == loaded_build_hash) {
-        WriteLog("Client runtime host: reload resolved to unchanged DLL build {}, aborting reload", loaded_build_hash);
-        return std::nullopt;
-    }
-
-    HostClientRuntimeResult runtime_result {};
+    ClientRuntimeHostResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
-    vector<char*> runtime_args(args.size()); // SmartPointerAudit: raw ABI container
+    vector<char*> runtime_args(args.size());
 
     for (size_t index = 0; index < args.size(); ++index) {
         runtime_args[index] = args[index].get();
@@ -242,17 +215,35 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
         return false;
     }
 
+    if (IsInstalledClientLayout()) {
+        const auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
+
+        if (!bootstrap_path.has_value()) {
+            WriteLog("Client runtime host: failed to resolve installed runtime bootstrap path for {}", runtime_path);
+            return false;
+        }
+
+        const string runtime_file_name = GetCurrentClientRuntimeFileName();
+
+        if (!WriteClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_path, runtime_file_name)) {
+            WriteLog("Client runtime host: failed to persist installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+            return false;
+        }
+
+        WriteLog("Client runtime host: persisted installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+    }
+
     WriteLog("Client runtime host: staged self-update promoted at {}, exiting for user restart", runtime_path);
     return true;
 }
 
-static auto RunEmbeddedClient(CommandLineArgs args) -> HostClientRuntimeResult
+static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult
 {
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Client runtime host: entering embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
-    HostClientRuntimeResult runtime_result {};
+    ClientRuntimeHostResult runtime_result {};
     runtime_result.LoadedBuildHash = FO_BUILD_HASH;
     runtime_result.Result = RunClientRuntime(args);
     CaptureRuntimeResultStrings(runtime_result);
@@ -342,7 +333,7 @@ static auto GetClient() -> ptr<ClientEngine>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
-    return Data->Client.as_ptr();
+    return Data->Client;
 }
 
 static void MainEntry([[maybe_unused]] void* data)
@@ -417,7 +408,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 ClientStartupSettingsHook(GetApp()->Settings, 1, false);
-                ptr<GlobalSettings> settings = &GetApp()->Settings;
+                auto settings = make_ptr(&GetApp()->Settings);
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
                 auto client = GetClient();
@@ -477,14 +468,13 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Client runtime host: loading DLL {}", requested_runtime.Path);
-    nptr<void> nullable_runtime_module = Platform::LoadModule(requested_runtime.Path);
+    auto runtime_module = Platform::LoadModule(requested_runtime.Path);
 
-    if (!nullable_runtime_module) {
+    if (!runtime_module) {
         WriteLog("Client runtime host: LoadModule failed for {}", requested_runtime.Path);
         return nullptr;
     }
 
-    auto runtime_module = nullable_runtime_module.as_ptr();
     const auto query_exports = Platform::GetFuncAddr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports");
 
     if (query_exports == nullptr) {
@@ -515,7 +505,7 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     }
 
     WriteLog("Client runtime host: accepted DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, exports.Metadata.RuntimeName, exports.Metadata.BuildHash, exports.Metadata.CompatibilityVersion, exports.Metadata.HostAbiVersion);
-    return nullable_runtime_module;
+    return runtime_module;
 }
 
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
@@ -606,10 +596,60 @@ static auto ResolveBundledRuntimePath() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetClientRuntimeLivePath();
+    const string install_runtime_path = GetClientRuntimeLivePath();
+    const auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
+
+    if (!bootstrap_path.has_value()) {
+        return install_runtime_path;
+    }
+
+    const string runtime_file_name = GetCurrentClientRuntimeFileName();
+    const string bootstrap_target = ResolveClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_file_name, install_runtime_path);
+
+    if (bootstrap_target == install_runtime_path) {
+        WriteLog("Client runtime host: installed runtime bootstrap {} selected no alternate runtime, using base runtime {}", bootstrap_path.value(), install_runtime_path);
+        return install_runtime_path;
+    }
+
+    WriteLog("Client runtime host: selected installed runtime {} from bootstrap {}", bootstrap_target, bootstrap_path.value());
+    return bootstrap_target;
 }
 
-static void CaptureRuntimeResultStrings(HostClientRuntimeResult& runtime_result)
+static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!IsInstalledClientLayout()) {
+        return std::nullopt;
+    }
+
+    const string user_data_base = Platform::GetUserDataBase();
+
+    if (user_data_base.empty()) {
+        WriteLog(LogType::Warning, "Client runtime host: installed layout detected but no user data dir is available");
+        return std::nullopt;
+    }
+
+    const string selector_file_name = strex("{}.path", GetCurrentClientRuntimeFileName()).str();
+    return fs_resolve_path(strex(user_data_base).combine_path(FO_NICE_NAME).combine_path("ClientRuntimeHost").combine_path(selector_file_name).str());
+}
+
+static auto IsInstalledClientLayout() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const optional<string> exe_path = Platform::GetExePath();
+    return exe_path.has_value() && fs_exists(strex(exe_path.value()).extract_dir().combine_path("INSTALLED").str());
+}
+
+static auto GetCurrentClientRuntimeFileName() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
+}
+
+static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
 {
     FO_STACK_TRACE_ENTRY();
 

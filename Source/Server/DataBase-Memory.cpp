@@ -132,34 +132,79 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
+        // Exception safety: build a plain-data model first (Phase 1), then render it with pure ImGui calls (Phase 2).
+        // Every recoverable throw (strex, AnyData::ValueToString on a non-finite Float64) happens in Phase 1, before any
+        // ImGui push, so an exception leaves ImGui's ID/tree/table stacks untouched and balanced instead of corrupting the frame.
+        struct FieldRow
+        {
+            string key;
+            string value;
+        };
+        struct DocEntry
+        {
+            string label;
+            const void* id;
+            vector<FieldRow> fields;
+        };
+        struct CollEntry
+        {
+            string label;
+            const void* id;
+            vector<DocEntry> docs;
+        };
+
         const string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
-        ptr<const char> memory_docs_label_cstr = memory_docs_label.c_str();
+
+        vector<CollEntry> model;
+        model.reserve(_collections.size());
+
+        for (auto&& [collection_name, collection] : _collections) {
+            CollEntry coll_entry;
+            coll_entry.label = strex("{} ({})", collection_name.as_str(), collection.size()).str();
+            coll_entry.id = static_cast<const void*>(&collection);
+            coll_entry.docs.reserve(collection.size());
+
+            for (auto&& [id, doc] : collection) {
+                DocEntry doc_entry;
+                doc_entry.label = strex("{} ({} keys)", id, doc.Size()).str();
+                doc_entry.id = static_cast<const void*>(&doc);
+                doc_entry.fields.reserve(doc.Size());
+
+                for (auto&& [doc_key, doc_value] : doc) {
+                    doc_entry.fields.emplace_back(FieldRow {doc_key, AnyData::ValueToString(doc_value)});
+                }
+
+                coll_entry.docs.emplace_back(std::move(doc_entry));
+            }
+
+            model.emplace_back(std::move(coll_entry));
+        }
+
+        auto memory_docs_label_cstr = make_ptr(memory_docs_label.c_str());
 
         if (ImGui::TreeNode(memory_docs_label_cstr.get())) {
-            if (_collections.empty()) {
+            if (model.empty()) {
                 ImGui::TextUnformatted("No memory collections");
             }
 
-            for (auto&& [collection_name, collection] : _collections) {
-                ImGui::PushID(static_cast<const void*>(&collection));
+            for (const auto& coll : model) {
+                ImGui::PushID(coll.id);
 
-                const string collection_label = strex("{} ({})", collection_name.as_str(), collection.size()).str();
-                ptr<const char> collection_label_cstr = collection_label.c_str();
+                auto collection_label_cstr = make_ptr(coll.label.c_str());
 
                 if (ImGui::TreeNode(collection_label_cstr.get())) {
-                    for (auto&& [id, doc] : collection) {
-                        ImGui::PushID(static_cast<const void*>(&doc));
+                    for (const auto& doc_entry : coll.docs) {
+                        ImGui::PushID(doc_entry.id);
 
-                        const string doc_label = strex("{} ({} keys)", id, doc.Size()).str();
-                        ptr<const char> doc_label_cstr = doc_label.c_str();
+                        auto doc_label_cstr = make_ptr(doc_entry.label.c_str());
 
                         if (ImGui::TreeNode(doc_label_cstr.get())) {
                             if (ImGui::BeginTable("##DocFields", 2, TABLE_FLAGS)) {
                                 ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, 220.0f);
                                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
-                                for (auto&& [doc_key, doc_value] : doc) {
-                                    info_row(doc_key, AnyData::ValueToString(doc_value));
+                                for (const auto& field : doc_entry.fields) {
+                                    info_row(field.key, field.value);
                                 }
 
                                 ImGui::EndTable();

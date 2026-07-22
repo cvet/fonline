@@ -60,7 +60,7 @@ struct ClientAppData
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
 
-static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nullable_runtime_result) noexcept;
+static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept;
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 
@@ -83,7 +83,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
         return false;
     }
 
-    ptr<ClientRuntimeExports> exports = raw_exports;
+    auto exports = make_ptr(raw_exports);
 
     // Pin the runtime name string for the lifetime of this DLL — host reads it as
     // const char* through the ABI, and it must outlive every consumer call.
@@ -93,21 +93,19 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     exports->Metadata.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeMetadata));
     exports->Metadata.HostAbiVersion = FO_CLIENT_RUNTIME_HOST_ABI_VERSION;
     exports->Metadata.RuntimeName = runtime_name.c_str();
-    exports->Metadata.BuildHash = FO_BUILD_HASH.c_str();
-    exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION.c_str();
+    exports->Metadata.BuildHash = FO_BUILD_HASH;
+    exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION;
     exports->Run = &RunClientRuntimeAbi;
 
     WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
     return true;
 }
 
-static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nullable_runtime_result) noexcept
+static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nullable_runtime_result) {
-        auto runtime_result = nullable_runtime_result.as_ptr();
-
+    if (runtime_result) {
         runtime_result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
         runtime_result->ResultKind = ClientRuntimeResultKind::Shutdown;
         runtime_result->Success = false;
@@ -119,7 +117,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nul
         WriteLog("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
         InitApp(args, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
-        WriteLog("Client runtime DLL: ompatibility version: {}", GetApp()->Settings.CompatibilityVersion);
+        WriteLog("Client runtime DLL: compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
 
         auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
 
@@ -134,9 +132,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nul
         const bool quit_success = GetApp()->GetRequestedQuitSuccess();
         CleanupClientApp();
 
-        if (nullable_runtime_result) {
-            auto runtime_result = nullable_runtime_result.as_ptr();
-
+        if (runtime_result) {
             if (Data->ReloadRequested) {
                 FO_VERIFY_AND_THROW(!Data->StagedRuntimePath.empty(), "Client runtime requested reload but did not provide a staged runtime path", quit_success, Data->ReloadRequested);
                 WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
@@ -154,8 +150,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nul
         ReportExceptionAndContinue(ex);
         CleanupClientApp();
 
-        if (nullable_runtime_result) {
-            auto runtime_result = nullable_runtime_result.as_ptr();
+        if (runtime_result) {
             runtime_result->ResultKind = ClientRuntimeResultKind::FatalError;
         }
     }
@@ -174,13 +169,12 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> nul
     string_view result_kind = "none";
     bool result_success = false;
 
-    if (nullable_runtime_result) {
-        auto runtime_result = nullable_runtime_result.as_ptr();
+    if (runtime_result) {
         result_kind = ClientRuntimeResultKindToString(runtime_result->ResultKind);
         result_success = runtime_result->Success;
     }
 
-    WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, nullable_runtime_result ? "set" : "null", result_success ? "yes" : "no");
+    WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, runtime_result ? "set" : "null", result_success ? "yes" : "no");
 }
 
 static auto GetClient() -> ptr<ClientEngine>
@@ -188,7 +182,7 @@ static auto GetClient() -> ptr<ClientEngine>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
-    return Data->Client.as_ptr();
+    return Data->Client;
 }
 
 static void MainEntry([[maybe_unused]] void* data)
@@ -234,6 +228,9 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     const auto result = Data->ResourceUpdater->GetResult();
+                    // The updater stages the new runtime under its own binary dir (the writable root
+                    // for an installed client, the exe dir for a portable one); request that exact path.
+                    const auto staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -242,7 +239,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         Data->ResourcesSynced = true;
                         break;
                     case UpdaterResult::BinariesStaged:
-                        Data->StagedRuntimePath = GetClientRuntimeLivePath();
+                        Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
                         WriteLog("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
                         GetApp()->RequestQuit();
@@ -255,7 +252,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
                 }
 
-                ptr<GlobalSettings> settings = &GetApp()->Settings;
+                auto settings = make_ptr(&GetApp()->Settings);
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
                 auto client = GetClient();

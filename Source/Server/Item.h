@@ -84,8 +84,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterWalk, ptr<Critter> /*critter*/, bool /*isIn*/, mdir /*dir*/);
 
-    ScriptFunc<bool, Critter*, StaticItem*, Item*, any_t> StaticScriptFunc {};
-    ScriptFunc<void, Critter*, StaticItem*, bool, mdir> TriggerScriptFunc {};
+    ScriptFunc<bool, ptr<Critter>, ptr<StaticItem>, nptr<Item>, any_t> StaticScriptFunc {};
+    ScriptFunc<void, ptr<Critter>, ptr<StaticItem>, bool, mdir> TriggerScriptFunc {};
 
 private:
     ptr<const ProtoItem> _protoItem;

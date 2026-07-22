@@ -72,7 +72,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir, res_pack.RecursiveInput);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
@@ -88,19 +88,20 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
-            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
-                metadata_baker.BakeFiles(res_files.GetAllFiles(), "");
+                metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
                 metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
@@ -133,7 +134,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir, res_pack.RecursiveInput);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
@@ -149,20 +150,21 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
             };
 
-            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
-            nptr<const FileSystem> metadata_files_ptr = &metadata_files;
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
+            auto metadata_files_ptr = make_nptr(&metadata_files);
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
 
             try {
-                scripts_baker.BakeFiles(res_files.GetAllFiles(), "");
+                scripts_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
             }
             catch (const std::exception& ex) {
                 WriteLog("AngelScript compile error: {}", ex.what());

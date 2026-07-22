@@ -187,6 +187,7 @@ public:
 
     [[nodiscard]] auto GetAllFiles() const -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool recursive = true) const -> FileCollection;
+    [[nodiscard]] auto FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection;
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool;
     [[nodiscard]] auto ReadFile(string_view path) const -> File;
     [[nodiscard]] auto ReadFileText(string_view path) const -> string;

@@ -31,12 +31,23 @@ Read this page together with:
 - `Source/Client/RenderTarget.cpp`
 - `Source/Client/SpriteManager.h`
 - `Source/Client/SpriteManager.cpp`
+- `Source/Client/3dStuff.h`
+- `Source/Client/3dStuff.cpp`
+- `Source/Client/ModelSprites.h`
+- `Source/Client/ModelSprites.cpp`
+- `Source/Client/ModelSpriteLayout.h`
+- `Source/Client/ModelSpriteLayout.cpp`
+- `Source/Common/AnimationInfo.h`
+- `Source/Common/AnimationInfo.cpp`
+- `Source/Common/ModelBounds.h`
+- `Source/Common/ModelBounds.cpp`
 - `Source/Common/Geometry.h`
 - `Source/Common/Geometry.cpp`
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
 - `Source/Tests/Test_Geometry.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
 
 ## Layer map
 
@@ -155,6 +166,150 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 
 `Source/Frontend/Rendering.cpp` owns backend-independent helper behavior, including draw-buffer allocation checks and effect configuration parsing. It reads effect sections such as `Effect` and `EffectInfo`, pass counts, blend settings, and script-visible buffers before backend-specific code consumes shader files.
 
+`EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex
+topology restriction. The sprite draw buffer is an indexed triangle list, and
+source-backed `AtlasSprite` frames may emit their baked silhouette vertices and
+indices instead of the implicit 4-vertex/6-index rectangle. All renderer
+backends consume the same buffer; no backend-specific polygon path exists.
+
+Local mesh coordinates are relative to the exact bounding box of the selected
+geometry. The baked frame carries the original logical bitmap size and the
+cropped-frame origin within it, while its individual sprite offset preserves
+the original logical root. Screen position and atlas UV are affine mappings of
+the same cropped coordinate, so scaling, rotation, map projection,
+standing-sprite depth, and egg flags continue to operate over every emitted
+vertex without retaining unused texture rows or columns. Map lighting also
+preserves the old full-bitmap quad plane: `DrawSprites` still provides the
+left/right endpoint colours, and a mesh vertex at cropped local X receives
+`lerp(left, right, clamp((localX + sourceOffsetX) / sourceWidth, 0, 1))`.
+The factor is the vertex's normalized horizontal position within the original
+bitmap — 0 at its left edge, 0.5 at its centre, 1 at its right edge — and is
+not measured from the cropped bounds or the opaque contour. Because
+`Vertex2D::Color` is RGBA8, intermediate mesh vertices may differ from ideal
+quad interpolation by at most one channel unit due to rounding.
+
+Only ordinary full-image sprite draws submit baked polygon meshes. Every atlas
+allocation still has a valid rectangular `GetAtlasRect()`; polygon baking can
+make that physical frame smaller than, and offset within, the original logical
+image. Region crops, tiled patterns, padded custom-effect/outline draws, and
+mapper previews map that physical rectangle into logical coordinates through
+`SourceOffset`. Region UVs remain normalized to the original logical image, and
+transparent cropped margins are clipped out of the destination rectangle. A
+polygon crop therefore cannot shift or stretch a GUI 9-slice, repeated pattern,
+preview, or source-region composition.
+Effects that need to create pixels outside the source silhouette must use such a
+padded/quad path rather than an ordinary full-sprite draw.
+
+Runtime model sprites may still use a cropped quad, but their logical layout is
+automatic. `.fo3d` no longer accepts `DrawSize` or `ViewSize`, and the
+corresponding default render settings no longer provide fallback dimensions.
+`ModelAnimationInfo.foinfo` bounds schema version 2 supplies an aggregate root-space
+model AABB, a dedicated idle-priority view AABB, and individual animation AABBs.
+In `FO_ENABLE_3D` builds, the common `EngineMetadata` loader parses and validates
+the complete companion once; rendering requests immutable model records from that registry rather than
+maintaining a second client-side config parser or bounds cache.
+
+The client projects enabled animation bounds through the active base transform
+and derives their extrema for every continuous facing angle. Body plus projected
+shadow determines both the animation-wide `DrawRect` and the active logical
+scratch-frame dimensions. The separate view bound prefers `Unarmed + Idle`,
+then any Idle, then a deterministic animation/static fallback; projecting it
+over all directions yields the stable `ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
+`(DrawWidth / 2, 3 * DrawHeight / 4)`. The view rectangle deliberately excludes
+the shadow and remains independent from the changing atlas crop, so names,
+coarse picking, transparent eggs, and flying-text placement do not jitter when
+the model turns or changes animation.
+
+The automatic logical frame owns the reusable 2x scratch render target. After
+the pose is evaluated, the client combines its per-animation prediction with an
+exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
+their projected shadow. If that exact envelope needs a larger logical frame,
+the client expands the frame and rerenders before copying; a bounded retry loop
+rejects a layout that does not converge. Only the selected region is allocated
+and copied into the atlas. The crop origin is reflected in the sprite offset,
+preserving the automatic frame's root, hit-test coordinates, and map
+positioning. The active layer/child-model tree extends the idle-priority base
+view and aggregate lighting bounds. Animation switches may refresh `DrawRect`
+and the logical scratch frame, but `ViewRect` keeps using the accumulated
+model-and-layers view envelope rather than temporarily replacing it with the
+root model's smaller idle view; the name anchor therefore remains stable
+throughout turn animations. Left/right map-light colours are
+sampled at root-relative crop endpoints on that configuration envelope, so
+animation-driven scratch-size changes do not alter the light mix and wide gear
+does not clamp to a base-model endpoint colour.
+
+Within one active animation/combined-mesh envelope, later pose changes only
+expand the slot. The envelope identity changes when enabled body/movement
+tracks settle after a transition, generated mesh composition changes, or
+shadow coverage changes; that permits one shrink to the new stable envelope
+instead of accumulating every animation played during the sprite's lifetime.
+Direction is deliberately not part of the identity, so ordinary turns retain a
+stable high-water slot. New placements are reserved and copied before the
+sprite publishes its frame/crop/allocation; a failed copy leaves the previous
+allocation live and schedules a retry. Active model-attached particles use
+SPARK's live render AABB after the first update, fall back to the advertised
+canvas before it exists, and select the entire current frame. Scratch-frame
+changes rebase already emitted atlas-space particles before rerendering;
+non-default model effects also disable the tight crop.
+This protects ordinary skinned output but is not a shader-displacement bound:
+an effect that moves vertices outside the normal geometry needs a separate
+conservative contract. `Render.ModelDirectDraw` retains atlas-side preview and
+hit-test data while visible geometry continues to draw directly in the scene.
+
+`Game.DumpAtlases()` and the mapper's **Dump atlases** command annotate the
+read-back TGA copy with the live allocation geometry; the runtime atlas texture
+is not modified. Magenta lines show triangle edges, cyan pixels show mesh
+vertices, yellow rectangles identify implicit quad geometry, and a red X marks
+an explicitly empty baked frame. `AtlasSprite` owns its mesh metadata; the live
+atlas allocation keeps a nullable non-owning observer into that data and clears
+it when the space is released, so a dump cannot display stale geometry after an
+atlas slot is reused.
+
+`AtlasSprite` keeps the authored logical size and offset separate from the
+cropped atlas allocation. Mesh vertices are positioned through their
+`SourceOffset` in logical-canvas coordinates while UVs remain local to the
+cropped allocation. `GetSize()`, `GetOffset()`, scaling, and hit testing
+therefore retain the source-image contract even when baking removes transparent
+border pixels. Atlas cropping reduces texture memory without becoming visible
+to GUI layout, sprite anchoring, or input routing.
+
+Runtime atlas allocation remains per image, but `TextureAtlasLayout` uses
+dynamic MaxRects placement instead of an order-sensitive guillotine tree. It
+retains overlapping maximal free rectangles and chooses the best short-side
+fit, then long-side fit and wasted area, without rotating images. The manager
+evaluates that fit across every existing atlas of the requested type before it
+creates another page; equal page-level scores keep the older atlas. The packed
+rectangle already includes the one-pixel texture border, so the algorithm does
+not change filtering padding, sprite pixels, or UV calculation.
+
+Font sheets, model material textures, particle texture maps, and Spine
+attachment textures are rectangular image consumers, not drawable polygon
+sprites. Their authored glyph or normalized UV coordinates address the complete
+source bitmap and their consumers receive only an atlas rectangle, without a
+`SourceOffset`. They therefore load through `SpriteManager::LoadSpriteAsQuad`,
+which uses the baked mesh metadata only to restore the original logical canvas
+before atlas upload. Loading them as ordinary `AtlasSprite` instances would
+expose mesh padding/cropping dimensions to the authored coordinates and shift
+their UVs. Runtime-generated model and particle sprites already occupy ordinary
+rectangular atlas allocations and do not need this reconstruction.
+
+Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
+stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
+observer in constant time and marks the derived free-rectangle list dirty. The
+next allocation rebuilds that list once from all still-live rectangles, in a
+deterministic order, so batches of unloads are coalesced and no surviving
+sprite, pixel region, or UV ever moves. This runtime-only layout change does
+not add settings or alter sprite-resource serialization.
+
+`Render.DrawWireframe` enables a backend-independent runtime geometry
+overlay. `SpriteManager` copies the actual submitted triangle edges after
+positioning, scaling, rotation, map projection, and standing-sprite depth
+adjustments, then draws them as an opaque magenta primitive line list over the
+normal sprite pass. This also exposes the two triangles of ordinary quad
+sprites, so it is independent of `SpriteMesh.Enabled`. The toggle is disabled
+by default and does not modify the sprite draw buffer, texture atlas, or baked
+resource.
+
 ## Render backends
 
 ### Null renderer
@@ -195,6 +350,7 @@ OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer chan
 Important behaviors:
 
 - creates D3D device/swap-chain/render-target resources;
+- leaves the refresh rate unspecified for the windowed swap chain so DXGI follows the desktop compositor instead of requiring one hard-coded display mode;
 - creates textures, staging textures, draw buffers, constant buffers, and effects;
 - loads vertex/pixel shader content through the effect loader;
 - handles resize by recreating backbuffer/depth resources;
@@ -211,7 +367,7 @@ The loader is **not** linked at build time (`vulkan-1.lib` is never referenced).
 Design and important behaviors:
 
 - **Single queue, two frames in flight.** The context owns `VULKAN_FRAMES_IN_FLIGHT` (= 2) frame slots, each bundling a command buffer, an in-flight fence, an acquire semaphore, a descriptor pool, a persistently-mapped uniform bump buffer, a texture-staging ring and a deferred-destroy queue. `BeginFrame()` advances the slot, waits its fence (normally instant — this replaces the old full `vkQueueWaitIdle`, so the CPU records frame N while the GPU renders frame N-1), flushes the slot's deferred destroys, resets its descriptor pool, points the context's current-slot aliases (`CommandBuffer`, `FrameDescriptorPool`, `FrameUniformBuffer`, …) at it, acquires a swapchain image, clears it, and begins the render pass; `EndFrame()` ends the pass, submits (signaling the slot fence and the acquired image's render-complete semaphore), and presents. Render-complete semaphores are **per swapchain image**, so a semaphore is never re-signaled while the presentation engine may still wait on it; acquire semaphores are per slot. A fence signal implies completion of all earlier submissions on the queue, which is the single correctness anchor for every per-slot resource reuse.
-- **Deferred destroys are per frame slot.** `DestroyResourceSafe(...)` enqueues into the *current* slot's queue; the queue is flushed right after that slot's fence is waited, by which point both in-flight frames that could reference the resource are provably complete. Swapchain recreation paths settle the device (`vkDeviceWaitIdle`), flush all queues wholesale and rebuild every sync object.
+- **Deferred destroys are per frame slot.** The typed `Destroy*Safe(...)` helpers enqueue into the *current* slot's queue; the queue is flushed right after that slot's fence is waited, by which point both in-flight frames that could reference the resource are provably complete. They intentionally have distinct names because Vulkan non-dispatchable handle typedefs collapse to the same integer type on 32-bit targets. All Vulkan handles use `VK_NULL_HANDLE` rather than `nullptr`, so the same code remains valid for both pointer-backed and integer-backed handle ABIs. Swapchain recreation paths settle the device (`vkDeviceWaitIdle`), flush all queues wholesale and rebuild every sync object.
 - **Texture uploads record into the frame command buffer; readbacks flush it.** Draws and clears record into the frame command buffer (executed at present time). `UpdateTextureRegion` during a recording frame suspends the render pass and records barrier → `vkCmdCopyBufferToImage` → barrier into that same buffer, so program order preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this frame executes before the upload — without this, "clear atlas, then upload sprites" would execute as *upload first, clear last* and silently erase glyphs/sprites) with no mid-frame submit or full-GPU wait; the pixels go through the frame slot's pooled staging ring. `GetTextureRegion` (readback) must observe everything recorded so far, so it first calls `FlushFrameCommandBufferMidFrame()` — submit the partially recorded frame buffer (waiting the swapchain-acquire semaphore if it is the frame's first submit), wait idle, resume recording — and then runs an immediate staging copy. Uploads outside a recording frame (texture init) use the immediate staging path too. Keep this invariant when adding any new immediate-queue operation.
 - **Dynamic geometry goes through per-draw-buffer, per-frame-slot ring pools.** Every dynamic `DrawBuffer::Upload` takes the next buffer of the draw buffer's growable ring of persistently-mapped HOST_VISIBLE buffers for the current frame slot (one ring buffer per upload within a frame, so earlier draws pending in the frame command buffer keep their geometry snapshots). A ring resets on its first acquire in a new frame; its slot's in-flight fence was waited by then, so every buffer in it is GPU-free. Ring buffers only reallocate on capacity growth, so steady-state uploads are pure memcpy with zero `vkCreateBuffer`/`vkAllocateMemory`/`vkFreeMemory` traffic (per-upload buffer churn plus the matching deferred-destroy sweep previously dominated the backend's CPU frame cost ~25 ms/frame in crowd scenes). Static buffers keep the one-off staging copy to device-local memory.
 - **Shaders are baked with `highp` floats.** The effect baker emits ES shaders with `precision highp float`. `mediump` would become SPIR-V `RelaxedPrecision`, which desktop GL/D3D silently ignore but NVIDIA Vulkan drivers honor as FP16 — large uniform values (frame time in seconds, world-anchored UVs) then overflow half-float range (max 65504) and shaders that consume them (e.g. time-driven weather/atmosphere post-processing) collapse to black on Vulkan only.
@@ -221,7 +377,7 @@ Design and important behaviors:
 - **Uniform completeness.** Unlike OpenGL/D3D, where an unbound UBO retains its last value, a per-draw descriptor set must write every uniform block the shader uses. The backend default-initializes any required-but-unset standard buffer (egg, sprite-border, time, random, script, camera, …) to zero before upload so no shader reads an unwritten descriptor.
 - **Surface format.** The swapchain uses `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, verified against `vkGetPhysicalDeviceSurfaceFormatsKHR`. The single render pass is shared by the swapchain framebuffers and all texture render targets, so texture render targets use the same color format for render-pass compatibility. CPU pixel upload/readback swizzles R↔B to match this format.
 - **Present mode honors `Render.VSync`.** `VSync = true` (or a surface with no better mode) uses `VK_PRESENT_MODE_FIFO_KHR`; with VSync off the swapchain prefers `IMMEDIATE` (uncapped, possible tearing), then `MAILBOX` (uncapped, no tearing), matching how the other backends honor the setting in their present paths. The chosen mode is logged at swapchain (re)creation (`Vulkan swapchain present mode: …`). A hardcoded FIFO would silently vsync-lock the backend and make cross-renderer frame-rate comparisons meaningless.
-- **Orientation.** Render-target textures are reported as not flipped (`IsRenderTargetFlipped() == false`, like Direct3D). The projection matrices are **identical to the other backends** (Y-up ortho); Vulkan's Y-down clip space is compensated by a **negative-height viewport** (core since Vulkan 1.1 — the instance requests `VK_API_VERSION_1_1`). Keeping the matrices identical matters beyond the GPU: `GetProjMatrix()` feeds engine-side 3D model camera math (`ModelSprites`/`3dStuff`), and a backend-specific Y-negated matrix breaks that CPU-side placement (3D models render clipped). The negative viewport flips screen-space winding exactly like the old Y-negated matrix did, so pipeline front-face settings are unaffected.
+- **Orientation.** Render-target textures are reported as not flipped (`IsRenderTargetFlipped() == false`, like Direct3D). The projection matrices are **identical to the other backends** (Y-up ortho); Vulkan's Y-down clip space is compensated by a **negative-height viewport** (core since Vulkan 1.1 — the instance requests `VK_API_VERSION_1_1`). Keeping the matrices identical matters beyond the GPU: `GetProjMatrix()` feeds engine-side 3D model camera math (`ModelSprites`/`ModelInstance`), and a backend-specific Y-negated matrix breaks that CPU-side placement (3D models render clipped). The negative viewport flips screen-space winding exactly like the old Y-negated matrix did, so pipeline front-face settings are unaffected.
 - **Point primitives.** Effect shaders are cross-compiled to HLSL/MSL via spirv-cross, which cannot express `gl_PointSize`, so a `POINT_LIST` topology (which Vulkan requires `PointSize` for) is mapped to `TRIANGLE_LIST`. Point primitives are not used by current content; revisit if real point rendering is needed.
 - **Physical device selection.** The backend prefers a discrete GPU that exposes a graphics+present queue family for the surface and the swapchain extension, instead of blindly taking the first enumerated device.
 - **Validation.** When `Render.RenderDebug` is set (or in a debug build) and the `VK_LAYER_KHRONOS_validation` layer is available, the backend enables it and routes layer messages to the log as `[VkLayer/…]` through a `VK_EXT_debug_utils` messenger. Use this for backend validation; a correct change should run with zero validation errors.
@@ -239,7 +395,7 @@ Design and important behaviors:
 - **Per-effect pipeline cache.** Graphics pipelines are immutable state objects cached per effect, keyed by pass, topology, depth-target presence, `DisableBlending`, and `DisableCulling`.
 - **Consumes the SDL-convention baked flavors, not the native `-spv`.** SDL_GPU mandates a per-stage descriptor convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3) that differs from the native Vulkan renderer's 2-set convention (UBO = set 0, sampler = set 1). So the effect baker emits an extra `-spv_sdl` flavor — the native SPIR-V with its descriptor decorations rewritten to the SDL convention — plus SDL-remapped `-msl_*` and an `[EffectInfoSdl]` metadata section (per-stage sampler/UBO counts + dense slot indices). The native `-spv` (consumed by `Rendering-Vulkan`) is untouched. The backend picks `-spv_sdl` for the Vulkan driver or `-msl_*` for the Metal driver via `SDL_GetGPUShaderFormats`, and reads the per-stage slots from `[EffectInfoSdl]`.
 - **Push-style uniforms.** Uniform data is pushed with `SDL_PushGPU{Vertex,Fragment}UniformData` (at most 4 slots per stage) and re-pushed on every draw; the effect's public uniform optionals keep their last value to emulate the persistent-buffer semantics of the other backends. The 4-UBO-per-stage limit is enforced by the baker at bake time.
-- **`ProjBuf`/`MainTexBuf` are caller-owned when set, renderer-derived otherwise.** `DrawBuffer` auto-fills `ProjBuf` from the renderer's current 2D ortho and `MainTexBuf` from the bound texture size **only when the caller has not already supplied them** (`_needX && !X.has_value()`), then `reset()`s just those two after the draw so the next 2D draw re-derives them. This mirrors the native Vulkan backend and is load-bearing for 3D: `ModelSprites`/`3dStuff` set `ProjBuf` externally to the per-frame model projection before drawing a critter model to its atlas — unconditionally overwriting it with the 2D ortho projects the skinned mesh off-screen, so nothing rasterizes into the model atlas and 3D critters render as name-plates only (the "characters not drawn in SDL" bug). The other externally fed buffers (`EggBuf`, `ModelBuf`, …) are likewise only auto-derived behind `!has_value()` and keep their last value across draws.
+- **`ProjBuf`/`MainTexBuf` are caller-owned when set, renderer-derived otherwise.** `DrawBuffer` auto-fills `ProjBuf` from the renderer's current 2D ortho and `MainTexBuf` from the bound texture size **only when the caller has not already supplied them** (`_needX && !X.has_value()`), then `reset()`s just those two after the draw so the next 2D draw re-derives them. This mirrors the native Vulkan backend and is load-bearing for 3D: `ModelSprites`/`ModelInstance` set `ProjBuf` externally to the per-frame model projection before drawing a critter model to its atlas — unconditionally overwriting it with the 2D ortho projects the skinned mesh off-screen, so nothing rasterizes into the model atlas and 3D critters render as name-plates only (the "characters not drawn in SDL" bug). The other externally fed buffers (`EggBuf`, `ModelBuf`, …) are likewise only auto-derived behind `!has_value()` and keep their last value across draws.
 - **Shares the engine-wide black-map fixes.** Because it reuses the same baked SPIR-V pipeline (baked with `precision highp float`) and the same epoch-based shader-time wrap in `EffectManager::PerFrameEffectUpdate`, the SDL_GPU backend inherits both Vulkan-only fixes (half-float overflow and `sin(large accumulated time)` NaN) and does not reproduce the black-map failure.
 - **Point primitives, orientation, depth.** `POINT_LIST` is remapped to `TRIANGLE_LIST` (shaders lack `gl_PointSize`), mirroring the native Vulkan renderer. `IsRenderTargetFlipped()` is `false` and the ortho matrix uses the `[0,1]` depth convention. Depth targets use `D24_UNORM` when supported, otherwise `D32_FLOAT`. Max atlas size is fixed at 4096 (SDL_GPU exposes no texture-size query).
 
@@ -274,7 +430,7 @@ Two distinct sizes drive client rendering:
 
 The game always renders into `_rtMain` at the logical size; the final blit (`Renderer::SetRenderTarget(nullptr)` in the backends) then **stretches/upscales `_rtMain` with aspect ratio preserved** into the backbuffer (centered, with bars only when the aspects differ). This is deliberate: fullscreen must scale the chosen logical resolution up to the monitor without non-proportional distortion. When the two sizes are equal the blit is 1:1 with no bars. Accordingly `_rtMain` is sized to `GetScreenSize()` and is resized on the screen-size-changed event. Dispatchers are semantic: `OnScreenSizeChanged` fires only when the logical screen size changes, while `OnWindowSizeChanged` fires when the physical/host window changes.
 
-Script offscreen surfaces (`Game.ActivateOffscreenSurface` / `Game.PresentOffscreenSurface`) also operate in the logical screen coordinate space, because scripts draw them while `_rtMain` is active. Pooled offscreen render targets must therefore be created at `SpriteManager::GetScreenSize()` and resized when the logical resolution changes before they are reused; otherwise effects such as monitor-noise GUI composition can clip content that moves outside the old resolution.
+Script offscreen surfaces (`Game.ActivateOffscreenSurface` / `Game.PresentOffscreenSurface`) also operate in the logical screen coordinate space, because scripts draw them while `_rtMain` is active. Pooled offscreen render targets must therefore be created at `SpriteManager::GetScreenSize()` and resized when the logical resolution changes before they are reused; otherwise effects such as monitor-noise GUI composition can clip content that moves outside the old resolution. `SpriteManager` applies its active scissor stack while flushing to these surfaces as well as to `_rtMain`, so a cropped GUI subtree keeps the same viewport boundary when it is wrapped in an offscreen effect.
 
 ### Windowed
 
@@ -341,7 +497,7 @@ Effects carry per-pass depth state parsed from the `.fofx` `[Effect]` block:
 The map render target (`MapView::_rtMap`) is created `with_depth`, giving the world one shared depth buffer. `EffectUsage::QuadSprite` and `EffectUsage::Model` effects participate in it (depth state is a hardware no-op on targets without a depth attachment — UI, light, flush-to-screen):
 
 - Screen-space quads (GUI, fonts, render-target blits, and non-map sprite effects) initialize `Vertex2D::PosZ` to `0.0f`; map sprites may start from the same atlas data, but `SpriteManager` overwrites their Z before flushing them into `_rtMap`.
-- Standing map sprites (`Item`/`Critter`) use `DepthFunc = LessEqual` with depth writes (`2D_Default.fofx` / `2D_WithoutEgg.fofx`): they both **test against and write** the shared depth buffer, so they occlude each other and the direct-draw particles / 3D models by real depth. Their per-vertex depth is the vertical-billboard proxy (`get_map_sprite_proj` → `GetHexWorldPos`/`ProjectWorldToMap`, anchored on the sprite root; the `MapView::InitView` view layout reproduces `GetHexPos.y` exactly, so the rendered screen position and the depth basis agree). **The depth/sort anchor is the object's LOGICAL root, not the bitmap bottom-center.** For an item the proto `Offset` is the bottom-center→root vector (a tree's trunk): it still positions the bitmap through `MapSprite::_pSprOffset` (so the visual, lighting and `MeasureMapBorders` are unchanged), but it is *also* kept as a separate static root offset (`HexView::_rootOffset` → `MapSprite::_pRootOffset`) that the depth proxy subtracts — in `GetMapRootOffset()` for `sprite_proj.z` and from `scene_pos_y` for the per-vertex reference — so a tall sprite anchors on its trunk instead of `Offset` pixels below it. Without this, the tree's depth anchored at the bitmap bottom (too far south/near) and it wrongly occluded a critter standing in front of it. Critters carry no proto `Offset` (their root comes from the sprite anchor), so their `_rootOffset` is zero. They are the **only** map sprite layer that participates in the depth buffer; every flat/background layer (floor tiles, roofs, flat ground overlays) is painter-only and depth-inert — neither writes nor tests (see below). `MapSprite` receives critter/item `Elevation`; positive elevation shifts the sprite upward in screen Y and increases the same world-Z depth. `MapSprite::HexOffset` plus runtime sprite/tweak offsets are projected along the ground plane before depth is computed, so sub-hex movement changes both screen position and 3D depth continuously; viewport-only `field.Offset` is not part of world depth. The intrinsic `Sprite::Offset` is different: it defines which pixel inside the atlas quad is the logical root on the ground, so vertical depth and direct-to-scene anchors use that root instead of assuming the bitmap's lower center. Floor tile layers (`DrawOrderType::Tile..Tile4`) and flat ground overlays (`FlatItemPreLight`/`HexGrid` pre-light, and `DeadCritter`/`FlatItemAfterLight` post-light — the layers below `NormalBegin`) are upright background sprites: they keep their atlas-provided screen-space XY/UV and **never touch the shared depth buffer**. Entity sprites choose the no-depth effect at the entity level: tiles and roofs resolve `Effects.Tile` / `Effects.Roof`; flat items resolve `Effects.Flat` (`ItemHexView::Init`, by `GetDrawFlatten()`) — all three → `2D_NoDepth.fofx`. Script-created `MapSpriteHolder` sprites have no entity-level effect handle, so `MapView` supplies the pass default effect to `SpriteManager::DrawSprites` from the draw-order segment before batching: `Tile..PreLight` → `Effects.Tile`, `AfterLight..FlatEnd` → `Effects.Flat`, `Roof..RoofParticles` → `Effects.Roof`, and normal layers → `Effects.Generic`. Item draw order is decided by `GetDrawFlatten()`, never by `IsScenery`/`IsWall`: upright → `Item` (the default), flat → `FlatItemPreLight` if `GetStatic()` (drawn pre-light) else `FlatItemAfterLight` (post-light). The former `Scenery`/`Item` (and `FlatScenery`/`FlatItem`) layers were merged, so upright items on one hex no longer force scenery behind items by class — they draw in **add order** (the `MapSprite::_globalPos` tiebreaker once `_drawOrderPos` ties on the merged layer + hex). (Dead critters drawn flattened keep `Effects.Critter` and still write depth; revisit if a corpse ever clips a standing critter.) All of these (`DepthWrite = False` + `DepthFunc = Always`) are drawn before the standing sprites and fully painter-sorted, so they cannot z-fight (coplanar layers), seam (abutting sprites), or clip a standing sprite's feet / a 3D model — they need no per-vertex depth, no ground-plane projection, and no per-layer bias. Standing sprite layers (`Item`, `Critter`) keep atlas XY/UV but write per-vertex `PosZ` through `GeometryHelper::ProjectMapYToVerticalDepth`, so they behave like vertical planes standing on their ground anchor; they carry no draw-order depth bias, because one would pull the vertical plane toward the camera and move the particle-occlusion line off the logical root point. The only remaining depth-bias user is the direct-draw path (particles / 3D models replayed at the end of each sprite pass): `SpriteManager` divides a half-pixel depth budget (`MAP_LAYER_DEPTH_BIAS`) by `DrawOrderType::Last + 1` and gives each direct-draw sprite a single such step above its world depth, keeping it below the subpixel snapping threshold (see *Direct-to-scene sprites*). Both `Core` and `Embedded` `2D_Default.fofx` must project the full `InPosition.xyz`; if an override flattens to `InPosition.xy, 0.0`, particles have no useful scene depth to test against. `2D_Default.fofx` and `2D_WithoutEgg.fofx` discard fragments whose final alpha is at or below `1/255` (after egg alpha), so fully transparent sprite texels do not populate the depth buffer and clip in-scene particles behind the empty parts of the atlas quad.
+- Standing map sprites (`Item`/`Critter`) **write** the shared depth buffer but do **not** test it (`DepthFunc = Always` in `2D_Default.fofx` / `2D_WithoutEgg.fofx`): the write is what lets direct-draw particles / 3D models occlude against sprites, while sprite-vs-sprite occlusion is decided purely by the painter order. That is exact rather than approximate, because every standing sprite's depth plane shares one gradient (`ProjectMapYToVerticalDepth`): parallel planes never intersect, so "which sprite is in front" is a whole-sprite fact, and ordering by the anchor depth reproduces a per-pixel `LessEqual` result pixel for pixel — without the interpolation noise that made *coincident* planes (hexes on the same screen row) flip the winner per pixel row and show up as horizontal z-fighting stripes on far rows of large maps. This is why `MapSpriteList::MakeDrawOrderPos` sorts standing sprites by `GeometryHelper::GetHexScreenRow` (the row of `GetHexPos().y`, i.e. the equivalence class of equal ground depth — hexes related by +2X/−1Y) instead of the hex row: the hex row disagrees with depth order (e.g. `hy−1, hx+4` is nearer yet sorts earlier) and would make the painter order wrong for overlapping large scenery. Pinned by `Source/Tests/Test_Geometry.cpp` (`GetHexScreenRow`). The trade-off is that a *flat* depth-writing layer no longer clips a standing sprite per pixel (their planes do intersect): a flattened corpse drawn in an earlier layer is covered by any overlapping standing sprite regardless of depth. Their per-vertex depth is the vertical-billboard proxy (`get_map_sprite_proj` → `GetHexWorldPos`/`ProjectWorldToMap`, anchored on the sprite root; the `MapView::InitView` view layout reproduces `GetHexPos.y` exactly, so the rendered screen position and the depth basis agree). **The depth/sort anchor is the object's LOGICAL root, not the bitmap bottom-center.** For an item the proto `Offset` is the bottom-center→root vector (a tree's trunk): it still positions the bitmap through `MapSprite::_pSprOffset` (so the visual, lighting and `MeasureMapBorders` are unchanged), but it is *also* kept as a separate static root offset (`HexView::_rootOffset` → `MapSprite::_pRootOffset`) that the depth proxy subtracts — in `GetMapRootOffset()` for `sprite_proj.z` and from `scene_pos_y` for the per-vertex reference — so a tall sprite anchors on its trunk instead of `Offset` pixels below it. Without this, the tree's depth anchored at the bitmap bottom (too far south/near) and it wrongly occluded a critter standing in front of it. Critters carry no proto `Offset` (their root comes from the sprite anchor), so their `_rootOffset` is zero. They are the **only** map sprite layer that participates in the depth buffer; every flat/background layer (floor tiles, roofs, flat ground overlays) is painter-only and depth-inert — neither writes nor tests (see below). `MapSprite` receives critter/item `Elevation`; positive elevation shifts the sprite upward in screen Y and increases the same world-Z depth. `MapSprite::HexOffset` plus runtime sprite/tweak offsets are projected along the ground plane before depth is computed, so sub-hex movement changes both screen position and 3D depth continuously; viewport-only `field.Offset` is not part of world depth. The intrinsic `Sprite::Offset` is different: it defines which pixel inside the atlas quad is the logical root on the ground, so vertical depth and direct-to-scene anchors use that root instead of assuming the bitmap's lower center. Floor tile layers (`DrawOrderType::Tile..Tile4`) and flat ground overlays (`FlatItemPreLight`/`HexGrid` pre-light, and `DeadCritter`/`FlatItemAfterLight` post-light — the layers below `NormalBegin`) are upright background sprites: they keep their atlas-provided screen-space XY/UV and **never touch the shared depth buffer**. Entity sprites choose the no-depth effect at the entity level: tiles and roofs resolve `Effects.Tile` / `Effects.Roof`; flat items resolve `Effects.Flat` (`ItemHexView::Init`, by `GetDrawFlatten()`) — all three → `2D_NoDepth.fofx`. Script-created `MapSpriteHolder` sprites have no entity-level effect handle, so `MapView` supplies the pass default effect to `SpriteManager::DrawSprites` from the draw-order segment before batching: `Tile..PreLight` → `Effects.Tile`, `AfterLight..FlatEnd` → `Effects.Flat`, `Roof..RoofParticles` → `Effects.Roof`, and normal layers → `Effects.Generic`. Item draw order is decided by `GetDrawFlatten()`, never by `IsScenery`/`IsWall`: upright → `Item` (the default), flat → `FlatItemPreLight` if `GetStatic()` (drawn pre-light) else `FlatItemAfterLight` (post-light). The former `Scenery`/`Item` (and `FlatScenery`/`FlatItem`) layers were merged, so upright items on one hex no longer force scenery behind items by class — they draw in **add order** (the `MapSprite::_globalPos` tiebreaker once `_drawOrderPos` ties on the merged layer + hex). (Dead critters drawn flattened keep `Effects.Critter` and still write depth, but since standing sprites no longer depth-test, a corpse cannot clip a standing sprite — it is covered by draw order.) All of these (`DepthWrite = False` + `DepthFunc = Always`) are drawn before the standing sprites and fully painter-sorted, so they cannot z-fight (coplanar layers), seam (abutting sprites), or clip a standing sprite's feet / a 3D model — they need no per-vertex depth, no ground-plane projection, and no per-layer bias. Standing sprite layers (`Item`, `Critter`) keep atlas XY/UV but write per-vertex `PosZ` through `GeometryHelper::ProjectMapYToVerticalDepth`, so they behave like vertical planes standing on their ground anchor; they carry no draw-order depth bias, because one would pull the vertical plane toward the camera and move the particle-occlusion line off the logical root point. The only remaining depth-bias user is the direct-draw path (particles / 3D models replayed at the end of each sprite pass): `SpriteManager` divides a half-pixel depth budget (`MAP_LAYER_DEPTH_BIAS`) by `DrawOrderType::Last + 1` and gives each direct-draw sprite a single such step above its world depth, keeping it below the subpixel snapping threshold (see *Direct-to-scene sprites*). Both `Core` and `Embedded` `2D_Default.fofx` must project the full `InPosition.xyz`; if an override flattens to `InPosition.xy, 0.0`, particles have no useful scene depth to test against. `2D_Default.fofx` and `2D_WithoutEgg.fofx` discard fragments whose final alpha is at or below `1/255` (after egg alpha), so fully transparent sprite texels do not populate the depth buffer and clip in-scene particles behind the empty parts of the atlas quad.
 - Roof tiles (`IsRoofTile`) are ordinary floor tiles given a fixed positive `Elevation` (`Geometry.MapRoofElevation`): the projection raises their screen position onto the building's wall tops (the engine still auto-hides the roof group whose `RoofNum` the camera is inside). A roof is just a tile lifted in screen Y — the flat tile/roof sub-hex XY anchor now lives on the `BaseTile` prototype's `Offset`, not on the former per-side `Geometry.MapTileOffs*`/`MapRoofOffs*` settings (removed); the roof-particle and mapper tile-preview paths read the same `Elevation` instead of the old 2D roof offset. The **roof draw-order range (`Roof..Last`) is rendered as a separate trailing pass** (`MapView::DrawSpritesWithFog` splits at `below_roof = Roof-1` and draws `[Roof..Last]` last, via `DrawFoggedSpriteRange`): everything below it — including the direct-draw 3D models / in-scene particles each sprite pass replays at its end — is drawn first. Like floor tiles, roofs do not touch the depth buffer (`Effects.Roof` → `2D_NoDepth.fofx`, `DepthWrite = False` + `DepthFunc = Always`): being drawn last and never depth-tested, the roof layer always paints on top of the building regardless of the scene depth buffer, and being depth-write-free it never clips anything drawn after it.
 - Particle effects (`Particles_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other.
 - Model effects (`3D_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = True`: direct-to-scene models write real mesh depth into `_rtMap`, so particles and later direct geometry can test against the model surface instead of the old model atlas quad.
@@ -430,7 +586,7 @@ forced first-tick path used by ordinary scheduled simulation.
 
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
-`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 

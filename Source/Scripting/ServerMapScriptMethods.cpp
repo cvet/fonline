@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 // SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_SetupScript(ptr<Map> self, ScriptFunc<void, Map*, bool> initFunc)
+FO_SCRIPT_API void Server_Map_SetupScript(ptr<Map> self, ScriptFunc<void, ptr<Map>, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -69,7 +69,7 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
     auto loc = self->GetLocation();
-    return loc.as_ptr();
+    return loc;
 }
 
 // SyncScope: requires self; creates and attaches a new map item under the map cover.
@@ -123,13 +123,12 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring prot
     }
 
     if (!props.empty()) {
-        auto nullable_proto = self->GetEngine()->GetProtoItem(protoId);
+        auto proto = self->GetEngine()->GetProtoItem(protoId);
 
-        if (!nullable_proto) {
+        if (!proto) {
             throw ScriptException("Invalid item proto id arg", protoId);
         }
 
-        auto proto = nullable_proto.as_ptr();
         Properties props_ = proto->GetProperties()->Copy();
 
         for (const auto& [key, value] : props) {
@@ -817,7 +816,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, Critter
 
 // SyncScope: requires self; returned path critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
     auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
     vector<ptr<const Critter>> trace_critters = trace_output.Critters;
@@ -826,7 +825,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(ptr<Map> self, mpos 
 
 // SyncScope: requires self; returned path critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
     preBlockHex = trace_output.PreBlock;
@@ -909,7 +908,7 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos
 
 // SyncScope: requires self; pathing reads map blockers and optional gag callback items.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, Item*> gagCallabck)
+FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Item>> gagCallabck)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid from hex args");
@@ -921,7 +920,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallabck) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(const_cast<Item*>(std::addressof(*gag))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     const auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
@@ -935,7 +934,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
 
 // SyncScope: requires self + cr; pathing reads map blockers and cr state.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, mpos toHex, int32_t cut, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
 {
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid to hex args");
@@ -946,7 +945,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallabck) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr.get(), const_cast<Item*>(std::addressof(*gag))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     const auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
@@ -956,6 +955,71 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
     }
 
     return numeric_cast<int32_t>(output.Steps.size());
+}
+
+// SyncScope: requires self; pathing reads map blockers and optional gag callback items.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Item>> gagCallback)
+{
+    if (!self->GetSize().is_valid_pos(fromHex)) {
+        throw ScriptException("Invalid from hex arg");
+    }
+    if (targetHexes.empty()) {
+        throw ScriptException("Empty target hexes arg");
+    }
+    for (const mpos candidateHex : targetHexes) {
+        if (!self->GetSize().is_valid_pos(candidateHex)) {
+            throw ScriptException("Invalid target hex arg");
+        }
+    }
+
+    function<bool(ptr<const Item>)> gag_callback;
+
+    if (gagCallback) {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    }
+
+    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
+    pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
+
+    if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
+        return false;
+    }
+
+    targetHex = output.NewToHex;
+    return true;
+}
+
+// SyncScope: requires self + cr; pathing reads map blockers and cr state.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallback)
+{
+    if (targetHexes.empty()) {
+        throw ScriptException("Empty target hexes arg");
+    }
+    for (const mpos candidateHex : targetHexes) {
+        if (!self->GetSize().is_valid_pos(candidateHex)) {
+            throw ScriptException("Invalid target hex arg");
+        }
+    }
+
+    ValidateEntityAccess(cr);
+
+    function<bool(ptr<const Item>)> gag_callback;
+
+    if (gagCallback) {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    }
+
+    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));
+    pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
+
+    if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
+        return false;
+    }
+
+    targetHex = output.NewToHex;
+    return true;
 }
 
 // SyncScope: requires self; creates and attaches a new critter on the map under self cover.
@@ -999,13 +1063,12 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
         throw ScriptException("Invalid hex arg");
     }
 
-    auto nullable_proto = self->GetEngine()->GetProtoCritter(protoId);
+    auto proto = self->GetEngine()->GetProtoCritter(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
@@ -1048,13 +1111,12 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
         throw ScriptException("Invalid hex arg");
     }
 
-    auto nullable_proto = self->GetEngine()->GetProtoCritter(protoId);
+    auto proto = self->GetEngine()->GetProtoCritter(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
@@ -1150,7 +1212,7 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, hstring
         throw ScriptException("Invalid item proto id arg", pid);
     }
 
-    return self->IsValidPlaceForItem(hex, proto_ptr.as_ptr());
+    return self->IsValidPlaceForItem(hex, proto_ptr);
 }
 
 // SyncScope: requires self; reads map placement rules and item prototype data.

@@ -37,12 +37,15 @@
 #include "StringUtils.h"
 
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER
+
 #if !FO_WINDOWS
+
 #if __has_include(<libunwind.h>) && !(FO_MAC && defined(__aarch64__))
 #define BACKWARD_HAS_LIBUNWIND 1
 #elif __has_include(<bfd.h>)
 #define BACKWARD_HAS_BFD 1
 #endif
+
 #endif
 FO_DISABLE_WARNINGS_PUSH()
 #include "backward.hpp"
@@ -278,10 +281,9 @@ static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedSta
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<const std::exception> ex_ptr = &ex;
+    auto ex_ptr = make_nptr(&ex);
 
-    if (auto nullable_base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
-        auto base_engine_ex = nullable_base_engine_ex.as_ptr();
+    if (auto base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
         return CatchedStackTraceData {base_engine_ex->stack_trace(), GetStackTrace()};
     }
     else {
@@ -464,42 +466,52 @@ static auto GetSignalName(int32_t signum) noexcept -> string_view
     case SIGABRT:
         return "SIGABRT";
 #endif
+
 #ifdef SIGBUS
     case SIGBUS:
         return "SIGBUS";
 #endif
+
 #ifdef SIGFPE
     case SIGFPE:
         return "SIGFPE";
 #endif
+
 #ifdef SIGILL
     case SIGILL:
         return "SIGILL";
 #endif
+
 #ifdef SIGQUIT
     case SIGQUIT:
         return "SIGQUIT";
 #endif
+
 #ifdef SIGSEGV
     case SIGSEGV:
         return "SIGSEGV";
 #endif
+
 #ifdef SIGSYS
     case SIGSYS:
         return "SIGSYS";
 #endif
+
 #ifdef SIGTERM
     case SIGTERM:
         return "SIGTERM";
 #endif
+
 #ifdef SIGTRAP
     case SIGTRAP:
         return "SIGTRAP";
 #endif
+
 #ifdef SIGXCPU
     case SIGXCPU:
         return "SIGXCPU";
 #endif
+
 #ifdef SIGXFSZ
     case SIGXFSZ:
         return "SIGXFSZ";

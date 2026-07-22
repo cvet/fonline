@@ -64,8 +64,8 @@ public:
     [[nodiscard]] auto GetGameEngine() const -> ptr<const BaseEngine>; // Assert if not specified
     [[nodiscard]] auto HasEntityMngr() const noexcept -> bool { return !!_entityMngr; } // Not present on client
     [[nodiscard]] auto GetEntityMngr() -> ptr<EntityManagerApi>; // Assert if not specified
-    [[nodiscard]] auto GetContextMngr() noexcept -> nptr<AngelScriptContextManager> { return _contextMngr ? nptr<AngelScriptContextManager>(&*_contextMngr) : nullptr; }
-    [[nodiscard]] auto GetContextMngr() const noexcept -> nptr<const AngelScriptContextManager> { return _contextMngr ? nptr<const AngelScriptContextManager>(&*_contextMngr) : nullptr; }
+    [[nodiscard]] auto GetContextMngr() noexcept -> nptr<AngelScriptContextManager> { return _contextMngr ? make_nptr(&*_contextMngr) : nullptr; }
+    [[nodiscard]] auto GetContextMngr() const noexcept -> nptr<const AngelScriptContextManager> { return _contextMngr ? make_nptr(&*_contextMngr) : nullptr; }
     [[nodiscard]] auto GetExceptionCounter() const noexcept -> int32_t { return _exceptionCounter.load(); }
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
@@ -81,8 +81,6 @@ public:
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
-    void ReleaseScriptGlobalsAndReportGC();
-
     ptr<const ScriptSettings> _settings;
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {}; // Maybe null
@@ -93,7 +91,7 @@ private:
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
     vector<function<void()>> _postCleanupCallbacks {};
-    unique_nptr<DebuggerEndpointServer> _debuggerEndpointServer {};
+    optional<DebuggerEndpointServer> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
 };
 

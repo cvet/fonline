@@ -22,12 +22,93 @@
 #include "Test_BakerHelpers.h"
 #include "TextBaker.h"
 
+FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
+
 FO_BEGIN_NAMESPACE
 
 static auto MakeTempBakerSetupDir(string_view name) -> string
 {
     const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(base);
+}
+
+static auto MakeBakerSetupReportPath(string_view output_dir) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string normalized_output = strex(output_dir).normalize_path_slashes().rtrim("/").str();
+    return strex(normalized_output).combine_path("Baking.report.json").str();
+}
+
+static auto MakeBakerSetupFullReportPath(string_view output_dir) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string normalized_output = strex(output_dir).normalize_path_slashes().rtrim("/").str();
+    return strex(normalized_output).combine_path("Baking.full.report.json").str();
+}
+
+static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto report_data = fs_read_file(MakeBakerSetupReportPath(output_dir));
+    REQUIRE(report_data.has_value());
+    return nlohmann::json::parse(*report_data);
+}
+
+static auto FindBakerSetupReportEntry(const nlohmann::json& entries, string_view name) -> const nlohmann::json&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    REQUIRE(entries.is_array());
+    const auto it = std::ranges::find_if(entries, [name](const nlohmann::json& entry) { return entry.at("name").get<std::string>() == name; });
+    REQUIRE(it != entries.end());
+    return *it;
+}
+
+static auto SumBakerSetupReportCounts(const nlohmann::json& entries) -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    REQUIRE(entries.is_array());
+    uint64_t total = 0;
+    for (const nlohmann::json& entry : entries) {
+        total += entry.at("count").get<uint64_t>();
+    }
+    return total;
+}
+
+static auto MakeBakerSetupSpriteMeshTga() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr uint16_t width = 16;
+    constexpr uint16_t height = 16;
+    constexpr size_t header_size = 18;
+    vector<uint8_t> data(header_size + numeric_cast<size_t>(width) * height * 4);
+    data[2] = 2; // Uncompressed true-color image
+    data[12] = numeric_cast<uint8_t>(width & 0xFF);
+    data[13] = numeric_cast<uint8_t>(width >> 8);
+    data[14] = numeric_cast<uint8_t>(height & 0xFF);
+    data[15] = numeric_cast<uint8_t>(height >> 8);
+    data[16] = 32;
+    data[17] = 8; // Eight attribute bits carry alpha
+
+    for (uint16_t y = 0; y < height; y++) {
+        for (uint16_t x = 0; x < width; x++) {
+            const bool opaque = (x < 4 && y < 4) || (x >= width - 4 && y >= height - 4);
+            const size_t pixel_offset = header_size + (numeric_cast<size_t>(y) * width + x) * 4;
+            data[pixel_offset + 0] = 255;
+            data[pixel_offset + 1] = 255;
+            data[pixel_offset + 2] = 255;
+            data[pixel_offset + 3] = opaque ? 255 : 0;
+        }
+    }
+
+    return data;
 }
 
 static void SetBakerSetupFileWriteTime(string_view path, std::filesystem::file_time_type time)
@@ -226,6 +307,7 @@ TEST_CASE("BakerDataSource")
 
     REQUIRE(fs_write_file(runtime_input_path, string_view {"runtime-source"}));
     REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/Nested/child.json").str(), string_view {"nested-source"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/_scratch.json").str(), string_view {"scratch"}));
     REQUIRE(fs_write_file(stale_input_path, string_view {"stale-source"}));
     REQUIRE(fs_write_file(stale_output_path, string_view {"stale-output"}));
     REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/readme.txt").str(), string_view {"ignored"}));
@@ -245,7 +327,8 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **/*.json
+ExcludePatterns = **/_*.json
 Bakers = {}
 )",
             output_dir, RawCopyBaker::NAME)
@@ -261,6 +344,7 @@ Bakers = {}
     CHECK(data_source.IsFileExists("Data/runtime.json"));
     CHECK(data_source.IsFileExists("Data/stale.json"));
     CHECK(data_source.IsFileExists("Data/Nested/child.json"));
+    CHECK_FALSE(data_source.IsFileExists("Data/_scratch.json"));
     CHECK_FALSE(data_source.IsFileExists("Data/readme.txt"));
 
     size_t size = 0;
@@ -272,21 +356,24 @@ Bakers = {}
 
     const auto prebaked_data = data_source.OpenFile("Data/prebaked.json", size, write_time);
     REQUIRE(prebaked_data);
-    CHECK(prebaked_data.as_ptr().reinterpret_as<const char>().as_str(size) == "cached-prebaked");
+    ptr<const uint8_t> prebaked_data_ptr = prebaked_data;
+    CHECK(prebaked_data_ptr.reinterpret_as<char>().as_str(size) == "cached-prebaked");
 
     const string runtime_output_path = strex(output_dir).combine_path("Core/Data/runtime.json").str();
     CHECK_FALSE(fs_exists(runtime_output_path));
 
     const auto runtime_data = data_source.OpenFile("Data/runtime.json", size, write_time);
     REQUIRE(runtime_data);
-    CHECK(runtime_data.as_ptr().reinterpret_as<const char>().as_str(size) == "runtime-source");
+    ptr<const uint8_t> runtime_data_ptr = runtime_data;
+    CHECK(runtime_data_ptr.reinterpret_as<char>().as_str(size) == "runtime-source");
     REQUIRE(fs_read_file(runtime_output_path).has_value());
     CHECK(*fs_read_file(runtime_output_path) == "runtime-source");
     CHECK(write_time != 0);
 
     const auto stale_data = data_source.OpenFile("Data/stale.json", size, write_time);
     REQUIRE(stale_data);
-    CHECK(stale_data.as_ptr().reinterpret_as<const char>().as_str(size) == "stale-source");
+    ptr<const uint8_t> stale_data_ptr = stale_data;
+    CHECK(stale_data_ptr.reinterpret_as<char>().as_str(size) == "stale-source");
     REQUIRE(fs_read_file(stale_output_path).has_value());
     CHECK(*fs_read_file(stale_output_path) == "stale-source");
     CHECK(write_time == fs_last_write_time(stale_input_path));
@@ -314,21 +401,131 @@ Bakers = {}
     CHECK(fs_remove_dir_tree(temp_dir));
 }
 
+#if FO_ANGELSCRIPT_SCRIPTING && FO_ENABLE_3D
+TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
+{
+    using namespace BakerTests;
+
+    const string temp_dir = MakeTempBakerSetupDir("baker_data_source_dependency_order");
+    const string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    const string metadata_output_path = strex(temp_dir).combine_path("output/Metadata/Metadata.fometa-client").str();
+    const string model_input_path = strex(temp_dir).combine_path("model_input/placeholder.txt").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+    REQUIRE(fs_write_file(model_input_path, string_view {"placeholder"}));
+
+    const auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    SetBakerSetupFileWriteTime(metadata_input_path, source_time);
+    REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+    SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("BakerDataSourceDependencyOrder.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = ModelInfo
+InputDirs = model_input
+IncludePatterns = **/*.fo3d
+Bakers = {}
+)",
+            strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    BakerDataSource data_source {&settings};
+
+    CHECK(data_source.IsFileExists("Metadata.fometa-client"));
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+#endif
+
+TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
+{
+    const string temp_dir = MakeTempBakerSetupDir("baker_data_source_pack_priority");
+    const string base_input_path = strex(temp_dir).combine_path("base_input/Data/shared.json").str();
+    const string override_input_path = strex(temp_dir).combine_path("override_input/Data/shared.json").str();
+    const string base_output_path = strex(temp_dir).combine_path("output/Base/Data/shared.json").str();
+    const string override_output_path = strex(temp_dir).combine_path("output/Override/Data/shared.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(base_input_path, string_view {"base-source"}));
+    REQUIRE(fs_write_file(override_input_path, string_view {"override-source"}));
+    REQUIRE(fs_write_file(base_output_path, string_view {"base-output"}));
+    REQUIRE(fs_write_file(override_output_path, string_view {"override-output"}));
+
+    const auto base_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {4};
+    const auto override_time = base_time + std::chrono::minutes {1};
+    SetBakerSetupFileWriteTime(base_input_path, base_time);
+    SetBakerSetupFileWriteTime(override_input_path, override_time);
+    SetBakerSetupFileWriteTime(base_output_path, base_time + std::chrono::minutes {2});
+    SetBakerSetupFileWriteTime(override_output_path, base_time + std::chrono::minutes {2});
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("BakerDataSourcePackPriority.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Base
+InputDirs = base_input
+IncludePatterns = **/*.json
+Bakers = {}
+[ResourcePack]
+Name = Override
+InputDirs = override_input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+            strex(temp_dir).combine_path("output").str(), RawCopyBaker::NAME, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    BakerDataSource data_source {&settings};
+    size_t size = 0;
+    uint64_t write_time = 0;
+    const auto data = data_source.OpenFile("Data/shared.json", size, write_time);
+
+    REQUIRE(data);
+    ptr<const uint8_t> data_ptr = data;
+    CHECK(data_ptr.reinterpret_as<char>().as_str(size) == "override-output");
+    CHECK(write_time == fs_last_write_time(override_input_path));
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
 TEST_CASE("BakerMasterRawCopy")
 {
     const string temp_dir = MakeTempBakerSetupDir("master_baker_raw_copy");
     const string input_dir = strex(temp_dir).combine_path("input").str();
     const string output_dir = strex(temp_dir).combine_path("output").str();
     const string source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    const string excluded_source_path = strex(input_dir).combine_path("Data/_scratch.json").str();
     const string output_path = strex(output_dir).combine_path("Core/Data/keep.json").str();
+    const string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
     const string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
     const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
     const string internal_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Test/state.txt").str();
     const string stale_effekseer_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer/Core/Particles/Removed.efk.deps").str();
+    const string report_path = MakeBakerSetupReportPath(output_dir);
+    const string full_report_path = MakeBakerSetupFullReportPath(output_dir);
 
     ignore_unused(fs_remove_dir_tree(temp_dir));
 
     REQUIRE(fs_write_file(source_path, string_view {"raw-copy"}));
+    REQUIRE(fs_write_file(excluded_source_path, string_view {"scratch"}));
     REQUIRE(fs_write_file(outdated_path, string_view {"obsolete"}));
 
     GlobalSettings settings {true};
@@ -340,7 +537,8 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **/*.json
+ExcludePatterns = **/_*.json
 Bakers = {}
 )",
             output_dir, RawCopyBaker::NAME)
@@ -352,18 +550,81 @@ Bakers = {}
     REQUIRE(first_baker.BakeAll());
     REQUIRE(fs_read_file(output_path).has_value());
     CHECK(*fs_read_file(output_path) == "raw-copy");
+    CHECK_FALSE(fs_exists(excluded_output_path));
     CHECK_FALSE(fs_exists(outdated_path));
     CHECK(fs_read_file(build_hash_path).has_value());
     REQUIRE(fs_write_file(internal_cache_path, "cache-state"));
     REQUIRE(fs_write_file(stale_effekseer_cache_path, "stale-cache"));
+
+    REQUIRE(fs_exists(report_path));
+    REQUIRE(fs_exists(full_report_path));
+    const auto full_report_data = fs_read_file(full_report_path);
+    REQUIRE(full_report_data.has_value());
+    const auto report_parent = std::filesystem::path {fs_make_path(report_path)}.parent_path();
+    const auto output_path_object = std::filesystem::path {fs_make_path(output_dir)};
+    CHECK(report_parent == output_path_object);
+
+    const nlohmann::json first_report = ReadBakerSetupReport(output_dir);
+    CHECK(first_report.at("schemaVersion") == 1);
+    CHECK(first_report.at("status") == "success");
+    CHECK(first_report.at("failureMessage") == "");
+    CHECK(first_report.at("bakeOutput") == output_dir);
+    CHECK(first_report.at("mode").at("forceRequested") == false);
+    CHECK(first_report.at("mode").at("fullRebuild") == true);
+    CHECK(first_report.at("mode").at("rebuildReason") == "missing_build_hash");
+    CHECK(first_report.at("totals").at("packs") == 1);
+    CHECK(first_report.at("totals").at("bakers") == 1);
+    CHECK(first_report.at("totals").at("bakerRuns") == 1);
+    CHECK(first_report.at("totals").at("inputFiles") == 1);
+    CHECK(first_report.at("totals").at("outputsScheduled") == 1);
+    CHECK(first_report.at("totals").at("outputsUpToDate") == 0);
+    CHECK(first_report.at("totals").at("outputsSubmitted") == 1);
+    CHECK(first_report.at("totals").at("filesChanged") == 1);
+
+    const nlohmann::json& first_raw_copy = FindBakerSetupReportEntry(first_report.at("bakers"), RawCopyBaker::NAME);
+    CHECK(first_raw_copy.at("status") == "success");
+    CHECK(first_raw_copy.at("invocations") == 1);
+    CHECK(first_raw_copy.at("successfulInvocations") == 1);
+    CHECK(first_raw_copy.at("failedInvocations") == 0);
+    CHECK(first_raw_copy.at("availableInputFiles") == 1);
+    CHECK(first_raw_copy.at("outputs").at("checked").at("count") == 1);
+    CHECK(first_raw_copy.at("outputs").at("scheduled").at("count") == 1);
+    CHECK(first_raw_copy.at("outputs").at("upToDate").at("count") == 0);
+    CHECK(first_raw_copy.at("outputs").at("submitted").at("count") == 1);
+    CHECK(first_raw_copy.at("outputs").at("changed").at("count") == 1);
+
+    const nlohmann::json& first_core = FindBakerSetupReportEntry(first_report.at("packs"), "Core");
+    CHECK(first_core.at("inputs").at("count") == 1);
+    CHECK(first_core.at("outputs").at("changed").at("count") == 1);
+    CHECK(FindBakerSetupReportEntry(first_core.at("bakers"), RawCopyBaker::NAME).at("status") == "success");
+
+    MasterBaker incremental_baker {&settings};
+    REQUIRE(incremental_baker.BakeAll());
+    CHECK(fs_read_file(full_report_path) == full_report_data);
+
+    const nlohmann::json incremental_report = ReadBakerSetupReport(output_dir);
+    CHECK(incremental_report.at("status") == "success");
+    CHECK(incremental_report.at("mode").at("fullRebuild") == false);
+    CHECK(incremental_report.at("mode").at("rebuildReason") == "incremental");
+    CHECK(incremental_report.at("totals").at("outputsScheduled") == 0);
+    CHECK(incremental_report.at("totals").at("outputsUpToDate") == 1);
+    CHECK(incremental_report.at("totals").at("outputsSubmitted") == 0);
+    CHECK(incremental_report.at("totals").at("filesChanged") == 0);
+
+    const nlohmann::json& incremental_raw_copy = FindBakerSetupReportEntry(incremental_report.at("bakers"), RawCopyBaker::NAME);
+    CHECK(incremental_raw_copy.at("outputs").at("checked").at("count") == 1);
+    CHECK(incremental_raw_copy.at("outputs").at("scheduled").at("count") == 0);
+    CHECK(incremental_raw_copy.at("outputs").at("upToDate").at("count") == 1);
+    CHECK(incremental_raw_copy.at("outputs").at("cacheHitPercent").get<float64_t>() == 100.0);
+    CHECK(incremental_raw_copy.at("outputs").at("submitCalls") == 0);
 
     const auto future_source_time = std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1};
     SetBakerSetupFileWriteTime(source_path, future_source_time);
     REQUIRE(fs_last_write_time(source_path) > fs_last_write_time(output_path));
     const auto output_write_time_before_rebake = fs_last_write_time(output_path);
 
-    MasterBaker second_baker {&settings};
-    REQUIRE(second_baker.BakeAll());
+    MasterBaker stale_source_baker {&settings};
+    REQUIRE(stale_source_baker.BakeAll());
     REQUIRE(fs_read_file(output_path).has_value());
     CHECK(*fs_read_file(output_path) == "raw-copy");
     CHECK(fs_last_write_time(output_path) >= output_write_time_before_rebake);
@@ -371,6 +632,188 @@ Bakers = {}
     REQUIRE(fs_read_file(internal_cache_path).has_value());
     CHECK(*fs_read_file(internal_cache_path) == "cache-state");
     CHECK_FALSE(fs_exists(stale_effekseer_cache_path));
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
+{
+    const string temp_dir = MakeTempBakerSetupDir("resource_pack_glob_split");
+    const string input_dir = strex(temp_dir).combine_path("input").str();
+    const string output_dir = strex(temp_dir).combine_path("output").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/json-keep.json").str(), string_view {"json"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/text-keep.json").str(), string_view {"text"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/private/secret.json").str(), string_view {"secret"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("ResourcePackGlobSplit.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Json
+InputDirs = input
+IncludePatterns = **/json-*.json
+ExcludePatterns = **/private/**
+Bakers = {}
+[ResourcePack]
+Name = Text
+InputDirs = input
+IncludePatterns = **/text-*.json
+Bakers = {}
+)",
+            output_dir, RawCopyBaker::NAME, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    MasterBaker baker {&settings};
+    REQUIRE(baker.BakeAll());
+    CHECK(fs_read_file(strex(output_dir).combine_path("Json/Data/json-keep.json").str()).has_value());
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/text-keep.json").str()));
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/private/secret.json").str()));
+    CHECK(fs_read_file(strex(output_dir).combine_path("Text/Data/text-keep.json").str()).has_value());
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Text/Data/json-keep.json").str()));
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerMasterImageReport")
+{
+    const string temp_dir = MakeTempBakerSetupDir("master_baker_image_report");
+    const string input_dir = strex(temp_dir).combine_path("input").str();
+    const string output_dir = strex(temp_dir).combine_path("output").str();
+    const string source_path = strex(input_dir).combine_path("gfx/report.tga").str();
+    const string output_path = strex(output_dir).combine_path("Art/gfx/report.tga").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    const vector<uint8_t> source_data = MakeBakerSetupSpriteMeshTga();
+    REQUIRE(fs_write_file(source_path, {source_data.data(), source_data.size()}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("MasterBakerImageReport.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.ForceBaking = True
+Baking.SingleThreadBaking = True
+SpriteMesh.Enabled = True
+SpriteMesh.AlphaThreshold = 0
+SpriteMesh.MaxTriangles = 8
+SpriteMesh.AreaSavingsWeight = 100.0
+[ResourcePack]
+Name = Art
+InputDirs = input
+Bakers = {}
+)",
+            output_dir, ImageBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    MasterBaker baker {&settings};
+    REQUIRE(baker.BakeAll());
+    REQUIRE(fs_exists(output_path));
+    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
+
+    const nlohmann::json report = ReadBakerSetupReport(output_dir);
+    CHECK(report.at("schemaVersion") == 1);
+    CHECK(report.at("status") == "success");
+    CHECK(report.at("totals").at("inputFiles") == 1);
+    CHECK(report.at("totals").at("filesChanged") == 2);
+
+    const nlohmann::json& image = FindBakerSetupReportEntry(report.at("bakers"), ImageBaker::NAME);
+    REQUIRE(image.at("details").contains("spriteMesh"));
+    const nlohmann::json& sprite_mesh = image.at("details").at("spriteMesh");
+    CHECK(sprite_mesh.at("settings").at("enabled") == true);
+    CHECK(sprite_mesh.at("settings").at("alphaThreshold") == 0);
+    CHECK(sprite_mesh.at("settings").at("maxTriangles") == 8);
+    CHECK(sprite_mesh.at("settings").at("baseDilation").is_number_integer());
+
+    const nlohmann::json& frames = sprite_mesh.at("frames");
+    const uint64_t unique_frames = frames.at("unique").get<uint64_t>();
+    const uint64_t mesh_frames = frames.at("mesh").at("count").get<uint64_t>();
+    const uint64_t quad_frames = frames.at("quad").at("count").get<uint64_t>();
+    const uint64_t empty_frames = frames.at("empty").at("count").get<uint64_t>();
+    CHECK(unique_frames == 1);
+    CHECK(mesh_frames + quad_frames + empty_frames == unique_frames);
+
+    const float64_t form_percent = frames.at("mesh").at("percent").get<float64_t>() + frames.at("quad").at("percent").get<float64_t>() + frames.at("empty").at("percent").get<float64_t>();
+    CHECK(std::abs(form_percent - 100.0) < 0.000001);
+
+    const nlohmann::json& triangle_histogram = sprite_mesh.at("triangleHistogram");
+    const nlohmann::json& source_component_histogram = sprite_mesh.at("sourceComponentHistogram");
+    const nlohmann::json& dilated_component_histogram = sprite_mesh.at("dilatedComponentHistogram");
+    CHECK(triangle_histogram.is_array());
+    CHECK(source_component_histogram.is_array());
+    CHECK(dilated_component_histogram.is_array());
+    CHECK(SumBakerSetupReportCounts(triangle_histogram) == mesh_frames);
+    CHECK(SumBakerSetupReportCounts(source_component_histogram) == unique_frames);
+    CHECK(SumBakerSetupReportCounts(dilated_component_histogram) <= unique_frames);
+
+    const nlohmann::json& selection_score = sprite_mesh.at("selectionScore");
+    CHECK((selection_score.at("minimum").is_number() || selection_score.at("minimum").is_null()));
+    CHECK((selection_score.at("maximum").is_number() || selection_score.at("maximum").is_null()));
+    CHECK(sprite_mesh.at("largestRejectedCandidateSavings").is_array());
+
+    uint64_t mesh_triangles = 0;
+    for (const nlohmann::json& entry : triangle_histogram) {
+        mesh_triangles += entry.at("triangles").get<uint64_t>() * entry.at("count").get<uint64_t>();
+    }
+    const nlohmann::json& geometry = sprite_mesh.at("geometry");
+    const uint64_t mesh_vertices = geometry.at("meshVertices").get<uint64_t>();
+    CHECK(geometry.at("meshTriangles") == mesh_triangles);
+    CHECK(geometry.at("submittedTriangles") == mesh_triangles + quad_frames * 2);
+    CHECK(geometry.at("submittedVertices") == mesh_vertices + quad_frames * 4);
+
+    const nlohmann::json& area = sprite_mesh.at("area");
+    const uint64_t baseline_double_area = area.at("baselineQuadDoubleArea").get<uint64_t>();
+    const uint64_t submitted_double_area = area.at("submittedGeometryDoubleArea").get<uint64_t>();
+    const uint64_t visible_double_area = area.at("visibleDoubleArea").get<uint64_t>();
+    CHECK(baseline_double_area == 16 * 16 * 2);
+    CHECK(visible_double_area == 2 * 4 * 4 * 2);
+    CHECK(submitted_double_area >= visible_double_area);
+    CHECK(submitted_double_area <= baseline_double_area);
+    CHECK(area.at("savedDoubleArea") == numeric_cast<int64_t>(baseline_double_area - submitted_double_area));
+
+    const uint64_t source_texture_pixels = baseline_double_area / 2;
+    const nlohmann::json& padding = sprite_mesh.at("padding");
+    const uint64_t serialized_texture_pixels = padding.at("serializedTexturePixels").get<uint64_t>();
+    const uint64_t expected_added_texture_pixels = serialized_texture_pixels > source_texture_pixels ? serialized_texture_pixels - source_texture_pixels : 0;
+    const uint64_t expected_cropped_texture_pixels = source_texture_pixels > serialized_texture_pixels ? source_texture_pixels - serialized_texture_pixels : 0;
+    CHECK(padding.at("addedTexturePixels") == expected_added_texture_pixels);
+    CHECK(padding.at("framesExpanded") == (expected_added_texture_pixels != 0 ? 1 : 0));
+
+    const nlohmann::json& cropping = sprite_mesh.at("cropping");
+    CHECK(cropping.at("savedTexturePixels") == expected_cropped_texture_pixels);
+    CHECK(cropping.at("savedTextureBytesRgba") == expected_cropped_texture_pixels * 4);
+    CHECK(cropping.at("framesCropped") == (expected_cropped_texture_pixels != 0 ? 1 : 0));
+    CHECK(sprite_mesh.at("largestCroppingSavings").is_array());
+
+    const nlohmann::json& diagnostic_rows = mesh_frames != 0 ? sprite_mesh.at("mostComplexMeshes") : sprite_mesh.at("largestMissedSavings");
+    REQUIRE(diagnostic_rows.size() == 1);
+    const nlohmann::json& diagnostic_row = diagnostic_rows.front();
+    CHECK((diagnostic_row.at("dilatedComponents").is_number_integer() || diagnostic_row.at("dilatedComponents").is_null()));
+    CHECK((diagnostic_row.at("selectionScore").is_number() || diagnostic_row.at("selectionScore").is_null()));
+    CHECK(diagnostic_row.at("croppingSavedPixels").is_number_unsigned());
+
+    const nlohmann::json& art_pack = FindBakerSetupReportEntry(report.at("packs"), "Art");
+    const nlohmann::json& pack_image = FindBakerSetupReportEntry(art_pack.at("bakers"), ImageBaker::NAME);
+    CHECK(pack_image.at("details").at("spriteMesh").at("frames").at("unique") == unique_frames);
+
+    BakerTests::OverrideSetting(settings.ForceBaking, false);
+    MasterBaker incremental_baker {&settings};
+    REQUIRE(incremental_baker.BakeAll());
+    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
+
+    const nlohmann::json incremental_report = ReadBakerSetupReport(output_dir);
+    CHECK(incremental_report.at("status") == "success");
+    CHECK(incremental_report.at("totals").at("filesChanged") == 0);
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }
@@ -402,7 +845,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)
@@ -445,7 +888,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)
@@ -481,7 +924,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = missing
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)
@@ -492,6 +935,18 @@ Bakers = {}
         MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
         CHECK_FALSE(fs_read_file(build_hash_path).has_value());
+
+        const string report_path = MakeBakerSetupReportPath(output_dir);
+        REQUIRE(fs_exists(report_path));
+        CHECK(std::filesystem::path {fs_make_path(report_path)}.parent_path() == std::filesystem::path {fs_make_path(output_dir)});
+
+        const nlohmann::json report = ReadBakerSetupReport(output_dir);
+        CHECK(report.at("schemaVersion") == 1);
+        CHECK(report.at("status") == "failed");
+        CHECK_FALSE(report.at("failureMessage").get<std::string>().empty());
+        CHECK(report.at("totals").at("filesChanged") == 0);
+        CHECK(report.at("bakers").is_array());
+        CHECK(report.at("packs").is_array());
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }
