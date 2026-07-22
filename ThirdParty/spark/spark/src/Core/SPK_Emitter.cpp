@@ -29,9 +29,9 @@ namespace SPK
 		Transformable(),
 		active(true),
         flow(1.0f),
-		zone(!zone ? SPK_DEFAULT_ZONE : zone),
+		zone(zone),
         full(full),
-		fraction(SPK_RANDOM(0.0f,1.0f))
+		fraction(0.0f)
 	{
 		setTank(tank);
 		setFlow(flow);
@@ -45,12 +45,16 @@ namespace SPK
         maxTank(emitter.maxTank),
         flow(emitter.flow),
         forceMin(emitter.forceMin),
-        forceMax(emitter.forceMax),
+		forceMax(emitter.forceMax),
 		full(emitter.full),
-		fraction(SPK_RANDOM(0.0f,1.0f))
+		fraction(0.0f)
 	{
 		zone = emitter.copyChild(emitter.zone);
-		resetTank();
+
+		if (hasContext())
+			onContextSet();
+		else
+			resetTank();
 	}
 
 	Emitter::~Emitter() {}
@@ -93,8 +97,21 @@ namespace SPK
 
     void Emitter::setZone(const Ref<Zone>& zone)
     {
-        this->zone = (!zone ? SPK_DEFAULT_ZONE : zone);
+		this->zone = zone;
+
+		if (!this->zone && hasContext())
+			this->zone = getContext().getDefaultZone();
+
+		if (this->zone && hasContext())
+			this->zone->setContext(getContext());
     }
+
+	void Emitter::onContextSet()
+	{
+		setZone(zone);
+		fraction = SPK_RANDOM(getContext(),0.0f,1.0f);
+		resetTank();
+	}
 
 	void Emitter::propagateUpdateTransform()
 	{
@@ -105,7 +122,7 @@ namespace SPK
 	void Emitter::emit(Particle& particle) const
 	{
 		zone->generatePosition(particle.position(),full,particle.getRadius());
-		generateVelocity(particle,SPK_RANDOM(forceMin,forceMax) / particle.getParam(PARAM_MASS));
+		generateVelocity(particle,SPK_RANDOM(getContext(),forceMin,forceMax) / particle.getParam(PARAM_MASS));
 	}
 
 	Ref<SPKObject> Emitter::findByName(const std::string& name)
@@ -170,7 +187,7 @@ namespace SPK
 		float tmpForces[2] = {forceMin,forceMax};
 		descriptor.getAttribute("force")->setValues(tmpForces,tmpForces[0] == tmpForces[1] ? 1 : 2);
 
-		descriptor.getAttribute("zone")->setValueRef(getZone(),getZone() == SPK_DEFAULT_ZONE);
+		descriptor.getAttribute("zone")->setValueRef(getZone(),!getZone() || (hasContext() && getZone() == getContext().getDefaultZone()));
 		descriptor.getAttribute("full")->setValueOptionalOnTrue(isFullZone());
 	}
 }

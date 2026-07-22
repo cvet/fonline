@@ -64,29 +64,33 @@ public:
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
+    [[nodiscard]] auto SupportsSeededRespawn() const noexcept -> bool { return _supportsSeededRespawn; }
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
     void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
-    void Respawn(int32_t seed);
+    auto Respawn(int32_t seed) -> bool;
     void Update();
     void RefreshRenderTransform();
     void Draw();
     void SetScale(float32_t scale);
 
 private:
-    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
+    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system, bool supports_seeded_respawn);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
 
+    void ApplyRuntimeSetup();
     void ResetTiming();
 
     unique_ptr<ParticleRuntimeSystem> _runtimeSystem;
     ptr<ParticleManager> _particleMngr;
+    optional<ParticleRuntimeSetup> _runtimeSetup {};
     float64_t _elapsedTime {};
     float32_t _scale {1.0f};
+    bool _supportsSeededRespawn {};
     bool _forceDraw {};
     bool _renderPending {};
     nanotime _lastUpdateTime {};

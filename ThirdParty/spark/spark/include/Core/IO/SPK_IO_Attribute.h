@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <stdexcept> // (FOnline Patch) Reject reference type confusion during descriptor import.
+#include <stdexcept> // Reject reference type confusion during descriptor import.
 
 namespace SPK
 {
@@ -257,12 +257,13 @@ namespace IO
         descriptor->buffer.push_back(strList);
 
 #if !defined(SPK_NO_LOG) && defined(SPK_DEBUG)
-		Logger::Stream os = SPK::Logger::get().getStream(SPK::LOG_PRIORITY_DEBUG);
+		SPK::Logger logger;
+		Logger::Stream os = logger.getStream(SPK::LOG_PRIORITY_DEBUG);
 		os << "Set " << nb << " values for attribute \"" << name << "\" : ";
 		for (size_t i = 0; i < nb; ++i)
 			os << " " << values[i];
 		os << '\n';
-		SPK::Logger::get().flush();
+		logger.flush();
 #endif
 	}
 
@@ -290,12 +291,13 @@ namespace IO
             tmpBuffer.push_back(FromString<T>(strList[i]));
 
 #if !defined(SPK_NO_LOG) && defined(SPK_DEBUG)
-		Logger::Stream os = SPK::Logger::get().getStream(SPK::LOG_PRIORITY_DEBUG);
+		SPK::Logger logger;
+		Logger::Stream os = logger.getStream(SPK::LOG_PRIORITY_DEBUG);
         os << "Get " << strList.size() << " values for attribute \"" << name << "\" : ";
         for (size_t i = 0; i < strList.size(); ++i)
 			os << " " << tmpBuffer[i];
 		os << '\n';
-		SPK::Logger::get().flush();
+		logger.flush();
 #endif
 
 		return tmpBuffer;
@@ -328,7 +330,7 @@ namespace IO
         std::vector<std::string> strList = descriptor->buffer[offset];
         size_t refIndex = FromString<size_t>(strList[0]);
         SPK_LOG_DEBUG("Get value for attribute \"" << name << "\" : " << descriptor->refBuffer[refIndex]);
-        // (FOnline Patch) Serialized references are untrusted. A static cast here allowed a
+        // Serialized references are untrusted. A static cast here allowed a
         // valid object of the wrong class to become type confusion during Graph::finalize().
         const Ref<SPKObject>& source = descriptor->refBuffer[refIndex];
         Ref<T> value = dynamicCast<T>(source);
@@ -360,12 +362,13 @@ namespace IO
         descriptor->buffer.push_back(strList);
 
 #if !defined(SPK_NO_LOG) && defined(SPK_DEBUG)
-		Logger::Stream os = SPK::Logger::get().getStream(SPK::LOG_PRIORITY_DEBUG);
+		SPK::Logger logger;
+		Logger::Stream os = logger.getStream(SPK::LOG_PRIORITY_DEBUG);
 		os << "Set " << nb << " values for attribute \"" << name << "\" : ";
 		for (size_t i = 0; i < nb; ++i)
 			os << " " << values[i];
 		os << '\n';
-		SPK::Logger::get().flush();
+		logger.flush();
 #endif
 	}
 
@@ -380,7 +383,7 @@ namespace IO
         for (size_t i = 0; i < strList.size(); ++i)
         {
             size_t refIndex = FromString<size_t>(strList[i]);
-            // (FOnline Patch) Reject wrong-class references before import code can dereference them.
+            // Reject wrong-class references before import code can dereference them.
             const Ref<SPKObject>& source = descriptor->refBuffer[refIndex];
             Ref<T> value = dynamicCast<T>(source);
             if (source && !value)
@@ -392,12 +395,13 @@ namespace IO
         }
 
 #if !defined(SPK_NO_LOG) && defined(SPK_DEBUG)
-		Logger::Stream os = SPK::Logger::get().getStream(SPK::LOG_PRIORITY_DEBUG);
+		SPK::Logger logger;
+		Logger::Stream os = logger.getStream(SPK::LOG_PRIORITY_DEBUG);
         os << "Get " << strList.size() << " values for attribute \"" << name << "\" : ";
         for (size_t i = 0; i < strList.size(); ++i)
 			os << " " << tmpBuffer[i];
 		os << '\n';
-		SPK::Logger::get().flush();
+		logger.flush();
 #endif
 
 		return tmpBuffer;

@@ -44,6 +44,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
+inline constexpr string_view BAKER_CACHE_DIR = ".baker-cache";
+
 class Properties;
 class ScriptSystem;
 

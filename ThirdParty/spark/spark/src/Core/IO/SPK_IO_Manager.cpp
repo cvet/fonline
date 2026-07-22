@@ -29,7 +29,8 @@ namespace SPK
 {
 namespace IO
 {	
-	IOManager::IOManager()
+	IOManager::IOManager(SPKContext& context) :
+		context(context)
 	{
 		registerIOConverters();
 		registerCoreObjects();
@@ -37,19 +38,13 @@ namespace IO
 
 	IOManager::~IOManager()
 	{
-		unregisterAll(); // (FOnline Patch) Release singleton-owned converters for LeakSanitizer-clean shutdown.
-	}
-
-	IOManager& IOManager::get()
-	{
-		static IOManager instance;
-		return instance;
+		unregisterAll();
 	}
 
 	void IOManager::unregisterAll() // TODO Unregister at IOManager destruction ?
 	{
 		{
-			const std::lock_guard<std::mutex> lock(registeredObjectsMutex); // (FOnline Patch) Pair with thread-safe custom registration.
+			const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
 			registeredObjects.clear();
 		}
 		std::map<std::string,Loader*>::const_iterator it = registeredLoaders.begin();
@@ -153,7 +148,7 @@ namespace IO
 
 	Ref<SPKObject> IOManager::createObject(const std::string& id) const
 	{
-		const std::lock_guard<std::mutex> lock(registeredObjectsMutex); // (FOnline Patch) Loading can overlap application registration.
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
 		std::map<std::string,createSerializableFn>::const_iterator it = registeredObjects.find(id);
 		if (it != registeredObjects.end())
 			return (*it->second)();

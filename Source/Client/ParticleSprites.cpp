@@ -46,13 +46,22 @@ ParticleSprite::ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32
     FO_STACK_TRACE_ENTRY();
 }
 
-void ParticleSprite::PlayWithSeed(int32_t seed)
+auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!_particle->SupportsSeededRespawn()) {
+        return false;
+    }
+
     _prewarmPending = false;
-    _particle->Respawn(seed);
+
+    if (!_particle->Respawn(seed)) {
+        return false;
+    }
+
     StartUpdate();
+    return true;
 }
 
 auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
@@ -81,6 +90,14 @@ void ParticleSprite::SetTime(float32_t normalized_time)
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(normalized_time);
+}
+
+auto ParticleSprite::SetScale(float32_t scale) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _particle->SetScale(scale);
+    return true;
 }
 
 void ParticleSprite::SetDir(mdir dir)

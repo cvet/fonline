@@ -37,6 +37,13 @@
 
 #include "Baker.h"
 
+#if FO_SPARK_PARTICLES
+namespace SPK
+{
+class SPKContext;
+}
+#endif
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ParticleBakerException);
@@ -51,7 +58,7 @@ public:
     ParticleBaker(ParticleBaker&&) noexcept = delete;
     auto operator=(const ParticleBaker&) = delete;
     auto operator=(ParticleBaker&&) noexcept = delete;
-    ~ParticleBaker() override = default;
+    ~ParticleBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
@@ -63,7 +70,11 @@ private:
     void BakeSparkFile(const File& file) const;
 #endif
 #if FO_EFFEKSEER_PARTICLES
-    void BakeEffekseerFile(const File& file) const;
+    void BakeEffekseerFiles(const_span<File> files) const;
+#endif
+
+#if FO_SPARK_PARTICLES
+    unique_ptr<SPK::SPKContext> _sparkContext;
 #endif
 };
 

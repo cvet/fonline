@@ -39,6 +39,13 @@
 #include "RawCopyBaker.h"
 #include "SparkExtension.h"
 #include "Test_BakerHelpers.h"
+#include "Test_ParticleFixtures.h"
+
+#if FO_SPARK_PARTICLES
+FO_DISABLE_WARNINGS_PUSH()
+#include "SPARK.h"
+FO_DISABLE_WARNINGS_POP()
+#endif
 
 FO_BEGIN_NAMESPACE
 
@@ -69,7 +76,7 @@ static constexpr string_view ValidParticle = R"PARTICLE(
             <attrib id="draw in scene" value="true" />
             <attrib id="active" value="true" />
             <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
-            <attrib id="texture" value="Particles/TestParticle.png" />
+            <attrib id="texture" value="TestParticle.png" />
             <attrib id="scale" value="1.5;2" />
             <attrib id="atlas dimensions" value="2;3" />
           </SparkQuadRenderer>
@@ -81,20 +88,6 @@ static constexpr string_view ValidParticle = R"PARTICLE(
 )PARTICLE";
 
 static constexpr string_view MalformedParticle = R"(<SPARK><System name="Broken">)";
-#endif
-
-#if FO_EFFEKSEER_PARTICLES
-// Effekseer upstream Dev/Cpp/Test/Resource/Simple_Sprite_FixedYAxis.efk (MIT), exported by
-// Effekseer 1.70e. Keep this tiny cooked fixture self-contained so the reusable
-// engine baker test does not depend on an embedding project's resource tree.
-static constexpr string_view ValidEffekseerEffectHex = "534b464507000000010000001700000054006500780074007500720065002f005000610072007400690063006c006500300031002e0070006e006700"
-                                                       "000000000000000000000000803fffffffff01000000020000002c000000640000000200000002000000020000000100000000000000000000004600"
-                                                       "0000460000000000803f0000000001000000480000000000a040000000000000a0400000a0c0000000000000a0c00ad7233c000000000ad7233c0ad7"
-                                                       "23bc000000000ad723bc0000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000"
-                                                       "0000000000000c0000000000803f000080410000803f0000000000000000000000000000000000000000000000000000000000000000000000000200"
-                                                       "000001000000000000000100000000000000000000000000000000000000020000000000000001000000020000000000ffffffff808080ff0000ffff"
-                                                       "ff008080800000000000000000000000803f0000000001000000000000bf000000bf0000003f000000bf000000bf0000003f0000003f0000003f0000"
-                                                       "000000000000";
 #endif
 
 #if FO_SPARK_PARTICLES
@@ -109,36 +102,7 @@ static constexpr string_view UnknownObjectParticle = R"PARTICLE(
 )PARTICLE";
 #endif
 
-#if FO_EFFEKSEER_PARTICLES
-static auto DecodeHexBytes(string_view hex) -> vector<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex fixture must contain complete bytes", hex.size());
-
-    const auto decode_nibble = [](char ch) -> uint8_t {
-        if (ch >= '0' && ch <= '9') {
-            return numeric_cast<uint8_t>(ch - '0');
-        }
-        if (ch >= 'a' && ch <= 'f') {
-            return numeric_cast<uint8_t>(ch - 'a' + 10);
-        }
-        FO_VERIFY_AND_THROW(false, "Hex fixture contains an invalid digit", ch);
-        return 0;
-    };
-
-    vector<uint8_t> result;
-    result.reserve(hex.size() / 2);
-
-    for (size_t offset = 0; offset < hex.size(); offset += 2) {
-        result.emplace_back(numeric_cast<uint8_t>((decode_nibble(hex[offset]) << 4) | decode_nibble(hex[offset + 1])));
-    }
-
-    return result;
-}
-#endif
-
-#if FO_SPARK_PARTICLES
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
 static auto MakeTempParticleBakerDir() -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -146,7 +110,9 @@ static auto MakeTempParticleBakerDir() -> string
     const std::filesystem::path path = std::filesystem::temp_directory_path() / std::format("fo_particle_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(path);
 }
+#endif
 
+#if FO_SPARK_PARTICLES
 static auto BakeValidParticleBinary() -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -157,8 +123,8 @@ static auto BakeValidParticleBinary() -> vector<uint8_t>
     ParticleBaker baker(rig.MakeContext());
     baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
-    FO_VERIFY_AND_THROW(rig.Outputs.contains("Particles/UnitTest.spark"), "Particle test fixture was not baked");
-    return rig.Outputs.at("Particles/UnitTest.spark");
+    FO_VERIFY_AND_THROW(rig.Outputs.contains("Particles/UnitTest.spk"), "Particle test fixture was not baked");
+    return rig.Outputs.at("Particles/UnitTest.spk");
 }
 
 enum class ParticleReferenceMutation
@@ -279,11 +245,78 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
 
     write_uint32(reference_offset, replacement_reference);
 }
+
+static auto GenerateSparkRandomValues(SPK::SPKContext& context, uint32_t& random_seed, size_t count) -> vector<uint32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SPK::RandomSeedScope random_seed_scope {context, random_seed};
+    vector<uint32_t> values;
+    values.reserve(count);
+
+    for (size_t i = 0; i < count; i++) {
+        values.emplace_back(SPK_RANDOM(context, 0U, 0x7FFFFFFFU));
+    }
+
+    return values;
+}
+
+TEST_CASE("SPARK random streams", "[particle][spark]")
+{
+    SECTION("SeededStreamsIgnoreInterleavedEffects")
+    {
+        SPK::SPKContext context;
+        uint32_t first_seed = 123456U;
+        uint32_t replay_seed = first_seed;
+        uint32_t noise_seed = 987654U;
+
+        vector<uint32_t> interleaved_values = GenerateSparkRandomValues(context, first_seed, 3);
+        (void)GenerateSparkRandomValues(context, noise_seed, 32);
+
+        vector<uint32_t> suffix = GenerateSparkRandomValues(context, first_seed, 3);
+        interleaved_values.insert(interleaved_values.end(), suffix.begin(), suffix.end());
+
+        const vector<uint32_t> replay_values = GenerateSparkRandomValues(context, replay_seed, 6);
+
+        CHECK(interleaved_values == replay_values);
+        CHECK(first_seed == replay_seed);
+    }
+
+    SECTION("ContextsDoNotShareRandomState")
+    {
+        SPK::SPKContext first_context;
+        SPK::SPKContext second_context;
+        first_context.setRandomSeed(13579U);
+        second_context.setRandomSeed(24680U);
+
+        (void)SPK_RANDOM(first_context, 0U, 0x7FFFFFFFU);
+
+        CHECK(second_context.getRandomSeed() == 24680U);
+        CHECK(first_context.getRandomSeed() != second_context.getRandomSeed());
+
+        SPK::FO::EnsureSparkParticleObjectsRegistered(first_context);
+        CHECK(SPK::FO::IsSparkParticleObjectRegistered(first_context));
+        CHECK_FALSE(SPK::FO::IsSparkParticleObjectRegistered(second_context));
+
+        const SPK::Ref<SPK::System> first_system = SPK::System::create(first_context, false);
+        const SPK::Ref<SPK::System> second_system = SPK::System::create(second_context, false);
+        first_system->useConstantStep(0.1f);
+
+        CHECK(first_system->getStepMode() == SPK::STEP_MODE_CONSTANT);
+        CHECK(second_system->getStepMode() == SPK::STEP_MODE_REAL);
+    }
+}
 #endif
 
 TEST_CASE("ParticleBaker", "[particle][baker]")
 {
     using namespace BakerTests;
+
+#if FO_SPARK_PARTICLES
+    SPK::SPKContext spark_context;
+    SPK::FO::EnsureSparkParticleObjectsRegistered(spark_context);
+    SPK::IO::IOManager& spark_io = spark_context.getIOManager();
+#endif
 
     SECTION("SetupBakersRegistersParticleInCanonicalOrder")
     {
@@ -309,7 +342,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         first_baker.BakeFiles(first_rig.GetAllSourceFiles(), "");
 
         REQUIRE(first_rig.Outputs.size() == 1);
-        const vector<uint8_t>& first_binary = first_rig.Outputs.at("Particles/UnitTest.spark");
+        const vector<uint8_t>& first_binary = first_rig.Outputs.at("Particles/UnitTest.spk");
         REQUIRE_FALSE(first_binary.empty());
 
         TestRig second_rig;
@@ -319,27 +352,38 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         second_baker.BakeFiles(second_rig.GetAllSourceFiles(), "");
 
         REQUIRE(second_rig.Outputs.size() == 1);
-        const vector<uint8_t>& second_binary = second_rig.Outputs.at("Particles/UnitTest.spark");
+        const vector<uint8_t>& second_binary = second_rig.Outputs.at("Particles/UnitTest.spk");
         CHECK(second_binary == first_binary);
 
-        SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {first_binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(first_binary.size()));
+        SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {first_binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(first_binary.size()));
 
         REQUIRE(system);
         REQUIRE(system->getNbGroups() == 1);
+        CHECK(&system->getContext() == &spark_context);
 
         const SPK::Ref<SPK::Group>& group = system->getGroup(0);
-        SPK::Ref<SPK::FO::SparkQuadRenderer> renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
+        const SPK::Ref<SPK::Renderer>& renderer = group->getRenderer();
 
+        REQUIRE(group->getNbEmitters() == 1);
         REQUIRE(renderer);
-        CHECK(renderer->GetDrawWidth() == 64);
-        CHECK(renderer->GetDrawHeight() == 48);
-        CHECK(renderer->GetDrawInScene());
-        CHECK(renderer->GetEffectName() == "Effects/Particles_ColorAdd.fofx");
-        CHECK(renderer->GetTextureName() == "Particles/TestParticle.png");
-        CHECK(renderer->getScaleX() == Catch::Approx(1.5f));
-        CHECK(renderer->getScaleY() == Catch::Approx(2.0f));
-        CHECK(renderer->getAtlasDimensionX() == 2);
-        CHECK(renderer->getAtlasDimensionY() == 3);
+        REQUIRE(SPK::FO::IsSparkQuadRenderer(*renderer));
+
+        const SPK::Ref<SPK::Emitter>& emitter = group->getEmitter(0);
+        const SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
+
+        CHECK(&group->getContext() == &spark_context);
+        CHECK(&emitter->getContext() == &spark_context);
+        CHECK(&emitter->getZone()->getContext() == &spark_context);
+        CHECK(&renderer->getContext() == &spark_context);
+        CHECK(renderer_data.DrawWidth == 64);
+        CHECK(renderer_data.DrawHeight == 48);
+        CHECK(renderer_data.DrawInScene);
+        CHECK(renderer_data.EffectName == "Effects/Particles_ColorAdd.fofx");
+        CHECK(renderer_data.TextureName == "TestParticle.png");
+        CHECK(renderer_data.ScaleX == Catch::Approx(1.5f));
+        CHECK(renderer_data.ScaleY == Catch::Approx(2.0f));
+        CHECK(renderer_data.AtlasDimensionX == 2);
+        CHECK(renderer_data.AtlasDimensionY == 3);
     }
 
     SECTION("BakesOnlyExplicitParticleTarget")
@@ -349,11 +393,11 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         rig.AddSourceFile("Particles/Second.spark", ValidParticle, 11);
 
         ParticleBaker baker(rig.MakeContext());
-        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/Second.spark");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/Second.spk");
 
         REQUIRE(rig.Outputs.size() == 1);
-        CHECK(rig.Outputs.contains("Particles/Second.spark"));
-        CHECK_FALSE(rig.Outputs.contains("Particles/First.spark"));
+        CHECK(rig.Outputs.contains("Particles/Second.spk"));
+        CHECK_FALSE(rig.Outputs.contains("Particles/First.spk"));
     }
 
     SECTION("SkipsExplicitNonParticleTarget")
@@ -374,7 +418,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         rig.AddSourceFile("Particles/UnitTest.spark", ValidParticle, 10);
 
         ParticleBaker baker(rig.MakeContext());
-        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/Missing.spark");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/Missing.spk");
 
         CHECK(rig.Outputs.empty());
     }
@@ -393,7 +437,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
 
         CHECK(rig.Outputs.empty());
         REQUIRE(checks.size() == 1);
-        CHECK(checks.front() == pair<string, uint64_t> {"Particles/UnitTest.spark", 42});
+        CHECK(checks.front() == pair<string, uint64_t> {"Particles/UnitTest.spk", 42});
     }
 
     SECTION("RejectsMalformedParticleXml")
@@ -406,54 +450,344 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), ParticleBakerException);
         CHECK(rig.Outputs.empty());
     }
-#endif
 
-#if FO_EFFEKSEER_PARTICLES
-    SECTION("ValidatesAndCopiesCookedEffekseerBinary")
+    SECTION("RejectsAbsoluteSparkTexturePath")
     {
-        TestRig rig;
-        const vector<uint8_t> binary = DecodeHexBytes(ValidEffekseerEffectHex);
-        const string binary_string {ptr<const uint8_t> {binary.data()}.reinterpret_as<const char>().get(), binary.size()};
-        rig.AddSourceFile("Particles/Simple_Sprite_FixedYAxis.efk", binary_string);
+        string particle {ValidParticle};
+        const string relative_path = "TestParticle.png";
+        const size_t path_pos = particle.find(relative_path);
+        REQUIRE(path_pos != string::npos);
+        particle.replace(path_pos, relative_path.size(), "C:/Outside/TestParticle.png");
 
+        TestRig rig;
+        rig.AddSourceFile("Particles/Absolute.spark", particle);
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("SPARK particle texture path must be relative"));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("AllowsParentRelativeSparkTexturePathInsideResourceSource")
+    {
+        string particle {ValidParticle};
+        const string relative_path = "TestParticle.png";
+        const size_t path_pos = particle.find(relative_path);
+        REQUIRE(path_pos != string::npos);
+        particle.replace(path_pos, relative_path.size(), "../Texture/TestParticle.png");
+
+        TestRig rig;
+        rig.AddSourceFile("Particles/Nested/ParentRelative.spark", particle);
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.size() == 1);
-        CHECK(rig.Outputs.at("Particles/Simple_Sprite_FixedYAxis.efk") == binary);
+        CHECK(rig.Outputs.contains("Particles/Nested/ParentRelative.spk"));
     }
 
-    SECTION("RejectsTruncatedEffekseerBinary")
+    SECTION("RejectsSparkTexturePathOutsideResourceSource")
     {
-        for (const string_view extension : {string_view {"efk"}, string_view {"efkefc"}}) {
-            TestRig rig;
-            const string path = strex("Particles/Truncated.{}", extension);
-            rig.AddSourceFile(path, "EFK");
+        string particle {ValidParticle};
+        const string relative_path = "TestParticle.png";
+        const size_t path_pos = particle.find(relative_path);
+        REQUIRE(path_pos != string::npos);
+        particle.replace(path_pos, relative_path.size(), "../../../Outside/TestParticle.png");
 
-            ParticleBaker baker(rig.MakeContext());
+        TestRig rig;
+        rig.AddSourceFile("Particles/Nested/Outside.spark", particle);
+        ParticleBaker baker(rig.MakeContext());
 
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), ParticleBakerException);
-            CHECK(rig.Outputs.empty());
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("SPARK particle texture path escapes its resource source"));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("SkipsExplicitSparkSourceTarget")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/UnitTest.spark", ValidParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/UnitTest.spark");
+
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("RejectsAuthoredSparkRuntimeBinary")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Cooked.spk", "SPK");
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+#endif
+
+#if FO_EFFEKSEER_PARTICLES
+    SECTION("CompilesTextEffekseerProjectToDerivedRuntimeBinary")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        const string source_path = strex(source_dir).combine_path("Particles/Simple.efkproj").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(source_files.GetAllFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 1);
+        REQUIRE(rig.Outputs.contains("Particles/Simple.efk"));
+        const vector<uint8_t>& binary = rig.Outputs.at("Particles/Simple.efk");
+        REQUIRE(binary.size() > 4);
+        CHECK(string_view {ptr<const uint8_t> {binary.data()}.reinterpret_as<const char>().get(), 4} == "SKFE");
+        CHECK_FALSE(rig.Outputs.contains("Particles/Simple.efkproj"));
+    }
+
+    SECTION("BatchesTextEffekseerProjects")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/First/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/Second/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(source_files.GetAllFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 2);
+        CHECK(rig.Outputs.contains("Particles/First/Effect.efk"));
+        CHECK(rig.Outputs.contains("Particles/Second/Effect.efk"));
+
+        const string dependency_path = strex(source_dir).combine_path("Particles/First/Texture/Splash01.png").str();
+        REQUIRE(fs_write_file(dependency_path, "first texture"));
+        std::filesystem::last_write_time(std::filesystem::path {fs_make_path(dependency_path)}, std::filesystem::file_time_type::clock::now() + std::chrono::minutes {5});
+        const uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        FileSystem changed_source_files;
+        changed_source_files.AddDirSource(source_dir, true, true);
+        ParticleBaker changed_baker(rig.MakeContext("TestPack", [dependency_write_time](string_view, uint64_t write_time) { return write_time == dependency_write_time; }));
+        changed_baker.BakeFiles(changed_source_files.GetAllFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 1);
+        CHECK(rig.Outputs.contains("Particles/First/Effect.efk"));
+        CHECK_FALSE(rig.Outputs.contains("Particles/Second/Effect.efk"));
+    }
+
+    SECTION("BakesOnlyExplicitDerivedEffekseerTarget")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/First.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/Second.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(source_files.GetAllFiles(), "Particles/Second.efk");
+
+        REQUIRE(rig.Outputs.size() == 1);
+        CHECK(rig.Outputs.contains("Particles/Second.efk"));
+        CHECK_FALSE(rig.Outputs.contains("Particles/First.efk"));
+    }
+
+    SECTION("SkipsExplicitEffekseerSourceTarget")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Simple.efkproj", ParticleTests::SimpleGeneratingPositionProject);
+
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Particles/Simple.efkproj");
+
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("TracksEffekseerDependencyAddChangeAndRename")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        const string output_dir = strex(temp_dir).combine_path("output").str();
+        const string source_path = strex(source_dir).combine_path("Particles/Nested/Simple.efkproj").str();
+        const string dependency_path = strex(source_dir).combine_path("Particles/Texture/Splash01.png").str();
+        const string renamed_dependency_path = strex(source_dir).combine_path("Particles/Texture/SplashRenamed.png").str();
+        const string baked_output_path = strex(output_dir).combine_path("TestPack/Particles/Nested/Simple.efk").str();
+        string project {ParticleTests::SimpleGeneratingPositionProject};
+        const string original_dependency = "Texture/Splash01.png";
+        const size_t dependency_pos = project.find(original_dependency);
+        REQUIRE(dependency_pos != string::npos);
+        project.replace(dependency_pos, original_dependency.size(), "../Texture/Splash01.png");
+
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(source_path, project));
+
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, output_dir);
+        vector<pair<string, uint64_t>> checks;
+
+        const auto run_bake = [&](bool record_checks = false) {
+            FileSystem source_files;
+            source_files.AddDirSource(source_dir, true, true);
+            ParticleBaker baker(rig.MakeContext("TestPack", [&](string_view path, uint64_t write_time) {
+                if (record_checks) {
+                    checks.emplace_back(string(path), write_time);
+                }
+
+                return write_time > fs_last_write_time(baked_output_path);
+            }));
+            baker.BakeFiles(source_files.GetAllFiles(), "");
+
+            if (rig.Outputs.contains("Particles/Nested/Simple.efk")) {
+                REQUIRE(fs_write_file(baked_output_path, rig.Outputs.at("Particles/Nested/Simple.efk")));
+            }
+        };
+
+        run_bake();
+        REQUIRE(rig.Outputs.contains("Particles/Nested/Simple.efk"));
+
+        const string cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer/TestPack/Particles/Nested/Simple.efk.deps").str();
+        const optional<string> missing_snapshot = fs_read_file(cache_path);
+        REQUIRE(missing_snapshot);
+        CHECK(missing_snapshot->find(strex("{}\t-\t-", fs_resolve_path(dependency_path))) != string::npos);
+
+        run_bake();
+        CHECK(rig.Outputs.empty());
+
+        REQUIRE(fs_write_file(dependency_path, "texture"));
+        const uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        REQUIRE(dependency_write_time != 0);
+        checks.clear();
+
+        {
+            FileSystem source_files;
+            source_files.AddDirSource(source_dir, true, true);
+            ParticleBaker discovery_baker(rig.MakeContext("TestPack", [&checks](string_view path, uint64_t write_time) {
+                checks.emplace_back(string(path), write_time);
+                return false;
+            }));
+            discovery_baker.BakeFiles(source_files.GetAllFiles(), "");
         }
+
+        CHECK(rig.Outputs.empty());
+        CHECK_FALSE(fs_exists(baked_output_path));
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front().first == "Particles/Nested/Simple.efk");
+        CHECK(checks.front().second == std::max(fs_last_write_time(source_path), dependency_write_time));
+
+        run_bake();
+        REQUIRE(rig.Outputs.contains("Particles/Nested/Simple.efk"));
+
+        checks.clear();
+        run_bake(true);
+        CHECK(rig.Outputs.empty());
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front().first == "Particles/Nested/Simple.efk");
+        CHECK(checks.front().second == std::max(fs_last_write_time(source_path), dependency_write_time));
+
+        REQUIRE(fs_write_file(dependency_path, "changed texture payload"));
+        run_bake();
+        CHECK(rig.Outputs.contains("Particles/Nested/Simple.efk"));
+
+        std::filesystem::rename(std::filesystem::path {fs_make_path(dependency_path)}, std::filesystem::path {fs_make_path(renamed_dependency_path)});
+        run_bake();
+        CHECK(rig.Outputs.contains("Particles/Nested/Simple.efk"));
+
+        run_bake();
+        CHECK(rig.Outputs.empty());
     }
 
-    SECTION("RejectsEffekseerExtensionMagicMismatch")
+    SECTION("RejectsMalformedEffekseerProjectXml")
     {
-        TestRig efk_rig;
-        efk_rig.AddSourceFile("Particles/Wrong.efk", "EFKE");
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        const string source_path = strex(source_dir).combine_path("Particles/Broken.efkproj").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(source_path, "<EffekseerProject><Root>"));
 
-        ParticleBaker efk_baker(efk_rig.MakeContext());
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
 
-        CHECK_THROWS_AS(efk_baker.BakeFiles(efk_rig.GetAllSourceFiles(), ""), ParticleBakerException);
-        CHECK(efk_rig.Outputs.empty());
+        CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
+    }
 
-        TestRig efkefc_rig;
-        efkefc_rig.AddSourceFile("Particles/Wrong.efkefc", "SKFE");
+    SECTION("RejectsEffekseerProjectFromAnotherEditorVersion")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        const string source_path = strex(source_dir).combine_path("Particles/Unsupported.efkproj").str();
+        string project {ParticleTests::SimpleGeneratingPositionProject};
+        const size_t version_pos = project.find("<ToolVersion>1.80.5</ToolVersion>");
+        REQUIRE(version_pos != string::npos);
+        project.replace(version_pos, string_view {"<ToolVersion>1.80.5</ToolVersion>"}.size(), "<ToolVersion>1.80.4</ToolVersion>");
 
-        ParticleBaker efkefc_baker(efkefc_rig.MakeContext());
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(source_path, project));
 
-        CHECK_THROWS_AS(efkefc_baker.BakeFiles(efkefc_rig.GetAllSourceFiles(), ""), ParticleBakerException);
-        CHECK(efkefc_rig.Outputs.empty());
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("RejectsEffekseerContainerRenamedAsTextProject")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string source_dir = strex(temp_dir).combine_path("source").str();
+        const string source_path = strex(source_dir).combine_path("Particles/Disguised.efkproj").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        const vector<uint8_t> container {'E', 'F', 'K', 'E', 0, 0, 0, 0};
+        REQUIRE(fs_write_file(source_path, container));
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("RejectsAuthoredEffekseerRuntimeBinary")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Cooked.efk", "SKFE");
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("RejectsNonDirectoryEffekseerProjectSource")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Simple.efkproj", ParticleTests::SimpleGeneratingPositionProject);
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), ParticleBakerException);
+        CHECK(rig.Outputs.empty());
     }
 #endif
 
@@ -475,7 +809,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(binary.size() > 12);
 
         for (const size_t truncated_size : {size_t {0}, size_t {1}, size_t {11}, binary.size() - 1}) {
-            SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(truncated_size));
+            SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(truncated_size));
             CHECK_FALSE(system);
         }
 
@@ -489,7 +823,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         oversized[7] = 0x7F;
         oversized[8] = 1;
 
-        SPK::Ref<SPK::System> oversized_system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {oversized.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(oversized.size()));
+        SPK::Ref<SPK::System> oversized_system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {oversized.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(oversized.size()));
         CHECK_FALSE(oversized_system);
     }
 
@@ -506,7 +840,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         signature_offset += 1 + sizeof(uint32_t);
         binary[signature_offset] ^= 0xFF;
 
-        SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
+        SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
         CHECK_FALSE(system);
     }
 
@@ -515,7 +849,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         vector<uint8_t> binary = BakeValidParticleBinary();
         MutateSystemGroupsReference(binary, ParticleReferenceMutation::Zero);
 
-        SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
+        SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
         CHECK_FALSE(system);
     }
 
@@ -524,7 +858,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         vector<uint8_t> binary = BakeValidParticleBinary();
         MutateSystemGroupsReference(binary, ParticleReferenceMutation::OutOfRange);
 
-        SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
+        SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
         CHECK_FALSE(system);
     }
 
@@ -533,7 +867,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         vector<uint8_t> binary = BakeValidParticleBinary();
         MutateSystemGroupsReference(binary, ParticleReferenceMutation::WrongType);
 
-        SPK::Ref<SPK::System> system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
+        SPK::Ref<SPK::System> system = spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
         CHECK_FALSE(system);
     }
 
@@ -542,13 +876,13 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         vector<std::future<void>> registrations;
 
         for (size_t i = 0; i < 8; ++i) {
-            registrations.emplace_back(std::async(std::launch::async, [] { SPK::FO::EnsureSparkParticleObjectsRegistered(); }));
+            registrations.emplace_back(std::async(std::launch::async, [&spark_context] { SPK::FO::EnsureSparkParticleObjectsRegistered(spark_context); }));
         }
         for (auto& registration : registrations) {
             registration.get();
         }
 
-        CHECK(SPK::IO::IOManager::get().isObjectRegistered<SPK::FO::SparkQuadRenderer>());
+        CHECK(SPK::FO::IsSparkParticleObjectRegistered(spark_context));
     }
 
     SECTION("BakerDataSourceBakesBinaryOnDemandWithoutRawCopy")
@@ -557,9 +891,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         const string input_dir = strex(temp_dir).combine_path("input").str();
         const string output_dir = strex(temp_dir).combine_path("output").str();
         const string source_path = strex(input_dir).combine_path("Particles/Runtime.spark").str();
-        const string output_path = strex(output_dir).combine_path("Visual/Particles/Runtime.spark").str();
+        const string output_path = strex(output_dir).combine_path("Visual/Particles/Runtime.spk").str();
         const string late_source_path = strex(input_dir).combine_path("Particles/LateRuntime.spark").str();
-        const string late_output_path = strex(output_dir).combine_path("Visual/Particles/LateRuntime.spark").str();
+        const string late_output_path = strex(output_dir).combine_path("Visual/Particles/LateRuntime.spk").str();
 
         ignore_unused(fs_remove_dir_tree(temp_dir));
         REQUIRE(fs_write_file(source_path, ValidParticle));
@@ -586,7 +920,7 @@ Bakers = Particle
 
         CHECK_FALSE(fs_exists(output_path));
 
-        const auto first_data = data_source.OpenFile("Particles/Runtime.spark", size, write_time);
+        const auto first_data = data_source.OpenFile("Particles/Runtime.spk", size, write_time);
         REQUIRE(first_data);
         REQUIRE(size > 3);
         CHECK(first_data.as_ptr()[0] == uint8_t {'S'});
@@ -594,25 +928,85 @@ Bakers = Particle
         CHECK(first_data.as_ptr()[2] == uint8_t {'K'});
         CHECK(fs_exists(output_path));
 
-        SPK::Ref<SPK::System> first_system = SPK::IO::IOManager::get().loadFromBuffer("spk", first_data.as_ptr().reinterpret_as<const char>().get(), numeric_cast<unsigned>(size));
+        SPK::Ref<SPK::System> first_system = spark_io.loadFromBuffer("spk", first_data.as_ptr().reinterpret_as<const char>().get(), numeric_cast<unsigned>(size));
         REQUIRE(first_system);
         CHECK(first_system->getNbGroups() == 1);
 
-        const auto second_data = data_source.OpenFile("Particles/Runtime.spark", size, write_time);
+        const auto second_data = data_source.OpenFile("Particles/Runtime.spk", size, write_time);
         REQUIRE(second_data);
         CHECK(second_data.as_ptr()[0] == uint8_t {'S'});
 
         CHECK_FALSE(data_source.Reindex());
         REQUIRE(fs_write_file(late_source_path, ValidParticle));
-        CHECK_FALSE(data_source.IsFileExists("Particles/LateRuntime.spark"));
+        CHECK_FALSE(data_source.IsFileExists("Particles/LateRuntime.spk"));
         CHECK(data_source.Reindex());
-        CHECK(data_source.IsFileExists("Particles/LateRuntime.spark"));
+        CHECK(data_source.IsFileExists("Particles/LateRuntime.spk"));
         CHECK_FALSE(data_source.Reindex());
 
-        const auto late_data = data_source.OpenFile("Particles/LateRuntime.spark", size, write_time);
+        const auto late_data = data_source.OpenFile("Particles/LateRuntime.spk", size, write_time);
         REQUIRE(late_data);
         CHECK(late_data.as_ptr()[0] == uint8_t {'S'});
         CHECK(fs_exists(late_output_path));
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_EFFEKSEER_PARTICLES
+    SECTION("BakerDataSourceCompilesEffekseerRuntimeOnDemand")
+    {
+        const string temp_dir = MakeTempParticleBakerDir();
+        const string input_dir = strex(temp_dir).combine_path("input").str();
+        const string output_dir = strex(temp_dir).combine_path("output").str();
+        const string source_path = strex(input_dir).combine_path("Particles/Runtime.efkproj").str();
+        const string dependency_path = strex(input_dir).combine_path("Particles/Texture/Splash01.png").str();
+        const string output_path = strex(output_dir).combine_path("Visual/Particles/Runtime.efk").str();
+
+        (void)fs_remove_dir_tree(temp_dir);
+        REQUIRE(fs_write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
+
+        GlobalSettings settings {true};
+        settings.ApplyDefaultSettings();
+
+        auto config = ConfigFile("ParticleBakerDataSource.fomain",
+            strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Visual
+InputDirs = input
+RecursiveInput = true
+Bakers = Particle
+)",
+                output_dir)
+                .str());
+
+        settings.ApplyConfigFile(config, temp_dir);
+        BakerDataSource data_source {&settings};
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        CHECK_FALSE(fs_exists(output_path));
+
+        const auto runtime_data = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
+        REQUIRE(runtime_data);
+        REQUIRE(size > 4);
+        CHECK(string_view {runtime_data.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
+        CHECK(fs_exists(output_path));
+        CHECK_FALSE(data_source.Reindex());
+
+        REQUIRE(fs_write_file(dependency_path, "texture"));
+        CHECK(data_source.Reindex());
+        const auto runtime_data_after_add = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
+        REQUIRE(runtime_data_after_add);
+        CHECK(string_view {runtime_data_after_add.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
+        CHECK_FALSE(data_source.Reindex());
+
+        REQUIRE(fs_remove_file(dependency_path));
+        CHECK(data_source.Reindex());
+        const auto runtime_data_after_remove = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
+        REQUIRE(runtime_data_after_remove);
+        CHECK(string_view {runtime_data_after_remove.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
+        CHECK_FALSE(data_source.Reindex());
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

@@ -24,7 +24,7 @@
 #ifndef H_SPK_IOBUFFER
 #define H_SPK_IOBUFFER
 
-#include <cstring> // (FOnline Patch) Bounds-safe primitive reads use memcpy to avoid unaligned access.
+#include <cstring> // Bounds-safe primitive reads use memcpy to avoid unaligned access.
 
 namespace SPK
 {
@@ -47,11 +47,11 @@ namespace IO
 		size_t getSize() const				{ return size; }
 		size_t getCapacity() const			{ return capacity; }
 		size_t getPosition() const			{ return position; }
-		size_t getRemaining() const			{ return position <= size ? size - position : 0; } // (FOnline Patch) Bounds-aware binary decoding.
-		bool hasError() const				{ return error; } // (FOnline Patch)
+		size_t getRemaining() const			{ return position <= size ? size - position : 0; } // Bounds-aware binary decoding.
+		bool hasError() const				{ return error; }
 
-		void skip(size_t nb) const; // (FOnline Patch) Reject overflow and reads past the initialized buffer.
-		void setPosition(size_t pos) const; // (FOnline Patch)
+		void skip(size_t nb) const; // Reject overflow and reads past the initialized buffer.
+		void setPosition(size_t pos) const;
 		void clear()						{ position = size = 0; error = false; }
 
 		bool isAtEnd() const				{ return position >= size; }
@@ -64,7 +64,7 @@ namespace IO
 
 		int32 get32() const
 		{
-			int32 value = 0; // (FOnline Patch) Avoid unaligned reads and return deterministic zero on truncation.
+			int32 value = 0; // Avoid unaligned reads and return deterministic zero on truncation.
 			std::memcpy(&value,get(4),4);
 			if (USE_LITTLE_ENDIANS)
 				return value;
@@ -127,9 +127,9 @@ namespace IO
 		size_t capacity;
 		size_t size;
 		mutable size_t position;
-		bool readOnly; // (FOnline Patch) Output buffers may reserve space; input buffers must stay within initialized bytes.
-		mutable bool error; // (FOnline Patch)
-		mutable char fallback[16]; // (FOnline Patch) Safe zero storage returned after a rejected primitive read.
+		bool readOnly; // Output buffers may reserve space; input buffers must stay within initialized bytes.
+		mutable bool error;
+		mutable char fallback[16]; // Safe zero storage returned after a rejected primitive read.
 
 		static int32 swap32(int32 i)
 		{

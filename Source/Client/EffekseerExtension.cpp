@@ -47,6 +47,7 @@ FO_BEGIN_NAMESPACE
 
 constexpr int32_t EFFEKSEER_INSTANCE_MAX = 16384;
 constexpr size_t EFFEKSEER_SPRITE_INSTANCE_MAX = 16000;
+constexpr size_t EFFEKSEER_RING_VERTEX_MAX = 64000;
 constexpr float32_t EFFEKSEER_FRAMES_PER_SECOND = 60.0f;
 constexpr float32_t EFFEKSEER_PREWARM_SECONDS = 1.0f;
 
@@ -312,6 +313,34 @@ struct EffekseerSpriteInstanceSnapshot
     float32_t CameraDepth {};
 };
 
+struct EffekseerRingNodeSnapshot
+{
+    Effekseer::BillboardType Billboard {};
+    Effekseer::ZSortType ZSort {};
+    Effekseer::AlphaBlendType AlphaBlend {};
+    Effekseer::TextureFilterType TextureFilter {};
+    int32_t TextureIndex {-1};
+    int32_t VertexCount {};
+    float32_t StartingFade {};
+    float32_t EndingFade {};
+};
+
+struct EffekseerRingInstanceSnapshot
+{
+    Effekseer::SIMD::Mat43f SRTMatrix43 {};
+    Effekseer::SIMD::Vec2f OuterLocation {};
+    Effekseer::SIMD::Vec2f InnerLocation {};
+    float32_t ViewingAngleStart {};
+    float32_t ViewingAngleEnd {};
+    float32_t CenterRatio {};
+    Effekseer::Color OuterColor {};
+    Effekseer::Color CenterColor {};
+    Effekseer::Color InnerColor {};
+    Effekseer::RectF UV {};
+    Effekseer::SIMD::Vec3f Direction {};
+    float32_t CameraDepth {};
+};
+
 static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodeParameter& parameter) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
@@ -356,12 +385,74 @@ static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodePar
             return "advanced texture slots are unsupported";
         }
     }
-    if (basic.GetIsRenderedWithAdvancedRenderer() || basic.DistortionIntensity != 0.0f || basic.TextureBlendType != -1 || basic.EmissiveScaling != 1.0f || basic.SoftParticleDistanceFar != 0.0f || basic.SoftParticleDistanceNear != 0.0f || basic.SoftParticleDistanceNearOffset != 0.0f) {
+    if (basic.GetIsRenderedWithAdvancedRenderer() || basic.TextureBlendType != -1 || basic.EmissiveScaling != 1.0f || basic.SoftParticleDistanceFar != 0.0f || basic.SoftParticleDistanceNear != 0.0f || basic.SoftParticleDistanceNearOffset != 0.0f) {
         return "advanced material parameters are unsupported";
     }
     if (parameter.DepthParameterPtr->DepthOffset != 0.0f || parameter.DepthParameterPtr->IsDepthOffsetScaledWithCamera || parameter.DepthParameterPtr->IsDepthOffsetScaledWithParticleScale || parameter.DepthParameterPtr->SuppressionOfScalingByDepth != 1.0f || parameter.DepthParameterPtr->DepthClipping != std::numeric_limits<float32_t>::max()) {
         return "advanced depth parameters are unsupported";
     }
+
+    return {};
+}
+
+static auto ValidateRingNodeParameter(const Effekseer::RingRenderer::NodeParameter& parameter) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (parameter.EffectPointer == nullptr || parameter.BasicParameterPtr == nullptr || parameter.DepthParameterPtr == nullptr) {
+        return "ring renderer received incomplete node parameters";
+    }
+    if (!parameter.ZTest || parameter.ZWrite) {
+        return "ring node must use ZTest=on and ZWrite=off";
+    }
+    if (!parameter.IsRightHand) {
+        return "left-handed ring nodes are unsupported";
+    }
+    if (parameter.EnableViewOffset) {
+        return "view offset is unsupported";
+    }
+    if (parameter.Billboard != Effekseer::BillboardType::Billboard && parameter.Billboard != Effekseer::BillboardType::RotatedBillboard && parameter.Billboard != Effekseer::BillboardType::YAxisFixed && parameter.Billboard != Effekseer::BillboardType::DirectionalBillboard && parameter.Billboard != Effekseer::BillboardType::Fixed) {
+        return "unknown ring billboard mode";
+    }
+    if (parameter.DepthParameterPtr->ZSort != Effekseer::ZSortType::None && parameter.DepthParameterPtr->ZSort != Effekseer::ZSortType::NormalOrder && parameter.DepthParameterPtr->ZSort != Effekseer::ZSortType::ReverseOrder) {
+        return "unknown ring Z-sort mode";
+    }
+    if (parameter.VertexCount <= 0 || parameter.VertexCount > numeric_cast<int32_t>(EFFEKSEER_RING_VERTEX_MAX / 8)) {
+        return "ring vertex count exceeds the supported geometry budget";
+    }
+    if (!std::isfinite(parameter.StartingFade) || !std::isfinite(parameter.EndingFade)) {
+        return "ring fade angles must be finite";
+    }
+
+    const Effekseer::NodeRendererBasicParameter& basic = *parameter.BasicParameterPtr;
+
+    if (basic.MaterialType != Effekseer::RendererMaterialType::Default || basic.MaterialRenderDataPtr != nullptr) {
+        return "only the Default material is supported";
+    }
+    if (basic.AlphaBlend != Effekseer::AlphaBlendType::Blend && basic.AlphaBlend != Effekseer::AlphaBlendType::Add) {
+        return "only Blend and Add blending are supported";
+    }
+    if (basic.TextureIndexes[0] < -1) {
+        return "ring node has an invalid color texture index";
+    }
+    if (basic.TextureIndexes[0] >= 0 && basic.TextureFilters[0] != Effekseer::TextureFilterType::Nearest && basic.TextureFilters[0] != Effekseer::TextureFilterType::Linear) {
+        return "ring node uses an unknown texture filter";
+    }
+    if (basic.TextureIndexes[0] >= 0 && basic.TextureWraps[0] != Effekseer::TextureWrapType::Clamp) {
+        return "only Clamp texture wrapping is supported";
+    }
+    for (size_t texture_slot = 1; texture_slot < basic.TextureIndexes.size(); texture_slot++) {
+        if (basic.TextureIndexes[texture_slot] >= 0) {
+            return "advanced texture slots are unsupported";
+        }
+    }
+    if (basic.GetIsRenderedWithAdvancedRenderer() || basic.TextureBlendType != -1 || basic.EmissiveScaling != 1.0f || basic.SoftParticleDistanceFar != 0.0f || basic.SoftParticleDistanceNear != 0.0f || basic.SoftParticleDistanceNearOffset != 0.0f) {
+        return "advanced material parameters are unsupported";
+    }
+    if (parameter.DepthParameterPtr->DepthOffset != 0.0f || parameter.DepthParameterPtr->IsDepthOffsetScaledWithCamera || parameter.DepthParameterPtr->IsDepthOffsetScaledWithParticleScale || parameter.DepthParameterPtr->SuppressionOfScalingByDepth != 1.0f || parameter.DepthParameterPtr->DepthClipping != std::numeric_limits<float32_t>::max()) {
+        return "advanced depth parameters are unsupported";
+    }
+
     return {};
 }
 
@@ -380,14 +471,14 @@ static auto ExtractCameraBackward(const mat44& view_matrix) -> vec3
     return glm::dot(backward, backward) > 0.0f ? glm::normalize(backward) : vec3 {0.0f, 0.0f, 1.0f};
 }
 
-static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const EffekseerSpriteInstanceSnapshot& instance, const vec3& camera_backward) -> glm::mat3
+static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> glm::mat3
 {
     FO_STACK_TRACE_ENTRY();
 
     Effekseer::SIMD::Vec3f scale;
     Effekseer::SIMD::Mat43f rotation;
     Effekseer::SIMD::Vec3f translation;
-    instance.SRTMatrix43.GetSRT(scale, rotation, translation);
+    srt_matrix.GetSRT(scale, rotation, translation);
     ignore_unused(scale, translation);
 
     vec3 up {0.0f, 1.0f, 0.0f};
@@ -399,7 +490,7 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
         up = glm::dot(up, up) > 0.0f ? glm::normalize(up) : vec3 {0.0f, 1.0f, 0.0f};
     }
     else if (billboard == Effekseer::BillboardType::DirectionalBillboard) {
-        up = ToVec3(instance.Direction);
+        up = ToVec3(direction);
         up = glm::dot(up, up) > 0.0f ? glm::normalize(up) : vec3 {0.0f, 1.0f, 0.0f};
     }
 
@@ -436,23 +527,23 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
     return {right, up, front};
 }
 
-static auto CalculateSpritePosition(Effekseer::BillboardType billboard, const EffekseerSpriteInstanceSnapshot& instance, const Effekseer::SIMD::Vec2f& local_position, const vec3& camera_backward) -> vec3
+static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& local_position, const vec3& camera_backward) -> vec3
 {
     FO_STACK_TRACE_ENTRY();
 
     if (billboard == Effekseer::BillboardType::Fixed) {
-        const Effekseer::SIMD::Vec3f local {local_position.GetX(), local_position.GetY(), 0.0f};
-        return ToVec3(Effekseer::SIMD::Vec3f::Transform(local, instance.SRTMatrix43));
+        const Effekseer::SIMD::Vec3f local {local_position.x, local_position.y, local_position.z};
+        return ToVec3(Effekseer::SIMD::Vec3f::Transform(local, srt_matrix));
     }
 
     Effekseer::SIMD::Vec3f scale;
     Effekseer::SIMD::Mat43f rotation;
     Effekseer::SIMD::Vec3f translation;
-    instance.SRTMatrix43.GetSRT(scale, rotation, translation);
+    srt_matrix.GetSRT(scale, rotation, translation);
     ignore_unused(rotation);
 
-    const glm::mat3 basis = CalculateBillboardBasis(billboard, instance, camera_backward);
-    const vec3 scaled_local {local_position.GetX() * scale.GetX(), local_position.GetY() * scale.GetY(), 0.0f};
+    const glm::mat3 basis = CalculateBillboardBasis(billboard, srt_matrix, direction, camera_backward);
+    const vec3 scaled_local {local_position.x * scale.GetX(), local_position.y * scale.GetY(), local_position.z * scale.GetZ()};
     return ToVec3(translation) + basis * scaled_local;
 }
 
@@ -480,6 +571,7 @@ public:
         ignore_unused(user_data);
         _instances.clear();
         _node.reset();
+        _declaredInstanceCount = 0;
 
         if (!_binding->CurrentSystem) {
             return;
@@ -497,6 +589,7 @@ public:
             return;
         }
 
+        _declaredInstanceCount = numeric_cast<size_t>(count);
         _node = EffekseerSpriteNodeSnapshot {
             .Billboard = parameter.Billboard,
             .ZSort = parameter.ZSort,
@@ -504,7 +597,7 @@ public:
             .TextureFilter = parameter.BasicParameterPtr->TextureFilters[0],
             .TextureIndex = parameter.BasicParameterPtr->TextureIndexes[0],
         };
-        _instances.reserve(numeric_cast<size_t>(count));
+        _instances.reserve(_declaredInstanceCount);
     }
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
@@ -516,6 +609,10 @@ public:
             return;
         }
         if (_instances.size() >= EFFEKSEER_SPRITE_INSTANCE_MAX) {
+            _binding->Fail("sprite callback exceeds the supported instance count");
+            return;
+        }
+        if (_instances.size() >= _declaredInstanceCount) {
             _binding->Fail("sprite callback emitted more instances than declared");
             return;
         }
@@ -582,7 +679,20 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         ignore_unused(parameter, user_data);
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed || _instances.empty()) {
+
+        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+            return;
+        }
+        if (_instances.size() != _declaredInstanceCount) {
+            _binding->Fail("sprite callback instance count does not match its declaration");
+            _instances.clear();
+            _node.reset();
+            _declaredInstanceCount = 0;
+            return;
+        }
+        if (_instances.empty()) {
+            _node.reset();
+            _declaredInstanceCount = 0;
             return;
         }
 
@@ -594,6 +704,9 @@ public:
         }
 
         Render(_binding->CurrentSystem.as_ptr());
+        _instances.clear();
+        _node.reset();
+        _declaredInstanceCount = 0;
     }
 
 private:
@@ -641,11 +754,14 @@ private:
             const float32_t texture_v[4] = {uv_bottom, uv_bottom, uv_top, uv_top};
 
             for (size_t vertex_offset = 0; vertex_offset < 4; vertex_offset++) {
-                const vec3 position = CalculateSpritePosition(_node->Billboard, instance, instance.Positions[vertex_offset], camera_backward);
+                const vec3 local_position {instance.Positions[vertex_offset].GetX(), instance.Positions[vertex_offset].GetY(), 0.0f};
+                const vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
+
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
                     system->Fail("sprite geometry produced a non-finite vertex");
                     return;
                 }
+
                 Vertex2D& vertex = _drawBuffer->Vertices[instance_index * 4 + vertex_offset];
                 vertex.PosX = position.x;
                 vertex.PosY = position.y;
@@ -683,7 +799,395 @@ private:
     nptr<RenderEffect> _addEffect {};
     unique_ptr<RenderDrawBuffer> _drawBuffer;
     optional<EffekseerSpriteNodeSnapshot> _node {};
+    size_t _declaredInstanceCount {};
     vector<EffekseerSpriteInstanceSnapshot> _instances {};
+};
+
+class FOnlineEffekseerRingRenderer final : public Effekseer::RingRenderer
+{
+public:
+    FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, shared_ptr<EffekseerDrawBinding> binding) :
+        _binding {std::move(binding)},
+        _multiplyEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorMul.fofx")},
+        _addEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorAdd.fofx")},
+        _drawBuffer {render->CreateDrawBuffer(false)},
+        _whiteTexture {render->CreateTexture({1, 1}, true, false)}
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(_binding, "Effekseer ring renderer requires draw binding");
+        FO_VERIFY_AND_THROW(_multiplyEffect, "Effekseer multiply particle effect is missing");
+        FO_VERIFY_AND_THROW(_addEffect, "Effekseer additive particle effect is missing");
+
+        constexpr ucolor white_pixel {255, 255, 255, 255};
+        _whiteTexture->UpdateTextureRegion({}, {1, 1}, {&white_pixel, 1});
+        _drawBuffer->PrimType = RenderPrimitiveType::TriangleList;
+    }
+
+    void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        ignore_unused(user_data);
+        ResetState();
+
+        if (!_binding->CurrentSystem) {
+            return;
+        }
+        if (count < 0 || count > EFFEKSEER_INSTANCE_MAX) {
+            _binding->Fail("ring node exceeds the supported instance count");
+            return;
+        }
+        if (const string_view reason = ValidateRingNodeParameter(parameter); !reason.empty()) {
+            _binding->Fail(reason);
+            return;
+        }
+        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+            _binding->Fail("ring renderer received an unexpected effect pointer");
+            return;
+        }
+
+        _declaredInstanceCount = numeric_cast<size_t>(count);
+        _node = EffekseerRingNodeSnapshot {
+            .Billboard = parameter.Billboard,
+            .ZSort = parameter.DepthParameterPtr->ZSort,
+            .AlphaBlend = parameter.BasicParameterPtr->AlphaBlend,
+            .TextureFilter = parameter.BasicParameterPtr->TextureFilters[0],
+            .TextureIndex = parameter.BasicParameterPtr->TextureIndexes[0],
+            .VertexCount = parameter.VertexCount,
+            .StartingFade = parameter.StartingFade,
+            .EndingFade = parameter.EndingFade,
+        };
+        _instances.reserve(_declaredInstanceCount);
+    }
+
+    void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        ignore_unused(parameter, user_data);
+
+        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+            return;
+        }
+        if (_instances.size() >= numeric_cast<size_t>(EFFEKSEER_INSTANCE_MAX)) {
+            _binding->Fail("ring callback exceeds the supported instance count");
+            return;
+        }
+        if (_instances.size() >= _declaredInstanceCount) {
+            _binding->Fail("ring callback emitted more instances than declared");
+            return;
+        }
+        if (!std::isfinite(instance.AlphaThreshold) || instance.AlphaThreshold != 0.0f) {
+            _binding->Fail("alpha cutoff instance data is unsupported");
+            return;
+        }
+        if (!IsFinite(instance.SRTMatrix43) || !IsFinite(instance.OuterLocation) || !IsFinite(instance.InnerLocation)) {
+            _binding->Fail("ring callback emitted non-finite geometry data");
+            return;
+        }
+        if (!std::isfinite(instance.ViewingAngleStart) || !std::isfinite(instance.ViewingAngleEnd) || !std::isfinite(instance.CenterRatio)) {
+            _binding->Fail("ring callback emitted non-finite shape data");
+            return;
+        }
+        if (_node->Billboard == Effekseer::BillboardType::DirectionalBillboard && !IsFinite(instance.Direction)) {
+            _binding->Fail("directional ring callback emitted a non-finite direction");
+            return;
+        }
+
+        const float32_t uv_left = instance.UV.X;
+        const float32_t uv_right = instance.UV.X + instance.UV.Width;
+        const float32_t uv_top = instance.UV.Y;
+        const float32_t uv_bottom = instance.UV.Y + instance.UV.Height;
+
+        if (!std::isfinite(uv_left) || !std::isfinite(uv_right) || !std::isfinite(uv_top) || !std::isfinite(uv_bottom)) {
+            _binding->Fail("ring callback emitted non-finite texture coordinates");
+            return;
+        }
+        if (_node->TextureIndex >= 0 && (std::min(uv_left, uv_right) < 0.0f || std::max(uv_left, uv_right) > 1.0f || std::min(uv_top, uv_bottom) < 0.0f || std::max(uv_top, uv_bottom) > 1.0f)) {
+            _binding->Fail("clamped UV outside the base texture range is unsupported");
+            return;
+        }
+
+        const vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
+        const vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        const float32_t camera_depth = glm::dot(position, camera_backward);
+
+        if (!std::isfinite(camera_depth)) {
+            _binding->Fail("ring callback emitted a non-finite camera depth");
+            return;
+        }
+
+        Effekseer::SIMD::Vec3f direction {0.0f, 1.0f, 0.0f};
+
+        if (_node->Billboard == Effekseer::BillboardType::DirectionalBillboard) {
+            direction = instance.Direction;
+        }
+
+        _instances.emplace_back(EffekseerRingInstanceSnapshot {
+            .SRTMatrix43 = instance.SRTMatrix43,
+            .OuterLocation = instance.OuterLocation,
+            .InnerLocation = instance.InnerLocation,
+            .ViewingAngleStart = instance.ViewingAngleStart,
+            .ViewingAngleEnd = instance.ViewingAngleEnd,
+            .CenterRatio = instance.CenterRatio,
+            .OuterColor = instance.OuterColor,
+            .CenterColor = instance.CenterColor,
+            .InnerColor = instance.InnerColor,
+            .UV = instance.UV,
+            .Direction = direction,
+            .CameraDepth = camera_depth,
+        });
+    }
+
+    void EndRendering(const NodeParameter& parameter, void* user_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        ignore_unused(parameter, user_data);
+
+        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+            return;
+        }
+        if (_instances.size() != _declaredInstanceCount) {
+            _binding->Fail("ring callback instance count does not match its declaration");
+            ResetState();
+            return;
+        }
+        if (_instances.empty()) {
+            ResetState();
+            return;
+        }
+
+        if (_node->ZSort == Effekseer::ZSortType::NormalOrder) {
+            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerRingInstanceSnapshot& left, const EffekseerRingInstanceSnapshot& right) { return left.CameraDepth < right.CameraDepth; });
+        }
+        else if (_node->ZSort == Effekseer::ZSortType::ReverseOrder) {
+            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerRingInstanceSnapshot& left, const EffekseerRingInstanceSnapshot& right) { return left.CameraDepth > right.CameraDepth; });
+        }
+
+        Render(_binding->CurrentSystem.as_ptr());
+        ResetState();
+    }
+
+private:
+    void ResetState()
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _instances.clear();
+        _node.reset();
+        _declaredInstanceCount = 0;
+    }
+
+    void Render(ptr<EffekseerParticleRuntimeSystem::Impl> system)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(_node, "Effekseer ring render called without a node snapshot");
+
+        nptr<RenderTexture> render_texture = _whiteTexture.as_nptr();
+        frect32 atlas_rect {0.0f, 0.0f, 1.0f, 1.0f};
+
+        if (_node->TextureIndex >= 0) {
+            if (_node->TextureIndex >= system->Effect->GetColorImageCount()) {
+                system->Fail("ring color texture index is out of range");
+                return;
+            }
+
+            Effekseer::TextureRef color_texture = system->Effect->GetColorImage(_node->TextureIndex);
+
+            if (!color_texture || !color_texture->GetBackend()) {
+                system->Fail("ring color texture is not loaded");
+                return;
+            }
+
+            Effekseer::RefPtr<FOnlineEffekseerTexture> texture = color_texture->GetBackend().DownCast<FOnlineEffekseerTexture>();
+
+            if (!texture || !texture->RenderTextureRef) {
+                system->Fail("ring color texture was not loaded by the FOnline texture loader");
+                return;
+            }
+
+            const bool requested_linear_filter = _node->TextureFilter == Effekseer::TextureFilterType::Linear;
+
+            if (texture->RenderTextureRef->LinearFiltered != requested_linear_filter) {
+                system->Fail(requested_linear_filter ? "ring requests linear filtering but its FOnline atlas is nearest-filtered" : "ring requests nearest filtering but its FOnline atlas is linear-filtered");
+                return;
+            }
+
+            render_texture = texture->RenderTextureRef;
+            atlas_rect = texture->AtlasRect;
+        }
+
+        const size_t vertices_per_instance = numeric_cast<size_t>(_node->VertexCount) * 8;
+        const size_t instances_per_draw = EFFEKSEER_RING_VERTEX_MAX / vertices_per_instance;
+        FO_VERIFY_AND_THROW(instances_per_draw != 0, "Effekseer ring geometry budget cannot fit one instance");
+
+        for (size_t first_instance = 0; first_instance < _instances.size() && !system->Failed; first_instance += instances_per_draw) {
+            const size_t instance_count = std::min(instances_per_draw, _instances.size() - first_instance);
+            RenderChunk(system, render_texture.as_ptr(), atlas_rect, first_instance, instance_count);
+        }
+    }
+
+    void RenderChunk(ptr<EffekseerParticleRuntimeSystem::Impl> system, ptr<RenderTexture> render_texture, frect32 atlas_rect, size_t first_instance, size_t instance_count)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(_node, "Effekseer ring chunk render called without a node snapshot");
+        constexpr float32_t degrees_to_radians = 3.141592f / 180.0f;
+
+        const size_t segment_count = numeric_cast<size_t>(_node->VertexCount);
+        const size_t vertex_count = instance_count * segment_count * 8;
+        const size_t index_count = instance_count * segment_count * 12;
+        _drawBuffer->VertCount = 0;
+        _drawBuffer->IndCount = 0;
+        _drawBuffer->CheckAllocBuf(vertex_count, index_count);
+
+        const vec3 camera_backward = ExtractCameraBackward(system->ViewMatrix);
+
+        for (size_t chunk_instance_index = 0; chunk_instance_index < instance_count; chunk_instance_index++) {
+            const EffekseerRingInstanceSnapshot& instance = _instances[first_instance + chunk_instance_index];
+            const float32_t inverse_segment_count = 1.0f / numeric_cast<float32_t>(segment_count);
+            const float32_t circle_angle = instance.ViewingAngleEnd - instance.ViewingAngleStart;
+            const float32_t step_angle_degrees = circle_angle * inverse_segment_count;
+            const float32_t step_angle = step_angle_degrees * degrees_to_radians;
+            const float32_t begin_angle = (instance.ViewingAngleStart + 90.0f) * degrees_to_radians;
+
+            const float32_t outer_radius = instance.OuterLocation.GetX();
+            const float32_t inner_radius = instance.InnerLocation.GetX();
+            const float32_t center_radius = inner_radius + (outer_radius - inner_radius) * instance.CenterRatio;
+            const float32_t outer_height = instance.OuterLocation.GetY();
+            const float32_t inner_height = instance.InnerLocation.GetY();
+            const float32_t center_height = inner_height + (outer_height - inner_height) * instance.CenterRatio;
+
+            Effekseer::Color outer_color = instance.OuterColor;
+            Effekseer::Color center_color = instance.CenterColor;
+            Effekseer::Color inner_color = instance.InnerColor;
+
+            if (_node->StartingFade > 0.0f) {
+                outer_color.A = 0;
+                center_color.A = 0;
+                inner_color.A = 0;
+            }
+
+            const float32_t step_cosine = std::cos(step_angle);
+            const float32_t step_sine = std::sin(step_angle);
+            float32_t cosine = std::cos(begin_angle);
+            float32_t sine = std::sin(begin_angle);
+            float32_t current_angle_degrees = 0.0f;
+            float32_t current_u = instance.UV.X;
+            const float32_t step_u = instance.UV.Width * inverse_segment_count;
+            const float32_t outer_v = instance.UV.Y;
+            const float32_t center_v = instance.UV.Y + instance.UV.Height * 0.5f;
+            const float32_t inner_v = instance.UV.Y + instance.UV.Height;
+
+            for (size_t segment_index = 0; segment_index < segment_count; segment_index++) {
+                const float32_t next_cosine = cosine * step_cosine - sine * step_sine;
+                const float32_t next_sine = sine * step_cosine + cosine * step_sine;
+
+                current_angle_degrees += step_angle_degrees;
+                current_angle_degrees = std::min(current_angle_degrees, circle_angle);
+                float32_t next_alpha = 1.0f;
+
+                if (current_angle_degrees < _node->StartingFade) {
+                    next_alpha = current_angle_degrees / _node->StartingFade;
+                }
+                else if (current_angle_degrees > circle_angle - _node->EndingFade) {
+                    next_alpha = 1.0f - (current_angle_degrees - (circle_angle - _node->EndingFade)) / _node->EndingFade;
+                }
+
+                next_alpha = std::isfinite(next_alpha) ? std::clamp(next_alpha, 0.0f, 1.0f) : 0.0f;
+
+                Effekseer::Color next_outer_color = instance.OuterColor;
+                Effekseer::Color next_center_color = instance.CenterColor;
+                Effekseer::Color next_inner_color = instance.InnerColor;
+
+                if (next_alpha != 1.0f) {
+                    // RingRendererBase intentionally truncates these products instead of rounding.
+                    next_outer_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_outer_color.A) * next_alpha));
+                    next_center_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_center_color.A) * next_alpha));
+                    next_inner_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_inner_color.A) * next_alpha));
+                }
+
+                const float32_t next_u = current_u + step_u;
+                const vec3 local_positions[8] = {
+                    {cosine * outer_radius, sine * outer_radius, outer_height},
+                    {cosine * center_radius, sine * center_radius, center_height},
+                    {next_cosine * outer_radius, next_sine * outer_radius, outer_height},
+                    {next_cosine * center_radius, next_sine * center_radius, center_height},
+                    {cosine * center_radius, sine * center_radius, center_height},
+                    {cosine * inner_radius, sine * inner_radius, inner_height},
+                    {next_cosine * center_radius, next_sine * center_radius, center_height},
+                    {next_cosine * inner_radius, next_sine * inner_radius, inner_height},
+                };
+                const Effekseer::Color colors[8] = {outer_color, center_color, next_outer_color, next_center_color, center_color, inner_color, next_center_color, next_inner_color};
+                const float32_t texture_u[8] = {current_u, current_u, next_u, next_u, current_u, current_u, next_u, next_u};
+                const float32_t texture_v[8] = {outer_v, center_v, outer_v, center_v, center_v, inner_v, center_v, inner_v};
+
+                const size_t segment_base = (chunk_instance_index * segment_count + segment_index) * 8;
+
+                for (size_t vertex_offset = 0; vertex_offset < 8; vertex_offset++) {
+                    const vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_positions[vertex_offset], camera_backward);
+
+                    if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
+                        system->Fail("ring geometry produced a non-finite vertex");
+                        return;
+                    }
+
+                    Vertex2D& vertex = _drawBuffer->Vertices[segment_base + vertex_offset];
+                    vertex.PosX = position.x;
+                    vertex.PosY = position.y;
+                    vertex.PosZ = position.z;
+                    vertex.Color = ToColor(colors[vertex_offset]);
+                    vertex.TexU = atlas_rect.x + texture_u[vertex_offset] * atlas_rect.width;
+                    vertex.TexV = atlas_rect.y + texture_v[vertex_offset] * atlas_rect.height;
+                    vertex.EggFlags[0] = 0.0f;
+                    vertex.EggFlags[1] = 0.0f;
+                }
+
+                const size_t index_base = (chunk_instance_index * segment_count + segment_index) * 12;
+                _drawBuffer->Indices[index_base + 0] = numeric_cast<vindex_t>(segment_base + 0);
+                _drawBuffer->Indices[index_base + 1] = numeric_cast<vindex_t>(segment_base + 1);
+                _drawBuffer->Indices[index_base + 2] = numeric_cast<vindex_t>(segment_base + 2);
+                _drawBuffer->Indices[index_base + 3] = numeric_cast<vindex_t>(segment_base + 2);
+                _drawBuffer->Indices[index_base + 4] = numeric_cast<vindex_t>(segment_base + 1);
+                _drawBuffer->Indices[index_base + 5] = numeric_cast<vindex_t>(segment_base + 3);
+                _drawBuffer->Indices[index_base + 6] = numeric_cast<vindex_t>(segment_base + 4);
+                _drawBuffer->Indices[index_base + 7] = numeric_cast<vindex_t>(segment_base + 5);
+                _drawBuffer->Indices[index_base + 8] = numeric_cast<vindex_t>(segment_base + 6);
+                _drawBuffer->Indices[index_base + 9] = numeric_cast<vindex_t>(segment_base + 6);
+                _drawBuffer->Indices[index_base + 10] = numeric_cast<vindex_t>(segment_base + 5);
+                _drawBuffer->Indices[index_base + 11] = numeric_cast<vindex_t>(segment_base + 7);
+
+                cosine = next_cosine;
+                sine = next_sine;
+                current_u = next_u;
+                outer_color = next_outer_color;
+                center_color = next_center_color;
+                inner_color = next_inner_color;
+            }
+        }
+
+        _drawBuffer->VertCount = vertex_count;
+        _drawBuffer->IndCount = index_count;
+        _drawBuffer->Upload(EffectUsage::QuadSprite, vertex_count, index_count);
+
+        ptr<RenderEffect> effect = _node->AlphaBlend == Effekseer::AlphaBlendType::Add ? _addEffect.as_ptr() : _multiplyEffect.as_ptr();
+        effect->ProjBuf = RenderEffect::ProjBuffer();
+        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        effect->MainTex = render_texture;
+        effect->DrawBuffer(_drawBuffer, 0, index_count);
+    }
+
+    shared_ptr<EffekseerDrawBinding> _binding;
+    nptr<RenderEffect> _multiplyEffect {};
+    nptr<RenderEffect> _addEffect {};
+    unique_ptr<RenderDrawBuffer> _drawBuffer;
+    unique_ptr<RenderTexture> _whiteTexture;
+    optional<EffekseerRingNodeSnapshot> _node {};
+    size_t _declaredInstanceCount {};
+    vector<EffekseerRingInstanceSnapshot> _instances {};
 };
 
 template<typename Renderer>
@@ -712,7 +1216,6 @@ class RejectingEffekseerRenderer;
     }
 
 FO_DEFINE_REJECTING_EFFEKSEER_RENDERER(RibbonRenderer, "Ribbon nodes are unsupported");
-FO_DEFINE_REJECTING_EFFEKSEER_RENDERER(RingRenderer, "Ring nodes are unsupported");
 FO_DEFINE_REJECTING_EFFEKSEER_RENDERER(TrackRenderer, "Track nodes are unsupported");
 FO_DEFINE_REJECTING_EFFEKSEER_RENDERER(ModelRenderer, "Model nodes are unsupported");
 
@@ -734,7 +1237,10 @@ static auto ValidateStaticSpriteParameter(string_view path, const Effekseer::Eff
         LogEffekseerRejection(path, "sprite nodes must use ZTest=on and ZWrite=off");
         return false;
     }
-    if (parameter.Distortion || parameter.DistortionIntensity != 0.0f || parameter.EnableFalloff || parameter.TextureBlendType != -1 || parameter.FlipbookParams.EnableInterpolation || parameter.EmissiveScaling != 1.0f || parameter.EdgeParam.Threshold != 0.0f || parameter.SoftParticleDistanceFar != 0.0f || parameter.SoftParticleDistanceNear != 0.0f || parameter.SoftParticleDistanceNearOffset != 0.0f) {
+
+    // Modern Effekseer exports retain a non-zero distortion intensity even while the Default
+    // material leaves distortion disabled. The dormant value has no renderer effect.
+    if (parameter.Distortion || parameter.EnableFalloff || parameter.TextureBlendType != -1 || parameter.FlipbookParams.EnableInterpolation || parameter.EmissiveScaling != 1.0f || parameter.EdgeParam.Threshold != 0.0f || parameter.SoftParticleDistanceFar != 0.0f || parameter.SoftParticleDistanceNear != 0.0f || parameter.SoftParticleDistanceNearOffset != 0.0f) {
         LogEffekseerRejection(path, "advanced material, distortion, soft-particle, or flipbook features are unsupported");
         return false;
     }
@@ -765,6 +1271,56 @@ static auto ValidateStaticSpriteParameter(string_view path, const Effekseer::Eff
     return true;
 }
 
+static auto ValidateStaticRingParameter(string_view path, const Effekseer::EffectBasicRenderParameter& parameter, ptr<Effekseer::Effect> effect) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (parameter.MaterialType != Effekseer::RendererMaterialType::Default || parameter.MaterialIndex != -1) {
+        LogEffekseerRejection(path, "only the Default material is supported");
+        return false;
+    }
+    if (parameter.AlphaBlend != Effekseer::AlphaBlendType::Blend && parameter.AlphaBlend != Effekseer::AlphaBlendType::Add) {
+        LogEffekseerRejection(path, "only Blend and Add blending are supported");
+        return false;
+    }
+    if (!parameter.ZTest || parameter.ZWrite) {
+        LogEffekseerRejection(path, "ring nodes must use ZTest=on and ZWrite=off");
+        return false;
+    }
+    if (parameter.Distortion || parameter.EnableFalloff || parameter.TextureBlendType != -1 || parameter.FlipbookParams.EnableInterpolation || parameter.EmissiveScaling != 1.0f || parameter.EdgeParam.Threshold != 0.0f || parameter.SoftParticleDistanceFar != 0.0f || parameter.SoftParticleDistanceNear != 0.0f || parameter.SoftParticleDistanceNearOffset != 0.0f) {
+        LogEffekseerRejection(path, "advanced material, distortion, soft-particle, or flipbook features are unsupported");
+        return false;
+    }
+    if (parameter.TextureIndexes[0] < -1 || parameter.TextureIndexes[0] >= effect->GetColorImageCount()) {
+        LogEffekseerRejection(path, "ring color texture index is out of range");
+        return false;
+    }
+    if (parameter.TextureIndexes[0] >= 0 && parameter.TextureFilters[0] != Effekseer::TextureFilterType::Nearest && parameter.TextureFilters[0] != Effekseer::TextureFilterType::Linear) {
+        LogEffekseerRejection(path, "ring color texture uses an unknown filter");
+        return false;
+    }
+    if (parameter.TextureIndexes[0] >= 0 && parameter.TextureWraps[0] != Effekseer::TextureWrapType::Clamp) {
+        LogEffekseerRejection(path, "only Clamp texture wrapping is supported");
+        return false;
+    }
+    for (size_t texture_slot = 1; texture_slot < parameter.TextureIndexes.size(); texture_slot++) {
+        if (parameter.TextureIndexes[texture_slot] >= 0) {
+            LogEffekseerRejection(path, "advanced texture slots are unsupported");
+            return false;
+        }
+    }
+    if (parameter.TextureIndexes[0] >= 0) {
+        Effekseer::TextureRef texture = effect->GetColorImage(parameter.TextureIndexes[0]);
+
+        if (!texture || !texture->GetBackend()) {
+            LogEffekseerRejection(path, "ring color texture failed to load");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> node, ptr<Effekseer::Effect> effect) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -775,11 +1331,15 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
     }
 
     const Effekseer::EffectNodeType node_type = node->GetType();
-    if (node_type != Effekseer::EffectNodeType::Root && node_type != Effekseer::EffectNodeType::NoneType && node_type != Effekseer::EffectNodeType::Sprite) {
-        LogEffekseerRejection(path, "only Root, None, and Sprite nodes are supported");
+
+    if (node_type != Effekseer::EffectNodeType::Root && node_type != Effekseer::EffectNodeType::NoneType && node_type != Effekseer::EffectNodeType::Sprite && node_type != Effekseer::EffectNodeType::Ring) {
+        LogEffekseerRejection(path, "only Root, None, Sprite, and Ring nodes are supported");
         return false;
     }
     if (node_type == Effekseer::EffectNodeType::Sprite && !ValidateStaticSpriteParameter(path, node->GetBasicRenderParameter(), effect)) {
+        return false;
+    }
+    if (node_type == Effekseer::EffectNodeType::Ring && !ValidateStaticRingParameter(path, node->GetBasicRenderParameter(), effect)) {
         return false;
     }
 
@@ -821,7 +1381,7 @@ struct EffekseerRuntimeState
         GpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
         SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, Binding)},
         RibbonRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::RibbonRenderer>>(Binding)},
-        RingRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::RingRenderer>>(Binding)},
+        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, Binding)},
         TrackRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::TrackRenderer>>(Binding)},
         ModelRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::ModelRenderer>>(Binding)}
     {
@@ -1066,7 +1626,7 @@ auto EffekseerParticleRuntimeBackend::GetExtensions() const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {"efk", "efkefc"};
+    return {"efk"};
 }
 
 auto EffekseerParticleRuntimeBackend::SupportsSeededRespawn() const -> bool
@@ -1087,8 +1647,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string extension = strex(path).get_file_extension();
-    if (extension != "efk" && extension != "efkefc") {
+    if (strex(path).get_file_extension() != "efk") {
         LogEffekseerRejection(path, "unsupported file extension");
         return {};
     }
@@ -1105,7 +1664,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    const string_view expected_magic = extension == "efk" ? string_view {"SKFE"} : string_view {"EFKE"};
+    constexpr string_view expected_magic = "SKFE";
     for (size_t index = 0; index < expected_magic.size(); index++) {
         if (data[index] != numeric_cast<uint8_t>(expected_magic[index])) {
             LogEffekseerRejection(path, "binary magic does not match the file extension");

@@ -38,9 +38,9 @@ namespace IO
 
 		static const size_t DATA_LENGTH_OFFSET;
 		static const size_t HEADER_LENGTH;
-		static const size_t MAX_DATA_LENGTH; // (FOnline Patch) Bound allocations from untrusted binary resources.
-		static const size_t MAX_OBJECTS; // (FOnline Patch)
-		static const size_t MAX_ATTRIBUTE_VALUES; // (FOnline Patch)
+		static const size_t MAX_DATA_LENGTH; // Bound allocations from untrusted binary resources.
+		static const size_t MAX_OBJECTS;
+		static const size_t MAX_ATTRIBUTE_VALUES;
 
         virtual bool innerLoad(std::istream& is,Graph& graph,const std::string& path) const override;
         virtual bool innerLoadFromBuffer(Graph& graph, const char * data, unsigned int datasize) override;
@@ -50,7 +50,7 @@ namespace IO
 		Ref<SPKObject> readReference(const Graph& graph,const IOBuffer& data) const;
 
 		template<class T>
-		bool setAttributeValues(Attribute& attrib,const IOBuffer& data) const; // (FOnline Patch) Propagate truncated/oversized arrays.
+		bool setAttributeValues(Attribute& attrib,const IOBuffer& data) const; // Propagate truncated/oversized arrays.
 	};
 
 	template<class T>

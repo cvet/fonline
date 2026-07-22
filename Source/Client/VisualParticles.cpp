@@ -39,8 +39,8 @@ struct ParticleManager::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services);
 
-    [[nodiscard]] auto FindBackend(string_view extension) -> nptr<ParticleRuntimeBackend>;
-    [[nodiscard]] auto FindBackend(string_view extension) const -> nptr<const ParticleRuntimeBackend>;
+    [[nodiscard]] auto FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>;
+    [[nodiscard]] auto FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>;
 
     vector<unique_ptr<ParticleRuntimeBackend>> Backends;
 };
@@ -50,33 +50,33 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    unordered_set<string> registered_extensions;
+    unordered_set<string> registered_exts;
 
     for (const auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> extensions = backend->GetExtensions();
+        const vector<string> exts = backend->GetExtensions();
 
-        FO_VERIFY_AND_THROW(!extensions.empty(), "Particle runtime backend does not declare any resource extensions");
+        FO_VERIFY_AND_THROW(!exts.empty(), "Particle runtime backend does not declare any resource extensions");
 
-        for (const string& extension : extensions) {
-            FO_VERIFY_AND_THROW(!extension.empty(), "Particle runtime backend declares an empty resource extension");
+        for (const string& ext : exts) {
+            FO_VERIFY_AND_THROW(!ext.empty(), "Particle runtime backend declares an empty resource extension");
 
-            const auto [it, inserted] = registered_extensions.emplace(extension);
+            const auto [it, inserted] = registered_exts.emplace(ext);
             ignore_unused(it);
-            FO_VERIFY_AND_THROW(inserted, "Particle resource extension is handled by more than one runtime backend", extension);
+            FO_VERIFY_AND_THROW(inserted, "Particle resource extension is handled by more than one runtime backend", ext);
         }
     }
 }
 
-auto ParticleManager::Impl::FindBackend(string_view extension) -> nptr<ParticleRuntimeBackend>
+auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>
 {
     FO_STACK_TRACE_ENTRY();
 
     for (auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> extensions = backend->GetExtensions();
+        const vector<string> exts = backend->GetExtensions();
 
-        if (std::ranges::find(extensions, extension) != extensions.end()) {
+        if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
         }
     }
@@ -84,15 +84,15 @@ auto ParticleManager::Impl::FindBackend(string_view extension) -> nptr<ParticleR
     return nullptr;
 }
 
-auto ParticleManager::Impl::FindBackend(string_view extension) const -> nptr<const ParticleRuntimeBackend>
+auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> extensions = backend->GetExtensions();
+        const vector<string> exts = backend->GetExtensions();
 
-        if (std::ranges::find(extensions, extension) != extensions.end()) {
+        if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
         }
     }
@@ -121,23 +121,23 @@ auto ParticleManager::GetExtensions() const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> extensions;
+    vector<string> exts;
 
     for (const auto& backend_owner : _impl->Backends) {
-        const vector<string> backend_extensions = backend_owner->GetExtensions();
-        extensions.insert(extensions.end(), backend_extensions.begin(), backend_extensions.end());
+        const vector<string> backend_exts = backend_owner->GetExtensions();
+        exts.insert(exts.end(), backend_exts.begin(), backend_exts.end());
     }
 
-    return extensions;
+    return exts;
 }
 
 auto ParticleManager::SupportsSeededRespawn(string_view name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string extension = strex(name).get_file_extension();
-    const nptr<const ParticleRuntimeBackend> nullable_backend = _impl->FindBackend(extension);
-    return nullable_backend && nullable_backend->SupportsSeededRespawn();
+    const string ext = strex(name).get_file_extension();
+    const auto backend = _impl->FindBackend(ext);
+    return backend && backend->SupportsSeededRespawn();
 }
 
 void ParticleManager::InvalidateResource(string_view name)
@@ -153,28 +153,29 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string extension = strex(name).get_file_extension();
-    nptr<ParticleRuntimeBackend> nullable_backend = _impl->FindBackend(extension);
+    const string ext = strex(name).get_file_extension();
+    auto backend = _impl->FindBackend(ext);
 
-    if (!nullable_backend) {
+    if (!backend) {
         WriteLog("Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 
-    auto backend = nullable_backend.as_ptr();
-    unique_nptr<ParticleRuntimeSystem> nullable_runtime_system = backend->Create(name);
+    const bool supports_seeded_respawn = backend->SupportsSeededRespawn();
+    auto runtime_system = backend->Create(name);
 
-    if (!nullable_runtime_system) {
+    if (!runtime_system) {
         return {};
     }
 
-    ParticleSystem particles {this, nullable_runtime_system.take_not_null()};
+    ParticleSystem particles {this, runtime_system.take_not_null(), supports_seeded_respawn};
     return std::move(particles);
 }
 
-ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system) :
+ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system, bool supports_seeded_respawn) :
     _runtimeSystem {std::move(runtime_system)},
-    _particleMngr {particle_mngr}
+    _particleMngr {particle_mngr},
+    _supportsSeededRespawn {supports_seeded_respawn}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -249,11 +250,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!IsActive()) {
-        return;
-    }
-
-    _runtimeSystem->Setup(ParticleRuntimeSetup {
+    _runtimeSetup = ParticleRuntimeSetup {
         .Projection = proj,
         .World = world,
         .PositionOffset = pos_offset,
@@ -262,7 +259,11 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         .Scale = _scale,
         .MapCameraAngle = _particleMngr->_settings->MapCameraAngle,
         .TiltInProjection = tilt_in_proj,
-    });
+    };
+
+    if (IsActive()) {
+        ApplyRuntimeSetup();
+    }
 }
 
 void ParticleSystem::Prewarm()
@@ -287,15 +288,30 @@ void ParticleSystem::Respawn()
     FO_STACK_TRACE_ENTRY();
 
     _runtimeSystem->Respawn(std::nullopt);
+
+    if (IsActive() && _runtimeSetup) {
+        ApplyRuntimeSetup();
+    }
+
     ResetTiming();
 }
 
-void ParticleSystem::Respawn(int32_t seed)
+auto ParticleSystem::Respawn(int32_t seed) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!_supportsSeededRespawn) {
+        return false;
+    }
+
     _runtimeSystem->Respawn(seed);
+
+    if (IsActive() && _runtimeSetup) {
+        ApplyRuntimeSetup();
+    }
+
     ResetTiming();
+    return IsActive();
 }
 
 void ParticleSystem::Update()
@@ -351,6 +367,25 @@ void ParticleSystem::SetScale(float32_t scale)
     FO_VERIFY_AND_THROW(std::isfinite(scale) && scale > 0.0f, "Particle scale must be finite and positive", scale);
 
     _scale = scale;
+
+    if (_runtimeSetup) {
+        _runtimeSetup->Scale = scale;
+
+        if (IsActive()) {
+            ApplyRuntimeSetup();
+            _runtimeSystem->RefreshRenderTransform();
+            _forceDraw = true;
+            _renderPending = true;
+        }
+    }
+}
+
+void ParticleSystem::ApplyRuntimeSetup()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_runtimeSetup, "Particle runtime setup is missing");
+    _runtimeSystem->Setup(*_runtimeSetup);
 }
 
 void ParticleSystem::ResetTiming()

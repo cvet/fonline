@@ -982,6 +982,18 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_SetSpriteScale(ptr<ClientEngine> client, uint32_t sprId, float32_t scale)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    return sprite->SetScale(scale);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t sprId, hstring animName, bool looped, bool reversed)
 {
     auto nullable_sprite = client->AnimGetSpr(sprId);
@@ -992,6 +1004,31 @@ FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t spr
 
     auto sprite = nullable_sprite.as_ptr();
     sprite->Play(animName, looped, reversed);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PlaySpriteWithSeed(ptr<ClientEngine> client, uint32_t sprId, int32_t seed)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    return sprite->PlayWithSeed(seed);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PrewarmSprite(ptr<ClientEngine> client, uint32_t sprId)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    sprite->Prewarm();
+    return true;
 }
 
 ///@ ExportMethod

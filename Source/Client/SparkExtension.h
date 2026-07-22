@@ -38,22 +38,23 @@
 #if FO_SPARK_PARTICLES
 
 #include "ParticleRuntime.h"
-#include "Rendering.h"
 
-FO_DISABLE_WARNINGS_PUSH()
-#include "SPARK.h"
-FO_DISABLE_WARNINGS_POP()
+namespace SPK
+{
+    template<typename T>
+    class Ref;
 
-namespace SPK::FO
+    class Renderer;
+    class SPKContext;
+    class System;
+
+namespace FO
 {
     class SparkQuadRenderer;
 }
+}
 
 FO_BEGIN_NAMESPACE
-class IAppRender;
-class RenderEffect;
-class RenderTexture;
-class RenderDrawBuffer;
 class SparkParticleRuntimeBackend;
 
 class SparkParticleRuntimeSystem final : public ParticleRuntimeSystem
@@ -117,108 +118,34 @@ namespace SPK::FO
 {
     FO_USING_NAMESPACE();
 
-    class SparkRenderBuffer final : public RenderBuffer
+    struct SparkQuadRendererData
     {
-    public:
-        SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render);
-
-        void PositionAtStart();
-        void SetNextVertex(const Vector3D& pos, const Color& color);
-        void SetNextTexCoord(float32_t tu, float32_t tv);
-        void Render(size_t vertices, ptr<RenderEffect> effect) const;
-
-    private:
-        mutable unique_ptr<RenderDrawBuffer> _renderBuf;
-        nptr<FO_NAMESPACE IAppRender> _render {};
-        size_t _curVertexIndex {};
-        size_t _curTexCoordIndex {};
+        bool Active {};
+        bool AlphaTest {};
+        bool DepthWrite {};
+        float32_t AlphaTestThreshold {};
+        int32_t DrawWidth {};
+        int32_t DrawHeight {};
+        bool DrawInScene {};
+        string EffectName {};
+        string TextureName {};
+        float32_t ScaleX {};
+        float32_t ScaleY {};
+        int32_t AtlasDimensionX {};
+        int32_t AtlasDimensionY {};
+        int32_t LookOrientation {};
+        int32_t UpOrientation {};
+        int32_t LockedAxis {};
+        array<float32_t, 3> LookVector {};
+        array<float32_t, 3> UpVector {};
     };
 
-    void EnsureSparkParticleObjectsRegistered();
-
-    class SparkQuadRenderer final : public Renderer, public QuadRenderBehavior, public Oriented3DRenderBehavior
-    {
-        SPK_IMPLEMENT_OBJECT(SparkQuadRenderer)
-
-        SPK_START_DESCRIPTION
-        SPK_PARENT_ATTRIBUTES(Renderer)
-        SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
-        SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
-        SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("scale", ATTRIBUTE_TYPE_FLOATS)
-        SPK_ATTRIBUTE("atlas dimensions", ATTRIBUTE_TYPE_UINT32S)
-        SPK_ATTRIBUTE("look orientation", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("up orientation", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("locked axis", ATTRIBUTE_TYPE_STRING)
-        SPK_ATTRIBUTE("locked look vector", ATTRIBUTE_TYPE_VECTOR)
-        SPK_ATTRIBUTE("locked up vector", ATTRIBUTE_TYPE_VECTOR)
-        SPK_END_DESCRIPTION
-
-    public:
-        static auto Create() -> Ref<SparkQuadRenderer>;
-        ~SparkQuadRenderer() override = default;
-
-        [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
-
-        auto GetDrawWidth() const -> int32_t;
-        auto GetDrawHeight() const -> int32_t;
-        void SetDrawSize(int32_t width, int32_t height);
-
-        auto GetDrawInScene() const -> bool;
-        void SetDrawInScene(bool draw_in_scene);
-
-        auto GetEffectName() const -> string_view;
-        void SetEffectName(string_view effect_name);
-
-        auto GetTextureName() const -> string_view;
-        void SetTextureName(string_view tex_name);
-
-    private:
-        SparkQuadRenderer() :
-            Renderer(false)
-        {
-        }
-        explicit SparkQuadRenderer(bool needs_dataset);
-        SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
-
-        string _path {};
-        nptr<FO_NAMESPACE SparkParticleRuntimeBackend> _runtime {};
-
-        int32_t _drawWidth {};
-        int32_t _drawHeight {};
-        bool _drawInScene {};
-
-        string _effectName {};
-        string _textureName {};
-
-        void AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
-        void AddTexture2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
-        void AddTexture2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
-
-        void Render2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D or no texture
-        void Render2DRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D or no texture and rotation
-        void Render2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas
-        void Render2DAtlasRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas and rotation
-
-        mutable nptr<RenderEffect> _effect {};
-        nptr<RenderTexture> _texture {};
-        frect32 _textureAtlasOffset {};
-
-        mutable mat44 _modelView {};
-        mutable mat44 _invModelView {};
-
-        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, ptr<SparkRenderBuffer> renderBuffer) const;
-        mutable RenderParticleFunc _renderParticle {};
-
-    private:
-        void innerImport(const IO::Descriptor& descriptor) override;
-        void innerExport(IO::Descriptor& descriptor) const override;
-        RenderBuffer* attachRenderBuffer(const Group& group) const override;
-        void render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const override;
-        void computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const override;
-    };
+    void EnsureSparkParticleObjectsRegistered(SPKContext& context);
+    [[nodiscard]] auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool;
+    [[nodiscard]] auto IsSparkQuadRenderer(const Renderer& renderer) -> bool;
+    [[nodiscard]] auto CreateSparkQuadRenderer() -> Ref<Renderer>;
+    [[nodiscard]] auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData;
+    void SetSparkQuadRendererData(Renderer& renderer, const SparkQuadRendererData& data);
 }
 
 #endif

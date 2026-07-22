@@ -26,25 +26,23 @@ The migration from the older `raw_ptr` name is intentionally staged. `raw_ptr<T>
 
 `nptr<T>` is a borrowed nullable pointer. Use it for lookups, current/active/selected state, backend handles that can be absent, and API results where absence is a normal outcome.
 
-Use `nptr<T>::as_ptr()` after a local null check when a nullable borrowed value is explicitly narrowed to a required borrowed `ptr<T>`. The method asserts the non-null invariant and keeps the narrowing visible at the call site.
+After a local null check, use an `nptr<T>` directly (`nptr<T>` has `operator->` / `operator*`): `if (cr) { cr->Foo(); }`, the short-circuit `cr && cr->Foo()`, or after an early `if (!cr) { return; }`. The guard already proves non-null, so copying the value through `as_ptr()` only adds a redundant local and assertion. Use `as_ptr()` only when an API specifically requires `ptr<T>` or a non-null borrow must escape the guarded scope. In script bindings (`FO_SCRIPT_API` and `SourceExt/` script impls) this is **enforced**: the smart-pointer audit's `ScriptNullableLocalDereference` rule is guard-aware — it accepts the guarded forms above but flags any `nptr` local dereferenced with no preceding null test.
 
-For a short, locally **guarded** use you may instead dereference an `nptr<T>` directly (`nptr<T>` has `operator->` / `operator*`): `if (cr) { cr->Foo(); }`, the short-circuit `cr && cr->Foo()`, or after an early `if (!cr) { return; }`. The guard already proves non-null, so an `as_ptr()` there would only add a redundant assert. Prefer narrowing to a named `ptr<T>` when the checked value is used repeatedly. In script bindings (`FO_SCRIPT_API` and `SourceExt/` script impls) this is **enforced**: the smart-pointer audit's `ScriptNullableLocalDereference` rule is guard-aware — it accepts the guarded forms above but flags any `nptr` local dereferenced with no preceding null test.
-
-**Narrowing names.** A pointer's name form follows its *type*, so a raw value, a nullable wrapper, and a checked non-null view never collide in one scope. The clean domain name is reserved for the non-null `ptr<T>` — the value the body actually works with; the `raw_` / `nullable_` prefixes mark boundary values that exist only to be checked and narrowed:
+**Pointer names describe the domain value, not its nullability.** Do not add `nullable_` / `_nullable` solely because a value uses an `n*` wrapper; the type already carries that contract. Keep the clean domain name before and after the guard:
 
 | Type | local / parameter (`snake_case`) | data member (`_camelCase`) |
 |---|---|---|
 | raw `T*` | `raw_target` | `_rawTarget` |
-| `nptr<T>` (nullable wrapper) | `nullable_target` | `_nullableTarget` |
+| `nptr<T>` (nullable wrapper) | `target` | `_target` |
 | `ptr<T>` (non-null) | `target` | `_target` |
 
 ```cpp
-// nullable wrapper -> checked non-null
-nptr<Critter> nullable_target = engine->GetCritter(id);
-if (!nullable_target) {
+// Guard the nullable wrapper, then use it directly
+nptr<Critter> target = engine->GetCritter(id);
+if (!target) {
     return;
 }
-ptr<Critter> target = nullable_target.as_ptr();   // body works with `target`
+target->Foo();
 
 // raw C-ABI pointer -> checked non-null
 static void Cleanup(sentry_options_t* raw_options) noexcept {
@@ -55,7 +53,7 @@ static void Cleanup(sentry_options_t* raw_options) noexcept {
 }
 ```
 
-Do **not** invent per-call disambiguators such as `_lookup`, `_ref`, `_ptr`, or `_begin`, and **never copy an already-named nullable or raw pointer into a `nullable_`/`raw_` intermediate just to wear the prefix** — check and narrow it directly. The `nullable_` / `raw_` name belongs where the value is first produced (a parameter, lookup, cast, or C-API result), and the non-null `ptr<T>` narrowed from it takes the clean name. Bind a raw pointer straight to `ptr<T>` after the `!= nullptr` check — do not route it through an `nptr<T>` intermediate just to null-check it.
+Do **not** invent per-call disambiguators such as `_lookup`, `_ref`, `_ptr`, `_begin`, or `nullable_`. Check an `n*` value under its domain name and use it directly while the guard holds. Bind a raw pointer straight to `ptr<T>` after the `!= nullptr` check — do not route it through an `nptr<T>` intermediate just to null-check it.
 
 When a value is **provably non-null** — `std::string::data()` / `string_view::data()` (never null), `&object`, or an already-non-null result — bind it **straight to `ptr<T>` with no check and no `nptr<T>` intermediate**; adding a `!= nullptr` test there is dead code. And do not introduce *any* wrapper for a method-local pointer that never escapes the function and is used only for local address arithmetic — a `ptr<T>` (or a plain raw pointer for pure pointer math) is enough:
 
@@ -68,7 +66,7 @@ if (view_begin < storage_begin || !(view_begin < storage_end)) { ... }
 
 One exception: an **exported/ABI parameter whose name is fixed by an external contract** (or pinned in the smart-pointer-audit allowlist) keeps its name; narrow it to a `<name>_ptr` local rather than renaming the parameter.
 
-The same naming applies to every narrowing form (`refcount_nptr<T>::as_ptr()`, `unique_nptr<T>::take_not_null()`, `shared_ptr<T>::as_ptr()`, …).
+The same domain naming applies to every wrapper form (`refcount_nptr<T>`, `unique_nptr<T>`, `shared_ptr<T>`, …). Ownership transfers such as `unique_nptr<T>::take_not_null()` remain explicit because they change the owner type rather than creating a redundant local borrow.
 
 `unique_ptr<T>` owns one object in usable state. A moved-from object may be empty only until destruction or reassignment. If empty state is part of the normal object model, use `unique_nptr<T>`.
 

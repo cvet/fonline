@@ -76,14 +76,14 @@
 #else
 
 #ifdef SPK_DEBUG
-#define SPK_LOG_DEBUG(entry) {SPK::Logger::get().getStream(SPK::LOG_PRIORITY_DEBUG) << entry << "\n"; SPK::Logger::get().flush();}
+#define SPK_LOG_DEBUG(entry) {SPK::Logger logger; logger.getStream(SPK::LOG_PRIORITY_DEBUG) << entry << "\n"; logger.flush();}
 #else
 #define SPK_LOG_DEBUG(entry) {}
 #endif
-#define SPK_LOG_INFO(entry) {SPK::Logger::get().getStream(SPK::LOG_PRIORITY_INFO) << entry << "\n"; SPK::Logger::get().flush();}
-#define SPK_LOG_WARNING(entry) {SPK::Logger::get().getStream(SPK::LOG_PRIORITY_WARNING) << entry << "\n"; SPK::Logger::get().flush();}
-#define SPK_LOG_ERROR(entry) {SPK::Logger::get().getStream(SPK::LOG_PRIORITY_ERROR) << entry << "\n"; SPK::Logger::get().flush();}
-#define SPK_LOG_FATAL(entry) {SPK::Logger::get().getStream(SPK::LOG_PRIORITY_FATAL) << entry << "\n"; SPK::Logger::get().flush();}
+#define SPK_LOG_INFO(entry) {SPK::Logger logger; logger.getStream(SPK::LOG_PRIORITY_INFO) << entry << "\n"; logger.flush();}
+#define SPK_LOG_WARNING(entry) {SPK::Logger logger; logger.getStream(SPK::LOG_PRIORITY_WARNING) << entry << "\n"; logger.flush();}
+#define SPK_LOG_ERROR(entry) {SPK::Logger logger; logger.getStream(SPK::LOG_PRIORITY_ERROR) << entry << "\n"; logger.flush();}
+#define SPK_LOG_FATAL(entry) {SPK::Logger logger; logger.getStream(SPK::LOG_PRIORITY_FATAL) << entry << "\n"; logger.flush();}
 
 #define SPK_ASSERT(condition,text) \
 { \
@@ -118,7 +118,7 @@ namespace SPK
 	};
 
 	/**
-	* @brief Singleton class allowing to log messages
+	* @brief Lightweight logger used by SPARK diagnostics
 	*
 	* The easiest way to log in message is to use the macros defined by the engine :
 	* <ul>
@@ -138,16 +138,8 @@ namespace SPK
 	public :
 
 		class Stream; // forward declaration
-
-		////////////////////
-		// static methods //
-		////////////////////
-
-		/**
-		* @brief Returns the unique instance of logger
-		* @return the instance of Logger
-		*/
-		static Logger& get();
+		Logger();
+		~Logger() {}
 	
 		/////////////
 		// Setters //
@@ -254,7 +246,7 @@ namespace SPK
 
 		class Stream
 		{
-		friend Stream Logger::getStream(LogPriority,bool);
+		friend class Logger;
 
 		public :
 
@@ -263,28 +255,18 @@ namespace SPK
 
 		private :
 
-			Stream(std::ostream& innerStream,LogPriority priority);
+			Stream(std::ostream& innerStream,bool enabled);
 
 			std::ostream& innerStream;
-			LogPriority priority;
+			bool enabled;
 		};
 
 	private :
-
-		static Logger* instance; // The unique instance of Logger
-
-		static const size_t NB_PRIORITY_LEVELS = 5; // Number of priority levels
-		static const std::string PRIORITY_NAMES[NB_PRIORITY_LEVELS]; // Names of priority levels
-
         bool enabled;
 		LogPriority priorityLevel;
         std::ostream* innerStream;
 		int prefixFlag;
 
-
-		// private constructor and destructor (singleton pattern)
-		Logger();
-		~Logger(){}
 
 		Logger(const Logger&); // Not used
 		Logger& operator=(const Logger&); // Not used
@@ -341,7 +323,7 @@ namespace SPK
 	template <typename T> 
 	Logger::Stream& Logger::Stream::operator<<(const T& entry)
 	{
-		if (Logger::get().isEnabled() && priority >= Logger::get().getPriorityLevel())
+		if (enabled)
 			innerStream << entry;
 		return *this;
 	}

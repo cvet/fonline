@@ -91,7 +91,7 @@ private:
     auto ResolveHex() -> optional<mpos>;
 
     ptr<MapperEngine> _mapper;
-    nptr<ParticleSpriteFactory> _nullableParticleFactory {};
+    nptr<ParticleSpriteFactory> _particleFactory {};
     vector<string> _extensions {};
     vector<string> _resourcePaths {};
     unordered_map<string, pair<size_t, uint64_t>> _resourceIndex {};
@@ -117,11 +117,10 @@ void ParticlePreviewSubEditor::Initialize()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _nullableParticleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
-    FO_VERIFY_AND_THROW(_nullableParticleFactory, "Particle sprite factory is not registered");
+    _particleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    FO_VERIFY_AND_THROW(_particleFactory, "Particle sprite factory is not registered");
 
-    ptr<ParticleSpriteFactory> particle_factory = _nullableParticleFactory.as_ptr();
-    _extensions = particle_factory->GetExtensions();
+    _extensions = _particleFactory->GetExtensions();
     _enabled = !_extensions.empty();
 
     if (!_enabled || _mapper->Settings->ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
@@ -318,7 +317,7 @@ void ParticlePreviewSubEditor::DrawWindows()
     _offset.x = std::clamp(_offset.x, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
     _offset.y = std::clamp(_offset.y, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
 
-    const bool seeded_respawn_supported = _resourcePath.empty() || _nullableParticleFactory.as_ptr()->SupportsSeededRespawn(_resourcePath);
+    const bool seeded_respawn_supported = _resourcePath.empty() || _particleFactory->SupportsSeededRespawn(_resourcePath);
     ImGui::BeginDisabled(!seeded_respawn_supported);
     ImGui::InputInt("Seed", &_seed);
     ImGui::EndDisabled();
@@ -381,7 +380,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
         return;
     }
 
-    const bool seeded_respawn_supported = _nullableParticleFactory.as_ptr()->SupportsSeededRespawn(_resourcePath);
+    const bool seeded_respawn_supported = _particleFactory->SupportsSeededRespawn(_resourcePath);
 
     if (seeded_respawn_supported) {
         particle_sprite->PlayWithSeed(_seed);

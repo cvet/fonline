@@ -418,11 +418,34 @@ void MasterBaker::BakeAllInternal()
     fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
 
+        if (path.starts_with(BAKER_CACHE_DIR) && (path.size() == BAKER_CACHE_DIR.size() || path[BAKER_CACHE_DIR.size()] == '/')) {
+            return;
+        }
+
         if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
             fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
             WriteLog("Delete outdated file {}", path);
         }
     });
+
+    const string effekseer_cache_dir = strex(_settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer");
+
+    if (fs_is_dir(effekseer_cache_dir)) {
+        constexpr string_view dependency_cache_suffix = ".deps";
+
+        fs_iterate_dir(effekseer_cache_dir, true, [&](string_view path, size_t size, uint64_t write_time) {
+            ignore_unused(size, write_time);
+
+            if (path.ends_with(dependency_cache_suffix)) {
+                const string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
+
+                if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
+                    (void)fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
+                    WriteLog("Delete outdated baker cache {}", path);
+                }
+            }
+        });
+    }
 
     // Finalize
     WriteLog("Time {}", backing_time.GetDuration());
@@ -714,6 +737,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
                 input_write_time = _outputFiles.at(string(path));
                 const auto output_write_time = fs_last_write_time(output_path);
+
                 FO_VERIFY_AND_THROW(input_write_time < output_write_time, "Baked output file is not newer than the newest source input", path, output_path, input_write_time, output_write_time);
             }
 

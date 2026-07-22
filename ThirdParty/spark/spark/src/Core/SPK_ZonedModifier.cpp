@@ -47,13 +47,27 @@ namespace SPK
 		zoneTest(zonedModifier.zoneTest)
 	{
 		zone = zonedModifier.copyChild(zonedModifier.zone);
+
+		if (hasContext())
+			onContextSet();
 	}
 
 	ZonedModifier::~ZonedModifier(){}
 
 	void ZonedModifier::setZone(const Ref<Zone>& zone)
 	{
-		this->zone = !zone ? SPK_DEFAULT_ZONE : zone;
+		this->zone = zone;
+
+		if (!this->zone && hasContext())
+			this->zone = getContext().getDefaultZone();
+
+		if (this->zone && hasContext())
+			this->zone->setContext(getContext());
+	}
+
+	void ZonedModifier::onContextSet()
+	{
+		setZone(zone);
 	}
 
 	void ZonedModifier::setZoneTest(ZoneTest zoneTest)
@@ -111,7 +125,8 @@ namespace SPK
 	{
 		Modifier::innerExport(descriptor);
 
-		descriptor.getAttribute("zone")->setValueRef(getZone(),getZone() == SPK_DEFAULT_ZONE);
-		descriptor.getAttribute("zone test")->setValue<std::string>(getEnumName(getZoneTest()),getZone() == SPK_DEFAULT_ZONE);
+		const bool usesDefaultZone = !getZone() || (hasContext() && getZone() == getContext().getDefaultZone());
+		descriptor.getAttribute("zone")->setValueRef(getZone(),usesDefaultZone);
+		descriptor.getAttribute("zone test")->setValue<std::string>(getEnumName(getZoneTest()),usesDefaultZone);
 	}
 }

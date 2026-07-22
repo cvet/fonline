@@ -97,6 +97,10 @@ The abstract base for individual baker implementations. Each baker provides:
 - `GetOrder()` — ordering key for deterministic bake ordering.
 - `BakeFiles()` — the actual file transformation step.
 
+`ModelInfoBaker` runs after `ParticleBaker`: model descriptions may reference
+baked particle resources, so their link validation must not race particle
+serialization during a clean or forced rebuild.
+
 `BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
 
 ### `MasterBaker`
@@ -122,7 +126,7 @@ The abstract base for individual baker implementations. Each baker provides:
 - `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
-- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
+- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `6`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
@@ -143,14 +147,18 @@ frame selectors fall back to the first available cycle/frame.
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
-`FO_SPARK_PARTICLES` enables `.spark`; `FO_EFFEKSEER_PARTICLES` enables `.efk`
-and `.efkefc`. Both options default to `OFF`, in which case the registered baker
-has no particle formats to process.
+`FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
+`FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
+output. Both options default to `OFF`, in which case the registered baker has no
+particle formats to process.
 
 For SPARK, `ParticleBaker` loads native `.spark` XML with the engine's registered
-`SparkQuadRenderer` type and writes deterministic SPARK binary back to the same
-resource path. Unknown object types, malformed XML, and binary-save failures are
-hard errors; publishing a graph after silently omitting an object is forbidden.
+`SparkQuadRenderer` type and writes deterministic SPARK binary to `.spk` with
+the same path stem. Renderer texture paths are resolved relative to the
+`.spark` resource; absolute paths and paths which escape the resource source
+are hard errors. Unknown object types, malformed XML, authored `.spk`, and
+binary-save failures are also hard errors; publishing a graph after silently
+omitting an object is forbidden.
 The client and baker use the same `SparkExtension.cpp` implementation through
 `ClientLib`; do not compile a layout-changing headless copy into `BakerLib`.
 The binary loader enforces exact memory payload length, bounded object/attribute
@@ -158,12 +166,44 @@ counts, bounds-checked reads, descriptor signatures, and valid typed object
 references, so changing a custom serialized descriptor requires rebaking its
 resources.
 
-The same baker validates cooked Effekseer `.efk` (`SKFE`) and `.efkefc`
-(`EFKE`) resources with the pinned Effekseer core before copying their bytes to
-the same runtime key. Legacy `.efkproj` XML is an authoring input and is not a
-runtime/baker format. This proves the container/parser boundary only: baking
-does not load FOnline atlas textures or enforce the client/Mapper CPU Sprite
-renderer capability policy.
+For Effekseer, `.efkproj` must be an on-disk XML project normalized by Editor
+1.80.5 with project version 3. `ParticleBaker` calls the native C++
+`EffekseerCompiler` module directly. The fixed-profile exporter produces raw
+`SKFE` bytes and a dependency list; the baker validates each result with the
+pinned C++ Effekseer Core and publishes it under the same path stem with the
+`.efk` extension. The compiler is part of `BakerLib` and is never linked into
+production clients. Native Mapper's on-demand baker uses the same path when a
+tracked source edit is detected. Web targets consume `.efk` resources baked
+before packaging.
+
+The compiler also exposes the referenced resource paths for each project.
+`ParticleBaker` resolves them relative to that project, rejects paths which
+escape the project's physical directory resource source, and stores a
+per-output snapshot containing the project path, size, and write time plus each
+dependency's path, size, and write time under
+`<BakeOutput>/.baker-cache/Effekseer/<pack>/<output>.deps`. On the next
+incremental check it stats those same physical files which the native compiler
+reads. This remains correct when a resource pack has multiple overlaid input
+directories: the snapshot follows the selected project's disk source rather
+than a same-named virtual file from another source.
+A changed, deleted, or renamed dependency dirties every effect that references
+it, while an unrelated file does not trigger a corpus-wide recompile. A missing
+or stale snapshot makes the compiler inspect the project's dependency list
+before the normal single `BakeChecker` call. `ParticleBaker` then removes only
+that effect's stale physical `.efk` output, so the ordinary missing-output path
+schedules the compile without a special timestamp or a callback in the common
+baker infrastructure.
+
+An `.efkmodel` is not an effect container: it is a binary runtime
+dependency requested by Model nodes and remains subject to the embedding
+project's ordinary resource-pack/raw-copy policy.
+
+Authored `.efk` files are hard errors rather than copy-through inputs. Project
+resource sources retain reproducible `.efkproj` XML, while runtime code accepts
+only the generated `.efk`. Baking proves the compiler/Core parser boundary
+only: it does not load FOnline atlas textures or enforce the client/Mapper CPU
+Sprite/Ring renderer capability policy. A compiler implementation change
+requires a forced bake so all generated `.efk` files are refreshed.
 
 ## Script compilation relationship
 

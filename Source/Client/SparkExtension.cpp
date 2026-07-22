@@ -38,6 +38,117 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "Rendering.h"
+
+FO_DISABLE_WARNINGS_PUSH()
+#include "SPARK.h"
+FO_DISABLE_WARNINGS_POP()
+
+namespace SPK::FO
+{
+    FO_USING_NAMESPACE();
+
+    class SparkRenderBuffer final : public RenderBuffer
+    {
+    public:
+        SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render);
+
+        void PositionAtStart();
+        void SetNextVertex(const Vector3D& pos, const Color& color);
+        void SetNextTexCoord(float32_t tu, float32_t tv);
+        void Render(size_t vertices, ptr<RenderEffect> effect) const;
+
+    private:
+        mutable unique_ptr<RenderDrawBuffer> _renderBuf;
+        nptr<FO_NAMESPACE IAppRender> _render {};
+        size_t _curVertexIndex {};
+        size_t _curTexCoordIndex {};
+    };
+
+    class SparkQuadRenderer final : public Renderer, public QuadRenderBehavior, public Oriented3DRenderBehavior
+    {
+        SPK_IMPLEMENT_OBJECT(SparkQuadRenderer)
+
+        SPK_START_DESCRIPTION
+        SPK_PARENT_ATTRIBUTES(Renderer)
+        SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
+        SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
+        SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("scale", ATTRIBUTE_TYPE_FLOATS)
+        SPK_ATTRIBUTE("atlas dimensions", ATTRIBUTE_TYPE_UINT32S)
+        SPK_ATTRIBUTE("look orientation", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("up orientation", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("locked axis", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("locked look vector", ATTRIBUTE_TYPE_VECTOR)
+        SPK_ATTRIBUTE("locked up vector", ATTRIBUTE_TYPE_VECTOR)
+        SPK_END_DESCRIPTION
+
+    public:
+        static auto Create() -> Ref<SparkQuadRenderer>;
+        ~SparkQuadRenderer() override = default;
+
+        [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
+
+        auto GetDrawWidth() const -> int32_t;
+        auto GetDrawHeight() const -> int32_t;
+        void SetDrawSize(int32_t width, int32_t height);
+
+        auto GetDrawInScene() const -> bool;
+        void SetDrawInScene(bool draw_in_scene);
+
+        auto GetEffectName() const -> string_view;
+        void SetEffectName(string_view effect_name);
+
+        auto GetTextureName() const -> string_view;
+        void SetTextureName(string_view tex_name);
+
+    private:
+        SparkQuadRenderer() :
+            Renderer(false)
+        {
+        }
+        explicit SparkQuadRenderer(bool needs_dataset);
+        SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
+
+        string _path {};
+        nptr<FO_NAMESPACE SparkParticleRuntimeBackend> _runtime {};
+
+        int32_t _drawWidth {};
+        int32_t _drawHeight {};
+        bool _drawInScene {};
+
+        string _effectName {};
+        string _textureName {};
+
+        void AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+
+        void Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+
+        mutable nptr<RenderEffect> _effect {};
+        nptr<RenderTexture> _texture {};
+        frect32 _textureAtlasOffset {};
+
+        mutable mat44 _modelView {};
+        mutable mat44 _invModelView {};
+
+        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, nptr<SparkRenderBuffer> render_buffer) const;
+        mutable RenderParticleFunc _renderParticle {};
+
+    private:
+        void innerImport(const IO::Descriptor& descriptor) override;
+        void innerExport(IO::Descriptor& descriptor) const override;
+        RenderBuffer* attachRenderBuffer(const Group& group) const override;
+        void render(const Group& group, const DataSet* data_set, RenderBuffer* render_buffer) const override;
+        void computeAABB(Vector3D& aabb_min, Vector3D& aabb_max, const Group& group, const DataSet* data_set) const override;
+    };
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -52,8 +163,8 @@ struct SparkParticleRuntimeBackend::Impl
     }
 
     ParticleRuntimeServices Services;
+    SPK::SPKContext Context {};
     unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
-    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
     mat44 ViewProjectionMatrix {};
     mat44 ViewMatrix {};
 };
@@ -67,6 +178,7 @@ struct SparkParticleRuntimeSystem::Impl
     {
         FO_STACK_TRACE_ENTRY();
 
+        RandomSeed = std::uniform_int_distribution<uint32_t> {}(RandomGenerator);
         RecreateRuntimeSystem();
     }
 
@@ -78,6 +190,8 @@ struct SparkParticleRuntimeSystem::Impl
     SPK::Ref<SPK::System> BaseSystem {};
     mat44 ViewProjectionMatrix {};
     mat44 ViewMatrix {};
+    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
+    uint32_t RandomSeed {};
     bool BaseSystemDetached {};
 };
 
@@ -103,7 +217,7 @@ SparkParticleRuntimeBackend::SparkParticleRuntimeBackend(const ParticleRuntimeSe
 {
     FO_STACK_TRACE_ENTRY();
 
-    SPK::FO::EnsureSparkParticleObjectsRegistered();
+    SPK::FO::EnsureSparkParticleObjectsRegistered(_impl->Context);
 }
 
 SparkParticleRuntimeBackend::~SparkParticleRuntimeBackend()
@@ -115,21 +229,21 @@ auto SparkParticleRuntimeBackend::GetExtensions() const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {"spark"};
+    return {"spk"};
 }
 
 auto SparkParticleRuntimeBackend::SupportsSeededRespawn() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return false;
+    return true;
 }
 
 void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (strex(path).get_file_extension() == "spark") {
+    if (strex(path).get_file_extension() == "spk") {
         _impl->BaseSystems.erase(string {path});
     }
     else {
@@ -141,7 +255,7 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (strex(path).get_file_extension() != "spark") {
+    if (strex(path).get_file_extension() != "spk") {
         return nullptr;
     }
 
@@ -150,11 +264,7 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
     if (const auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
         if (const auto file = _impl->Services.Resources->ReadFile(path)) {
             const_span<uint8_t> file_data = file.GetDataSpan();
-            base_system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
-
-            if (!base_system) {
-                base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
-            }
+            base_system = _impl->Context.getIOManager().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
         }
 
         if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
@@ -288,7 +398,10 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
     const float32_t max_lifetime = _impl->RuntimeSystem->getGroup(0)->getMaxLifeTime();
     const int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
     FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
-    const int32_t init_time_ms = std::uniform_int_distribution<int32_t> {0, max_lifetime_ms}(_impl->Runtime->_impl->RandomGenerator);
+
+    SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
+    const uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
+    const int32_t init_time_ms = numeric_cast<int32_t>(SPK_RANDOM(_impl->Runtime->_impl->Context, 0U, init_time_range));
     const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
 
     for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
@@ -302,7 +415,7 @@ void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!seed.has_value(), "SPARK particle runtime does not support seeded respawn", _impl->Path, seed.value_or(0));
+    _impl->RandomSeed = seed ? std::bit_cast<uint32_t>(*seed) : std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator);
     _impl->RecreateRuntimeSystem();
 }
 
@@ -311,6 +424,7 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
     FO_STACK_TRACE_ENTRY();
 
     if (_impl->RuntimeSystem->isActive() && delta_seconds > 0.0f) {
+        SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
         _impl->RuntimeSystem->updateParticles(delta_seconds);
     }
 }
@@ -360,6 +474,7 @@ void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
 {
     FO_STACK_TRACE_ENTRY();
 
+    SPK::RandomSeedScope random_seed_scope {Runtime->_impl->Context, RandomSeed};
     (void)SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
     RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
     RuntimeSystem->initialize();
@@ -369,12 +484,84 @@ FO_END_NAMESPACE
 
 namespace SPK::FO
 {
-    void EnsureSparkParticleObjectsRegistered()
+    void EnsureSparkParticleObjectsRegistered(SPKContext& context)
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto& io_mngr = IO::IOManager::get();
+        auto& io_mngr = context.getIOManager();
         io_mngr.ensureObjectRegistered<SparkQuadRenderer>();
+    }
+
+    auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return context.getIOManager().isObjectRegistered<SparkQuadRenderer>();
+    }
+
+    auto IsSparkQuadRenderer(const Renderer& renderer) -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return dynamic_cast<const SparkQuadRenderer*>(&renderer) != nullptr;
+    }
+
+    auto CreateSparkQuadRenderer() -> Ref<Renderer>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return SparkQuadRenderer::Create();
+    }
+
+    auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const nptr<const SparkQuadRenderer> spark_renderer {dynamic_cast<const SparkQuadRenderer*>(&renderer)};
+        FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
+
+        SparkQuadRendererData data;
+        data.Active = spark_renderer->isActive();
+        data.AlphaTest = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_ALPHA_TEST);
+        data.DepthWrite = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_DEPTH_WRITE);
+        data.AlphaTestThreshold = spark_renderer->getAlphaTestThreshold();
+        data.DrawWidth = spark_renderer->GetDrawWidth();
+        data.DrawHeight = spark_renderer->GetDrawHeight();
+        data.DrawInScene = spark_renderer->GetDrawInScene();
+        data.EffectName = spark_renderer->GetEffectName();
+        data.TextureName = spark_renderer->GetTextureName();
+        data.ScaleX = spark_renderer->getScaleX();
+        data.ScaleY = spark_renderer->getScaleY();
+        data.AtlasDimensionX = numeric_cast<int32_t>(spark_renderer->getAtlasDimensionX());
+        data.AtlasDimensionY = numeric_cast<int32_t>(spark_renderer->getAtlasDimensionY());
+        data.LookOrientation = static_cast<int32_t>(spark_renderer->getLookOrientation());
+        data.UpOrientation = static_cast<int32_t>(spark_renderer->getUpOrientation());
+        data.LockedAxis = static_cast<int32_t>(spark_renderer->getLockedAxis());
+        data.LookVector = {spark_renderer->lookVector.x, spark_renderer->lookVector.y, spark_renderer->lookVector.z};
+        data.UpVector = {spark_renderer->upVector.x, spark_renderer->upVector.y, spark_renderer->upVector.z};
+        return data;
+    }
+
+    void SetSparkQuadRendererData(Renderer& renderer, const SparkQuadRendererData& data)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<SparkQuadRenderer> spark_renderer {dynamic_cast<SparkQuadRenderer*>(&renderer)};
+        FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
+
+        spark_renderer->setActive(data.Active);
+        spark_renderer->enableRenderingOption(RENDERING_OPTION_ALPHA_TEST, data.AlphaTest);
+        spark_renderer->enableRenderingOption(RENDERING_OPTION_DEPTH_WRITE, data.DepthWrite);
+        spark_renderer->setAlphaTestThreshold(data.AlphaTestThreshold);
+        spark_renderer->SetDrawSize(data.DrawWidth, data.DrawHeight);
+        spark_renderer->SetDrawInScene(data.DrawInScene);
+        spark_renderer->SetEffectName(data.EffectName);
+        spark_renderer->SetTextureName(data.TextureName);
+        spark_renderer->setScale(data.ScaleX, data.ScaleY);
+        spark_renderer->setAtlasDimensions(numeric_cast<size_t>(data.AtlasDimensionX), numeric_cast<size_t>(data.AtlasDimensionY));
+        spark_renderer->setOrientation(static_cast<LookOrientation>(data.LookOrientation), static_cast<UpOrientation>(data.UpOrientation), static_cast<LockedAxis>(data.LockedAxis));
+        spark_renderer->lookVector = Vector3D(data.LookVector[0], data.LookVector[1], data.LookVector[2]);
+        spark_renderer->upVector = Vector3D(data.UpVector[0], data.UpVector[1], data.UpVector[2]);
     }
 
     SparkRenderBuffer::SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render) :
@@ -490,7 +677,7 @@ namespace SPK::FO
         return _effect && _texture;
     }
 
-    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -500,7 +687,7 @@ namespace SPK::FO
         render_buffer->SetNextVertex(particle.position() + quadSide() - quadUp(), particle.getColor()); // bottom right vertex
     }
 
-    void SparkQuadRenderer::AddTexture2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -512,7 +699,7 @@ namespace SPK::FO
         render_buffer->SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 1.0f * _textureAtlasOffset.height);
     }
 
-    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -545,10 +732,9 @@ namespace SPK::FO
 
         FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         ptr<RenderBuffer> render_buffer = renderBuffer;
-        auto nullable_spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
-        FO_VERIFY_AND_THROW(nullable_spark_render_buffer, "Render buffer is not a spark render buffer");
+        nptr<SparkRenderBuffer> spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
+        FO_VERIFY_AND_THROW(spark_render_buffer, "Render buffer is not a spark render buffer");
 
-        auto spark_render_buffer = nullable_spark_render_buffer.as_ptr();
         spark_render_buffer->PositionAtStart();
 
         if (_modelView != _runtime->_impl->ViewMatrix) {
@@ -630,7 +816,7 @@ namespace SPK::FO
         }
     }
 
-    void SparkQuadRenderer::Render2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -639,7 +825,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -648,7 +834,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -657,7 +843,7 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
     {
         FO_STACK_TRACE_ENTRY();
 

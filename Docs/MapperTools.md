@@ -66,7 +66,9 @@ Do not document one game's mapper binary name or content pipeline as universal e
 
 ### Interactive particle preview
 
-Open **Windows -> Particle preview** in the interactive mapper to inspect baked particle resources on the current map. The preview asks the registered particle sprite factory for its supported extensions, so Mapper itself does not know whether SPARK, Effekseer, or no particle runtime is selected. Mapper caches the effect catalog and resource metadata while it has focus. When focus returns after working in an external effect editor, the particle subeditor reindexes Mapper's resource data sources (including `BakerDataSource`) once and compares path, size, and source write time under every effect directory. Added and removed effects update the sorted catalog; a modified active effect or dependency invalidates its sprite/texture cache and recreates the preview with the same placement, seed, scale, offset, and prewarm setting. If the reindex reports no source changes, catalog and preview state are untouched. **Refresh** forces the same invalidation/reload path as a manual fallback. The window does not scan or edit raw particle project files.
+Open **Windows -> Particle preview** in the interactive mapper to inspect baked particle resources on the current map. The preview asks the registered particle sprite factory for its supported extensions, so Mapper itself does not know whether SPARK, Effekseer, or no particle runtime is selected. Mapper caches the effect catalog and resource metadata while it has focus. SPARK `.spark` and Effekseer `.efkproj` sources are baked to `.spk` and `.efk`; the preview never loads authoring files directly.
+
+When native Mapper regains focus, the particle subeditor reindexes its resource data sources (including `BakerDataSource`) once and compares path, size, and source write time under every effect directory. The tracked Effekseer XML is compiled to its `.efk` output by the native baking source; the preview never loads the XML directly. Incremental compilation consults the owning effect's dependency snapshot under `BakeOutput/.baker-cache`, comparing the project and each compiler-reported dependency by physical path, size, and write time. A changed, deleted, or renamed dependency recompiles only effects that reference it. Added and removed effects update the sorted catalog; a modified active effect or dependency invalidates its sprite/texture cache and recreates the preview with the same placement, seed, scale, offset, and prewarm setting. If the reindex reports no source changes, catalog and preview state are untouched. **Refresh** forces the same invalidation/reload path as a manual fallback. The window does not expose or edit raw particle project files. Web builds consume host-prebaked `.efk`.
 
 ### SPARK particle editor
 
@@ -74,9 +76,10 @@ Open **Windows -> SPARK particle editor** to browse raw `.spark` sources and ope
 SPARK graph/preview window per asset. The editor uses Mapper's raw resource
 filesystem for source discovery and saving, and Mapper's baked resources for
 effects and textures. Saving reindexes the baked resource source and invalidates
-the saved asset's sprite cache. Closing a modified window opens a Save / Discard
-/ Cancel confirmation. Effekseer authoring remains external; its cooked effects
-are inspected through the backend-neutral **Particle preview** instead.
+the saved asset's `.spk` sprite cache. Closing a modified window opens a Save /
+Discard / Cancel confirmation. Effekseer authoring remains external: edit the
+tracked `.efkproj`, then inspect the baked `.efk` through the backend-neutral
+**Particle preview**. Authored `.spk`/`.efk` resource inputs are rejected.
 
 Mapper is the engine's central interactive editing application. The former
 generic Editor executable, `EditorLib`, and asset-explorer shell were removed;
@@ -87,7 +90,7 @@ The placement selector supports two map positions:
 - **Mouse position** uses the most recent valid mapper `MousePos` captured while the pointer was over the map. Move the pointer onto the desired map hex before pressing **Play** in the floating window.
 - **View center** resolves the center of the current map viewport when **Play** is pressed.
 
-**Scale**, **Offset X/Y**, **Seed**, and **Prewarm** are preview-only controls. **Seed** is enabled only when the selected runtime advertises seeded-respawn support. **Play** loads the selected resource through `SpriteManager::LoadSprite(..., AtlasType::MapSprites)`, verifies that it is a `ParticleSprite`, starts it with the selected runtime's supported respawn path, applies the particle-system scale, optionally prewarms it, and attaches it to the selected hex as a temporary `DrawOrderType::Particles` `MapSprite`. **Restart** rebuilds the preview at its existing hex with the current controls. **Remove** invalidates it.
+**Scale**, **Offset X/Y**, **Seed**, and **Prewarm** are preview-only controls. **Seed** is enabled only when the selected runtime advertises seeded-respawn support; the bundled SPARK and Effekseer runtimes both provide independent per-effect seeded playback. **Play** loads the selected resource through `SpriteManager::LoadSprite(..., AtlasType::MapSprites)`, verifies that it is a `ParticleSprite`, starts it with the selected runtime's supported respawn path, applies the particle-system scale, optionally prewarms it, and attaches it to the selected hex as a temporary `DrawOrderType::Particles` `MapSprite`. **Restart** rebuilds the preview at its existing hex with the current controls. **Remove** invalidates it.
 
 Effekseer uses the direct-scene path. Its one-second prewarm is deferred until
 the first `DrawInScene` after the current map transform has been set; scheduled
@@ -102,7 +105,7 @@ disabled when the capability is unavailable:
 ```powershell
 .\Binaries\Mapper-Windows-win64\LF_Mapper.exe `
   --Mapper.StartMap Dev/TestRoom.fomap `
-  --Mapper.ParticlePreviewEffect Particles/Effekseer/RuntimeSmoke/Simple_Sprite_FixedYAxis.efk `
+  --Mapper.ParticlePreviewEffect Particles/NextSoft01/HealPotion1.efk `
   --Mapper.ParticlePreviewSeed 123 `
   --Mapper.ParticlePreviewScale 1.0 `
   --Mapper.ParticlePreviewPrewarm False
@@ -193,7 +196,7 @@ Or, if you prefer not to touch the CLI on every call, override `Mapper.RenderMap
 
 **Frame timing.** `OnLoop` fires before `MapperEngine::DrawMapperFrame()` ([../Source/Tools/Mapper.cpp:730-746](../Source/Tools/Mapper.cpp#L730)), so the first `OnLoop` after `OnStart` reads the previous frame's pixels. `Mapper.RenderWarmupFrames=4` skips a handful of ticks so the new map actually paints into the readable surface; bump it if the dumped TGA looks blank or stale.
 
-**Static item animations.** In mapper mode the editor is a static surface, so `ItemHexView::RefreshAnim` pins every item sprite to its first frame (`Stop()` + `SetTime(0)`) instead of playing the default loop — gated on `MapView::IsMapperMode()`, which is enabled before items load. Doors and containers therefore render closed rather than mid-open, and a capture is identical regardless of `RenderWarmupFrames`. Frame-sequence (FOFRM) and Spine sprites freeze cleanly; model (`.fo3d`) and particle (`.spark`) sprites keep animating (their `Stop`/`SetTime` are no-ops), but normal walls/doors/containers are frame-sequence sprites.
+**Static item animations.** In mapper mode the editor is a static surface, so `ItemHexView::RefreshAnim` pins every item sprite to its first frame (`Stop()` + `SetTime(0)`) instead of playing the default loop — gated on `MapView::IsMapperMode()`, which is enabled before items load. Doors and containers therefore render closed rather than mid-open, and a capture is identical regardless of `RenderWarmupFrames`. Frame-sequence (FOFRM) and Spine sprites freeze cleanly; model (`.fo3d`) and particle (`.spk`/`.efk`) sprites keep animating (their `Stop`/`SetTime` are no-ops), but normal walls/doors/containers are frame-sequence sprites.
 
 **View bounds.** The preview pipeline renders one mapper frame per map. If a large map is clipped, use a larger viewport, a lower `Mapper.RenderZoomOverride`, an explicit `Mapper.RenderCenterRawHexX/Y`, or a per-map `ViewportCrop` over a larger one-frame viewport; do not stitch several captures together for checkpoint previews.
 

@@ -34,9 +34,9 @@ namespace IO
 		capacity(capacity),
 		size(0),
 		position(0),
-		readOnly(false), // (FOnline Patch)
-		error(false), // (FOnline Patch)
-		fallback {} // (FOnline Patch)
+		readOnly(false),
+		error(false),
+		fallback {}
 	{
 		buf = SPK_NEW_ARRAY(char,capacity);
 	}
@@ -45,14 +45,14 @@ namespace IO
 		capacity(capacity),
 		size(0),
 		position(0),
-		readOnly(true), // (FOnline Patch)
-		error(false), // (FOnline Patch)
-		fallback {} // (FOnline Patch)
+		readOnly(true),
+		error(false),
+		fallback {}
 	{
 		buf = SPK_NEW_ARRAY(char,capacity);
 		is.read(buf,capacity);
-		size = static_cast<size_t>(is.gcount()); // (FOnline Patch) Never expose uninitialized bytes after a short read.
-		error = size != capacity; // (FOnline Patch)
+		size = static_cast<size_t>(is.gcount()); // Never expose uninitialized bytes after a short read.
+		error = size != capacity;
 	}
 
 	IOBuffer::~IOBuffer()
@@ -62,7 +62,7 @@ namespace IO
 
 	const char* IOBuffer::get(size_t length) const
 	{
-		// (FOnline Patch) Reject integer overflow and reads past initialized data.
+		// Reject integer overflow and reads past initialized data.
 		if (length > getRemaining())
 		{
 			error = true;
@@ -77,7 +77,7 @@ namespace IO
 
 	void IOBuffer::skip(size_t nb) const
 	{
-		// (FOnline Patch) Saver buffers reserve future bytes, while loader buffers are strictly bounded.
+		// Saver buffers reserve future bytes, while loader buffers are strictly bounded.
 		if (nb > static_cast<size_t>(-1) - position || (readOnly && nb > getRemaining()))
 		{
 			error = true;
@@ -90,7 +90,7 @@ namespace IO
 
 	void IOBuffer::setPosition(size_t pos) const
 	{
-		// (FOnline Patch) Both saver rewrites and loader seeks must target already initialized bytes.
+		// Both saver rewrites and loader seeks must target already initialized bytes.
 		if (pos > size)
 		{
 			error = true;
@@ -112,7 +112,7 @@ namespace IO
 			str += c;
 		}
 
-		error = true; // (FOnline Patch) Serialized strings must be null terminated inside the object data.
+		error = true; // Serialized strings must be null terminated inside the object data.
 		return str;
 	}
 

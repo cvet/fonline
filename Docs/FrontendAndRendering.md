@@ -359,6 +359,26 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 
 `ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
 
+Seeded respawn is deterministic per particle-system instance in both bundled
+runtimes. Effekseer applies the seed to its manager handle. Each
+`SparkParticleRuntimeBackend` owns an explicit `SPKContext` containing its IO
+registry, default zone, and ambient generator state. Every loaded SPARK graph is
+bound to that context before attribute import. Each `SparkParticleRuntimeSystem`
+retains its own generator state and temporarily binds it to the owning context
+while cloning, prewarming, or updating, so interleaved effects and separate
+engine instances cannot perturb a seeded effect's sequence.
+
+`SparkExtension.h` exposes only the backend facade, forward declarations, and
+plain renderer data helpers. The SPARK headers, `SparkQuadRenderer`, and its
+render-buffer adapter remain private to `SparkExtension.cpp`; Mapper and baker
+inspect renderer properties through the data helpers instead of depending on
+the concrete renderer type.
+
+`ParticleSystem::SetScale()` updates the cached neutral runtime setup,
+reapplies it with a zero-delta transform refresh, and forces an atlas redraw
+without respawning or resetting elapsed time. The same contract therefore
+applies to atlas and direct-scene sprites and to every enabled particle runtime.
+
 The same sprite and direct-scene paths also host the core-only Effekseer
 runtime. Effekseer renderer interfaces are used as evaluated-data callbacks,
 not graphics backends: FOnline copies callback values, builds its own
@@ -366,12 +386,38 @@ not graphics backends: FOnline copies callback values, builds its own
 normal renderer abstraction. This keeps Mapper and game preview on one path and
 requires no Direct3D/OpenGL/Vulkan/SDL GPU code from Effekseer.
 
-The initial callback adapter accepts one Default-material color texture. Its
-requested Linear/Nearest mode must match the loaded FOnline atlas texture, and
-the sampler must request `Clamp`; `Repeat` and `Mirror` are rejected regardless
-of the UV values. Every callback UV rectangle must also stay inside `[0,1]`
+The Sprite and Ring callback collectors fail closed on malformed callback
+topology. They enforce both the fixed supported-instance hard limit and the
+exact instance count declared by `BeginRendering`; subsequent `Rendering`
+calls cannot append more instances than that declaration. Ring packets copy
+the evaluated outer/center/inner shape and color values, reproduce the upstream
+eight-vertex/twelve-index segment topology and angular fades, and preserve
+Z-sort order while splitting large geometry at 64,000 vertices for 16-bit index
+builds.
+
+`Source/Tests/Test_EffekseerParticleRuntime.cpp` carries self-contained cooked
+fixtures that exercise the real Effekseer callback-to-FOnline-draw-buffer path
+without a stock Effekseer graphics backend. The legacy fixture verifies
+fixed-seed determinism, repeated fixed-step generation, multi-instance
+callback-to-draw topology, generated quad geometry and index order, and
+atlas-remapped UV coordinates. A project-authored Effekseer 1.80.5 fixture
+additionally verifies that cooked `None`, `NormalOrder`, and `ReverseOrder`
+Sprite Z-sort modes reach the callback and produce the expected quad depth
+order. A modern SKFE/1810 upstream TestData fixture verifies deterministic Ring
+topology, radii, UVs and index order, all three Ring Z-sort modes, and chunking
+across the 64,000-vertex safety budget that prevents 16-bit index overflow.
+
+The initial callback adapter accepts one Default-material color texture. Ring
+nodes may omit it and then draw against a renderer-owned white pixel so their
+vertex colors still match Effekseer. For an authored texture, its requested
+Linear/Nearest mode must match the loaded FOnline atlas texture, and the sampler
+must request `Clamp`; `Repeat` and `Mirror` are rejected regardless of the UV
+values. Every textured callback UV rectangle must also stay inside `[0,1]`
 instead of silently sampling neighboring atlas content. Per-effect
-sub-rectangle wrapping is a separate renderer capability.
+sub-rectangle wrapping is a separate renderer capability. Modern editor exports
+may retain a non-zero distortion-intensity value while the Default material has
+distortion disabled; that dormant value is ignored, while an active distortion
+material still fails the capability gate.
 
 Effekseer sprites always use the scene type. Direct-scene prewarm is queued
 until the first `DrawInScene` after `Setup` has supplied the current map

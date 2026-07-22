@@ -28,17 +28,6 @@
 
 namespace SPK
 {
-	Logger* Logger::instance = NULL;
-
-	const std::string Logger::PRIORITY_NAMES[] =
-	{
-		"DEBUG",
-		"INFO",
-		"WARNING",
-		"ERROR",
-		"FATAL ERROR",
-	};
-
 	Logger::Logger() :
 		enabled(true),
 #ifdef SPK_DEBUG
@@ -50,18 +39,12 @@ namespace SPK
 		prefixFlag(LOG_PREFIX_TIME | LOG_PREFIX_LIB | LOG_PREFIX_PRIORITY)
 	{}
 
-	Logger& Logger::get()
-	{
-		static Logger instance;
-		return instance;
-	}
-
 	Logger::Stream Logger::getStream(LogPriority priority,bool skipPrefix)
 	{
 		if (!skipPrefix && isEnabled() && priority >= getPriorityLevel())
 			writePrefix(priority);
 
-		return Stream(*innerStream,priority);
+		return Stream(*innerStream,isEnabled() && priority >= getPriorityLevel());
 	}
 
 	void Logger::writePrefix(LogPriority priority)
@@ -85,11 +68,20 @@ namespace SPK
 
 		// Writes the priority of the entry
 		if (prefixFlag & LOG_PREFIX_PRIORITY)
-			*innerStream << PRIORITY_NAMES[priority].c_str() << " - ";
+		{
+			switch (priority)
+			{
+			case LOG_PRIORITY_DEBUG : *innerStream << "DEBUG - "; break;
+			case LOG_PRIORITY_INFO : *innerStream << "INFO - "; break;
+			case LOG_PRIORITY_WARNING : *innerStream << "WARNING - "; break;
+			case LOG_PRIORITY_ERROR : *innerStream << "ERROR - "; break;
+			case LOG_PRIORITY_FATAL : *innerStream << "FATAL ERROR - "; break;
+			}
+		}
 	}
 
-	Logger::Stream::Stream(std::ostream& innerStream,LogPriority priority) :
+	Logger::Stream::Stream(std::ostream& innerStream,bool enabled) :
 		innerStream(innerStream),
-		priority(priority)
+		enabled(enabled)
 	{}
 }

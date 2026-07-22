@@ -24,7 +24,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
-#include <exception> // (FOnline Patch) Convert descriptor import failures into clean load failures.
+#include <exception>
 
 #include <SPARK_Core.h>
 
@@ -32,11 +32,21 @@ namespace SPK
 {
 namespace IO
 {
+	Loader::Loader() :
+		manager(NULL)
+	{}
+
+	void Loader::setManager(IOManager* manager)
+	{
+		this->manager = manager;
+	}
+
     Ref<System> Loader::load(std::istream& is,const std::string& path) const
 	{
 		clock_t startTime = std::clock();
 
-		Graph graph;
+		SPK_ASSERT(manager != NULL,"Loader::load(std::istream&,string) - Loader is not bound to an IO manager");
+		Graph graph(*manager);
 		if (innerLoad(is,graph,path))
 		{
 			const Ref<System>& system = graph.finalize();
@@ -76,7 +86,8 @@ namespace IO
     {
         clock_t startTime = std::clock();
 
-        Graph graph;
+		SPK_ASSERT(manager != NULL,"Loader::loadFromBuffer(const char*,unsigned int) - Loader is not bound to an IO manager");
+		Graph graph(*manager);
         if (innerLoadFromBuffer(graph,data,datasize))
         {
             const Ref<System>& system = graph.finalize();
@@ -101,7 +112,10 @@ namespace IO
 		descriptor(object->createDescriptor())
 	{}
 
-	Loader::Graph::Graph() : nodesValidated(false) {}
+	Loader::Graph::Graph(IOManager& manager) :
+		manager(manager),
+		nodesValidated(false)
+	{}
 
 	Loader::Graph::~Graph()
 	{
@@ -113,7 +127,7 @@ namespace IO
 	{
 		SPK_ASSERT(!nodesValidated,"Loader::Graph::addNode(size_t,string) - Graph has been processed. Nodes cannot be added any longer");
 
-		Ref<SPKObject> object = IOManager::get().createObject(name);
+		Ref<SPKObject> object = manager.createObject(name);
 
 		if (!object)
 		{
@@ -160,7 +174,11 @@ namespace IO
 	{
 		SPK_ASSERT(nodesValidated,"Loader::Graph::finalize() - Graph has not been validated before finalization");
 
-		// Imports all descriptors to set up the objects. (FOnline Patch) Typed
+		// Bind every object before importing descriptors because constructors are context-free.
+		for (std::list<Node*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+			(*it)->object->setContext(manager.getContext());
+
+		// Imports all descriptors to set up the objects. Typed
 		// reference validation can reject a structurally valid but unsafe graph.
 		try
 		{

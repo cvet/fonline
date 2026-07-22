@@ -15,7 +15,7 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **85** `Test_*.cpp` suites.
+Current count: **86** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -121,6 +121,15 @@ Current count: **85** `Test_*.cpp` suites.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
+  effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
+  multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
+  chunking, and facade-level scale reapplication without respawn or timing reset.
+- `Source/Tests/Test_ParticleBaker.cpp` — covers `.efkproj` source discovery,
+  `.spark`/`.efkproj` output-key mapping, generated binary validation, rejection
+  of authored `.spk`/`.efk` runtime inputs, and SPARK seeded-stream isolation
+  across interleaved effects and independent engine contexts. The build/integration bake path
+  exercises the native fixed-profile exporter on real XML projects.
 - `Source/Tests/Test_Rendering.cpp`
 
 ## Running tests

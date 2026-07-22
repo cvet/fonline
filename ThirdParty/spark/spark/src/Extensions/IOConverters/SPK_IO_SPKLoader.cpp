@@ -35,20 +35,20 @@ namespace IO
 
 	const size_t SPKLoader::DATA_LENGTH_OFFSET = 4;
 	const size_t SPKLoader::HEADER_LENGTH = 12;
-	const size_t SPKLoader::MAX_DATA_LENGTH = 64 * 1024 * 1024; // (FOnline Patch)
-	const size_t SPKLoader::MAX_OBJECTS = 64 * 1024; // (FOnline Patch) Far above practical particle graphs without permitting million-object allocation attacks.
-	const size_t SPKLoader::MAX_ATTRIBUTE_VALUES = 64 * 1024; // (FOnline Patch)
+	const size_t SPKLoader::MAX_DATA_LENGTH = 64 * 1024 * 1024;
+	const size_t SPKLoader::MAX_OBJECTS = 64 * 1024; // Far above practical particle graphs without permitting million-object allocation attacks.
+	const size_t SPKLoader::MAX_ATTRIBUTE_VALUES = 64 * 1024;
 
     bool SPKLoader::innerLoadFromBuffer(Graph& graph, const char * data, unsigned int datasize)
     {
-        // (FOnline Patch) Runtime resources are memory-backed, so use the same validated binary path as file streams.
+        // Runtime resources are memory-backed, so use the same validated binary path as file streams.
 		if (data == NULL || datasize < HEADER_LENGTH)
 		{
 			SPK_LOG_ERROR("SPKLoader::innerLoadFromBuffer(Graph&,const char*,unsigned int) - Truncated SPK header");
 			return false;
 		}
 
-		// (FOnline Patch) Memory-backed resources must contain exactly the payload declared by their header.
+		// Memory-backed resources must contain exactly the payload declared by their header.
 		const unsigned int declaredDataSize =
 			static_cast<unsigned int>(static_cast<unsigned char>(data[4])) |
 			(static_cast<unsigned int>(static_cast<unsigned char>(data[5])) << 8) |
@@ -69,7 +69,7 @@ namespace IO
 	{
 		// Check header
 		const IOBuffer header(HEADER_LENGTH,is);
-		if (header.hasError()) // (FOnline Patch) A short read must not expose uninitialized header bytes.
+		if (header.hasError()) // A short read must not expose uninitialized header bytes.
 		{
 			SPK_LOG_ERROR("SPKLoader::innerLoad(std::istream&,Graph&) - Truncated SPK header");
 			return false;
@@ -94,7 +94,7 @@ namespace IO
 		size_t nbObjects = header.get<uint32>();
 		SPK_LOG_DEBUG("SPKLoader::innerLoad(std::istream&,Graph&) - Nb objects : " << nbObjects);
 
-		// (FOnline Patch) Bound all allocations and require enough bytes for each minimal object record.
+		// Bound all allocations and require enough bytes for each minimal object record.
 		if (header.hasError() || dataLength > MAX_DATA_LENGTH || nbObjects > MAX_OBJECTS || nbObjects > dataLength / 9)
 		{
 			SPK_LOG_ERROR("SPKLoader::innerLoad(std::istream&,Graph&) - Invalid SPK data or object count");
@@ -103,13 +103,13 @@ namespace IO
 		
 		// Loads data
 		const IOBuffer data(dataLength,is);
-		if (data.hasError()) // (FOnline Patch) failbit/eofbit short reads are errors too.
+		if (data.hasError()) // failbit/eofbit short reads are errors too.
 		{
 			SPK_LOG_ERROR("SPKLoader::innerLoad(std::istream&,Graph&) - Error while reading the stream");
 			return false;
 		}
 
-		std::vector<size_t> objectDataOffset(nbObjects); // (FOnline Patch) RAII on every validation exit.
+		std::vector<size_t> objectDataOffset(nbObjects); // RAII on every validation exit.
 		
 		// First pass to get the objects types
 		for (size_t i = 0; i < nbObjects; ++i)
@@ -135,13 +135,13 @@ namespace IO
 				return false;
 			}
 			data.skip(objectDataSize);
-			if (!graph.addNode(i,type)) // (FOnline Patch) Reject graphs containing unknown or duplicate objects.
+			if (!graph.addNode(i,type)) // Reject graphs containing unknown or duplicate objects.
 			{
 				return false;
 			}
 		}
 
-		if (data.hasError() || data.getPosition() != data.getSize()) // (FOnline Patch) Reject trailing or skipped binary payload.
+		if (data.hasError() || data.getPosition() != data.getSize()) // Reject trailing or skipped binary payload.
 		{
 			SPK_LOG_ERROR("SPKLoader::innerLoad(std::istream&,Graph&) - SPK object records do not consume the declared payload");
 			return false;
@@ -183,7 +183,7 @@ namespace IO
 		size_t endOffset = data.getPosition() + attributeDataSize;
 		if (desc.getSignature() != data.get<uint32>())
 		{
-			// (FOnline Patch) Descriptor drift cannot safely fall back to default attributes.
+			// Descriptor drift cannot safely fall back to default attributes.
 			SPK_LOG_ERROR("SPKLoader::readObject(Node&,const Graph&,const IOBuffer&) - Wrong signature for node "+node.getObject()->getClassName());
 			return false;
 		}
@@ -270,7 +270,7 @@ namespace IO
 
 	Ref<SPKObject> SPKLoader::readReference(const Graph& graph,const IOBuffer& data) const
 	{
-		// (FOnline Patch) Reference IDs are one-based. Reject zero, truncation and
+		// Reference IDs are one-based. Reject zero, truncation and
 		// unknown IDs instead of turning them into nullable descriptor values.
 		if (data.getRemaining() < sizeof(uint32))
 			return SPK_NULL_REF;

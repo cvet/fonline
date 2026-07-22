@@ -24,8 +24,8 @@
 #ifndef H_SPK_DEF
 #define H_SPK_DEF
 
-#include <cstdlib>
 #include <climits>
+#include <cstdlib>
 
 // for windows platform only
 #if defined(WIN32) || defined(_WIN32)
@@ -53,24 +53,8 @@
 #include "SPK_Reference.h"
 #include "SPK_Enum.h"
 
-/**
-* @brief A macro returning a random value within [min,max[
-* This is a shortcut syntax to <i>SPK::SPKContext::get().generateRandom(min,max)</i>
-* @param min : the minimum bound of the interval (inclusive)
-* @param max : the maximum bound of the interval (exclusive)
-* @return a random number within [min,max[
-*/
-#define SPK_RANDOM(min,max) SPK::SPKContext::get().generateRandom(min,max)
-
-/**
-* @brief A macro returning the zone by default of SPARK
-* When an object needs a zone that must not be NULL, this zone can be used by default.<br>
-* The default zone is a shared point located at position (0.0f,0.0f,0.0f).<br>
-* <br>
-* This is a shortcut syntax to <i>SPK::SPKContext::get().getDefaultZone()</i>
-* @return the default zone of SPARK
-*/
-#define SPK_DEFAULT_ZONE	SPK::SPKContext::get().getDefaultZone()
+/** @brief Returns a random value within [min,max[ from an explicit SPARK context. */
+#define SPK_RANDOM(context,min,max) (context).generateRandom(min,max)
 
 /**
 * @namespace SPK::IO
@@ -99,6 +83,7 @@ namespace SPK
 #endif
 
 	class Zone;
+	namespace IO { class IOManager; }
 
 #ifdef SPK_DOXYGEN_ONLY // for documentation purpose only
 	/** @brief Constants defining parameters of a particle */
@@ -158,19 +143,23 @@ namespace SPK
 
 	SPK_DECLARE_ENUM(InterpolationType,SPK_ENUM_INTERPOLATION_TYPE)
 
-	/** A singleton class that holds some static objects needed by SPARK */
+	/** Runtime state owned by one SPARK engine integration instance. */
 	class SPK_PREFIX SPKContext
 	{
 	public :
-
-		/**
-		* @brief Gets the singleton instance
-		* @return the instance of the context
-		*/
-		static  SPKContext& get();
+		SPKContext();
+		~SPKContext();
 
 		/** @brief Releases all dynamic data held by the context */
 		void release();
+
+		/** @brief Gets the IO registry owned by this context. */
+		IO::IOManager& getIOManager();
+		const IO::IOManager& getIOManager() const;
+
+		/** @brief Exposes generator state so particle systems can own independent random streams. */
+		unsigned int getRandomSeed() const;
+		void setRandomSeed(unsigned int seed);
 
 		/**
 		* @brief Gets the default zone
@@ -189,22 +178,50 @@ namespace SPK
 		T generateRandom(const T& min,const T& max);
 
 	private :
-
-		static SPKContext instance;
-
+		IO::IOManager* ioManager;
 		Ref<Zone> defaultZone;
 		unsigned int randomSeed;
-
-		SPKContext();
-		~SPKContext();
 
 		SPKContext(const SPKContext&); // Not used
 		SPKContext& operator=(const SPKContext&); // Not used
 	};
 
-	inline SPKContext& SPKContext::get()
+	/** Preserves a context stream while advancing one particle system's random state. */
+	class SPK_PREFIX RandomSeedScope
 	{
-		return instance;
+	public :
+		RandomSeedScope(SPKContext& context,unsigned int& randomSeed);
+		~RandomSeedScope();
+
+	private :
+		SPKContext& context;
+		unsigned int& randomSeed;
+		unsigned int previousRandomSeed;
+
+		RandomSeedScope(const RandomSeedScope&); // Not used
+		RandomSeedScope& operator=(const RandomSeedScope&); // Not used
+	};
+
+	inline IO::IOManager& SPKContext::getIOManager()
+	{
+		return *ioManager;
+	}
+
+	inline const IO::IOManager& SPKContext::getIOManager() const
+	{
+		return *ioManager;
+	}
+
+	inline unsigned int SPKContext::getRandomSeed() const
+	{
+		return randomSeed;
+	}
+
+	inline void SPKContext::setRandomSeed(unsigned int seed)
+	{
+		randomSeed = seed % 0x7FFFFFFFU;
+		if (randomSeed == 0)
+			randomSeed = 1;
 	}
 
 	template<typename T>

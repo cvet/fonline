@@ -33,32 +33,22 @@
 
 #pragma once
 
-#include "Baker.h"
-#include "FileSystem.h"
+#include "Common.h"
 
-#if FO_ENABLE_3D
+#if FO_EFFEKSEER_PARTICLES
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ModelInfoBakerException);
+FO_DECLARE_EXCEPTION(EffekseerCompilerException);
 
-class ModelInfoBaker final : public BaseBaker
+struct EffekseerCompilerOutput final
 {
-public:
-    static constexpr string_view_nt NAME = "ModelInfo";
-
-    explicit ModelInfoBaker(shared_ptr<BakingContext> ctx);
-    ModelInfoBaker(const ModelInfoBaker&) = delete;
-    ModelInfoBaker(ModelInfoBaker&&) noexcept = delete;
-    auto operator=(const ModelInfoBaker&) = delete;
-    auto operator=(ModelInfoBaker&&) noexcept = delete;
-    ~ModelInfoBaker() override;
-
-    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 6; }
-
-    void BakeFiles(const FileCollection& files, string_view target_path) const override;
+    vector<uint8_t> Binary {};
+    vector<string> Dependencies {};
 };
+
+[[nodiscard]] auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput;
+[[nodiscard]] auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_t> project_data) -> vector<string>;
 
 FO_END_NAMESPACE
 

@@ -177,7 +177,7 @@ Resource invalidation follows the same neutral boundary:
 `SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
 backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
 changed file may be a dependency rather than a backend-owned root asset. SPARK
-drops the matching parsed graph for a changed `.spark` and clears its graph
+drops the matching parsed graph for a changed `.spk` and clears its graph
 cache when a texture or render-effect dependency changes, so the next particle
 creation reloads both graph and dependency. Failed loads are not cached.
 Backends without a parsed-asset cache keep the invalidation operation as a
@@ -195,10 +195,9 @@ one or both; the particle sprite factory advertises only the extensions owned by
 enabled backends, and a disabled backend does not compile or link its upstream
 runtime.
 
-SPARK resources are normally baked binary while keeping their authored
-resource extension. `SparkParticleRuntimeBackend` therefore asks the SPARK binary loader
-to read the memory-backed resource first and retains XML fallback for developer or
-legacy unpackaged inputs. SPARK's binary `loadFromBuffer` path must remain
+SPARK `.spark` sources are baked to `.spk` binaries.
+`SparkParticleRuntimeBackend` accepts only `.spk` and loads it through SPARK's
+binary `loadFromBuffer` path; XML never reaches runtime. The binary path must remain
 behaviorally equivalent to its stream loader; truncated/oversized payloads,
 unknown object types, descriptor-signature mismatches, zero/out-of-range object
 references, and references to an incompatible object class invalidate the graph.
@@ -212,14 +211,16 @@ while its effect or texture is still unassigned it draws nothing, allowing the
 author to complete the renderer without dereferencing an incomplete backend
 state.
 
-Cooked `.efk` and `.efkefc` resources select `EffekseerParticleRuntimeBackend`
-behind the same facade. Each `ClientEngine` or Mapper instance owns an
-Effekseer core manager; each `Create` parses a new effect, while the shared
-particle sprite factory separately caches successfully loaded atlas textures.
-Effekseer advances hierarchy, emission, and
-lifetime state; custom renderer callbacks copy the evaluated render snapshot
-into FOnline-owned packets. No Effekseer graphics backend participates. The
-initial capability gate is CPU Sprite-only and rejects unsupported renderer or
+Baked raw `.efk` resources select `EffekseerParticleRuntimeBackend` behind the
+same facade. The client never
+loads `.efkproj` XML or invokes the build-time compiler. This includes Web:
+the host pipeline must bake `.efk` before packaging. Each `ClientEngine` or
+Mapper instance owns an Effekseer core manager; each `Create` parses a new
+effect, while the shared particle sprite factory separately caches successfully
+loaded atlas textures. Effekseer advances hierarchy, emission, and lifetime
+state; custom renderer callbacks copy the evaluated render snapshot into
+FOnline-owned packets. No Effekseer graphics backend participates. The initial
+capability gate is CPU Sprite/Ring-only and rejects unsupported renderer or
 material families before returning a particle system. Dynamic callback checks
 still fail closed on non-finite evaluated data, invalid UV ranges, or an atlas
 filter mismatch and retire that already-created handle. Simulation update is

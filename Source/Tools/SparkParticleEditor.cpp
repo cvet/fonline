@@ -41,7 +41,9 @@
 #include "SparkExtension.h"
 #include "VisualParticles.h"
 
+FO_DISABLE_WARNINGS_PUSH()
 #include "SPARK.h"
+FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
@@ -193,7 +195,7 @@ private:
 
         _editors.emplace_back(SafeAlloc::MakeUnique<SparkParticleEditor>(asset_path, _mapper->Settings, &_mapper->MapsFileSys, &_mapper->Resources, [this](string_view saved_path) {
             (void)_mapper->Resources.ReindexDataSources();
-            _mapper->SprMngr.InvalidateSpriteResource(saved_path);
+            _mapper->SprMngr.InvalidateSpriteResource(strex(saved_path).change_file_extension("spk"));
             _mapper->AddMess(strex("SPARK particle source saved: {}", saved_path));
         }));
     }
@@ -270,10 +272,10 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
         const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
-        auto nullable_tex = tex.as_nptr();
+        nptr<RenderTexture> texture = tex.as_nptr();
         loaded_textures_ptr->emplace_back(std::move(tex));
 
-        return {nullable_tex, {0.0f, 0.0f, 1.0f, 1.0f}};
+        return {texture, {0.0f, 0.0f, 1.0f, 1.0f}};
     };
 }
 
@@ -281,9 +283,9 @@ static auto GetSparkParticleRuntimeSystem(ptr<ParticleSystem> particle) -> ptr<S
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_runtime_system = particle->GetRuntimeSystem().dyn_cast<SparkParticleRuntimeSystem>();
-    FO_VERIFY_AND_THROW(nullable_runtime_system, "SPARK particle editor received a non-SPARK runtime system");
-    return nullable_runtime_system.as_ptr();
+    auto runtime_system = particle->GetRuntimeSystem().dyn_cast<SparkParticleRuntimeSystem>();
+    FO_VERIFY_AND_THROW(runtime_system, "SPARK particle editor received a non-SPARK runtime system");
+    return runtime_system.as_ptr();
 }
 
 struct SparkParticleEditor::Impl
@@ -348,7 +350,7 @@ struct SparkParticleEditor::Impl
     void DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj);
     void DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj);
     // Renderers
-    void DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj);
+    void DrawSparkObject(const SPK::Ref<SPK::Renderer>& obj);
     // Helpers
     void DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw);
     void DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw);
@@ -383,7 +385,7 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     EffectMngr {settings, baked_resources, &GetApp()->Render},
     GameTime {settings},
     ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures)},
-    Particle {ParticleMngr.CreateParticle(asset_path)}
+    Particle {ParticleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -627,14 +629,12 @@ auto SparkParticleEditor::SaveChanges() -> bool
     const auto file = _impl->RawResources->ReadFileHeader(_assetPath);
     FO_VERIFY_AND_THROW(file, "SPARK particle editor could not resolve raw particle asset for saving", _assetPath);
 
-    nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
-    FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
-    auto saver = nullable_saver.as_ptr();
-
-    const std::string path {file.GetDiskPath()};
-
     FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "SPARK particle editor has no particle to save", _assetPath);
     SPK::Ref<SPK::System> base_system = GetSparkParticleRuntimeSystem(&_impl->Particle.value())->GetEditableBaseSystem();
+    nptr<const SPK::IO::Saver> saver = base_system->getContext().getIOManager().getSaver("xml");
+    FO_VERIFY_AND_THROW(saver, "Missing required saver");
+
+    const std::string path {file.GetDiskPath()};
 
     if (!saver->save(path, base_system.get(), path)) {
         _saveError = strex("Failed to save particle source '{}'", _assetPath);
@@ -837,8 +837,14 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
     CHECK_AND_DRAW(SPK::LinearForce);
     CHECK_AND_DRAW(SPK::ActionSet);
     CHECK_AND_DRAW(SPK::SpawnParticlesAction);
-    CHECK_AND_DRAW(SPK::FO::SparkQuadRenderer);
 #undef CHECK_AND_DRAW
+
+    const SPK::Ref<SPK::Renderer> renderer = SPK::dynamicCast<SPK::Renderer>(obj);
+
+    if (renderer && SPK::FO::IsSparkQuadRenderer(*renderer)) {
+        DrawSparkObject(renderer);
+        return;
+    }
 
     FO_UNREACHABLE_PLACE();
 }
@@ -1019,7 +1025,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
         "Renderer", [obj] { return obj->getRenderer(); }, [obj] { obj->setRenderer(SPK::Ref<SPK::Renderer>()); },
         [obj] {
             if (ImGui::Button("Add SparkQuadRenderer")) {
-                obj->setRenderer(SPK::FO::SparkQuadRenderer::Create());
+                obj->setRenderer(SPK::FO::CreateSparkQuadRenderer());
             }
         });
 }
@@ -1341,7 +1347,7 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
     DRAW_SPK_FLOAT_FLOAT("MinForce", "MaxForce", getForceMin, getForceMax, setForce);
     DRAW_SPK_BOOL("UseFullZone", isFullZone, setUseFullZone);
-    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto&& zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != obj->getContext().getDefaultZone() ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto&& zone) { obj->setZone(zone); });
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
@@ -1561,43 +1567,39 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticl
 }
 
 // Renderers
-void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj)
+void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& obj)
 {
     FO_STACK_TRACE_ENTRY();
 
-    DRAW_SPK_BOOL("Active", isActive, setActive);
+    SPK::FO::SparkQuadRendererData data = SPK::FO::GetSparkQuadRendererData(*obj);
+    bool renderer_changed = false;
 
-    bool alpha_test = obj->isRenderingOptionEnabled(SPK::RENDERING_OPTION_ALPHA_TEST);
-    Changed |= ImGui::Checkbox("AlphaTest", &alpha_test);
-    obj->enableRenderingOption(SPK::RENDERING_OPTION_ALPHA_TEST, alpha_test);
+    renderer_changed |= ImGui::Checkbox("Active", &data.Active);
+    renderer_changed |= ImGui::Checkbox("AlphaTest", &data.AlphaTest);
+    renderer_changed |= ImGui::Checkbox("DepthWrite", &data.DepthWrite);
+    renderer_changed |= ImGui::InputFloat("AlphaThreshold", &data.AlphaTestThreshold);
 
-    bool depth_write = obj->isRenderingOptionEnabled(SPK::RENDERING_OPTION_DEPTH_WRITE);
-    Changed |= ImGui::Checkbox("DepthWrite", &depth_write);
-    obj->enableRenderingOption(SPK::RENDERING_OPTION_DEPTH_WRITE, depth_write);
-
-    DRAW_SPK_INT_INT("DrawWidth", "DrawHeight", GetDrawWidth, GetDrawHeight, SetDrawSize);
-
-    DRAW_SPK_FLOAT("AlphaThreshold", isActive, setActive);
+    renderer_changed |= ImGui::InputInt("DrawWidth", &data.DrawWidth);
+    renderer_changed |= ImGui::InputInt("DrawHeight", &data.DrawHeight);
+    renderer_changed |= ImGui::Checkbox("DrawInScene", &data.DrawInScene);
 
     // Effect
     {
-        const string_view effect_name = obj->GetEffectName();
-
         int32_t index = -1;
 
-        if (const auto it = std::ranges::find(AllEffects, effect_name); it != AllEffects.end()) {
+        if (const auto it = std::ranges::find(AllEffects, data.EffectName); it != AllEffects.end()) {
             index = numeric_cast<int32_t>(std::distance(AllEffects.begin(), it));
         }
 
-        const string preview = index >= 0 ? AllEffects[numeric_cast<size_t>(index)] : string(effect_name);
+        const string preview = index >= 0 ? AllEffects[numeric_cast<size_t>(index)] : data.EffectName;
 
         if (ImGui::BeginCombo("Effect", preview.c_str())) {
             for (size_t i = 0; i < AllEffects.size(); i++) {
                 const bool selected = index == numeric_cast<int32_t>(i);
 
                 if (ImGui::Selectable(AllEffects[i].c_str(), selected)) {
-                    Changed |= true;
-                    obj->SetEffectName(AllEffects[i]);
+                    renderer_changed = true;
+                    data.EffectName = AllEffects[i];
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1610,23 +1612,21 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQua
 
     // Texture
     {
-        const string_view texture_name = obj->GetTextureName();
-
         int32_t index = -1;
 
-        if (const auto it = std::ranges::find(AllTextures, texture_name); it != AllTextures.end()) {
+        if (const auto it = std::ranges::find(AllTextures, data.TextureName); it != AllTextures.end()) {
             index = numeric_cast<int32_t>(std::distance(AllTextures.begin(), it));
         }
 
-        const string preview = index >= 0 ? AllTextures[numeric_cast<size_t>(index)] : string(texture_name);
+        const string preview = index >= 0 ? AllTextures[numeric_cast<size_t>(index)] : data.TextureName;
 
         if (ImGui::BeginCombo("Texture", preview.c_str())) {
             for (size_t i = 0; i < AllTextures.size(); i++) {
                 const bool selected = index == numeric_cast<int32_t>(i);
 
                 if (ImGui::Selectable(AllTextures[i].c_str(), selected)) {
-                    Changed |= true;
-                    obj->SetTextureName(AllTextures[i]);
+                    renderer_changed = true;
+                    data.TextureName = AllTextures[i];
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1637,21 +1637,25 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQua
         }
     }
 
-    DRAW_SPK_FLOAT_FLOAT("ScaleX", "ScaleY", getScaleX, getScaleY, setScale);
-    DRAW_SPK_INT_INT("AtlasDimensionX", "AtlasDimensionY", getAtlasDimensionX, getAtlasDimensionY, setAtlasDimensions);
+    renderer_changed |= ImGui::InputFloat("ScaleX", &data.ScaleX);
+    renderer_changed |= ImGui::InputFloat("ScaleY", &data.ScaleY);
+    renderer_changed |= ImGui::InputInt("AtlasDimensionX", &data.AtlasDimensionX);
+    renderer_changed |= ImGui::InputInt("AtlasDimensionY", &data.AtlasDimensionY);
 
-    const char* items1[] = {"LOOK_CAMERA_PLANE", "LOOK_CAMERA_POINT", "LOOK_AXIS", "LOOK_POINT"};
-    const char* items2[] = {"UP_CAMERA", "UP_DIRECTION", "UP_AXIS", "UP_POINT"};
-    const char* items3[] = {"LOCK_LOOK", "LOCK_UP"};
-    DRAW_SPK_COMBO_COMBO_COMBO("LookOrientation", "UpOrientation", "LockedAxis", getLookOrientation, getUpOrientation, getLockedAxis, setOrientation);
+    const char* look_orientation_items[] = {"LOOK_CAMERA_PLANE", "LOOK_CAMERA_POINT", "LOOK_AXIS", "LOOK_POINT"};
+    const char* up_orientation_items[] = {"UP_CAMERA", "UP_DIRECTION", "UP_AXIS", "UP_POINT"};
+    const char* locked_axis_items[] = {"LOCK_LOOK", "LOCK_UP"};
+    renderer_changed |= ImGui::Combo("LookOrientation", &data.LookOrientation, look_orientation_items, std::size(look_orientation_items));
+    renderer_changed |= ImGui::Combo("UpOrientation", &data.UpOrientation, up_orientation_items, std::size(up_orientation_items));
+    renderer_changed |= ImGui::Combo("LockedAxis", &data.LockedAxis, locked_axis_items, std::size(locked_axis_items));
 
-    float32_t look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
-    Changed |= ImGui::InputFloat3("LookVector", look);
-    obj->lookVector = SPK::Vector3D(look[0], look[1], look[2]);
+    renderer_changed |= ImGui::InputFloat3("LookVector", data.LookVector.data());
+    renderer_changed |= ImGui::InputFloat3("UpVector", data.UpVector.data());
 
-    float32_t up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
-    Changed |= ImGui::InputFloat3("UpVector", up);
-    obj->upVector = SPK::Vector3D(up[0], up[1], up[2]);
+    if (renderer_changed) {
+        SPK::FO::SetSparkQuadRendererData(*obj, data);
+        Changed = true;
+    }
 }
 
 // Helpers
