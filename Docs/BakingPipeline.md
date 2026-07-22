@@ -346,13 +346,15 @@ During output discovery it visits resource packs in configured order so a later 
 - `ImageBaker` — `Source/Tools/ImageBaker.*`
 - `EffectBaker` — `Source/Tools/EffectBaker.*`
 - `ParticleBaker` — `Source/Tools/ParticleBaker.*`, name `Particle`, order `5`
-- `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `6`
-- `MapBaker` — `Source/Tools/MapBaker.*`, name `Map`, order `7`
+- `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `7`
+- `MapBaker` — `Source/Tools/MapBaker.*`, name `Map`, order `8`
 - `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `6`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+
+The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
