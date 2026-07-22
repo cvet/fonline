@@ -44,6 +44,12 @@ class RenderTexture;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
+struct ParticleBounds3D final
+{
+    vec3 Min {};
+    vec3 Max {};
+};
+
 struct ParticleRuntimeSetup final
 {
     mat44 Projection {};
@@ -77,7 +83,10 @@ public:
     [[nodiscard]] virtual auto IsActive() const -> bool = 0;
     [[nodiscard]] virtual auto GetDrawSize(isize32 default_size) const -> isize32 = 0;
     [[nodiscard]] virtual auto GetDrawInScene() const -> bool = 0;
+    [[nodiscard]] virtual auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
 
+    virtual void EnableBoundsComputation() noexcept;
+    virtual void RebaseWorldParticles(vec3 delta) noexcept;
     virtual void Setup(const ParticleRuntimeSetup& setup) = 0;
     virtual auto Prewarm() -> float32_t = 0;
     virtual void Respawn(optional<int32_t> seed) = 0;

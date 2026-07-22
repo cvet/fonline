@@ -73,7 +73,10 @@ public:
     [[nodiscard]] auto IsActive() const -> bool override;
     [[nodiscard]] auto GetDrawSize(isize32 default_size) const -> isize32 override;
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
+    [[nodiscard]] auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D> override;
 
+    void EnableBoundsComputation() noexcept override;
+    void RebaseWorldParticles(vec3 delta) noexcept override;
     void Setup(const ParticleRuntimeSetup& setup) override;
     auto Prewarm() -> float32_t override;
     void Respawn(optional<int32_t> seed) override;

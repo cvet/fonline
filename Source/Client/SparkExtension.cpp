@@ -193,6 +193,8 @@ struct SparkParticleRuntimeSystem::Impl
     std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
     uint32_t RandomSeed {};
     bool BaseSystemDetached {};
+    bool BoundsDirty {};
+    bool TiltInProjection {};
 };
 
 static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
@@ -340,6 +342,94 @@ auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
     return false;
 }
 
+auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->RuntimeSystem->isAABBComputationEnabled() || _impl->BoundsDirty || _impl->RuntimeSystem->getNbParticles() == 0) {
+        return std::nullopt;
+    }
+
+    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getAABBMin();
+    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getAABBMax();
+    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+
+    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
+        return std::nullopt;
+    }
+
+    ParticleBounds3D result;
+    bool initialized = false;
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        const vec3 corner {
+            (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
+            (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
+            (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
+        };
+        const glm::vec4 transformed = _impl->ViewMatrix * glm::vec4 {corner, 1.0f};
+
+        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
+            return std::nullopt;
+        }
+
+        const vec3 point {transformed};
+
+        if (!initialized) {
+            result.Min = point;
+            result.Max = point;
+            initialized = true;
+        }
+        else {
+            result.Min = glm::min(result.Min, point);
+            result.Max = glm::max(result.Max, point);
+        }
+    }
+
+    return result;
+}
+
+void SparkParticleRuntimeSystem::EnableBoundsComputation() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->RuntimeSystem->isAABBComputationEnabled()) {
+        _impl->RuntimeSystem->enableAABBComputation(true);
+        _impl->BoundsDirty = true;
+    }
+}
+
+void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_impl->TiltInProjection) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
+
+    if (delta == vec3 {}) {
+        return;
+    }
+
+    const SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
+
+    for (size_t group_index = 0; group_index < _impl->RuntimeSystem->getNbGroups(); group_index++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(group_index);
+
+        for (SPK::GroupIterator particle_it(*group); !particle_it.end(); ++particle_it) {
+            particle_it->position() += spark_delta;
+            particle_it->oldPosition() += spark_delta;
+        }
+    }
+
+    if (_impl->RuntimeSystem->isAABBComputationEnabled()) {
+        _impl->BoundsDirty = true;
+    }
+}
+
 void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
     FO_STACK_TRACE_ENTRY();
@@ -377,6 +467,7 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     const auto camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
+    _impl->TiltInProjection = setup.TiltInProjection;
 }
 
 auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
@@ -397,8 +488,15 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
     const int32_t init_time_ms = numeric_cast<int32_t>(SPK_RANDOM(_impl->Runtime->_impl->Context, 0U, init_time_range));
     const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
 
+    bool updated = false;
+
     for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
         _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));
+        updated = true;
+    }
+
+    if (updated && _impl->RuntimeSystem->isAABBComputationEnabled()) {
+        _impl->BoundsDirty = false;
     }
 
     return init_time;
@@ -416,9 +514,21 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_impl->RuntimeSystem->isActive() && delta_seconds > 0.0f) {
+    if (!_impl->RuntimeSystem->isActive()) {
+        return;
+    }
+
+    if (delta_seconds > 0.0f) {
         SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
         _impl->RuntimeSystem->updateParticles(delta_seconds);
+
+        if (_impl->RuntimeSystem->isAABBComputationEnabled()) {
+            _impl->BoundsDirty = false;
+        }
+    }
+    else if (_impl->BoundsDirty) {
+        _impl->RuntimeSystem->updateParticles(0.0f);
+        _impl->BoundsDirty = false;
     }
 }
 
@@ -467,10 +577,13 @@ void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const bool bounds_computation_enabled = RuntimeSystem && RuntimeSystem->isAABBComputationEnabled();
     SPK::RandomSeedScope random_seed_scope {Runtime->_impl->Context, RandomSeed};
     SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
     RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
     RuntimeSystem->initialize();
+    RuntimeSystem->enableAABBComputation(bounds_computation_enabled);
+    BoundsDirty = bounds_computation_enabled;
 }
 
 FO_END_NAMESPACE

@@ -38,6 +38,25 @@
 
 FO_BEGIN_NAMESPACE
 
+auto ParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::nullopt;
+}
+
+void ParticleRuntimeSystem::EnableBoundsComputation() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+}
+
+void ParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(delta);
+}
+
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>
 {
     FO_STACK_TRACE_ENTRY();

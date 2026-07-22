@@ -46,12 +46,6 @@ FO_BEGIN_NAMESPACE
 
 class ParticleManager;
 
-struct ParticleBounds3D
-{
-    vec3 Min {};
-    vec3 Max {};
-};
-
 class ParticleSystem final
 {
     friend class ParticleManager;
@@ -89,7 +83,6 @@ private:
     explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
-    [[nodiscard]] auto GetRenderViewMatrix() const noexcept -> mat44;
 
     void ApplyRuntimeSetup();
     void ResetTiming();
