@@ -90,7 +90,7 @@ The placement selector supports two map positions:
 - **Mouse position** uses the most recent valid mapper `MousePos` captured while the pointer was over the map. Move the pointer onto the desired map hex before pressing **Play** in the floating window.
 - **View center** resolves the center of the current map viewport when **Play** is pressed.
 
-**Scale**, **Offset X/Y**, **Seed**, and **Prewarm** are preview-only controls. **Seed** is enabled only when the selected runtime advertises seeded-respawn support; the bundled SPARK and Effekseer runtimes both provide independent per-effect seeded playback. **Play** loads the selected resource through `SpriteManager::LoadSprite(..., AtlasType::MapSprites)`, verifies that it is a `ParticleSprite`, starts it with the selected runtime's supported respawn path, applies the particle-system scale, optionally prewarms it, and attaches it to the selected hex as a temporary `DrawOrderType::Particles` `MapSprite`. **Restart** rebuilds the preview at its existing hex with the current controls. **Remove** invalidates it.
+**Scale**, **Offset X/Y**, **Seed**, and **Prewarm** are preview-only controls. The bundled SPARK and Effekseer runtimes both provide independent per-effect seeded playback, so **Seed** always applies. **Play** loads the selected resource through `SpriteManager::LoadSprite(..., AtlasType::MapSprites)`, verifies that it is a `ParticleSprite`, starts it with a seeded respawn, applies the particle-system scale, optionally prewarms it, and attaches it to the selected hex as a temporary `DrawOrderType::Particles` `MapSprite`. **Restart** rebuilds the preview at its existing hex with the current controls. **Remove** invalidates it.
 
 Effekseer uses the direct-scene path. Its one-second prewarm is deferred until
 the first `DrawInScene` after the current map transform has been set; scheduled
@@ -98,9 +98,8 @@ updates pause while that prewarm is pending, and the update clock is then
 resynchronized so the wait is not counted again.
 
 Startup automation uses the same path and is useful for seeded smoke checks.
-Supply a start map plus the optional preview settings; exact repeatability
-depends on the selected runtime's seeded-respawn support; the seed control is
-disabled when the capability is unavailable:
+Supply a start map plus the optional preview settings; both bundled runtimes
+support seeded playback, so the same seed reproduces the effect:
 
 ```powershell
 .\Binaries\Mapper-Windows-win64\LF_Mapper.exe `
