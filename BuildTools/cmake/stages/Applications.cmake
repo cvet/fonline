@@ -161,7 +161,7 @@ if(FO_BUILD_BAKER)
             OUTPUT_DIR ${FO_BAKER_OUTPUT}
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
             TESTING_APP 0
-            LINK_LIBS PRIVATE BakerLib
+            LINK_LIBS PRIVATE AppHeadless BakerLib
             EXTRA_PROPERTIES
                 RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
                 CXX_VISIBILITY_PRESET hidden
