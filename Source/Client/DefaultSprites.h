@@ -53,15 +53,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetAtlas() const -> nptr<const TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
-    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override
-    {
-        if (!_atlas) {
-            return nullptr;
-        }
-
-        auto atlas = _atlas.as_ptr();
-        return atlas->GetTexture();
-    }
+    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
