@@ -196,7 +196,7 @@ public:
     void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
     void AddPacksSource(string_view dir, const vector<string>& packs);
     void AddCustomSource(unique_ptr<DataSource> data_source);
-    [[nodiscard]] auto ReindexDataSources() -> bool;
+    auto ReindexDataSources() -> bool;
     void CleanDataSources();
 
 private:

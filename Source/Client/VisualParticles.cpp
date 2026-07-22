@@ -39,8 +39,8 @@ struct ParticleManager::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services);
 
-    [[nodiscard]] auto FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>;
-    [[nodiscard]] auto FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>;
+    auto FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>;
+    auto FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>;
 
     vector<unique_ptr<ParticleRuntimeBackend>> Backends;
 };
@@ -131,15 +131,6 @@ auto ParticleManager::GetExtensions() const -> vector<string>
     return exts;
 }
 
-auto ParticleManager::SupportsSeededRespawn(string_view name) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const string ext = strex(name).get_file_extension();
-    const auto backend = _impl->FindBackend(ext);
-    return backend && backend->SupportsSeededRespawn();
-}
-
 void ParticleManager::InvalidateResource(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -161,21 +152,19 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
         return {};
     }
 
-    const bool supports_seeded_respawn = backend->SupportsSeededRespawn();
     auto runtime_system = backend->Create(name);
 
     if (!runtime_system) {
         return {};
     }
 
-    ParticleSystem particles {this, runtime_system.take_not_null(), supports_seeded_respawn};
+    ParticleSystem particles {this, runtime_system.take_not_null()};
     return std::move(particles);
 }
 
-ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system, bool supports_seeded_respawn) :
+ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system) :
     _runtimeSystem {std::move(runtime_system)},
-    _particleMngr {particle_mngr},
-    _supportsSeededRespawn {supports_seeded_respawn}
+    _particleMngr {particle_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -300,10 +289,6 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_supportsSeededRespawn) {
-        return false;
-    }
-
     _runtimeSystem->Respawn(seed);
 
     if (IsActive() && _runtimeSetup) {
@@ -328,6 +313,7 @@ void ParticleSystem::Update()
     _lastUpdateTime = time;
 
     const bool was_active = _runtimeSystem->IsActive();
+
     if (!was_active) {
         return;
     }
@@ -335,6 +321,7 @@ void ParticleSystem::Update()
     _runtimeSystem->Update(delta_seconds);
 
     const bool is_active = _runtimeSystem->IsActive();
+
     if (delta_seconds > 0.0f || !is_active) {
         _renderPending = true;
     }

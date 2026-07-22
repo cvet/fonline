@@ -440,7 +440,7 @@ void MasterBaker::BakeAllInternal()
                 const string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
 
                 if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
-                    (void)fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
+                    fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
                     WriteLog("Delete outdated baker cache {}", path);
                 }
             }
@@ -572,7 +572,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 
     _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
-    (void)Reindex();
+    Reindex();
 }
 
 auto BakerDataSource::Reindex() -> bool
@@ -737,7 +737,6 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
                 input_write_time = _outputFiles.at(string(path));
                 const auto output_write_time = fs_last_write_time(output_path);
-
                 FO_VERIFY_AND_THROW(input_write_time < output_write_time, "Baked output file is not newer than the newest source input", path, output_path, input_write_time, output_write_time);
             }
 

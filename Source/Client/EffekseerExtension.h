@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
 
     void Setup(const ParticleRuntimeSetup& setup) override;
-    [[nodiscard]] auto Prewarm() -> float32_t override;
+    auto Prewarm() -> float32_t override;
     void Respawn(optional<int32_t> seed) override;
     void Update(float32_t delta_seconds) override;
     void RefreshRenderTransform() override;
@@ -85,9 +85,9 @@ public:
     ~EffekseerParticleRuntimeBackend() override;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override;
-    [[nodiscard]] auto SupportsSeededRespawn() const -> bool override;
+
     void InvalidateResource(string_view path) override;
-    [[nodiscard]] auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
+    auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
 
 private:
     struct Impl;

@@ -74,13 +74,13 @@ public:
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
 
     void Setup(const ParticleRuntimeSetup& setup) override;
-    [[nodiscard]] auto Prewarm() -> float32_t override;
+    auto Prewarm() -> float32_t override;
     void Respawn(optional<int32_t> seed) override;
     void Update(float32_t delta_seconds) override;
     void RefreshRenderTransform() override;
     void Draw() override;
 
-    [[nodiscard]] auto GetEditableBaseSystem() -> SPK::Ref<SPK::System>;
+    auto GetEditableBaseSystem() -> SPK::Ref<SPK::System>;
     void ReplaceBaseSystem(SPK::Ref<SPK::System> system);
 
 private:
@@ -104,9 +104,9 @@ public:
     ~SparkParticleRuntimeBackend() override;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override;
-    [[nodiscard]] auto SupportsSeededRespawn() const -> bool override;
+
     void InvalidateResource(string_view path) override;
-    [[nodiscard]] auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
+    auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
 
 private:
     struct Impl;
@@ -141,10 +141,10 @@ namespace SPK::FO
     };
 
     void EnsureSparkParticleObjectsRegistered(SPKContext& context);
-    [[nodiscard]] auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool;
-    [[nodiscard]] auto IsSparkQuadRenderer(const Renderer& renderer) -> bool;
-    [[nodiscard]] auto CreateSparkQuadRenderer() -> Ref<Renderer>;
-    [[nodiscard]] auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData;
+    auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool;
+    auto IsSparkQuadRenderer(const Renderer& renderer) -> bool;
+    auto CreateSparkQuadRenderer() -> Ref<Renderer>;
+    auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData;
     void SetSparkQuadRendererData(Renderer& renderer, const SparkQuadRendererData& data);
 }
 

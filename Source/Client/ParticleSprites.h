@@ -88,7 +88,6 @@ public:
     ~ParticleSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override;
-    [[nodiscard]] auto SupportsSeededRespawn(string_view path) const -> bool;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
     void RetryFailedLoads() override;

@@ -64,7 +64,6 @@ public:
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
-    [[nodiscard]] auto SupportsSeededRespawn() const noexcept -> bool { return _supportsSeededRespawn; }
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
@@ -78,7 +77,7 @@ public:
     void SetScale(float32_t scale);
 
 private:
-    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system, bool supports_seeded_respawn);
+    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
 
@@ -90,7 +89,6 @@ private:
     optional<ParticleRuntimeSetup> _runtimeSetup {};
     float64_t _elapsedTime {};
     float32_t _scale {1.0f};
-    bool _supportsSeededRespawn {};
     bool _forceDraw {};
     bool _renderPending {};
     nanotime _lastUpdateTime {};
@@ -110,7 +108,6 @@ public:
     ~ParticleManager();
 
     [[nodiscard]] auto GetExtensions() const -> vector<string>;
-    [[nodiscard]] auto SupportsSeededRespawn(string_view name) const -> bool;
 
     void InvalidateResource(string_view name);
     auto CreateParticle(string_view name) -> optional<ParticleSystem>;

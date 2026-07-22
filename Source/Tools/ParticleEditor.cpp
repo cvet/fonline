@@ -317,14 +317,7 @@ void ParticlePreviewSubEditor::DrawWindows()
     _offset.x = std::clamp(_offset.x, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
     _offset.y = std::clamp(_offset.y, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
 
-    const bool seeded_respawn_supported = _resourcePath.empty() || _particleFactory->SupportsSeededRespawn(_resourcePath);
-    ImGui::BeginDisabled(!seeded_respawn_supported);
     ImGui::InputInt("Seed", &_seed);
-    ImGui::EndDisabled();
-
-    if (!seeded_respawn_supported) {
-        ImGui::TextDisabled("The selected particle runtime does not support seeded respawn.");
-    }
 
     ImGui::Checkbox("Prewarm", &_prewarm);
     ImGui::TextDisabled("Scale, offset, seed and prewarm apply on Play or Restart.");
@@ -380,14 +373,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
         return;
     }
 
-    const bool seeded_respawn_supported = _particleFactory->SupportsSeededRespawn(_resourcePath);
-
-    if (seeded_respawn_supported) {
-        particle_sprite->PlayWithSeed(_seed);
-    }
-    else {
-        particle_sprite->Play({}, false, false);
-    }
+    particle_sprite->PlayWithSeed(_seed);
 
     particle_sprite->GetParticle()->SetScale(_scale);
 
@@ -401,7 +387,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
     _previewMap = _mapper->GetCurMap().as_ptr();
     _previewHex = hex;
     AttachMapSprite();
-    WriteLog("Mapper particle preview started: '{}' at ({}, {}), seeded respawn {}, seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, seeded_respawn_supported, _seed, _scale, _prewarm);
+    WriteLog("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
 }
 
 void ParticlePreviewSubEditor::AttachMapSprite()

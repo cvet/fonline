@@ -232,13 +232,6 @@ auto SparkParticleRuntimeBackend::GetExtensions() const -> vector<string>
     return {"spk"};
 }
 
-auto SparkParticleRuntimeBackend::SupportsSeededRespawn() const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return true;
-}
-
 void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
 {
     FO_STACK_TRACE_ENTRY();
@@ -475,7 +468,7 @@ void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
     FO_STACK_TRACE_ENTRY();
 
     SPK::RandomSeedScope random_seed_scope {Runtime->_impl->Context, RandomSeed};
-    (void)SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
+    SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
     RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
     RuntimeSystem->initialize();
 }

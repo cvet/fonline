@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 
 class MapperEngine;
 
-[[nodiscard]] auto CreateSparkParticleSubEditor(ptr<MapperEngine> mapper) -> unique_ptr<ParticleSubEditor>;
+auto CreateSparkParticleSubEditor(ptr<MapperEngine> mapper) -> unique_ptr<ParticleSubEditor>;
 
 class SparkParticleEditor final
 {
@@ -65,11 +65,12 @@ public:
     auto Draw() -> bool;
 
 private:
+    struct Impl;
+
     void DrawContent();
     void DiscardChanges();
     auto SaveChanges() -> bool;
 
-    struct Impl;
     unique_ptr<Impl> _impl;
     string _assetPath {};
     string _windowTitle {};

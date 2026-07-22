@@ -97,7 +97,6 @@ public:
     virtual ~ParticleRuntimeBackend() = default;
 
     [[nodiscard]] virtual auto GetExtensions() const -> vector<string> = 0;
-    [[nodiscard]] virtual auto SupportsSeededRespawn() const -> bool = 0;
 
     virtual auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> = 0;
     virtual void InvalidateResource(string_view path) = 0;

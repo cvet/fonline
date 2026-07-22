@@ -1629,13 +1629,6 @@ auto EffekseerParticleRuntimeBackend::GetExtensions() const -> vector<string>
     return {"efk"};
 }
 
-auto EffekseerParticleRuntimeBackend::SupportsSeededRespawn() const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return true;
-}
-
 void EffekseerParticleRuntimeBackend::InvalidateResource(string_view path)
 {
     FO_STACK_TRACE_ENTRY();

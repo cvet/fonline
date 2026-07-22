@@ -50,10 +50,6 @@ auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_particle->SupportsSeededRespawn()) {
-        return false;
-    }
-
     _prewarmPending = false;
 
     if (!_particle->Respawn(seed)) {
@@ -178,13 +174,6 @@ auto ParticleSpriteFactory::GetExtensions() const -> vector<string>
     FO_STACK_TRACE_ENTRY();
 
     return _particleMngr.GetExtensions();
-}
-
-auto ParticleSpriteFactory::SupportsSeededRespawn(string_view path) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return _particleMngr.SupportsSeededRespawn(path);
 }
 
 auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
