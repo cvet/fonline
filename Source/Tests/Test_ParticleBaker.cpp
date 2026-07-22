@@ -329,7 +329,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK(bakers[1]->GetName() == ParticleBaker::NAME);
         CHECK(bakers[1]->GetOrder() == 5);
         CHECK(bakers[2]->GetName() == ProtoBaker::NAME);
-        CHECK(bakers[2]->GetOrder() == 6);
+        CHECK(bakers[2]->GetOrder() == 7);
     }
 
 #if FO_SPARK_PARTICLES
