@@ -74,7 +74,7 @@ namespace SPK
 		// Constructor/Desctructor //
 		/////////////////////////////
 
-		static Ref<System> create(bool initialize = true);
+		static Ref<System> create(SPKContext& context,bool initialize = true);
 		~System();
 
 		///////////////////////
@@ -223,7 +223,7 @@ namespace SPK
 		* @param useClampStep : true to use a clamp value on the step, false not to
 		* @param clamp : the clamp value
 		*/
-		static void setClampStep(bool useClampStep,float clamp = 1.0f);
+		void setClampStep(bool useClampStep,float clamp = 1.0f);
 
 		/**
 		* @brief Uses a constant step to update the systems
@@ -236,7 +236,7 @@ namespace SPK
 		* 
 		* @param constantStep : the value of the step
 		*/
-		static void useConstantStep(float constantStep);
+		void useConstantStep(float constantStep);
 
 		/**
 		* @brief Uses an adaptive step to update the systems
@@ -252,7 +252,7 @@ namespace SPK
 		* @param minStep : the minimal time step
 		* @param maxStep : the maximal time step
 		*/
-		static void useAdaptiveStep(float minStep,float maxStep);
+		void useAdaptiveStep(float minStep,float maxStep);
 
 		/**
 		* @brief Uses the real step to update the systems
@@ -263,13 +263,13 @@ namespace SPK
 		* This mode is the simpler and the one that allows best performance on low end systems.<br>
 		* However the update may be inaccurate (due to too big deltaTime) and it performs badly with frame rate variation.
 		*/
-		static void useRealStep();
+		void useRealStep();
 
 		/**
 		* @brief Gets the current step mode
 		* @return the current step mode
 		*/
-		static StepMode getStepMode();
+		StepMode getStepMode() const;
 
 		//////////
 		// Misc //
@@ -305,13 +305,13 @@ namespace SPK
 		Vector3D cameraPosition;
 
 		// Step mode
-		static StepMode stepMode;
-		static float constantStep;
-		static float minStep;
-		static float maxStep;
+		StepMode stepMode;
+		float constantStep;
+		float minStep;
+		float maxStep;
 
-		static bool clampStepEnabled;
-		static float clampStep;
+		bool clampStepEnabled;
+		float clampStep;
 
 		float deltaStep;
 
@@ -328,9 +328,11 @@ namespace SPK
 		static void setGroupSystem(const Ref<Group>& group,System* system,bool remove = true);
 	};
 
-	inline Ref<System> System::create(bool initialize) 
+	inline Ref<System> System::create(SPKContext& context,bool initialize)
 	{ 
-		return SPK_NEW(System,initialize); 
+		Ref<System> system = SPK_NEW(System,initialize);
+		system->setContext(context);
+		return system;
 	}
 
 	inline const Ref<Group>& System::getGroup(size_t index) const
@@ -388,14 +390,14 @@ namespace SPK
 	inline void System::useConstantStep(float constantStep)
 	{
 		stepMode = STEP_MODE_CONSTANT;
-		System::constantStep = constantStep;
+		this->constantStep = constantStep;
 	}
 
 	inline void System::useAdaptiveStep(float minStep,float maxStep)
 	{
 		stepMode = STEP_MODE_ADAPTIVE;
-		System::minStep = minStep;
-		System::maxStep = maxStep;
+		this->minStep = minStep;
+		this->maxStep = maxStep;
 	}
 
 	inline void System::useRealStep()
@@ -403,7 +405,7 @@ namespace SPK
 		stepMode = STEP_MODE_REAL;
 	}
 
-	inline StepMode System::getStepMode()
+	inline StepMode System::getStepMode() const
 	{
 		return stepMode;
 	}

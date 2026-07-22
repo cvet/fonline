@@ -28,17 +28,15 @@
 
 namespace SPK
 {
-	StepMode System::stepMode(STEP_MODE_REAL);
-	float System::constantStep(0.0f);
-	float System::minStep(0.0f);
-	float System::maxStep(0.0f);
-
-	bool System::clampStepEnabled(false);
-	float System::clampStep(1.0f);
-
 	System::System(bool initialize) :
 		Transformable(SHARE_POLICY_TRUE),
 		groups(),
+		stepMode(STEP_MODE_REAL),
+		constantStep(0.0f),
+		minStep(0.0f),
+		maxStep(0.0f),
+		clampStepEnabled(false),
+		clampStep(1.0f),
 		deltaStep(0.0f),		
 		initialized(initialize),
         active(true),
@@ -49,6 +47,12 @@ namespace SPK
 
 	System::System(const System& system) :
 		Transformable(system),
+		stepMode(system.stepMode),
+		constantStep(system.constantStep),
+		minStep(system.minStep),
+		maxStep(system.maxStep),
+		clampStepEnabled(system.clampStepEnabled),
+		clampStep(system.clampStep),
 		deltaStep(0.0f),		
 		initialized(system.initialized),
         active(system.active),
@@ -284,6 +288,10 @@ namespace SPK
 				group->system->removeGroup(group);
 
 			group->system = system;
+
+			if (system && system->hasContext())
+				group->setContext(system->getContext());
+
 			group->initData(); // To initialize the group if needed
 		}
 	}

@@ -267,7 +267,7 @@ SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
-FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
+FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
@@ -358,6 +358,10 @@ FIXED_SETTING(string, Mapper, StartMap, ""); // Start map name
 VARIABLE_SETTING(int32_t, Mapper, StartHexX, -1); // Start hex X coordinate
 VARIABLE_SETTING(int32_t, Mapper, StartHexY, -1); // Start hex Y coordinate
 VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles collection is split
+VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resource to preview after opening the start map
+VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
+VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
+VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

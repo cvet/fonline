@@ -1,0 +1,14 @@
+project(imgui)
+
+cmake_minimum_required(VERSION 3.15)
+
+option(GLFW_ROOT "GLFW path" "")
+
+find_package(OpenGL REQUIRED)
+
+add_library(imgui STATIC imgui.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp backends/imgui_impl_opengl3.cpp backends/imgui_impl_glfw.cpp)
+
+target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${GLFW_ROOT} ${OPENGL_INCLUDE_DIR})
+
+install(TARGETS imgui DESTINATION lib)
+install(FILES imgui.h imconfig.h backends/imgui_impl_glfw.h backends/imgui_impl_opengl3.h DESTINATION include)

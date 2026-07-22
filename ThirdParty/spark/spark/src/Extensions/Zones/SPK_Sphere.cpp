@@ -42,7 +42,7 @@ namespace SPK
 	{
 		if (!full) 
 		{
-			do v = SPK_RANDOM(Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
+			do v = SPK_RANDOM(getContext(),Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
 			while (v.getSqrNorm() > 1.0f || v.isNull());
 
 			v *= this->radius / v.getNorm();
@@ -55,7 +55,7 @@ namespace SPK
 				v.set(0.0f);
 			else
 			{
-				do v = SPK_RANDOM(Vector3D(-relRadius,-relRadius,-relRadius),Vector3D(relRadius,relRadius,relRadius));
+				do v = SPK_RANDOM(getContext(),Vector3D(-relRadius,-relRadius,-relRadius),Vector3D(relRadius,relRadius,relRadius));
 				while (v.getSqrNorm() > relRadius * relRadius);	
 			}
 		}

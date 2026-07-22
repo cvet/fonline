@@ -395,8 +395,9 @@ namespace SPK
 	
 	protected :
 
-		virtual void innerImport(const IO::Descriptor& descriptor) override;
-		virtual void innerExport(IO::Descriptor& descriptor) const override;
+	virtual void innerImport(const IO::Descriptor& descriptor) override;
+	virtual void innerExport(IO::Descriptor& descriptor) const override;
+	virtual void onContextSet() override;
 
 	private :
 

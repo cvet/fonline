@@ -25,19 +25,6 @@
 
 namespace SPK
 {
-	ShaderHint Renderer::shaderHint = SHADER_HINT_NONE;
-	bool Renderer::vboHint = false;
-
-	void Renderer::useShaderHint(ShaderHint hint)
-	{
-		SPK_LOG_INFO("Shader hint is not yet considered");
-	}
-
-	void Renderer::useVBOHint(bool hint)
-	{
-		SPK_LOG_INFO("VBO hint is not yet considered");
-	}
-
 	void Renderer::innerImport(const IO::Descriptor& descriptor)
 	{
 		SPKObject::innerImport(descriptor);
