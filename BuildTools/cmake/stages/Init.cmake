@@ -570,6 +570,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sSTRICT=0)
 	AddLinkOptionsList(
 		$<${expr_WebDebugInfo}:-g3>
+		$<${expr_WebDebugInfo}:-Wno-limited-postlink-optimizations>
 		$<${expr_WebFullOptimization}:-O3>
 		$<${expr_WebFullOptimization}:-flto>
 		$<IF:${expr_DebugBuild},-O0,-O2>
