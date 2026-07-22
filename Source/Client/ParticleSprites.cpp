@@ -92,14 +92,6 @@ void ParticleSprite::SetTime(float32_t normalized_time)
     ignore_unused(normalized_time);
 }
 
-auto ParticleSprite::SetScale(float32_t scale) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _particle->SetScale(scale);
-    return true;
-}
-
 void ParticleSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();

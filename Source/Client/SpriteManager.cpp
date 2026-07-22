@@ -58,22 +58,6 @@ auto Sprite::IsHitTest(ipos32 pos) const -> bool
     return false;
 }
 
-auto Sprite::SetScale(float32_t scale) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(scale);
-    return false;
-}
-
-auto Sprite::PlayWithSeed(int32_t seed) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(seed);
-    return false;
-}
-
 void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();

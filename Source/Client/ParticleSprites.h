@@ -58,10 +58,9 @@ public:
     [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle; }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
-    auto PlayWithSeed(int32_t seed) -> bool override;
+    auto PlayWithSeed(int32_t seed) -> bool;
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
-    auto SetScale(float32_t scale) -> bool override;
     void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;

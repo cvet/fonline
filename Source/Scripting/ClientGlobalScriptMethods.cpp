@@ -35,6 +35,7 @@
 
 #include "Client.h"
 #include "ImGuiStuff.h"
+#include "ParticleSprites.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -982,7 +983,7 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_SetSpriteScale(ptr<ClientEngine> client, uint32_t sprId, float32_t scale)
+FO_SCRIPT_API bool Client_Game_SetParticleScale(ptr<ClientEngine> client, uint32_t sprId, float32_t scale)
 {
     auto sprite = client->AnimGetSpr(sprId);
 
@@ -990,7 +991,14 @@ FO_SCRIPT_API bool Client_Game_SetSpriteScale(ptr<ClientEngine> client, uint32_t
         return false;
     }
 
-    return sprite->SetScale(scale);
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    particle_sprite->GetParticle()->SetScale(scale);
+    return true;
 }
 
 ///@ ExportMethod
@@ -1007,7 +1015,7 @@ FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t spr
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySpriteWithSeed(ptr<ClientEngine> client, uint32_t sprId, int32_t seed)
+FO_SCRIPT_API bool Client_Game_PlayParticleWithSeed(ptr<ClientEngine> client, uint32_t sprId, int32_t seed)
 {
     auto sprite = client->AnimGetSpr(sprId);
 
@@ -1015,11 +1023,17 @@ FO_SCRIPT_API bool Client_Game_PlaySpriteWithSeed(ptr<ClientEngine> client, uint
         return false;
     }
 
-    return sprite->PlayWithSeed(seed);
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    return particle_sprite->PlayWithSeed(seed);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PrewarmSprite(ptr<ClientEngine> client, uint32_t sprId)
+FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_t sprId)
 {
     auto sprite = client->AnimGetSpr(sprId);
 
@@ -1027,7 +1041,13 @@ FO_SCRIPT_API bool Client_Game_PrewarmSprite(ptr<ClientEngine> client, uint32_t 
         return false;
     }
 
-    sprite->Prewarm();
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    particle_sprite->Prewarm();
     return true;
 }
 
