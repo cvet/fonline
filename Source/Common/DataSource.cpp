@@ -135,7 +135,8 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
-    [[nodiscard]] auto Reindex() -> bool override;
+
+    auto Reindex() -> bool override;
 
 private:
     struct FileEntry
@@ -470,7 +471,7 @@ CachedDir::CachedDir(string_view fname, bool recursive) :
     _baseDir = fs_resolve_path(_baseDir);
     _baseDir += "/";
 
-    (void)Reindex();
+    Reindex();
 }
 
 auto CachedDir::Reindex() -> bool
