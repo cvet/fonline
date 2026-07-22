@@ -89,6 +89,7 @@ public:
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetLightingSize() const noexcept -> isize32 { return _lightingDrawSize; }
     [[nodiscard]] auto GetSpriteBounds() const -> optional<ModelSpriteBounds>;
+    [[nodiscard]] auto GetDrawRect() const noexcept -> irect32 { return _drawRect; }
     [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
@@ -191,6 +192,7 @@ private:
     ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
     isize32 _layoutDrawSize {};
+    irect32 _drawRect {};
     isize32 _lightingDrawSize {};
     irect32 _viewRect {};
     optional<ModelBounds3D> _configurationModelBounds {};

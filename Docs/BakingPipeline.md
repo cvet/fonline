@@ -459,7 +459,7 @@ pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
 | `ModelAnimationData` | Common | Versioned little-endian LF animation envelopes and the native rig manifest: identity and signatures, canonical skeleton, base/clip remaps, clip payloads, presence/nearest data, and state/action bindings. |
 | `ModelMeshData` | Common | Passive mesh-wire DTOs plus the versioned `LFMODMSH` reader, writer, and shared structural validation. It contains no runtime animation implementation. |
 | `ModelMeshBaker` | Tools | Validates and writes mesh-only hierarchy, bind, vertex, index, influence, and drawable data. |
-| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. |
+| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. Compatibility failures remain bake errors; successful per-description compatibility reports are not emitted to the routine bake log. |
 
 The main data flow is:
 
@@ -515,7 +515,10 @@ it takes the exact bounds of the final vertices, crops the RGBA payload to those
 bounds, and translates the vertices to the cropped frame origin. The serialized
 per-frame offset is adjusted on both axes so the logical root remains at the
 same screen position even when different animation frames have different
-bounds. A quad or empty result is not cropped or padded. Candidate profitability
+bounds. At runtime `AtlasSprite` reverses that storage adjustment for its public
+logical size and offset, maps mesh positions through the stored source origin,
+and keeps UVs local to the cropped atlas allocation. A quad or empty result is
+not cropped or padded. Candidate profitability
 is always compared against the original unpadded frame, so increasing the
 search area cannot manufacture an artificial saving. Each unique frame is
 searched on the maximum temporary canvas, then the retained mesh is translated
@@ -612,10 +615,16 @@ internal safety border. The decoder requires mesh vertices to occupy the exact
 serialized frame bounds. Shared animation frames continue to refer to the
 original frame and do not duplicate its offset, pixels, or geometry. The
 runtime rejects legacy or malformed blobs rather than guessing their layout.
+Drawable atlas sprites retain the original logical size, anchor, scaling, and
+hit-test coordinate space while using the cropped pixels and mesh for texture
+storage and rendering. Thus transparent-canvas cropping is an internal storage
+optimization rather than a change to the authored sprite contract.
 Consumers that sample the image as a plain rectangular texture rather than a
-sprite (`ParticleEditor` and project-side server image sampling) restore the
-cropped payload into the original logical canvas so their size and pixel-coordinate
-contracts do not change.
+sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
+restore the cropped payload into the original logical canvas so their size and
+pixel-coordinate contracts do not change. In particular, font glyph positions
+are authored against the original sheet dimensions; `SpriteManager::LoadSpriteAsQuad`
+must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.

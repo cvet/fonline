@@ -203,29 +203,111 @@ auto net_sockets::last_recv_was_would_block() noexcept -> bool
 #endif
 }
 
-auto net_sockets::last_error_text() noexcept -> string
+auto net_sockets::error_text(const std::error_code& error) noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
+
+    string_view description;
 
 #if FO_WINDOWS
-    const auto error_code = ::WSAGetLastError();
-    nptr<wchar_t> ws;
-    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
-        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(ws.get_pp()), 0, nullptr);
+    switch (error.value()) {
+    case WSAEACCES:
+        description = "Permission denied";
+        break;
+    case WSAEADDRINUSE:
+        description = "Address already in use";
+        break;
+    case WSAEADDRNOTAVAIL:
+        description = "Address not available";
+        break;
+    case WSAECONNABORTED:
+        description = "Connection aborted";
+        break;
+    case WSAECONNREFUSED:
+        description = "Connection refused";
+        break;
+    case WSAECONNRESET:
+        description = "Connection reset";
+        break;
+    case WSAEHOSTUNREACH:
+        description = "Host unreachable";
+        break;
+    case WSAENETDOWN:
+        description = "Network is down";
+        break;
+    case WSAENETUNREACH:
+        description = "Network unreachable";
+        break;
+    case WSAENOTCONN:
+        description = "Socket is not connected";
+        break;
+    case WSAETIMEDOUT:
+        description = "Operation timed out";
+        break;
+    case WSAEWOULDBLOCK:
+        description = "Operation would block";
+        break;
+    default:
+        break;
+    }
+#endif
 
-    if (!ws) {
-        return strex("Unknown socket error ({})", error_code);
+    if (description.empty()) {
+        const auto condition = error.default_error_condition();
+
+        if (condition == std::errc::permission_denied) {
+            description = "Permission denied";
+        }
+        else if (condition == std::errc::address_in_use) {
+            description = "Address already in use";
+        }
+        else if (condition == std::errc::address_not_available) {
+            description = "Address not available";
+        }
+        else if (condition == std::errc::connection_aborted) {
+            description = "Connection aborted";
+        }
+        else if (condition == std::errc::connection_refused) {
+            description = "Connection refused";
+        }
+        else if (condition == std::errc::connection_reset) {
+            description = "Connection reset";
+        }
+        else if (condition == std::errc::host_unreachable) {
+            description = "Host unreachable";
+        }
+        else if (condition == std::errc::network_down) {
+            description = "Network is down";
+        }
+        else if (condition == std::errc::network_unreachable) {
+            description = "Network unreachable";
+        }
+        else if (condition == std::errc::not_connected) {
+            description = "Socket is not connected";
+        }
+        else if (condition == std::errc::operation_canceled) {
+            description = "Operation canceled";
+        }
+        else if (condition == std::errc::timed_out) {
+            description = "Operation timed out";
+        }
+        else if (condition == std::errc::operation_would_block) {
+            description = "Operation would block";
+        }
     }
 
-    auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { ::LocalFree(make_nptr(text.get()).void_cast()); }};
-    const string error_str = strex().parse_wide_char(ws).trim();
+    const string_view category = error.category().name();
+    return description.empty() ? strex("Network error ({}:{})", category, error.value()) : strex("{} ({}:{})", description, category, error.value());
+}
 
-    return strex("{} ({})", error_str, error_code);
+auto net_sockets::last_error_text() noexcept -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return error_text(std::error_code {::WSAGetLastError(), std::system_category()});
 #else
-    const auto error_code = errno;
-    const string error_str = strex(::strerror(error_code)).trim();
-
-    return strex("{} ({})", error_str, error_code);
+    return error_text(std::error_code {errno, std::system_category()});
 #endif
 }
 
