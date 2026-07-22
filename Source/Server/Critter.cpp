@@ -79,7 +79,7 @@ Critter::~Critter()
     }
 }
 
-auto Critter::GetRawGlobalMapGroup() -> shared_ptr<vector<ptr<Critter>>>&
+auto Critter::GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -637,8 +637,9 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
-        return it != _globalMapGroup->end() && cr_id != GetId();
+        const vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
+        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        return it != members.end() && cr_id != GetId();
     }
 
     if (_visibleCrMap.count(cr_id) != 0) {
@@ -656,8 +657,9 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
-        if (it != _globalMapGroup->end() && cr_id != GetId()) {
+        vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
+        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        if (it != members.end() && cr_id != GetId()) {
             return it->as_nptr();
         }
 
@@ -691,7 +693,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        vector<ptr<Critter>> critters = copy(*_globalMapGroup);
+        vector<ptr<Critter>> critters = _globalMapGroup->GetMembers();
         vec_remove_unique_value(critters, this);
         return critters;
     }
@@ -737,7 +739,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
     return critters;
 }
 
-auto Critter::GetGlobalMapGroup() -> span<ptr<Critter>>
+auto Critter::GetGlobalMapGroup() -> vector<ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -747,7 +749,71 @@ auto Critter::GetGlobalMapGroup() -> span<ptr<Critter>>
     FO_VERIFY_AND_THROW(!GetMapId(), "Map id is already set");
     FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
 
-    return *_globalMapGroup;
+    return _globalMapGroup->GetMembers();
+}
+
+auto Critter::GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // NOT NOT_DESTROYING: a caller preparing the cover for a destroy enumerates the group of a critter that is
+    // already being destroyed, exactly like GetGlobalMapGroup above.
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    revision = 0;
+
+    if (!_globalMapGroup) {
+        return {};
+    }
+
+    return _globalMapGroup->GetMemberIds(revision);
+}
+
+auto GlobalMapGroup::GetMembers() const -> vector<ptr<Critter>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_lock};
+
+    return _members;
+}
+
+auto GlobalMapGroup::GetMemberIds(uint64_t& revision) const -> vector<ident_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_lock};
+
+    vector<ident_t> ids;
+    ids.reserve(_members.size());
+
+    for (ptr<const Critter> member : _members) {
+        ids.emplace_back(member->GetId());
+    }
+
+    revision = _revision;
+
+    return ids;
+}
+
+void GlobalMapGroup::AddMember(ptr<Critter> cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_lock};
+
+    vec_add_unique_value(_members, cr);
+    _revision++;
+}
+
+void GlobalMapGroup::RemoveMember(ptr<Critter> cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_lock};
+
+    vec_remove_unique_value(_members, cr);
+    _revision++;
 }
 
 auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode

@@ -47,7 +47,10 @@ Read this page together with:
 - `Source/Server/WorkerPool.cpp`
 - `Source/Essentials/WorkThread.h`
 - `Source/Essentials/WorkThread.cpp`
+- `Source/Scripting/ServerCritterScriptMethods.cpp`
+- `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_EntityLifecycle.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
@@ -102,6 +105,13 @@ Startup runs on the `_starter` worker thread, so a failure surfaces asynchronous
 The public `Lock()` / `Unlock()` pair is used by tests, tooling, and controlled operations that need a consistent view of server state. `Source/Tests/Test_ServerEngine.cpp` repeatedly waits for server startup, locks the server, performs entity/script checks, and unlocks on scope exit.
 
 Script-exported map critter queries (`Map.GetCritters(...)`, "who sees" variants, and property-filtered lookups) rely on the map access validation performed by the script dispatch layer: callers must already hold map coverage, and concurrent map membership mutation under that cover is a bug to surface rather than mask by taking extra critter refs.
+
+**Enumerating independent roots so the caller can cover them.** Two things a native call graph touches are *not* reachable through the map/location ancestry the caller already holds, so the script cannot derive them from the entities it covers — the engine has to let it read them first:
+
+- **Map spectators.** `MapManager::DestroyMapInternal()` ejects each spectator with `ValidateEntityAccess(player)` + `Player::ResetViewMap()`, and a spectator `Player` is a separate root, not a map descendant. `Map.GetSpectatorPlayers()` returns the map's current spectators (the `_spectatorLock`-guarded owning snapshot also used by the broadcast fan-out) so a caller preparing a map/location destroy can cover them and re-read the list to prove the membership did not change while it was acquiring that cover.
+- **Global-map group members.** `ServerEngine::SendCritterInitialInfo()` walks `Critter::GetGlobalMapGroup()` and each `Send_AddCritter(member)` validates the **member**, which the travelling critter's own cover does not include. `Critter.GetGlobalMapCritterIds(uint64& revision)` returns the member ids plus the group's membership revision (empty with revision `0` for a mapped critter). Membership lives in a shared `GlobalMapGroup` object — one instance per group, held by every member — whose `shared_mutex` makes a read taken under one member's cover safe against a join/leave performed under another member's cover, and whose revision advances on every membership change. A caller resolves the reported ids, covers them, then re-reads ids and revision; an unchanged pair proves the cover it acquired is the current membership. `Critter::GetGlobalMapGroup()` correspondingly returns an owning copy taken under that lock rather than a live span.
+
+Neither export changes cover on the script's behalf: both are ordinary reads under the receiver's cover, which the script dispatch layer validates before the export body runs.
 
 Property serialization through `Properties::StoreData()` returns pointer/size lists backed by the entity's live property storage plus the per-call send cache. Callers copy those chunks immediately into network or persistence buffers and must already hold the entity cover that protects property reads. ThreadSanitizer builds annotate the engine's custom `EntityLock` so this external cover is visible to the sanitizer without adding per-property snapshot copies.
 
@@ -321,6 +331,7 @@ The client host/runtime updater flow is documented in [ClientUpdater.md](ClientU
 Use the smallest relevant test scope when changing server behavior:
 
 - `Source/Tests/Test_ServerEngine.cpp` — server startup, critter creation, player-controlled critter unload, script module init/events, admin remote-call allowlist, script marshalling, overdue movement.
+- `Source/Tests/Test_EntityLifecycle.cpp` — entity init events, C++ entity/manager APIs, player registration and reconnect cover, and (`IndependentRootCoverEnumeration`) global-map group / map spectator enumeration plus the cover it lets a caller acquire.
 - `Source/Tests/Test_ServerItems.cpp` — item creation/destruction, critter inventory, critter lifecycle, entity-manager queries.
 - `Source/Tests/Test_ServerMapOperations.cpp` — map item/critter/hex/path/static-item/location/proto/property-filter operations.
 - `Source/Tests/Test_ServerAdvancedOps.cpp` — location creation, entity-manager bulk operations, advanced critter/item operations, utility/database/string/array/dict/math/time/proto script operations.

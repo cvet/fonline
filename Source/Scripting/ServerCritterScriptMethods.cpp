@@ -105,6 +105,17 @@ FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
+// SyncScope: requires self; returns the ids of self's current global-map group together with the group's
+// membership revision (empty with revision 0 when self is mapped). Group members are independent Critter roots
+// that self's cover does not include, so a caller that sends initial info to, transfers, or destroys a
+// global-map critter resolves and covers the returned ids and then re-reads ids plus revision to prove the
+// membership did not change while it was acquiring that cover.
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Critter_GetGlobalMapCritterIds(ptr<Critter> self, uint64_t& revision)
+{
+    return self->GetGlobalMapGroupIds(revision);
+}
+
 // SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)
