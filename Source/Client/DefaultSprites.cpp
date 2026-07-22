@@ -295,6 +295,146 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     return 6;
 }
 
+auto AtlasSprite::ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_meshData.has_value() && _meshData->Indices.empty()) {
+        return std::nullopt;
+    }
+
+    isize32 source_size = _size;
+    ipos32 frame_offset = _meshData.has_value() ? _meshData->SourceOffset : ipos32 {};
+    isize32 frame_size = _meshData.has_value() ? ResolveAtlasSpriteFrameSize(*_meshData) : source_size;
+    fpos32 requested_begin {
+        uv0.x * numeric_cast<float32_t>(source_size.width),
+        uv0.y * numeric_cast<float32_t>(source_size.height),
+    };
+    fpos32 requested_end {
+        uv1.x * numeric_cast<float32_t>(source_size.width),
+        uv1.y * numeric_cast<float32_t>(source_size.height),
+    };
+    fsize32 requested_size {
+        requested_end.x - requested_begin.x,
+        requested_end.y - requested_begin.y,
+    };
+
+    if (requested_size.width <= 0.0f || requested_size.height <= 0.0f) {
+        return std::nullopt;
+    }
+
+    fpos32 clipped_begin {
+        std::max(requested_begin.x, numeric_cast<float32_t>(frame_offset.x)),
+        std::max(requested_begin.y, numeric_cast<float32_t>(frame_offset.y)),
+    };
+    fpos32 clipped_end {
+        std::min(requested_end.x, numeric_cast<float32_t>(frame_offset.x + frame_size.width)),
+        std::min(requested_end.y, numeric_cast<float32_t>(frame_offset.y + frame_size.height)),
+    };
+
+    if (clipped_end.x <= clipped_begin.x || clipped_end.y <= clipped_begin.y) {
+        return std::nullopt;
+    }
+
+    float32_t destination_left = pos.x + pos.width * (clipped_begin.x - requested_begin.x) / requested_size.width;
+    float32_t destination_top = pos.y + pos.height * (clipped_begin.y - requested_begin.y) / requested_size.height;
+    float32_t destination_right = pos.x + pos.width * (clipped_end.x - requested_begin.x) / requested_size.width;
+    float32_t destination_bottom = pos.y + pos.height * (clipped_end.y - requested_begin.y) / requested_size.height;
+    float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
+    float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
+    float32_t texture_left = _atlasRect.x + _atlasRect.width * (clipped_begin.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
+    float32_t texture_top = _atlasRect.y + _atlasRect.height * (clipped_begin.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
+    float32_t texture_right = _atlasRect.x + _atlasRect.width * (clipped_end.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
+    float32_t texture_bottom = _atlasRect.y + _atlasRect.height * (clipped_end.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
+
+    return AtlasSpriteRegion {
+        .DrawRect =
+            {
+                destination_left,
+                destination_top,
+                destination_right - destination_left,
+                destination_bottom - destination_top,
+            },
+        .TextureRect =
+            {
+                texture_left,
+                texture_top,
+                texture_right - texture_left,
+                texture_bottom - texture_top,
+            },
+    };
+}
+
+auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<AtlasSpriteRegion> region = ResolveRegion(uv0, uv1, pos);
+
+    if (!region.has_value()) {
+        return 0;
+    }
+
+    const frect32& draw_rect = region->DrawRect;
+    const frect32& texture_rect = region->TextureRect;
+
+    dbuf->CheckAllocBuf(4, 6);
+
+    auto& vbuf = dbuf->Vertices;
+    size_t& vpos = dbuf->VertCount;
+    auto& ibuf = dbuf->Indices;
+    size_t& ipos = dbuf->IndCount;
+
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+
+    auto& v0 = vbuf[vpos++];
+    v0.PosX = draw_rect.x;
+    v0.PosY = draw_rect.y + draw_rect.height;
+    v0.PosZ = 0.0f;
+    v0.TexU = texture_rect.x;
+    v0.TexV = texture_rect.y + texture_rect.height;
+    v0.EggFlags[0] = 0.0f;
+    v0.EggFlags[1] = 0.0f;
+    v0.Color = color;
+
+    auto& v1 = vbuf[vpos++];
+    v1.PosX = draw_rect.x;
+    v1.PosY = draw_rect.y;
+    v1.PosZ = 0.0f;
+    v1.TexU = texture_rect.x;
+    v1.TexV = texture_rect.y;
+    v1.EggFlags[0] = 0.0f;
+    v1.EggFlags[1] = 0.0f;
+    v1.Color = color;
+
+    auto& v2 = vbuf[vpos++];
+    v2.PosX = draw_rect.x + draw_rect.width;
+    v2.PosY = draw_rect.y;
+    v2.PosZ = 0.0f;
+    v2.TexU = texture_rect.x + texture_rect.width;
+    v2.TexV = texture_rect.y;
+    v2.EggFlags[0] = 0.0f;
+    v2.EggFlags[1] = 0.0f;
+    v2.Color = color;
+
+    auto& v3 = vbuf[vpos++];
+    v3.PosX = draw_rect.x + draw_rect.width;
+    v3.PosY = draw_rect.y + draw_rect.height;
+    v3.PosZ = 0.0f;
+    v3.TexU = texture_rect.x + texture_rect.width;
+    v3.TexV = texture_rect.y + texture_rect.height;
+    v3.EggFlags[0] = 0.0f;
+    v3.EggFlags[1] = 0.0f;
+    v3.Color = color;
+
+    return 6;
+}
+
 SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ticks, int32_t dirs) :
     Sprite(spr_mngr, {}, {})
 {

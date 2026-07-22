@@ -338,7 +338,7 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     string error_message;
 
     try {
-        ignore_unused(NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { }));
+        NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
     }
     catch (const std::exception& ex) {
         error_message = ex.what();

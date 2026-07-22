@@ -376,8 +376,8 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
+        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;

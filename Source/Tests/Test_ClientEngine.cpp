@@ -51,6 +51,57 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
+    struct RecordedQuadDraw
+    {
+        vector<Vertex2D> Vertices {};
+        vector<vindex_t> Indices {};
+        size_t StartIndex {};
+        optional<size_t> IndicesToDraw {};
+        nptr<const RenderTexture> CustomTexture {};
+    };
+
+    static auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return [](string_view name) -> string {
+            if (name == "Effects/Test_Recording.fofx") {
+                return "[Effect]\nPasses = 1\n";
+            }
+
+            if (name == "Effects/Test_Recording.fofx-1-info") {
+                return "[EffectInfo]\nMainTex = 0\nSpriteBorderBuf = 1\n";
+            }
+
+            throw GenericException("Unexpected recording effect request", name);
+        };
+    }
+
+    class RecordingQuadEffect final : public RenderEffect
+    {
+    public:
+        RecordingQuadEffect() :
+            RenderEffect(EffectUsage::QuadSprite, "Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
+        {
+            FO_STACK_TRACE_ENTRY();
+        }
+
+        void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
+        {
+            FO_STACK_TRACE_ENTRY();
+
+            RecordedQuadDraw draw;
+            draw.Vertices.assign(dbuf->Vertices.begin(), dbuf->Vertices.begin() + numeric_cast<ptrdiff_t>(dbuf->VertCount));
+            draw.Indices.assign(dbuf->Indices.begin(), dbuf->Indices.begin() + numeric_cast<ptrdiff_t>(dbuf->IndCount));
+            draw.StartIndex = start_index;
+            draw.IndicesToDraw = indices_to_draw;
+            draw.CustomTexture = custom_tex;
+            Draws.emplace_back(std::move(draw));
+        }
+
+        vector<RecordedQuadDraw> Draws {};
+    };
+
     static auto MakeClientTestSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -615,6 +666,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
 
         CHECK(index_count == 0);
+        CHECK_FALSE(sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect).has_value());
         CHECK(draw_buf->VertCount == 0);
         CHECK(draw_buf->IndCount == 0);
     }
@@ -687,6 +739,98 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK(draw_buf->Vertices[0].Color == (ucolor {30, 40, 50, 60}));
         CHECK(draw_buf->Vertices[1].Color == (ucolor {60, 70, 80, 90}));
         CHECK(draw_buf->Vertices[2].Color == (ucolor {90, 100, 110, 120}));
+    }
+
+    SECTION("Cropped mesh region preserves logical source coordinates")
+    {
+        SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
+        mesh.SourceOffset = {2, 3};
+        mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
+        mesh.Indices = {0, 1, 2};
+
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+
+        REQUIRE(region.has_value());
+        CHECK(region->DrawRect.x == Catch::Approx(104.0f));
+        CHECK(region->DrawRect.y == Catch::Approx(212.0f));
+        CHECK(region->DrawRect.width == Catch::Approx(12.0f));
+        CHECK(region->DrawRect.height == Catch::Approx(20.0f));
+        CHECK(region->TextureRect.x == Catch::Approx(0.25f));
+        CHECK(region->TextureRect.y == Catch::Approx(0.5f));
+        CHECK(region->TextureRect.width == Catch::Approx(0.5f));
+        CHECK(region->TextureRect.height == Catch::Approx(0.25f));
+        REQUIRE(sprite->FillRegionData(draw_buf, {0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect, color_left) == 6);
+        REQUIRE(draw_buf->VertCount == 4);
+        CHECK(draw_buf->Vertices[0].PosX == Catch::Approx(104.0f));
+        CHECK(draw_buf->Vertices[0].PosY == Catch::Approx(232.0f));
+        CHECK(draw_buf->Vertices[0].TexU == Catch::Approx(0.25f));
+        CHECK(draw_buf->Vertices[0].TexV == Catch::Approx(0.75f));
+        CHECK(draw_buf->Vertices[1].PosX == Catch::Approx(104.0f));
+        CHECK(draw_buf->Vertices[1].PosY == Catch::Approx(212.0f));
+        CHECK(draw_buf->Vertices[1].TexU == Catch::Approx(0.25f));
+        CHECK(draw_buf->Vertices[1].TexV == Catch::Approx(0.5f));
+        CHECK(draw_buf->Vertices[2].PosX == Catch::Approx(116.0f));
+        CHECK(draw_buf->Vertices[2].PosY == Catch::Approx(212.0f));
+        CHECK(draw_buf->Vertices[2].TexU == Catch::Approx(0.75f));
+        CHECK(draw_buf->Vertices[2].TexV == Catch::Approx(0.5f));
+    }
+
+    SECTION("Expanded mesh region clips atlas padding outside the logical source")
+    {
+        SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
+        mesh.SourceOffset = {-2, -1};
+        mesh.Vertices = {{0, 0}, {14, 0}, {0, 13}};
+        mesh.Indices = {0, 1, 2};
+
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+
+        REQUIRE(region.has_value());
+        CHECK(region->DrawRect.x == Catch::Approx(100.0f));
+        CHECK(region->DrawRect.y == Catch::Approx(200.0f));
+        CHECK(region->DrawRect.width == Catch::Approx(20.0f));
+        CHECK(region->DrawRect.height == Catch::Approx(40.0f));
+        CHECK(region->TextureRect.x == Catch::Approx(0.25f + 0.5f * 2.0f / 14.0f));
+        CHECK(region->TextureRect.y == Catch::Approx(0.5f + 0.25f / 13.0f));
+        CHECK(region->TextureRect.width == Catch::Approx(0.5f * 10.0f / 14.0f));
+        CHECK(region->TextureRect.height == Catch::Approx(0.25f * 10.0f / 13.0f));
+        REQUIRE(sprite->FillRegionData(draw_buf, {0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect, color_left) == 6);
+        REQUIRE(draw_buf->VertCount == 4);
+        CHECK(draw_buf->Vertices[0].PosX == Catch::Approx(100.0f));
+        CHECK(draw_buf->Vertices[0].PosY == Catch::Approx(240.0f));
+        CHECK(draw_buf->Vertices[0].TexU == Catch::Approx(0.25f + 0.5f * 2.0f / 14.0f));
+        CHECK(draw_buf->Vertices[0].TexV == Catch::Approx(0.5f + 0.25f * 11.0f / 13.0f));
+        CHECK(draw_buf->Vertices[2].PosX == Catch::Approx(120.0f));
+        CHECK(draw_buf->Vertices[2].PosY == Catch::Approx(200.0f));
+        CHECK(draw_buf->Vertices[2].TexU == Catch::Approx(0.25f + 0.5f * 12.0f / 14.0f));
+        CHECK(draw_buf->Vertices[2].TexV == Catch::Approx(0.5f + 0.25f / 13.0f));
+    }
+
+    SECTION("Partial logical region intersects the cropped atlas frame")
+    {
+        SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
+        mesh.SourceOffset = {2, 3};
+        mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
+        mesh.Indices = {0, 1, 2};
+
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
+
+        REQUIRE(region.has_value());
+        CHECK(region->DrawRect.x == Catch::Approx(105.0f));
+        CHECK(region->DrawRect.y == Catch::Approx(210.0f));
+        CHECK(region->DrawRect.width == Catch::Approx(15.0f));
+        CHECK(region->DrawRect.height == Catch::Approx(30.0f));
+        CHECK(region->TextureRect.x == Catch::Approx(0.25f));
+        CHECK(region->TextureRect.y == Catch::Approx(0.5f));
+        CHECK(region->TextureRect.width == Catch::Approx(0.25f));
+        CHECK(region->TextureRect.height == Catch::Approx(0.15f));
     }
 
     SECTION("Live atlas allocation observes sprite mesh metadata for dump lifetime")
@@ -867,6 +1011,12 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.ToHashedString("CroppedMesh.png"), AtlasType::IfaceSprites);
     REQUIRE(restored_image);
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
+    CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
+    CHECK(restored_image->GetAtlasRect().height * restored_image->GetAtlas()->GetTexture()->SizeData[1] == Catch::Approx(3.0f));
+    optional<AtlasSpriteRegion> restored_region = restored_image->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 4.0f, 3.0f});
+    REQUIRE(restored_region.has_value());
+    CHECK(restored_region->DrawRect == frect32 {0.0f, 0.0f, 4.0f, 3.0f});
+    CHECK(restored_region->TextureRect == restored_image->GetAtlasRect());
     auto restored_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
     CHECK(restored_image->FillData(restored_draw_buf, frect32 {0.0f, 0.0f, 4.0f, 3.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 6);
 
@@ -893,6 +1043,115 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK_THROWS(load("InconsistentWinding.png"));
     CHECK_THROWS(load("TrailingData.png"));
     CHECK_THROWS(load("TruncatedPayload.png"));
+}
+
+TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
+{
+    SpriteMeshData mesh;
+    mesh.SourceSize = {4, 3};
+    mesh.SourceOffset = {1, 0};
+    mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
+    mesh.Indices = {0, 1, 2};
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{"PatternMesh.png", BakerTests::MakeMinimalBakedSprite(3, 3, SpriteMeshKind::Mesh, mesh)}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    RecordingQuadEffect effect;
+
+    auto sprite = client->SprMngr.LoadSprite("PatternMesh.png", AtlasType::IfaceSprites);
+    REQUIRE(sprite);
+    auto atlas_sprite = sprite.dyn_cast<AtlasSprite>();
+    REQUIRE(atlas_sprite);
+    sprite->SetDrawEffect(make_nptr(&effect));
+
+    client->SprMngr.DrawSpritePattern(sprite, {10, 20}, {7, 5}, {4, 3}, ucolor {255, 255, 255, 255});
+    client->SprMngr.Flush();
+
+    REQUIRE(effect.Draws.size() == 1);
+    const RecordedQuadDraw& pattern_draw = effect.Draws.front();
+    REQUIRE(pattern_draw.Vertices.size() == 16);
+    REQUIRE(pattern_draw.Indices.size() == 24);
+    CHECK(pattern_draw.StartIndex == 0);
+    REQUIRE(pattern_draw.IndicesToDraw.has_value());
+    CHECK(*pattern_draw.IndicesToDraw == 24);
+    CHECK(pattern_draw.CustomTexture == atlas_sprite->GetBatchTexture());
+
+    frect32 atlas_rect = atlas_sprite->GetAtlasRect();
+    auto check_quad = [](const RecordedQuadDraw& draw, size_t vertex, frect32 draw_rect, frect32 texture_rect) {
+        REQUIRE(vertex + 3 < draw.Vertices.size());
+        CHECK(draw.Vertices[vertex + 0].PosX == Catch::Approx(draw_rect.x));
+        CHECK(draw.Vertices[vertex + 0].PosY == Catch::Approx(draw_rect.y + draw_rect.height));
+        CHECK(draw.Vertices[vertex + 0].TexU == Catch::Approx(texture_rect.x));
+        CHECK(draw.Vertices[vertex + 0].TexV == Catch::Approx(texture_rect.y + texture_rect.height));
+        CHECK(draw.Vertices[vertex + 1].PosX == Catch::Approx(draw_rect.x));
+        CHECK(draw.Vertices[vertex + 1].PosY == Catch::Approx(draw_rect.y));
+        CHECK(draw.Vertices[vertex + 1].TexU == Catch::Approx(texture_rect.x));
+        CHECK(draw.Vertices[vertex + 1].TexV == Catch::Approx(texture_rect.y));
+        CHECK(draw.Vertices[vertex + 2].PosX == Catch::Approx(draw_rect.x + draw_rect.width));
+        CHECK(draw.Vertices[vertex + 2].PosY == Catch::Approx(draw_rect.y));
+        CHECK(draw.Vertices[vertex + 2].TexU == Catch::Approx(texture_rect.x + texture_rect.width));
+        CHECK(draw.Vertices[vertex + 2].TexV == Catch::Approx(texture_rect.y));
+        CHECK(draw.Vertices[vertex + 3].PosX == Catch::Approx(draw_rect.x + draw_rect.width));
+        CHECK(draw.Vertices[vertex + 3].PosY == Catch::Approx(draw_rect.y + draw_rect.height));
+        CHECK(draw.Vertices[vertex + 3].TexU == Catch::Approx(texture_rect.x + texture_rect.width));
+        CHECK(draw.Vertices[vertex + 3].TexV == Catch::Approx(texture_rect.y + texture_rect.height));
+    };
+
+    check_quad(pattern_draw, 0, {11.0f, 20.0f, 3.0f, 3.0f}, atlas_rect);
+    check_quad(pattern_draw, 4, {15.0f, 20.0f, 2.0f, 3.0f}, {atlas_rect.x, atlas_rect.y, atlas_rect.width * 2.0f / 3.0f, atlas_rect.height});
+    check_quad(pattern_draw, 8, {11.0f, 23.0f, 3.0f, 2.0f}, {atlas_rect.x, atlas_rect.y, atlas_rect.width, atlas_rect.height * 2.0f / 3.0f});
+    check_quad(pattern_draw, 12, {15.0f, 23.0f, 2.0f, 2.0f}, {atlas_rect.x, atlas_rect.y, atlas_rect.width * 2.0f / 3.0f, atlas_rect.height * 2.0f / 3.0f});
+
+    effect.Draws.clear();
+    REQUIRE(client->SprMngr.DrawSpriteRegion(sprite, {0.0f, 0.0f}, {1.0f, 1.0f}, {50.0f, 60.0f}, {4.0f, 3.0f}, ucolor {255, 255, 255, 255}));
+    client->SprMngr.Flush();
+    REQUIRE(effect.Draws.size() == 1);
+    const RecordedQuadDraw& region_draw = effect.Draws.front();
+    REQUIRE(region_draw.Vertices.size() == 4);
+    REQUIRE(region_draw.Indices.size() == 6);
+    check_quad(region_draw, 0, {51.0f, 60.0f, 3.0f, 3.0f}, atlas_rect);
+
+    effect.Draws.clear();
+    effect.SpriteBorderBuf.reset();
+    constexpr int32_t padding = 2;
+    client->SprMngr.DrawSpriteWithEffect(sprite, {100, 200}, ucolor {255, 255, 255, 255}, make_ptr(&effect), padding);
+
+    REQUIRE(effect.Draws.size() == 1);
+    const RecordedQuadDraw& effect_draw = effect.Draws.front();
+    REQUIRE(effect_draw.Vertices.size() == 4);
+    REQUIRE(effect_draw.Indices.size() == 6);
+    CHECK(effect_draw.StartIndex == 0);
+    CHECK_FALSE(effect_draw.IndicesToDraw.has_value());
+    CHECK(effect_draw.CustomTexture == atlas_sprite->GetBatchTexture());
+
+    float32_t texture_padding_x = atlas_sprite->GetAtlas()->GetTexture()->SizeData[2] * numeric_cast<float32_t>(padding);
+    float32_t texture_padding_y = atlas_sprite->GetAtlas()->GetTexture()->SizeData[3] * numeric_cast<float32_t>(padding);
+    frect32 effect_draw_rect {99.0f, 198.0f, 7.0f, 7.0f};
+    frect32 effect_texture_rect {atlas_rect.x - texture_padding_x, atlas_rect.y - texture_padding_y, atlas_rect.width + texture_padding_x * 2.0f, atlas_rect.height + texture_padding_y * 2.0f};
+
+    CHECK(effect_draw.Vertices[0].PosX == Catch::Approx(effect_draw_rect.x));
+    CHECK(effect_draw.Vertices[0].PosY == Catch::Approx(effect_draw_rect.y + effect_draw_rect.height));
+    CHECK(effect_draw.Vertices[0].TexU == Catch::Approx(effect_texture_rect.x));
+    CHECK(effect_draw.Vertices[0].TexV == Catch::Approx(effect_texture_rect.y + effect_texture_rect.height));
+    CHECK(effect_draw.Vertices[1].PosX == Catch::Approx(effect_draw_rect.x));
+    CHECK(effect_draw.Vertices[1].PosY == Catch::Approx(effect_draw_rect.y));
+    CHECK(effect_draw.Vertices[1].TexU == Catch::Approx(effect_texture_rect.x));
+    CHECK(effect_draw.Vertices[1].TexV == Catch::Approx(effect_texture_rect.y));
+    CHECK(effect_draw.Vertices[2].PosX == Catch::Approx(effect_draw_rect.x + effect_draw_rect.width));
+    CHECK(effect_draw.Vertices[2].PosY == Catch::Approx(effect_draw_rect.y));
+    CHECK(effect_draw.Vertices[2].TexU == Catch::Approx(effect_texture_rect.x + effect_texture_rect.width));
+    CHECK(effect_draw.Vertices[2].TexV == Catch::Approx(effect_texture_rect.y));
+    CHECK(effect_draw.Vertices[3].PosX == Catch::Approx(effect_draw_rect.x + effect_draw_rect.width));
+    CHECK(effect_draw.Vertices[3].PosY == Catch::Approx(effect_draw_rect.y + effect_draw_rect.height));
+    CHECK(effect_draw.Vertices[3].TexU == Catch::Approx(effect_texture_rect.x + effect_texture_rect.width));
+    CHECK(effect_draw.Vertices[3].TexV == Catch::Approx(effect_texture_rect.y + effect_texture_rect.height));
+
+    REQUIRE(effect.SpriteBorderBuf.has_value());
+    CHECK(effect.SpriteBorderBuf->SpriteBorder[0] == Catch::Approx(atlas_rect.x));
+    CHECK(effect.SpriteBorderBuf->SpriteBorder[1] == Catch::Approx(atlas_rect.y));
+    CHECK(effect.SpriteBorderBuf->SpriteBorder[2] == Catch::Approx(atlas_rect.x + atlas_rect.width));
+    CHECK(effect.SpriteBorderBuf->SpriteBorder[3] == Catch::Approx(atlas_rect.y + atlas_rect.height));
+    sprite->SetDrawEffect(nullptr);
 }
 
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")

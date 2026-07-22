@@ -41,6 +41,12 @@
 
 FO_BEGIN_NAMESPACE
 
+struct AtlasSpriteRegion
+{
+    frect32 DrawRect {};
+    frect32 TextureRect {};
+};
+
 class AtlasSprite : public Sprite
 {
 public:
@@ -58,8 +64,10 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
+    [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
 protected:
     nptr<TextureAtlas> _atlas {};
