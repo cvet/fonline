@@ -623,7 +623,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
     {
         SpriteMeshData mesh;
         mesh.SourceSize = {10, 10};
-        mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
+        mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
@@ -652,9 +652,9 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK(left.TexV == Catch::Approx(0.5f));
         CHECK(left.Color == color_left);
         CHECK(center.PosX == Catch::Approx(110.0f));
-        CHECK(center.PosY == Catch::Approx(220.0f));
+        CHECK(center.PosY == Catch::Approx(240.0f));
         CHECK(center.TexU == Catch::Approx(0.5f));
-        CHECK(center.TexV == Catch::Approx(0.625f));
+        CHECK(center.TexV == Catch::Approx(0.75f));
         CHECK(center.Color == (ucolor {60, 70, 80, 90}));
         CHECK(right.PosX == Catch::Approx(120.0f));
         CHECK(right.PosY == Catch::Approx(200.0f));
@@ -674,8 +674,16 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
+        CHECK(sprite->GetSize() == isize32 {10, 10});
+        CHECK(sprite->GetOffset() == ipos32 {});
         REQUIRE(sprite->FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         REQUIRE(draw_buf->VertCount == 3);
+        CHECK(draw_buf->Vertices[0].PosX == Catch::Approx(104.0f));
+        CHECK(draw_buf->Vertices[1].PosX == Catch::Approx(110.0f));
+        CHECK(draw_buf->Vertices[2].PosX == Catch::Approx(116.0f));
+        CHECK(draw_buf->Vertices[0].TexU == Catch::Approx(0.25f));
+        CHECK(draw_buf->Vertices[1].TexU == Catch::Approx(0.5f));
+        CHECK(draw_buf->Vertices[2].TexU == Catch::Approx(0.75f));
         CHECK(draw_buf->Vertices[0].Color == (ucolor {30, 40, 50, 60}));
         CHECK(draw_buf->Vertices[1].Color == (ucolor {60, 70, 80, 90}));
         CHECK(draw_buf->Vertices[2].Color == (ucolor {90, 100, 110, 120}));
@@ -837,6 +845,24 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     REQUIRE(static_cast<bool>(valid_sprite));
     auto valid_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
     CHECK(valid_sprite->FillData(valid_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
+
+    auto cropped_sprite = load("CroppedMesh.png");
+    REQUIRE(cropped_sprite);
+    CHECK(cropped_sprite->GetSize() == cropped_mesh.SourceSize);
+    CHECK(cropped_sprite->GetOffset() == ipos32 {0, 1});
+    CHECK_FALSE(cropped_sprite->IsHitTest({0, 0}));
+    CHECK(cropped_sprite->IsHitTest({1, 0}));
+    CHECK(cropped_sprite->IsHitTest({3, 1}));
+    CHECK_FALSE(cropped_sprite->IsHitTest({3, 2}));
+    auto cropped_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    REQUIRE(cropped_sprite->FillData(cropped_draw_buf, frect32 {0.0f, 0.0f, 4.0f, 3.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
+    REQUIRE(cropped_draw_buf->VertCount == 3);
+    CHECK(cropped_draw_buf->Vertices[0].PosX == Catch::Approx(1.0f));
+    CHECK(cropped_draw_buf->Vertices[0].PosY == Catch::Approx(-1.0f));
+    CHECK(cropped_draw_buf->Vertices[1].PosX == Catch::Approx(4.0f));
+    CHECK(cropped_draw_buf->Vertices[1].PosY == Catch::Approx(-1.0f));
+    CHECK(cropped_draw_buf->Vertices[2].PosX == Catch::Approx(1.0f));
+    CHECK(cropped_draw_buf->Vertices[2].PosY == Catch::Approx(2.0f));
 
     auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.ToHashedString("CroppedMesh.png"), AtlasType::IfaceSprites);
     REQUIRE(restored_image);

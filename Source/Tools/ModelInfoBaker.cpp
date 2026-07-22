@@ -302,18 +302,18 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         files_to_bake.emplace_back(std::move(file_));
     }
 
-    vector<std::future<pair<string, ModelSkeletonCompatibilityReport>>> file_bakings;
+    vector<std::future<void>> file_bakings;
 
     for (File& file_ : files_to_bake) {
         string task_name = strex("BakeModelInfo-{}", file_.GetPath()).str();
-        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, file = std::move(file_)]() FO_DEFERRED -> pair<string, ModelSkeletonCompatibilityReport> {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, file = std::move(file_)]() FO_DEFERRED {
             BakerClientEngine client_engine(*_context->BakedFiles);
 
             if (_context->BakeChecker) {
                 uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, client_engine, file.GetPath());
 
                 if (!_context->BakeChecker(file.GetPath(), max_write_time)) {
-                    return pair<string, ModelSkeletonCompatibilityReport> {string {}, ModelSkeletonCompatibilityReport {}};
+                    return;
                 }
             }
 
@@ -333,31 +333,19 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             writer.Write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
             writer.WriteBytes(animation_rig_data);
             _context->WriteData(file.GetPath(), data);
-            return pair<string, ModelSkeletonCompatibilityReport> {string {file.GetPath()}, std::move(validated.CompatibilityReport)};
         }));
     }
 
     size_t errors = 0;
-    vector<pair<string, ModelSkeletonCompatibilityReport>> compatibility_reports;
 
-    for (std::future<pair<string, ModelSkeletonCompatibilityReport>>& file_baking : file_bakings) {
+    for (std::future<void>& file_baking : file_bakings) {
         try {
-            auto report = file_baking.get();
-
-            if (!report.first.empty()) {
-                compatibility_reports.emplace_back(std::move(report));
-            }
+            file_baking.get();
         }
         catch (const std::exception& ex) {
             WriteLog("Model description baking error: {}", ex.what());
             errors++;
         }
-    }
-
-    std::sort(compatibility_reports.begin(), compatibility_reports.end(), [](const auto& first, const auto& second) { return first.first < second.first; });
-
-    for (const auto& [file_name, report] : compatibility_reports) {
-        WriteLog("Model skeleton compatibility report for '{}': {}", file_name, FormatModelSkeletonCompatibilityReport(report));
     }
 
     if (errors != 0) {

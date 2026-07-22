@@ -37,8 +37,45 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ResolveAtlasSpriteLogicalSize(isize32 frame_size, const optional<SpriteMeshData>& mesh_data) -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return mesh_data && !mesh_data->Indices.empty() ? mesh_data->SourceSize : frame_size;
+}
+
+static auto ResolveAtlasSpriteLogicalOffset(isize32 frame_size, ipos32 frame_offset, const optional<SpriteMeshData>& mesh_data) -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!mesh_data || mesh_data->Indices.empty()) {
+        return frame_offset;
+    }
+
+    isize32 logical_size = mesh_data->SourceSize;
+
+    return {
+        frame_offset.x - frame_size.width / 2 + logical_size.width / 2 - mesh_data->SourceOffset.x,
+        frame_offset.y - frame_size.height + logical_size.height - mesh_data->SourceOffset.y,
+    };
+}
+
+static auto ResolveAtlasSpriteFrameSize(const SpriteMeshData& mesh) -> isize32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    isize32 frame_size {};
+
+    for (ipos32 vertex : mesh.Vertices) {
+        frame_size.width = std::max(frame_size.width, vertex.x);
+        frame_size.height = std::max(frame_size.height, vertex.y);
+    }
+
+    return frame_size;
+}
+
 AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data) :
-    Sprite(spr_mngr, size, offset),
+    Sprite(spr_mngr, ResolveAtlasSpriteLogicalSize(size, mesh_data), ResolveAtlasSpriteLogicalOffset(size, offset, mesh_data)),
     _atlas {atlas},
     _atlasRect {atlas_rect},
     _hitTestData {std::move(hit_data)},
@@ -103,8 +140,18 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
+    if (_meshData.has_value() && !_meshData->Indices.empty()) {
+        pos -= _meshData->SourceOffset;
+    }
+
+    isize32 frame_size = _meshData.has_value() && !_meshData->Indices.empty() ? ResolveAtlasSpriteFrameSize(*_meshData) : _size;
+
+    if (!frame_size.is_valid_pos(pos)) {
+        return false;
+    }
+
     if (!_hitTestData.empty()) {
-        return _hitTestData[pos.y * _size.width + pos.x];
+        return _hitTestData[pos.y * frame_size.width + pos.x];
     }
     else {
         return false;
@@ -144,16 +191,24 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
         auto& ibuf = dbuf->Indices;
         size_t& ipos = dbuf->IndCount;
         size_t base_vpos = vpos;
-        float32_t width = numeric_cast<float32_t>(_size.width);
-        float32_t height = numeric_cast<float32_t>(_size.height);
+        FO_VERIFY_AND_THROW(_size == mesh.SourceSize, "Atlas sprite logical size differs from its mesh source size", _size, mesh.SourceSize);
+
+        isize32 frame_size = ResolveAtlasSpriteFrameSize(mesh);
+        float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
+        float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
+        float32_t logical_width = numeric_cast<float32_t>(mesh.SourceSize.width);
+        float32_t logical_height = numeric_cast<float32_t>(mesh.SourceSize.height);
         ucolor color_left = std::get<0>(colors);
         ucolor color_right = std::get<1>(colors);
         uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
 
         for (ipos32 local_pos : mesh.Vertices) {
-            float32_t nx = numeric_cast<float32_t>(local_pos.x) / width;
-            float32_t ny = numeric_cast<float32_t>(local_pos.y) / height;
-            int32_t source_x = std::clamp(local_pos.x + mesh.SourceOffset.x, 0, mesh.SourceSize.width);
+            ipos32 source_pos = local_pos + mesh.SourceOffset;
+            float32_t logical_x = numeric_cast<float32_t>(source_pos.x) / logical_width;
+            float32_t logical_y = numeric_cast<float32_t>(source_pos.y) / logical_height;
+            float32_t frame_x = numeric_cast<float32_t>(local_pos.x) / frame_width;
+            float32_t frame_y = numeric_cast<float32_t>(local_pos.y) / frame_height;
+            int32_t source_x = std::clamp(source_pos.x, 0, mesh.SourceSize.width);
             uint32_t color_x = numeric_cast<uint32_t>(source_x);
             auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
                 uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
@@ -161,11 +216,11 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
             };
             auto& vertex = vbuf[vpos++];
 
-            vertex.PosX = pos.x + pos.width * nx;
-            vertex.PosY = pos.y + pos.height * ny;
+            vertex.PosX = pos.x + pos.width * logical_x;
+            vertex.PosY = pos.y + pos.height * logical_y;
             vertex.PosZ = 0.0f;
-            vertex.TexU = _atlasRect.x + _atlasRect.width * nx;
-            vertex.TexV = _atlasRect.y + _atlasRect.height * ny;
+            vertex.TexU = _atlasRect.x + _atlasRect.width * frame_x;
+            vertex.TexV = _atlasRect.y + _atlasRect.height * frame_y;
             vertex.EggFlags[0] = 0.0f;
             vertex.EggFlags[1] = 0.0f;
             vertex.Color = {
@@ -530,8 +585,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
 
                     if (j == 0) {
-                        dir_anim->_size = frame.Size;
-                        dir_anim->_offset = frame.Offset;
+                        dir_anim->_size = spr->GetSize();
+                        dir_anim->_offset = spr->GetOffset();
                     }
 
                     dir_anim->_spr[j] = std::move(spr);
@@ -637,6 +692,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
+
     return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
 }
 

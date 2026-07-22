@@ -143,23 +143,32 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
     float64_t view_top = std::floor(numeric_cast<float64_t>(body_bounds.MinY));
     float64_t view_right = std::ceil(numeric_cast<float64_t>(body_bounds.MaxX));
     float64_t view_bottom = std::ceil(numeric_cast<float64_t>(body_bounds.MaxY));
+    float64_t draw_left = std::floor(numeric_cast<float64_t>(draw_bounds.MinX));
+    float64_t draw_top = std::floor(numeric_cast<float64_t>(draw_bounds.MinY));
+    float64_t draw_right = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxX));
+    float64_t draw_bottom = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxY));
 
-    if (view_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || view_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max())) {
+    if (view_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || view_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max())) {
         return std::nullopt;
     }
 
-    int32_t left = iround<int32_t>(view_left);
-    int32_t top = iround<int32_t>(view_top);
-    int32_t right = iround<int32_t>(view_right);
-    int32_t bottom = iround<int32_t>(view_bottom);
+    int32_t view_rect_left = iround<int32_t>(view_left);
+    int32_t view_rect_top = iround<int32_t>(view_top);
+    int32_t view_rect_right = iround<int32_t>(view_right);
+    int32_t view_rect_bottom = iround<int32_t>(view_bottom);
+    int32_t draw_rect_left = iround<int32_t>(draw_left);
+    int32_t draw_rect_top = iround<int32_t>(draw_top);
+    int32_t draw_rect_right = iround<int32_t>(draw_right);
+    int32_t draw_rect_bottom = iround<int32_t>(draw_bottom);
 
-    if (right <= left || bottom <= top) {
+    if (view_rect_right <= view_rect_left || view_rect_bottom <= view_rect_top || draw_rect_right <= draw_rect_left || draw_rect_bottom <= draw_rect_top) {
         return std::nullopt;
     }
 
     return ModelSpriteLayout {
         .DrawSize = *draw_size,
-        .ViewRect = {left, top, right - left, bottom - top},
+        .DrawRect = {draw_rect_left, draw_rect_top, draw_rect_right - draw_rect_left, draw_rect_bottom - draw_rect_top},
+        .ViewRect = {view_rect_left, view_rect_top, view_rect_right - view_rect_left, view_rect_bottom - view_rect_top},
     };
 }
 

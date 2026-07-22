@@ -787,6 +787,40 @@ FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ptr<ClientEngine> client,
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateMouseMove(ptr<ClientEngine> client, ipos32 pos)
+{
+    ipos32 prev_pos = client->MousePos;
+
+    if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateMouseDown(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
+{
+    ipos32 prev_pos = client->MousePos;
+
+    if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});
+    }
+
+    client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateMouseUp(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
+{
+    ipos32 prev_pos = client->MousePos;
+
+    if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});
+    }
+
+    client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
 {
     ipos32 prev_pos = client->MousePos;
@@ -1248,6 +1282,43 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
     ignore_unused(layers);
     ignore_unused(position);
     ignore_unused(color);
+
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect)
+{
+#if FO_ENABLE_3D
+    size_t instance_index = numeric_cast<size_t>(instance);
+
+    if (instance_index >= client->DrawCritterModel.size()) {
+        return false;
+    }
+
+    shared_ptr<ModelSprite> model_spr = client->DrawCritterModel[instance_index];
+
+    if (!model_spr) {
+        return false;
+    }
+
+    irect32 draw_rect = model_spr->GetModel()->GetDrawRect();
+    irect32 view_rect = model_spr->GetModel()->GetViewRect();
+
+    if (draw_rect.width <= 0 || draw_rect.height <= 0 || view_rect.width <= 0 || view_rect.height <= 0) {
+        return false;
+    }
+
+    drawRect = draw_rect;
+    viewRect = view_rect;
+    return true;
+
+#else
+    ignore_unused(client);
+    ignore_unused(instance);
+    ignore_unused(drawRect);
+    ignore_unused(viewRect);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif

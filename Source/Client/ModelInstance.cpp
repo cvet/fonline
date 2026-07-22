@@ -2372,22 +2372,11 @@ void ModelInstance::RefreshFrameLayout()
     optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
     _layoutDrawSize = draw_layout->DrawSize;
+    _drawRect = draw_layout->DrawRect;
 
     optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(_modelInfo->_modelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
     FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName);
     _lightingDrawSize = lighting_layout->DrawSize;
-
-    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(_modelInfo->_viewBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
-    FO_STRONG_ASSERT(view_layout, "Model view layout could not be calculated", _modelInfo->_fileName);
-
-    constexpr int32_t view_ground_margin = 8;
-    irect32 view_rect = view_layout->ViewRect;
-    int64_t computed_bottom = numeric_cast<int64_t>(view_rect.y) + view_rect.height;
-    int64_t view_bottom = std::max(computed_bottom, numeric_cast<int64_t>(view_ground_margin));
-    int64_t view_height = view_bottom - view_rect.y;
-    FO_STRONG_ASSERT(view_height > 0 && view_height <= std::numeric_limits<int32_t>::max(), "Model view layout has invalid height", _modelInfo->_fileName, view_rect.y, view_bottom);
-    view_rect.height = numeric_cast<int32_t>(view_height);
-    _viewRect = view_rect;
 
     if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
         SetupFrame(_layoutDrawSize);

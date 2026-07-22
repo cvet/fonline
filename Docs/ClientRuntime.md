@@ -238,6 +238,17 @@ procedural body/head transforms follow the same runtime as animated instances.
 Only direct raw-model instances remain outside Ozz and build parent-ordered
 world matrices through the validation helpers owned by
 `ModelAnimation`.
+
+The client script pair `Game.DrawCritter3d(...)` and
+`Game.GetDrawCritter3dBounds(...)` supports reusable GUI layout around a model
+sprite. After drawing an instance, the bounds query returns two rectangles
+relative to the draw anchor, or `false` when that instance has not produced a
+valid model sprite. `drawRect` covers the selected animation's complete cycle
+and continuous facing range, including its projected shadow. `viewRect` is the
+stable logical model-and-layers rectangle used by names, coarse picking, and
+similar presentation. GUI preview code fits and centres the draw rectangle;
+world-space overlays use the stable view rectangle as their logical anchor,
+without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
 been removed. Baked model meshes now begin with the mandatory `LFMODMSH`
 schema-1 header and contain only the recursive hierarchy/bind/drawable mesh
@@ -303,6 +314,10 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   frame; the envelope resets when mesh composition changes and otherwise only
   grows. Names, coarse picking, transparent eggs, flying text, and attachments
   therefore stay inside automatically derived bounds without authored sizes.
+  A body/movement animation switch can refresh the scratch frame, but it must
+  retain this accumulated configuration view envelope instead of falling back
+  to the root model's idle-only view; otherwise a turn animation temporarily
+  moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
   frame. Per-animation prediction and exact weighted skinning of referenced
@@ -359,7 +374,7 @@ sampling rectangle is not the source sprite silhouette.
 
 Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseClick(pos, button)` sends mouse move/click or wheel events, `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 
