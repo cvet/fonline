@@ -6,7 +6,9 @@
 
 Use this page when you need to find which tool owns a workflow, where an application enters the tool layer, or which deeper document owns the implementation details.
 
-The tool layer centers interactive editing in Mapper. It contains:
+The FOnline tool layer centers interactive editing in Mapper. A separately
+built upstream Effekseer Editor is available as an optional companion authoring
+tool. Together these paths contain:
 
 - command-line resource/script/metadata bakers;
 - Mapper and its integrated particle editor;
@@ -27,6 +29,10 @@ The tool layer centers interactive editing in Mapper. It contains:
 - `Source/Applications/ASCompilerApp.cpp`
 - `Source/Applications/MapperApp.cpp`
 - `Source/Applications/TestingApp.cpp`
+- `BuildTools/EffekseerEditor/build.ps1`
+- `BuildTools/buildtools.py`
+- `ThirdParty/Effekseer/Dev/Editor/`
+- `ThirdParty/Effekseer/Dev/Cpp/Viewer/`
 - relevant tool/baker tests under `Source/Tests/`
 
 ## Tool layer map
@@ -119,6 +125,35 @@ extensions are available, and hides its menu entry when no runtime is enabled.
 Both runtime options default to `OFF`, so an embedding project must opt into the
 particle support it needs.
 
+### Effekseer Editor developer bundle
+
+`BuildTools/EffekseerEditor/build.ps1` builds the pinned source-only upstream
+English-only Editor as an isolated Windows win64 developer tool. The script
+publishes a self-contained .NET 10 managed UI alongside the native Viewer,
+Direct3D 11/OpenGL material compilers, material editor, English localization,
+icons, meshes, and tool license. Both Editor
+processes use a 17.4 KiB English-only Source Han subset instead of the upstream
+17.4 MiB CJK font collection. It is not an FOnline application entry point and
+none of these UI/viewer components is linked into a runtime library.
+The isolated native build consumes the engine-owned zlib, libpng, Ogg, and
+Vorbis source trees instead of retaining duplicates below Effekseer. Its local
+docking-imgui remains required because the Viewer backends use the
+multi-viewport ABI absent from the engine's standard imgui branch.
+
+The Editor has no engine CMake option or target and is not a universal
+`buildtools.py build` selection. Invoke it through `buildtools.py
+build-auxiliary effekseer-editor Release` on Windows; the registered recipe
+configures only the isolated upstream native build. The reusable packager has
+no `EffekseerEditor` binary role. An embedding project uses the generic package
+`INCLUDE` declaration to copy a prebuilt payload into its developer package and
+update an existing `SingleZip`.
+
+The FOnline adaptation makes authoring source-first. Editor **Save** and
+**Save As** write normalized `.efkproj` XML. The Editor's stock preview remains
+available for authoring iteration. GIF recording is disabled in the FOnline
+bundle; Mapper preview is still required to verify the baked effect through
+FOnline's renderer and supported-capability gate.
+
 There is no separate generic Editor application or `EditorLib`; Mapper is the engine's central interactive editing tool.
 
 ## Ownership boundaries
@@ -167,6 +202,7 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 - Map editing and headless mapper automation: `Source/Tools/Mapper.*`, `Source/Applications/MapperApp.cpp`, [MapperTools.md](MapperTools.md).
 - Particle editor boundary and preview: `Source/Tools/ParticleEditor.*`; Mapper only invokes its neutral lifecycle and drawing hooks.
 - SPARK particle editor implementation: `Source/Tools/SparkParticleEditor.*`, composed behind the neutral particle-editor boundary.
+- Effekseer authoring-tool build/staging and optional generic package include: `BuildTools/buildtools.py`, `BuildTools/EffekseerEditor/build.ps1`, `ThirdParty/Effekseer/Dev/Editor/`, and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 - Application target wiring: [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ## Validation checklist
@@ -175,5 +211,9 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 2. For script compile changes, run AngelScript baker/compiler tests and the project `CompileAngelScript` path.
 3. For mapper changes, launch the mapper path that owns the change; for headless flows, verify the generated output rather than only process exit.
 4. For particle UI changes, validate the interactive Mapper path on the affected platform/backend.
-5. If tool target wiring changes, inspect [Applications.md](Applications.md), [BuildToolsPipeline.md](BuildToolsPipeline.md), and the generated CMake targets from an embedding project.
-6. Keep game-specific tool pipelines in the embedding project's docs and link to engine docs for reusable mechanics.
+5. For Effekseer Editor changes, run `buildtools.py build-auxiliary
+   effekseer-editor Release` on Windows win64, launch its managed UI, save a
+   text `.efkproj`, then bake and preview that project in Mapper. Exercise the
+   generic package `INCLUDE` when its staged layout changes.
+6. If tool target wiring changes, inspect [Applications.md](Applications.md), [BuildToolsPipeline.md](BuildToolsPipeline.md), and the generated CMake targets from an embedding project.
+7. Keep game-specific tool pipelines in the embedding project's docs and link to engine docs for reusable mechanics.

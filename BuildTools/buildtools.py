@@ -124,6 +124,8 @@ BUILD_TARGETS: dict[str, FlagMap] = {
 	),
 }
 
+AUXILIARY_BUILD_TARGETS = ('effekseer-editor',)
+
 VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('linux', 'linux', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('linux-gcc', 'linux', COMMON_VALIDATION_TARGET_NAMES, compiler_name='gcc'),
@@ -2188,6 +2190,41 @@ def build_toolset(target: str, env: Mapping[str, str]) -> None:
 	run_cmake_target(build_dir, 'Release', target)
 
 
+def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
+	if target != 'effekseer-editor':
+		raise SystemExit(f'Unsupported auxiliary build target: {target}')
+	if os.name != 'nt':
+		raise SystemExit('The Effekseer Editor auxiliary build requires Windows')
+
+	powershell = shutil.which('pwsh') or shutil.which('powershell')
+	if powershell is None:
+		raise SystemExit('PowerShell was not found')
+
+	engine_root = Path(env['FO_ENGINE_ROOT'])
+	workspace = Path(env['FO_WORKSPACE'])
+	output = Path(env['FO_OUTPUT'])
+	run(
+		[
+			powershell,
+			'-NoLogo',
+			'-NoProfile',
+			'-ExecutionPolicy',
+			'Bypass',
+			'-File',
+			engine_root / 'BuildTools' / 'EffekseerEditor' / 'build.ps1',
+			'-SourceRoot',
+			engine_root / 'ThirdParty' / 'Effekseer',
+			'-BuildRoot',
+			workspace / 'auxiliary-builds' / 'EffekseerEditor',
+			'-OutputPath',
+			output / 'Binaries' / 'EffekseerEditor-Windows-win64',
+			'-Configuration',
+			config,
+		],
+		cwd=env['FO_PROJECT_ROOT'],
+	)
+
+
 def create_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
@@ -2215,6 +2252,10 @@ def create_parser() -> argparse.ArgumentParser:
 
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
 	toolset_parser.add_argument('target')
+
+	auxiliary_parser = subparsers.add_parser('build-auxiliary', help='build a separately packaged auxiliary tool')
+	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS)
+	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
 	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
@@ -2293,6 +2334,9 @@ def main() -> None:
 		return
 	if args.command == 'toolset':
 		build_toolset(args.target, env)
+		return
+	if args.command == 'build-auxiliary':
+		build_auxiliary(args.target, args.config, env)
 		return
 	if args.command == 'prepare-workspace':
 		prepare_workspace(args.parts, args.check, env)
