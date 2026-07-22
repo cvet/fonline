@@ -599,6 +599,43 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     return spr;
 }
 
+void SpriteManager::ForgetFailedSprite(string_view path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _nonFoundSprites.erase(_hashResolver->ToHashedString(path));
+}
+
+void SpriteManager::InvalidateSpriteResource(string_view path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const hstring hashed_path = _hashResolver->ToHashedString(path);
+    _nonFoundSprites.erase(hashed_path);
+
+    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
+        if (it->first.first == hashed_path) {
+            it = _copyableSpriteCache.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    for (auto& sprite_factory : _spriteFactories) {
+        sprite_factory->InvalidateResource(hashed_path);
+    }
+}
+
+void SpriteManager::RetryFailedSpriteLoads()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& sprite_factory : _spriteFactories) {
+        sprite_factory->RetryFailedLoads();
+    }
+}
+
 void SpriteManager::CleanupSpriteCache()
 {
     FO_STACK_TRACE_ENTRY();

@@ -46,6 +46,20 @@ ParticleSprite::ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32
     FO_STACK_TRACE_ENTRY();
 }
 
+auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _prewarmPending = false;
+
+    if (!_particle->Respawn(seed)) {
+        return false;
+    }
+
+    StartUpdate();
+    return true;
+}
+
 auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -59,7 +73,12 @@ void ParticleSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _particle->Prewarm();
+    if (_drawInScene) {
+        _prewarmPending = true;
+    }
+    else {
+        _particle->Prewarm();
+    }
 }
 
 void ParticleSprite::SetTime(float32_t normalized_time)
@@ -84,6 +103,7 @@ void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
     ignore_unused(looped);
     ignore_unused(reversed);
 
+    _prewarmPending = false;
     _particle->Respawn();
     StartUpdate();
 }
@@ -97,13 +117,17 @@ auto ParticleSprite::Update() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!_prewarmPending) {
+        _particle->Update();
+    }
+
     if (!_drawInScene) {
         if (_particle->NeedForceDraw() || _particle->NeedDraw()) {
             DrawToAtlas();
         }
     }
 
-    return true;
+    return _particle->IsActive();
 }
 
 void ParticleSprite::DrawToAtlas()
@@ -126,6 +150,13 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     const mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
     _particle->Setup(proj, mat44 {1.0f}, {}, 0.0f, vec3 {0.0f, 0.0f, 0.0f}, true);
+
+    if (_prewarmPending) {
+        _particle->Prewarm();
+        _prewarmPending = false;
+    }
+
+    _particle->RefreshRenderTransform();
     _particle->Draw();
 }
 
@@ -136,6 +167,13 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
         [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+auto ParticleSpriteFactory::GetExtensions() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _particleMngr.GetExtensions();
 }
 
 auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
@@ -196,6 +234,29 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
     }
 
     return result;
+}
+
+void ParticleSpriteFactory::RetryFailedLoads()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto it = _loadedParticleTextures.begin(); it != _loadedParticleTextures.end();) {
+        if (!it->second) {
+            _sprMngr->ForgetFailedSprite(it->first.as_str());
+            it = _loadedParticleTextures.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+void ParticleSpriteFactory::InvalidateResource(hstring path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _loadedParticleTextures.erase(path);
+    _particleMngr.InvalidateResource(path.as_str());
 }
 
 void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr)

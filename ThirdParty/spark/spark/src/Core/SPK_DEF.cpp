@@ -33,26 +33,36 @@ namespace SPK
 	SPK_DEFINE_ENUM(Factor,SPK_ENUM_FACTOR)
 	SPK_DEFINE_ENUM(InterpolationType,SPK_ENUM_INTERPOLATION_TYPE)
 
-	SPKContext SPKContext::instance = SPKContext();
-
-	// This allows SPARK initialization at application start up
 	SPKContext::SPKContext() :
-		defaultZone()
+		ioManager(NULL),
+		defaultZone(),
+		randomSeed(static_cast<unsigned int>(std::time(NULL)))
 	{
-		// Inits the random seed
-		randomSeed = static_cast<unsigned int>(std::time(NULL));
-		// little tweak to ensure the randomSeed is uniformly distributed along all the range
+		// Spread time-based seeds over the complete generator range.
 		for (size_t i = 0; i < 2; ++i)
 			randomSeed = generateRandom(static_cast<unsigned int>(1),std::numeric_limits<unsigned int>::max());
 
-		// Registers all core objects for loading
-		// registerCoreForLoading();
+		ioManager = SPK_NEW(IO::IOManager,*this);
 	}
 
-	// This allows SPARK finalization at application exit
 	SPKContext::~SPKContext()
 	{
 		release();
+		SPK_DELETE(ioManager);
+	}
+
+	RandomSeedScope::RandomSeedScope(SPKContext& context,unsigned int& randomSeed) :
+		context(context),
+		randomSeed(randomSeed),
+		previousRandomSeed(context.getRandomSeed())
+	{
+		context.setRandomSeed(randomSeed);
+	}
+
+	RandomSeedScope::~RandomSeedScope()
+	{
+		randomSeed = context.getRandomSeed();
+		context.setRandomSeed(previousRandomSeed);
 	}
 
 	void SPKContext::release()
@@ -67,6 +77,7 @@ namespace SPK
 		{
 			// Creates the zone by default
 			defaultZone = Point::create();
+			defaultZone->setContext(*this);
 			defaultZone->setShared(true);
 		}
 		return defaultZone;

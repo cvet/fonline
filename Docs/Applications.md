@@ -15,7 +15,6 @@ Because of that, this doc names source entry points and roles, not universal fin
 - `Source/Applications/BakerLib.cpp`
 - `Source/Applications/ClientApp.cpp`
 - `Source/Applications/ClientLib.cpp`
-- `Source/Applications/EditorApp.cpp`
 - `Source/Applications/MapperApp.cpp`
 - `Source/Applications/ServerApp.cpp`
 - `Source/Applications/ServerDaemonApp.cpp`
@@ -34,7 +33,6 @@ Because of that, this doc names source entry points and roles, not universal fin
 - `Source/Applications/ServerHeadlessApp.cpp` — headless server variant.
 - `Source/Applications/ServerServiceApp.cpp` — service-style server variant.
 - `Source/Applications/MapperApp.cpp` — mapper tool entry point.
-- `Source/Applications/EditorApp.cpp` — editor tool entry point.
 - `Source/Applications/BakerApp.cpp` — build/resource baking entry point.
 - `Source/Applications/BakerLib.cpp` — baking library entry point when baking is composed as a library.
 - `Source/Applications/ASCompilerApp.cpp` — AngelScript compiler entry point.
@@ -49,7 +47,7 @@ Observed wiring patterns include:
 - Client executable and client runtime library are created when client builds are enabled.
 - Headless variants use headless frontend libraries where applicable.
 - Server variants are selected by server/platform/service options.
-- Tool applications are created only when the corresponding tool/build options are enabled.
+- Mapper and batch tool applications are created only when the corresponding build options are enabled.
 - Test applications are marked as testing apps so they can be treated differently from product runtime apps.
 
 Read the CMake stage before documenting a target as available. Availability can depend on platform and project options.

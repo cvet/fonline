@@ -170,8 +170,8 @@ namespace SPK
 		// Inits the newly created data
 		for (size_t i = 0; i < group.getNbParticles(); ++i)
 		{
-			(*birthValuesDataPtr)[i] = SPK_RANDOM(minBirthValue,maxBirthValue);
-			(*deathValuesDataPtr)[i] = SPK_RANDOM(minDeathValue,maxDeathValue);
+			(*birthValuesDataPtr)[i] = SPK_RANDOM(this->getContext(),minBirthValue,maxBirthValue);
+			(*deathValuesDataPtr)[i] = SPK_RANDOM(this->getContext(),minDeathValue,maxDeathValue);
 		}
 	}
 
@@ -192,8 +192,8 @@ namespace SPK
 	void RandomInterpolator<T>::init(T& data,Particle& particle,DataSet* dataSet) const
 	{
 		size_t index = particle.getIndex();
-		data = SPK_GET_DATA(ArrayData<T>,dataSet,BIRTH_VALUE_DATA_INDEX)[index] = SPK_RANDOM(minBirthValue,maxBirthValue);
-		SPK_GET_DATA(ArrayData<T>,dataSet,DEATH_VALUE_DATA_INDEX)[index] = SPK_RANDOM(minDeathValue,maxDeathValue);
+		data = SPK_GET_DATA(ArrayData<T>,dataSet,BIRTH_VALUE_DATA_INDEX)[index] = SPK_RANDOM(this->getContext(),minBirthValue,maxBirthValue);
+		SPK_GET_DATA(ArrayData<T>,dataSet,DEATH_VALUE_DATA_INDEX)[index] = SPK_RANDOM(this->getContext(),minDeathValue,maxDeathValue);
 	}
 
 	template<typename T>

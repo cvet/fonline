@@ -14,6 +14,7 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,7 +24,7 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
+TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
@@ -106,6 +107,17 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
 	return parser.parse_args()
+
+
+def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
+	parser = argparse.ArgumentParser(description='Include external files in an assembled FOnline package')
+	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
+	parser.add_argument('-input', dest='input', required=True, type=Path, help='root used to resolve the source glob')
+	parser.add_argument('-source', dest='source', required=True, help='source path glob relative to the input root')
+	parser.add_argument('-output', dest='output', required=True, type=Path, help='assembled package root')
+	parser.add_argument('-target', dest='target', required=True, help='target directory relative to the package root')
+	parser.add_argument('-singlezip', dest='singlezip', required=True, type=Path, help='package SingleZip path; updated only when it exists')
+	return parser.parse_args(arguments)
 
 
 def log(*text: object) -> None:
@@ -298,11 +310,162 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
+def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
+	if archive_info.file_size != os.path.getsize(file_path):
+		return False
+
+	with archive.open(archive_info) as archive_file, open(file_path, 'rb') as source_file:
+		while True:
+			archive_chunk = archive_file.read(1024 * 1024)
+			source_chunk = source_file.read(1024 * 1024)
+			if archive_chunk != source_chunk:
+				return False
+			if not archive_chunk:
+				return True
+
+
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
+		existing_entries = {entry.filename: entry for entry in archive.infolist()}
+
 		for root, _, files in os.walk(path):
 			for file_name in files:
-				archive.write(os.path.join(root, file_name), os.path.join(os.path.relpath(root, path), file_name))
+				file_path = os.path.join(root, file_name)
+				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
+				existing_entry = existing_entries.get(archive_name)
+				if existing_entry is not None:
+					assert zip_entry_matches_file(archive, existing_entry, file_path), 'Conflicting zip entry while merging package parts: ' + archive_name
+					continue
+
+				archive.write(file_path, archive_name)
+				existing_entries[archive_name] = archive.getinfo(archive_name)
+
+
+def resolve_safe_relative_path(root: Path, relative_path: str, description: str) -> Path:
+	path = Path(relative_path)
+	assert not path.is_absolute(), f'{description} must be relative: {relative_path}'
+	assert '..' not in path.parts, f'{description} must not escape its root: {relative_path}'
+	resolved_root = root.resolve()
+	resolved_path = (resolved_root / path).resolve()
+	assert resolved_path == resolved_root or resolved_root in resolved_path.parents, f'{description} escapes its root: {relative_path}'
+	return resolved_path
+
+
+def iter_package_include_files(target_root: Path) -> list[Path]:
+	return sorted(path for path in target_root.rglob('*') if path.is_file())
+
+
+def make_package_include_zip_info(archive_name: str, file_path: Path) -> zipfile.ZipInfo:
+	info = zipfile.ZipInfo(filename=archive_name, date_time=(1980, 1, 1, 0, 0, 0))
+	info.create_system = 3
+	info.compress_type = zipfile.ZIP_DEFLATED
+	info.external_attr = stat.S_IMODE(file_path.stat().st_mode) << 16
+	return info
+
+
+def write_package_include_entries(
+	archive: zipfile.ZipFile,
+	package_root: Path,
+	target_root: Path,
+) -> None:
+	for file_path in iter_package_include_files(target_root):
+		archive_name = file_path.relative_to(package_root).as_posix()
+		info = make_package_include_zip_info(archive_name, file_path)
+		with file_path.open('rb') as source, archive.open(info, 'w') as destination:
+			shutil.copyfileobj(source, destination)
+
+
+def update_package_include_single_zip(
+	archive_path: Path,
+	package_root: Path,
+	target_root: Path,
+	compress_level: int,
+) -> None:
+	if not archive_path.is_file():
+		log('SingleZip not present; included files remain in package root only', archive_path)
+		return
+
+	target_archive_path = target_root.relative_to(package_root).as_posix()
+	target_archive_prefix = target_archive_path.rstrip('/') + '/'
+	with zipfile.ZipFile(archive_path, 'r') as archive:
+		has_previous_entries = any(
+			info.filename == target_archive_path or info.filename.startswith(target_archive_prefix)
+			for info in archive.infolist()
+		)
+
+	if not has_previous_entries:
+		with zipfile.ZipFile(archive_path, 'a', zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
+			write_package_include_entries(archive, package_root, target_root)
+		return
+
+	file_descriptor, temporary_name = tempfile.mkstemp(prefix=archive_path.name + '.', suffix='.tmp', dir=archive_path.parent)
+	os.close(file_descriptor)
+	temporary_path = Path(temporary_name)
+	try:
+		with zipfile.ZipFile(archive_path, 'r') as source_archive, zipfile.ZipFile(
+			temporary_path,
+			'w',
+			zipfile.ZIP_DEFLATED,
+			compresslevel=compress_level,
+		) as target_archive:
+			target_archive.comment = source_archive.comment
+			for info in source_archive.infolist():
+				if info.filename == target_archive_path or info.filename.startswith(target_archive_prefix):
+					continue
+				target_archive.writestr(info, source_archive.read(info))
+			write_package_include_entries(target_archive, package_root, target_root)
+		os.replace(temporary_path, archive_path)
+	finally:
+		if temporary_path.exists():
+			temporary_path.unlink()
+
+
+def include_package_files(
+	input_root: Path,
+	source_glob: str,
+	package_root: Path,
+	target_path: str,
+	single_zip_path: Path,
+	compress_level: int,
+) -> None:
+	input_root = input_root.resolve()
+	package_root = package_root.resolve()
+	single_zip_path = single_zip_path.resolve()
+	assert input_root.is_dir(), f'Package include input root not found: {input_root}'
+	assert package_root.is_dir(), f'Assembled package root not found: {package_root}'
+	assert source_glob and not Path(source_glob).is_absolute(), f'Package include source glob must be relative: {source_glob}'
+	assert '..' not in Path(source_glob).parts, f'Package include source glob must not escape its root: {source_glob}'
+	assert target_path not in ('', '.'), 'Package include target path must name a package subdirectory'
+	target_root = resolve_safe_relative_path(package_root, target_path, 'Package include target path')
+
+	matches = sorted(
+		(path for path in input_root.glob(source_glob) if path.is_file() or path.is_dir()),
+		key=lambda path: path.as_posix(),
+	)
+	assert matches, f'Package include source glob matched no files: {source_glob}'
+	for source_path in matches:
+		resolved_source_path = source_path.resolve()
+		assert resolved_source_path == input_root or input_root in resolved_source_path.parents, f'Package include source escapes input root: {source_path}'
+		assert (
+			resolved_source_path != package_root
+			and resolved_source_path not in package_root.parents
+			and package_root not in resolved_source_path.parents
+		), f'Package include source overlaps package output: {source_path}'
+
+	if target_root.exists():
+		shutil.rmtree(target_root)
+	target_root.mkdir(parents=True)
+
+	for source_path in matches:
+		destination_path = target_root / source_path.name
+		if source_path.is_dir():
+			shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
+		elif source_path.is_file():
+			destination_path.parent.mkdir(parents=True, exist_ok=True)
+			shutil.copy2(source_path, destination_path)
+
+	log('Include', source_glob, '=>', target_root)
+	update_package_include_single_zip(single_zip_path, package_root, target_root, compress_level)
 
 
 def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
@@ -1466,6 +1629,14 @@ class Packager:
 
 
 def main() -> None:
+	if len(sys.argv) > 1 and sys.argv[1] == 'include':
+		args = parse_include_args(sys.argv[2:])
+		fomain = foconfig.ConfigParser()
+		fomain.loadFromFile(args.maincfg)
+		compress_level = fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, compress_level)
+		return
+
 	args = parse_args()
 	fomain = foconfig.ConfigParser()
 	fomain.loadFromFile(args.maincfg)

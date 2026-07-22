@@ -110,7 +110,7 @@ namespace SPK
 	template<typename T>
 	inline void RandomInitializer<T>::init(T& data,Particle& particle,DataSet* dataSet) const
 	{
-		data = SPK_RANDOM(minValue,maxValue);
+		data = SPK_RANDOM(this->getContext(),minValue,maxValue);
 	}
 
 	template<typename T>

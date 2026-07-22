@@ -160,7 +160,10 @@ auto AtlasSprite::GetBatchTexture() const -> nptr<const RenderTexture>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(_atlas, "Atlas is null");
+    if (!_atlas) {
+        return nullptr;
+    }
+
     return _atlas->GetTexture();
 }
 

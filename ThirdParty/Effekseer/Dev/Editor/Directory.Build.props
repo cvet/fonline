@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup Condition="'$(FOnlineBuildRoot)' != ''">
+    <BaseIntermediateOutputPath>$(FOnlineBuildRoot)\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+    <BaseOutputPath>$(FOnlineBuildRoot)\bin\$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+</Project>

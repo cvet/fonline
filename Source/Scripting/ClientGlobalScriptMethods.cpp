@@ -39,6 +39,7 @@
 #include "ModelInstance.h"
 #include "ModelManager.h"
 #include "ModelSprites.h"
+#include "ParticleSprites.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -988,6 +989,25 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_SetParticleScale(ptr<ClientEngine> client, uint32_t sprId, float32_t scale)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    particle_sprite->GetParticle()->SetScale(scale);
+    return true;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t sprId, hstring animName, bool looped, bool reversed)
 {
     auto sprite = client->AnimGetSpr(sprId);
@@ -997,6 +1017,43 @@ FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t spr
     }
 
     sprite->Play(animName, looped, reversed);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PlayParticleWithSeed(ptr<ClientEngine> client, uint32_t sprId, int32_t seed)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    return particle_sprite->PlayWithSeed(seed);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_t sprId)
+{
+    auto sprite = client->AnimGetSpr(sprId);
+
+    if (!sprite) {
+        return false;
+    }
+
+    auto particle_sprite = sprite.dyn_cast<ParticleSprite>();
+
+    if (!particle_sprite) {
+        return false;
+    }
+
+    particle_sprite->Prewarm();
+    return true;
 }
 
 ///@ ExportMethod
