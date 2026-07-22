@@ -324,7 +324,8 @@ static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t>
 ParticleBaker::ParticleBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 #if FO_SPARK_PARTICLES
-    , _sparkContext {SafeAlloc::MakeUnique<SPK::SPKContext>()}
+    ,
+    _sparkContext {SafeAlloc::MakeUnique<SPK::SPKContext>()}
 #endif
 {
     FO_STACK_TRACE_ENTRY();

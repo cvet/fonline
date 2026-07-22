@@ -48,13 +48,14 @@ namespace SPK
     class SPKContext;
     class System;
 
-namespace FO
-{
-    class SparkQuadRenderer;
-}
+    namespace FO
+    {
+        class SparkQuadRenderer;
+    }
 }
 
 FO_BEGIN_NAMESPACE
+
 class SparkParticleRuntimeBackend;
 
 class SparkParticleRuntimeSystem final : public ParticleRuntimeSystem
@@ -112,6 +113,7 @@ private:
     struct Impl;
     unique_ptr<Impl> _impl;
 };
+
 FO_END_NAMESPACE
 
 namespace SPK::FO

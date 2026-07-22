@@ -40,7 +40,7 @@
 #if FO_SPARK_PARTICLES
 namespace SPK
 {
-class SPKContext;
+    class SPKContext;
 }
 #endif
 
