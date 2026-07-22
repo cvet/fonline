@@ -56,7 +56,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
+FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
