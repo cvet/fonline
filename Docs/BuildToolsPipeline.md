@@ -92,6 +92,14 @@ Related doc: [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 
 Creates core static libraries from the source lists prepared by `EngineSources.cmake`. Current responsibilities include libraries such as Essentials, Common, frontend/headless app layers, scripting integration libraries, client/server libraries, baker libraries, and testing support depending on enabled options.
 
+`EngineSources.cmake` includes the native `EffekseerCompiler.h/.cpp` module in
+`BakerLib`. With Effekseer particles enabled, `ParticleBaker` calls it directly
+to compile fixed Editor-1.80.5 `.efkproj` XML and obtain each project's
+referenced-resource list for the per-effect path/size/write-time snapshot under
+`BakeOutput/.baker-cache`. Runtime libraries and Web clients do not depend on a
+compiler target or host process; they consume pre-baked `.efk`. A server-only
+build no longer enables BakerLib merely because `FO_BUILD_SERVER` is set.
+
 Start here when source grouping, library dependencies, or runtime layer boundaries change.
 
 ### `ScriptsAndBaking.cmake`

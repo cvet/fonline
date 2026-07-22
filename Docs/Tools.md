@@ -86,9 +86,10 @@ Built-in baker implementations:
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.
 - `Source/Tools/EffectBaker.*` — bakes shader/effect sources and shader stages.
-- `Source/Tools/ParticleBaker.*` — converts native SPARK `.spark` XML to its
-  memory-loadable binary form and validates/copies cooked Effekseer
-  `.efk`/`.efkefc` resources.
+- `Source/Tools/ParticleBaker.*` — converts native SPARK `.spark` XML to
+  memory-loadable `.spk` and compiles Effekseer `.efkproj` XML to validated raw
+  `.efk` (`SKFE`) resources. Authored `.spk`/`.efk` runtime binaries are
+  rejected.
 - `Source/Tools/ProtoBaker.*` — bakes prototype files with metadata/script-aware validation.
 - `Source/Tools/MapBaker.*` — bakes map files and validates map/proto relationships.
 - `Source/Tools/TextBaker.*` — bakes text packs.
@@ -117,7 +118,13 @@ See [MapperTools.md](MapperTools.md) for the mapper lifecycle, extension points,
 
 ### SPARK particle editor
 
-`Source/Tools/ParticleEditor.h` / `.cpp` define the virtual Mapper particle-subeditor boundary and the backend-neutral **Windows -> Particle preview** window. `Source/Tools/SparkParticleEditor.h` / `.cpp` define the SPARK-specific subeditor and asset editor. Its browser enumerates raw `.spark` sources and opens one editor window per selected asset. Each window previews the memory-backed resource, exposes native object parameters (including FOnline's `SparkQuadRenderer`), saves XML back through Mapper's raw resource filesystem, and confirms Save / Discard / Cancel when closing with changes. Effekseer effects are authored externally and use the neutral particle preview.
+`Source/Tools/ParticleEditor.h` / `.cpp` define the virtual Mapper particle-subeditor boundary and the backend-neutral **Windows -> Particle preview** window. `Source/Tools/SparkParticleEditor.h` / `.cpp` define the SPARK-specific subeditor and asset editor. Its browser enumerates raw `.spark` sources and opens one editor window per selected asset. Each window previews the memory-backed resource, exposes native object parameters (including FOnline's `SparkQuadRenderer`), saves XML back through Mapper's raw resource filesystem, and confirms Save / Discard / Cancel when closing with changes. Effekseer authoring uses the separately built upstream Editor described below; native Mapper previews the `.efk` emitted by its baking data source and remains the final check against FOnline's own renderer.
+
+`Source/Tools/EffekseerCompiler.h/.cpp` is the native C++ fixed-profile compiler
+used directly by `ParticleBaker`. It accepts Editor-1.80.5, project-version-3
+`.efkproj` XML and returns raw `SKFE` bytes plus referenced resource paths.
+Runtime targets consume only the generated binary and do not carry the compiler;
+Web consumes pre-baked `.efk`.
 
 The SPARK editor is compiled only with `FO_SPARK_PARTICLES`. The neutral preview
 is always part of Mapper, asks the registered particle sprite factory which
