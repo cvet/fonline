@@ -646,6 +646,11 @@ namespace LocEntity
  )" + R"(
     // ========== Load/Unload Critter ==========
 
+    // Plain void callback resolved by the native time-event tests through Game.FindFunc.
+    void OnUnloadTimer()
+    {
+    }
+
     int TestUnloadCritter()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), true);

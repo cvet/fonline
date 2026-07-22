@@ -499,8 +499,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         }
 
         // Inner entities
-        auto holder = loc;
-        LoadInnerEntities(holder, is_error);
+        LoadInnerEntities(loc, is_error);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed during restore location content {} {}", loc_pid, loc_id);
@@ -605,8 +604,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         }
 
         // Inner entities
-        auto holder = map;
-        LoadInnerEntities(holder, is_error);
+        LoadInnerEntities(map, is_error);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed during restore map content {} {}", map_pid, map_id);
@@ -680,8 +678,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
         }
 
         // Inner entities
-        auto holder = cr;
-        LoadInnerEntities(holder, is_error);
+        LoadInnerEntities(cr, is_error);
 
         // Give scripts a fully restored critter before it is attached to a map or exposed through
         // world-entry and regular initialization events. This is the persistence-migration boundary.
@@ -787,8 +784,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
         }
 
         // Inner entities
-        auto holder = item;
-        LoadInnerEntities(holder, is_error);
+        LoadInnerEntities(item, is_error);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed during restore item content {} {}", item_pid, item_id);
@@ -841,29 +837,12 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         const auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
-            auto custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
+            auto custom_entity = LoadCustomEntity(holder, inner_entity_type_name, id, is_error);
 
             if (custom_entity) {
                 FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
 
-                if (auto holder_entity = holder.dyn_cast<ServerEntity>()) {
-                    custom_entity->SetParent(holder_entity);
-                }
-
                 holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
-
-                // Propagate holder's lock to loaded custom entity. ServerEntity holders supply
-                // their own lock; engine-as-holder supplies the engine's singleton lock.
-                if (auto holder_entity = holder.dyn_cast<ServerEntity>()) {
-                    auto holder_lock = holder_entity->GetEntityLock();
-                    FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
-                    custom_entity->SetEntityLock(holder_lock);
-                }
-                else {
-                    nptr<const Entity> engine_holder = _engine;
-                    FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
-                    custom_entity->SetEntityLock(_engine->GetEntityLock());
-                }
 
                 // Inner entities
                 LoadInnerEntities(custom_entity, is_error);
@@ -1573,24 +1552,19 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     const hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
-    auto entity = CreateCustomEntity(type_name, pid);
+    auto entity = ConstructCustomEntity(type_name, pid);
+
+    // Publication makes the entity globally reachable and is validated against its final holder
+    // linkage, so the parent, the nearest-holder lock and the holder entry are established first.
+    AttachCustomEntityToHolder(entity, holder);
+    entity->SetCustomHolderEntry(entry);
 
     if (auto holder_with_id = holder.dyn_cast<ServerEntity>()) {
-        FO_VERIFY_AND_THROW(holder_with_id->GetId(), "Entity holder has no assigned id");
         entity->SetCustomHolderId(holder_with_id->GetId());
-        entity->SetParent(holder_with_id);
-    }
-    else {
-        nptr<const Entity> engine_holder = _engine;
-        FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
-        // Holder is the global engine singleton; no ServerEntity parent to track. The engine
-        // isn't a ServerEntity, so SetParent is skipped, but the engine still owns its own
-        // EntityLock (the same one Game.Lock()/Unlock() use). We propagate that lock directly
-        // into _entityLock below so the validator's parent-chain walk finds a real cover on
-        // the first iteration (against the entity itself, not via parent).
     }
 
-    entity->SetCustomHolderEntry(entry);
+    RegisterCustomEntity(entity);
+
     holder->AddInnerEntity(entry, entity);
 
     auto holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
@@ -1605,24 +1579,46 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
         if (holder_type.HolderEntries.at(entry).Persistent && holder_entity->IsPersistent()) {
             MakePersistent(entity, true);
         }
-
-        // Propagate holder's lock to custom entity: ServerEntity holders supply their own lock
-        auto holder_lock = holder_entity->GetEntityLock();
-        FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
-        entity->SetEntityLock(holder_lock);
-    }
-    else {
-        // Engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes)
-        nptr<const Entity> engine_holder = _engine;
-        FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
-        entity->SetEntityLock(_engine->GetEntityLock());
     }
 
-    ForEachCustomEntityView(entity, [entity](ptr<Player> player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
+    ForEachCustomEntityView(entity, [entity_ = entity.as_ptr()](ptr<Player> player, bool owner) { player->Send_AddCustomEntity(entity_, owner); });
     return entity;
 }
 
 auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    refcount_ptr<CustomEntity> entity = ConstructCustomEntity(type_name, pid);
+
+    RegisterCustomEntity(entity);
+    return entity;
+}
+
+// Binds a still-unpublished custom entity to its holder: a ServerEntity holder supplies the parent link
+// and its own lock, the engine singleton supplies its EntityLock (the same one Game.Lock()/Unlock() use)
+// without a parent link, so the validator's chain walk finds a real cover on the entity itself.
+void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (auto holder_entity = holder.dyn_cast<ServerEntity>()) {
+        FO_VERIFY_AND_THROW(holder_entity->GetId(), "Entity holder has no assigned id");
+        auto holder_lock = holder_entity->GetEntityLock();
+        FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
+
+        entity->SetParent(holder_entity);
+        entity->SetEntityLock(holder_lock);
+    }
+    else {
+        nptr<const Entity> engine_holder = _engine;
+        FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
+
+        entity->SetEntityLock(_engine->GetEntityLock());
+    }
+}
+
+auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1652,11 +1648,10 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
         return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
     }();
 
-    RegisterCustomEntity(entity);
     return entity;
 }
 
-auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>
+auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1718,6 +1713,10 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             is_error = true;
             return nullptr;
         }
+
+        // The loaded document carries the holder entry, but the parent link and the nearest-holder lock
+        // still have to be in place before publication makes the entity globally reachable.
+        AttachCustomEntityToHolder(entity, holder);
 
         RegisterCustomEntity(entity);
         entity->SetPersistent(true);

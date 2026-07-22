@@ -727,6 +727,10 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     REQUIRE(registered_player);
     CHECK(registered_player == player);
 
+    // Login work re-synced the context onto the player, so the critter cover must be re-established
+    // by the caller before the destroy call — the callee only retains an already covered entity.
+    server->RequireCurrentSyncContext()->SyncEntity(cr);
+
     server->CrMngr.DestroyCritter(cr);
 
     CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
@@ -1203,6 +1207,9 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
+                    // The wait loop unlocked/relocked the server, so this context starts empty — the caller
+                    // establishes the destroy cover itself.
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
             });
@@ -1227,7 +1234,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
-            ctx->EnsureEntitySynced(cr);
+            ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
@@ -1248,6 +1255,9 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
+                    // The wait loop unlocked/relocked the server, so this context starts empty — the caller
+                    // establishes the destroy cover itself.
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
             });
@@ -1273,7 +1283,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
-            ctx->EnsureEntitySynced(cr);
+            ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
@@ -1295,6 +1305,9 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
+                    // The wait loop unlocked/relocked the server, so this context starts empty — the caller
+                    // establishes the destroy cover itself.
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
             });
@@ -1319,7 +1332,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([server, map, blocked_hex] {
                 if (!map->IsDestroyed()) {
                     auto ctx = server->RequireCurrentSyncContext();
-                    ctx->EnsureEntitySynced(map);
+                    ctx->SyncEntity(map);
                     map.get_no_const()->SetHexManualBlock(blocked_hex, false, false);
                 }
             });
@@ -1333,7 +1346,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
-            ctx->EnsureEntitySynced(cr);
+            ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
@@ -1800,8 +1813,11 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     auto player_a_holder = CreateStandalonePlayer(server, "SyncWidenPlayerA");
     auto player_b_holder = CreateStandalonePlayer(server, "SyncWidenPlayerB");
-    setup_ctx->EnsureEntitySynced(player_a_holder);
-    setup_ctx->EnsureEntitySynced(player_b_holder);
+
+    // The standalone players were built inside their own already-released contexts, so this context has no
+    // cover for them and retention alone cannot create one — the whole setup scope is Sync'd by the caller.
+    vector<nptr<ServerEntity>> setup_scope {loc, map, cr_a, cr_b, player_a_holder, player_b_holder};
+    setup_ctx->SyncEntities(setup_scope);
 
     cr_a->AttachPlayer(player_a_holder);
     player_a_holder->SetControlledCritter(cr_a);

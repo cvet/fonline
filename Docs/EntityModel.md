@@ -158,6 +158,8 @@ The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom
 - `GetCustomEntity()`
 - `DestroyEntity()`
 
+A custom entity is published into the global registry only after its holder linkage is complete. Both publication paths — `EntityManager::CreateCustomInnerEntity()` and the inner-entity load path — bind the parent link, the nearest holder's `EntityLock` (or the engine's lock for engine-held entries), and `CustomHolderEntry` / `CustomHolderId` **before** calling `RegisterCustomEntity()`, which validates exactly that linkage and requires the holder lock to be held by the current thread. Registering first and linking afterwards would make the entity globally reachable while it still carries no lock.
+
 When changing holder behavior, inspect server/client entity managers and persistence paths in addition to `Entity.*`.
 
 ## Events and time events

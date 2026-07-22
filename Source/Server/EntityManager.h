@@ -137,7 +137,7 @@ public:
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> ptr<CustomEntity>;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>;
-    auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
+    auto LoadCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
     auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<CustomEntity>;
     void DestroyCustomEntity(ptr<CustomEntity> entity);
     void ForEachCustomEntityView(ptr<CustomEntity> entity, const function<void(ptr<Player> player, bool owner)>& callback);
@@ -156,6 +156,9 @@ private:
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
     auto StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Document;
+
+    auto ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>;
+    void AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder);
 
     void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
     void RegisterEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);

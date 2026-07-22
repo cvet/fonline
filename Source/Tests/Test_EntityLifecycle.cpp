@@ -41,6 +41,10 @@
 
 FO_BEGIN_NAMESPACE
 
+// The global-map group fan-out is a script-driven follow-up to initial info, so its cover contract is pinned
+// through the script export itself.
+void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self);
+
 namespace
 {
     class TestNetworkConnection final : public NetworkServerConnection
@@ -1424,7 +1428,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(ids.size() == 2);
         REQUIRE(std::ranges::find(ids, member->GetId()) != ids.end());
 
-        // The initial-info fan-out validates every group member, which that minimal cover does not include.
+        // The group fan-out validates every group member, which that minimal cover does not include.
         CHECK_THROWS_WITH(leader->Send_AddCritter(member), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
         // Covering exactly what the enumeration reported makes the same fan-out legal.
@@ -1438,6 +1442,81 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         server->CrMngr.DestroyCritter(member);
         server->CrMngr.DestroyCritter(leader);
+    }
+
+    SECTION("InitialInfoLeavesTheGlobalGroupFanOutToTheScript")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupInitialInfo");
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto group_member = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.RemoveCritterFromMap(group_member, nullptr);
+        server->MapMngr.AddCritterToMap(group_member, nullptr, {}, mdir {}, cr->GetId());
+        REQUIRE(cr->GetGlobalMapGroup().size() == 2);
+
+        auto ctx = server->RequireCurrentSyncContext();
+
+        // The critter to attach is chosen inside the login callback, so the travelling companion is an
+        // independent root the caller could not pre-cover. Initial info must work with the attach pair alone.
+        const array<nptr<ServerEntity>, 2> attach_cover {player, cr};
+        ctx->SyncEntities(attach_cover);
+
+        test_connection->Dispatch();
+        test_connection->ResetSentPacketCount();
+        CHECK_NOTHROW(server->SwitchPlayerCritter(player, cr));
+        test_connection->Dispatch();
+
+        CHECK(player->GetControlledCritter() == cr.get());
+        // Only the chosen critter itself: the companion is delivered later by Critter.SendGlobalMapGroupInfo.
+        CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
+
+        server->SwitchPlayerCritter(player, nullptr);
+
+        const array<nptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        ctx->SyncEntities(group_cover);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(group_member);
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    SECTION("SendGlobalMapGroupInfoRequiresTheCallerToCoverEveryGroupMember")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupFanOut");
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto group_member = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.RemoveCritterFromMap(group_member, nullptr);
+        server->MapMngr.AddCritterToMap(group_member, nullptr, {}, mdir {}, cr->GetId());
+
+        auto ctx = server->RequireCurrentSyncContext();
+
+        const array<nptr<ServerEntity>, 2> attach_cover {player, cr};
+        ctx->SyncEntities(attach_cover);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        test_connection->Dispatch();
+        test_connection->ResetSentPacketCount();
+
+        // The export validates the group instead of acquiring it, so an incomplete cover sends nothing at all.
+        ctx->SyncEntities(attach_cover);
+        CHECK_THROWS_WITH(Server_Critter_SendGlobalMapGroupInfo(cr), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+        test_connection->Dispatch();
+        CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 0);
+
+        // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion.
+        const array<nptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        ctx->SyncEntities(group_cover);
+        CHECK_NOTHROW(Server_Critter_SendGlobalMapGroupInfo(cr));
+        test_connection->Dispatch();
+        CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
+
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(group_member);
+        server->CrMngr.DestroyCritter(cr);
     }
 
     SECTION("CoveringTheReportedSpectatorsLetsTheMapDestroySucceed")
@@ -2016,6 +2095,9 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
+                    // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
+                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
             });
@@ -2072,6 +2154,9 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
+                    // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
+                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
             });
@@ -2102,7 +2187,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
-            ctx->EnsureEntitySynced(cr);
+            ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
