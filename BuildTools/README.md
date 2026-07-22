@@ -24,6 +24,60 @@ All internal CMake modules now live under `Engine/BuildTools/cmake`.
 The public entry point kept at the `Engine/BuildTools` root is `Init.cmake`; staged CMake implementation lives under `Engine/BuildTools/cmake/stages/` and helpers under `Engine/BuildTools/cmake/helpers/`.
 The validation project scaffold continues to live under `Engine/BuildTools/validation-project`.
 
+### Effekseer project compiler
+
+`Source/Tools/EffekseerCompiler.h/.cpp` is a native C++ module compiled into
+`BakerLib`. For each fixed Editor-1.80.5 / project-version-3 `.efkproj`, it
+validates the XML profile and returns raw `SKFE` bytes plus the referenced
+textures, models, sounds, and curves. `ParticleBaker` calls the module directly
+and validates every result with the vendored Effekseer Core before publishing.
+
+`ParticleBaker` resolves dependency paths inside the project's physical
+directory resource source and stores a per-effect path/size/write-time snapshot
+below `<BakeOutput>/.baker-cache/Effekseer/`. The source project and dependency
+snapshot independently invalidate the derived `.efk`; after compiler code
+changes, use `ForceBakeResources`. A changed effect recompiles on demand without
+invalidating unrelated effects in Mapper's focus-triggered resource reindex.
+
+The compiler is not linked into or packaged with runtime clients. Native Baker
+and Mapper hosts use it when derived resources are stale; Web clients consume
+host-prebaked `.efk` resources.
+
+### Effekseer Editor developer bundle
+
+The pinned upstream Effekseer Editor is built as a standalone Windows win64
+developer tool. It is independent of `FO_EFFEKSEER_PARTICLES` and is not
+represented by an engine CMake option, application target, or universal
+`buildtools.py build` target. Runtime builds therefore never acquire the
+Editor toolchain or its Viewer/UI libraries.
+
+Build and stage it through the shared auxiliary-tool entry point:
+
+```powershell
+$env:FO_OUTPUT = (Get-Location).Path
+python Engine\BuildTools\buildtools.py build-auxiliary effekseer-editor Release
+```
+
+The script builds the managed .NET 10 UI and native Viewer/material tools in
+isolated output directories, then stages a self-contained payload. Languages,
+fonts, icons, meshes, `LICENSE_TOOL`, the material editor, and Direct3D
+11/OpenGL material compilers are part of that payload. GIF recording is
+disabled in this FOnline bundle, avoiding the otherwise unused libgd
+dependency; ordinary editing and the interactive Editor preview remain
+available.
+
+The FOnline adaptation is source-first. Editor **Save** and **Save As** accept
+only `.efkproj` and atomically write normalized UTF-8 XML without a BOM. The
+Editor's stock preview is for authoring iteration; the embedding project's
+Mapper preview remains the final validation path through FOnline's renderer
+and capability gate.
+
+The reusable package schema has no Effekseer-specific binary role. An embedding
+project ships a separately staged tool through the generic package declaration
+`INCLUDE <source-path-glob> <target-path-in-pack>`. Source globs are relative to
+`FO_OUTPUT_PATH`; the packager replaces the owned target tree and updates an
+existing `SingleZip` without duplicate or stale entries.
+
 ## Build environment variables
 
 Build scripts (sh/bat) can be called both from current directory (e.g. `./linux.sh`) or repository root (e.g. `BuildTools/linux.sh`).  
