@@ -48,483 +48,12 @@ static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.in
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
-static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) -> irect32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {left, top, right - left, bottom - top};
-}
-
 static auto IsProtoFileExtension(const vector<string>& proto_file_extensions, string_view path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     const string ext = strex(path).get_file_extension();
     return std::ranges::find(proto_file_extensions, ext) != proto_file_extensions.end();
-}
-
-static auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    day_time += delta_minutes;
-
-    while (day_time > DAY_TIME_VISIBLE_UPPER_BOUND) {
-        day_time -= DAY_TIME_WRAP_MINUTES;
-    }
-
-    while (day_time < 0) {
-        day_time += DAY_TIME_WRAP_MINUTES;
-    }
-
-    return day_time;
-}
-
-static auto ScaleZoomValue(float32_t current_zoom, float32_t factor) -> float32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return std::clamp(current_zoom * factor, GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
-}
-
-static auto GetTileLayerFromKey(KeyCode key) -> optional<int32_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    switch (key) {
-    case KeyCode::C0:
-    case KeyCode::Numpad0:
-        return 0;
-    case KeyCode::C1:
-    case KeyCode::Numpad1:
-        return 1;
-    case KeyCode::C2:
-    case KeyCode::Numpad2:
-        return 2;
-    case KeyCode::C3:
-    case KeyCode::Numpad3:
-        return 3;
-    case KeyCode::C4:
-    case KeyCode::Numpad4:
-        return 4;
-    default:
-        return std::nullopt;
-    }
-}
-
-static auto GetNextCritterDir(mdir dir) -> mdir
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return dir.incHex();
-}
-
-template<size_t Size>
-static auto InputBufferView(const array<char, Size>& buffer) -> string_view
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto end = std::find(buffer.begin(), buffer.end(), '\0');
-    return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
-}
-
-static void AdvanceCritterDir(ptr<CritterHexView> cr)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
-}
-
-static void ToggleMapVisibilityFlag(nptr<MapView> map, bool& value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    value = !value;
-
-    if (map) {
-        map->RebuildMap();
-    }
-}
-
-static auto ContainsCaseInsensitive(string_view text, string_view filter) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (filter.empty()) {
-        return true;
-    }
-
-    const string lower_text = strex(text).lower_utf8();
-    const string lower_filter = strex(filter).lower_utf8();
-
-    return lower_text.find(lower_filter) != string::npos;
-}
-
-static auto ResolveAtlasSprite(nptr<const Sprite> sprite) -> nptr<const AtlasSprite>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto source_sprite = sprite;
-
-    if (auto sprite_sheet = source_sprite.dyn_cast<const SpriteSheet>()) {
-        source_sprite = sprite_sheet->GetCurSpr();
-    }
-
-    return source_sprite.dyn_cast<const AtlasSprite>();
-}
-
-static auto GetInspectorValueType(ptr<const Property> prop) -> AnyData::ValueType
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
-        return AnyData::ValueType::String;
-    }
-    if (prop->IsBaseTypeInt()) {
-        return AnyData::ValueType::Int64;
-    }
-    if (prop->IsBaseTypeBool()) {
-        return AnyData::ValueType::Bool;
-    }
-    if (prop->IsBaseTypeFloat()) {
-        return AnyData::ValueType::Float64;
-    }
-
-    return AnyData::ValueType::String;
-}
-
-static auto ParseInspectorValue(ptr<const Property> prop, string_view text) -> optional<AnyData::Value>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    try {
-        return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
-    }
-    catch (const std::exception&) {
-        return std::nullopt;
-    }
-}
-
-static auto MakeDefaultInspectorArrayElement(ptr<const Property> prop) -> AnyData::Value
-{
-    FO_STACK_TRACE_ENTRY();
-
-    switch (GetInspectorValueType(prop)) {
-    case AnyData::ValueType::Int64:
-        return AnyData::Value {int64_t {0}};
-    case AnyData::ValueType::Float64:
-        return AnyData::Value {float64_t {0.0}};
-    case AnyData::ValueType::Bool:
-        return AnyData::Value {false};
-    case AnyData::ValueType::String:
-        return AnyData::Value {string {}};
-    default:
-        FO_UNREACHABLE_PLACE();
-    }
-}
-
-static auto SerializeInspectorArray(vector<AnyData::Value> entries) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    AnyData::Array value_arr;
-    value_arr.Reserve(entries.size());
-
-    for (auto& entry : entries) {
-        value_arr.EmplaceBack(std::move(entry));
-    }
-
-    return AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
-}
-
-static auto SerializeInspectorStringArray(const vector<string>& entries) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<AnyData::Value> values;
-    values.reserve(entries.size());
-
-    for (const auto& entry : entries) {
-        values.emplace_back(string {entry});
-    }
-
-    return SerializeInspectorArray(std::move(values));
-}
-
-static auto GetInspectorStructLayout(ptr<const Property> prop) -> nptr<const StructLayoutDesc>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& base_type = prop->GetBaseType();
-    if (base_type.StructLayout && (base_type.IsComplexStruct || base_type.IsSimpleStruct) && base_type.StructLayout->Fields.size() > 1) {
-        return base_type.StructLayout;
-    }
-
-    return nullptr;
-}
-
-static auto ReadInspectorToken(nptr<const char> str, string& result) -> nptr<const char>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (str[0] == 0) {
-        return nullptr;
-    }
-
-    const auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
-        utf8::Decode(&str[char_pos], char_len);
-    };
-
-    size_t pos = 0;
-    size_t length = 0;
-    decode_char(pos, length);
-
-    while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
-        pos++;
-
-        decode_char(pos, length);
-    }
-
-    if (str[pos] == 0) {
-        return nullptr;
-    }
-
-    size_t begin;
-
-    if (length == 1 && str[pos] == '"') {
-        pos++;
-        begin = pos;
-
-        while (str[pos] != 0) {
-            if (length == 1 && str[pos] == '\\') {
-                pos++;
-
-                if (str[pos] != 0) {
-                    decode_char(pos, length);
-                    pos += length;
-                }
-            }
-            else if (length == 1 && str[pos] == '"') {
-                break;
-            }
-            else {
-                pos += length;
-            }
-
-            decode_char(pos, length);
-        }
-    }
-    else {
-        begin = pos;
-
-        while (str[pos] != 0) {
-            if (length == 1 && str[pos] == '\\') {
-                pos++;
-
-                decode_char(pos, length);
-                pos += length;
-            }
-            else if (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
-                break;
-            }
-            else {
-                pos += length;
-            }
-
-            decode_char(pos, length);
-        }
-    }
-
-    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
-    result.assign(&str[begin], pos - begin);
-    return next_token;
-}
-
-static auto ParseInspectorStructFields(const StructLayoutDesc& layout, string_view text) -> optional<vector<string>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    try {
-        const auto text_str = string {text};
-        auto token_pos = make_nptr(text_str.c_str());
-        string token;
-        vector<string> fields;
-        fields.reserve(layout.Fields.size());
-
-        while ((token_pos = ReadInspectorToken(token_pos, token))) {
-            fields.emplace_back(StringEscaping::DecodeString(token));
-        }
-
-        if (fields.size() != layout.Fields.size()) {
-            return std::nullopt;
-        }
-
-        return fields;
-    }
-    catch (const std::exception&) {
-        return std::nullopt;
-    }
-}
-
-static auto ParseInspectorStringEntries(string_view text) -> optional<vector<string>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    try {
-        const auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
-        if (parsed.Type() != AnyData::ValueType::Array) {
-            return std::nullopt;
-        }
-
-        vector<string> entries;
-        entries.reserve(parsed.AsArray().Size());
-
-        for (const auto& entry : parsed.AsArray()) {
-            entries.emplace_back(entry.AsString());
-        }
-
-        return entries;
-    }
-    catch (const std::exception&) {
-        return std::nullopt;
-    }
-}
-
-struct ImGuiInputTextStringUserData
-{
-    ptr<string> Value;
-    bool LatinOnly {};
-    bool MoveCaretToEnd {};
-};
-
-static auto GetImGuiInputTextStringUserData(nptr<void> user_data) -> ptr<ImGuiInputTextStringUserData>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto typed_user_data = user_data.reinterpret_as<ImGuiInputTextStringUserData>();
-    IM_ASSERT(typed_user_data);
-    return typed_user_data;
-}
-
-static int ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    IM_ASSERT(data);
-    ptr<ImGuiInputTextCallbackData> callback_data = data;
-    auto user_data = GetImGuiInputTextStringUserData(callback_data->UserData);
-
-    if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-        ptr<string> str = user_data->Value;
-        IM_ASSERT(callback_data->Buf == str->c_str());
-        str->resize(callback_data->BufTextLen);
-        callback_data->Buf = str->data();
-    }
-    else if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter) {
-        if (user_data->LatinOnly && callback_data->EventChar >= 128) {
-            return 1;
-        }
-    }
-    else if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
-        if (user_data->MoveCaretToEnd) {
-            callback_data->CursorPos = callback_data->BufTextLen;
-            callback_data->SelectionStart = callback_data->BufTextLen;
-            callback_data->SelectionEnd = callback_data->BufTextLen;
-            user_data->MoveCaretToEnd = false;
-        }
-    }
-
-    return 0;
-}
-
-static auto ImGuiInputTextString(ptr<const char> label, string& value, ImGuiInputTextFlags flags = 0, bool latin_only = false, bool move_caret_to_end = false) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (value.capacity() == 0) {
-        value.reserve(256);
-    }
-
-    auto value_ptr = make_ptr(&value);
-    ImGuiInputTextStringUserData user_data {.Value = value_ptr, .LatinOnly = latin_only, .MoveCaretToEnd = move_caret_to_end};
-    flags |= ImGuiInputTextFlags_CallbackResize;
-    if (latin_only) {
-        flags |= ImGuiInputTextFlags_CallbackCharFilter;
-    }
-    if (move_caret_to_end) {
-        flags |= ImGuiInputTextFlags_CallbackAlways;
-    }
-
-    return ImGui::InputText(label.get(), value.data(), value.capacity() + 1, flags, ImGuiInputTextStringCallback, &user_data);
-}
-
-static auto IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto entity_with_proto = entity.dyn_cast<const EntityWithProto>();
-    if (!entity_with_proto) {
-        return true;
-    }
-
-    try {
-        return entity_with_proto->GetProto()->GetProperties()->SavePropertyToText(prop) == value_text;
-    }
-    catch (const std::exception&) {
-        return true;
-    }
-}
-
-static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string cfg_user;
-
-    if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
-        const auto& sections = config.GetSections();
-        auto wrote_root_key = false;
-        auto has_root_section = false;
-
-        for (const auto& [section_name, key_values] : *sections) {
-            if (!section_name.empty()) {
-                cfg_user += strex("[{}]\n", section_name);
-            }
-            else {
-                has_root_section = true;
-            }
-
-            for (const auto& [entry_key, entry_value] : key_values) {
-                if (section_name.empty() && entry_key == key) {
-                    cfg_user += strex("{} = {}\n", key, value);
-                    wrote_root_key = true;
-                }
-                else {
-                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
-                }
-            }
-
-            if (section_name.empty() && !wrote_root_key) {
-                cfg_user += strex("{} = {}\n", key, value);
-                wrote_root_key = true;
-            }
-
-            if (!section_name.empty()) {
-                cfg_user += "\n";
-            }
-        }
-
-        if (!has_root_section) {
-            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
-        }
-    }
-    else {
-        cfg_user = strex("{} = {}\n", key, value);
-    }
-
-    cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
@@ -2138,7 +1667,6 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
     ImGui::Separator();
 
-    auto& workspace_filter_buf = WorkspaceFilterBuf;
     constexpr array tab_order {
         INT_MODE_CUSTOM0,
         INT_MODE_CUSTOM1,
@@ -2203,8 +1731,8 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
         ImGui::TableNextColumn();
         if (IsItemMode() || IsCritMode()) {
-            ImGui::InputTextWithHint("##WorkspaceFilter", "Filter prototypes...", workspace_filter_buf.data(), workspace_filter_buf.size());
-            const auto filter = InputBufferView(workspace_filter_buf);
+            ImGuiInputTextStringWithHint("##WorkspaceFilter", "Filter prototypes...", WorkspaceFilter);
+            const string_view filter = WorkspaceFilter;
             ImGui::Separator();
 
             if (ImGui::BeginChild("##WorkspaceProtoList", {0.0f, 0.0f}, false)) {
@@ -2228,16 +1756,12 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     if (auto atlas_sprite = ResolveAtlasSprite(sprite)) {
                         FO_VERIFY_AND_THROW(sprite, "Resolved atlas sprite requires a source sprite");
 
-                        if (auto texture = atlas_sprite->GetBatchTexture()) {
-                            const auto uv = atlas_sprite->GetAtlasRect();
-                            const auto sprite_size = sprite->GetSize();
-                            const auto scale = std::min(56.0f / std::max(1, sprite_size.width), 56.0f / std::max(1, sprite_size.height));
-                            const auto draw_width = numeric_cast<float32_t>(sprite_size.width) * scale;
-                            const auto draw_height = numeric_cast<float32_t>(sprite_size.height) * scale;
-                            const ImVec2 image_min {preview_min.x + (56.0f - draw_width) * 0.5f, preview_min.y + (56.0f - draw_height) * 0.5f};
-                            const ImVec2 image_max {image_min.x + draw_width, image_min.y + draw_height};
-                            draw_list->AddImage(make_nptr(texture.get()).void_cast(), image_min, image_max, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
-                        }
+                        const auto sprite_size = sprite->GetSize();
+                        const auto scale = std::min(56.0f / std::max(1, sprite_size.width), 56.0f / std::max(1, sprite_size.height));
+                        const auto draw_width = numeric_cast<float32_t>(sprite_size.width) * scale;
+                        const auto draw_height = numeric_cast<float32_t>(sprite_size.height) * scale;
+                        const ImVec2 image_min {preview_min.x + (56.0f - draw_width) * 0.5f, preview_min.y + (56.0f - draw_height) * 0.5f};
+                        DrawAtlasSpriteImage(draw_list, atlas_sprite, image_min, {draw_width, draw_height});
                     }
 
                     draw_list->AddText({cursor.x + 76.0f, cursor.y + 10.0f}, ImGui::GetColorU32(ImGuiCol_Text), string(label).c_str());
@@ -2249,10 +1773,13 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     if (ImGui::IsItemHovered() && sprite) {
                         if (ImGui::BeginTooltip()) {
                             if (auto atlas_sprite = ResolveAtlasSprite(sprite)) {
-                                if (auto texture = atlas_sprite->GetBatchTexture()) {
-                                    const auto uv = atlas_sprite->GetAtlasRect();
-                                    const auto sprite_size = sprite->GetSize();
-                                    ImGui::Image(make_nptr(texture.get()).void_cast(), {numeric_cast<float32_t>(std::max(1, sprite_size.width)), numeric_cast<float32_t>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                                const auto sprite_size = sprite->GetSize();
+                                const ImVec2 image_size {numeric_cast<float32_t>(std::max(1, sprite_size.width)), numeric_cast<float32_t>(std::max(1, sprite_size.height))};
+                                const ImVec2 image_min = ImGui::GetCursorScreenPos();
+                                auto tooltip_draw_list = make_ptr(ImGui::GetWindowDrawList());
+
+                                if (DrawAtlasSpriteImage(tooltip_draw_list, atlas_sprite, image_min, image_size)) {
+                                    ImGui::Dummy(image_size);
                                 }
                                 else {
                                     ImGui::TextDisabled("No texture");
@@ -2404,8 +1931,8 @@ void MapperEngine::DrawContentWindowImGui()
         return;
     }
 
-    auto& map_name_buf = ContentMapNameBuf;
-    auto& map_filter_buf = ContentMapFilterBuf;
+    auto& map_name_input = ContentMapName;
+    auto& map_filter = ContentMapFilter;
     int32_t& resize_w = ContentResizeW;
     int32_t& resize_h = ContentResizeH;
 
@@ -2422,7 +1949,7 @@ void MapperEngine::DrawContentWindowImGui()
         });
     };
 
-    const auto get_map_name_input = [&] { return strvex(InputBufferView(map_name_buf)).trim().str(); };
+    const auto get_map_name_input = [&] { return strvex(map_name_input).trim().str(); };
 
     if (ActivePanelMode == INT_MODE_INCONT) {
         if (!SelectedEntities.empty()) {
@@ -2517,8 +2044,7 @@ void MapperEngine::DrawContentWindowImGui()
             resize_h = map_size.height;
         }
 
-        ImGui::InputTextWithHint("##MapFilter", "Filter maps...", map_filter_buf.data(), map_filter_buf.size());
-        const auto map_filter = InputBufferView(map_filter_buf);
+        ImGuiInputTextStringWithHint("##MapFilter", "Filter maps...", map_filter);
 
         if (ImGui::BeginChild("##LoadedMaps", {0.0f, 180.0f}, true)) {
             for (auto& map : LoadedMaps) {
@@ -2542,7 +2068,7 @@ void MapperEngine::DrawContentWindowImGui()
         ImGui::EndChild();
 
         ImGui::SeparatorText("Map commands");
-        ImGui::InputText("Map name", map_name_buf.data(), map_name_buf.size());
+        ImGuiInputTextString("Map name", map_name_input);
 
         run_button_action(ImGui::Button("New map"), [&] { ParseCommand("* new"); });
         ImGui::SameLine();
@@ -2647,7 +2173,7 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
 
     int32_t& anim_state = CritterAnimState;
     int32_t& anim_action = CritterAnimAction;
-    auto& anim_sequence_buf = CritterAnimSequenceBuf;
+    auto& anim_sequence = CritterAnimSequence;
 
     ImGui::InputInt("State", &anim_state);
     ImGui::InputInt("Action", &anim_action);
@@ -2655,9 +2181,9 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
         ParseCommand(strex("@ {} {}", anim_state, anim_action));
     }
 
-    ImGui::InputTextWithHint("##AnimSequence", "Sequence: state action [state action]...", anim_sequence_buf.data(), anim_sequence_buf.size());
+    ImGuiInputTextStringWithHint("##AnimSequence", "Sequence: state action [state action]...", anim_sequence);
     if (ImGui::Button("Play sequence")) {
-        const auto sequence = strvex(InputBufferView(anim_sequence_buf)).trim().str();
+        const auto sequence = strvex(anim_sequence).trim().str();
         if (!sequence.empty()) {
             ParseCommand(strex("@ {}", sequence));
         }
@@ -2687,15 +2213,15 @@ void MapperEngine::DrawScriptCallWindowImGui()
         return;
     }
 
-    auto& script_func_buf = ScriptCallFuncBuf;
-    auto& script_args_buf = ScriptCallArgsBuf;
+    auto& script_func = ScriptCallFunc;
+    auto& script_args = ScriptCallArgs;
 
-    ImGui::InputTextWithHint("##ScriptFunc", "Function name", script_func_buf.data(), script_func_buf.size());
-    ImGui::InputTextWithHint("##ScriptArgs", "Arguments", script_args_buf.data(), script_args_buf.size());
+    ImGuiInputTextStringWithHint("##ScriptFunc", "Function name", script_func);
+    ImGuiInputTextStringWithHint("##ScriptArgs", "Arguments", script_args);
 
     if (ImGui::Button("Run script")) {
-        const auto func_name = strvex(InputBufferView(script_func_buf)).trim().str();
-        const auto args = strvex(InputBufferView(script_args_buf)).trim().str();
+        const auto func_name = strvex(script_func).trim().str();
+        const auto args = strvex(script_args).trim().str();
 
         if (!func_name.empty()) {
             if (!args.empty()) {
@@ -2726,20 +2252,19 @@ void MapperEngine::DrawMapListWindowImGui()
         },
         ImGuiCond_Appearing, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({380.0f, 420.0f}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints({380.0f, 420.0f}, {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()});
+    ImGui::SetNextWindowSizeConstraints({380.0f, 420.0f}, {std::numeric_limits<float32_t>::max(), std::numeric_limits<float32_t>::max()});
 
     if (!ImGui::Begin("Map Browser", &MapListWindowVisible, 0)) {
         ImGui::End();
         return;
     }
 
-    auto& map_filter_buf = MapBrowserFilterBuf;
+    auto& map_filter = MapBrowserFilter;
     if (ImGui::IsWindowAppearing()) {
         ImGui::SetKeyboardFocusHere();
         MapBrowserNamesStale = true;
     }
-    ImGui::InputTextWithHint("##AllMapsFilter", "Search maps...", map_filter_buf.data(), map_filter_buf.size());
-    const auto map_filter = InputBufferView(map_filter_buf);
+    ImGuiInputTextStringWithHint("##AllMapsFilter", "Search maps...", map_filter);
 
     if (MapBrowserNamesStale) {
         MapBrowserNames.clear();
@@ -3060,10 +2585,10 @@ void MapperEngine::DrawInspectorImGui()
     int32_t& pending_caret_reset_array_index = InspectorPendingCaretResetArrayIndex;
     int32_t& pending_caret_reset_frames = InspectorPendingCaretResetFrames;
     bool& last_edit_cell_rect_valid = InspectorLastEditCellRectValid;
-    float& last_edit_cell_min_x = InspectorLastEditCellMinX;
-    float& last_edit_cell_min_y = InspectorLastEditCellMinY;
-    float& last_edit_cell_max_x = InspectorLastEditCellMaxX;
-    float& last_edit_cell_max_y = InspectorLastEditCellMaxY;
+    float32_t& last_edit_cell_min_x = InspectorLastEditCellMinX;
+    float32_t& last_edit_cell_min_y = InspectorLastEditCellMinY;
+    float32_t& last_edit_cell_max_x = InspectorLastEditCellMaxX;
+    float32_t& last_edit_cell_max_y = InspectorLastEditCellMaxY;
     const auto left_column_bg = ImGui::ColorConvertFloat4ToU32({1.0f, 1.0f, 1.0f, 0.10f});
     const auto readonly_value_bg = ImGui::ColorConvertFloat4ToU32({0.72f, 0.78f, 0.88f, 0.22f});
     const auto same_as_proto_bg = ImGui::ColorConvertFloat4ToU32({1.0f, 1.0f, 1.0f, 0.10f});
@@ -4339,7 +3864,7 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
             }});
 }
 
-static void SetSelectionContour(ptr<ClientEntity> entity, ucolor color)
+void MapperEngine::SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -6250,15 +5775,6 @@ void MapperEngine::DrawConsoleImGui()
         return;
     }
 
-    auto& console_buf = ConsoleBuf;
-    bool& sync_from_state = ConsoleSyncFromState;
-
-    auto sync_buffer = [&]() {
-        std::fill(console_buf.begin(), console_buf.end(), '\0');
-        const auto copy_len = std::min(ConsoleStr.size(), console_buf.size() - 1);
-        std::copy_n(ConsoleStr.data(), copy_len, console_buf.data());
-    };
-
     const auto base_y = numeric_cast<float32_t>(MainPanelPos.y + MainPanelWindowRect.height + MAPPER_CONSOLE_WINDOW_OFFSET.y);
     const auto base_x = numeric_cast<float32_t>(MainPanelPos.x + MAPPER_CONSOLE_WINDOW_OFFSET.x);
 
@@ -6268,29 +5784,25 @@ void MapperEngine::DrawConsoleImGui()
     auto keep_open = ConsoleEdit;
     const auto window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("Mapper Console", &keep_open, window_flags)) {
-        if (sync_from_state || ImGui::IsWindowAppearing()) {
-            sync_buffer();
-            sync_from_state = false;
-        }
-
         if (ImGui::IsWindowAppearing()) {
             ImGui::SetKeyboardFocusHere();
         }
 
-        if (ImGui::InputText("##MapperConsoleInput", console_buf.data(), console_buf.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
-            ConsoleStr = console_buf.data();
+        if (ImGuiInputTextString("##MapperConsoleInput", ConsoleStr, ImGuiInputTextFlags_EnterReturnsTrue)) {
             ConsoleSubmitCommand();
-            sync_from_state = true;
         }
 
-        ConsoleStr = console_buf.data();
-
         if (ImGui::IsItemActive()) {
+            auto input_state = make_nptr(ImGui::GetInputTextState(ImGui::GetItemID()));
+
             if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
                 if (ConsoleHistoryCur > 0) {
                     ConsoleHistoryCur--;
                     ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                    sync_from_state = true;
+
+                    if (input_state) {
+                        input_state->ReloadUserBufAndMoveToEnd();
+                    }
                 }
             }
             else if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
@@ -6303,14 +5815,15 @@ void MapperEngine::DrawConsoleImGui()
                     ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
                 }
 
-                sync_from_state = true;
+                if (input_state) {
+                    input_state->ReloadUserBufAndMoveToEnd();
+                }
             }
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ConsoleEdit = false;
             ConsoleStr.clear();
-            sync_from_state = true;
         }
     }
     ImGui::End();
@@ -6318,7 +5831,6 @@ void MapperEngine::DrawConsoleImGui()
     if (!keep_open) {
         ConsoleEdit = false;
         ConsoleStr.clear();
-        sync_from_state = true;
     }
 }
 
@@ -7245,6 +6757,501 @@ auto MapperEngine::GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector
     }
 
     return {};
+}
+
+auto MapperEngine::MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) const -> irect32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {left, top, right - left, bottom - top};
+}
+
+auto MapperEngine::ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    day_time += delta_minutes;
+
+    while (day_time > DAY_TIME_VISIBLE_UPPER_BOUND) {
+        day_time -= DAY_TIME_WRAP_MINUTES;
+    }
+
+    while (day_time < 0) {
+        day_time += DAY_TIME_WRAP_MINUTES;
+    }
+
+    return day_time;
+}
+
+auto MapperEngine::ScaleZoomValue(float32_t current_zoom, float32_t factor) const -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return std::clamp(current_zoom * factor, GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
+}
+
+auto MapperEngine::GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (key) {
+    case KeyCode::C0:
+    case KeyCode::Numpad0:
+        return 0;
+    case KeyCode::C1:
+    case KeyCode::Numpad1:
+        return 1;
+    case KeyCode::C2:
+    case KeyCode::Numpad2:
+        return 2;
+    case KeyCode::C3:
+    case KeyCode::Numpad3:
+        return 3;
+    case KeyCode::C4:
+    case KeyCode::Numpad4:
+        return 4;
+    default:
+        return std::nullopt;
+    }
+}
+
+auto MapperEngine::GetNextCritterDir(mdir dir) const -> mdir
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return dir.incHex();
+}
+
+void MapperEngine::AdvanceCritterDir(ptr<CritterHexView> cr) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
+}
+
+void MapperEngine::ToggleMapVisibilityFlag(nptr<MapView> map, bool& value) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    value = !value;
+
+    if (map) {
+        map->RebuildMap();
+    }
+}
+
+auto MapperEngine::ContainsCaseInsensitive(string_view text, string_view filter) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (filter.empty()) {
+        return true;
+    }
+
+    const string lower_text = strex(text).lower_utf8();
+    const string lower_filter = strex(filter).lower_utf8();
+
+    return lower_text.find(lower_filter) != string::npos;
+}
+
+auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto source_sprite = sprite;
+
+    if (auto sprite_sheet = source_sprite.dyn_cast<const SpriteSheet>()) {
+        source_sprite = sprite_sheet->GetCurSpr();
+    }
+
+    return source_sprite.dyn_cast<const AtlasSprite>();
+}
+
+auto MapperEngine::DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const AtlasSprite> atlas_sprite, ImVec2 logical_min, ImVec2 logical_size) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto texture = atlas_sprite->GetBatchTexture();
+
+    if (!texture) {
+        return false;
+    }
+
+    const optional<AtlasSpriteRegion> region = atlas_sprite->ResolveRegion({}, {1.0f, 1.0f}, {logical_min.x, logical_min.y, logical_size.x, logical_size.y});
+
+    if (!region.has_value()) {
+        return false;
+    }
+
+    const frect32& draw_rect = region->DrawRect;
+    const frect32& texture_rect = region->TextureRect;
+    draw_list->AddImage(make_nptr(texture.get()).void_cast(), {draw_rect.x, draw_rect.y}, {draw_rect.x + draw_rect.width, draw_rect.y + draw_rect.height}, {texture_rect.x, texture_rect.y}, {texture_rect.x + texture_rect.width, texture_rect.y + texture_rect.height});
+    return true;
+}
+
+auto MapperEngine::GetInspectorValueType(ptr<const Property> prop) const -> AnyData::ValueType
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
+        return AnyData::ValueType::String;
+    }
+    if (prop->IsBaseTypeInt()) {
+        return AnyData::ValueType::Int64;
+    }
+    if (prop->IsBaseTypeBool()) {
+        return AnyData::ValueType::Bool;
+    }
+    if (prop->IsBaseTypeFloat()) {
+        return AnyData::ValueType::Float64;
+    }
+
+    return AnyData::ValueType::String;
+}
+
+auto MapperEngine::ParseInspectorValue(ptr<const Property> prop, string_view text) const -> optional<AnyData::Value>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+auto MapperEngine::MakeDefaultInspectorArrayElement(ptr<const Property> prop) const -> AnyData::Value
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (GetInspectorValueType(prop)) {
+    case AnyData::ValueType::Int64:
+        return AnyData::Value {int64_t {0}};
+    case AnyData::ValueType::Float64:
+        return AnyData::Value {float64_t {0.0}};
+    case AnyData::ValueType::Bool:
+        return AnyData::Value {false};
+    case AnyData::ValueType::String:
+        return AnyData::Value {string {}};
+    default:
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
+auto MapperEngine::SerializeInspectorArray(vector<AnyData::Value> entries) const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AnyData::Array value_arr;
+    value_arr.Reserve(entries.size());
+
+    for (auto& entry : entries) {
+        value_arr.EmplaceBack(std::move(entry));
+    }
+
+    return AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
+}
+
+auto MapperEngine::SerializeInspectorStringArray(const vector<string>& entries) const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<AnyData::Value> values;
+    values.reserve(entries.size());
+
+    for (const auto& entry : entries) {
+        values.emplace_back(string {entry});
+    }
+
+    return SerializeInspectorArray(std::move(values));
+}
+
+auto MapperEngine::GetInspectorStructLayout(ptr<const Property> prop) const -> nptr<const StructLayoutDesc>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& base_type = prop->GetBaseType();
+    if (base_type.StructLayout && (base_type.IsComplexStruct || base_type.IsSimpleStruct) && base_type.StructLayout->Fields.size() > 1) {
+        return base_type.StructLayout;
+    }
+
+    return nullptr;
+}
+
+auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) const -> nptr<const char>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (str[0] == 0) {
+        return nullptr;
+    }
+
+    const auto decode_char = [str](size_t char_pos, size_t& char_len) {
+        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
+        utf8::Decode(&str[char_pos], char_len);
+    };
+
+    size_t pos = 0;
+    size_t length = 0;
+    decode_char(pos, length);
+
+    while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+        pos++;
+
+        decode_char(pos, length);
+    }
+
+    if (str[pos] == 0) {
+        return nullptr;
+    }
+
+    size_t begin;
+
+    if (length == 1 && str[pos] == '"') {
+        pos++;
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                if (str[pos] != 0) {
+                    decode_char(pos, length);
+                    pos += length;
+                }
+            }
+            else if (length == 1 && str[pos] == '"') {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            decode_char(pos, length);
+        }
+    }
+    else {
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                decode_char(pos, length);
+                pos += length;
+            }
+            else if (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            decode_char(pos, length);
+        }
+    }
+
+    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
+    result.assign(&str[begin], pos - begin);
+    return next_token;
+}
+
+auto MapperEngine::ParseInspectorStructFields(const StructLayoutDesc& layout, string_view text) const -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto text_str = string {text};
+        auto token_pos = make_nptr(text_str.c_str());
+        string token;
+        vector<string> fields;
+        fields.reserve(layout.Fields.size());
+
+        while ((token_pos = ReadInspectorToken(token_pos, token))) {
+            fields.emplace_back(StringEscaping::DecodeString(token));
+        }
+
+        if (fields.size() != layout.Fields.size()) {
+            return std::nullopt;
+        }
+
+        return fields;
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+auto MapperEngine::ParseInspectorStringEntries(string_view text) const -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
+        if (parsed.Type() != AnyData::ValueType::Array) {
+            return std::nullopt;
+        }
+
+        vector<string> entries;
+        entries.reserve(parsed.AsArray().Size());
+
+        for (const auto& entry : parsed.AsArray()) {
+            entries.emplace_back(entry.AsString());
+        }
+
+        return entries;
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+auto MapperEngine::GetImGuiInputTextStringUserData(nptr<void> user_data) -> ptr<ImGuiInputTextStringUserData>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto typed_user_data = user_data.reinterpret_as<ImGuiInputTextStringUserData>();
+    IM_ASSERT(typed_user_data);
+    return typed_user_data;
+}
+
+int MapperEngine::ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    IM_ASSERT(data);
+    ptr<ImGuiInputTextCallbackData> callback_data = data;
+    auto user_data = GetImGuiInputTextStringUserData(callback_data->UserData);
+
+    if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+        ptr<string> str = user_data->Value;
+        IM_ASSERT(callback_data->Buf == str->c_str());
+        str->resize(callback_data->BufTextLen);
+        callback_data->Buf = str->data();
+    }
+    else if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter) {
+        if (user_data->LatinOnly && callback_data->EventChar >= 128) {
+            return 1;
+        }
+    }
+    else if (callback_data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
+        if (user_data->MoveCaretToEnd) {
+            callback_data->CursorPos = callback_data->BufTextLen;
+            callback_data->SelectionStart = callback_data->BufTextLen;
+            callback_data->SelectionEnd = callback_data->BufTextLen;
+            user_data->MoveCaretToEnd = false;
+        }
+    }
+
+    return 0;
+}
+
+auto MapperEngine::ImGuiInputTextString(ptr<const char> label, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ImGuiInputTextStringImpl(label, nullptr, value, flags, latin_only, move_caret_to_end);
+}
+
+auto MapperEngine::ImGuiInputTextStringWithHint(ptr<const char> label, ptr<const char> hint, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ImGuiInputTextStringImpl(label, hint, value, flags, latin_only, move_caret_to_end);
+}
+
+auto MapperEngine::ImGuiInputTextStringImpl(ptr<const char> label, nptr<const char> hint, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (value.capacity() == 0) {
+        value.reserve(256);
+    }
+
+    auto value_ptr = make_ptr(&value);
+    ImGuiInputTextStringUserData user_data {.Value = value_ptr, .LatinOnly = latin_only, .MoveCaretToEnd = move_caret_to_end};
+    flags |= ImGuiInputTextFlags_CallbackResize;
+    if (latin_only) {
+        flags |= ImGuiInputTextFlags_CallbackCharFilter;
+    }
+    if (move_caret_to_end) {
+        flags |= ImGuiInputTextFlags_CallbackAlways;
+    }
+
+    if (hint) {
+        return ImGui::InputTextWithHint(label.get(), hint.get(), value.data(), value.capacity() + 1, flags, ImGuiInputTextStringCallback, &user_data);
+    }
+
+    return ImGui::InputText(label.get(), value.data(), value.capacity() + 1, flags, ImGuiInputTextStringCallback, &user_data);
+}
+
+auto MapperEngine::IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto entity_with_proto = entity.dyn_cast<const EntityWithProto>();
+    if (!entity_with_proto) {
+        return true;
+    }
+
+    try {
+        return entity_with_proto->GetProto()->GetProperties()->SavePropertyToText(prop) == value_text;
+    }
+    catch (const std::exception&) {
+        return true;
+    }
+}
+
+void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string cfg_user;
+
+    if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
+        auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+        const auto& sections = config.GetSections();
+        auto wrote_root_key = false;
+        auto has_root_section = false;
+
+        for (const auto& [section_name, key_values] : *sections) {
+            if (!section_name.empty()) {
+                cfg_user += strex("[{}]\n", section_name);
+            }
+            else {
+                has_root_section = true;
+            }
+
+            for (const auto& [entry_key, entry_value] : key_values) {
+                if (section_name.empty() && entry_key == key) {
+                    cfg_user += strex("{} = {}\n", key, value);
+                    wrote_root_key = true;
+                }
+                else {
+                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                }
+            }
+
+            if (section_name.empty() && !wrote_root_key) {
+                cfg_user += strex("{} = {}\n", key, value);
+                wrote_root_key = true;
+            }
+
+            if (!section_name.empty()) {
+                cfg_user += "\n";
+            }
+        }
+
+        if (!has_root_section) {
+            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
+        }
+    }
+    else {
+        cfg_user = strex("{} = {}\n", key, value);
+    }
+
+    cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 FO_END_NAMESPACE

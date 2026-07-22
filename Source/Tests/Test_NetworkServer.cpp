@@ -323,6 +323,33 @@ TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
 #endif
 
 #if FO_HAVE_WEB_SOCKETS
+TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    const auto port = TestServerPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+
+    auto server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    const auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    string error_message;
+
+    try {
+        NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    }
+    catch (const std::exception& ex) {
+        error_message = ex.what();
+    }
+
+    REQUIRE_FALSE(error_message.empty());
+    CHECK(error_message.find("Address already in use") != string::npos);
+    CHECK(error_message.find(std::to_string(port)) != string::npos);
+    CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
+}
+
 // End-to-end WebSocket transport coverage (previously none, which is what let the transport's threading
 // bugs ship). A real websocketpp client connects and sends a binary frame that must reach the connection's
 // receive callback (the flaky inbound-delivery regression), then Shutdown() itself must disconnect the

@@ -172,6 +172,13 @@ The listen ports and the client connect endpoint are configured per transport:
 Each endpoint is configured explicitly: the WebSocket host and port are independent settings, not
 derived from `ServerHost` / `ServerPort`.
 
+Socket diagnostics must not use `std::error_code::message()`, `std::system_error::what()`, `strerror()`,
+or `FormatMessage()` directly because those APIs return text in the host OS locale. Route socket failures
+through `net_sockets::error_text()` instead. It maps common network conditions to stable English names and
+always retains the native category and numeric code; unknown conditions use the English fallback
+`Network error (<category>:<code>)`. Listener startup exceptions must also add the transport and port so
+an occupied TCP or WebSocket endpoint is actionable without relying on localized system text.
+
 Concrete files include:
 
 - `NetworkServer-Interthread.cpp`

@@ -44,6 +44,7 @@ constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
 struct ModelSpriteLayout
 {
     isize32 DrawSize {};
+    irect32 DrawRect {};
     irect32 ViewRect {};
 };
 
