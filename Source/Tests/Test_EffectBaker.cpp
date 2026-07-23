@@ -299,7 +299,7 @@ TEST_CASE("EffectBakerBakesAuxiliaryBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    auto info = ConfigFile("Effects/Aux.fofx-1-info", rig.GetOutputText("Effects/Aux.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Aux.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "IndoorMaskTex", -1) == 2);
@@ -319,7 +319,7 @@ TEST_CASE("EffectBakerBakesExplicitBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "MainTex", -1) == 0);
@@ -345,7 +345,7 @@ TEST_CASE("EffectBakerBakesSdlGpuFlavors")
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv_sdl"));
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv_sdl"));
 
-    auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfoSdl"));
     // VALID_EFFECT: vertex has ProjBuf (1 UBO, no samplers); fragment has MainTex (1 sampler) + TimeBuf (1 UBO)

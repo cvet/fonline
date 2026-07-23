@@ -25,19 +25,18 @@ TEST_CASE("Settings")
     SECTION("SubConfigMultiParentMergesLeftToRight")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
-            "[SubConfig]\n"
-            "Name = BaseA\n"
-            "OnlyA = fromA\n"
-            "Shared = fromA\n"
-            "[SubConfig]\n"
-            "Name = BaseB\n"
-            "OnlyB = fromB\n"
-            "Shared = fromB\n"
-            "[SubConfig]\n"
-            "Name = Mixed\n"
-            "Parent = BaseA BaseB\n"
-            "Own = child\n"};
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = BaseA\n"
+                           "OnlyA = fromA\n"
+                           "Shared = fromA\n"
+                           "[SubConfig]\n"
+                           "Name = BaseB\n"
+                           "OnlyB = fromB\n"
+                           "Shared = fromB\n"
+                           "[SubConfig]\n"
+                           "Name = Mixed\n"
+                           "Parent = BaseA BaseB\n"
+                           "Own = child\n"};
 
         settings.ApplyConfigFile(config, "cfg");
         settings.ApplySubConfigSection("Mixed");
@@ -53,28 +52,27 @@ TEST_CASE("Settings")
     SECTION("ApplyConfigFileParsesSubConfigsAndResourcePacks")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
-            "UnknownSetting = root\n"
-            "[SubConfig]\n"
-            "Name = Base\n"
-            "Shared = parent\n"
-            "Mode = base\n"
-            "[SubConfig]\n"
-            "Name = Child\n"
-            "Parent = Base\n"
-            "Mode = child\n"
-            "Leaf = extra\n"
-            "[ResourcePack]\n"
-            "Name = CommonPack\n"
-            "InputDirs = dirA dirB\n"
-            "InputFiles = fileA fileB\n"
-            "IncludePatterns = **/*.fos *.fos\n"
-            "ExcludePatterns = **/Generated/** **/_*\n"
-            "Bakers = BakerA BakerB\n"
-            "[ResourcePack]\n"
-            "Name = ServerPack\n"
-            "InputDirs = server_dir\n"
-            "ServerOnly = true\n"};
+        ConfigFile config {"UnknownSetting = root\n"
+                           "[SubConfig]\n"
+                           "Name = Base\n"
+                           "Shared = parent\n"
+                           "Mode = base\n"
+                           "[SubConfig]\n"
+                           "Name = Child\n"
+                           "Parent = Base\n"
+                           "Mode = child\n"
+                           "Leaf = extra\n"
+                           "[ResourcePack]\n"
+                           "Name = CommonPack\n"
+                           "InputDirs = dirA dirB\n"
+                           "InputFiles = fileA fileB\n"
+                           "IncludePatterns = **/*.fos *.fos\n"
+                           "ExcludePatterns = **/Generated/** **/_*\n"
+                           "Bakers = BakerA BakerB\n"
+                           "[ResourcePack]\n"
+                           "Name = ServerPack\n"
+                           "InputDirs = server_dir\n"
+                           "ServerOnly = true\n"};
 
         settings.ApplyConfigFile(config, "cfg");
 
@@ -229,7 +227,7 @@ TEST_CASE("Settings")
     SECTION("BakingModeSaveReturnsAppliedSettings")
     {
         GlobalSettings settings {true};
-        ConfigFile config {"Bake.fomain", "CustomSaved = value\n"};
+        ConfigFile config {"CustomSaved = value\n"};
 
         settings.ApplyConfigFile(config, "");
 
@@ -242,15 +240,14 @@ TEST_CASE("Settings")
     SECTION("UpdateFilesInMemoryCanBeOverriddenBySubConfigs")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
-            "ServerNetwork.UpdateFilesInMemory = False\n"
-            "[SubConfig]\n"
-            "Name = PublicGame\n"
-            "ServerNetwork.UpdateFilesInMemory = True\n"
-            "[SubConfig]\n"
-            "Name = Staging\n"
-            "Parent = PublicGame\n"
-            "ServerNetwork.UpdateFilesInMemory = False\n"};
+        ConfigFile config {"ServerNetwork.UpdateFilesInMemory = False\n"
+                           "[SubConfig]\n"
+                           "Name = PublicGame\n"
+                           "ServerNetwork.UpdateFilesInMemory = True\n"
+                           "[SubConfig]\n"
+                           "Name = Staging\n"
+                           "Parent = PublicGame\n"
+                           "ServerNetwork.UpdateFilesInMemory = False\n"};
 
         settings.ApplyConfigFile(config, "cfg");
         settings.ApplySubConfigSection("PublicGame");

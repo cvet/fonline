@@ -313,7 +313,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
                           .str();
 
-    return mapper->LoadMapFromText(name, map_text);
+    return mapper->LoadMapFromText(name, name, map_text);
 }
 
 ///@ ExportMethod
@@ -326,7 +326,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return mapper->LoadMapFromText(name, string(text));
+    return mapper->LoadMapFromText(name, name, string(text));
 }
 
 ///@ ExportMethod
@@ -351,7 +351,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMap(ptr<MapperEngine> mapper, ptr<MapView> ma
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapToPath(ptr<MapperEngine> mapper, ptr<MapView> map, string_view subDir, string_view name)
 {
-    // Sandbox-disciplined save into <MapsRoot>/<subDir>/<name>.fomap (subDir defaults to the
+    // Sandbox-disciplined save into <MapsRoot>/<subDir>/<name>.<ext> (subDir defaults to the
     // AI authoring area "Generated" at the caller). Refuse path separators in the name and any
     // ".." traversal so an authoring agent cannot escape the Maps tree.
     if (name.empty()) {
@@ -401,10 +401,18 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
 {
     vector<string> names;
 
-    auto map_files = mapper->MapsFileSys.FilterFiles("fomap", dir, recursive);
+    auto map_files = mapper->MapsFileSys.FilterFiles("", dir, recursive);
 
     for (const auto& map_file_header : map_files) {
-        names.emplace_back(map_file_header.GetNameNoExt());
+        string ext = strex(map_file_header.GetPath()).get_file_extension();
+
+        if (std::ranges::find(mapper->Settings->ProtoFileExtensions, ext) == mapper->Settings->ProtoFileExtensions.end()) {
+            continue;
+        }
+
+        File map_file = File::Load(map_file_header);
+        auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+        names.insert(names.end(), std::make_move_iterator(declared_maps.begin()), std::make_move_iterator(declared_maps.end()));
     }
 
     return names;

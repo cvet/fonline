@@ -462,6 +462,7 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
+            OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // Match MakeScriptCompilerSettings — the gate also fires at runtime when ServerEngine
             // loads bytecode, so the runtime settings need the same allowlist as the compile-time
             // ones. The gate-test (Test_AngelScriptBaker) intentionally bypasses this default by

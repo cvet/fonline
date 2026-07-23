@@ -901,8 +901,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("ParticleBakerDataSource.fomain",
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Visual
@@ -910,7 +909,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = Particle
 )",
-                output_dir)
+            output_dir)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -968,8 +967,7 @@ Bakers = Particle
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("ParticleBakerDataSource.fomain",
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Visual
@@ -977,7 +975,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = Particle
 )",
-                output_dir)
+            output_dir)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);

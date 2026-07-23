@@ -94,7 +94,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     auto check_file = [&](const File& file) -> bool {
         string_view path = file.GetPath();
-        auto fofx = ConfigFile(path, file.GetStr());
+        auto fofx = ConfigFile(file.GetStr());
         int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
         uint64_t write_time = file.GetWriteTime();
 
@@ -200,7 +200,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx = ConfigFile(fname, string(content), ConfigFileOption::CollectContent);
+    auto fofx = ConfigFile(string(content), ConfigFileOption::CollectContent);
 
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);

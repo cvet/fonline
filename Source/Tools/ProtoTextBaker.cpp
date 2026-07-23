@@ -115,9 +115,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : filtered_files) {
-        bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
-        auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
+        // Nested ($Name/...-addressed) sections carry map content, never proto declarations
+        auto fopro = ConfigFile(file.GetStr(), ConfigFileOption::SkipNestedSections);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -127,10 +126,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
             hstring type_name;
 
-            if (is_fomap && section_name == "Header") {
-                type_name = engine.Hashes.ToHashedString("Map");
-            }
-            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else if (hstring section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
