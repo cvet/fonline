@@ -136,9 +136,8 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : files) {
-        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
-        const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
+        // Nested ($Name/...-addressed) sections carry map content, never proto declarations
+        auto fopro = ConfigFile(file.GetStr(), ConfigFileOption::SkipNestedSections);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -148,10 +147,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
             hstring type_name;
 
-            if (is_fomap && section_name == "Header") {
-                type_name = meta->Hashes.ToHashedString("Map");
-            }
-            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = meta->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else if (meta->IsFixedType(section_name)) {
@@ -177,6 +173,11 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
+
+            if (name.find('/') != string::npos || name.find('$') != string::npos) {
+                throw ProtoBakerException("Proto name must not contain a slash or dollar sign, they are reserved for nested section addressing", name, file.GetPath());
+            }
+
             auto pid = meta->Hashes.ToHashedString(name);
             pid = meta->CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 

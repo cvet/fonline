@@ -217,7 +217,7 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
     if (const auto settings_content = fs_read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
-        auto config = ConfigFile(config_name, *settings_content);
+        auto config = ConfigFile(*settings_content);
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -280,7 +280,7 @@ void GlobalSettings::ApplyInternalConfig()
         throw SettingsException("Internal config not patched");
     }
 
-    auto config = ConfigFile("InternalConfig.fomain", config_str);
+    auto config = ConfigFile(config_str);
     ApplyConfigFile(config, "");
 }
 

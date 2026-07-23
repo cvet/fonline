@@ -112,7 +112,7 @@ $Text span Name = Nombre ignorado
 $Name = TextCritter
 $Text engl Name = Critter name
 )");
-        local_rig.AddSourceFile("Maps/TextMap.fomap", R"([Header]
+        local_rig.AddSourceFile("Maps/TextMap.fomap", R"([ProtoMap]
 $Name = TextMap
 $Text engl Name = Map name
 )");

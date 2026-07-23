@@ -78,7 +78,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto config = ConfigFile(file_name, string(content));
+    auto config = ConfigFile(string(content));
     vector<SpriteInfoFileEntry> result;
     set<string> source_paths;
     set<string> resource_paths;
@@ -237,7 +237,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
     const File info_file = resources.ReadFile(MODEL_ANIMATION_INFO_FILE_NAME);
     FO_VERIFY_AND_THROW(info_file, "Model animation info resource is not readable", MODEL_ANIMATION_INFO_FILE_NAME);
 
-    auto config = ConfigFile(MODEL_ANIMATION_INFO_FILE_NAME, info_file.GetStr());
+    auto config = ConfigFile(info_file.GetStr());
     unordered_map<hstring, ModelAnimationInfo> model_anim_infos;
     constexpr array<string_view, 12> model_bounds_keys {
         "ModelBoundsMinX",

@@ -124,7 +124,7 @@ TEST_CASE("ConfigBaker")
     SECTION("BakeCheckerCanSkipAllConfigs")
     {
         TestRig rig;
-        ConfigFile config {"Skip.fomain",
+        ConfigFile config {
             "[SubConfig]\n"
             "Name = Child\n"
             "Common.GameName = ChildGame\n"};

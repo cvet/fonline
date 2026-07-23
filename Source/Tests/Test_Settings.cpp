@@ -25,7 +25,7 @@ TEST_CASE("Settings")
     SECTION("SubConfigMultiParentMergesLeftToRight")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
+        ConfigFile config {
             "[SubConfig]\n"
             "Name = BaseA\n"
             "OnlyA = fromA\n"
@@ -53,7 +53,7 @@ TEST_CASE("Settings")
     SECTION("ApplyConfigFileParsesSubConfigsAndResourcePacks")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
+        ConfigFile config {
             "UnknownSetting = root\n"
             "[SubConfig]\n"
             "Name = Base\n"
@@ -229,7 +229,7 @@ TEST_CASE("Settings")
     SECTION("BakingModeSaveReturnsAppliedSettings")
     {
         GlobalSettings settings {true};
-        ConfigFile config {"Bake.fomain", "CustomSaved = value\n"};
+        ConfigFile config {"CustomSaved = value\n"};
 
         settings.ApplyConfigFile(config, "");
 
@@ -242,7 +242,7 @@ TEST_CASE("Settings")
     SECTION("UpdateFilesInMemoryCanBeOverriddenBySubConfigs")
     {
         GlobalSettings settings {false};
-        ConfigFile config {"Test.fomain",
+        ConfigFile config {
             "ServerNetwork.UpdateFilesInMemory = False\n"
             "[SubConfig]\n"
             "Name = PublicGame\n"
