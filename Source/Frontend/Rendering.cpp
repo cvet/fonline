@@ -74,8 +74,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fofx_content = loader(name);
-    const auto fofx = ConfigFile(fofx_content, ConfigFileOption::CollectContent);
+    auto fofx_content = loader(name);
+    const auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
@@ -204,8 +204,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
         _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
 
-        const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
-        const auto pass_info = ConfigFile(pass_info_content);
+        auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
+        const auto pass_info = ConfigFile(std::move(pass_info_content));
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);

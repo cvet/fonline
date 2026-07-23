@@ -290,6 +290,7 @@ public:
     void ParseCommand(string_view command);
     auto LoadMap(string_view map_name) -> nptr<MapView>;
     auto LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>;
+    auto IsProtoFileExtension(string_view path) const -> bool;
     void ShowMap(ptr<MapView> map);
     auto IsMapDirty(nptr<MapView> map) const -> bool;
     void SetMapDirty(nptr<MapView> map, bool dirty = true);

@@ -48,14 +48,6 @@ static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.in
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
-static auto IsProtoFileExtension(const vector<string>& proto_file_extensions, string_view path) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const string ext = strex(path).get_file_extension();
-    return std::ranges::find(proto_file_extensions, ext) != proto_file_extensions.end();
-}
-
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); }),
     ParticleEditors {this}
@@ -2290,7 +2282,7 @@ void MapperEngine::DrawMapListWindowImGui()
         const auto map_files = MapsFileSys.FilterFiles("");
 
         for (const auto& map_file_header : map_files) {
-            if (!IsProtoFileExtension(Settings->ProtoFileExtensions, map_file_header.GetPath())) {
+            if (!IsProtoFileExtension(map_file_header.GetPath())) {
                 continue;
             }
 
@@ -6079,7 +6071,7 @@ void MapperEngine::ParseCommand(string_view command)
             auto map_files = MapsFileSys.FilterFiles("");
 
             for (const auto& map_file_header : map_files) {
-                if (!IsProtoFileExtension(Settings->ProtoFileExtensions, map_file_header.GetPath())) {
+                if (!IsProtoFileExtension(map_file_header.GetPath())) {
                     continue;
                 }
 
@@ -6160,6 +6152,14 @@ void MapperEngine::ParseCommand(string_view command)
     else {
         AddMess("Unknown command");
     }
+}
+
+auto MapperEngine::IsProtoFileExtension(string_view path) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string ext = strex(path).get_file_extension();
+    return std::ranges::find(Settings->ProtoFileExtensions, ext) != Settings->ProtoFileExtensions.end();
 }
 
 auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>
@@ -6266,7 +6266,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
     if (!map_file) {
         // The map may live in a multi-map file with an unrelated name
         for (const auto& file_header : map_files) {
-            if (!IsProtoFileExtension(Settings->ProtoFileExtensions, file_header.GetPath())) {
+            if (!IsProtoFileExtension(file_header.GetPath())) {
                 continue;
             }
 
@@ -6533,7 +6533,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     string first_container_path;
 
     for (const auto& file_header : map_files) {
-        if (!IsProtoFileExtension(Settings->ProtoFileExtensions, file_header.GetPath())) {
+        if (!IsProtoFileExtension(file_header.GetPath())) {
             continue;
         }
 
@@ -6640,7 +6640,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     string reference_map_path;
 
     for (const auto& file_header : map_files) {
-        if (!IsProtoFileExtension(Settings->ProtoFileExtensions, file_header.GetPath())) {
+        if (!IsProtoFileExtension(file_header.GetPath())) {
             continue;
         }
 

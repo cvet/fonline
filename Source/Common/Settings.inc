@@ -268,7 +268,7 @@ FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
 FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
-FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro", "fomap"); // Authored proto/map container extensions: drives proto baking, map-container discovery (files with [ProtoMap] anchors) and mapper file browsing
+FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
