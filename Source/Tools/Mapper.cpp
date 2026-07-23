@@ -7236,7 +7236,7 @@ void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, 
     string cfg_user;
 
     if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+        auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
         const auto& sections = config.GetSections();
         auto wrote_root_key = false;
         auto has_root_section = false;

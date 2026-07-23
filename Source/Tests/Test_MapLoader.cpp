@@ -116,9 +116,7 @@ TEST_CASE("MapLoader")
         vector<string> loaded_kinds;
         const auto load_map = [&](string_view map_name) {
             loaded_kinds.clear();
-            CHECK_NOTHROW(MapLoader::Load(
-                map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { },
-                [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
+            CHECK_NOTHROW(MapLoader::Load(map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
         };
 
         load_map("Zones");
@@ -200,7 +198,7 @@ TEST_CASE("MapLoader")
                                "Kind = Beta\n";
 
         CHECK_NOTHROW(MapLoader::Load(
-            "TestMap", map_buf, meta, hashes,
+            "TestMap", "TestMap.fomap", map_buf, meta, hashes,
             [&](ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv) {
                 critter_ids.emplace_back(id);
                 critter_proto_names.emplace_back(proto->GetProtoId().as_str());
@@ -247,9 +245,7 @@ TEST_CASE("MapLoader")
         vector<string> loaded_kinds;
         const auto load_map = [&](string_view map_name) {
             loaded_kinds.clear();
-            CHECK_NOTHROW(MapLoader::Load(
-                map_name, map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { },
-                [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
+            CHECK_NOTHROW(MapLoader::Load(map_name, "MultiMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
         };
 
         load_map("MapOne");
@@ -312,7 +308,7 @@ TEST_CASE("MapLoader")
                                "$Id = 1\n"
                                "$Proto = TestItem\n";
 
-        CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
+        CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
 
         CHECK(item_calls == 1);
     }
