@@ -35,6 +35,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptArray.h"
 #include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
@@ -158,7 +159,23 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
     return arg_types;
 }
 
-static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg) -> bool
+static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT result_arg) -> ComplexTypeDesc
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
+    const int32_t result_type_id = gen->GetArgTypeId(result_arg);
+    auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
+
+    if (!result_type) {
+        const nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
+        throw ScriptException(strex("Unsupported invoke result type '{}'", type_decl ? type_decl.get() : "<unknown>").str());
+    }
+
+    return result_type;
+}
+
+static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg, nptr<void> ret_data = nullptr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -177,7 +194,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
         // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
         // re-packed into a local handle cell so the callee sees a plain handle slot.
-        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
+        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsFixedType || arg_type->BaseType.IsEntityProto || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
             indirect_args[index] = MemReadUnaligned<void*>(arg_data);
@@ -191,6 +208,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
     call.ArgsData = const_span<ptr<void>> {args_data.data(), args_data.size()};
+    call.RetData = ret_data;
 
     try {
         func_desc->Call(call);
@@ -260,6 +278,41 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     }
 
     const bool result = InvokeResolvedFunction(func_desc, generic, 1);
+    new (gen->GetAddressOfReturnLocation()) bool(result);
+}
+
+static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<BaseEngine> engine = GetGameEngine(gen->GetEngine());
+    const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
+    const auto hashed_func_name = engine->Hashes.ToHashedString(func_name);
+    const auto result_type = ResolveInvokeResultType(gen, 1);
+    const auto arg_types = ResolveInvokeArgTypes(gen, 2);
+    nptr<ScriptFuncDesc> nullable_func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
+
+    if (!nullable_func_desc) {
+        throw ScriptException("Script function not found", func_name);
+    }
+
+    ptr<const ScriptFuncDesc> func_desc = nullable_func_desc.as_ptr();
+
+    // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee
+    // fills it through the accessor's ClearArray/AddArrayElement, which need a live array. Allocate an empty one
+    // of the resolved element type so collection-returning funcs behave like a native array return. The created
+    // array's single ref is adopted by the caller's variable (the ?&out slot), so it frees on scope exit.
+    if (result_type.Kind == ComplexTypeKind::Array) {
+        ptr<void> result_addr = gen->GetArgAddress(1);
+
+        if (*cast_from_void<ScriptArray**>(result_addr.get()) == nullptr) {
+            nptr<AngelScript::asITypeInfo> array_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
+            FO_VERIFY_AND_THROW(array_type, "InvokeResult array result type is unavailable", func_name);
+            *cast_from_void<ScriptArray**>(result_addr.get()) = ScriptArray::Create(array_type.as_ptr()).release_ownership();
+        }
+    }
+
+    const bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));
     new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 
@@ -737,6 +790,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool Invoke(string funcName, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByName), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool InvokeResult(string funcName, ?&out result, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByNameWithResult), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string NameOf(?&in obj)", FO_SCRIPT_GENERIC(Global_NameOf), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers

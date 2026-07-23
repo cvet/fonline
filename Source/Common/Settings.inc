@@ -60,6 +60,15 @@ FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
+FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
+FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, Script, ManagedScriptMsBuild, "dotnet msbuild"); // Managed msbuild command
+FIXED_SETTING(vector<string>, Script, ManagedScriptDirs, "Engine/Source/Scripting/Managed/CoreScripts", "Scripts"); // Managed script source directories, top-level .cs files of each are compiled in place
+FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
+FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -169,7 +178,7 @@ FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles, 4096); // Maximum triangle budg
 FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for removing a full frame area; one point offsets one submitted triangle
 SETTING_GROUP_END();
 
-///@ ExportSettings Client
+///@ ExportSettings Common
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second

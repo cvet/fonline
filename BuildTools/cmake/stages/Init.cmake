@@ -41,7 +41,7 @@ DeclareBoolOptions(
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
-	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
+	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
 	FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF
@@ -327,7 +327,7 @@ AddCompileDefinitionsList(
 	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
+	FO_MANAGED_SCRIPTING=$<BOOL:${FO_MANAGED_SCRIPTING}>)
 
 # The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
 # FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits
@@ -344,6 +344,7 @@ AddIncludeDirectories(
 	"${FO_ENGINE_ROOT}/Source/Client"
 	"${FO_ENGINE_ROOT}/Source/Tools"
 	"${FO_ENGINE_ROOT}/Source/Scripting"
+	"${FO_ENGINE_ROOT}/Source/Scripting/Managed"
 	"${FO_ENGINE_ROOT}/Source/Frontend"
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 

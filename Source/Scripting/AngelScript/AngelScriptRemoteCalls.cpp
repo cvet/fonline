@@ -532,6 +532,13 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
         if (auto func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call)) {
             if (backend->HasGameEngine()) {
                 auto engine = backend->GetGameEngine();
+                // Cross-backend coexistence: the managed backend may already own this inbound handler (e.g. the
+                // client-side C# facade for a fos-declared call, registered with replace). Skip re-registering so
+                // the two backends coordinate order-independently instead of throwing on the duplicate.
+                if (engine->HasRemoteCallHandler(inbound_call.Name)) {
+                    continue;
+                }
+
                 engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
                     FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
                     InboundRemoteCallHandler(inbound_call, entity, data, engine, func);

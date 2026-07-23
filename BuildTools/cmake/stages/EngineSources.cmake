@@ -124,6 +124,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.h"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
@@ -146,6 +148,15 @@ AppendList(FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
+
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_COMMON_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs")
+endif()
 
 AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.cpp"
@@ -352,6 +363,12 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_BAKER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.cpp")
+endif()
+
 AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
@@ -497,3 +514,8 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
+
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp")
+endif()

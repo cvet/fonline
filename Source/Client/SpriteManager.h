@@ -209,6 +209,7 @@ public:
     void InvalidateSpriteResource(string_view path);
     void RetryFailedSpriteLoads();
     void CleanupSpriteCache();
+    void UnsubscribeWindowEvents() noexcept;
 
     void PushScissor(irect32 rect);
     void PopScissor();

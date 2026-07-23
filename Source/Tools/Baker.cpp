@@ -40,6 +40,7 @@
 #include "EngineBase.h"
 #include "FileSystem.h"
 #include "ImageBaker.h"
+#include "ManagedScriptBaker.h"
 #include "MapBaker.h"
 #include "MapLoader.h"
 #include "MetadataBaker.h"
@@ -161,6 +162,11 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 #if FO_ANGELSCRIPT_SCRIPTING
     if (vec_exists(request_bakers, AngelScriptBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(ctx));
+    }
+#endif
+#if FO_MANAGED_SCRIPTING
+    if (vec_exists(request_bakers, ManagedScriptBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ManagedScriptBaker>(ctx));
     }
 #endif
 
@@ -730,7 +736,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                     errors++;
                 }
                 else if (func_name && !rule_it->second.VerifySignature(func_name, script_sys)) {
-                    WriteLog("Script function signature does not match property binding: func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
                 else if (func_name && !rule_it->second.RequiredAttribute.empty() && !rule_it->second.VerifyAttribute(func_name, script_sys)) {

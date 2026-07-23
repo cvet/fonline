@@ -37,6 +37,7 @@
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "ParticleSprites.h"
@@ -85,6 +86,9 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *Settings, Resources);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, Resources);
 #endif
 
     _curLang = TextPack {&Hashes};
@@ -7232,7 +7236,7 @@ void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, 
     string cfg_user;
 
     if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+        auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
         const auto& sections = config.GetSections();
         auto wrote_root_key = false;
         auto has_root_section = false;

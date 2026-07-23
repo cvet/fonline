@@ -159,8 +159,7 @@ events to it.
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans.
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report. During lazy output discovery it walks resource packs in the same order as `MasterBaker`, so cross-pack dependencies such as `ManagedScriptBaker` reading `Metadata.fometa-*` see earlier pack outputs; runtime file lookup still searches pack outputs in reverse order for normal resource precedence.
 
 ## Master bake report
 
@@ -352,7 +351,8 @@ During output discovery it visits resource packs in configured order so a later 
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `6`, enabled when `FO_ENABLE_3D` is active
-- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, order `4`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `3`, enabled when `FO_MANAGED_SCRIPTING` is active. It runs before the `Proto` (7), `Map` (8), and dialog validators so the compiled managed assemblies exist when those bakers restore the managed script subsystem and resolve `[DialogDemand]`/`[DialogResult]` and other script funcs through `ScriptSystem::FindFunc`.
 
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
@@ -927,7 +927,7 @@ memory results.
 `ScriptsAndBaking.cmake` also creates script compilation commands:
 
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
-- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` when `FO_MONO_SCRIPTING` is enabled.
+- `CompileManagedScripts` runs the standalone `ManagedScriptBakerApp` (built as `<FO_DEV_NAME>_ManagedScriptBaker`) when `FO_MANAGED_SCRIPTING` is enabled, so the managed project environment can be regenerated and rebuilt without a full resource bake. The `Managed` baker compiles `.cs` sources in place from every directory listed in `Script.ManagedScriptDirs` (engine core scripts and project scripts alike) and writes target API C# files as `*.gen.cs`, one generated `.gen.csproj`, and a matching `.gen.sln` under the `Script.ManagedScriptGeneratedDir` directory (empty targets the build `GeneratedSource/Managed` tree). Generated files include an auto-generated disclaimer, are rewritten only when their content changes, and stale `.gen.*` files in that directory are removed when they are no longer produced. The project and solution are named from the `Script.ManagedScriptProjectName` setting (default `FOnline`; embedding projects set their own name in the main config), so they get readable names such as `Scripts/<FO_NICE_NAME>.gen.csproj` and `Scripts/<FO_NICE_NAME>.gen.sln`. Managed assemblies are built into the baking pack under `Baking/<Pack>/Assemblies/<Target>Assemblies/` so packaging consumes them through the regular resource path; for a `Scripts` pack the entry assemblies are `Scripts.Server.dll`, `Scripts.Client.dll`, and `Scripts.Mapper.dll`, and any copied helper dlls from the MSBuild output are packed beside them for runtime dependency resolution. Managed builds run MSBuild with node reuse disabled to avoid stale project-file locks during later prebake passes. Managed builds also depend on `SetupManagedRuntime`, which publishes the Mono runtime plus Mono corelib into the CMake build tree, deploys it next to generated application binaries, and native package outputs carry that `ManagedRuntime/` directory as a runtime companion.
 
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
@@ -938,6 +938,7 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_BakerSetup.cpp`
 - `Test_ConfigBaker.cpp`
 - `Test_MetadataBaker.cpp`
+- `Test_ManagedScriptBaker.cpp`
 - `Test_RawCopyBaker.cpp`
 - `Test_ImageBaker.cpp`
 - `Test_EffectBaker.cpp`

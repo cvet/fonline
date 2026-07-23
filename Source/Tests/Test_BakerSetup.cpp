@@ -321,8 +321,7 @@ TEST_CASE("BakerDataSource")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
@@ -331,7 +330,7 @@ IncludePatterns = **/*.json
 ExcludePatterns = **/_*.json
 Bakers = {}
 )",
-            output_dir, RawCopyBaker::NAME)
+        output_dir, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -424,8 +423,7 @@ TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Metadata
@@ -438,7 +436,7 @@ InputDirs = model_input
 IncludePatterns = **/*.fo3d
 Bakers = {}
 )",
-            strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
+        strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -475,8 +473,7 @@ TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Base
@@ -489,7 +486,7 @@ InputDirs = override_input
 IncludePatterns = **/*.json
 Bakers = {}
 )",
-            strex(temp_dir).combine_path("output").str(), RawCopyBaker::NAME, RawCopyBaker::NAME)
+        strex(temp_dir).combine_path("output").str(), RawCopyBaker::NAME, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -531,8 +528,7 @@ TEST_CASE("BakerMasterRawCopy")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
@@ -541,7 +537,7 @@ IncludePatterns = **/*.json
 ExcludePatterns = **/_*.json
 Bakers = {}
 )",
-            output_dir, RawCopyBaker::NAME)
+        output_dir, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -651,8 +647,7 @@ TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Json
@@ -666,7 +661,7 @@ InputDirs = input
 IncludePatterns = **/text-*.json
 Bakers = {}
 )",
-            output_dir, RawCopyBaker::NAME, RawCopyBaker::NAME)
+        output_dir, RawCopyBaker::NAME, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -698,8 +693,7 @@ TEST_CASE("BakerMasterImageReport")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile(
-        strex(R"(Baking.BakeOutput = {}
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = True
 Baking.SingleThreadBaking = True
 SpriteMesh.Enabled = True
@@ -711,7 +705,7 @@ Name = Art
 InputDirs = input
 Bakers = {}
 )",
-            output_dir, ImageBaker::NAME)
+        output_dir, ImageBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -838,8 +832,7 @@ TEST_CASE("BakerMasterRawCopyEdges")
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile(
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = true
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -848,7 +841,7 @@ InputDirs = input
 IncludePatterns = **
 Bakers = {}
 )",
-                output_dir, RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -882,8 +875,7 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile(
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
@@ -891,7 +883,7 @@ InputDirs = input
 IncludePatterns = **
 Bakers = {}
 )",
-                output_dir, RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -918,8 +910,7 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile(
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
@@ -927,7 +918,7 @@ InputDirs = missing
 IncludePatterns = **
 Bakers = {}
 )",
-                output_dir, RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -969,15 +960,14 @@ TEST_CASE("BakerMasterRawCopyPackInputs")
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile(
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = false
 [ResourcePack]
 Name = Core
 InputFiles = PackedInput.zip
 Bakers = {}
 )",
-                output_dir, RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -1006,15 +996,14 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile(
-            strex(R"(Baking.BakeOutput = {}
+        auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputFiles = BrokenInput.zip
 Bakers = {}
 )",
-                output_dir, RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);

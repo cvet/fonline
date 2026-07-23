@@ -147,6 +147,19 @@ if(FO_BUILD_ASCOMPILER)
         WRITE_BUILD_HASH)
 endif()
 
+if(FO_MANAGED_SCRIPTING AND FO_BUILD_BAKER_LIB)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ManagedScriptBaker
+        "${FO_ENGINE_ROOT}/Source/Applications/ManagedScriptBakerApp.cpp"
+        OUTPUT_DIR ${FO_BAKER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ManagedScriptBaker
+        TESTING_APP 0
+        LINK_LIBS AppHeadless BakerLib
+        DEPENDS ${FO_GEN_DEPENDENCIES}
+        WRITE_BUILD_HASH)
+endif()
+
 if(FO_BUILD_BAKER)
     AddExecutableApplication(${FO_DEV_NAME}_Baker "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
         OUTPUT_DIR ${FO_BAKER_OUTPUT}
@@ -263,22 +276,15 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run code coverage and generate report")
         else()
-            if(MSVC)
-                AddCommandTarget(Run${name}
-                    COMMAND_ARGS
-                    COMMAND "${CMAKE_COMMAND}"
-                        "-DFO_RUN_COMMAND=$<TARGET_FILE:${target}>"
-                        "-DFO_RUN_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
-                        "-DFO_RUN_LOG=${CMAKE_CURRENT_BINARY_DIR}/${target}.log"
-                        -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/RunAndLog.cmake"
-                    DEPENDS ${target}
-                    COMMENT "Run ${name}")
-            else()
-                AddCommandTarget(Run${name}
-                    COMMAND_ARGS COMMAND ${target}
-                    DEPENDS ${target}
-                    COMMENT "Run ${name}")
-            endif()
+            AddCommandTarget(Run${name}
+                COMMAND_ARGS COMMAND
+                    ${CMAKE_COMMAND}
+                    "-DTEST_EXECUTABLE=$<TARGET_FILE:${target}>"
+                    "-DTEST_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+                    "-DTEST_LOG=${CMAKE_CURRENT_BINARY_DIR}/Testing/${target}-$<CONFIG>.log"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/RunTestExecutable.cmake"
+                DEPENDS ${target}
+                COMMENT "Run ${name}")
         endif()
     endmacro()
 

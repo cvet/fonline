@@ -578,6 +578,61 @@ void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
     }
 }
 
+static void CopyPropertyStructToScriptStruct(ptr<HashResolver> hash_resolver, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, ptr<void> script_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
+
+    auto script_bytes = script_data.reinterpret_as<uint8_t>();
+
+    for (const FieldDesc& field : base_type.StructLayout->Fields) {
+        ptr<const uint8_t> field_raw = make_ptr(raw_data.data()).offset(field.Offset);
+        ptr<uint8_t> field_script = script_bytes.offset(field.Offset);
+
+        if (field.Type.IsHashedString) {
+            hstring::hash_t hash {};
+            MemCopy(&hash, field_raw, sizeof(hash));
+            new (field_script.get()) hstring(hash != 0 ? hash_resolver->ResolveHash(hash) : hstring());
+        }
+        else if (field.Type.IsStruct && field.Type.StructLayout != nullptr) {
+            CopyPropertyStructToScriptStruct(hash_resolver, field.Type, {field_raw.get(), field.Type.Size}, field_script);
+        }
+        else {
+            MemCopy(field_script, field_raw, field.Type.Size);
+        }
+    }
+}
+
+static void CopyScriptStructToPropertyData(const BaseTypeDesc& base_type, ptr<const void> script_data, span<uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
+
+    auto script_bytes = script_data.reinterpret_as<const uint8_t>();
+
+    for (const FieldDesc& field : base_type.StructLayout->Fields) {
+        ptr<const uint8_t> field_script = script_bytes.offset(field.Offset);
+        ptr<uint8_t> field_raw = make_ptr(raw_data.data()).offset(field.Offset);
+
+        if (field.Type.IsHashedString) {
+            const hstring::hash_t hash = field_script.reinterpret_as<const hstring>()->as_hash();
+            MemCopy(field_raw, &hash, sizeof(hash));
+        }
+        else if (field.Type.IsStruct && field.Type.StructLayout != nullptr) {
+            CopyScriptStructToPropertyData(field.Type, field_script, {field_raw.get(), field.Type.Size});
+        }
+        else {
+            MemCopy(field_raw, field_script, field.Type.Size);
+        }
+    }
+}
+
 void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_data, ptr<void> construct_addr, ptr<AngelScript::asIScriptEngine> as_engine)
 {
     FO_STACK_TRACE_ENTRY();
@@ -645,7 +700,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         else if (prop->IsBaseTypeStruct()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = span_read_bytes(data_span, data_pos, data_size);
-            MemCopy(construct_addr, value_data.data(), data_size);
+            CopyPropertyStructToScriptStruct(prop->GetRegistrator()->GetHashResolver(), prop->GetBaseType(), value_data, construct_addr);
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -764,7 +819,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = span_read_bytes(data_span, data_pos, prop->GetBaseSize());
-                    MemCopy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
+                    CopyPropertyStructToScriptStruct(prop->GetRegistrator()->GetHashResolver(), prop->GetBaseType(), value_data, arr->At(numeric_cast<int32_t>(i)));
                 }
             }
         }
@@ -1069,6 +1124,10 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             const auto hash = as_obj.reinterpret_as<const hstring>()->as_hash();
             FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hash), "Property base size does not match hash storage size", prop->GetBaseSize(), sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
+        }
+        else if (prop->IsBaseTypeStruct()) {
+            ptr<uint8_t> raw_data = prop_data.Alloc(prop->GetBaseSize());
+            CopyScriptStructToPropertyData(prop->GetBaseType(), as_obj, {raw_data.get(), prop->GetBaseSize()});
         }
         else {
             prop_data.Set(as_obj.get(), prop->GetBaseSize());

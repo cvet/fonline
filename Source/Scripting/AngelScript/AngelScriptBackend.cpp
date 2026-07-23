@@ -581,6 +581,12 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         break;
     }
 
+#if FO_MANAGED_SCRIPTING
+    Preprocessor::Define(preprocessor_context.get(), "MANAGED 1");
+#else
+    Preprocessor::Define(preprocessor_context.get(), "MANAGED 0");
+#endif
+
     auto loader = ScriptLoader(&root_script, &final_script_files);
     Preprocessor::StringOutStream errors;
     Preprocessor::LexemList lexems;

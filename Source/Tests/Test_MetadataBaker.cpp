@@ -77,6 +77,47 @@ TEST_CASE("MetadataBaker")
     CHECK(bakers.front()->GetOrder() == 1);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
 
+    SECTION("serializes metadata tags from managed scripts")
+    {
+        rig.AddSourceFile("Scripts/TestManagedMetadata.cs", R"(
+namespace TestManagedMetadata
+{
+///@ Setting Server bool ManagedMetadata.ServerFlag
+///@ Setting Client bool ManagedMetadata.ClientFlag
+///@ Enum ManagedMetadataKind ServerEntry
+///@ Enum ManagedMetadataKind MapperEntry
+///@ RefType Common ManagedMetadataSnapshot
+///@ Property ManagedMetadataSnapshot Common int32 Value
+///@ FixedType Mapper ManagedMetadataMarker
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-mapper"));
+
+        const auto server_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        const auto client_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        const auto mapper_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-mapper"));
+
+        REQUIRE(server_tags.contains("Setting"));
+        REQUIRE(client_tags.contains("Setting"));
+        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool"}) == 1);
+        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool"}) == 1);
+        CHECK((!mapper_tags.contains("Setting") || mapper_tags.at("Setting").empty()));
+
+        REQUIRE(server_tags.contains("Enum"));
+        CHECK(std::ranges::count(server_tags.at("Enum"), vector<string> {"ManagedMetadataKind", "uint8", "ServerEntry", "0", "MapperEntry", "1"}) == 1);
+
+        REQUIRE(client_tags.contains("RefType"));
+        CHECK(std::ranges::count(client_tags.at("RefType"), vector<string> {"ManagedMetadataSnapshot", "Value", "int32", "0"}) == 1);
+
+        REQUIRE(mapper_tags.contains("FixedType"));
+        CHECK(std::ranges::count(mapper_tags.at("FixedType"), vector<string> {"ManagedMetadataMarker"}) == 1);
+    }
+
     SECTION("skips non metadata targets before parsing scripts")
     {
         rig.AddSourceFile("Scripts/Broken.fos", "///@ Unknown Tag");

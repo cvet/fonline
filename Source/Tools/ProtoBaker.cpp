@@ -37,6 +37,7 @@
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "EntityProtos.h"
+#include "ManagedScripting.h"
 #include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -87,6 +88,9 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
             engine.MapScriptTypes(&engine);
 #if FO_ANGELSCRIPT_SCRIPTING
             InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
+#endif
+#if FO_MANAGED_SCRIPTING
+            InitManagedScripting(&engine, *_context->BakedFiles, _context->Settings->BakeOutput);
 #endif
             auto data = BakeProtoFiles(&engine, &engine, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-server", data);

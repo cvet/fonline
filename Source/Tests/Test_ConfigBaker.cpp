@@ -124,10 +124,9 @@ TEST_CASE("ConfigBaker")
     SECTION("BakeCheckerCanSkipAllConfigs")
     {
         TestRig rig;
-        ConfigFile config {
-            "[SubConfig]\n"
-            "Name = Child\n"
-            "Common.GameName = ChildGame\n"};
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = Child\n"
+                           "Common.GameName = ChildGame\n"};
         rig.Settings.ApplyConfigFile(config, "");
 
         vector<pair<string, uint64_t>> checks;

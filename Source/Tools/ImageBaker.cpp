@@ -2700,7 +2700,6 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
             {
                 ignore_unused(png_ptr);
                 ignore_unused(error_msg);
-                // WriteLog("PNG loading warning: {}", error_msg);
             }
         };
 

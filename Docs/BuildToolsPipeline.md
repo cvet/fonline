@@ -107,7 +107,7 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Mono script compilation through `BuildTools/compile-mono-scripts.py` when Mono scripting is enabled.
+- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing the Mono runtime, Mono corelib, and managed .NET runtime assemblies under the CMake build tree before managed-linked applications are built.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.

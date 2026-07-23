@@ -164,6 +164,8 @@ void MapView::OnDestroySelf()
 {
     FO_STACK_TRACE_ENTRY();
 
+    _eventUnsubscriber.Unsubscribe();
+
     for (auto& cr : _critters) {
         safe_call([&] { cr->DestroySelf(); });
     }

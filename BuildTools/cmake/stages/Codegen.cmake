@@ -55,8 +55,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS
 	-enginedefine "FO_RENDER_32BIT_INDEX=0")
 
 AppendList(FO_CODEGEN_META_SOURCE
-    ${FO_SOURCE_META_FILES}
-    ${FO_MONO_SOURCE})
+    ${FO_SOURCE_META_FILES})
 
 foreach(entry ${FO_CODEGEN_META_SOURCE})
     AppendList(FO_CODEGEN_COMMAND_ARGS -meta ${entry})
