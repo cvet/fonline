@@ -1,0 +1,7 @@
+set output dump
+set bind-root false
+set traversal IgnoreUnlessSpelledInSource
+
+# Top-level const on an automatic local is normally redundant. constexpr
+# locals and arrays retain const because it is part of their semantics.
+match varDecl(unless(parmVarDecl()), hasAutomaticStorageDuration(), hasType(isConstQualified()), unless(hasType(arrayType())), unless(isConstexpr()), @SOURCE_FILTER@).bind("top_level_const_local")
