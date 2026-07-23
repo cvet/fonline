@@ -85,6 +85,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 #if FO_ENABLE_3D
     int32_t shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
     FO_VERIFY_AND_THROW(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)), "FOFX shadow pass index is outside the supported pass range", name, shadow_pass, EFFECT_MAX_PASSES);
+
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }

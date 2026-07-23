@@ -110,7 +110,7 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
 #if FO_WINDOWS
     int32_t select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #else
-    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
+    int32_t select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #endif
 
     if (select_result <= 0) {
