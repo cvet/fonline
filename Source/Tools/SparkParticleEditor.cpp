@@ -1103,7 +1103,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
             ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
             string name = strex("{}: {} => {}", entry->x, entry->y0, entry->y1);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(entry.get(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", &entry->y0);
                 ImGui::InputFloat("End", &entry->y1);
 
@@ -1161,7 +1161,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphIn
             ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
             string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(entry.get(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int32_t c1[] = {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
                 ImGui::InputInt4("Start", c1);
                 entry->y0.r = numeric_cast<unsigned char>(c1[0]);
@@ -1850,7 +1850,7 @@ void SparkParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, c
 
             const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(obj.get())).c_str(), 0, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(obj.get(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }

@@ -143,7 +143,7 @@ auto File::Load(const FileHeader& fh) -> File
     auto write_time = fh.GetWriteTime();
     auto data_source = fh.GetDataSource();
     auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
-    FO_VERIFY_AND_THROW(buf, "Missing required buffer");
+    FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetPackName(), size, write_time);
 
     return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
