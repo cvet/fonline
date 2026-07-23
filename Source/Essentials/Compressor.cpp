@@ -149,7 +149,7 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
     int32_t deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
     FO_VERIFY_AND_THROW(deflate_result == Z_OK, "Zlib deflate did not finish with Z_OK", deflate_result, Z_OK, buf.size(), result.size());
 
-    auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
+    size_t writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
     FO_VERIFY_AND_THROW(writed_len == buf.size(), "Zlib deflate did not consume the full input buffer", writed_len, buf.size());
 
     size_t compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
