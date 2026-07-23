@@ -75,6 +75,10 @@ constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME = "FOnline.ManagedHost.dll
 constexpr string_view MANAGED_HOST_NAMESPACE = "FOnline.ManagedHost";
 constexpr string_view MANAGED_HOST_CLASS_NAME = "ManagedLoadContextHost";
 
+// The root domain becomes visible before Mono finishes initializing its core classes. Serialize the
+// check-and-initialize sequence so another engine cannot attach to a partially initialized runtime.
+static mutex ManagedRuntimeInitLocker;
+
 // Embedded Mono can overlap normal execution across load contexts, but concurrent context loading corrupts its
 // loader state. Serialize only assembly loading; managed engines still run in parallel.
 static mutex ManagedAssemblyLoadLocker;
@@ -5221,34 +5225,39 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     FO_VERIFY_AND_THROW(_scriptSys, "Script system is not available");
 
     if (!_domain) {
-        auto* domain = mono_get_root_domain();
+        MonoDomain* domain = nullptr;
 
-        if (domain == nullptr) {
-            ConfigureManagedRuntime();
-
-#if FO_WINDOWS
-            // Catch2 owns the top-level SEH filter while a unit-test session is active. Mono keeps its own
-            // filter installed even with crash chaining enabled, so preserve the test host's filter across
-            // the one-time runtime initialization. Production keeps Mono's chained crash filter.
-            const bool preserve_test_exception_filter = IsTestingInProgress;
-            LPTOP_LEVEL_EXCEPTION_FILTER test_exception_filter = nullptr;
-
-            if (preserve_test_exception_filter) {
-                test_exception_filter = SetUnhandledExceptionFilter(nullptr);
-                SetUnhandledExceptionFilter(test_exception_filter);
-            }
-
-            auto restore_test_exception_filter = scope_exit([preserve_test_exception_filter, test_exception_filter]() noexcept {
-                if (preserve_test_exception_filter) {
-                    SetUnhandledExceptionFilter(test_exception_filter);
-                }
-            });
-#endif
-
-            domain = mono_jit_init_version("FOnlineManaged", "v4.0.30319");
+        {
+            scoped_lock runtime_init_locker {ManagedRuntimeInitLocker};
+            domain = mono_get_root_domain();
 
             if (domain == nullptr) {
-                throw ScriptSystemException("Failed to initialize Managed runtime domain");
+                ConfigureManagedRuntime();
+
+#if FO_WINDOWS
+                // Catch2 owns the top-level SEH filter while a unit-test session is active. Mono keeps its own
+                // filter installed even with crash chaining enabled, so preserve the test host's filter across
+                // the one-time runtime initialization. Production keeps Mono's chained crash filter.
+                const bool preserve_test_exception_filter = IsTestingInProgress;
+                LPTOP_LEVEL_EXCEPTION_FILTER test_exception_filter = nullptr;
+
+                if (preserve_test_exception_filter) {
+                    test_exception_filter = SetUnhandledExceptionFilter(nullptr);
+                    SetUnhandledExceptionFilter(test_exception_filter);
+                }
+
+                auto restore_test_exception_filter = scope_exit([preserve_test_exception_filter, test_exception_filter]() noexcept {
+                    if (preserve_test_exception_filter) {
+                        SetUnhandledExceptionFilter(test_exception_filter);
+                    }
+                });
+#endif
+
+                domain = mono_jit_init_version("FOnlineManaged", "v4.0.30319");
+
+                if (domain == nullptr) {
+                    throw ScriptSystemException("Failed to initialize Managed runtime domain");
+                }
             }
         }
 

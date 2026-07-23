@@ -54,17 +54,28 @@ namespace FOnline
                 delegateParamTypes[i] = parameters[i].ParameterType;
             }
 
-            // Remote calls do not return wire values, but async handlers are represented as Task-returning
-            // methods. Wrap the static method as Action<...> or Func<..., Task> so Native.InvokeCallback can
-            // DynamicInvoke it and wait for the Task when needed.
-            Type delegateType;
+            // Remote calls do not return wire values. Task handlers must release the inbound network pump as
+            // soon as they suspend; waiting here deadlocks handlers whose continuation needs a later client tick.
+            Type delegateType = Expression.GetActionType(delegateParamTypes);
+            Delegate handler;
+
             if (method.ReturnType == typeof(void))
             {
-                delegateType = Expression.GetActionType(delegateParamTypes);
+                handler = Delegate.CreateDelegate(delegateType, method);
             }
             else if (typeof(Task).IsAssignableFrom(method.ReturnType))
             {
-                delegateType = Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
+                ParameterExpression[] lambdaParameters = delegateParamTypes
+                    .Select((type, index) => Expression.Parameter(type, "arg" + index))
+                    .ToArray();
+                MethodCallExpression invokeHandler = Expression.Call(method, lambdaParameters);
+                MethodCallExpression observeTask = Expression.Call(
+                    typeof(RemoteCallScriptFuncs),
+                    nameof(ObserveRemoteCallTask),
+                    Type.EmptyTypes,
+                    Expression.Convert(invokeHandler, typeof(Task)));
+
+                handler = Expression.Lambda(delegateType, observeTask, lambdaParameters).Compile();
             }
             else
             {
@@ -75,9 +86,12 @@ namespace FOnline
                     method.Name);
             }
 
-            Delegate handler = Delegate.CreateDelegate(delegateType, method);
-
             Native.RegisterRemoteCallHandler(method.Name, parameters.Length, handler);
+        }
+
+        private static void ObserveRemoteCallTask(Task task)
+        {
+            Game.ObserveInvokeTask(task);
         }
     }
 }

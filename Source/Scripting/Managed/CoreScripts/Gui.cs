@@ -179,6 +179,9 @@ namespace FOnline
         //   SpriteLayout BackgroundImageLayout
         //   void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
         //   void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+        //   void SetFrameImage(string imageName)
+        //   void SetFrameImage(hstring imageName)
+        //   void SetCapInsets(int left, int top, int right, int bottom)
         //   void SetCropContent(bool enabled)
         //   void SetAutoScroll(bool ver, bool hor)
         //   int VerticalScrollValue
@@ -1629,6 +1632,10 @@ namespace FOnline
             }
 
             public Sprite? _BackgroundImage;
+            public int _CapLeft;
+            public int _CapTop;
+            public int _CapRight;
+            public int _CapBottom;
             public bool _CropContent;
             public bool _IsVerticalScroll;
             public bool _IsHorizontalScroll;
@@ -1747,19 +1754,156 @@ namespace FOnline
 
             public void _DrawImage(Sprite image)
             {
-                if (_Size != new isize()) {
-                    image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout.None, _Color);
+                if (_Size == new isize()) {
+                    return;
                 }
+
+                if (_CapLeft <= 0 && _CapTop <= 0 && _CapRight <= 0 && _CapBottom <= 0) {
+                    image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout.None, _Color);
+                    return;
+                }
+
+                if (image.Id == 0) {
+                    return;
+                }
+
+                isize src = image.Size;
+                if (src.width <= 0 || src.height <= 0) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+
+                int dw = _Size.width;
+                int dh = _Size.height;
+                int sl = Math.Clamp(_CapLeft, 0, src.width);
+                int sr = Math.Clamp(_CapRight, 0, src.width - sl);
+                int st = Math.Clamp(_CapTop, 0, src.height);
+                int sb = Math.Clamp(_CapBottom, 0, src.height - st);
+                int dl = Math.Clamp(sl, 0, dw);
+                int dr = Math.Clamp(sr, 0, dw - dl);
+                int dt = Math.Clamp(st, 0, dh);
+                int db = Math.Clamp(sb, 0, dh - dt);
+                float uL = (float)sl / src.width;
+                float uR = (float)(src.width - sr) / src.width;
+                float vT = (float)st / src.height;
+                float vB = (float)(src.height - sb) / src.height;
+                int x0 = _AbsolutePos.x;
+                int y0 = _AbsolutePos.y;
+                int xR = x0 + dw - dr;
+                int yB = y0 + dh - db;
+                int midW = dw - dl - dr;
+                int midH = dh - dt - db;
+                uint id = image.Id;
+                ucolor color = _Color;
+
+                if (!_DrawSlice(id, 0.0f, 0.0f, uL, vT, new ipos(x0, y0), new isize(dl, dt), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uR, 0.0f, 1.0f, vT, new ipos(xR, y0), new isize(dr, dt), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, 0.0f, vB, uL, 1.0f, new ipos(x0, yB), new isize(dl, db), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uR, vB, 1.0f, 1.0f, new ipos(xR, yB), new isize(dr, db), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uL, 0.0f, uR, vT, new ipos(x0 + dl, y0), new isize(midW, dt), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uL, vB, uR, 1.0f, new ipos(x0 + dl, yB), new isize(midW, db), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, 0.0f, vT, uL, vB, new ipos(x0, y0 + dt), new isize(dl, midH), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uR, vT, 1.0f, vB, new ipos(xR, y0 + dt), new isize(dr, midH), color)) {
+                    _DrawFallbackImage(image);
+                    return;
+                }
+                if (!_DrawSlice(id, uL, vT, uR, vB, new ipos(x0 + dl, y0 + dt), new isize(midW, midH), color)) {
+                    _DrawFallbackImage(image);
+                }
+            }
+
+            private bool _DrawSlice(uint id, float u0, float v0, float u1, float v1, ipos pos, isize size, ucolor color)
+            {
+                if (size.width > 0 && size.height > 0) {
+                    return Game.DrawSpriteRegion(id, new fpos(u0, v0), new fpos(u1, v1), pos, size, color);
+                }
+
+                return true;
+            }
+
+            public void _DrawFallbackImage(Sprite image)
+            {
+                image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout.Stretch, _Color);
+            }
+
+            public void SetCapInsets(int left, int top, int right, int bottom)
+            {
+                _CapLeft = left;
+                _CapTop = top;
+                _CapRight = right;
+                _CapBottom = bottom;
+                _RefreshNeedDraw();
+            }
+
+            public void SetFrameImage(string imageName)
+            {
+                SetFrameImage(imageName.hstr());
+            }
+
+            public void SetFrameImage(hstring imageName)
+            {
+                Sprite? curImage = _BackgroundImage;
+                if (curImage != null && curImage.LoadedName == imageName) {
+                    return;
+                }
+
+                _DisposeImage(ref _BackgroundImage);
+                _BackgroundImage = null;
+
+                if (imageName.Value != 0) {
+                    Sprite spr = new Sprite();
+                    if (spr.Load(imageName)) {
+                        _BackgroundImage = spr;
+                    }
+                }
+
+                _RefreshNeedDraw();
             }
 
             public void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout.None)
             {
+                _ClearCapInsets();
                 _SetImage(ref _BackgroundImage, imageName, imageLayout);
             }
 
             public void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout.None)
             {
+                _ClearCapInsets();
                 _SetImage(ref _BackgroundImage, imageName, imageLayout);
+            }
+
+            public void _ClearCapInsets()
+            {
+                bool hadCapInsets = _CapLeft != 0 || _CapTop != 0 || _CapRight != 0 || _CapBottom != 0;
+                _CapLeft = 0;
+                _CapTop = 0;
+                _CapRight = 0;
+                _CapBottom = 0;
+
+                if (hadCapInsets) {
+                    _RefreshNeedDraw();
+                }
             }
 
             public void _SetImage(ref Sprite? curImage, string imageName, SpriteLayout imageLayout)
