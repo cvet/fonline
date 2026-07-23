@@ -436,8 +436,8 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
     _impl->TiltInProjection = setup.TiltInProjection;
 
-    auto position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
-    auto view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
     mat44 result_position_matrix;
 
     if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
@@ -447,8 +447,8 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
         glm::vec<4, float32_t, glm::defaultp> perspective {};
         quaternion rotation {};
         glm::decompose(view_offset_matrix * setup.World * position_offset_matrix, result_position_scale, rotation, result_position, skew, perspective);
-        auto result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
-        auto look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        mat44 result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
+        mat44 look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
         result_position_matrix = result_position_translation_matrix * look_direction_matrix;
     }
     else {
@@ -466,7 +466,7 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
     _impl->RuntimeSystem->updateTransform();
 
-    auto camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
     _impl->TiltInProjection = setup.TiltInProjection;
