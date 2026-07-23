@@ -92,7 +92,7 @@ $Name = PlainItem
     SECTION("BakesFomapHeaderWithDefaultProtoName")
     {
         TestRig local_rig;
-        local_rig.AddSourceFile("Maps/HeaderOnly.fomap", R"([Header]
+        local_rig.AddSourceFile("Maps/HeaderOnly.fomap", R"([ProtoMap]
 )");
         add_client_mapper_metadata(local_rig);
 
@@ -101,6 +101,21 @@ $Name = PlainItem
         CHECK(local_rig.Outputs.contains("ProtoPackFomap.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackFomap.fopro-bin-mapper"));
         CHECK(local_rig.Outputs.size() == 2);
+    }
+
+    SECTION("RejectsCollidingAnonymousMapAnchors")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Maps/Collide.fomap", R"([ProtoMap]
+Outside = True
+[ProtoMap]
+Outside = False
+)");
+        add_client_mapper_metadata(local_rig);
+
+        // Both anchors resolve to the file stem and collide in proto registration
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackFomap", client_mapper_bake));
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("BakesInheritedProtoParents")

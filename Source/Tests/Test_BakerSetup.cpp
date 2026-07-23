@@ -321,7 +321,7 @@ TEST_CASE("BakerDataSource")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("BakerDataSource.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -424,7 +424,7 @@ TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("BakerDataSourceDependencyOrder.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -475,7 +475,7 @@ TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("BakerDataSourcePackPriority.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -531,7 +531,7 @@ TEST_CASE("BakerMasterRawCopy")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("MasterBakerRawCopy.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -651,7 +651,7 @@ TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("ResourcePackGlobSplit.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -698,7 +698,7 @@ TEST_CASE("BakerMasterImageReport")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("MasterBakerImageReport.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = True
 Baking.SingleThreadBaking = True
@@ -838,7 +838,7 @@ TEST_CASE("BakerMasterRawCopyEdges")
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("MasterBakerRawCopyForce.fomain",
+        auto config = ConfigFile(
             strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = true
 Baking.SingleThreadBaking = true
@@ -882,7 +882,7 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("MasterBakerRawCopyHash.fomain",
+        auto config = ConfigFile(
             strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -918,7 +918,7 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("MasterBakerRawCopyMissingInput.fomain",
+        auto config = ConfigFile(
             strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -969,7 +969,7 @@ TEST_CASE("BakerMasterRawCopyPackInputs")
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("MasterBakerRawCopyInputFilePack.fomain",
+        auto config = ConfigFile(
             strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = false
 [ResourcePack]
@@ -1006,7 +1006,7 @@ Bakers = {}
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
 
-        auto config = ConfigFile("MasterBakerRawCopyInputFilePackError.fomain",
+        auto config = ConfigFile(
             strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]

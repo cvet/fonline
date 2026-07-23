@@ -1195,7 +1195,7 @@ auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
         return {};
     }
 
-    return map->SaveToText();
+    return map->SaveToText(map->GetName());
 }
 
 void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> entity) const
@@ -1355,7 +1355,7 @@ auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_nam
 
     auto old_map = *map;
 
-    auto restored_map = LoadMapFromText(map_name, map_text);
+    auto restored_map = LoadMapFromText(map_name, map_name, map_text);
     if (!restored_map) {
         return false;
     }
@@ -2276,24 +2276,39 @@ void MapperEngine::DrawMapListWindowImGui()
     auto& map_filter = MapBrowserFilter;
     if (ImGui::IsWindowAppearing()) {
         ImGui::SetKeyboardFocusHere();
+        MapBrowserNamesStale = true;
     }
     ImGuiInputTextStringWithHint("##AllMapsFilter", "Search maps...", map_filter);
 
+    if (MapBrowserNamesStale) {
+        MapBrowserNames.clear();
+
+        const auto map_files = MapsFileSys.FilterFiles("");
+
+        for (const auto& map_file_header : map_files) {
+            if (!IsProtoFileExtension(map_file_header.GetPath())) {
+                continue;
+            }
+
+            const File map_file = File::Load(map_file_header);
+            auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+            MapBrowserNames.insert(MapBrowserNames.end(), std::make_move_iterator(declared_maps.begin()), std::make_move_iterator(declared_maps.end()));
+        }
+
+        std::ranges::sort(MapBrowserNames);
+        MapBrowserNamesStale = false;
+    }
+
     vector<string> map_names;
-    const auto map_files = MapsFileSys.FilterFiles("fomap");
-    map_names.reserve(map_files.GetFilesCount());
+    map_names.reserve(MapBrowserNames.size());
 
-    for (const auto& map_file : map_files) {
-        const auto map_name = map_file.GetNameNoExt();
-
+    for (const auto& map_name : MapBrowserNames) {
         if (!ContainsCaseInsensitive(map_name, map_filter)) {
             continue;
         }
 
         map_names.emplace_back(map_name);
     }
-
-    std::ranges::sort(map_names);
 
     ImGui::Text("Maps: %d", numeric_cast<int32_t>(map_names.size()));
     ImGui::Separator();
@@ -6057,17 +6072,24 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "resave") {
             AddMess("Resave maps");
 
-            auto map_files = MapsFileSys.FilterFiles("fomap");
+            auto map_files = MapsFileSys.FilterFiles("");
 
             for (const auto& map_file_header : map_files) {
-                const auto map_name = map_file_header.GetNameNoExt();
-
-                if (auto map = LoadMap(map_name)) {
-                    SaveMap(map, map_name);
-                    AddMess(strex("Resave map: {}", map_name));
+                if (!IsProtoFileExtension(map_file_header.GetPath())) {
+                    continue;
                 }
-                else {
-                    AddMess(strex("Failed to load map: {}", map_name));
+
+                const File map_file = File::Load(map_file_header);
+                const auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+
+                for (const auto& map_name : declared_maps) {
+                    if (auto map = LoadMap(map_name)) {
+                        SaveMap(map, map_name);
+                        AddMess(strex("Resave map: {}", map_name));
+                    }
+                    else {
+                        AddMess(strex("Failed to load map: {}", map_name));
+                    }
                 }
             }
         }
@@ -6136,17 +6158,43 @@ void MapperEngine::ParseCommand(string_view command)
     }
 }
 
-auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>
+auto MapperEngine::IsProtoFileExtension(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_text, ConfigFileOption::ReadFirstSection);
+    const string ext = strex(path).get_file_extension();
+    return std::ranges::find(Settings->ProtoFileExtensions, ext) != Settings->ProtoFileExtensions.end();
+}
+
+auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto map_data = ConfigFile(map_text, ConfigFileOption::SkipNestedSections);
 
     if (!map_data.HasSection("ProtoMap")) {
-        throw MapLoaderException("Invalid map format", map_name);
+        throw MapLoaderException("Invalid map format", map_name, file_name);
     }
 
-    const auto& proto_map_section = map_data.GetSection("ProtoMap");
+    const string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
+    const auto anchor_sections = map_data.GetSections("ProtoMap");
+    nptr<const map<string_view, string_view>> found_anchor_section;
+
+    for (const auto& anchor_kv : anchor_sections) {
+        const auto anchor_name_it = anchor_kv->find("$Name");
+        const bool anchor_matched = anchor_name_it != anchor_kv->end() ? anchor_name_it->second == map_name : file_stem == map_name;
+
+        if (anchor_matched) {
+            found_anchor_section = anchor_kv;
+            break;
+        }
+    }
+
+    if (!found_anchor_section) {
+        throw MapLoaderException("Map is not declared in the file", map_name, file_name);
+    }
+
+    const auto& proto_map_section = *found_anchor_section;
     map<string, string> proto_map_header_extra_fields;
 
     for (const auto& [key, value] : proto_map_section) {
@@ -6167,7 +6215,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     new_map->SetScrollCheck(false);
 
     try {
-        new_map->LoadFromFile(map_name, map_text);
+        new_map->LoadFromFile(map_name, file_name, map_text);
     }
     catch (const MapLoaderException& ex) {
         AddMess(strex("Map truncated: {}", ex.what()));
@@ -6195,18 +6243,45 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_files = MapsFileSys.FilterFiles("fomap");
+    const auto map_files = MapsFileSys.FilterFiles("");
     File map_file = map_files.FindFileByName(map_name);
 
     if (!map_file) {
-        string map_path = string(map_name);
-
-        if (!strvex(map_path).ends_with(".fomap")) {
-            map_path = strex("{}.fomap", map_path).str();
-        }
-
-        map_path = strex(map_path).format_path().str();
+        const string map_path = strex(map_name).format_path().str();
         map_file = map_files.FindFileByPath(map_path);
+
+        for (const auto& proto_ext : Settings->ProtoFileExtensions) {
+            if (map_file) {
+                break;
+            }
+
+            map_file = map_files.FindFileByPath(strex("{}.{}", map_path, proto_ext).str());
+        }
+    }
+
+    if (map_file) {
+        const auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+
+        if (std::ranges::find(declared_maps, map_name) == declared_maps.end()) {
+            map_file = File {};
+        }
+    }
+
+    if (!map_file) {
+        // The map may live in a multi-map file with an unrelated name
+        for (const auto& file_header : map_files) {
+            if (!IsProtoFileExtension(file_header.GetPath())) {
+                continue;
+            }
+
+            File candidate_file = File::Load(file_header);
+            const auto declared_maps = MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetStr());
+
+            if (std::ranges::find(declared_maps, map_name) != declared_maps.end()) {
+                map_file = std::move(candidate_file);
+                break;
+            }
+        }
     }
 
     if (!map_file) {
@@ -6214,7 +6289,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
         return nullptr;
     }
 
-    return LoadMapFromText(map_name, map_file.GetStr());
+    return LoadMapFromText(map_name, map_file.GetPath(), map_file.GetStr());
 }
 
 void MapperEngine::ShowMap(ptr<MapView> map)
@@ -6312,6 +6387,121 @@ void MapperEngine::ResetCurrentMapChanges()
     }
 }
 
+// Rebuilds a multi-map map-file content with one map's sections replaced by freshly saved text.
+// Sections of other maps are preserved byte-exact; the saved map's block lands at the position
+// of its first original section.
+static auto SpliceMapIntoFomapContent(string_view file_stem, const string& original_content, string_view map_name, string_view map_content) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Locate section runs: each starts at its [..] header line and spans up to the next header
+    struct FomapSectionRange
+    {
+        size_t Start {};
+        size_t End {};
+        string Name {};
+    };
+
+    vector<FomapSectionRange> section_ranges;
+
+    size_t line_begin = 0;
+
+    while (line_begin < original_content.length()) {
+        size_t line_end = original_content.find('\n', line_begin);
+
+        if (line_end == string::npos) {
+            line_end = original_content.length();
+        }
+
+        const string_view line = strvex(string_view(original_content).substr(line_begin, line_end - line_begin)).trim();
+
+        if (!line.empty() && line.front() == '[') {
+            const size_t name_end = line.find(']');
+
+            if (name_end != string_view::npos) {
+                if (!section_ranges.empty()) {
+                    section_ranges.back().End = line_begin;
+                }
+
+                section_ranges.emplace_back(FomapSectionRange {line_begin, original_content.length(), string(strvex(line.substr(1, name_end - 1)).trim())});
+            }
+        }
+
+        line_begin = line_end + 1;
+    }
+
+    // Anchors own themselves and set the [$Name/X] context; the anchor identity is its $Name or the file stem
+    const auto resolve_anchor_name = [&](const FomapSectionRange& range) -> string {
+        size_t anchor_line_begin = range.Start;
+
+        while (anchor_line_begin < range.End) {
+            size_t anchor_line_end = original_content.find('\n', anchor_line_begin);
+
+            if (anchor_line_end == string::npos || anchor_line_end > range.End) {
+                anchor_line_end = range.End;
+            }
+
+            const string_view anchor_line = strvex(string_view(original_content).substr(anchor_line_begin, anchor_line_end - anchor_line_begin)).trim();
+
+            if (strvex(anchor_line).starts_with("$Name")) {
+                const string_view name_value = strvex(anchor_line.substr("$Name"_len)).trim();
+
+                if (!name_value.empty() && name_value.front() == '=') {
+                    return string(strvex(name_value.substr(1)).trim());
+                }
+            }
+
+            anchor_line_begin = anchor_line_end + 1;
+        }
+
+        return string(file_stem);
+    };
+
+    string result;
+    result.reserve(original_content.length() + map_content.length());
+
+    if (!section_ranges.empty()) {
+        result.append(original_content, 0, section_ranges.front().Start);
+    }
+    else {
+        result.append(original_content);
+    }
+
+    string context_name = string(file_stem);
+    bool map_written = false;
+
+    for (const auto& range : section_ranges) {
+        string owner_name;
+
+        if (range.Name.find('/') == string::npos) {
+            owner_name = resolve_anchor_name(range);
+            context_name = owner_name;
+        }
+        else if (strvex(range.Name).starts_with("$Name/")) {
+            owner_name = context_name;
+        }
+        else {
+            owner_name = range.Name.substr(0, range.Name.find('/'));
+        }
+
+        if (owner_name == map_name) {
+            if (!map_written) {
+                result.append(map_content);
+                map_written = true;
+            }
+        }
+        else {
+            result.append(original_content, range.Start, range.End - range.Start);
+        }
+    }
+
+    if (!map_written) {
+        result.append(map_content);
+    }
+
+    return result;
+}
+
 void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -6329,40 +6519,96 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     });
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper save requested for a map that is not tracked as loaded", map->GetName(), custom_name, LoadedMaps.size());
 
-    const auto fomap_content = map->SaveToText();
+    const auto fomap_name = !custom_name.empty() ? string(custom_name) : string(map->GetProto()->GetName());
+    FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a map name for saving", map->GetName(), custom_name, map->GetProto()->GetName());
 
-    const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
-    FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a .fomap file name for saving", map->GetName(), custom_name, map->GetProto()->GetName());
+    const auto fomap_content = map->SaveToText(fomap_name);
 
     string fomap_path;
-    const auto fomap_files = MapsFileSys.FilterFiles("fomap");
+    string final_content;
+    const auto map_files = MapsFileSys.FilterFiles("");
 
-    if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
-        fomap_path = fomap_file.GetDiskPath();
+    // One pass over map containers: find the file that already declares this map, remember the
+    // original map's file (save-as locality) and the first container (extension/dir reference)
+    const string original_map_name = string(map->GetProto()->GetName());
+    File declaring_file;
+    vector<string> declaring_file_maps;
+    string original_declaring_path;
+    string first_container_path;
+
+    for (const auto& file_header : map_files) {
+        if (!IsProtoFileExtension(file_header.GetPath())) {
+            continue;
+        }
+
+        File candidate_file = File::Load(file_header);
+        auto declared_maps = MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetStr());
+
+        if (declared_maps.empty()) {
+            continue;
+        }
+
+        if (first_container_path.empty()) {
+            first_container_path = candidate_file.GetDiskPath();
+        }
+        if (original_declaring_path.empty() && std::ranges::find(declared_maps, original_map_name) != declared_maps.end()) {
+            original_declaring_path = candidate_file.GetDiskPath();
+        }
+
+        if (std::ranges::find(declared_maps, fomap_name) != declared_maps.end()) {
+            declaring_file = std::move(candidate_file);
+            declaring_file_maps = std::move(declared_maps);
+            break;
+        }
+
+        FO_VERIFY_AND_THROW(candidate_file.GetNameNoExt() != fomap_name, "Mapper save target file exists but does not declare the saved map", fomap_name, candidate_file.GetPath());
     }
-    else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-        fomap_path = strex(fomap_file2.GetDiskPath()).change_file_name(fomap_name);
-    }
-    else if (fomap_files.GetFilesCount() != 0) {
-        fomap_path = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).change_file_name(fomap_name);
+
+    if (declaring_file) {
+        fomap_path = declaring_file.GetDiskPath();
+
+        if (declaring_file_maps.size() == 1) {
+            final_content = fomap_content;
+        }
+        else {
+            final_content = SpliceMapIntoFomapContent(declaring_file.GetNameNoExt(), declaring_file.GetStr(), fomap_name, fomap_content);
+        }
     }
     else {
-        fomap_path = strex("{}.fomap", fomap_path).format_path();
+        final_content = fomap_content;
+
+        // A brand-new map lands beside the original map's file, else beside any map container,
+        // keeping that file's extension; with no containers at all the first configured
+        // extension names the new file
+        if (!original_declaring_path.empty()) {
+            fomap_path = strex(original_declaring_path).change_file_name(fomap_name);
+        }
+        else if (!first_container_path.empty()) {
+            fomap_path = strex(first_container_path).change_file_name(fomap_name);
+        }
+        else {
+            FO_VERIFY_AND_THROW(!Settings->ProtoFileExtensions.empty(), "No proto file extensions are configured");
+            fomap_path = strex("{}.{}", fomap_name, Settings->ProtoFileExtensions.front()).format_path();
+        }
     }
 
     const auto dir = strex(fomap_path).extract_dir().str();
 
     if (!dir.empty()) {
         const auto dir_ok = fs_create_directories(dir);
-        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create .fomap output directory", dir, fomap_path, fomap_name);
+        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create the map output directory", dir, fomap_path, fomap_name);
     }
 
     std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
-    if (!fomap_content.empty()) {
-        fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open the map file for writing", fomap_path, fomap_name, final_content.size());
+
+    if (!final_content.empty()) {
+        fomap_file.write(final_content.data(), static_cast<std::streamsize>(final_content.size()));
     }
-    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
+
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write the map file content", fomap_path, fomap_name, final_content.size());
+
+    MapBrowserNamesStale = true;
 
     OnEditMapSave.Fire(map);
     auto ctx = GetUndoContext(map, true);
@@ -6388,16 +6634,32 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     });
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Map to save is not in the loaded maps list");
 
-    const auto fomap_content = map->SaveToText();
+    const auto fomap_content = map->SaveToText(name);
 
-    // Resolve the on-disk Maps root from an existing fomap disk path, then write the new map
-    // under <MapsRoot>/<sub_dir>/<name>.fomap. The AI authoring loop targets a checked-in
-    // Maps/Generated/ area, so this avoids SaveMap's "first file's directory" fallback that
-    // could scatter generated maps next to unrelated content.
-    const auto fomap_files = MapsFileSys.FilterFiles("fomap");
-    FO_VERIFY_AND_THROW(fomap_files.GetFilesCount() != 0, "No fomap file found to resolve the Maps root directory");
+    // Resolve the on-disk Maps root from an existing map container's disk path, then write the
+    // new map under <MapsRoot>/<sub_dir>/<name>.<ext> with the reference container's extension.
+    // The AI authoring loop targets a checked-in Maps/Generated/ area, so this avoids SaveMap's
+    // "first file's directory" fallback that could scatter generated maps next to unrelated content.
+    const auto map_files = MapsFileSys.FilterFiles("");
+    string reference_map_path;
 
-    string maps_root = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).extract_dir().str();
+    for (const auto& file_header : map_files) {
+        if (!IsProtoFileExtension(file_header.GetPath())) {
+            continue;
+        }
+
+        const File candidate_file = File::Load(file_header);
+
+        if (!MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetStr()).empty()) {
+            reference_map_path = candidate_file.GetDiskPath();
+            break;
+        }
+    }
+
+    FO_VERIFY_AND_THROW(!reference_map_path.empty(), "No map container found to resolve the maps root directory");
+
+    const string reference_map_ext = strex(reference_map_path).get_file_extension().str();
+    string maps_root = strex(reference_map_path).extract_dir().str();
     std::ranges::replace(maps_root, '\\', '/');
 
     if (const auto pos = maps_root.rfind("/Maps/"); pos != string::npos) {
@@ -6406,7 +6668,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     // else: best-effort fallback keeps the reference file's directory (incl. a path already ending in /Maps)
 
     const string target_dir = !sub_dir.empty() ? strex("{}/{}", maps_root, sub_dir).str() : maps_root;
-    const string fomap_path = strex("{}/{}.fomap", target_dir, name).format_path().str();
+    const string fomap_path = strex("{}/{}.{}", target_dir, name, reference_map_ext).format_path().str();
 
     const auto dir = strex(fomap_path).extract_dir().str();
 
@@ -6423,6 +6685,8 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     }
 
     FO_VERIFY_AND_THROW(fomap_file, "Unable to write the fomap file", fomap_path);
+
+    MapBrowserNamesStale = true;
 
     OnEditMapSave.Fire(map);
     auto ctx = GetUndoContext(map, true);

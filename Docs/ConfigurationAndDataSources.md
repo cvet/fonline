@@ -58,7 +58,17 @@ Read this together with:
 `Source/Common/ConfigFile.*` owns syntax-level parsing. `ConfigFileOption` controls optional behavior:
 
 - `CollectContent` preserves section content for consumers that need raw block text.
-- `ReadFirstSection` supports workflows that only need the first section.
+- `SkipNestedSections` parses only anchor sections and skips nested (`/`-addressed) section bodies —
+  cheap header enumeration on files with large nested payloads (map files).
+- Nested sections: a section name containing `/` is nested. `ConfigFile` recognizes only the
+  syntax - names are stored **verbatim** and no prefix is ever resolved, so what a prefix means
+  belongs to the consuming format. `GetOrderedSections()` exposes sections in file order, which is
+  what a consumer needs to bind a nested section to the section it follows (the by-name multimap
+  cannot express that, since repeated names collapse). `SkipNestedSections` parses only non-nested
+  sections and skips nested bodies.
+- `ConfigFile` takes only the content: no file identity, no parse callbacks, no format tokens. For
+  map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
+  or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
 
 The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
 

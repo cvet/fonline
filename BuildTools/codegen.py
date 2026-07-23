@@ -1549,7 +1549,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
+            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
                             'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
@@ -1958,10 +1958,6 @@ def generate_generic_code() -> None:
     if not is_engine_hook_enabled('ClientStartupSettingsHook'):
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
-    if not is_engine_hook_enabled('ConfigSectionParseHook'):
-        global_lines.append('bool ConfigSectionParseHook(string_view, string_view, string&, map<string, string>&) {  /* Stub */ return false; }')
-    if not is_engine_hook_enabled('ConfigEntryParseHook'):
-        global_lines.append('bool ConfigEntryParseHook(string_view, string_view, string_view, string_view, string&, string&) {  /* Stub */ return false; }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
         global_lines.append('struct BakingContext;')

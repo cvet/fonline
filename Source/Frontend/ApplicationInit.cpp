@@ -316,7 +316,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         const auto cache = CacheStorage(cache_dir);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-            auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+            auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
             settings.ApplyConfigFile(config, "");
         }
     }
