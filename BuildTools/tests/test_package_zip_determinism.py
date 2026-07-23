@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 import zipfile
 from pathlib import Path
+
+import pytest
 
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
@@ -47,3 +50,43 @@ def test_resource_pack_zip_ignores_input_mtime_and_file_order(tmp_path: Path) ->
         assert {info.date_time for info in infos} == {(1980, 1, 1, 0, 0, 0)}
         assert {info.create_system for info in infos} == {3}
         assert {info.external_attr for info in infos} == {0o644 << 16}
+
+
+def test_single_zip_merge_coalesces_identical_package_entries(tmp_path: Path) -> None:
+    first_part = tmp_path / "first"
+    second_part = tmp_path / "second"
+    first_part.mkdir()
+    second_part.mkdir()
+
+    (first_part / "shared.dll").write_bytes(b"same runtime")
+    (first_part / "first.exe").write_bytes(b"first")
+    (second_part / "shared.dll").write_bytes(b"same runtime")
+    (second_part / "second.exe").write_bytes(b"second")
+
+    archive_path = tmp_path / "package.zip"
+    _package.make_zip(archive_path, first_part, 6)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _package.make_zip(archive_path, second_part, 6, "a")
+
+    with zipfile.ZipFile(archive_path) as archive:
+        archive_names = [info.filename for info in archive.infolist()]
+        assert len(archive_names) == len(set(archive_names)) == 3
+        assert set(archive_names) == {"shared.dll", "first.exe", "second.exe"}
+        assert archive.read("shared.dll") == b"same runtime"
+
+
+def test_single_zip_merge_rejects_conflicting_package_entries(tmp_path: Path) -> None:
+    first_part = tmp_path / "first"
+    second_part = tmp_path / "second"
+    first_part.mkdir()
+    second_part.mkdir()
+
+    (first_part / "shared.dll").write_bytes(b"first runtime")
+    (second_part / "shared.dll").write_bytes(b"second runtime")
+
+    archive_path = tmp_path / "package.zip"
+    _package.make_zip(archive_path, first_part, 6)
+
+    with pytest.raises(AssertionError, match="Conflicting zip entry while merging package parts: shared.dll"):
+        _package.make_zip(archive_path, second_part, 6, "a")

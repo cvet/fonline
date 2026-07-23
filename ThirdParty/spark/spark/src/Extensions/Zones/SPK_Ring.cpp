@@ -83,13 +83,13 @@ namespace SPK
 		relMaxRadius *= relMaxRadius;
 
 		Vector3D tmp;
-		do tmp = SPK_RANDOM(Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
+		do tmp = SPK_RANDOM(getContext(),Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
 		while (tmp.getSqrNorm() > 1.0f);
 		
 		crossProduct(tNormal,tmp,v);
 		normalizeOrRandomize(v);
 
-		v *= std::sqrt(SPK_RANDOM(relMinRadius,relMaxRadius)); // to have a uniform distribution
+		v *= std::sqrt(SPK_RANDOM(getContext(),relMinRadius,relMaxRadius)); // to have a uniform distribution
 		v += getTransformedPosition();
 	}
 

@@ -27,6 +27,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <string>
 
 namespace SPK
@@ -37,8 +38,8 @@ namespace IO
 	{
 	public :
 
-		static IOManager& get();
-		~IOManager(); // (FOnline Patch) Release singleton-owned converters during process shutdown.
+		explicit IOManager(SPKContext& context);
+		~IOManager();
 
 		void unregisterAll();
 
@@ -46,6 +47,7 @@ namespace IO
 		void registerCoreObjects();
 
 		template<typename T> void registerObject();
+		template<typename T> void ensureObjectRegistered();
 		template<typename T> void unregisterObject();
 		template<typename T> bool isObjectRegistered() const;
 
@@ -64,16 +66,19 @@ namespace IO
 		bool save(const std::string& path,const Ref<System>& system) const;
 		bool save(const std::string& ext,std::ostream& os,const Ref<System>& system) const;
 
+		SPKContext& getContext() const;
+
 	private :
 
 		typedef Ref<SPKObject> (*createSerializableFn)();
 
+		SPKContext& context;
 		std::map<std::string,createSerializableFn> registeredObjects;
+		mutable std::mutex registeredObjectsMutex;
 		std::map<std::string,Loader*> registeredLoaders;
 		std::map<std::string,Saver*> registeredSavers;
 
-		IOManager();
-		IOManager(const IOManager&) {}
+		IOManager(const IOManager&);
 		IOManager& operator=(const IOManager&);
 
 		static std::string formatExtension(const std::string& ext);
@@ -94,6 +99,7 @@ namespace IO
 
 	template<typename T> void IOManager::registerObject()
 	{
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
 		const std::string name = T::asName();
 		if (registeredObjects.find(name) != registeredObjects.end())
 			SPK_LOG_WARNING("IOManager::registerSerializable<T> - " << name << " is already registered");
@@ -101,9 +107,17 @@ namespace IO
 		registeredObjects.insert(std::make_pair(name,&(T::createSerializable)));
 	}
 
+	template<typename T> void IOManager::ensureObjectRegistered()
+	{
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
+		const std::string name = T::asName();
+		registeredObjects.insert(std::make_pair(name,&(T::createSerializable)));
+	}
+
 	template<typename T> void IOManager::unregisterObject()
 	{
-		const std::string name = T::getSerializableName();
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
+		const std::string name = T::asName();
 		std::map<std::string,createSerializableFn>::iterator it = registeredObjects.find(name);
 		if (it == registeredObjects.end())
 		{
@@ -115,10 +129,13 @@ namespace IO
 
 	template<typename T> inline bool IOManager::isObjectRegistered() const
 	{
-		return registeredObjects.find(T::getSerializableName()) != registeredObjects.end();
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex);
+		return registeredObjects.find(T::asName()) != registeredObjects.end();
 	}
 
-	inline void IOManager::registerLoader(const std::string& ext,Loader* loader) { registerGeneric<Loader>(ext,loader,registeredLoaders); }
+	inline SPKContext& IOManager::getContext() const { return context; }
+
+	inline void IOManager::registerLoader(const std::string& ext,Loader* loader) { loader->setManager(this); registerGeneric<Loader>(ext,loader,registeredLoaders); }
 	inline void IOManager::unregisterLoader(const std::string& ext) { unregisterGeneric<Loader>(ext,registeredLoaders); }
 	inline Loader* IOManager::getLoader(const std::string& ext) const { return getGeneric<Loader>(ext,registeredLoaders); }
 

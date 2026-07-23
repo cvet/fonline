@@ -95,7 +95,7 @@ namespace SPK
 
 	void Cylinder::computePointOnDisk(Vector3D& v,float radius) const
 	{
-		do v = SPK_RANDOM(-radius,radius) * tNormal + SPK_RANDOM(-radius,radius) * tCoNormal;
+		do v = SPK_RANDOM(getContext(),-radius,radius) * tNormal + SPK_RANDOM(getContext(),-radius,radius) * tCoNormal;
 		while (v.getSqrNorm() > radius * radius);
 	}
 
@@ -117,7 +117,7 @@ namespace SPK
 		}
 		
 		float relHeight = height * 0.5f - radius;
-		v += SPK_RANDOM(-relHeight,relHeight) * tAxis;
+		v += SPK_RANDOM(getContext(),-relHeight,relHeight) * tAxis;
 		v += getTransformedPosition();
 	}
 	

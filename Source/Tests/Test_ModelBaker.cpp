@@ -889,7 +889,7 @@ TEST_CASE("ModelBakers")
     CHECK(bakers[0]->GetName() == ModelMeshBaker::NAME);
     CHECK(bakers[0]->GetOrder() == 4);
     CHECK(bakers[1]->GetName() == ModelInfoBaker::NAME);
-    CHECK(bakers[1]->GetOrder() == 5);
+    CHECK(bakers[1]->GetOrder() == 6);
     CHECK_NOTHROW(bakers[0]->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     CHECK_NOTHROW(bakers[1]->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
 

@@ -122,6 +122,8 @@ public:
 
     virtual auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> = 0;
     virtual void Update() { }
+    virtual void RetryFailedLoads() { }
+    virtual void InvalidateResource(hstring path) { ignore_unused(path); }
     virtual void ClenupCache() { }
 };
 
@@ -203,6 +205,9 @@ public:
 
     void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
     auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
+    void ForgetFailedSprite(string_view path);
+    void InvalidateSpriteResource(string_view path);
+    void RetryFailedSpriteLoads();
     void CleanupSpriteCache();
 
     void PushScissor(irect32 rect);

@@ -143,7 +143,7 @@ auto File::Load(const FileHeader& fh) -> File
     uint64_t write_time = fh.GetWriteTime();
     auto data_source = fh.GetDataSource();
     auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
-    FO_VERIFY_AND_THROW(buf, "Missing required buffer");
+    FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetPackName(), size, write_time);
 
     return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
@@ -580,6 +580,19 @@ void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
     FO_STACK_TRACE_ENTRY();
 
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
+}
+
+auto FileSystem::ReindexDataSources() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool changed = false;
+
+    for (auto& data_source : _dataSources) {
+        changed |= data_source->Reindex();
+    }
+
+    return changed;
 }
 
 void FileSystem::CleanDataSources()

@@ -1,0 +1,14 @@
+*.obj
+*.tlog
+*.pdb
+*.log
+*.cache
+*.suo
+*.sdf
+
+.DS_Store
+
+build/
+test_data/
+
+.vscode

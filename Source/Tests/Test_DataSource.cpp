@@ -403,6 +403,8 @@ TEST_CASE("DataSource")
         auto recursive_names = recursive->GetFileNames("nested", true, "txt");
         REQUIRE(recursive_names.size() == 1);
         CHECK(recursive_names[0] == "nested/child.txt");
+        CHECK(recursive->GetFileNames("missing", true, "txt").empty());
+        CHECK(recursive->GetFileNames("nested/child.txt", true, "txt").empty());
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }
@@ -483,6 +485,18 @@ TEST_CASE("DataSource")
         auto buf = ds_ref.OpenFile("entry.bin", size, write_time);
         REQUIRE(buf);
         CHECK(span_to_string({buf.get(), size}) == "abc");
+
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("late.bin").str(), string_view {"late"}));
+        REQUIRE_FALSE(ds_ref.IsFileExists("late.bin"));
+
+        CHECK(ds_ref.Reindex());
+
+        CHECK_FALSE(ds_ref.Reindex());
+
+        CHECK(ds_ref.IsFileExists("late.bin"));
+        auto late_buf = ds_ref.OpenFile("late.bin", size, write_time);
+        REQUIRE(late_buf);
+        CHECK(span_to_string({late_buf.get(), size}) == "late");
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

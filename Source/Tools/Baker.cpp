@@ -46,6 +46,7 @@
 #include "MetadataRegistration.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -133,6 +134,9 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     }
     if (vec_exists(request_bakers, EffectBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ParticleBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ParticleBaker>(ctx));
     }
     if (vec_exists(request_bakers, ProtoBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(ctx));
@@ -593,6 +597,9 @@ void MasterBaker::BakeAllInternal()
     fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
 
+        if (path.starts_with(BAKER_CACHE_DIR) && (path.size() == BAKER_CACHE_DIR.size() || path[BAKER_CACHE_DIR.size()] == '/')) {
+            return;
+        }
         if (strex(path).lower() == "baking.report.json" || strex(path).lower() == "baking.full.report.json") {
             return;
         }
@@ -604,6 +611,25 @@ void MasterBaker::BakeAllInternal()
             WriteLog("Delete outdated file {}", path);
         }
     });
+
+    string effekseer_cache_dir = strex(_settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer");
+
+    if (fs_is_dir(effekseer_cache_dir)) {
+        constexpr string_view dependency_cache_suffix = ".deps";
+
+        fs_iterate_dir(effekseer_cache_dir, true, [&](string_view path, size_t size, uint64_t write_time) {
+            ignore_unused(size, write_time);
+
+            if (path.ends_with(dependency_cache_suffix)) {
+                string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
+
+                if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
+                    fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
+                    WriteLog("Delete outdated baker cache {}", path);
+                }
+            }
+        });
+    }
 
     // Finalize
     WriteLog("Time {}", backing_time.GetDuration());
@@ -729,12 +755,21 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 
     _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
+    ignore_unused(Reindex());
+}
+
+auto BakerDataSource::Reindex() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     // Prepare input resources
     auto res_packs = _settings->GetResourcePacks();
-    _inputResources.reserve(res_packs.size());
+    vector<ResourcesInputEntry> input_resources;
+    unordered_map<string, pair<size_t, uint64_t>> input_file_index;
+    input_resources.reserve(res_packs.size());
 
     for (const auto& res_pack : res_packs) {
-        auto& res_entry = _inputResources.emplace_back();
+        auto& res_entry = input_resources.emplace_back();
         res_entry.Name = res_pack.Name;
         auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
         auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) {
@@ -753,14 +788,18 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         }
 
         res_entry.InputFiles = res_entry.InputDir.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
+
+        for (const auto& input_file : res_entry.InputFiles) {
+            string index_key = strex("{}\n{}", res_entry.Name, input_file.GetPath()).str();
+            input_file_index.insert_or_assign(index_key, pair {input_file.GetSize(), input_file.GetWriteTime()});
+        }
     }
 
-    // Evaluate output files in dependency order. Later packs still replace earlier
-    // registrations and ResolveFilePath searches them in reverse priority order.
-    auto check_file = [&](string_view path, uint64_t write_time) {
-        scoped_lock locker {_outputFilesLocker};
+    // Evaluate output files
+    unordered_map<string, uint64_t> output_files;
 
-        _outputFiles.insert_or_assign(string(path), write_time);
+    auto check_file = [&](string_view path, uint64_t write_time) {
+        output_files.insert_or_assign(string(path), write_time);
         return false;
     };
 
@@ -769,15 +808,31 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         FO_UNREACHABLE_PLACE();
     };
 
-    for (size_t i = 0; i < _inputResources.size(); i++) {
+    for (size_t i = 0; i < input_resources.size(); i++) {
         const auto& res_pack = res_packs[i];
-        const auto& res_entry = _inputResources[i];
+        const auto& res_entry = input_resources[i];
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources, nullptr, true);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
             bakers[j]->BakeFiles(res_entry.InputFiles);
         }
     }
+
+    _inputResources = std::move(input_resources);
+
+    bool input_files_changed = _inputFileIndex != input_file_index;
+    _inputFileIndex = std::move(input_file_index);
+
+    bool changed = input_files_changed;
+
+    {
+        scoped_lock locker {_outputFilesLocker};
+
+        changed |= _outputFiles != output_files;
+        _outputFiles = std::move(output_files);
+    }
+
+    return changed;
 }
 
 auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path) const -> string

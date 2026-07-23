@@ -111,6 +111,15 @@ namespace SPK
 
 		virtual ~SPKObject();
 
+		/** @brief Binds this object to one SPARK runtime context. */
+		void setContext(SPKContext& context);
+
+		/** @brief Returns whether this object is bound to a SPARK runtime context. */
+		bool hasContext() const;
+
+		/** @brief Gets the SPARK runtime context bound to this object. */
+		SPKContext& getContext() const;
+
 		///////////////
 		// Reference //
 		///////////////
@@ -206,6 +215,8 @@ namespace SPK
 		template<typename T>
 		Ref<T> copyChild(const Ref<T>& ref) const;
 
+		virtual void onContextSet();
+
 	private :
 
 		std::string name;
@@ -214,6 +225,7 @@ namespace SPK
 
 		const SharePolicy SHARE_POLICY;
 		bool shared;
+		SPKContext* context;
 
 		// The copy buffer is used to be able to correctly perform a deep copy of objects. If an object is present more than once is the hierarchy it will be copied only once
 		// The choice to have a field that is used only for the copy was made because the memory overhead is neglictible and the other possible choices were not satisfying :
@@ -228,6 +240,17 @@ namespace SPK
 	inline unsigned int SPKObject::getNbReferences() const
 	{
 		return nbReferences;
+	}
+
+	inline bool SPKObject::hasContext() const
+	{
+		return context != NULL;
+	}
+
+	inline SPKContext& SPKObject::getContext() const
+	{
+		SPK_ASSERT(context != NULL,"SPKObject::getContext() - Object is not bound to a SPARK context");
+		return *context;
 	}
 
 	inline bool SPKObject::isShared() const

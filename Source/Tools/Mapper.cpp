@@ -49,7 +49,8 @@ static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
-    ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
+    ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); }),
+    ParticleEditors {this}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -153,6 +154,8 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         }
     }
 
+    ParticleEditors.Initialize();
+
     // Refresh resources after start script executed
     RefreshActiveProtoLists();
 
@@ -177,11 +180,14 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     }
 
     ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
+    MapperWindowFocused = SprMngr.IsWindowFocused();
 }
 
 void MapperEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
+
+    ParticleEditors.Shutdown();
 
     while (!LoadedMaps.empty()) {
         UnloadMap(LoadedMaps.back().get(), false);
@@ -252,6 +258,8 @@ void MapperEngine::ResetImGuiSettings()
     InspectorVisible = false;
     InspectorPos = {24, 24};
 
+    ParticleEditors.ResetLayout();
+
     AddMess("ImGui layout reset");
 }
 
@@ -320,6 +328,14 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    bool window_focused = SprMngr.IsWindowFocused();
+
+    if (window_focused && !MapperWindowFocused) {
+        ParticleEditors.OnFocusGained();
+    }
+
+    MapperWindowFocused = window_focused;
+
     if (InputLocked) {
         Settings->ScrollMouseRight = false;
         Settings->ScrollMouseLeft = false;
@@ -345,7 +361,7 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
         }
     }
 
-    if (!SprMngr.IsWindowFocused()) {
+    if (!window_focused) {
         OnInputLost.Fire();
         if (!PendingSelectionMoveEntries.empty()) {
             CommitPendingSelectionMove();
@@ -1452,6 +1468,7 @@ void MapperEngine::DrawMainPanelImGui()
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
             ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, static_cast<bool>(_curMap));
             ImGui::MenuItem("History", nullptr, &HistoryWindowVisible, static_cast<bool>(_curMap));
+            ParticleEditors.DrawMenuItems();
             ImGui::MenuItem("Settings", nullptr, &SettingsWindowVisible);
             ImGui::EndMenu();
         }
@@ -1588,6 +1605,7 @@ void MapperEngine::DrawMainPanelImGui()
     DrawMapListWindowImGui();
     DrawMapWindowImGui();
     DrawHistoryWindowImGui();
+    ParticleEditors.DrawWindows();
     DrawSettingsWindowImGui();
 }
 
@@ -6215,6 +6233,8 @@ void MapperEngine::ShowMap(ptr<MapView> map)
     nptr<MapView> map_view = map;
 
     if (!(GetCurMap() == map_view)) {
+        ParticleEditors.OnCurrentMapChanging(map_view);
+
         if (_curMap) {
             SelectClear();
         }
@@ -6415,6 +6435,8 @@ void MapperEngine::UnloadMap(ptr<MapView> map, bool clear_undo)
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot unload a destroyed map", map->GetName(), clear_undo);
 
     nptr<MapView> map_view = map;
+
+    ParticleEditors.OnMapUnloading(map);
 
     if (GetCurMap() == map_view) {
         SelectClear();

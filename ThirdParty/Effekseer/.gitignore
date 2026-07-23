@@ -1,0 +1,7 @@
+# FOnline builds the Editor in an isolated output tree.
+/build/
+/build-*/
+/build_*/
+.vs/
+[Bb]in/
+[Oo]bj/

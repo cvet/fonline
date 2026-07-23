@@ -16,6 +16,7 @@
 #include "MetadataBaker.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoTextBaker.h"
 #include "RawCopyBaker.h"
@@ -285,6 +286,26 @@ TEST_CASE("BakerSetup")
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == RawCopyBaker::NAME);
     }
+
+#if FO_ENABLE_3D && (FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES)
+    SECTION("PreservesCrossPackBakerDependencyStages")
+    {
+        TestRig rig;
+        auto bakers = MakeRequestedBakers({string(MapBaker::NAME), string(ProtoBaker::NAME), string(ModelInfoBaker::NAME), string(ParticleBaker::NAME)}, rig);
+
+        REQUIRE(bakers.size() == 4);
+
+        auto find_order = [&bakers](string_view name) {
+            auto it = std::ranges::find_if(bakers, [name](const unique_ptr<BaseBaker>& baker) { return baker->GetName() == name; });
+            REQUIRE(it != bakers.end());
+            return (*it)->GetOrder();
+        };
+
+        CHECK(find_order(ParticleBaker::NAME) < find_order(ModelInfoBaker::NAME));
+        CHECK(find_order(ModelInfoBaker::NAME) < find_order(ProtoBaker::NAME));
+        CHECK(find_order(ProtoBaker::NAME) < find_order(MapBaker::NAME));
+    }
+#endif
 }
 
 TEST_CASE("BakerDataSource")
@@ -517,6 +538,8 @@ TEST_CASE("BakerMasterRawCopy")
     string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
     string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
     string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+    string internal_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Test/state.txt").str();
+    string stale_effekseer_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer/Core/Particles/Removed.efk.deps").str();
     string report_path = MakeBakerSetupReportPath(output_dir);
     string full_report_path = MakeBakerSetupFullReportPath(output_dir);
 
@@ -551,6 +574,8 @@ Bakers = {}
     CHECK_FALSE(fs_exists(excluded_output_path));
     CHECK_FALSE(fs_exists(outdated_path));
     CHECK(fs_read_file(build_hash_path).has_value());
+    REQUIRE(fs_write_file(internal_cache_path, "cache-state"));
+    REQUIRE(fs_write_file(stale_effekseer_cache_path, "stale-cache"));
 
     REQUIRE(fs_exists(report_path));
     REQUIRE(fs_exists(full_report_path));
@@ -625,6 +650,9 @@ Bakers = {}
     CHECK(*fs_read_file(output_path) == "raw-copy");
     CHECK(fs_last_write_time(output_path) >= output_write_time_before_rebake);
     CHECK(fs_read_file(build_hash_path).has_value());
+    REQUIRE(fs_read_file(internal_cache_path).has_value());
+    CHECK(*fs_read_file(internal_cache_path) == "cache-state");
+    CHECK_FALSE(fs_exists(stale_effekseer_cache_path));
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }

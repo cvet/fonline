@@ -18,45 +18,65 @@ BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can
 pytest -q Engine/BuildTools/tests
 ```
 
-## Local variable validator
-
-`LocalVariableValidator/local_variable_validator.py` uses `clang-query` AST matchers plus clang-tidy's `bugprone-use-after-move` dataflow check for [redundant top-level local `const` and use-after-move](../Docs/LocalVariables.md). It does not enforce local or parameter immutability. It requires Clang 20+ tools matching the compiler that produced the selected `compile_commands.json`:
-
-```bash
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --self-test
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode report-only --compilation-database <build-dir> --jobs 4 --batch-size 2
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode apply --checks redundant-local-const --compilation-database <build-dir>
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode full-enforcement --checks redundant-local-const --compilation-database <build-dir>
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --mode full-enforcement --checks use-after-move --compilation-database <build-dir>
-```
-
-Linux runner provisioning installs `clang-tools-20` (for `clang-query-20`) and `clang-tidy-20` with the pinned compiler. Set `FO_CLANG_QUERY` and `FO_CLANG_TIDY` when versioned tools are not on `PATH`. `--jobs` bounds parallel Clang batches. Apply mode is deliberately limited to the redundant-const check and removes only the diagnosed top-level token; it preserves pointee, referent, and element constness. CI runs the full-source `--checks redundant-local-const` and `--checks use-after-move` gates; default `--checks all` combines them locally. Report JSON belongs in a workspace/output directory, not in the source tree.
-
-## Explicit simple local types
-
-`ExplicitLocalTypes/explicit_local_types.py` enforces the explicit-local-type rule documented in [LocalVariables.md](../Docs/LocalVariables.md#explicit-simple-local-types). It uses the Clang 20+ AST to replace only local `auto` declarations whose type has one accessible unqualified `snake_case` spelling, no visible template arguments, and no conversion-dependent semantics. A canonical template result may use a simple alias only when that exact alias is explicitly spelled in the initializer and uniquely matches the desugared result type:
-
-```bash
-python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --self-test
-python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode check --compilation-database <build-dir> --jobs 4 --batch-size 2
-python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode report-only --compilation-database <build-dir> --json <workspace>/explicit_local_types.json
-python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py --mode apply --apply-report <workspace>/explicit_local_types.json
-```
-
-The report/apply split keeps the migration reviewable. Applying a report validates that every recorded location still contains the expected `auto` token before editing; `check` is the debt-free CI/developer gate.
-
-Embedding projects can target another first-party directory with
-`--source-root`. If that directory also contains vendored code, use
-`--unit-pattern` to select only authored translation units, `--source-pattern`
-to restrict Clang AST matching, and `--path-pattern` as a final canonical-path
-guard for observations and diagnostics. The local-variable validator accepts
-the same source/unit/path filters.
-
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.
 The public entry point kept at the `Engine/BuildTools` root is `Init.cmake`; staged CMake implementation lives under `Engine/BuildTools/cmake/stages/` and helpers under `Engine/BuildTools/cmake/helpers/`.
 The validation project scaffold continues to live under `Engine/BuildTools/validation-project`.
+
+### Effekseer project compiler
+
+`Source/Tools/EffekseerCompiler.h/.cpp` is a native C++ module compiled into
+`BakerLib`. For each fixed Editor-1.80.5 / project-version-3 `.efkproj`, it
+validates the XML profile and returns raw `SKFE` bytes plus the referenced
+textures, models, sounds, and curves. `ParticleBaker` calls the module directly
+and validates every result with the vendored Effekseer Core before publishing.
+
+`ParticleBaker` resolves dependency paths inside the project's physical
+directory resource source and stores a per-effect path/size/write-time snapshot
+below `<BakeOutput>/.baker-cache/Effekseer/`. The source project and dependency
+snapshot independently invalidate the derived `.efk`; after compiler code
+changes, use `ForceBakeResources`. A changed effect recompiles on demand without
+invalidating unrelated effects in Mapper's focus-triggered resource reindex.
+
+The compiler is not linked into or packaged with runtime clients. Native Baker
+and Mapper hosts use it when derived resources are stale; Web clients consume
+host-prebaked `.efk` resources.
+
+### Effekseer Editor developer bundle
+
+The pinned upstream Effekseer Editor is built as a standalone Windows win64
+developer tool. It is independent of `FO_EFFEKSEER_PARTICLES` and is not
+represented by an engine CMake option, application target, or universal
+`buildtools.py build` target. Runtime builds therefore never acquire the
+Editor toolchain or its Viewer/UI libraries.
+
+Build and stage it through the shared auxiliary-tool entry point:
+
+```powershell
+$env:FO_OUTPUT = (Get-Location).Path
+python Engine\BuildTools\buildtools.py build-auxiliary effekseer-editor Release
+```
+
+The script builds the managed .NET 10 UI and native Viewer/material tools in
+isolated output directories, then stages a self-contained payload. Languages,
+fonts, icons, meshes, `LICENSE_TOOL`, the material editor, and Direct3D
+11/OpenGL material compilers are part of that payload. GIF recording is
+disabled in this FOnline bundle, avoiding the otherwise unused libgd
+dependency; ordinary editing and the interactive Editor preview remain
+available.
+
+The FOnline adaptation is source-first. Editor **Save** and **Save As** accept
+only `.efkproj` and atomically write normalized UTF-8 XML without a BOM. The
+Editor's stock preview is for authoring iteration; the embedding project's
+Mapper preview remains the final validation path through FOnline's renderer
+and capability gate.
+
+The reusable package schema has no Effekseer-specific binary role. An embedding
+project ships a separately staged tool through the generic package declaration
+`INCLUDE <source-path-glob> <target-path-in-pack>`. Source globs are relative to
+`FO_OUTPUT_PATH`; the packager replaces the owned target tree and updates an
+existing `SingleZip` without duplicate or stale entries.
 
 ## Build environment variables
 

@@ -93,12 +93,12 @@ namespace SPK
 		{
 			Vector3D relDimensions;
 			relDimensions.setMax(halfDimensions - radius);
-			return SPK_RANDOM(-relDimensions,relDimensions);
+			return SPK_RANDOM(getContext(),-relDimensions,relDimensions);
 		}
 		else
 		{
-			Vector3D randomDim(SPK_RANDOM(-halfDimensions,halfDimensions));
-			size_t n = SPK_RANDOM(0,6);		// a random number from 0 to 5 included
+			Vector3D randomDim(SPK_RANDOM(getContext(),-halfDimensions,halfDimensions));
+			size_t n = SPK_RANDOM(getContext(),0,6);		// a random number from 0 to 5 included
 			size_t axis = n >> 1;			// 1 chance out of 3
 			int dir = ((n & 1) << 1) - 1;	// -1 or 1
 			randomDim[axis] = dir * halfDimensions[axis];
