@@ -42,6 +42,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Common/ModelMeshData.cpp`
 - `Source/Tools/ModelInfoBaker.h`
 - `Source/Tools/ModelInfoBaker.cpp`
+- `Source/Tools/ParticleBaker.h`
+- `Source/Tools/ParticleBaker.cpp`
 - `Source/Common/AnimationInfo.h`
 - `Source/Common/AnimationInfo.cpp`
 - `Source/Common/ModelBounds.cpp`
@@ -67,6 +69,7 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ParticleBaker.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
@@ -126,6 +129,10 @@ The abstract base for individual baker implementations. Each baker provides:
 - `GetOrder()` — ordering key for deterministic bake ordering.
 - `BakeFiles()` — the actual file transformation step.
 
+`ModelInfoBaker` runs after `ParticleBaker`: model descriptions may reference
+baked particle resources, so their link validation must not race particle
+serialization during a clean or forced rebuild.
+
 `BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
 
 Each baker receives its own copy of the shared context. When a master-bake report
@@ -152,7 +159,7 @@ events to it.
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report. During lazy output discovery it walks resource packs in the same order as `MasterBaker`, so cross-pack dependencies such as `ManagedScriptBaker` reading `Metadata.fometa-*` see earlier pack outputs; runtime file lookup still searches pack outputs in reverse order for normal resource precedence.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report. During lazy output discovery it walks resource packs in the same order as `MasterBaker`, so cross-pack dependencies such as `ManagedScriptBaker` reading `Metadata.fometa-*` see earlier pack outputs; runtime file lookup still searches pack outputs in reverse order for normal resource precedence.
 
 ## Master bake report
 
@@ -337,14 +344,17 @@ During output discovery it visits resource packs in configured order so a later 
 - `RawCopyBaker` — `Source/Tools/RawCopyBaker.*`, name `RawCopy`, order `4`
 - `ImageBaker` — `Source/Tools/ImageBaker.*`
 - `EffectBaker` — `Source/Tools/EffectBaker.*`
-- `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `6`
-- `MapBaker` — `Source/Tools/MapBaker.*`, name `Map`, order `7`
+- `ParticleBaker` — `Source/Tools/ParticleBaker.*`, name `Particle`, order `5`
+- `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `7`
+- `MapBaker` — `Source/Tools/MapBaker.*`, name `Map`, order `8`
 - `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
-- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `5`, enabled when `FO_ENABLE_3D` is active
+- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `6`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, order `4`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
-- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `3`, enabled when `FO_MANAGED_SCRIPTING` is active. It runs before the `Proto` (6), `Map` (7), and dialog validators so the compiled managed assemblies exist when those bakers restore the managed script subsystem and resolve `[DialogDemand]`/`[DialogResult]` and other script funcs through `ScriptSystem::FindFunc`.
+- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `3`, enabled when `FO_MANAGED_SCRIPTING` is active. It runs before the `Proto` (7), `Map` (8), and dialog validators so the compiled managed assemblies exist when those bakers restore the managed script subsystem and resolve `[DialogDemand]`/`[DialogResult]` and other script funcs through `ScriptSystem::FindFunc`.
+
+The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
@@ -460,7 +470,7 @@ pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
 | `ModelAnimationData` | Common | Versioned little-endian LF animation envelopes and the native rig manifest: identity and signatures, canonical skeleton, base/clip remaps, clip payloads, presence/nearest data, and state/action bindings. |
 | `ModelMeshData` | Common | Passive mesh-wire DTOs plus the versioned `LFMODMSH` reader, writer, and shared structural validation. It contains no runtime animation implementation. |
 | `ModelMeshBaker` | Tools | Validates and writes mesh-only hierarchy, bind, vertex, index, influence, and drawable data. |
-| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. |
+| `ModelInfoBaker` | Tools | Resolves `.fo3d` descriptions and dependencies, invokes source loading/compatibility/conversion, then writes `LFMODINF`, the required rig payload, and `ModelAnimationInfo.foinfo`. Compatibility failures remain bake errors; successful per-description compatibility reports are not emitted to the routine bake log. |
 
 The main data flow is:
 
@@ -516,7 +526,10 @@ it takes the exact bounds of the final vertices, crops the RGBA payload to those
 bounds, and translates the vertices to the cropped frame origin. The serialized
 per-frame offset is adjusted on both axes so the logical root remains at the
 same screen position even when different animation frames have different
-bounds. A quad or empty result is not cropped or padded. Candidate profitability
+bounds. At runtime `AtlasSprite` reverses that storage adjustment for its public
+logical size and offset, maps mesh positions through the stored source origin,
+and keeps UVs local to the cropped atlas allocation. A quad or empty result is
+not cropped or padded. Candidate profitability
 is always compared against the original unpadded frame, so increasing the
 search area cannot manufacture an artificial saving. Each unique frame is
 searched on the maximum temporary canvas, then the retained mesh is translated
@@ -613,16 +626,80 @@ internal safety border. The decoder requires mesh vertices to occupy the exact
 serialized frame bounds. Shared animation frames continue to refer to the
 original frame and do not duplicate its offset, pixels, or geometry. The
 runtime rejects legacy or malformed blobs rather than guessing their layout.
+Drawable atlas sprites retain the original logical size, anchor, scaling, and
+hit-test coordinate space while using the cropped pixels and mesh for texture
+storage and rendering. Thus transparent-canvas cropping is an internal storage
+optimization rather than a change to the authored sprite contract.
 Consumers that sample the image as a plain rectangular texture rather than a
-sprite (`ParticleEditor` and project-side server image sampling) restore the
-cropped payload into the original logical canvas so their size and pixel-coordinate
-contracts do not change.
+sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
+restore the cropped payload into the original logical canvas so their size and
+pixel-coordinate contracts do not change. In particular, font glyph positions
+are authored against the original sheet dimensions; `SpriteManager::LoadSpriteAsQuad`
+must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+`ParticleBaker` exposes only the formats whose backend is enabled at build time.
+`FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
+`FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
+output. Both options default to `OFF`, in which case the registered baker has no
+particle formats to process.
+
+For SPARK, `ParticleBaker` loads native `.spark` XML with the engine's registered
+`SparkQuadRenderer` type and writes deterministic SPARK binary to `.spk` with
+the same path stem. Renderer texture paths are resolved relative to the
+`.spark` resource; absolute paths and paths which escape the resource source
+are hard errors. Unknown object types, malformed XML, authored `.spk`, and
+binary-save failures are also hard errors; publishing a graph after silently
+omitting an object is forbidden.
+The client and baker use the same `SparkExtension.cpp` implementation through
+`ClientLib`; do not compile a layout-changing headless copy into `BakerLib`.
+The binary loader enforces exact memory payload length, bounded object/attribute
+counts, bounds-checked reads, descriptor signatures, and valid typed object
+references, so changing a custom serialized descriptor requires rebaking its
+resources.
+
+For Effekseer, `.efkproj` must be an on-disk XML project normalized by Editor
+1.80.5 with project version 3. `ParticleBaker` calls the native C++
+`EffekseerCompiler` module directly. The fixed-profile exporter produces raw
+`SKFE` bytes and a dependency list; the baker validates each result with the
+pinned C++ Effekseer Core and publishes it under the same path stem with the
+`.efk` extension. The compiler is part of `BakerLib` and is never linked into
+production clients. Native Mapper's on-demand baker uses the same path when a
+tracked source edit is detected. Web targets consume `.efk` resources baked
+before packaging.
+
+The compiler also exposes the referenced resource paths for each project.
+`ParticleBaker` resolves them relative to that project, rejects paths which
+escape the project's physical directory resource source, and stores a
+per-output snapshot containing the project path, size, and write time plus each
+dependency's path, size, and write time under
+`<BakeOutput>/.baker-cache/Effekseer/<pack>/<output>.deps`. On the next
+incremental check it stats those same physical files which the native compiler
+reads. This remains correct when a resource pack has multiple overlaid input
+directories: the snapshot follows the selected project's disk source rather
+than a same-named virtual file from another source.
+A changed, deleted, or renamed dependency dirties every effect that references
+it, while an unrelated file does not trigger a corpus-wide recompile. A missing
+or stale snapshot makes the compiler inspect the project's dependency list
+before the normal single `BakeChecker` call. `ParticleBaker` then removes only
+that effect's stale physical `.efk` output, so the ordinary missing-output path
+schedules the compile without a special timestamp or a callback in the common
+baker infrastructure.
+
+An `.efkmodel` is not an effect container: it is a binary runtime
+dependency requested by Model nodes and remains subject to the embedding
+project's ordinary resource-pack/raw-copy policy.
+
+Authored `.efk` files are hard errors rather than copy-through inputs. Project
+resource sources retain reproducible `.efkproj` XML, while runtime code accepts
+only the generated `.efk`. Baking proves the compiler/Core parser boundary
+only: it does not load FOnline atlas textures or enforce the client/Mapper CPU
+Sprite/Ring renderer capability policy. A compiler implementation change
+requires a forced bake so all generated `.efk` files are refreshed.
 `ModelMeshBaker` builds the passive `ModelMeshData` tree and its common codec
 writes a versioned mesh-only payload. Every baked model mesh
 starts with `LFMODMSH`, schema `1`, and zero flags, followed by the recursive
@@ -870,6 +947,7 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_MapBaker.cpp`
 - `Test_TextBaker.cpp`
 - `Test_ModelBaker.cpp`
+- `Test_ParticleBaker.cpp`
 - `Test_ModelMeshData.cpp`
 - `Test_ModelAnimationData.cpp`
 - `Test_ModelAnimationConverter.cpp`

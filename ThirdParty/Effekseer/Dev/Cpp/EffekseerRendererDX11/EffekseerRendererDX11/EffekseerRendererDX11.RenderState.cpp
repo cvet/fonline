@@ -1,0 +1,287 @@
+﻿
+//----------------------------------------------------------------------------------
+// Include
+//----------------------------------------------------------------------------------
+#include "EffekseerRendererDX11.RenderState.h"
+
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+namespace EffekseerRendererDX11
+{
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+RenderState::RenderState(RendererImplemented* renderer, D3D11_COMPARISON_FUNC depthFunc, bool isMSAAEnabled)
+	: renderer_(renderer)
+{
+	D3D11_CULL_MODE cullTbl[] = {
+		D3D11_CULL_BACK,
+		D3D11_CULL_FRONT,
+		D3D11_CULL_NONE,
+	};
+
+	for (int32_t ct = 0; ct < CulTypeCount; ct++)
+	{
+		D3D11_RASTERIZER_DESC rsDesc;
+		ZeroMemory(&rsDesc, sizeof(D3D11_RASTERIZER_DESC));
+		rsDesc.CullMode = cullTbl[ct];
+		rsDesc.FillMode = D3D11_FILL_SOLID;
+		rsDesc.DepthClipEnable = TRUE;
+
+		if (isMSAAEnabled)
+		{
+			rsDesc.MultisampleEnable = TRUE;
+		}
+
+		rsDesc.FrontCounterClockwise =
+			(depthFunc == D3D11_COMPARISON_GREATER_EQUAL || depthFunc == D3D11_COMPARISON_GREATER) ? TRUE : FALSE;
+		renderer_->GetDevice()->CreateRasterizerState(&rsDesc, &rasterizer_states_[ct]);
+	}
+
+	for (int32_t dt = 0; dt < DepthTestCount; dt++)
+	{
+		for (int32_t dw = 0; dw < DepthWriteCount; dw++)
+		{
+			D3D11_DEPTH_STENCIL_DESC dsDesc;
+			ZeroMemory(&dsDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+			dsDesc.DepthEnable = dt;
+			dsDesc.DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)dw;
+			dsDesc.DepthFunc = depthFunc;
+			dsDesc.StencilEnable = FALSE;
+			renderer_->GetDevice()->CreateDepthStencilState(&dsDesc, &depth_stencil_states_[dt][dw]);
+		}
+	}
+
+	for (int32_t i = 0; i < AlphaTypeCount; i++)
+	{
+		auto type = (::Effekseer::AlphaBlendType)i;
+
+		D3D11_BLEND_DESC Desc;
+		ZeroMemory(&Desc, sizeof(Desc));
+		Desc.AlphaToCoverageEnable = false;
+
+		for (int32_t k = 0; k < 8; k++)
+		{
+			Desc.RenderTarget[k].BlendEnable = true;
+			Desc.RenderTarget[k].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+			Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ONE;
+			Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+			Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+
+			switch (type)
+			{
+			case ::Effekseer::AlphaBlendType::Opacity:
+				Desc.RenderTarget[k].DestBlend = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+				break;
+			case ::Effekseer::AlphaBlendType::Blend:
+				if (renderer_->GetImpl()->IsPremultipliedAlphaEnabled)
+				{
+					Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+					Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+					Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+					Desc.RenderTarget[k].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+					Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ONE;
+					Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+				}
+				else
+				{
+					Desc.RenderTarget[k].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+					Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+					Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+				}
+				break;
+			case ::Effekseer::AlphaBlendType::Add:
+				if (renderer_->GetImpl()->IsPremultipliedAlphaEnabled)
+				{
+					Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+					Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+					Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+					Desc.RenderTarget[k].DestBlend = D3D11_BLEND_ONE;
+					Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ZERO;
+					Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+				}
+				else
+				{
+					Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+					Desc.RenderTarget[k].DestBlend = D3D11_BLEND_ONE;
+					Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+				}
+				break;
+			case ::Effekseer::AlphaBlendType::Sub:
+				Desc.RenderTarget[k].DestBlend = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+				Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_REV_SUBTRACT;
+				Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+				break;
+
+			case ::Effekseer::AlphaBlendType::Mul:
+				Desc.RenderTarget[k].DestBlend = D3D11_BLEND_SRC_COLOR;
+				Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_ADD;
+				Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+				break;
+			}
+		}
+
+		renderer_->GetDevice()->CreateBlendState(&Desc, &blend_states_[i]);
+	}
+
+	for (int32_t f = 0; f < TextureFilterCount; f++)
+	{
+		for (int32_t w = 0; w < TextureWrapCount; w++)
+		{
+			D3D11_TEXTURE_ADDRESS_MODE addresses[] = {
+				D3D11_TEXTURE_ADDRESS_WRAP,
+				D3D11_TEXTURE_ADDRESS_CLAMP,
+				D3D11_TEXTURE_ADDRESS_MIRROR,
+			};
+
+			D3D11_FILTER Filter[] = {
+				D3D11_FILTER_MIN_MAG_MIP_POINT,
+				D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+			};
+
+			uint32_t Anisotropic[] = {
+				0,
+				0,
+			};
+
+			D3D11_SAMPLER_DESC SamlerDesc = {
+				Filter[f],
+				addresses[w],
+				addresses[w],
+				addresses[w],
+				0.0f,
+				Anisotropic[f],
+				D3D11_COMPARISON_ALWAYS,
+				{0.0f, 0.0f, 0.0f, 0.0f},
+				0.0f,
+				D3D11_FLOAT32_MAX,
+			};
+
+			renderer_->GetDevice()->CreateSamplerState(&SamlerDesc, &sampler_states_[f][w]);
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+RenderState::~RenderState()
+{
+	for (int32_t ct = 0; ct < CulTypeCount; ct++)
+	{
+		ES_SAFE_RELEASE(rasterizer_states_[ct]);
+	}
+
+	for (int32_t dt = 0; dt < DepthTestCount; dt++)
+	{
+		for (int32_t dw = 0; dw < DepthWriteCount; dw++)
+		{
+			ES_SAFE_RELEASE(depth_stencil_states_[dt][dw]);
+		}
+	}
+
+	for (int32_t i = 0; i < AlphaTypeCount; i++)
+	{
+		ES_SAFE_RELEASE(blend_states_[i]);
+	}
+
+	for (int32_t f = 0; f < TextureFilterCount; f++)
+	{
+		for (int32_t w = 0; w < TextureWrapCount; w++)
+		{
+			ES_SAFE_RELEASE(sampler_states_[f][w]);
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+void RenderState::Update(bool forced)
+{
+	bool changeDepth = forced;
+	bool changeRasterizer = forced;
+	bool changeBlend = forced;
+
+	if (active_.DepthTest != next_.DepthTest || forced)
+	{
+		changeDepth = true;
+	}
+
+	if (active_.DepthWrite != next_.DepthWrite || forced)
+	{
+		changeDepth = true;
+	}
+
+	if (changeDepth)
+	{
+		renderer_->GetContext()->OMSetDepthStencilState(depth_stencil_states_[next_.DepthTest][next_.DepthWrite], 0);
+	}
+
+	if (active_.CullingType != next_.CullingType || forced)
+	{
+		changeRasterizer = true;
+	}
+
+	if (changeRasterizer)
+	{
+		auto cullingType = (int32_t)next_.CullingType;
+		renderer_->GetContext()->RSSetState(rasterizer_states_[cullingType]);
+	}
+
+	if (active_.AlphaBlend != next_.AlphaBlend || forced)
+	{
+		changeBlend = true;
+	}
+
+	if (changeBlend)
+	{
+		auto alphaBlend = (int32_t)next_.AlphaBlend;
+		float blendFactor[] = {0, 0, 0, 0};
+		renderer_->GetContext()->OMSetBlendState(blend_states_[alphaBlend], blendFactor, 0xFFFFFFFF);
+	}
+
+	for (int32_t i = 0; i < Effekseer::TextureSlotMax; i++)
+	{
+		bool changeSampler = forced;
+
+		if (active_.TextureFilterTypes[i] != next_.TextureFilterTypes[i] || forced)
+		{
+			changeSampler = true;
+		}
+
+		if (active_.TextureWrapTypes[i] != next_.TextureWrapTypes[i] || forced)
+		{
+			changeSampler = true;
+		}
+
+		if (changeSampler)
+		{
+			auto filter = (int32_t)next_.TextureFilterTypes[i];
+			auto wrap = (int32_t)next_.TextureWrapTypes[i];
+
+			ID3D11SamplerState* samplerTbl[] = {sampler_states_[filter][wrap]};
+			renderer_->GetContext()->VSSetSamplers(i, 1, samplerTbl);
+			renderer_->GetContext()->PSSetSamplers(i, 1, samplerTbl);
+		}
+	}
+
+	active_ = next_;
+}
+
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+} // namespace EffekseerRendererDX11
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------

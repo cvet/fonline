@@ -188,9 +188,15 @@ not measured from the cropped bounds or the opaque contour. Because
 `Vertex2D::Color` is RGBA8, intermediate mesh vertices may differ from ideal
 quad interpolation by at most one channel unit due to rounding.
 
-Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
-patterns, padded custom-effect/outline draws, fonts, texture/render-target
-blits, and runtime-generated model/particle atlas sprites retain explicit quads.
+Only ordinary full-image sprite draws submit baked polygon meshes. Every atlas
+allocation still has a valid rectangular `GetAtlasRect()`; polygon baking can
+make that physical frame smaller than, and offset within, the original logical
+image. Region crops, tiled patterns, padded custom-effect/outline draws, and
+mapper previews map that physical rectangle into logical coordinates through
+`SourceOffset`. Region UVs remain normalized to the original logical image, and
+transparent cropped margins are clipped out of the destination rectangle. A
+polygon crop therefore cannot shift or stretch a GUI 9-slice, repeated pattern,
+preview, or source-region composition.
 Effects that need to create pixels outside the source silhouette must use such a
 padded/quad path rather than an ordinary full-sprite draw.
 
@@ -205,10 +211,10 @@ maintaining a second client-side config parser or bounds cache.
 
 The client projects enabled animation bounds through the active base transform
 and derives their extrema for every continuous facing angle. Body plus projected
-shadow determines the active logical scratch-frame dimensions. The separate
-view bound prefers `Unarmed + Idle`, then any Idle, then a deterministic
-animation/static fallback; projecting it over all directions yields the stable
-`ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
+shadow determines both the animation-wide `DrawRect` and the active logical
+scratch-frame dimensions. The separate view bound prefers `Unarmed + Idle`,
+then any Idle, then a deterministic animation/static fallback; projecting it
+over all directions yields the stable `ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
 `(DrawWidth / 2, 3 * DrawHeight / 4)`. The view rectangle deliberately excludes
 the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
@@ -222,8 +228,12 @@ the client expands the frame and rerenders before copying; a bounded retry loop
 rejects a layout that does not converge. Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
-positioning. The idle-priority base view and aggregate lighting bounds are
-extended by the active layer/child-model tree. Left/right map-light colours are
+positioning. The active layer/child-model tree extends the idle-priority base
+view and aggregate lighting bounds. Animation switches may refresh `DrawRect`
+and the logical scratch frame, but `ViewRect` keeps using the accumulated
+model-and-layers view envelope rather than temporarily replacing it with the
+root model's smaller idle view; the name anchor therefore remains stable
+throughout turn animations. Left/right map-light colours are
 sampled at root-relative crop endpoints on that configuration envelope, so
 animation-driven scratch-size changes do not alter the light mix and wide gear
 does not clamp to a base-model endpoint colour.
@@ -255,6 +265,14 @@ atlas allocation keeps a nullable non-owning observer into that data and clears
 it when the space is released, so a dump cannot display stale geometry after an
 atlas slot is reused.
 
+`AtlasSprite` keeps the authored logical size and offset separate from the
+cropped atlas allocation. Mesh vertices are positioned through their
+`SourceOffset` in logical-canvas coordinates while UVs remain local to the
+cropped allocation. `GetSize()`, `GetOffset()`, scaling, and hit testing
+therefore retain the source-image contract even when baking removes transparent
+border pixels. Atlas cropping reduces texture memory without becoming visible
+to GUI layout, sprite anchoring, or input routing.
+
 Runtime atlas allocation remains per image, but `TextureAtlasLayout` uses
 dynamic MaxRects placement instead of an order-sensitive guillotine tree. It
 retains overlapping maximal free rectangles and chooses the best short-side
@@ -263,6 +281,17 @@ evaluates that fit across every existing atlas of the requested type before it
 creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
+
+Font sheets, model material textures, particle texture maps, and Spine
+attachment textures are rectangular image consumers, not drawable polygon
+sprites. Their authored glyph or normalized UV coordinates address the complete
+source bitmap and their consumers receive only an atlas rectangle, without a
+`SourceOffset`. They therefore load through `SpriteManager::LoadSpriteAsQuad`,
+which uses the baked mesh metadata only to restore the original logical canvas
+before atlas upload. Loading them as ordinary `AtlasSprite` instances would
+expose mesh padding/cropping dimensions to the authored coordinates and shift
+their UVs. Runtime-generated model and particle sprites already occupy ordinary
+rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
 stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
@@ -479,12 +508,81 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
 
 A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight into the current scene render target** (with the shared depth buffer) instead of being batched as an atlas quad. Because such a sprite uses its own shader (not the sprite batch's), drawing it at its interleaved draw-order position would split the sprite batch around every one. Instead `SpriteManager::DrawSprites` **collects** direct-draw sprites during the batch loop and replays them in a single `Sprite::DrawInScene(scene_pos, depth)` pass (a `const` method, like `FillData`) *after* the whole sprite batch is flushed — so the batch stays intact. Opaque sprites write depth (`DepthFunc = Always`, `DepthWrite = True`) and direct-draw transparents only test it (`LessEqual`, `DepthWrite = False`), so scene occlusion comes from the shared depth buffer. Direct-draw anchors use the projected `hex + HexOffset + SpriteOffset/TweakOffset + Elevation` map position, deliberately excluding viewport-only `field.Offset`, and keep only a single computed anchor-bias step instead of inheriting their late draw order; otherwise `DrawOrderType::Particles` would become depth-closer than critters/scenery before the particle geometry itself is even considered.
 
-`ParticleSprite` supports **two render types**, chosen per particle system by the `SparkQuadRenderer` `draw in scene` `.fopts` attribute (`ATTRIBUTE_TYPE_BOOL`, default false — alongside `draw size`):
+`ParticleSprite` supports **two render types**, chosen per particle system by the `SparkQuadRenderer` `draw in scene` `.spark` attribute (`ATTRIBUTE_TYPE_BOOL`, default false — alongside `draw size`):
 
-- **Atlas type** (default, `draw in scene` absent/false): `Update()` renders the Spark system to an offscreen atlas (`ParticleSpriteFactory::DrawParticleToAtlas`); the sprite is then drawn as a flat batched quad. `IsDirectDraw()==false`.
-- **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`, `Update()` is a no-op, and `DrawInScene` renders the system directly into `_rtMap` through the map view-proj so particles depth-sort against scene geometry instead of being baked to a flat sprite.
+- **Atlas type** (default, `draw in scene` absent/false): `Update()` advances simulation independently, then refreshes the offscreen atlas (`ParticleSpriteFactory::DrawParticleToAtlas`) at the configured animation cadence; the sprite is drawn as a flat batched quad. `IsDirectDraw()==false`.
+- **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`; `Update()` advances simulation even when the sprite is not visible, and `DrawInScene` refreshes the current scene transform without advancing frame time before rendering directly into `_rtMap` through the map view-proj. Particles therefore keep their lifetime offscreen and depth-sort against scene geometry instead of being baked to a flat sprite.
 
-`ParticleSprite::Play()` respawns its `ParticleSystem` before starting updates, so one-shot SPARK systems can be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+`ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+
+Seeded respawn is deterministic per particle-system instance in both bundled
+runtimes. Effekseer applies the seed to its manager handle. Each
+`SparkParticleRuntimeBackend` owns an explicit `SPKContext` containing its IO
+registry, default zone, and ambient generator state. Every loaded SPARK graph is
+bound to that context before attribute import. Each `SparkParticleRuntimeSystem`
+retains its own generator state and temporarily binds it to the owning context
+while cloning, prewarming, or updating, so interleaved effects and separate
+engine instances cannot perturb a seeded effect's sequence.
+
+`SparkExtension.h` exposes only the backend facade, forward declarations, and
+plain renderer data helpers. The SPARK headers, `SparkQuadRenderer`, and its
+render-buffer adapter remain private to `SparkExtension.cpp`; Mapper and baker
+inspect renderer properties through the data helpers instead of depending on
+the concrete renderer type.
+
+`ParticleSystem::SetScale()` updates the cached neutral runtime setup,
+reapplies it with a zero-delta transform refresh, and forces an atlas redraw
+without respawning or resetting elapsed time. The same contract therefore
+applies to atlas and direct-scene sprites and to every enabled particle runtime.
+
+The same sprite and direct-scene paths also host the core-only Effekseer
+runtime. Effekseer renderer interfaces are used as evaluated-data callbacks,
+not graphics backends: FOnline copies callback values, builds its own
+`RenderDrawBuffer`, selects its own `RenderEffect`, and submits through the
+normal renderer abstraction. This keeps Mapper and game preview on one path and
+requires no Direct3D/OpenGL/Vulkan/SDL GPU code from Effekseer.
+
+The Sprite and Ring callback collectors fail closed on malformed callback
+topology. They enforce both the fixed supported-instance hard limit and the
+exact instance count declared by `BeginRendering`; subsequent `Rendering`
+calls cannot append more instances than that declaration. Ring packets copy
+the evaluated outer/center/inner shape and color values, reproduce the upstream
+eight-vertex/twelve-index segment topology and angular fades, and preserve
+Z-sort order while splitting large geometry at 64,000 vertices for 16-bit index
+builds.
+
+`Source/Tests/Test_EffekseerParticleRuntime.cpp` carries self-contained cooked
+fixtures that exercise the real Effekseer callback-to-FOnline-draw-buffer path
+without a stock Effekseer graphics backend. The legacy fixture verifies
+fixed-seed determinism, repeated fixed-step generation, multi-instance
+callback-to-draw topology, generated quad geometry and index order, and
+atlas-remapped UV coordinates. A project-authored Effekseer 1.80.5 fixture
+additionally verifies that cooked `None`, `NormalOrder`, and `ReverseOrder`
+Sprite Z-sort modes reach the callback and produce the expected quad depth
+order. A modern SKFE/1810 upstream TestData fixture verifies deterministic Ring
+topology, radii, UVs and index order, all three Ring Z-sort modes, and chunking
+across the 64,000-vertex safety budget that prevents 16-bit index overflow.
+
+The initial callback adapter accepts one Default-material color texture. Ring
+nodes may omit it and then draw against a renderer-owned white pixel so their
+vertex colors still match Effekseer. For an authored texture, its requested
+Linear/Nearest mode must match the loaded FOnline atlas texture, and the sampler
+must request `Clamp`; `Repeat` and `Mirror` are rejected regardless of the UV
+values. Every textured callback UV rectangle must also stay inside `[0,1]`
+instead of silently sampling neighboring atlas content. Per-effect
+sub-rectangle wrapping is a separate renderer capability. Modern editor exports
+may retain a non-zero distortion-intensity value while the Default material has
+distortion disabled; that dormant value is ignored, while an active distortion
+material still fails the capability gate.
+
+Effekseer sprites always use the scene type. Direct-scene prewarm is queued
+until the first `DrawInScene` after `Setup` has supplied the current map
+transform. `ParticleSprite::Update()` does not advance the system while that
+request is pending; Effekseer then advances exactly one second and resets the
+wall-clock update origin, avoiding a second advance for time spent offscreen
+before the first draw. `RefreshRenderTransform()` then performs only an
+Effekseer zero-delta transform refresh before drawing; it never enters the
+forced first-tick path used by ordinary scheduled simulation.
 
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 

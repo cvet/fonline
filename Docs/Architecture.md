@@ -15,7 +15,7 @@ The main layers are:
 - **Server runtime** — authoritative world, managers, database backends, network-server side, and updater backend in `Source/Server/`.
 - **Frontend** — application/window/rendering abstraction in `Source/Frontend/`.
 - **Scripting** — AngelScript, Native, Managed, and script method registration in `Source/Scripting/`.
-- **Tools** — baker, mapper, editors, asset processors, and related developer tooling in `Source/Tools/`.
+- **Tools** — baker, Mapper-centered editing, asset processors, and related developer tooling in `Source/Tools/`.
 - **BuildTools** — CMake stages, helpers, toolchains, platform project generation, package layout, and validation support in `BuildTools/`.
 
 ## Application layer
@@ -24,7 +24,7 @@ The main layers are:
 
 - `ClientApp.cpp` and `ClientLib.cpp` for client host/runtime flows.
 - `ServerApp.cpp`, `ServerDaemonApp.cpp`, `ServerHeadlessApp.cpp`, and `ServerServiceApp.cpp` for server variants.
-- `MapperApp.cpp` and `EditorApp.cpp` for developer-facing tools.
+- `MapperApp.cpp` for the central interactive editing tool.
 - `BakerApp.cpp`, `ASCompilerApp.cpp`, and `ManagedScriptBakerApp.cpp` for generation/build support.
 - `TestingApp.cpp` for test execution.
 

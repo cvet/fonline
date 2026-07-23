@@ -40,6 +40,11 @@ Preferred local baseline from a configured build:
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
+With `FO_EFFEKSEER_PARTICLES` enabled, the focused `[particle]` Catch2 cases
+invoke the published helper through the production `ParticleBaker` path. They
+cover text compilation, dependency invalidation, malformed XML, and rejection
+of cooked files presented as authored inputs.
+
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
 
 The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
@@ -123,7 +128,7 @@ masked. Notable cases:
   once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
-  cleanup, and SPARK's `IOManager` frees its registered converters at shutdown.
+  cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
 - Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
   `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
   `EngineMetadata`'s type maps are destroyed.
@@ -152,7 +157,7 @@ notes.
 
 ## Current test inventory
 
-Current count: **93** `Test_*.cpp` suites.
+Current count: **95** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -250,6 +255,7 @@ Current count: **93** `Test_*.cpp` suites.
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ParticleBaker.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
@@ -300,6 +306,14 @@ unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
+  effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
+  multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
+  chunking, and facade-level scale reapplication without respawn or timing reset.
+- `Source/Tests/Test_ParticleBaker.cpp` — covers `.efkproj` source discovery,
+  `.spark`/`.efkproj` output-key mapping, generated binary validation, and
+  rejection of authored `.spk`/`.efk` runtime inputs. The build/integration
+  bake path exercises the native fixed-profile exporter on real XML projects.
 - `Source/Tests/Test_Rendering.cpp`
 
 ## Validation routing by change type

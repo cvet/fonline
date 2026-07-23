@@ -517,6 +517,8 @@ TEST_CASE("BakerMasterRawCopy")
     const string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
     const string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
     const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+    const string internal_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Test/state.txt").str();
+    const string stale_effekseer_cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer/Core/Particles/Removed.efk.deps").str();
     const string report_path = MakeBakerSetupReportPath(output_dir);
     const string full_report_path = MakeBakerSetupFullReportPath(output_dir);
 
@@ -551,6 +553,8 @@ Bakers = {}
     CHECK_FALSE(fs_exists(excluded_output_path));
     CHECK_FALSE(fs_exists(outdated_path));
     CHECK(fs_read_file(build_hash_path).has_value());
+    REQUIRE(fs_write_file(internal_cache_path, "cache-state"));
+    REQUIRE(fs_write_file(stale_effekseer_cache_path, "stale-cache"));
 
     REQUIRE(fs_exists(report_path));
     REQUIRE(fs_exists(full_report_path));
@@ -625,6 +629,9 @@ Bakers = {}
     CHECK(*fs_read_file(output_path) == "raw-copy");
     CHECK(fs_last_write_time(output_path) >= output_write_time_before_rebake);
     CHECK(fs_read_file(build_hash_path).has_value());
+    REQUIRE(fs_read_file(internal_cache_path).has_value());
+    CHECK(*fs_read_file(internal_cache_path) == "cache-state");
+    CHECK_FALSE(fs_exists(stale_effekseer_cache_path));
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }

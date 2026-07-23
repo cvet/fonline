@@ -239,6 +239,17 @@ procedural body/head transforms follow the same runtime as animated instances.
 Only direct raw-model instances remain outside Ozz and build parent-ordered
 world matrices through the validation helpers owned by
 `ModelAnimation`.
+
+The client script pair `Game.DrawCritter3d(...)` and
+`Game.GetDrawCritter3dBounds(...)` supports reusable GUI layout around a model
+sprite. After drawing an instance, the bounds query returns two rectangles
+relative to the draw anchor, or `false` when that instance has not produced a
+valid model sprite. `drawRect` covers the selected animation's complete cycle
+and continuous facing range, including its projected shadow. `viewRect` is the
+stable logical model-and-layers rectangle used by names, coarse picking, and
+similar presentation. GUI preview code fits and centres the draw rectangle;
+world-space overlays use the stable view rectangle as their logical anchor,
+without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
 been removed. Baked model meshes now begin with the mandatory `LFMODMSH`
 schema-1 header and contain only the recursive hierarchy/bind/drawable mesh
@@ -304,6 +315,10 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   frame; the envelope resets when mesh composition changes and otherwise only
   grows. Names, coarse picking, transparent eggs, flying text, and attachments
   therefore stay inside automatically derived bounds without authored sizes.
+  A body/movement animation switch can refresh the scratch frame, but it must
+  retain this accumulated configuration view envelope instead of falling back
+  to the root model's idle-only view; otherwise a turn animation temporarily
+  moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
   frame. Per-animation prediction and exact weighted skinning of referenced
@@ -335,6 +350,74 @@ For 3D critter views, idle refresh plays alive-state animations from the beginni
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
 
+`ParticleManager` and `ParticleSystem` are backend-neutral dispatch facades used
+by sprites and model attachments. `ParticleRuntime.cpp` is the composition point:
+it creates the enabled `ParticleRuntimeBackend` implementations, and the manager
+selects one by resource extension. Every live particle owns exactly one
+`ParticleRuntimeSystem`; common timing, scale, and render scheduling stay in
+`ParticleSystem`, while simulation and backend-specific rendering are virtual
+runtime operations.
+
+Resource invalidation follows the same neutral boundary:
+`SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
+backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
+changed file may be a dependency rather than a backend-owned root asset. SPARK
+drops the matching parsed graph for a changed `.spk` and clears its graph
+cache when a texture or render-effect dependency changes, so the next particle
+creation reloads both graph and dependency. Failed loads are not cached.
+Backends without a parsed-asset cache keep the invalidation operation as a
+no-op.
+
+`VisualParticles.h` / `.cpp` contain no particle-backend names or feature guards.
+Concrete types and capabilities live in their extension files. The SPARK editor
+performs its checked typed access only after crossing the neutral
+`GetRuntimeSystem()` boundary, so adding another runtime does not add another
+branch, enum value, or vendor type to the common facade.
+
+Particle backends are independent build features: `FO_SPARK_PARTICLES` and
+`FO_EFFEKSEER_PARTICLES` both default to `OFF`. The embedding project may enable
+one or both; the particle sprite factory advertises only the extensions owned by
+enabled backends, and a disabled backend does not compile or link its upstream
+runtime.
+
+SPARK `.spark` sources are baked to `.spk` binaries.
+`SparkParticleRuntimeBackend` accepts only `.spk` and loads it through SPARK's
+binary `loadFromBuffer` path; XML never reaches runtime. The binary path must remain
+behaviorally equivalent to its stream loader; truncated/oversized payloads,
+unknown object types, descriptor-signature mismatches, zero/out-of-range object
+references, and references to an incompatible object class invalidate the graph.
+Custom FOnline SPARK object registration is shared by the baker, editor, and
+client through the thread-safe `EnsureSparkParticleObjectsRegistered()` path.
+`SparkQuadRenderer::Setup()` resolves the effect and texture before a particle
+is returned; missing render dependencies produce a normal load failure instead
+of a later exception on the first draw. A renderer newly added in the SPARK
+editor is bound to the owning runtime before the preview graph is initialized;
+while its effect or texture is still unassigned it draws nothing, allowing the
+author to complete the renderer without dereferencing an incomplete backend
+state.
+
+Baked raw `.efk` resources select `EffekseerParticleRuntimeBackend` behind the
+same facade. The client never
+loads `.efkproj` XML or invokes the build-time compiler. This includes Web:
+the host pipeline must bake `.efk` before packaging. Each `ClientEngine` or
+Mapper instance owns an Effekseer core manager; each `Create` parses a new
+effect, while the shared particle sprite factory separately caches successfully
+loaded atlas textures. Effekseer advances hierarchy, emission, and lifetime
+state; custom renderer callbacks copy the evaluated render snapshot into
+FOnline-owned packets. No Effekseer graphics backend participates. The initial
+capability gate is CPU Sprite/Ring-only and rejects unsupported renderer or
+material families before returning a particle system. Dynamic callback checks
+still fail closed on non-finite evaluated data, invalid UV ranges, or an atlas
+filter mismatch and retire that already-created handle. Simulation update is
+separate from draw, so effect lifetime does not pause when a direct-scene sprite
+is outside the rendered viewport; stopped handles are advanced through
+Effekseer's deferred removal queues before their wrapper is released.
+
+The exception is an explicit direct-scene prewarm request: it remains pending
+until the first `DrawInScene` can provide the current transform, and scheduled
+updates pause meanwhile. Effekseer prewarm advances exactly one second, then
+resynchronizes the update clock before ordinary simulation resumes so the
+offscreen wait is not double-counted.
 Sprite mesh geometry is independent of the pixel-exact hit mask. `FillAtlas`
 still derives hit testing directly from source alpha and `Render.SpriteHitValue`;
 contour simplification/dilation only changes which triangles are submitted for
@@ -360,7 +443,7 @@ sampling rectangle is not the source sprite silhouette.
 
 Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseClick(pos, button)` sends mouse move/click or wheel events, `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 

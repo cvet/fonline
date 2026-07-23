@@ -37,6 +37,8 @@ DeclareValueOptions(
 
 DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
+	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
+	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
@@ -52,7 +54,6 @@ DeclareBoolOptions(
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF
 	FO_BUILD_MAPPER "Build Mapper binaries" OFF
-	FO_BUILD_EDITOR "Build Editor binaries" OFF
 	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
@@ -322,6 +323,8 @@ endif()
 # before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
 AddCompileDefinitionsList(
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
+	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
+	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
 	FO_MANAGED_SCRIPTING=$<BOOL:${FO_MANAGED_SCRIPTING}>)
@@ -346,7 +349,7 @@ AddIncludeDirectories(
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER)
 	SetValue(FO_HEADLESS_ONLY OFF)
 else()
 	SetValue(FO_HEADLESS_ONLY ON)
@@ -358,7 +361,6 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_SERVER
 	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
@@ -368,36 +370,27 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_MAPPER
 	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_SERVER_LIB
-	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_MAPPER_LIB
-	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_BAKER_LIB
-	FO_BUILD_SERVER
-	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
 EnableCoreLibraryIfAny(
-	FO_BUILD_EDITOR_LIB
-	FO_BUILD_EDITOR
+	FO_BUILD_SERVER_LIB
+	FO_BUILD_SERVER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
-
+EnableCoreLibraryIfAny(
+	FO_BUILD_MAPPER_LIB
+	FO_BUILD_MAPPER
+	FO_UNIT_TESTS
+	FO_CODE_COVERAGE)
+EnableCoreLibraryIfAny(
+	FO_BUILD_BAKER_LIB
+	FO_BUILD_MAPPER
+	FO_BUILD_ASCOMPILER
+	FO_BUILD_BAKER
+	FO_UNIT_TESTS
+	FO_CODE_COVERAGE)
 # Per OS configurations
 if(WIN32)
 	SetValue(FO_WINDOWS 1)
@@ -583,6 +576,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sSTRICT=0)
 	AddLinkOptionsList(
 		$<${expr_WebDebugInfo}:-g3>
+		$<${expr_WebDebugInfo}:-Wno-limited-postlink-optimizations>
 		$<${expr_WebFullOptimization}:-O3>
 		$<${expr_WebFullOptimization}:-flto>
 		$<IF:${expr_DebugBuild},-O0,-O2>
@@ -700,7 +694,6 @@ endif()
 
 SetBinaryOutputPath(FO_CLIENT_OUTPUT Client)
 SetBinaryOutputPath(FO_SERVER_OUTPUT Server)
-SetBinaryOutputPath(FO_EDITOR_OUTPUT Editor)
 SetBinaryOutputPath(FO_MAPPER_OUTPUT Mapper)
 SetBinaryOutputPath(FO_ASCOMPILER_OUTPUT ASCompiler)
 SetBinaryOutputPath(FO_BAKER_OUTPUT Baker)

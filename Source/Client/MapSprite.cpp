@@ -297,18 +297,8 @@ auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcep
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Bit layout: [group 16][primary 24][secondary 16][sub-layer 8]. Explicit fields instead of the
-    // previous MAX_MAP_SIZE-scaled packing, which overflowed its own layer stride on tall maps.
-    const uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd //
-            ? draw_order
-            : DrawOrderType::NormalBegin);
-
-    // Standing (normal) sprites are sorted by the screen row of their hex, not by the hex row: hexes
-    // related by +2X/-1Y project to the same screen row and therefore the same view depth, while their
-    // hex rows differ. Since every standing sprite's depth plane shares one gradient, those planes are
-    // parallel and never intersect, so ordering by screen row makes the painter order agree with the
-    // depth order pixel for pixel — which is what lets standing sprites skip the depth test entirely
-    // (see the Effects DepthFunc note in Docs/FrontendAndRendering.md).
+    // Bit layout: [group 16][primary 24][secondary 16][sub-layer 8]
+    const uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
     const bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
     const uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
     const uint64_t secondary = hex.x;

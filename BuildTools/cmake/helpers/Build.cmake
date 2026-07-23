@@ -332,6 +332,8 @@ macro(CreatePackage package)
 	AppendList(FO_PACKAGES ${package})
 	set(Package_${package}_Config "")
 	set(Package_${package}_Parts "")
+	set(Package_${package}_IncludeSourceGlobs "")
+	set(Package_${package}_IncludeTargetPaths "")
 endmacro()
 
 macro(AddToPackage package binary platform arch packType)
@@ -347,6 +349,15 @@ macro(AddToPackage package binary platform arch packType)
 	endif()
 
 	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${addToPackageCustomConfig},${addToPackageBinaryOutputPostfix}")
+endmacro()
+
+macro(AddIncludeToPackage package sourceGlob targetPath)
+	AppendList(Package_${package}_IncludeSourceGlobs "${sourceGlob}")
+	AppendList(Package_${package}_IncludeTargetPaths "${targetPath}")
+endmacro()
+
+macro(AddPackageOption package optionName optionValue)
+	set(Package_${package}_Option_${optionName} "${optionValue}")
 endmacro()
 
 macro(DefinePackage package)
@@ -386,6 +397,22 @@ macro(DefinePackage package)
 			endif()
 
 			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType} "" "${binaryOutputPostfix}")
+		elseif(packageKeyword STREQUAL "INCLUDE")
+			ListLength(packageArgs packageArgsCount)
+			if(packageArgsCount LESS 2)
+				AbortMessage("DefinePackage ${package} INCLUDE expects source path glob and target path")
+			endif()
+
+			ListPopFront(packageArgs includeSourceGlob includeTargetPath)
+			AddIncludeToPackage(${package} "${includeSourceGlob}" "${includeTargetPath}")
+		elseif(packageKeyword STREQUAL "OPTION")
+			ListLength(packageArgs packageArgsCount)
+			if(packageArgsCount LESS 2)
+				AbortMessage("DefinePackage ${package} OPTION expects name and value")
+			endif()
+
+			ListPopFront(packageArgs optionName optionValue)
+			AddPackageOption(${package} ${optionName} "${optionValue}")
 		else()
 			AbortMessage("DefinePackage ${package} got unexpected keyword: ${packageKeyword}")
 		endif()
@@ -743,7 +770,7 @@ endfunction()
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
 # (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to the editor, ...). Silently does nothing if either target is missing.
+# to a tool host, ...). Silently does nothing if either target is missing.
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()

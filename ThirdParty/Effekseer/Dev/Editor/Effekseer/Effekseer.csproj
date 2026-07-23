@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Platforms>x64</Platforms>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;SCRIPT_ENABLED;DOTNET_STARNDARD</DefineConstants>
+    <StartupObject>Effekseer.Program</StartupObject>
+    <AssemblyName>Effekseer</AssemblyName>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Properties/AssemblyInfo.cs" />
+    <Compile Remove="packages.config" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EffekseerCore\EffekseerCore.csproj" />
+    <ProjectReference Include="..\EffekseerCoreGUI\EffekseerCoreGUI.csproj" />
+  </ItemGroup>
+
+</Project>

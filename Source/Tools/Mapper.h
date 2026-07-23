@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AnyData.h"
 #include "CacheStorage.h"
 #include "Client.h"
 #include "CritterHexView.h"
@@ -49,6 +50,7 @@
 #include "MapLoader.h"
 #include "MapView.h"
 #include "NetBuffer.h"
+#include "ParticleEditor.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
@@ -323,6 +325,7 @@ public:
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
     FileSystem MapsFileSys {};
+    ParticleEditorManager ParticleEditors;
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unordered_set<ptr<MapView>> DirtyMaps {};
     unordered_map<ptr<MapView>, UndoContext> UndoContexts {};
@@ -369,17 +372,18 @@ public:
     nptr<int32_t> ActiveProtoScroll {};
     int32_t ProtoWidth {};
     int32_t ProtosOnScreen {};
-    array<char, 128> WorkspaceFilterBuf {};
-    array<char, 256> ContentMapNameBuf {};
-    array<char, 128> ContentMapFilterBuf {};
+    string WorkspaceFilter {};
+    string ContentMapName {};
+    string ContentMapFilter {};
     int32_t ContentResizeW {};
     int32_t ContentResizeH {};
     int32_t CritterAnimState {};
     int32_t CritterAnimAction {};
-    array<char, 128> CritterAnimSequenceBuf {};
-    array<char, 128> ScriptCallFuncBuf {};
-    array<char, 256> ScriptCallArgsBuf {};
-    array<char, 128> MapBrowserFilterBuf {};
+    string CritterAnimSequence {};
+    string ScriptCallFunc {};
+    string ScriptCallArgs {};
+    string MapBrowserFilter {};
+    bool MapperWindowFocused {};
     int32_t TabIndex[INT_MODE_COUNT] {};
     refcount_nptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};
@@ -406,19 +410,17 @@ public:
     int32_t InspectorPendingCaretResetArrayIndex {-1};
     int32_t InspectorPendingCaretResetFrames {};
     bool InspectorLastEditCellRectValid {};
-    float InspectorLastEditCellMinX {};
-    float InspectorLastEditCellMinY {};
-    float InspectorLastEditCellMaxX {};
-    float InspectorLastEditCellMaxY {};
+    float32_t InspectorLastEditCellMinX {};
+    float32_t InspectorLastEditCellMinY {};
+    float32_t InspectorLastEditCellMaxX {};
+    float32_t InspectorLastEditCellMaxY {};
     bool InspectorVisible {};
     bool InspectorApplyToAll {};
     nptr<ClientEntity> InspectorEntity {};
-    float SelectionSmallOffsetX {};
-    float SelectionSmallOffsetY {};
+    float32_t SelectionSmallOffsetX {};
+    float32_t SelectionSmallOffsetY {};
     bool ConsoleEdit {};
     string ConsoleStr {};
-    array<char, 4096> ConsoleBuf {};
-    bool ConsoleSyncFromState {true};
     vector<string> ConsoleHistory {};
     int32_t ConsoleHistoryCur {};
     vector<MessBoxMessage> MessBox {};
@@ -429,6 +431,42 @@ public:
     bool SpritesCanDraw {};
     uint8_t SelectAlpha {100};
     ucolor SelectContourColor {255, 215, 40};
+
+private:
+    struct ImGuiInputTextStringUserData
+    {
+        ptr<string> Value;
+        bool LatinOnly {};
+        bool MoveCaretToEnd {};
+    };
+
+    auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) const -> irect32;
+    auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) const -> int32_t;
+    auto ScaleZoomValue(float32_t current_zoom, float32_t factor) const -> float32_t;
+    auto GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>;
+    auto GetNextCritterDir(mdir dir) const -> mdir;
+    void AdvanceCritterDir(ptr<CritterHexView> cr) const;
+    void ToggleMapVisibilityFlag(nptr<MapView> map, bool& value) const;
+    auto ContainsCaseInsensitive(string_view text, string_view filter) const -> bool;
+    auto ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>;
+    auto DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const AtlasSprite> atlas_sprite, ImVec2 logical_min, ImVec2 logical_size) const -> bool;
+    auto GetInspectorValueType(ptr<const Property> prop) const -> AnyData::ValueType;
+    auto ParseInspectorValue(ptr<const Property> prop, string_view text) const -> optional<AnyData::Value>;
+    auto MakeDefaultInspectorArrayElement(ptr<const Property> prop) const -> AnyData::Value;
+    auto SerializeInspectorArray(vector<AnyData::Value> entries) const -> string;
+    auto SerializeInspectorStringArray(const vector<string>& entries) const -> string;
+    auto GetInspectorStructLayout(ptr<const Property> prop) const -> nptr<const StructLayoutDesc>;
+    auto ReadInspectorToken(nptr<const char> str, string& result) const -> nptr<const char>;
+    auto ParseInspectorStructFields(const StructLayoutDesc& layout, string_view text) const -> optional<vector<string>>;
+    auto ParseInspectorStringEntries(string_view text) const -> optional<vector<string>>;
+    static auto GetImGuiInputTextStringUserData(nptr<void> user_data) -> ptr<ImGuiInputTextStringUserData>;
+    static int ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data);
+    auto ImGuiInputTextString(ptr<const char> label, string& value, ImGuiInputTextFlags flags = 0, bool latin_only = false, bool move_caret_to_end = false) const -> bool;
+    auto ImGuiInputTextStringWithHint(ptr<const char> label, ptr<const char> hint, string& value, ImGuiInputTextFlags flags = 0, bool latin_only = false, bool move_caret_to_end = false) const -> bool;
+    auto ImGuiInputTextStringImpl(ptr<const char> label, nptr<const char> hint, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool;
+    auto IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) const -> bool;
+    void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value) const;
+    void SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const;
 };
 
 FO_END_NAMESPACE
