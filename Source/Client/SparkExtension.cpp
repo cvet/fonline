@@ -58,10 +58,10 @@ namespace SPK::FO
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
         void SetNextTexCoord(float32_t tu, float32_t tv);
-        void Render(size_t vertices, ptr<RenderEffect> effect) const;
+        void Render(size_t vertices, ptr<RenderEffect> effect);
 
     private:
-        mutable unique_ptr<RenderDrawBuffer> _renderBuf;
+        unique_ptr<RenderDrawBuffer> _renderBuf;
         nptr<FO_NAMESPACE IAppRender> _render {};
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
@@ -117,30 +117,30 @@ namespace SPK::FO
         string _effectName {};
         string _textureName {};
 
-        void AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
-        void AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
-        void AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
 
-        void Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
-        void Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
-        void Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
-        void Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const;
+        void Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
 
-        mutable nptr<RenderEffect> _effect {};
+        nptr<RenderEffect> _effect {};
         nptr<RenderTexture> _texture {};
         frect32 _textureAtlasOffset {};
 
-        mutable mat44 _modelView {};
-        mutable mat44 _invModelView {};
+        mat44 _modelView {};
+        mat44 _invModelView {};
 
-        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, nptr<SparkRenderBuffer> render_buffer) const;
-        mutable RenderParticleFunc _renderParticle {};
+        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, nptr<SparkRenderBuffer> render_buffer);
+        RenderParticleFunc _renderParticle {};
 
     private:
         void innerImport(const IO::Descriptor& descriptor) override;
         void innerExport(IO::Descriptor& descriptor) const override;
         RenderBuffer* attachRenderBuffer(const Group& group) const override;
-        void render(const Group& group, const DataSet* data_set, RenderBuffer* render_buffer) const override;
+        void render(const Group& group, const DataSet* data_set, RenderBuffer* render_buffer) override;
         void computeAABB(Vector3D& aabb_min, Vector3D& aabb_max, const Group& group, const DataSet* data_set) const override;
     };
 }
@@ -680,7 +680,7 @@ namespace SPK::FO
         v.EggFlags[1] = 0.0f;
     }
 
-    void SparkRenderBuffer::Render(size_t vertices, ptr<RenderEffect> effect) const
+    void SparkRenderBuffer::Render(size_t vertices, ptr<RenderEffect> effect)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -727,7 +727,7 @@ namespace SPK::FO
         return _effect && _texture;
     }
 
-    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -737,7 +737,7 @@ namespace SPK::FO
         render_buffer->SetNextVertex(particle.position() + quadSide() - quadUp(), particle.getColor()); // bottom right vertex
     }
 
-    void SparkQuadRenderer::AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -749,7 +749,7 @@ namespace SPK::FO
         render_buffer->SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 1.0f * _textureAtlasOffset.height);
     }
 
-    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -768,7 +768,7 @@ namespace SPK::FO
         return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _runtime->_impl->Services.Render);
     }
 
-    void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
+    void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -870,7 +870,7 @@ namespace SPK::FO
         }
     }
 
-    void SparkQuadRenderer::Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -879,7 +879,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -888,7 +888,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -897,7 +897,7 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
