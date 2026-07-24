@@ -163,7 +163,7 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
     ignore_unused(custom_tex);
     FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Captured draw starts outside the index buffer", start_index, dbuf->IndCount);
 
-    const size_t draw_index_count = indices_to_draw.value_or(dbuf->IndCount - start_index);
+    size_t draw_index_count = indices_to_draw.value_or(dbuf->IndCount - start_index);
     FO_VERIFY_AND_THROW(draw_index_count <= dbuf->IndCount - start_index, "Captured draw exceeds the index buffer", start_index, draw_index_count, dbuf->IndCount);
     FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Captured draw exceeds the vertex buffer", dbuf->VertCount, dbuf->Vertices.size());
     FO_VERIFY_AND_THROW(dbuf->IndCount <= dbuf->Indices.size(), "Captured draw exceeds the allocated index buffer", dbuf->IndCount, dbuf->Indices.size());
@@ -515,8 +515,8 @@ static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDr
     REQUIRE(draw.Indices.size() == expected_instance_count * 6);
 
     for (size_t instance_index = 0; instance_index < expected_instance_count; instance_index++) {
-        const vindex_t vertex_base = numeric_cast<vindex_t>(instance_index * 4);
-        const size_t index_base = instance_index * 6;
+        vindex_t vertex_base = numeric_cast<vindex_t>(instance_index * 4);
+        size_t index_base = instance_index * 6;
         CAPTURE(instance_index);
         CHECK(draw.Indices[index_base + 0] == vertex_base + 0);
         CHECK(draw.Indices[index_base + 1] == vertex_base + 1);
@@ -565,14 +565,14 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
     const vindex_t local_indices[indices_per_segment] = {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
 
     for (size_t segment_index = 0; segment_index < segment_count; segment_index++) {
-        const size_t vertex_base = segment_index * vertices_per_segment;
-        const size_t index_base = segment_index * indices_per_segment;
-        const float32_t expected_u = numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count);
-        const float32_t expected_next_u = numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count);
+        size_t vertex_base = segment_index * vertices_per_segment;
+        size_t index_base = segment_index * indices_per_segment;
+        float32_t expected_u = numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count);
+        float32_t expected_next_u = numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count);
 
         for (size_t vertex_offset = 0; vertex_offset < vertices_per_segment; vertex_offset++) {
             const Vertex2D& vertex = draw.Vertices[vertex_base + vertex_offset];
-            const vec3 position {vertex.PosX, vertex.PosY, vertex.PosZ};
+            vec3 position {vertex.PosX, vertex.PosY, vertex.PosZ};
             CAPTURE(segment_index, vertex_offset);
             CHECK(glm::length(position - ring_center) == Catch::Approx(expected_radii[vertex_offset]).margin(0.001f));
             CHECK(vertex.TexU == Catch::Approx(vertex_offset < 2 || vertex_offset == 4 || vertex_offset == 5 ? expected_u : expected_next_u));
@@ -624,7 +624,7 @@ static auto GetEffekseerQuadDepths(const vector<CapturedEffekseerDraw>& draws) -
     depths.reserve(vertices.size() / 4);
 
     for (size_t vertex_base = 0; vertex_base < vertices.size(); vertex_base += 4) {
-        const float32_t depth = vertices[vertex_base].PosZ;
+        float32_t depth = vertices[vertex_base].PosZ;
         CHECK(vertices[vertex_base + 1].PosZ == Catch::Approx(depth));
         CHECK(vertices[vertex_base + 2].PosZ == Catch::Approx(depth));
         CHECK(vertices[vertex_base + 3].PosZ == Catch::Approx(depth));
@@ -639,8 +639,8 @@ TEST_CASE("Effekseer particle runtime produces deterministic FOnline callback ge
     EffekseerRuntimeTestRig first_rig;
     EffekseerRuntimeTestRig second_rig;
 
-    const vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 173);
-    const vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 173);
+    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 173);
+    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 173);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerFixtureGeometry(first_draws);
@@ -653,8 +653,8 @@ TEST_CASE("Effekseer particle runtime produces deterministic modern Ring geometr
     EffekseerRuntimeTestRig first_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
     EffekseerRuntimeTestRig second_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
 
-    const vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 307);
-    const vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 307);
+    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 307);
+    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 307);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerRingGeometry(first_draws);
@@ -668,7 +668,7 @@ TEST_CASE("Effekseer particle runtime chunks Ring geometry within the index budg
     constexpr size_t instances_in_full_chunk = 500;
 
     EffekseerRuntimeTestRig rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count)};
-    const vector<CapturedEffekseerDraw> draws = DrawEffekseerFixture(rig, 313);
+    vector<CapturedEffekseerDraw> draws = DrawEffekseerFixture(rig, 313);
 
     REQUIRE(draws.size() == 2);
     CHECK(draws[0].Vertices.size() == instances_in_full_chunk * segment_count * 8);
@@ -691,9 +691,9 @@ TEST_CASE("Effekseer particle runtime honors cooked Ring Z-sort modes", "[partic
     EffekseerRuntimeTestRig normal_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count, normal_order)};
     EffekseerRuntimeTestRig reverse_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count, reverse_order)};
 
-    const vector<float32_t> none_depths = GetEffekseerRingDepths(DrawEffekseerFixture(none_rig, seed));
-    const vector<float32_t> normal_depths = GetEffekseerRingDepths(DrawEffekseerFixture(normal_rig, seed));
-    const vector<float32_t> reverse_depths = GetEffekseerRingDepths(DrawEffekseerFixture(reverse_rig, seed));
+    vector<float32_t> none_depths = GetEffekseerRingDepths(DrawEffekseerFixture(none_rig, seed));
+    vector<float32_t> normal_depths = GetEffekseerRingDepths(DrawEffekseerFixture(normal_rig, seed));
+    vector<float32_t> reverse_depths = GetEffekseerRingDepths(DrawEffekseerFixture(reverse_rig, seed));
 
     vector<float32_t> sorted_depths = none_depths;
     std::sort(sorted_depths.begin(), sorted_depths.end());
@@ -713,8 +713,8 @@ TEST_CASE("Effekseer particle runtime batches multiple callback instances determ
     EffekseerRuntimeTestRig first_rig;
     EffekseerRuntimeTestRig second_rig;
 
-    const vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 419, 6);
-    const vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 419, 6);
+    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 419, 6);
+    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 419, 6);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerMultiInstanceTopology(first_draws, 6);
@@ -733,18 +733,18 @@ TEST_CASE("Effekseer particle runtime honors cooked sprite Z-sort modes", "[part
     EffekseerRuntimeTestRig normal_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(normal_order)};
     EffekseerRuntimeTestRig reverse_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(reverse_order)};
 
-    const vector<CapturedEffekseerDraw> none_draws = DrawEffekseerFixture(none_rig, seed, frame_count);
-    const vector<CapturedEffekseerDraw> normal_draws = DrawEffekseerFixture(normal_rig, seed, frame_count);
-    const vector<CapturedEffekseerDraw> reverse_draws = DrawEffekseerFixture(reverse_rig, seed, frame_count);
+    vector<CapturedEffekseerDraw> none_draws = DrawEffekseerFixture(none_rig, seed, frame_count);
+    vector<CapturedEffekseerDraw> normal_draws = DrawEffekseerFixture(normal_rig, seed, frame_count);
+    vector<CapturedEffekseerDraw> reverse_draws = DrawEffekseerFixture(reverse_rig, seed, frame_count);
 
     CheckEffekseerMultiInstanceTopology(none_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(normal_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(reverse_draws, instance_count);
     CHECK(normal_draws.front().EffectName == "Effects/Particles_ColorMul.fofx");
 
-    const vector<float32_t> none_depths = GetEffekseerQuadDepths(none_draws);
-    const vector<float32_t> normal_depths = GetEffekseerQuadDepths(normal_draws);
-    const vector<float32_t> reverse_depths = GetEffekseerQuadDepths(reverse_draws);
+    vector<float32_t> none_depths = GetEffekseerQuadDepths(none_draws);
+    vector<float32_t> normal_depths = GetEffekseerQuadDepths(normal_draws);
+    vector<float32_t> reverse_depths = GetEffekseerQuadDepths(reverse_draws);
 
     vector<float32_t> sorted_depths = none_depths;
     std::sort(sorted_depths.begin(), sorted_depths.end());
@@ -771,19 +771,19 @@ TEST_CASE("Effekseer particle runtime repeats draw and seeded respawn packets", 
 
     rig.ClearDraws();
     system->Draw();
-    const vector<CapturedEffekseerDraw> first_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> first_draws = rig.GetDraws();
     CheckEffekseerFixtureGeometry(first_draws);
 
     rig.ClearDraws();
     system->Draw();
-    const vector<CapturedEffekseerDraw> repeated_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> repeated_draws = rig.GetDraws();
     CheckEffekseerDrawsEqual(first_draws, repeated_draws);
 
     system->Respawn(811);
     system->Update(1.0f / 60.0f);
     rig.ClearDraws();
     system->Draw();
-    const vector<CapturedEffekseerDraw> respawned_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> respawned_draws = rig.GetDraws();
     CheckEffekseerDrawsEqual(first_draws, respawned_draws);
 }
 
@@ -794,7 +794,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
     REQUIRE(created_system);
 
     ParticleSystem& system = *created_system;
-    const ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
     system.Update();
@@ -802,18 +802,18 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
 
     rig.ClearDraws();
     system.Draw();
-    const vector<CapturedEffekseerDraw> unscaled_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> unscaled_draws = rig.GetDraws();
     CheckEffekseerFixtureGeometry(unscaled_draws);
     CHECK_FALSE(system.NeedForceDraw());
 
-    const float32_t elapsed_before_scale = system.GetElapsedTime();
+    float32_t elapsed_before_scale = system.GetElapsedTime();
     system.SetScale(2.0f);
     CHECK(system.NeedForceDraw());
     CHECK(system.GetElapsedTime() == elapsed_before_scale);
 
     rig.ClearDraws();
     system.Draw();
-    const vector<CapturedEffekseerDraw> scaled_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> scaled_draws = rig.GetDraws();
     REQUIRE(scaled_draws.size() == unscaled_draws.size());
 
     for (size_t draw_index = 0; draw_index < unscaled_draws.size(); draw_index++) {

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import time
@@ -1134,6 +1135,7 @@ def unified_type_to_meta_type(unified_type: str, valid_types: set[str]) -> str:
 
 
 def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_raw_handle_pointer: bool = False) -> str:
+    engine_type = engine_type.strip()
     type_map = {
         'int8_t': 'int8', 'uint8_t': 'uint8', 'int16_t': 'int16', 'uint16_t': 'uint16',
         'int32_t': 'int32', 'uint32_t': 'uint32', 'int64_t': 'int64', 'uint64_t': 'uint64',

@@ -51,7 +51,7 @@ TEST_CASE("TextBaker")
     SECTION("SetupBakersReturnsRequestedBaker")
     {
         TestRig rig;
-        const auto bakers = MakeRequestedBakers({string(TextBaker::NAME)}, rig);
+        auto bakers = MakeRequestedBakers({string(TextBaker::NAME)}, rig);
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == TextBaker::NAME);

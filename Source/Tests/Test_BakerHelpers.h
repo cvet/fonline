@@ -152,7 +152,7 @@ namespace BakerTests
             for (const auto& tokens : entries) {
                 writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
-                for (const string_view token : tokens) {
+                for (string_view token : tokens) {
                     writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
                     writer.WriteStringBytes(token);
                 }
@@ -269,7 +269,7 @@ namespace BakerTests
         writer.Write<int16_t>(int16_t {0}); // Frame x
         writer.Write<int16_t>(int16_t {0}); // Frame y
 
-        const auto pixel_count = numeric_cast<size_t>(width) * height;
+        auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (size_t i = 0; i < pixel_count; i++) {
             writer.Write<uint8_t>(uint8_t {255}); // R
@@ -288,11 +288,11 @@ namespace BakerTests
             writer.Write<int32_t>(mesh.SourceOffset.x);
             writer.Write<int32_t>(mesh.SourceOffset.y);
 
-            for (const ipos32 vertex : mesh.Vertices) {
+            for (ipos32 vertex : mesh.Vertices) {
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
             }
-            for (const uint16_t index : mesh.Indices) {
+            for (uint16_t index : mesh.Indices) {
                 writer.Write<uint16_t>(index);
             }
         }
@@ -328,7 +328,7 @@ namespace BakerTests
 
         [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
         {
-            const auto it = _entries.find(string(path));
+            auto it = _entries.find(string(path));
 
             if (it == _entries.end()) {
                 return false;
@@ -341,7 +341,7 @@ namespace BakerTests
 
         [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
         {
-            const auto it = _entries.find(string(path));
+            auto it = _entries.find(string(path));
 
             if (it == _entries.end()) {
                 size = 0;
@@ -374,7 +374,7 @@ namespace BakerTests
                 }
 
                 if (!dir.empty()) {
-                    const string path_dir = strex(path).extract_dir().str();
+                    string path_dir = strex(path).extract_dir().str();
 
                     if (recursive) {
                         if (!path.starts_with(string(dir))) {
@@ -462,6 +462,7 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
+            OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // Match MakeScriptCompilerSettings — the gate also fires at runtime when ServerEngine
             // loads bytecode, so the runtime settings need the same allowlist as the compile-time
             // ones. The gate-test (Test_AngelScriptBaker) intentionally bypasses this default by
@@ -516,7 +517,7 @@ namespace BakerTests
 
         [[nodiscard]] auto GetOutputText(string_view path) const -> string
         {
-            const auto it = Outputs.find(string(path));
+            auto it = Outputs.find(string(path));
             FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
             return string {it->second.begin(), it->second.end()};
         }

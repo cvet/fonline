@@ -55,29 +55,29 @@ TEST_CASE("Containers")
 
     SECTION("VectorFormatterInt")
     {
-        const vector<int32_t> values = {1, 2, 3};
-        const auto text = std::format("{}", values);
+        vector<int32_t> values = {1, 2, 3};
+        auto text = std::format("{}", values);
         CHECK(text == "1 2 3");
     }
 
     SECTION("VectorFormatterString")
     {
-        const vector<string> values = {"one", "two", "three"};
-        const auto text = std::format("{}", values);
+        vector<string> values = {"one", "two", "three"};
+        auto text = std::format("{}", values);
         CHECK(text == "one two three");
     }
 
     SECTION("VectorFormatterBool")
     {
-        const vector<bool> values = {true, false, true};
-        const auto text = std::format("{}", values);
+        vector<bool> values = {true, false, true};
+        auto text = std::format("{}", values);
         CHECK(text == "True False True");
     }
 
     SECTION("VectorFormatterEmpty")
     {
-        const vector<int32_t> values;
-        const auto text = std::format("{}", values);
+        vector<int32_t> values;
+        auto text = std::format("{}", values);
         CHECK(text.empty());
     }
 
@@ -88,7 +88,7 @@ TEST_CASE("Containers")
         values.push_back(8);
         values.push_back(9);
 
-        const auto text = std::format("{}", values);
+        auto text = std::format("{}", values);
         CHECK(text == "7 8 9");
     }
 }

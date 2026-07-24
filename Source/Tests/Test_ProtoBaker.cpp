@@ -20,7 +20,7 @@ TEST_CASE("ProtoBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(ProtoBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(ProtoBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == ProtoBaker::NAME);
@@ -28,13 +28,13 @@ TEST_CASE("ProtoBaker")
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
-    const auto add_server_metadata = [](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); };
-    const auto add_client_mapper_metadata = [](TestRig& local_rig) {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto add_server_metadata = [](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); };
+    auto add_client_mapper_metadata = [](TestRig& local_rig) {
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
-    const auto make_dynamic_metadata_blob = [](const vector<pair<string_view, vector<vector<string_view>>>>& sections) {
+    auto make_dynamic_metadata_blob = [](const vector<pair<string_view, vector<vector<string_view>>>>& sections) {
         vector<uint8_t> metadata;
         auto writer = DataWriter(metadata);
 
@@ -48,7 +48,7 @@ TEST_CASE("ProtoBaker")
             for (const auto& tokens : entries) {
                 writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
-                for (const string_view token : tokens) {
+                for (string_view token : tokens) {
                     writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
                     writer.WriteStringBytes(token);
                 }
@@ -57,12 +57,12 @@ TEST_CASE("ProtoBaker")
 
         return metadata;
     };
-    const auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
+    auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
-    const auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
-    const auto client_mapper_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); };
+    auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
+    auto client_mapper_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); };
 
     SECTION("IgnoresNonProtoSourceFiles")
     {
@@ -249,8 +249,8 @@ $Parent = SharedBase
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    const auto make_script_blob = [](string_view script_source) {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto make_script_blob = [](string_view script_source) {
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoBakerCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -261,7 +261,7 @@ $Parent = SharedBase
         BakerServerEngine compiler_engine {compiler_resources};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ProtoBakerScripts", {{"Scripts/TestItemCallbacks.fos", string(script_source)}}, [](string_view message) {
-            const auto message_str = string(message);
+            string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);

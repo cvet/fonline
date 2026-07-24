@@ -9,7 +9,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempSettingsDir(string_view name) -> string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(base);
 }
 
@@ -25,19 +25,18 @@ TEST_CASE("Settings")
     SECTION("SubConfigMultiParentMergesLeftToRight")
     {
         GlobalSettings settings {false};
-        ConfigFile config {
-            "[SubConfig]\n"
-            "Name = BaseA\n"
-            "OnlyA = fromA\n"
-            "Shared = fromA\n"
-            "[SubConfig]\n"
-            "Name = BaseB\n"
-            "OnlyB = fromB\n"
-            "Shared = fromB\n"
-            "[SubConfig]\n"
-            "Name = Mixed\n"
-            "Parent = BaseA BaseB\n"
-            "Own = child\n"};
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = BaseA\n"
+                           "OnlyA = fromA\n"
+                           "Shared = fromA\n"
+                           "[SubConfig]\n"
+                           "Name = BaseB\n"
+                           "OnlyB = fromB\n"
+                           "Shared = fromB\n"
+                           "[SubConfig]\n"
+                           "Name = Mixed\n"
+                           "Parent = BaseA BaseB\n"
+                           "Own = child\n"};
 
         settings.ApplyConfigFile(config, "cfg");
         settings.ApplySubConfigSection("Mixed");
@@ -53,28 +52,27 @@ TEST_CASE("Settings")
     SECTION("ApplyConfigFileParsesSubConfigsAndResourcePacks")
     {
         GlobalSettings settings {false};
-        ConfigFile config {
-            "UnknownSetting = root\n"
-            "[SubConfig]\n"
-            "Name = Base\n"
-            "Shared = parent\n"
-            "Mode = base\n"
-            "[SubConfig]\n"
-            "Name = Child\n"
-            "Parent = Base\n"
-            "Mode = child\n"
-            "Leaf = extra\n"
-            "[ResourcePack]\n"
-            "Name = CommonPack\n"
-            "InputDirs = dirA dirB\n"
-            "InputFiles = fileA fileB\n"
-            "IncludePatterns = **/*.fos *.fos\n"
-            "ExcludePatterns = **/Generated/** **/_*\n"
-            "Bakers = BakerA BakerB\n"
-            "[ResourcePack]\n"
-            "Name = ServerPack\n"
-            "InputDirs = server_dir\n"
-            "ServerOnly = true\n"};
+        ConfigFile config {"UnknownSetting = root\n"
+                           "[SubConfig]\n"
+                           "Name = Base\n"
+                           "Shared = parent\n"
+                           "Mode = base\n"
+                           "[SubConfig]\n"
+                           "Name = Child\n"
+                           "Parent = Base\n"
+                           "Mode = child\n"
+                           "Leaf = extra\n"
+                           "[ResourcePack]\n"
+                           "Name = CommonPack\n"
+                           "InputDirs = dirA dirB\n"
+                           "InputFiles = fileA fileB\n"
+                           "IncludePatterns = **/*.fos *.fos\n"
+                           "ExcludePatterns = **/Generated/** **/_*\n"
+                           "Bakers = BakerA BakerB\n"
+                           "[ResourcePack]\n"
+                           "Name = ServerPack\n"
+                           "InputDirs = server_dir\n"
+                           "ServerOnly = true\n"};
 
         settings.ApplyConfigFile(config, "cfg");
 
@@ -88,7 +86,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Mode") == "child");
         CHECK(settings.GetCustomSetting("Leaf") == "extra");
 
-        const auto packs = settings.GetResourcePacks();
+        auto packs = settings.GetResourcePacks();
         REQUIRE(packs.size() == 2);
         CHECK(packs[0].Name == "CommonPack");
         REQUIRE(packs[0].InputDirs.size() == 2);
@@ -118,7 +116,7 @@ TEST_CASE("Settings")
         char arg1[] = "--CustomCli";
         char arg2[] = "123";
         char arg3[] = "--FlagOnly";
-        const vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
+        vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
 
         settings.ApplyCommandLine(CommandLineArgs {argv});
 
@@ -128,7 +126,7 @@ TEST_CASE("Settings")
 
     SECTION("CommandLineArgsAcceptEmptyNativeArgv")
     {
-        const CommandLineArgs args {0, nullptr};
+        CommandLineArgs args {0, nullptr};
 
         CHECK(args.empty());
     }
@@ -138,7 +136,7 @@ TEST_CASE("Settings")
         // Capture the "Set <name> to <value>" lines emitted by the logging pass.
         string captured;
         SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
@@ -187,8 +185,8 @@ TEST_CASE("Settings")
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
-        const string temp_dir = MakeTempSettingsDir("settings_config");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempSettingsDir("settings_config");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
@@ -214,12 +212,12 @@ TEST_CASE("Settings")
     {
         GlobalSettings settings {false};
 
-        const auto missing = settings.FindCustomSetting("Missing");
+        auto missing = settings.FindCustomSetting("Missing");
         CHECK_FALSE(static_cast<bool>(missing));
         CHECK(settings.GetCustomSetting("Missing").empty());
 
         settings.SetCustomSetting("Present", any_t(string("value")));
-        const auto present = settings.FindCustomSetting("Present");
+        auto present = settings.FindCustomSetting("Present");
 
         REQUIRE(static_cast<bool>(present));
         CHECK(*present == "value");
@@ -233,8 +231,8 @@ TEST_CASE("Settings")
 
         settings.ApplyConfigFile(config, "");
 
-        const auto saved = settings.Save();
-        const auto it = saved.find("CustomSaved");
+        auto saved = settings.Save();
+        auto it = saved.find("CustomSaved");
         REQUIRE(it != saved.end());
         CHECK(it->second == "value");
     }
@@ -242,15 +240,14 @@ TEST_CASE("Settings")
     SECTION("UpdateFilesInMemoryCanBeOverriddenBySubConfigs")
     {
         GlobalSettings settings {false};
-        ConfigFile config {
-            "ServerNetwork.UpdateFilesInMemory = False\n"
-            "[SubConfig]\n"
-            "Name = PublicGame\n"
-            "ServerNetwork.UpdateFilesInMemory = True\n"
-            "[SubConfig]\n"
-            "Name = Staging\n"
-            "Parent = PublicGame\n"
-            "ServerNetwork.UpdateFilesInMemory = False\n"};
+        ConfigFile config {"ServerNetwork.UpdateFilesInMemory = False\n"
+                           "[SubConfig]\n"
+                           "Name = PublicGame\n"
+                           "ServerNetwork.UpdateFilesInMemory = True\n"
+                           "[SubConfig]\n"
+                           "Name = Staging\n"
+                           "Parent = PublicGame\n"
+                           "ServerNetwork.UpdateFilesInMemory = False\n"};
 
         settings.ApplyConfigFile(config, "cfg");
         settings.ApplySubConfigSection("PublicGame");
@@ -268,7 +265,7 @@ TEST_CASE("Settings")
 
         // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
         // cache + resource-overlay subdirs under it.
-        const auto root = MakeTempSettingsDir("settings_writable_root");
+        string root = MakeTempSettingsDir("settings_writable_root");
         ignore_unused(fs_remove_dir_tree(root));
 
         settings.UserWritablePath = root;
@@ -299,9 +296,9 @@ TEST_CASE("Settings")
 
         // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
         // rather than brick startup.
-        const auto temp_dir = MakeTempSettingsDir("settings_writable_blocker");
+        string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
         ignore_unused(fs_remove_dir_tree(temp_dir));
-        const auto blocker = strex(temp_dir).combine_path("blocker").str();
+        string blocker = strex(temp_dir).combine_path("blocker").str();
         REQUIRE(fs_write_file(blocker, string_view {"x"}));
 
         settings.UserWritablePath = strex(blocker).combine_path("sub").str();

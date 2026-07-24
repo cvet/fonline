@@ -106,7 +106,7 @@ public:
     CommandLineArgs() = default;
     explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-        const size_t arg_count = numeric_cast<size_t>(argc);
+        size_t arg_count = numeric_cast<size_t>(argc);
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
         _args.resize(arg_count);
@@ -119,7 +119,7 @@ public:
     explicit CommandLineArgs(const_span<CommandLineArg> args) :
         _args(args.begin(), args.end())
     {
-        for (const CommandLineArg arg : _args) {
+        for (CommandLineArg arg : _args) {
             FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
         }
     }
@@ -242,7 +242,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        const auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks = std::move(_unsubscribeCallbacks);
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -319,7 +319,7 @@ public:
     {
         if (!_observer->_subscriberCallbacks.empty()) {
             for (auto& cb : _observer->_subscriberCallbacks) {
-                cb(std::forward<Args>(args)...);
+                cb(args...);
             }
         }
         return *this;

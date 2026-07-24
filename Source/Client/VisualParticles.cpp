@@ -54,7 +54,7 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
 
     for (const auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> exts = backend->GetExtensions();
+        vector<string> exts = backend->GetExtensions();
 
         FO_VERIFY_AND_THROW(!exts.empty(), "Particle runtime backend does not declare any resource extensions");
 
@@ -74,7 +74,7 @@ auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntime
 
     for (auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> exts = backend->GetExtensions();
+        vector<string> exts = backend->GetExtensions();
 
         if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
@@ -90,7 +90,7 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
 
     for (const auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
-        const vector<string> exts = backend->GetExtensions();
+        vector<string> exts = backend->GetExtensions();
 
         if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
@@ -124,7 +124,7 @@ auto ParticleManager::GetExtensions() const -> vector<string>
     vector<string> exts;
 
     for (const auto& backend_owner : _impl->Backends) {
-        const vector<string> backend_exts = backend_owner->GetExtensions();
+        vector<string> backend_exts = backend_owner->GetExtensions();
         exts.insert(exts.end(), backend_exts.begin(), backend_exts.end());
     }
 
@@ -144,7 +144,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(name).get_file_extension();
+    string ext = strex(name).get_file_extension();
     auto backend = _impl->FindBackend(ext);
 
     if (!backend) {
@@ -210,7 +210,7 @@ auto ParticleSystem::GetDrawSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const isize32 default_size {_particleMngr->_settings->DefaultParticleDrawWidth, _particleMngr->_settings->DefaultParticleDrawHeight};
+    isize32 default_size {_particleMngr->_settings->DefaultParticleDrawWidth, _particleMngr->_settings->DefaultParticleDrawHeight};
     return _runtimeSystem->GetDrawSize(default_size);
 }
 
@@ -284,7 +284,7 @@ void ParticleSystem::Prewarm()
         return;
     }
 
-    const float32_t elapsed_seconds = _runtimeSystem->Prewarm();
+    float32_t elapsed_seconds = _runtimeSystem->Prewarm();
     FO_VERIFY_AND_THROW(std::isfinite(elapsed_seconds) && elapsed_seconds >= 0.0f, "Particle runtime returned an invalid prewarm duration", elapsed_seconds);
 
     _elapsedTime += numeric_cast<float64_t>(elapsed_seconds);
@@ -324,7 +324,7 @@ void ParticleSystem::Update()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const nanotime time = GetTime();
+    nanotime time = GetTime();
     float32_t delta_seconds = (time - _lastUpdateTime).to_ms<float32_t>() * 0.001f;
 
     if (_forceDraw && delta_seconds <= 0.0f) {
@@ -333,7 +333,7 @@ void ParticleSystem::Update()
 
     _lastUpdateTime = time;
 
-    const bool was_active = _runtimeSystem->IsActive();
+    bool was_active = _runtimeSystem->IsActive();
 
     if (!was_active) {
         return;
@@ -341,7 +341,7 @@ void ParticleSystem::Update()
 
     _runtimeSystem->Update(delta_seconds);
 
-    const bool is_active = _runtimeSystem->IsActive();
+    bool is_active = _runtimeSystem->IsActive();
 
     if (delta_seconds > 0.0f || !is_active) {
         _renderPending = true;

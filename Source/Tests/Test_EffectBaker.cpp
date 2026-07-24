@@ -138,7 +138,7 @@ TEST_CASE("EffectBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == EffectBaker::NAME);
@@ -239,7 +239,7 @@ TEST_CASE("EffectBaker")
 
     SECTION("RejectsInvalidEffects")
     {
-        const vector<pair<string, string>> invalid_effects = {
+        vector<pair<string, string>> invalid_effects = {
             {"Effects/NoEffect.fofx", "[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},
             {"Effects/NoVertex.fofx", "[Effect]\n\n[FragmentShader]\nvoid main(void) { }\n"},
             {"Effects/NoFragment.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},
@@ -263,12 +263,12 @@ TEST_CASE("EffectBaker")
 
         vector<string> captured_messages;
         SetLogCallback("effect-baker-diagnostic-line-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("effect-baker-diagnostic-line-test", {}); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("effect-baker-diagnostic-line-test", {}); });
 
         EffectBaker baker {local_rig.MakeContext()};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
 
-        const auto diagnostic_it = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Failed to parse vertex shader") != string::npos; });
+        auto diagnostic_it = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Failed to parse vertex shader") != string::npos; });
         REQUIRE(diagnostic_it != captured_messages.end());
         CHECK(diagnostic_it->find("\n- error") == string::npos);
         CHECK(diagnostic_it->find("\n- ERROR") == string::npos);
@@ -299,7 +299,7 @@ TEST_CASE("EffectBakerBakesAuxiliaryBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    const auto info = ConfigFile(rig.GetOutputText("Effects/Aux.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Aux.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "IndoorMaskTex", -1) == 2);
@@ -319,7 +319,7 @@ TEST_CASE("EffectBakerBakesExplicitBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    const auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "MainTex", -1) == 0);
@@ -345,7 +345,7 @@ TEST_CASE("EffectBakerBakesSdlGpuFlavors")
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv_sdl"));
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv_sdl"));
 
-    const auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfoSdl"));
     // VALID_EFFECT: vertex has ProjBuf (1 UBO, no samplers); fragment has MainTex (1 sampler) + TimeBuf (1 UBO)

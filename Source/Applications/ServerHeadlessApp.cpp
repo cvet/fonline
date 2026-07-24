@@ -55,7 +55,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {
@@ -111,10 +111,10 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
         balancer.StartLoop();
         GetApp()->BeginFrame();
 
-        const int32_t target_client_count = std::max(GetApp()->Settings.AutoStartClientOnServer, 0);
+        int32_t target_client_count = std::max(GetApp()->Settings.AutoStartClientOnServer, 0);
 
         while (server->IsStarted() && clients.size() < numeric_cast<size_t>(target_client_count)) {
-            const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
+            int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
             auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
             settings->CopyFrom(GetApp()->Settings);
             ClientStartupSettingsHook(*settings, client_index, true);

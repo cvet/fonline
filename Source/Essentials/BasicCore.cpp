@@ -51,7 +51,7 @@ static std::once_flag RunInDebuggerOnce;
 
 void ExitApp(bool success) noexcept
 {
-    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    int32_t code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
@@ -148,14 +148,14 @@ extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char
         unsigned_num = static_cast<uint64_t>(-(num + 1)) + 1;
 
         while (unsigned_num != 0) {
-            const auto rem = unsigned_num % static_cast<uint64_t>(base);
+            uint64_t rem = unsigned_num % static_cast<uint64_t>(base);
             buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
             unsigned_num /= static_cast<uint64_t>(base);
         }
     }
     else {
         while (num != 0) {
-            const auto rem = num % base;
+            int64_t rem = num % base;
             buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
             num = num / base;
         }
@@ -171,7 +171,7 @@ extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char
     int32_t end = i - 1;
 
     while (start < end) {
-        const char ch = buf[start];
+        char ch = buf[start];
         buf[start] = buf[end];
         buf[end] = ch;
         end--;

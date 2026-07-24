@@ -85,18 +85,18 @@ public:
 
         // TEMP DIAG (grid _cells race hunt 2026-06-29): a read must never overlap a write from another thread
         // (the map lock is supposed to serialize all grid access). If it does, this is the segfault root.
-        const std::thread::id writer = _writerThreadDiag.load(std::memory_order_acquire);
+        std::thread::id writer = _writerThreadDiag.load(std::memory_order_acquire);
         FO_STRONG_ASSERT(writer == std::thread::id {} || writer == std::this_thread::get_id(), "Concurrent grid write during read (map lock did not serialize grid access)");
 
         // Mark a reader active for the duration of the find so a concurrent GetCellForWriting names its stack.
-        const std::thread::id prev_reader = _readerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
+        std::thread::id prev_reader = _readerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
         auto restore_reader = scope_exit([this, prev_reader]() noexcept { _readerThreadDiag.store(prev_reader, std::memory_order_release); });
 
         if (!base::_size.is_valid_pos(pos)) {
             return _emptyCell;
         }
 
-        const auto it = _cells.find(pos);
+        auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
             return _emptyCell;
@@ -113,15 +113,15 @@ public:
         // TEMP DIAG (grid _cells race hunt 2026-06-29): mark this grid as being written by this thread for the
         // whole call; a concurrent grid access from another thread then asserts (see GetCellForReading). Also
         // assert here (the writer's stack) if another thread is mid-read — to name the unserialized mutator.
-        const std::thread::id concurrent_reader = _readerThreadDiag.load(std::memory_order_acquire);
+        std::thread::id concurrent_reader = _readerThreadDiag.load(std::memory_order_acquire);
         FO_STRONG_ASSERT(concurrent_reader == std::thread::id {} || concurrent_reader == std::this_thread::get_id(), "Concurrent grid read during write (map lock did not serialize grid access)");
-        const std::thread::id prev_writer = _writerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
+        std::thread::id prev_writer = _writerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
         FO_STRONG_ASSERT(prev_writer == std::thread::id {} || prev_writer == std::this_thread::get_id(), "Concurrent grid write during write (map lock did not serialize grid access)");
         auto restore_writer = scope_exit([this, prev_writer]() noexcept { _writerThreadDiag.store(prev_writer, std::memory_order_release); });
 
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        const auto it = _cells.find(pos);
+        auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
             return &(_cells.emplace(pos, TCell {}).first->second);
@@ -138,15 +138,15 @@ public:
         FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
         FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
-        const auto prev_width = base::_size.width;
-        const auto prev_height = base::_size.height;
+        auto prev_width = base::_size.width;
+        auto prev_height = base::_size.height;
 
         base::_size = size;
 
         for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if ((x >= base::_size.width || y >= base::_size.height) && x < prev_width && y < prev_height) {
-                    const auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
+                    auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
 
                     if (it != _cells.end()) {
                         _cells.erase(it);
@@ -177,7 +177,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
+        size_t count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
         _preallocatedCells.resize(count);
     }
 
@@ -189,7 +189,7 @@ public:
             return _emptyCell;
         }
 
-        const auto index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
+        size_t index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
@@ -205,7 +205,7 @@ public:
 
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        const auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
+        auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
@@ -222,20 +222,20 @@ public:
         FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
         FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
-        const auto prev_width = base::_size.width;
-        const auto prev_height = base::_size.height;
+        auto prev_width = base::_size.width;
+        auto prev_height = base::_size.height;
 
         base::_size = size;
 
         vector<optional<TCell>> new_cells;
-        const auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
+        auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
         new_cells.resize(new_count);
 
         for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    const auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
-                    const auto prev_index = numeric_cast<size_t>(y * prev_width + x);
+                    auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
+                    auto prev_index = numeric_cast<size_t>(y * prev_width + x);
                     new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
             }

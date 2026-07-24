@@ -59,7 +59,7 @@ static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, vector<Mode
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t source_index = numeric_cast<int32_t>(source_joints.size());
+    int32_t source_index = numeric_cast<int32_t>(source_joints.size());
     source_joints.emplace_back(ModelAnimationRuntimeJoint {string {bone->SourceName.as_str()}, parent_index, bone->RestLocalTransform});
     source_bones.emplace_back(bone);
     bones.emplace(depth, bone);
@@ -122,7 +122,7 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
     }
 
     for (size_t i = 0; i < bone->Children.size(); i++) {
-        const auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
+        auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
 
         if (child_bone) {
             return child_bone;
@@ -138,7 +138,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
-    const string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
+    string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 

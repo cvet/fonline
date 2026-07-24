@@ -103,7 +103,7 @@ auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, float32_t 
     FO_VERIFY_AND_THROW(std::isfinite(duration) && duration > 0.0f && std::isfinite(1.0f / duration), "Animation duration is invalid", duration);
     FO_VERIFY_AND_THROW(_animationBindings->size() < numeric_cast<size_t>(std::numeric_limits<int32_t>::max()), "Animation controller table is full", _animationBindings->size());
 
-    const int32_t animation_index = numeric_cast<int32_t>(_animationBindings->size());
+    int32_t animation_index = numeric_cast<int32_t>(_animationBindings->size());
     _animationBindings->emplace_back(AnimationBinding {.ClipIndex = clip_index, .Duration = duration, .Reversed = reversed, .BoundBones = std::move(bound_bones)});
     return animation_index;
 }
@@ -246,7 +246,7 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
         suppressed_bones.emplace_back(track.SuppressedBones);
     }
 
-    const size_t skipped_track = numeric_cast<size_t>(skip_track);
+    size_t skipped_track = numeric_cast<size_t>(skip_track);
 
     for (size_t i = 0; i < _tracks.size(); i++) {
         if (i == skipped_track) {
@@ -570,8 +570,8 @@ ModelAnimationRuntimePose::Impl::Impl(ptr<const ModelAnimationRuntimeRig> rig) :
 
     InitializeModelAnimationMemory();
     const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(*rig);
-    const size_t joint_count = numeric_cast<size_t>(skeleton.num_joints());
-    const size_t soa_joint_count = numeric_cast<size_t>(skeleton.num_soa_joints());
+    size_t joint_count = numeric_cast<size_t>(skeleton.num_joints());
+    size_t soa_joint_count = numeric_cast<size_t>(skeleton.num_soa_joints());
     _bodyContext0.Resize(skeleton.num_joints());
     _bodyContext1.Resize(skeleton.num_joints());
     _movementContext0.Resize(skeleton.num_joints());
@@ -597,7 +597,7 @@ auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view
     joint_indexes.reserve(runtime_names.size());
 
     for (size_t joint_index = 0; joint_index < runtime_names.size(); joint_index++) {
-        const hstring runtime_name = runtime_names[joint_index];
+        hstring runtime_name = runtime_names[joint_index];
 
         if (runtime_name && !joint_indexes.emplace(runtime_name, numeric_cast<uint32_t>(joint_index)).second) {
             throw ModelAnimationRuntimeException("Model has duplicate runtime lookup name", context, runtime_name);
@@ -615,7 +615,7 @@ auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_j
     links.reserve(child_runtime_names.size());
 
     for (size_t child_joint_index = 0; child_joint_index < child_runtime_names.size(); child_joint_index++) {
-        const auto parent_joint_it = parent_joint_indexes.find(child_runtime_names[child_joint_index]);
+        auto parent_joint_it = parent_joint_indexes.find(child_runtime_names[child_joint_index]);
 
         if (parent_joint_it != parent_joint_indexes.end()) {
             links.emplace_back(ModelPoseJointLink {parent_joint_it->second, numeric_cast<uint32_t>(child_joint_index)});
@@ -650,7 +650,7 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
     for (size_t joint_index = 0; joint_index < joints.size(); joint_index++) {
         const ModelPoseJoint& joint = joints[joint_index];
         const mat44& parent_matrix = joint.ParentIndex >= 0 ? world_matrices[numeric_cast<size_t>(joint.ParentIndex)] : root_matrix;
-        const mat44 world_matrix = parent_matrix * joint.RestLocalTransform;
+        mat44 world_matrix = parent_matrix * joint.RestLocalTransform;
         ValidateModelAnimationRuntimeMatrix(world_matrix, strex("rest-pose world matrix at joint {}", joint_index));
         world_matrices[joint_index] = world_matrix;
     }
@@ -734,7 +734,7 @@ auto ModelAnimationRuntimeRig::GetJointName(size_t index) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto joint_names = _impl->Skeleton.joint_names();
+    auto joint_names = _impl->Skeleton.joint_names();
     FO_VERIFY_AND_THROW(index < joint_names.size(), "Model animation runtime joint index is outside the rig", index, joint_names.size());
     return joint_names[index];
 }
@@ -846,8 +846,8 @@ void ModelAnimationRuntimePose::ResetLocalsToRestPose()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ozz::span<const ozz::math::SoaTransform> rest_poses = ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig).joint_rest_poses();
-    const auto reset_locals = [rest_poses](ozz::vector<ozz::math::SoaTransform>& locals) { std::copy(rest_poses.begin(), rest_poses.end(), locals.begin()); };
+    ozz::span<const ozz::math::SoaTransform> rest_poses = ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig).joint_rest_poses();
+    auto reset_locals = [rest_poses](ozz::vector<ozz::math::SoaTransform>& locals) { std::copy(rest_poses.begin(), rest_poses.end(), locals.begin()); };
     reset_locals(_impl->_bodyTrackLocals0);
     reset_locals(_impl->_bodyTrackLocals1);
     reset_locals(_impl->_movementTrackLocals0);
@@ -867,7 +867,7 @@ void ModelAnimationRuntimePose::BuildModelMatrices(const mat44& root_matrix)
 
     ValidateModelAnimationRuntimeMatrix(root_matrix, "root matrix");
 
-    const ozz::math::Float4x4 ozz_root_matrix = ConvertModelAnimationRuntimeMatrix(root_matrix);
+    ozz::math::Float4x4 ozz_root_matrix = ConvertModelAnimationRuntimeMatrix(root_matrix);
     ozz::animation::LocalToModelJob local_to_model_job;
     local_to_model_job.skeleton = &ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig);
     local_to_model_job.root = &ozz_root_matrix;
@@ -885,13 +885,13 @@ void ModelAnimationRuntimePose::Evaluate(const array<TrackInput, 2>& body_tracks
     FO_STACK_TRACE_ENTRY();
 
     ValidateModelAnimationRuntimeMatrix(root_matrix, "root matrix");
-    const size_t joint_count = GetJointCount();
+    size_t joint_count = GetJointCount();
     ValidateModelAnimationRuntimeProceduralRotations(procedural_rotations, joint_count);
-    const array<ModelAnimationRuntimeResolvedTrackInput, 2> resolved_body {
+    array<ModelAnimationRuntimeResolvedTrackInput, 2> resolved_body {
         ResolveModelAnimationRuntimeTrackInput(*_impl->_rig, body_tracks[0], joint_count, "body track 0"),
         ResolveModelAnimationRuntimeTrackInput(*_impl->_rig, body_tracks[1], joint_count, "body track 1"),
     };
-    const array<ModelAnimationRuntimeResolvedTrackInput, 2> resolved_movement {
+    array<ModelAnimationRuntimeResolvedTrackInput, 2> resolved_movement {
         ResolveModelAnimationRuntimeTrackInput(*_impl->_rig, movement_tracks[0], joint_count, "movement track 0"),
         ResolveModelAnimationRuntimeTrackInput(*_impl->_rig, movement_tracks[1], joint_count, "movement track 1"),
     };
@@ -917,7 +917,7 @@ void ModelAnimationRuntimePose::OverrideWorldMatrix(size_t joint_index, const ma
     }
 
     ValidateModelAnimationRuntimeMatrix(world_matrix, "world override matrix");
-    const ozz::math::Float4x4 ozz_world_matrix = ConvertModelAnimationRuntimeMatrix(world_matrix);
+    ozz::math::Float4x4 ozz_world_matrix = ConvertModelAnimationRuntimeMatrix(world_matrix);
     _impl->_modelMatrices[joint_index] = ozz_world_matrix;
     _impl->_worldMatrices[joint_index] = world_matrix;
 }
@@ -944,7 +944,7 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
     }
 
     ozz::animation::Skeleton skeleton = DeserializeModelAnimationRuntimeObject<ozz::animation::Skeleton>(rig_data.Skeleton.Payload, strex("canonical skeleton for '{}'", model_description));
-    const uint32_t canonical_joint_count = numeric_cast<uint32_t>(skeleton.num_joints());
+    uint32_t canonical_joint_count = numeric_cast<uint32_t>(skeleton.num_joints());
     ModelAnimationJointRemap base_joint_remap;
 
     try {
@@ -964,7 +964,7 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
     for (ModelAnimationRigClipData& clip_data : rig_data.Clips) {
         const string& source_file = clip_data.Animation.Metadata.SourceAsset;
         const string& clip_name = clip_data.Animation.Metadata.ObjectName;
-        const string clip_context = strex("animation '{}#{}' for '{}'", source_file, clip_name, model_description);
+        string clip_context = strex("animation '{}#{}' for '{}'", source_file, clip_name, model_description);
         ozz::animation::Animation animation = DeserializeModelAnimationRuntimeObject<ozz::animation::Animation>(clip_data.Animation.Payload, clip_context);
         ModelAnimationJointRemap joint_remap;
 
@@ -987,7 +987,7 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         if (joint_remap.CanonicalJointCount != canonical_joint_count || joint_remap.Duration != animation.duration()) {
             throw ModelAnimationRuntimeException("Ozz animation remap canonical joint count and duration do not match expected values", clip_context, joint_remap.CanonicalJointCount, joint_remap.Duration, canonical_joint_count, animation.duration());
         }
-        const bool has_nearest_timeline = !joint_remap.NearestSampleTimes.empty();
+        bool has_nearest_timeline = !joint_remap.NearestSampleTimes.empty();
 
         if (has_nearest_timeline != nearest_sampling) {
             throw ModelAnimationRuntimeException("Ozz animation nearest-sampling timeline does not match the model interpolation policy", clip_context);
@@ -1011,18 +1011,18 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
     }
 
     const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(rig);
-    const ozz::span<const char* const> canonical_names = skeleton.joint_names();
-    const ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
+    ozz::span<const char* const> canonical_names = skeleton.joint_names();
+    ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
 
     for (size_t source_index = 0; source_index < source_joints.size(); source_index++) {
         const ModelAnimationRuntimeJoint& source_joint = source_joints[source_index];
-        const uint32_t canonical_index = remap.SourceToCanonicalJointIndices[source_index];
+        uint32_t canonical_index = remap.SourceToCanonicalJointIndices[source_index];
 
         if (source_joint.Name != canonical_names[canonical_index]) {
             throw ModelAnimationRuntimeException("Animation base-joint name mismatch between source and canonical joint", source_index, context, source_joint.Name, canonical_names[canonical_index], canonical_index);
         }
 
-        const int16_t canonical_parent = canonical_parents[canonical_index];
+        int16_t canonical_parent = canonical_parents[canonical_index];
 
         if (source_joint.ParentIndex < 0) {
             if (canonical_parent != ozz::animation::Skeleton::kNoParent) {
@@ -1030,7 +1030,7 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
             }
         }
         else {
-            const uint32_t mapped_parent = remap.SourceToCanonicalJointIndices[numeric_cast<size_t>(source_joint.ParentIndex)];
+            uint32_t mapped_parent = remap.SourceToCanonicalJointIndices[numeric_cast<size_t>(source_joint.ParentIndex)];
 
             if (canonical_parent < 0 || mapped_parent != numeric_cast<uint32_t>(canonical_parent)) {
                 throw ModelAnimationRuntimeException("Animation base-joint parent mismatch between mapped source parent and canonical parent", source_joint.Name, source_index, context, source_joint.ParentIndex, mapped_parent, canonical_parent);
@@ -1050,7 +1050,7 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
 
     for (size_t hierarchy_index = 0; hierarchy_index < hierarchy_joints.size(); hierarchy_index++) {
         const ModelAnimationRuntimeJoint& hierarchy_joint = hierarchy_joints[hierarchy_index];
-        const pair<int32_t, string_view> joint_key {hierarchy_joint.ParentIndex, hierarchy_joint.Name};
+        pair<int32_t, string_view> joint_key {hierarchy_joint.ParentIndex, hierarchy_joint.Name};
 
         if (!hierarchy_index_by_parent_and_name.emplace(joint_key, numeric_cast<uint32_t>(hierarchy_index)).second) {
             throw ModelAnimationRuntimeException("Runtime model hierarchy contains a duplicate direct child under a joint", context, hierarchy_joint.Name, hierarchy_joint.ParentIndex);
@@ -1058,14 +1058,14 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
     }
 
     const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(rig);
-    const ozz::span<const char* const> canonical_names = skeleton.joint_names();
-    const ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
+    ozz::span<const char* const> canonical_names = skeleton.joint_names();
+    ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
     vector<uint32_t> canonical_to_hierarchy;
     canonical_to_hierarchy.reserve(numeric_cast<size_t>(skeleton.num_joints()));
 
     for (int canonical_index = 0; canonical_index < skeleton.num_joints(); canonical_index++) {
-        const string_view canonical_name {canonical_names[canonical_index]};
-        const int16_t canonical_parent = canonical_parents[canonical_index];
+        string_view canonical_name {canonical_names[canonical_index]};
+        int16_t canonical_parent = canonical_parents[canonical_index];
         int32_t hierarchy_parent = -1;
 
         if (canonical_parent != ozz::animation::Skeleton::kNoParent) {
@@ -1073,13 +1073,13 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
             hierarchy_parent = numeric_cast<int32_t>(canonical_to_hierarchy[numeric_cast<size_t>(canonical_parent)]);
         }
 
-        const auto hierarchy_it = hierarchy_index_by_parent_and_name.find(pair<int32_t, string_view> {hierarchy_parent, canonical_name});
+        auto hierarchy_it = hierarchy_index_by_parent_and_name.find(pair<int32_t, string_view> {hierarchy_parent, canonical_name});
 
         if (hierarchy_it == hierarchy_index_by_parent_and_name.end()) {
             throw ModelAnimationRuntimeException("Canonical animation joint is absent from the runtime model hierarchy", canonical_name, canonical_index, hierarchy_parent, context);
         }
 
-        const uint32_t hierarchy_index = hierarchy_it->second;
+        uint32_t hierarchy_index = hierarchy_it->second;
         const ModelAnimationRuntimeJoint& hierarchy_joint = hierarchy_joints[hierarchy_index];
         FO_STRONG_ASSERT(hierarchy_joint.ParentIndex == hierarchy_parent, "Resolved animation canonical joint has an unexpected runtime parent", context, canonical_index, hierarchy_index, hierarchy_joint.ParentIndex, hierarchy_parent);
 
@@ -1132,15 +1132,15 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
         throw ModelAnimationRuntimeException("Ozz skeleton has invalid joint count", context, skeleton.num_joints());
     }
 
-    const ozz::span<const int16_t> parents = skeleton.joint_parents();
-    const ozz::span<const char* const> names = skeleton.joint_names();
+    ozz::span<const int16_t> parents = skeleton.joint_parents();
+    ozz::span<const char* const> names = skeleton.joint_names();
 
     if (parents.size() != numeric_cast<size_t>(skeleton.num_joints()) || names.size() != numeric_cast<size_t>(skeleton.num_joints())) {
         throw ModelAnimationRuntimeException("Ozz skeleton has inconsistent parent/name arrays", context);
     }
 
     for (int joint = 0; joint < skeleton.num_joints(); joint++) {
-        const int16_t parent = parents[numeric_cast<size_t>(joint)];
+        int16_t parent = parents[numeric_cast<size_t>(joint)];
 
         if ((joint == 0 && parent != ozz::animation::Skeleton::kNoParent) || (joint != 0 && (parent < 0 || parent >= joint))) {
             throw ModelAnimationRuntimeException("Ozz skeleton has invalid parent for joint", context, parent, joint);
@@ -1149,7 +1149,7 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
             throw ModelAnimationRuntimeException("Ozz skeleton has a null name for joint", context, joint);
         }
 
-        const string_view name {names[numeric_cast<size_t>(joint)]};
+        string_view name {names[numeric_cast<size_t>(joint)]};
 
         if ((joint != 0 && name.empty()) || !strvex(name).is_valid_utf8()) {
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
@@ -1163,10 +1163,10 @@ static void ValidateModelAnimationRuntimeTransform(const ozz::math::Transform& t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool finite = std::isfinite(transform.translation.x) && std::isfinite(transform.translation.y) && std::isfinite(transform.translation.z) && std::isfinite(transform.rotation.x) && std::isfinite(transform.rotation.y) && std::isfinite(transform.rotation.z) && std::isfinite(transform.rotation.w) && std::isfinite(transform.scale.x) && std::isfinite(transform.scale.y) && std::isfinite(transform.scale.z);
+    bool finite = std::isfinite(transform.translation.x) && std::isfinite(transform.translation.y) && std::isfinite(transform.translation.z) && std::isfinite(transform.rotation.x) && std::isfinite(transform.rotation.y) && std::isfinite(transform.rotation.z) && std::isfinite(transform.rotation.w) && std::isfinite(transform.scale.x) && std::isfinite(transform.scale.y) && std::isfinite(transform.scale.z);
 
-    const float32_t rotation_norm_squared = transform.rotation.x * transform.rotation.x + transform.rotation.y * transform.rotation.y + transform.rotation.z * transform.rotation.z + transform.rotation.w * transform.rotation.w;
-    const bool valid_scale = float_abs(transform.scale.x) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.y) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.z) > std::numeric_limits<float32_t>::epsilon();
+    float32_t rotation_norm_squared = transform.rotation.x * transform.rotation.x + transform.rotation.y * transform.rotation.y + transform.rotation.z * transform.rotation.z + transform.rotation.w * transform.rotation.w;
+    bool valid_scale = float_abs(transform.scale.x) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.y) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.z) > std::numeric_limits<float32_t>::epsilon();
 
     if (!finite || !valid_scale || !std::isfinite(rotation_norm_squared) || float_abs(rotation_norm_squared - 1.0f) > 1.0e-4f) {
         throw ModelAnimationRuntimeException("Ozz skeleton has an invalid rest transform at joint", context, joint_index);
@@ -1197,19 +1197,19 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
 {
     FO_STACK_TRACE_ENTRY();
 
-    const mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
+    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
 
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
-            const float32_t source_value = joint.RestLocalTransform[column][row];
-            const float32_t canonical_value = canonical_rest[column][row];
+            float32_t source_value = joint.RestLocalTransform[column][row];
+            float32_t canonical_value = canonical_rest[column][row];
 
             if (!std::isfinite(source_value) || !std::isfinite(canonical_value)) {
                 throw ModelAnimationRuntimeException("Runtime/Ozz rest pose contains a non-finite matrix component", joint.Name, canonical_index, context);
             }
 
-            const float32_t difference = float_abs(source_value - canonical_value);
-            const float32_t tolerance = MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(canonical_value));
+            float32_t difference = float_abs(source_value - canonical_value);
+            float32_t tolerance = MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(canonical_value));
 
             if (difference > tolerance) {
                 throw ModelAnimationRuntimeException("Runtime/Ozz rest-pose matrix component mismatch beyond tolerance", joint.Name, canonical_index, context, column, row, source_value, canonical_value, difference, tolerance);
@@ -1222,7 +1222,7 @@ static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t joint_count = rig.GetJointCount();
+    size_t joint_count = rig.GetJointCount();
 
     if (rig.GetClipCount() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         throw ModelAnimationRuntimeException("Animation runtime pose rig has too many clips", rig.GetClipCount());
@@ -1232,7 +1232,7 @@ static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig&
         const ModelAnimationRuntimeClip& clip = rig.GetClip(clip_index);
         const ozz::animation::Animation& animation = ModelAnimationRuntimeAccess::GetAnimation(clip);
         const ModelAnimationJointRemap& remap = ModelAnimationRuntimeAccess::GetJointRemap(clip);
-        const string context = strex("runtime pose clip {} ('{}#{}')", clip_index, clip.GetSourceFile(), clip.GetClipName());
+        string context = strex("runtime pose clip {} ('{}#{}')", clip_index, clip.GetSourceFile(), clip.GetClipName());
 
         if (animation.num_tracks() != numeric_cast<int>(joint_count) || !std::isfinite(animation.duration()) || animation.duration() <= 0.0f || !std::isfinite(1.0f / animation.duration())) {
             throw ModelAnimationRuntimeException("Invalid animation track count or duration", context, animation.num_tracks(), animation.duration());
@@ -1285,7 +1285,7 @@ static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAni
             throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation contains a non-finite quaternion", i);
         }
 
-        const float32_t length_squared = glm::dot(rotation, rotation);
+        float32_t length_squared = glm::dot(rotation, rotation);
 
         if (float_abs(length_squared - 1.0f) > 1.0e-4f) {
             throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation is not normalized", i, length_squared);
@@ -1304,8 +1304,8 @@ static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimat
     FO_NO_STACK_TRACE_ENTRY();
 
     for (const ModelAnimationRuntimePose::ProceduralLocalRotation& procedural_rotation : procedural_rotations) {
-        const size_t soa_joint = procedural_rotation.JointIndex / 4;
-        const size_t lane = procedural_rotation.JointIndex % 4;
+        size_t soa_joint = procedural_rotation.JointIndex / 4;
+        size_t lane = procedural_rotation.JointIndex % 4;
         ozz::math::SoaTransform& local = locals[soa_joint];
         array<float32_t, 4> translation_x {};
         array<float32_t, 4> translation_y {};
@@ -1322,10 +1322,10 @@ static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimat
         ozz::math::StorePtrU(local.rotation.z, rotation_z.data());
         ozz::math::StorePtrU(local.rotation.w, rotation_w.data());
 
-        const vec3 sampled_translation {translation_x[lane], translation_y[lane], translation_z[lane]};
-        const quaternion sampled_rotation {rotation_w[lane], rotation_x[lane], rotation_y[lane], rotation_z[lane]};
-        const vec3 rotated_translation = procedural_rotation.Rotation * sampled_translation;
-        const quaternion rotated_rotation = procedural_rotation.Rotation * sampled_rotation;
+        vec3 sampled_translation {translation_x[lane], translation_y[lane], translation_z[lane]};
+        quaternion sampled_rotation {rotation_w[lane], rotation_x[lane], rotation_y[lane], rotation_z[lane]};
+        vec3 rotated_translation = procedural_rotation.Rotation * sampled_translation;
+        quaternion rotated_rotation = procedural_rotation.Rotation * sampled_rotation;
         translation_x[lane] = rotated_translation.x;
         translation_y[lane] = rotated_translation.y;
         translation_z[lane] = rotated_translation.z;
@@ -1381,8 +1381,8 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
     result.Nearest = !joint_remap.NearestSampleTimes.empty();
 
     if (result.Active) {
-        const float32_t duration = clip.GetDuration();
-        const float32_t loop_position = std::fmod(input.Position, duration);
+        float32_t duration = clip.GetDuration();
+        float32_t loop_position = std::fmod(input.Position, duration);
         float32_t source_time = input.Reversed ? duration - loop_position : loop_position;
 
         if (result.Nearest) {
@@ -1400,7 +1400,7 @@ static auto SnapModelAnimationRuntimeSampleTime(float32_t source_time, const_spa
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto next = std::lower_bound(sample_times.begin(), sample_times.end(), source_time);
+    auto next = std::lower_bound(sample_times.begin(), sample_times.end(), source_time);
 
     if (next == sample_times.begin()) {
         return sample_times.front();
@@ -1409,7 +1409,7 @@ static auto SnapModelAnimationRuntimeSampleTime(float32_t source_time, const_spa
         return sample_times.back();
     }
 
-    const float32_t previous_time = *(next - 1);
+    float32_t previous_time = *(next - 1);
     return source_time - previous_time < *next - source_time ? previous_time : *next;
 }
 
@@ -1441,21 +1441,21 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(joint_weights0.size() == rest_pose.size() && joint_weights1.size() == rest_pose.size(), "Animation runtime pose blend-weight buffers have invalid sizes");
-    const bool nearest_transition = tracks[0].Nearest || tracks[1].Nearest;
+    bool nearest_transition = tracks[0].Nearest || tracks[1].Nearest;
 
     for (size_t soa_joint = 0; soa_joint < rest_pose.size(); soa_joint++) {
         array<float32_t, 4> weights0 {};
         array<float32_t, 4> weights1 {};
 
         for (size_t lane = 0; lane < 4; lane++) {
-            const size_t joint = soa_joint * 4 + lane;
+            size_t joint = soa_joint * 4 + lane;
 
             if (joint >= joint_count) {
                 continue;
             }
 
-            const bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
-            const bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
+            bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
+            bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
 
             if (present0 && present1) {
                 if (nearest_transition) {
@@ -1492,7 +1492,7 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
     blending_job.output = output;
     FO_STRONG_ASSERT(blending_job.Run(), "Invalid animation runtime pose blending job");
 
-    const auto unpack_rotations = [](const ozz::math::SoaTransform& transform) {
+    auto unpack_rotations = [](const ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
         array<float32_t, 4> y {};
         array<float32_t, 4> z {};
@@ -1509,7 +1509,7 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
 
         return result;
     };
-    const auto pack_rotations = [](const array<quaternion, 4>& rotations, ozz::math::SoaTransform& transform) {
+    auto pack_rotations = [](const array<quaternion, 4>& rotations, ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
         array<float32_t, 4> y {};
         array<float32_t, 4> z {};
@@ -1529,20 +1529,20 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
     };
 
     for (size_t soa_joint = 0; soa_joint < output.size(); soa_joint++) {
-        const array<quaternion, 4> rest_rotations = unpack_rotations(rest_pose[soa_joint]);
-        const array<quaternion, 4> rotations0 = unpack_rotations(track_locals0[soa_joint]);
-        const array<quaternion, 4> rotations1 = unpack_rotations(track_locals1[soa_joint]);
+        array<quaternion, 4> rest_rotations = unpack_rotations(rest_pose[soa_joint]);
+        array<quaternion, 4> rotations0 = unpack_rotations(track_locals0[soa_joint]);
+        array<quaternion, 4> rotations1 = unpack_rotations(track_locals1[soa_joint]);
         array<quaternion, 4> blended_rotations = rest_rotations;
 
         for (size_t lane = 0; lane < 4; lane++) {
-            const size_t joint = soa_joint * 4 + lane;
+            size_t joint = soa_joint * 4 + lane;
 
             if (joint >= joint_count) {
                 continue;
             }
 
-            const bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
-            const bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
+            bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
+            bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
 
             if (present0 && present1) {
                 blended_rotations[lane] = nearest_transition ? (tracks[1].Weight >= 0.5f ? rotations1[lane] : rotations0[lane]) : glm::normalize(glm::slerp(rotations0[lane], rotations1[lane], tracks[1].Weight));
@@ -1570,7 +1570,7 @@ static void SelectModelAnimationRuntimeMovementPose(const array<ModelAnimationRu
         array<float32_t, 4> movement_weights {};
 
         for (size_t lane = 0; lane < 4; lane++) {
-            const size_t joint = soa_joint * 4 + lane;
+            size_t joint = soa_joint * 4 + lane;
 
             if (joint < joint_count && (IsModelAnimationRuntimeJointPresent(movement_tracks[0], joint) || IsModelAnimationRuntimeJointPresent(movement_tracks[1], joint))) {
                 body_weights[lane] = 0.0f;
@@ -1600,9 +1600,9 @@ static auto ComposeModelAnimationRuntimeTransform(const ozz::math::Transform& tr
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const vec3 translation {transform.translation.x, transform.translation.y, transform.translation.z};
-    const quaternion rotation {transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z};
-    const vec3 scale {transform.scale.x, transform.scale.y, transform.scale.z};
+    vec3 translation {transform.translation.x, transform.translation.y, transform.translation.z};
+    quaternion rotation {transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z};
+    vec3 scale {transform.scale.x, transform.scale.y, transform.scale.z};
     return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
 }
 
@@ -1610,8 +1610,8 @@ static auto ExtractModelAnimationRuntimeTransform(ozz::span<const ozz::math::Soa
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const size_t soa_joint = joint_index / 4;
-    const size_t lane = joint_index % 4;
+    size_t soa_joint = joint_index / 4;
+    size_t lane = joint_index % 4;
     const ozz::math::SoaTransform& local = locals[soa_joint];
     array<float32_t, 4> translation_x {};
     array<float32_t, 4> translation_y {};

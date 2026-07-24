@@ -155,7 +155,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         fog.Prepare(input);
-        const auto initial_x = fog.GetPoints().front().PointPos.x;
+        int32_t initial_x = fog.GetPoints().front().PointPos.x;
 
         fog.RequestRebuild();
         input = MakeInput({20, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
@@ -165,7 +165,7 @@ TEST_CASE("FogOfWar")
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {100}}};
         fog.Prepare(input);
-        const auto mid_x = fog.GetPoints().front().PointPos.x;
+        int32_t mid_x = fog.GetPoints().front().PointPos.x;
 
         CHECK(mid_x == initial_x);
 
@@ -185,8 +185,8 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        const auto edge_x = fog.GetPoints().front().PointPos.x;
-        const auto center_x = fog.GetPoints()[2].PointPos.x;
+        int32_t edge_x = fog.GetPoints().front().PointPos.x;
+        int32_t center_x = fog.GetPoints()[2].PointPos.x;
         CHECK(edge_x != center_x);
 
         input.Enabled = false;
@@ -197,7 +197,7 @@ TEST_CASE("FogOfWar")
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {300}}};
         fog.Prepare(input);
         CHECK(!fog.GetPoints().empty());
-        const auto mid_x = fog.GetPoints().front().PointPos.x;
+        int32_t mid_x = fog.GetPoints().front().PointPos.x;
         CHECK(mid_x != edge_x);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {400}}};
@@ -213,7 +213,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
         fog.Prepare(input);
-        const auto final_edge_x = fog.GetPoints().front().PointPos.x;
+        int32_t final_edge_x = fog.GetPoints().front().PointPos.x;
 
         input.Enabled = false;
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
@@ -226,7 +226,7 @@ TEST_CASE("FogOfWar")
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {400}}};
         fog.Prepare(input);
         CHECK(!fog.GetPoints().empty());
-        const auto center_x = fog.GetPoints()[2].PointPos.x;
+        int32_t center_x = fog.GetPoints()[2].PointPos.x;
         CHECK(fog.GetPoints().front().PointPos.x == center_x);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {600}}};
@@ -267,7 +267,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        const auto center_x = fog.GetPoints()[2].PointPos.x;
+        int32_t center_x = fog.GetPoints()[2].PointPos.x;
         CHECK(fog.GetPoints().front().PointPos.x == center_x);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
@@ -307,16 +307,16 @@ TEST_CASE("FogOfWar")
         input.OverlayColor = ucolor {255, 96, 0, 255};
         input.CenterColor = ucolor {0, 0, 0, 255};
         input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32_t, bool) {
-            constexpr auto block_dist = 3;
+            constexpr int32_t block_dist = 3;
 
             if (GeometryHelper::GetDistance(start, target) <= block_dist) {
                 return target;
             }
 
-            auto block_hex = start;
+            mpos block_hex = start;
             LineTracer tracer(start, target, 0.0f, map_size);
 
-            for (auto i = 0; i < block_dist; i++) {
+            for (int32_t i = 0; i < block_dist; i++) {
                 if (!tracer.GetNextHex(block_hex).has_value()) {
                     break;
                 }
@@ -360,7 +360,7 @@ TEST_CASE("FogOfWar")
 
         for (const auto& p : fogs.front().GetPoints()) {
             REQUIRE(p.PointOffset != nullptr);
-            const auto offset = *p.PointOffset;
+            auto offset = *p.PointOffset;
             CHECK((offset == ipos32 {11, 22} || offset == ipos32 {33, 44}));
         }
 
@@ -372,7 +372,7 @@ TEST_CASE("FogOfWar")
 
         for (const auto& p : fogs.front().GetPoints()) {
             REQUIRE(p.PointOffset != nullptr);
-            const auto offset = *p.PointOffset;
+            auto offset = *p.PointOffset;
             if (offset == ipos32 {77, 88}) {
                 draw_offset_seen = true;
             }

@@ -277,7 +277,7 @@ auto WorkerPool::WaitIdle(timespan timeout) const -> bool
 
     unique_lock locker {_mutex};
 
-    const auto deadline = nanotime::now() + timeout;
+    nanotime deadline = nanotime::now() + timeout;
 
     while (!IsBarrierIdle()) {
         if (_idleSignal.wait_until(locker, deadline.value()) == std::cv_status::timeout) {
@@ -411,8 +411,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     continue;
                 }
 
-                const auto front_fire = _jobs.front().FireTime;
-                const auto now = nanotime::now();
+                nanotime front_fire = _jobs.front().FireTime;
+                nanotime now = nanotime::now();
 
                 if (front_fire > now) {
                     // Wait until the earliest job becomes due, or until something nearer arrives.
@@ -444,7 +444,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
         {
             ScopedSyncContext sync_ctx;
 
-            const bool shutdown = _shutdownFlag->load(std::memory_order_acquire);
+            bool shutdown = _shutdownFlag->load(std::memory_order_acquire);
 
             if (!shutdown) {
                 job_executed = true;
@@ -472,8 +472,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             if (job.Key != ANONYMOUS_JOB) {
                 _runningKeys.erase(job.Key);
 
-                const bool cancelled = _cancelOnFinish.erase(job.Key) != 0;
-                const bool wake_requested = _wakeRequests.erase(job.Key) != 0;
+                bool cancelled = _cancelOnFinish.erase(job.Key) != 0;
+                bool wake_requested = _wakeRequests.erase(job.Key) != 0;
 
                 if (auto it = _pendingRerun.find(job.Key); it != _pendingRerun.end()) {
                     auto entry = std::move(it->second);
@@ -488,7 +488,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     need_wake = true;
                 }
                 else if (next_delay.has_value() && !cancelled) {
-                    const auto reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
+                    auto reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
                     EnqueueJob(nanotime::now() + reschedule_delay, job.Key, std::move(job.Body));
                     body_rescheduled = true;
                     _queuedKeys.insert(job.Key);

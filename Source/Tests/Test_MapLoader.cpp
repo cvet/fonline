@@ -36,19 +36,19 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[Critter]\n"
-                               "$Id = 1\n"
-                               "$Proto = CritterOne\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[Critter]\n"
+                         "$Id = 1\n"
+                         "$Proto = CritterOne\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
 
-        const string bare_slash_map_buf = "[ProtoMap]\n"
-                                          "$Name = TestMap\n"
-                                          "[/Item]\n"
-                                          "$Id = 1\n"
-                                          "$Proto = ItemOne\n";
+        string bare_slash_map_buf = "[ProtoMap]\n"
+                                    "$Name = TestMap\n"
+                                    "[/Item]\n"
+                                    "$Id = 1\n"
+                                    "$Proto = ItemOne\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", bare_slash_map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -58,11 +58,11 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[OtherMap/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = ItemOne\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[OtherMap/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = ItemOne\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -72,10 +72,10 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[$Name/Tile]\n"
-                               "$Id = 1\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[$Name/Tile]\n"
+                         "$Id = 1\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -85,8 +85,8 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n";
 
         CHECK_THROWS_AS(MapLoader::Load("AnotherMap", "AnotherMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -100,25 +100,23 @@ TEST_CASE("MapLoader")
 
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "Outside = True\n"
-                               "[$Name/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = TestItem\n"
-                               "Kind = FromStemMap\n"
-                               "[ProtoMap]\n"
-                               "$Name = ZoneB\n"
-                               "[$Name/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = TestItem\n"
-                               "Kind = FromZoneB\n";
+        string map_buf = "[ProtoMap]\n"
+                         "Outside = True\n"
+                         "[$Name/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = TestItem\n"
+                         "Kind = FromStemMap\n"
+                         "[ProtoMap]\n"
+                         "$Name = ZoneB\n"
+                         "[$Name/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = TestItem\n"
+                         "Kind = FromZoneB\n";
 
         vector<string> loaded_kinds;
-        const auto load_map = [&](string_view map_name) {
+        auto load_map = [&](string_view map_name) {
             loaded_kinds.clear();
-            CHECK_NOTHROW(MapLoader::Load(
-                map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { },
-                [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
+            CHECK_NOTHROW(MapLoader::Load(map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
         };
 
         load_map("Zones");
@@ -135,14 +133,14 @@ TEST_CASE("MapLoader")
         size_t critter_calls = 0;
         size_t item_calls = 0;
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[$Name/Critter]\n"
-                               "$Id = 1\n"
-                               "$Proto = MissingCritter\n"
-                               "[$Name/Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = MissingItem\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[$Name/Critter]\n"
+                         "$Id = 1\n"
+                         "$Proto = MissingCritter\n"
+                         "[$Name/Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = MissingItem\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [&](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { critter_calls++; }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }), MapLoaderException);
 
@@ -155,12 +153,12 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[$Name/Critter]\n"
-                               "$Id = 1\n"
-                               "[$Name/Item]\n"
-                               "$Id = 2\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[$Name/Critter]\n"
+                         "$Id = 1\n"
+                         "[$Name/Item]\n"
+                         "$Id = 2\n";
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -180,27 +178,27 @@ TEST_CASE("MapLoader")
         vector<string> critter_proto_names;
         vector<string> item_proto_names;
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = TestMap\n"
-                               "[$Name/Critter]\n"
-                               "$Id = 0\n"
-                               "$Proto = TestCritter\n"
-                               "Name = One\n"
-                               "[$Name/Critter]\n"
-                               "$Id = 0\n"
-                               "$Proto = TestCritter\n"
-                               "Name = Two\n"
-                               "[$Name/Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = TestItem\n"
-                               "Kind = Alpha\n"
-                               "[TestMap/Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = TestItem\n"
-                               "Kind = Beta\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = TestMap\n"
+                         "[$Name/Critter]\n"
+                         "$Id = 0\n"
+                         "$Proto = TestCritter\n"
+                         "Name = One\n"
+                         "[$Name/Critter]\n"
+                         "$Id = 0\n"
+                         "$Proto = TestCritter\n"
+                         "Name = Two\n"
+                         "[$Name/Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = TestItem\n"
+                         "Kind = Alpha\n"
+                         "[TestMap/Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = TestItem\n"
+                         "Kind = Beta\n";
 
         CHECK_NOTHROW(MapLoader::Load(
-            "TestMap", map_buf, meta, hashes,
+            "TestMap", "TestMap.fomap", map_buf, meta, hashes,
             [&](ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv) {
                 critter_ids.emplace_back(id);
                 critter_proto_names.emplace_back(proto->GetProtoId().as_str());
@@ -227,29 +225,27 @@ TEST_CASE("MapLoader")
 
         HashStorage hashes {};
 
-        const string map_buf = "[ProtoMap]\n"
-                               "$Name = MapOne\n"
-                               "[$Name/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = TestItem\n"
-                               "Kind = FromOne\n"
-                               "[ProtoMap]\n"
-                               "$Name = MapTwo\n"
-                               "[$Name/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = TestItem\n"
-                               "Kind = FromTwo\n"
-                               "[$Name/Item]\n"
-                               "$Id = 2\n"
-                               "$Proto = TestItem\n"
-                               "Kind = FromTwoAsWell\n";
+        string map_buf = "[ProtoMap]\n"
+                         "$Name = MapOne\n"
+                         "[$Name/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = TestItem\n"
+                         "Kind = FromOne\n"
+                         "[ProtoMap]\n"
+                         "$Name = MapTwo\n"
+                         "[$Name/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = TestItem\n"
+                         "Kind = FromTwo\n"
+                         "[$Name/Item]\n"
+                         "$Id = 2\n"
+                         "$Proto = TestItem\n"
+                         "Kind = FromTwoAsWell\n";
 
         vector<string> loaded_kinds;
-        const auto load_map = [&](string_view map_name) {
+        auto load_map = [&](string_view map_name) {
             loaded_kinds.clear();
-            CHECK_NOTHROW(MapLoader::Load(
-                map_name, map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { },
-                [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
+            CHECK_NOTHROW(MapLoader::Load(map_name, "Multi.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
         };
 
         load_map("MapOne");
@@ -261,31 +257,31 @@ TEST_CASE("MapLoader")
 
     SECTION("EnumerateMapsResolvesAnchorNames")
     {
-        const string multi_buf = "[ProtoMap]\n"
-                                 "$Name = MapOne\n"
-                                 "[$Name/Item]\n"
-                                 "$Id = 1\n"
-                                 "[ProtoMap]\n"
-                                 "$Name = MapTwo\n";
+        string multi_buf = "[ProtoMap]\n"
+                           "$Name = MapOne\n"
+                           "[$Name/Item]\n"
+                           "$Id = 1\n"
+                           "[ProtoMap]\n"
+                           "$Name = MapTwo\n";
 
         CHECK(MapLoader::EnumerateMaps("Multi.fomap", multi_buf) == vector<string> {"MapOne", "MapTwo"});
 
-        const string anonymous_buf = "[ProtoMap]\n"
-                                     "Outside = True\n";
+        string anonymous_buf = "[ProtoMap]\n"
+                               "Outside = True\n";
 
         CHECK(MapLoader::EnumerateMaps("Maps/StemMap.fomap", anonymous_buf) == vector<string> {"StemMap"});
 
-        const string anonymous_multi_buf = "[ProtoMap]\n"
-                                           "$Name = MapOne\n"
-                                           "[ProtoMap]\n"
-                                           "Outside = True\n";
+        string anonymous_multi_buf = "[ProtoMap]\n"
+                                     "$Name = MapOne\n"
+                                     "[ProtoMap]\n"
+                                     "Outside = True\n";
 
         CHECK(MapLoader::EnumerateMaps("Multi.fomap", anonymous_multi_buf) == vector<string> {"MapOne", "Multi"});
 
-        const string colliding_anonymous_buf = "[ProtoMap]\n"
-                                               "Outside = True\n"
-                                               "[ProtoMap]\n"
-                                               "Outside = False\n";
+        string colliding_anonymous_buf = "[ProtoMap]\n"
+                                         "Outside = True\n"
+                                         "[ProtoMap]\n"
+                                         "Outside = False\n";
 
         // Both anchors resolve to the stem; the id enumerates once and the duplicate
         // itself is reported by the generic proto collision check on bake
@@ -306,13 +302,13 @@ TEST_CASE("MapLoader")
         HashStorage hashes {};
         size_t item_calls = 0;
 
-        const string map_buf = "[ProtoMap]\n"
-                               "Outside = True\n"
-                               "[$Name/Item]\n"
-                               "$Id = 1\n"
-                               "$Proto = TestItem\n";
+        string map_buf = "[ProtoMap]\n"
+                         "Outside = True\n"
+                         "[$Name/Item]\n"
+                         "$Id = 1\n"
+                         "$Proto = TestItem\n";
 
-        CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
+        CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
 
         CHECK(item_calls == 1);
     }

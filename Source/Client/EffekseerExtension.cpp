@@ -68,9 +68,9 @@ static auto ToUtf8(const char16_t* value) -> string
         return {};
     }
 
-    const size_t source_length = std::char_traits<char16_t>::length(value);
+    size_t source_length = std::char_traits<char16_t>::length(value);
     vector<char> result(source_length * 3 + 1);
-    const int32_t converted_length = Effekseer::ConvertUtf16ToUtf8(result.data(), numeric_cast<int32_t>(result.size()), value);
+    int32_t converted_length = Effekseer::ConvertUtf16ToUtf8(result.data(), numeric_cast<int32_t>(result.size()), value);
     return string(result.data(), numeric_cast<size_t>(converted_length));
 }
 
@@ -78,7 +78,7 @@ static auto ToUtf16(string_view value) -> vector<char16_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string source {value};
+    string source {value};
     vector<char16_t> result(source.size() + 1);
     (void)Effekseer::ConvertUtf8ToUtf16(result.data(), numeric_cast<int32_t>(result.size()), source.c_str());
     return result;
@@ -187,7 +187,7 @@ public:
             return nullptr;
         }
 
-        const string texture_path = strex(ToUtf8(path)).format_path().str();
+        string texture_path = strex(ToUtf8(path)).format_path().str();
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
         if (!render_texture) {
             WriteLog(LogType::Warning, "Effekseer texture '{}' is missing", texture_path);
@@ -466,7 +466,7 @@ static auto ExtractCameraBackward(const mat44& view_matrix) -> vec3
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vec3 backward {view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]};
+    vec3 backward {view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]};
 
     return glm::dot(backward, backward) > 0.0f ? glm::normalize(backward) : vec3 {0.0f, 0.0f, 1.0f};
 }
@@ -497,11 +497,11 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
     right = glm::cross(up, front);
     if (glm::dot(right, right) <= std::numeric_limits<float32_t>::epsilon()) {
         if (billboard == Effekseer::BillboardType::YAxisFixed || billboard == Effekseer::BillboardType::DirectionalBillboard) {
-            const vec3 fallback_axis = std::abs(up.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
+            vec3 fallback_axis = std::abs(up.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
             right = glm::cross(up, fallback_axis);
         }
         else {
-            const vec3 fallback_up = std::abs(front.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
+            vec3 fallback_up = std::abs(front.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
             right = glm::cross(fallback_up, front);
         }
     }
@@ -515,11 +515,11 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
     }
 
     if (billboard == Effekseer::BillboardType::RotatedBillboard) {
-        const float32_t rotation_xy_length = std::sqrt(std::max(0.0f, rotation.Y.GetX() * rotation.Y.GetX() + rotation.Y.GetY() * rotation.Y.GetY()));
-        const float32_t sine = rotation_xy_length > 0.001f ? rotation.Y.GetX() / rotation_xy_length : 0.0f;
-        const float32_t cosine = rotation_xy_length > 0.001f ? rotation.Y.GetY() / rotation_xy_length : 1.0f;
-        const vec3 rotated_right = right * cosine + up * sine;
-        const vec3 rotated_up = up * cosine - right * sine;
+        float32_t rotation_xy_length = std::sqrt(std::max(0.0f, rotation.Y.GetX() * rotation.Y.GetX() + rotation.Y.GetY() * rotation.Y.GetY()));
+        float32_t sine = rotation_xy_length > 0.001f ? rotation.Y.GetX() / rotation_xy_length : 0.0f;
+        float32_t cosine = rotation_xy_length > 0.001f ? rotation.Y.GetY() / rotation_xy_length : 1.0f;
+        vec3 rotated_right = right * cosine + up * sine;
+        vec3 rotated_up = up * cosine - right * sine;
         right = rotated_right;
         up = rotated_up;
     }
@@ -532,7 +532,7 @@ static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const 
     FO_STACK_TRACE_ENTRY();
 
     if (billboard == Effekseer::BillboardType::Fixed) {
-        const Effekseer::SIMD::Vec3f local {local_position.x, local_position.y, local_position.z};
+        Effekseer::SIMD::Vec3f local {local_position.x, local_position.y, local_position.z};
         return ToVec3(Effekseer::SIMD::Vec3f::Transform(local, srt_matrix));
     }
 
@@ -542,8 +542,8 @@ static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const 
     srt_matrix.GetSRT(scale, rotation, translation);
     ignore_unused(rotation);
 
-    const glm::mat3 basis = CalculateBillboardBasis(billboard, srt_matrix, direction, camera_backward);
-    const vec3 scaled_local {local_position.x * scale.GetX(), local_position.y * scale.GetY(), local_position.z * scale.GetZ()};
+    glm::mat3 basis = CalculateBillboardBasis(billboard, srt_matrix, direction, camera_backward);
+    vec3 scaled_local {local_position.x * scale.GetX(), local_position.y * scale.GetY(), local_position.z * scale.GetZ()};
     return ToVec3(translation) + basis * scaled_local;
 }
 
@@ -580,7 +580,7 @@ public:
             _binding->Fail("sprite node exceeds the supported instance count");
             return;
         }
-        if (const string_view reason = ValidateSpriteNodeParameter(parameter); !reason.empty()) {
+        if (string_view reason = ValidateSpriteNodeParameter(parameter); !reason.empty()) {
             _binding->Fail(reason);
             return;
         }
@@ -635,10 +635,10 @@ public:
             return;
         }
 
-        const float32_t uv_left = instance.UV.X;
-        const float32_t uv_right = instance.UV.X + instance.UV.Width;
-        const float32_t uv_top = instance.UV.Y;
-        const float32_t uv_bottom = instance.UV.Y + instance.UV.Height;
+        float32_t uv_left = instance.UV.X;
+        float32_t uv_right = instance.UV.X + instance.UV.Width;
+        float32_t uv_top = instance.UV.Y;
+        float32_t uv_bottom = instance.UV.Y + instance.UV.Height;
         if (!std::isfinite(uv_left) || !std::isfinite(uv_right) || !std::isfinite(uv_top) || !std::isfinite(uv_bottom)) {
             _binding->Fail("sprite callback emitted non-finite texture coordinates");
             return;
@@ -648,12 +648,12 @@ public:
             return;
         }
 
-        const vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
-        const vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
+        vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
 
         // Same key as the reference SpriteRendererBase: dot of the raw translation with the backward
         // vector, so NormalOrder ascending renders back-to-front.
-        const float32_t camera_depth = glm::dot(position, camera_backward);
+        float32_t camera_depth = glm::dot(position, camera_backward);
         if (!std::isfinite(camera_depth)) {
             _binding->Fail("sprite callback emitted a non-finite camera depth");
             return;
@@ -730,32 +730,32 @@ private:
             system->Fail("sprite color texture was not loaded by the FOnline texture loader");
             return;
         }
-        const bool requested_linear_filter = _node->TextureFilter == Effekseer::TextureFilterType::Linear;
+        bool requested_linear_filter = _node->TextureFilter == Effekseer::TextureFilterType::Linear;
         if (texture->RenderTextureRef->LinearFiltered != requested_linear_filter) {
             system->Fail(requested_linear_filter ? "sprite requests linear filtering but its FOnline atlas is nearest-filtered" : "sprite requests nearest filtering but its FOnline atlas is linear-filtered");
             return;
         }
 
-        const size_t vertex_count = _instances.size() * 4;
-        const size_t index_count = _instances.size() * 6;
+        size_t vertex_count = _instances.size() * 4;
+        size_t index_count = _instances.size() * 6;
         _drawBuffer->VertCount = 0;
         _drawBuffer->IndCount = 0;
         _drawBuffer->CheckAllocBuf(vertex_count, index_count);
 
-        const vec3 camera_backward = ExtractCameraBackward(system->ViewMatrix);
+        vec3 camera_backward = ExtractCameraBackward(system->ViewMatrix);
 
         for (size_t instance_index = 0; instance_index < _instances.size(); instance_index++) {
             const EffekseerSpriteInstanceSnapshot& instance = _instances[instance_index];
-            const float32_t uv_left = texture->AtlasRect.x + instance.UV.X * texture->AtlasRect.width;
-            const float32_t uv_right = texture->AtlasRect.x + (instance.UV.X + instance.UV.Width) * texture->AtlasRect.width;
-            const float32_t uv_top = texture->AtlasRect.y + instance.UV.Y * texture->AtlasRect.height;
-            const float32_t uv_bottom = texture->AtlasRect.y + (instance.UV.Y + instance.UV.Height) * texture->AtlasRect.height;
+            float32_t uv_left = texture->AtlasRect.x + instance.UV.X * texture->AtlasRect.width;
+            float32_t uv_right = texture->AtlasRect.x + (instance.UV.X + instance.UV.Width) * texture->AtlasRect.width;
+            float32_t uv_top = texture->AtlasRect.y + instance.UV.Y * texture->AtlasRect.height;
+            float32_t uv_bottom = texture->AtlasRect.y + (instance.UV.Y + instance.UV.Height) * texture->AtlasRect.height;
             const float32_t texture_u[4] = {uv_left, uv_right, uv_left, uv_right};
             const float32_t texture_v[4] = {uv_bottom, uv_bottom, uv_top, uv_top};
 
             for (size_t vertex_offset = 0; vertex_offset < 4; vertex_offset++) {
-                const vec3 local_position {instance.Positions[vertex_offset].GetX(), instance.Positions[vertex_offset].GetY(), 0.0f};
-                const vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
+                vec3 local_position {instance.Positions[vertex_offset].GetX(), instance.Positions[vertex_offset].GetY(), 0.0f};
+                vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
 
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
                     system->Fail("sprite geometry produced a non-finite vertex");
@@ -773,8 +773,8 @@ private:
                 vertex.EggFlags[1] = 0.0f;
             }
 
-            const size_t vertex_base = instance_index * 4;
-            const size_t index_base = instance_index * 6;
+            size_t vertex_base = instance_index * 4;
+            size_t index_base = instance_index * 6;
             _drawBuffer->Indices[index_base + 0] = numeric_cast<vindex_t>(vertex_base + 0);
             _drawBuffer->Indices[index_base + 1] = numeric_cast<vindex_t>(vertex_base + 1);
             _drawBuffer->Indices[index_base + 2] = numeric_cast<vindex_t>(vertex_base + 2);
@@ -838,7 +838,7 @@ public:
             _binding->Fail("ring node exceeds the supported instance count");
             return;
         }
-        if (const string_view reason = ValidateRingNodeParameter(parameter); !reason.empty()) {
+        if (string_view reason = ValidateRingNodeParameter(parameter); !reason.empty()) {
             _binding->Fail(reason);
             return;
         }
@@ -895,10 +895,10 @@ public:
             return;
         }
 
-        const float32_t uv_left = instance.UV.X;
-        const float32_t uv_right = instance.UV.X + instance.UV.Width;
-        const float32_t uv_top = instance.UV.Y;
-        const float32_t uv_bottom = instance.UV.Y + instance.UV.Height;
+        float32_t uv_left = instance.UV.X;
+        float32_t uv_right = instance.UV.X + instance.UV.Width;
+        float32_t uv_top = instance.UV.Y;
+        float32_t uv_bottom = instance.UV.Y + instance.UV.Height;
 
         if (!std::isfinite(uv_left) || !std::isfinite(uv_right) || !std::isfinite(uv_top) || !std::isfinite(uv_bottom)) {
             _binding->Fail("ring callback emitted non-finite texture coordinates");
@@ -909,9 +909,9 @@ public:
             return;
         }
 
-        const vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
-        const vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
-        const float32_t camera_depth = glm::dot(position, camera_backward);
+        vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
+        vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        float32_t camera_depth = glm::dot(position, camera_backward);
 
         if (!std::isfinite(camera_depth)) {
             _binding->Fail("ring callback emitted a non-finite camera depth");
@@ -1009,7 +1009,7 @@ private:
                 return;
             }
 
-            const bool requested_linear_filter = _node->TextureFilter == Effekseer::TextureFilterType::Linear;
+            bool requested_linear_filter = _node->TextureFilter == Effekseer::TextureFilterType::Linear;
 
             if (texture->RenderTextureRef->LinearFiltered != requested_linear_filter) {
                 system->Fail(requested_linear_filter ? "ring requests linear filtering but its FOnline atlas is nearest-filtered" : "ring requests nearest filtering but its FOnline atlas is linear-filtered");
@@ -1020,12 +1020,12 @@ private:
             atlas_rect = texture->AtlasRect;
         }
 
-        const size_t vertices_per_instance = numeric_cast<size_t>(_node->VertexCount) * 8;
-        const size_t instances_per_draw = EFFEKSEER_RING_VERTEX_MAX / vertices_per_instance;
+        size_t vertices_per_instance = numeric_cast<size_t>(_node->VertexCount) * 8;
+        size_t instances_per_draw = EFFEKSEER_RING_VERTEX_MAX / vertices_per_instance;
         FO_VERIFY_AND_THROW(instances_per_draw != 0, "Effekseer ring geometry budget cannot fit one instance");
 
         for (size_t first_instance = 0; first_instance < _instances.size() && !system->Failed; first_instance += instances_per_draw) {
-            const size_t instance_count = std::min(instances_per_draw, _instances.size() - first_instance);
+            size_t instance_count = std::min(instances_per_draw, _instances.size() - first_instance);
             RenderChunk(system, render_texture.as_ptr(), atlas_rect, first_instance, instance_count);
         }
     }
@@ -1037,29 +1037,29 @@ private:
         FO_VERIFY_AND_THROW(_node, "Effekseer ring chunk render called without a node snapshot");
         constexpr float32_t degrees_to_radians = 3.141592f / 180.0f;
 
-        const size_t segment_count = numeric_cast<size_t>(_node->VertexCount);
-        const size_t vertex_count = instance_count * segment_count * 8;
-        const size_t index_count = instance_count * segment_count * 12;
+        size_t segment_count = numeric_cast<size_t>(_node->VertexCount);
+        size_t vertex_count = instance_count * segment_count * 8;
+        size_t index_count = instance_count * segment_count * 12;
         _drawBuffer->VertCount = 0;
         _drawBuffer->IndCount = 0;
         _drawBuffer->CheckAllocBuf(vertex_count, index_count);
 
-        const vec3 camera_backward = ExtractCameraBackward(system->ViewMatrix);
+        vec3 camera_backward = ExtractCameraBackward(system->ViewMatrix);
 
         for (size_t chunk_instance_index = 0; chunk_instance_index < instance_count; chunk_instance_index++) {
             const EffekseerRingInstanceSnapshot& instance = _instances[first_instance + chunk_instance_index];
-            const float32_t inverse_segment_count = 1.0f / numeric_cast<float32_t>(segment_count);
-            const float32_t circle_angle = instance.ViewingAngleEnd - instance.ViewingAngleStart;
-            const float32_t step_angle_degrees = circle_angle * inverse_segment_count;
-            const float32_t step_angle = step_angle_degrees * degrees_to_radians;
-            const float32_t begin_angle = (instance.ViewingAngleStart + 90.0f) * degrees_to_radians;
+            float32_t inverse_segment_count = 1.0f / numeric_cast<float32_t>(segment_count);
+            float32_t circle_angle = instance.ViewingAngleEnd - instance.ViewingAngleStart;
+            float32_t step_angle_degrees = circle_angle * inverse_segment_count;
+            float32_t step_angle = step_angle_degrees * degrees_to_radians;
+            float32_t begin_angle = (instance.ViewingAngleStart + 90.0f) * degrees_to_radians;
 
-            const float32_t outer_radius = instance.OuterLocation.GetX();
-            const float32_t inner_radius = instance.InnerLocation.GetX();
-            const float32_t center_radius = inner_radius + (outer_radius - inner_radius) * instance.CenterRatio;
-            const float32_t outer_height = instance.OuterLocation.GetY();
-            const float32_t inner_height = instance.InnerLocation.GetY();
-            const float32_t center_height = inner_height + (outer_height - inner_height) * instance.CenterRatio;
+            float32_t outer_radius = instance.OuterLocation.GetX();
+            float32_t inner_radius = instance.InnerLocation.GetX();
+            float32_t center_radius = inner_radius + (outer_radius - inner_radius) * instance.CenterRatio;
+            float32_t outer_height = instance.OuterLocation.GetY();
+            float32_t inner_height = instance.InnerLocation.GetY();
+            float32_t center_height = inner_height + (outer_height - inner_height) * instance.CenterRatio;
 
             Effekseer::Color outer_color = instance.OuterColor;
             Effekseer::Color center_color = instance.CenterColor;
@@ -1071,20 +1071,20 @@ private:
                 inner_color.A = 0;
             }
 
-            const float32_t step_cosine = std::cos(step_angle);
-            const float32_t step_sine = std::sin(step_angle);
+            float32_t step_cosine = std::cos(step_angle);
+            float32_t step_sine = std::sin(step_angle);
             float32_t cosine = std::cos(begin_angle);
             float32_t sine = std::sin(begin_angle);
             float32_t current_angle_degrees = 0.0f;
             float32_t current_u = instance.UV.X;
-            const float32_t step_u = instance.UV.Width * inverse_segment_count;
-            const float32_t outer_v = instance.UV.Y;
-            const float32_t center_v = instance.UV.Y + instance.UV.Height * 0.5f;
-            const float32_t inner_v = instance.UV.Y + instance.UV.Height;
+            float32_t step_u = instance.UV.Width * inverse_segment_count;
+            float32_t outer_v = instance.UV.Y;
+            float32_t center_v = instance.UV.Y + instance.UV.Height * 0.5f;
+            float32_t inner_v = instance.UV.Y + instance.UV.Height;
 
             for (size_t segment_index = 0; segment_index < segment_count; segment_index++) {
-                const float32_t next_cosine = cosine * step_cosine - sine * step_sine;
-                const float32_t next_sine = sine * step_cosine + cosine * step_sine;
+                float32_t next_cosine = cosine * step_cosine - sine * step_sine;
+                float32_t next_sine = sine * step_cosine + cosine * step_sine;
 
                 current_angle_degrees += step_angle_degrees;
                 current_angle_degrees = std::min(current_angle_degrees, circle_angle);
@@ -1110,7 +1110,7 @@ private:
                     next_inner_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_inner_color.A) * next_alpha));
                 }
 
-                const float32_t next_u = current_u + step_u;
+                float32_t next_u = current_u + step_u;
                 const vec3 local_positions[8] = {
                     {cosine * outer_radius, sine * outer_radius, outer_height},
                     {cosine * center_radius, sine * center_radius, center_height},
@@ -1125,10 +1125,10 @@ private:
                 const float32_t texture_u[8] = {current_u, current_u, next_u, next_u, current_u, current_u, next_u, next_u};
                 const float32_t texture_v[8] = {outer_v, center_v, outer_v, center_v, center_v, inner_v, center_v, inner_v};
 
-                const size_t segment_base = (chunk_instance_index * segment_count + segment_index) * 8;
+                size_t segment_base = (chunk_instance_index * segment_count + segment_index) * 8;
 
                 for (size_t vertex_offset = 0; vertex_offset < 8; vertex_offset++) {
-                    const vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_positions[vertex_offset], camera_backward);
+                    vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_positions[vertex_offset], camera_backward);
 
                     if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
                         system->Fail("ring geometry produced a non-finite vertex");
@@ -1146,7 +1146,7 @@ private:
                     vertex.EggFlags[1] = 0.0f;
                 }
 
-                const size_t index_base = (chunk_instance_index * segment_count + segment_index) * 12;
+                size_t index_base = (chunk_instance_index * segment_count + segment_index) * 12;
                 _drawBuffer->Indices[index_base + 0] = numeric_cast<vindex_t>(segment_base + 0);
                 _drawBuffer->Indices[index_base + 1] = numeric_cast<vindex_t>(segment_base + 1);
                 _drawBuffer->Indices[index_base + 2] = numeric_cast<vindex_t>(segment_base + 2);
@@ -1330,7 +1330,7 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
         return false;
     }
 
-    const Effekseer::EffectNodeType node_type = node->GetType();
+    Effekseer::EffectNodeType node_type = node->GetType();
 
     if (node_type != Effekseer::EffectNodeType::Root && node_type != Effekseer::EffectNodeType::NoneType && node_type != Effekseer::EffectNodeType::Sprite && node_type != Effekseer::EffectNodeType::Ring) {
         LogEffekseerRejection(path, "only Root, None, Sprite, and Ring nodes are supported");
@@ -1343,7 +1343,7 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
         return false;
     }
 
-    const int32_t children_count = node->GetChildrenCount();
+    int32_t children_count = node->GetChildrenCount();
     if (children_count < 0) {
         LogEffekseerRejection(path, "effect node reports an invalid child count");
         return false;
@@ -1490,12 +1490,12 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
         return;
     }
 
-    const mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
-    const mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
     _impl->RootMatrix = view_offset_matrix * setup.World * position_offset_matrix;
     _impl->RootMatrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
 
-    const mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjMatrix = setup.Projection * _impl->ViewMatrix;
 
@@ -1519,7 +1519,7 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
     _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
     _impl->Runtime->Manager->BeginUpdate();
     while (remaining_frames > 0.0f && _impl->Runtime->Manager->Exists(_impl->Handle)) {
-        const float32_t step = std::min(remaining_frames, 1.0f);
+        float32_t step = std::min(remaining_frames, 1.0f);
         _impl->Runtime->Manager->UpdateHandle(_impl->Handle, step);
         remaining_frames -= step;
     }
@@ -1546,7 +1546,7 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
-    const int32_t resolved_seed = seed ? *seed : std::uniform_int_distribution<int32_t> {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}(_impl->RandomGenerator);
+    int32_t resolved_seed = seed ? *seed : std::uniform_int_distribution<int32_t> {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}(_impl->RandomGenerator);
     _impl->Runtime->Manager->SetAutoDrawing(_impl->Handle, false);
     _impl->Runtime->Manager->SetRandomSeed(_impl->Handle, resolved_seed);
     _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
@@ -1594,15 +1594,15 @@ void EffekseerParticleRuntimeSystem::Draw()
 
     Effekseer::Manager::DrawParameter draw_parameter;
     draw_parameter.ViewProjectionMatrix = ToEffekseerMatrix44(_impl->ViewProjMatrix);
-    const mat44 inverse_view = glm::inverse(_impl->ViewMatrix);
-    const vec3 camera_position = vec3 {inverse_view[3]};
-    const vec3 camera_backward = ExtractCameraBackward(_impl->ViewMatrix);
+    mat44 inverse_view = glm::inverse(_impl->ViewMatrix);
+    vec3 camera_position = vec3 {inverse_view[3]};
+    vec3 camera_backward = ExtractCameraBackward(_impl->ViewMatrix);
     draw_parameter.CameraPosition = {camera_position.x, camera_position.y, camera_position.z};
     draw_parameter.CameraFrontDirection = {camera_backward.x, camera_backward.y, camera_backward.z};
 
     {
         _impl->Runtime->Binding->Bind(_impl.as_ptr());
-        const auto unbind_renderer = scope_exit([this]() noexcept { _impl->Runtime->Binding->Unbind(); });
+        auto unbind_renderer = scope_exit([this]() noexcept { _impl->Runtime->Binding->Unbind(); });
         _impl->Runtime->Manager->DrawHandle(_impl->Handle, draw_parameter);
     }
 
@@ -1645,7 +1645,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    const File file = _impl->Resources->ReadFile(path);
+    File file = _impl->Resources->ReadFile(path);
     if (!file) {
         LogEffekseerRejection(path, "resource is missing");
         return {};

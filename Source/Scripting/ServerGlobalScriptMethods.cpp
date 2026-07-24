@@ -160,8 +160,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Crit
         throw ScriptException("Critters not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(cr1->GetHex(), cr2->GetHex());
-    const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(cr1->GetHex(), cr2->GetHex());
+    int32_t multihex = cr1->GetMultihex() + cr2->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -200,8 +200,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Crit
         throw ScriptException("Critter/Item not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-    const auto multihex = cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
+    int32_t multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -221,8 +221,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
         throw ScriptException("Item/Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-    const auto multihex = cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
+    int32_t multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -238,8 +238,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Crit
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
-    const auto multihex = cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
+    int32_t multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -255,8 +255,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, mpos hex
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
-    const auto multihex = cr->GetMultihex();
+    int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
+    int32_t multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
 
@@ -523,7 +523,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
-        const auto cur_count = item->GetCount();
+        int32_t cur_count = item->GetCount();
 
         if (count >= cur_count) {
             server->ItemMngr.DestroyItem(item);
@@ -1106,7 +1106,7 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ptr<ServerEngine> 
         throw ScriptException("Player id arg is zero");
     }
 
-    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
+    auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
     map<string, string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1155,7 +1155,7 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
         throw ScriptException("Record id arg is zero");
     }
 
-    const auto doc = server->DbStorage.Get(collectionName, id);
+    auto doc = server->DbStorage.Get(collectionName, id);
     map<string, string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1176,7 +1176,7 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
         throw ScriptException("Record id arg is empty");
     }
 
-    const auto doc = server->DbStorage.Get(collectionName, string(id));
+    auto doc = server->DbStorage.Get(collectionName, string(id));
     map<string, string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1512,7 +1512,7 @@ FO_SCRIPT_API int32_t Server_Game_GetTextCount(ptr<ServerEngine> server, TextPac
 // capture) must not land in the client binary, where antivirus heuristics would flag it.
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
-    const auto print_log = [&log_callback](string& log, bool last_call) {
+    auto print_log = [&log_callback](string& log, bool last_call) {
         log = strex(log).replace('\r', '\n', '\n').erase('\r');
 
         while (true) {
@@ -1560,8 +1560,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     PROCESS_INFORMATION pi = {};
 
-    auto wcommand = strex(command).to_wide_char();
-    const auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
+    wstring wcommand = strex(command).to_wide_char();
+    auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
         nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
 
     if (result == 0) {
@@ -1674,7 +1674,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    const array<nptr<ServerEntity>, 1> entities {entity};
+    array<nptr<ServerEntity>, 1> entities {entity};
     ctx->SyncEntities(entities);
 }
 
@@ -1683,7 +1683,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    const array<nptr<ServerEntity>, 2> entities {entity1, entity2};
+    array<nptr<ServerEntity>, 2> entities {entity1, entity2};
     ctx->SyncEntities(entities);
 }
 
@@ -1692,7 +1692,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    const array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
+    array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
     ctx->SyncEntities(entities);
 }
 

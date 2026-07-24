@@ -326,7 +326,7 @@ static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverit
 
     ignore_unused(type, user_data);
 
-    const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
+    string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
     const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
     const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
     WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
@@ -349,7 +349,7 @@ static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf)
     VkCommandBufferBeginInfo begin_info {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    const auto vk_result = vkBeginCommandBuffer(cmd_buf, &begin_info);
+    auto vk_result = vkBeginCommandBuffer(cmd_buf, &begin_info);
     VerifyVkResult(vk_result);
 }
 
@@ -357,7 +357,7 @@ static void EndCommandBufferRecording(VkCommandBuffer cmd_buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto vk_result = vkEndCommandBuffer(cmd_buf);
+    auto vk_result = vkEndCommandBuffer(cmd_buf);
     VerifyVkResult(vk_result);
 }
 
@@ -381,7 +381,7 @@ static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto vk_result = vkResetCommandBuffer(cmd_buf, 0);
+    auto vk_result = vkResetCommandBuffer(cmd_buf, 0);
     VerifyVkResult(vk_result);
 }
 
@@ -672,7 +672,7 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
 
     // Growth math still uses the old capacity, so compute it before invalidating the slot.
     constexpr VkDeviceSize min_capacity = 4096;
-    const VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
+    VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
 
     // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
     DestroyBufferSafe(ctx, pooled.Buffer);
@@ -685,7 +685,7 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
 
     // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy.
     void* mapped_raw {};
-    const auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
+    auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
     VerifyVkResult(vk_result);
     // No-throw commit tail.
     pooled.Capacity = new_capacity;
@@ -851,7 +851,7 @@ auto Vulkan_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto region = GetTextureRegion(pos, {1, 1});
+    auto region = GetTextureRegion(pos, {1, 1});
     return !region.empty() ? region[0] : ucolor::clear;
 }
 
@@ -867,8 +867,8 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 
     VkResult vk_result = VK_SUCCESS;
     vector<ucolor> tex_region;
-    const VkDeviceSize region_size = size.square() * sizeof(ucolor);
-    const size_t region_data_size = numeric_cast<size_t>(region_size);
+    VkDeviceSize region_size = size.square() * sizeof(ucolor);
+    size_t region_data_size = numeric_cast<size_t>(region_size);
 
     // Create staging buffer for reading from GPU
     VkBuffer staging_buf {};
@@ -878,7 +878,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     // Record copy commands using standalone staging command buffer
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-    const auto old_layout = TextureImageLayout;
+    auto old_layout = TextureImageLayout;
     TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     // Copy region from GPU to staging buffer
@@ -941,15 +941,15 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     // Determine data pitch:
     // - use_dest_pitch=false: data is tightly packed for the region (size.width stride)
     // - use_dest_pitch=true: data has the full destination texture pitch (Size.width stride)
-    const size_t row_bytes = numeric_cast<size_t>(size.width) * sizeof(ucolor);
-    const size_t data_stride = use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes;
-    const VkDeviceSize total_data_size = numeric_cast<VkDeviceSize>(size.height) * data_stride;
+    size_t row_bytes = numeric_cast<size_t>(size.width) * sizeof(ucolor);
+    size_t data_stride = use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes;
+    VkDeviceSize total_data_size = numeric_cast<VkDeviceSize>(size.height) * data_stride;
 
-    const size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
-    const size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
+    size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
+    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size", data.size(), required_size, size, use_dest_pitch);
 
-    const auto source_data = make_nptr(data.data());
+    auto source_data = make_nptr(data.data());
     FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
     auto source_bytes = source_data.reinterpret_as<uint8_t>();
 
@@ -957,11 +957,11 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     // from the source so the write-combined staging memory is never read back (an in-place swap
     // costs milliseconds per large region); inter-row gaps on the use_dest_pitch path are skipped
     // by the copy via bufferRowLength.
-    const auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
-        const size_t pixels_per_row = numeric_cast<size_t>(size.width);
+    auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
+        size_t pixels_per_row = numeric_cast<size_t>(size.width);
 
         for (int32_t y = 0; y < size.height; y++) {
-            const size_t row_offset = numeric_cast<size_t>(y) * data_stride;
+            size_t row_offset = numeric_cast<size_t>(y) * data_stride;
             auto src_row = source_bytes.offset(row_offset);
             auto dst_row = mapped_bytes.offset(row_offset);
 
@@ -1045,7 +1045,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
     region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
 
-    const auto old_layout = TextureImageLayout;
+    auto old_layout = TextureImageLayout;
 
     if (_ctx->FrameCbRecording) {
         // Record the upload into the frame command buffer: program order preserves the engine's
@@ -1126,7 +1126,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
     VkResult vk_result = VK_SUCCESS;
     size_t vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D);
-    const size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
+    size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -1136,7 +1136,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     ignore_unused(usage);
 #endif
 
-    const nptr<const void> vert_data =
+    nptr<const void> vert_data =
 #if FO_ENABLE_3D
         usage == EffectUsage::Model ? static_cast<const void*>(Vertices3D.data()) :
 #endif
@@ -1369,13 +1369,13 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     // Process each pass
     for (size_t pass = 0; pass < _passCount; pass++) {
-        const auto prim_type = _usage == EffectUsage::Primitive ? vk_dbuf->PrimType : RenderPrimitiveType::TriangleList;
-        const auto prim_index = static_cast<size_t>(prim_type);
+        auto prim_type = _usage == EffectUsage::Primitive ? vk_dbuf->PrimType : RenderPrimitiveType::TriangleList;
+        size_t prim_index = static_cast<size_t>(prim_type);
         FO_VERIFY_AND_THROW(prim_index < 5, "Invalid render primitive type");
 
         // Bind pipeline for current pass — pick the variant that matches the current
         // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
-        const size_t blend_variant = DisableBlending ? 1 : 0;
+        size_t blend_variant = DisableBlending ? 1 : 0;
         if (Pipeline[pass][prim_index][blend_variant] != VK_NULL_HANDLE) {
             vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass][prim_index][blend_variant]);
         }
@@ -1391,13 +1391,13 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
         if (_ctx->TextureDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->TextureDescriptorSetLayout;
-            const auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &texture_set);
+            auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &texture_set);
             VerifyVkResult(vk_result);
         }
 
         if (_ctx->UniformDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->UniformDescriptorSetLayout;
-            const auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &uniform_set);
+            auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &uniform_set);
             VerifyVkResult(vk_result);
         }
 
@@ -1407,7 +1407,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             VkWriteDescriptorSet writes[16];
             size_t write_count = 0;
 
-            const auto append_sampler = [&](int32_t binding, ptr<const Vulkan_Texture> tex) {
+            auto append_sampler = [&](int32_t binding, ptr<const Vulkan_Texture> tex) {
                 if (binding < 0 || tex->TextureImageView == VK_NULL_HANDLE) {
                     return;
                 }
@@ -1467,16 +1467,16 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             VkWriteDescriptorSet writes[16];
             size_t write_count = 0;
 
-            const size_t alignment = numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment);
+            size_t alignment = numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment);
 
-            const auto upload_uniform_buffer = [&](int32_t binding, const_span<uint8_t> src_data) {
+            auto upload_uniform_buffer = [&](int32_t binding, const_span<uint8_t> src_data) {
                 if (binding < 0 || src_data.empty()) {
                     return;
                 }
 
                 FO_VERIFY_AND_THROW(write_count < 16, "Too many Vulkan descriptor writes");
 
-                const size_t src_size = src_data.size();
+                size_t src_size = src_data.size();
 
                 // Align offset
                 _ctx->FrameUniformOffset = (_ctx->FrameUniformOffset + alignment - 1) & ~(alignment - 1);
@@ -1557,14 +1557,14 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             constexpr auto index_type = sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
             vkCmdBindIndexBuffer(_ctx->CommandBuffer, vk_dbuf->CurrentIndexBuffer, 0, index_type);
 
-            const size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
+            size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
             vkCmdDrawIndexed(_ctx->CommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
         }
         else if (vk_dbuf->VertCount != 0) {
             // start_index is an index-buffer offset, meaningless without an index buffer; the
             // engine never emits a vertices-only draw with a non-zero offset
             FO_VERIFY_AND_THROW(start_index == 0, "Non-zero start index in vertices-only draw");
-            const size_t num_vertices = vk_dbuf->VertCount;
+            size_t num_vertices = vk_dbuf->VertCount;
             vkCmdDraw(_ctx->CommandBuffer, numeric_cast<uint32_t>(num_vertices), 1, 0, 0);
         }
     }
@@ -1772,7 +1772,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
         // Load vertex shader SPIR-V
         {
-            const string vert_fname = strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1);
+            string vert_fname = strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1);
             string vert_content = loader(vert_fname);
             FO_VERIFY_AND_THROW(!vert_content.empty(), "Vertex shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(vert_content.length() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
@@ -1789,7 +1789,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         // Load fragment shader SPIR-V
         {
-            const string frag_fname = strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1);
+            string frag_fname = strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1);
             string frag_content = loader(frag_fname);
             FO_VERIFY_AND_THROW(!frag_content.empty(), "Fragment shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(frag_content.length() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");
@@ -1997,7 +1997,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         dynamic_ci.pDynamicStates = dynamic_states;
 
         for (size_t prim = 0; prim < 5; prim++) {
-            const auto prim_type = static_cast<RenderPrimitiveType>(prim);
+            auto prim_type = static_cast<RenderPrimitiveType>(prim);
 
             VkPipelineInputAssemblyStateCreateInfo input_assembly_ci {};
             input_assembly_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -2053,12 +2053,12 @@ static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& l = left;
-    const auto& t = top;
-    const auto& r = right;
-    const auto& b = bottom;
-    const auto& zn = nearp;
-    const auto& zf = farp;
+    const float32_t& l = left;
+    const float32_t& t = top;
+    const float32_t& r = right;
+    const float32_t& b = bottom;
+    const float32_t& zn = nearp;
+    const float32_t& zf = farp;
 
     mat44 result {1.0f};
 
@@ -2134,7 +2134,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         exts_list.emplace_back(sdl_exts[i]);
     }
 
-    const bool want_validation = settings.RenderDebug || FO_DEBUG;
+    bool want_validation = settings.RenderDebug || FO_DEBUG;
 
     if (want_validation) {
         exts_list.emplace_back("VK_EXT_debug_utils");
@@ -2240,7 +2240,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VerifyVkResult(vk_result);
 
     // Require a graphics+present queue family and swapchain support; prefer a discrete GPU
-    const auto has_swapchain_ext = [](VkPhysicalDevice dev) -> bool {
+    auto has_swapchain_ext = [](VkPhysicalDevice dev) -> bool {
         uint32_t ext_count = 0;
         vkEnumerateDeviceExtensionProperties(dev, nullptr, &ext_count, nullptr);
         vector<VkExtensionProperties> exts(ext_count);
@@ -2252,7 +2252,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
         return false;
     };
-    const auto has_graphics_present_family = [](VkPhysicalDevice dev, VkSurfaceKHR surface) -> bool {
+    auto has_graphics_present_family = [](VkPhysicalDevice dev, VkSurfaceKHR surface) -> bool {
         uint32_t fam_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(dev, &fam_count, nullptr);
         vector<VkQueueFamilyProperties> fams(fam_count);
@@ -2276,7 +2276,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
         VkPhysicalDeviceProperties props {};
         vkGetPhysicalDeviceProperties(gpu, &props);
-        const int32_t score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 3 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? 1 : 0;
+        int32_t score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 3 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? 1 : 0;
         if (score > best_score) {
             best_score = score;
             _ctx->PhysicalDevice = gpu;
@@ -2294,7 +2294,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     _ctx->MinUniformBufferOffsetAlignment = gpu_props.limits.minUniformBufferOffsetAlignment;
     vkGetPhysicalDeviceMemoryProperties(_ctx->PhysicalDevice, &_ctx->MemoryProperties);
 
-    const auto atlas_limit = numeric_cast<int32_t>(std::min(gpu_props.limits.maxImageDimension2D, numeric_cast<uint32_t>(AppRender::MAX_ATLAS_SIZE)));
+    int32_t atlas_limit = numeric_cast<int32_t>(std::min(gpu_props.limits.maxImageDimension2D, numeric_cast<uint32_t>(AppRender::MAX_ATLAS_SIZE)));
     FO_VERIFY_AND_THROW(atlas_limit >= AppRender::MIN_ATLAS_SIZE, "Vulkan texture atlas size is below the required minimum", atlas_limit, AppRender::MIN_ATLAS_SIZE);
     AppRender::MAX_ATLAS_WIDTH = atlas_limit;
     AppRender::MAX_ATLAS_HEIGHT = atlas_limit;
@@ -2609,7 +2609,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         bool immediate_supported = false;
         bool mailbox_supported = false;
 
-        for (const auto mode : present_modes) {
+        for (auto mode : present_modes) {
             immediate_supported |= mode == VK_PRESENT_MODE_IMMEDIATE_KHR;
             mailbox_supported |= mode == VK_PRESENT_MODE_MAILBOX_KHR;
         }
@@ -2856,7 +2856,7 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     FlushDeferredDestroyQueue(ctx, frame_slot.DestroyQueue);
 
     if (ctx->PendingSwapchainRecreateSize.has_value()) {
-        const auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
+        auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
         ctx->PendingSwapchainRecreateSize.reset();
         // Settle the device, drop pending destroys and rebuild sync objects so nothing stale
         // survives the recreate
@@ -2930,7 +2930,7 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     TransitionColorImage(ctx->CommandBuffer, ctx->SwapchainImages[ctx->CurrentSwapchainImageIndex], ctx->SwapchainImageLayouts[ctx->CurrentSwapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     ctx->SwapchainImageLayouts[ctx->CurrentSwapchainImageIndex] = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-    const VkClearColorValue frame_clear = ctx->ClearColor;
+    VkClearColorValue frame_clear = ctx->ClearColor;
     VkImageSubresourceRange clear_range {};
     clear_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_range.baseMipLevel = 0;
@@ -3186,8 +3186,8 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
         int32_t bottom;
 
         if (ctx->ViewPort.width != ctx->TargetSize.width || ctx->ViewPort.height != ctx->TargetSize.height) {
-            const auto x_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width));
-            const auto y_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height));
+            float32_t x_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width));
+            float32_t y_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height));
 
             left = ctx->ViewPort.x + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.x) * x_ratio);
             top = ctx->ViewPort.y + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.y) * y_ratio);
@@ -3299,13 +3299,13 @@ static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-    const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
-    const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
-    const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
+    float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
+    int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
+    int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
 
-    const auto vp_ox = (back_buf_size.width - fit_width) / 2;
-    const auto vp_oy = (back_buf_size.height - fit_height) / 2;
+    int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
+    int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
     ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
     ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
     ctx->ProjMatrix = BuildOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
@@ -3331,13 +3331,13 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         // Back-buffer target: letterbox the configured screen size into the swapchain. Mirror of
         // ApplySwapchainTargetMetrics, computed into locals (its own ProjMatrix write is redundant here
         // because the projection is rebuilt below from the resolved target size).
-        const isize32 back_buf_size = _ctx->SwapchainSize;
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
-        const auto vp_ox = (back_buf_size.width - fit_width) / 2;
-        const auto vp_oy = (back_buf_size.height - fit_height) / 2;
+        isize32 back_buf_size = _ctx->SwapchainSize;
+        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
+        int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
+        int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
+        int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
         new_viewport = irect32 {vp_ox, vp_oy, fit_width, fit_height};
         new_target_size = {_ctx->Settings->ScreenWidth, _ctx->Settings->ScreenHeight};
     }
@@ -3348,7 +3348,7 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         new_target_size = vk_tex->Size;
     }
 
-    const auto new_proj_matrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(new_target_size.width), numeric_cast<float32_t>(new_target_size.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
+    mat44 new_proj_matrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(new_target_size.width), numeric_cast<float32_t>(new_target_size.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
 
     EndCurrentRenderPass(_ctx);
 
@@ -3455,7 +3455,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    const auto clamped_size = isize32 {std::max(size.width, 1), std::max(size.height, 1)};
+    isize32 clamped_size = isize32 {std::max(size.width, 1), std::max(size.height, 1)};
     _ctx->PendingSwapchainRecreateSize = clamped_size;
 
     if (!_ctx->CurrentRenderTarget) {

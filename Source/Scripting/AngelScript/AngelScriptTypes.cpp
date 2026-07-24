@@ -242,7 +242,7 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const any_t>(gen);
-    const auto tokens = strvex(*obj).split(' ');
+    auto tokens = strvex(*obj).split(' ');
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
 
@@ -314,7 +314,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    const auto equals = MemCompare(obj, other, type->Size);
+    bool equals = MemCompare(obj, other, type->Size);
     new (gen->GetAddressOfReturnLocation()) bool(equals);
 }
 
@@ -398,7 +398,7 @@ static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, boo
     auto meta = GetEngineMetadata(as_engine);
     auto self = GetGenericObjectAs<TextPackKey>(gen);
     auto collection = GetGenericAddressArgObject<const TextPackName>(gen, 0);
-    const auto arg_count = gen->GetArgCount();
+    int32_t arg_count = gen->GetArgCount();
 
     string_view key1;
     string_view key2;
@@ -509,7 +509,7 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
     auto str = GetGenericObjectAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    const auto hstr = meta->Hashes.ToHashedString(*str);
+    hstring hstr = meta->Hashes.ToHashedString(*str);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 }
 
@@ -562,7 +562,7 @@ static auto Any_MakeEnumValue(ptr<const EngineMetadata> meta, string_view enum_n
     FO_NO_STACK_TRACE_ENTRY();
 
     bool failed = false;
-    const string_view enum_value_name = meta->ResolveEnumValueName(enum_name, enum_value, &failed);
+    string_view enum_value_name = meta->ResolveEnumValueName(enum_name, enum_value, &failed);
 
     if (failed) {
         throw ScriptException("Invalid enum value for any conversion", enum_name, enum_value);
@@ -579,7 +579,7 @@ static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
     auto enum_value_ptr = GetGenericAddressArgAs<const void>(gen, 0);
-    const auto enum_value = ReadEnumValueAsInt32(enum_value_ptr, meta->GetBaseType(*enum_name));
+    int32_t enum_value = ReadEnumValueAsInt32(enum_value_ptr, meta->GetBaseType(*enum_name));
     auto self = GetGenericObjectAs<any_t>(gen);
 
     new (self.get()) any_t(Any_MakeEnumValue(meta, *enum_name, enum_value));
@@ -589,13 +589,13 @@ static auto Any_ResolveEnumValue(const any_t& self, ptr<const EngineMetadata> me
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto self_view = string_view {self};
+    auto self_view = string_view {self};
     bool failed = false;
     int32_t enum_value = 0;
 
-    if (const auto sep_pos = self_view.find("::"); sep_pos != string_view::npos) {
-        const auto parsed_enum_name = self_view.substr(0, sep_pos);
-        const auto parsed_value_name = self_view.substr(sep_pos + 2);
+    if (auto sep_pos = self_view.find("::"); sep_pos != string_view::npos) {
+        auto parsed_enum_name = self_view.substr(0, sep_pos);
+        auto parsed_value_name = self_view.substr(sep_pos + 2);
 
         if (parsed_enum_name != enum_name) {
             throw ScriptException("Invalid enum type for any conversion", enum_name, self_view);
@@ -622,7 +622,7 @@ static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
     auto self = GetGenericObjectAs<const any_t>(gen);
-    const auto enum_value = Any_ResolveEnumValue(*self, meta, *enum_name);
+    int32_t enum_value = Any_ResolveEnumValue(*self, meta, *enum_name);
 
     ptr<void> return_value = gen->GetAddressOfReturnLocation();
     WriteEnumValueFromInt32(return_value, meta->GetBaseType(*enum_name), enum_value);
@@ -651,7 +651,7 @@ static auto Any_Conv(const any_t& self) -> T
         }
 
         // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
-        const T converted_value = numeric_cast<T>(strvex(self).to_float64());
+        T converted_value = numeric_cast<T>(strvex(self).to_float64());
 
         if (!std::isfinite(converted_value)) {
             throw ScriptException("Invalid cast from any (floating point value is not finite)");
@@ -680,7 +680,7 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
     auto meta = GetEngineMetadata(as_engine);
 
     if constexpr (std::integral<T>) {
-        const auto self_view = string_view {*self};
+        auto self_view = string_view {*self};
 
         T result;
 
@@ -695,7 +695,7 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
         }
         else {
             bool failed = false;
-            const auto resolved = meta->ResolveEnumValue(self_view, &failed);
+            int32_t resolved = meta->ResolveEnumValue(self_view, &failed);
 
             if (failed) {
                 throw ScriptException("Invalid int value for any conversion", self_view);
@@ -733,10 +733,10 @@ static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto clamped_r = numeric_cast<uint8_t>(std::clamp(r, 0, 255));
-    const auto clamped_g = numeric_cast<uint8_t>(std::clamp(g, 0, 255));
-    const auto clamped_b = numeric_cast<uint8_t>(std::clamp(b, 0, 255));
-    const auto clamped_a = numeric_cast<uint8_t>(std::clamp(a, 0, 255));
+    auto clamped_r = numeric_cast<uint8_t>(std::clamp(r, 0, 255));
+    auto clamped_g = numeric_cast<uint8_t>(std::clamp(g, 0, 255));
+    auto clamped_b = numeric_cast<uint8_t>(std::clamp(b, 0, 255));
+    auto clamped_a = numeric_cast<uint8_t>(std::clamp(a, 0, 255));
 
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 }
@@ -969,7 +969,7 @@ static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     static thread_local std::mt19937 rng {std::random_device {}()};
-    const auto dir = hdir(static_cast<int8_t>(rng() % GameSettings::MAP_DIR_COUNT));
+    hdir dir = hdir(static_cast<int8_t>(rng() % GameSettings::MAP_DIR_COUNT));
     new (gen->GetAddressOfReturnLocation()) hdir(dir);
 }
 
@@ -1148,12 +1148,12 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
             continue;
         }
 
-        const string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? string_view {"@"} : (prop->IsBaseTypeProtoReference() ? string_view {"@+"} : string_view {});
-        const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? string_view {"@?+"} : string_view {"@+"}) : handle_str;
-        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+        string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? string_view {"@"} : (prop->IsBaseTypeProtoReference() ? string_view {"@+"} : string_view {});
+        string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? string_view {"@?+"} : string_view {"@+"}) : handle_str;
+        string decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+        string decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
 
-        const auto host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
+        string host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
@@ -1240,8 +1240,8 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     // Built-in value types
     unordered_set<string> registered_types;
 
-    const auto register_engine_type = [&]<typename T>(string_view name, AngelScript::asDWORD class_flags = AngelScript::asOBJ_APP_CLASS_ALLINTS) {
-        const string name_str {name};
+    auto register_engine_type = [&]<typename T>(string_view name, AngelScript::asDWORD class_flags = AngelScript::asOBJ_APP_CLASS_ALLINTS) {
+        string name_str {name};
 
         registered_types.emplace(name_str);
         FO_AS_VERIFY(as_engine->RegisterObjectType(name_str.c_str(), sizeof(T), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | class_flags | AngelScript::asGetTypeTraits<T>()));
@@ -1414,7 +1414,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir reverse() const", FO_SCRIPT_FUNC_THIS(Mdir_Reverse), FO_SCRIPT_FUNC_THIS_CONV));
 
     // Value types
-    const auto register_generic_type = [&](const BaseTypeDesc& type) {
+    auto register_generic_type = [&](const BaseTypeDesc& type) {
         struct SimpleClass
         {
             int32_t a {};
@@ -1423,8 +1423,8 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectType(type.Name.c_str(), numeric_cast<int32_t>(type.Size), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<SimpleClass>()));
     };
 
-    const auto register_metadata_type_common = [&](const BaseTypeDesc& type) {
-        const string_view name = type.Name;
+    auto register_metadata_type_common = [&](const BaseTypeDesc& type) {
+        string_view name = type.Name;
         auto layout = type.StructLayout;
         FO_VERIFY_AND_THROW(layout, "Layout is null");
 
@@ -1444,8 +1444,8 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(GenericType_GetZero), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     };
 
-    const auto register_generic_type_body = [&](const BaseTypeDesc& type) {
-        const string_view name = type.Name;
+    auto register_generic_type_body = [&](const BaseTypeDesc& type) {
+        string_view name = type.Name;
         register_metadata_type_common(type);
 
         if (type.IsSimpleStruct) {
@@ -1518,10 +1518,10 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     // Ref types
-    const auto register_ref_type = [&](const BaseTypeDesc& type) { FO_AS_VERIFY(as_engine->RegisterObjectType(type.Name.c_str(), 0, AngelScript::asOBJ_REF)); };
+    auto register_ref_type = [&](const BaseTypeDesc& type) { FO_AS_VERIFY(as_engine->RegisterObjectType(type.Name.c_str(), 0, AngelScript::asOBJ_REF)); };
 
-    const auto register_ref_type_body = [&](const BaseTypeDesc& type) {
-        const string name = type.Name;
+    auto register_ref_type_body = [&](const BaseTypeDesc& type) {
+        string name = type.Name;
         auto ref_type = type.RefType;
         FO_VERIFY_AND_THROW(ref_type, "Reference type is null");
 
@@ -1533,7 +1533,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(ref_type->FieldsRegistrator.get()).void_cast()));
 
             for (const auto& [component_name, component_prop] : ref_type->FieldsRegistrator->GetComponents()) {
-                const auto component_type = strex("{}{}Component", name, component_name).str();
+                string component_type = strex("{}{}Component", name, component_name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, make_nptr(component_prop.get()).void_cast()));
             }
@@ -1550,8 +1550,8 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
                 FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(RefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(&ref_type->Methods[2]).void_cast()));
             }
             else if (!strvex(method.Name).starts_with("__")) {
-                const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), getset, method.Name, MakeScriptArgsName(method.Args));
+                string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
+                string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), getset, method.Name, MakeScriptArgsName(method.Args));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(name.c_str(), decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast()));
             }
         }

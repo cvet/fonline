@@ -129,9 +129,12 @@ The abstract base for individual baker implementations. Each baker provides:
 - `GetOrder()` — ordering key for deterministic bake ordering.
 - `BakeFiles()` — the actual file transformation step.
 
-`ModelInfoBaker` runs after `ParticleBaker`: model descriptions may reference
-baked particle resources, so their link validation must not race particle
-serialization during a clean or forced rebuild.
+Cross-pack dependencies use distinct stages: `ParticleBaker` runs before
+`ModelInfoBaker`, which runs before `ProtoBaker`, which runs before `MapBaker`.
+Model descriptions may reference baked particle resources, prototypes may
+reference the baked model descriptions, and maps consume baked prototypes;
+none of those validation steps may race publication by its dependency during a
+clean or forced rebuild.
 
 `BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
 

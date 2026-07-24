@@ -182,8 +182,8 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     auto data = MakeFrm(fps, frames, 1, -1);
 
     for (int32_t dir = 1; dir < dirs_to_fill; dir++) {
-        const size_t dir_pos = numeric_cast<size_t>(dir) * 2;
-        const size_t data_offset = data.size() - 0x3E;
+        size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+        size_t data_offset = data.size() - 0x3E;
 
         SetBeInt16(data, 0xA + dir_pos, numeric_cast<int16_t>(10 + dir));
         SetBeInt16(data, 0x16 + dir_pos, numeric_cast<int16_t>(-10 - dir));
@@ -197,7 +197,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
 [[nodiscard]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
 {
     auto data = MakeFrm(fps, frames);
-    const size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+    size_t dir_pos = numeric_cast<size_t>(dir) * 2;
 
     SetBeInt16(data, 0xA + dir_pos, offs_x);
     SetBeInt16(data, 0x16 + dir_pos, offs_y);
@@ -211,8 +211,8 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     vector<uint8_t> palette(256 * 3);
 
     for (uint8_t index = 1; index <= GameSettings::MAP_DIR_COUNT; index++) {
-        const uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
-        const size_t palette_pos = numeric_cast<size_t>(index) * 3;
+        uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
+        size_t palette_pos = numeric_cast<size_t>(index) * 3;
         palette[palette_pos + 0] = color_base;
         palette[palette_pos + 1] = numeric_cast<uint8_t>(color_base + 1);
         palette[palette_pos + 2] = numeric_cast<uint8_t>(color_base + 2);
@@ -333,7 +333,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     data[4] = 1;
     data[6] = 1;
 
-    const size_t palette_index = 0xA + 1 * 3;
+    size_t palette_index = 0xA + 1 * 3;
     data[palette_index + 0] = 1;
     data[palette_index + 1] = 2;
     data[palette_index + 2] = 3;
@@ -383,7 +383,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    const vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -539,7 +539,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    const vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -749,7 +749,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     AppendLeInt32(data, 1); // Sequence count
     AppendLeInt32(data, numeric_cast<int32_t>(sequence_frames.size())); // Sequence item count
 
-    for (const int16_t frame : sequence_frames) {
+    for (int16_t frame : sequence_frames) {
         AppendLeInt16(data, frame);
     }
 
@@ -762,7 +762,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     AppendLe16(data, 0); // Animation index
 
     data.insert(data.end(), {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
-    const size_t file_offset_pos = data.size();
+    size_t file_offset_pos = data.size();
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
@@ -796,7 +796,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
 
 static void ReplaceFirstTagByte(vector<uint8_t>& data, string_view tag, uint8_t replacement)
 {
-    const auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
+    auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
     FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
     *it = replacement;
 }
@@ -820,7 +820,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
 
 static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
 {
-    const uint8_t mesh_kind = reader.Read<uint8_t>();
+    uint8_t mesh_kind = reader.Read<uint8_t>();
     REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
     frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
 
@@ -828,8 +828,8 @@ static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
         return;
     }
 
-    const uint16_t vertex_count = reader.Read<uint16_t>();
-    const uint32_t index_count = reader.Read<uint32_t>();
+    uint16_t vertex_count = reader.Read<uint16_t>();
+    uint32_t index_count = reader.Read<uint32_t>();
     frame.Mesh.SourceSize.width = reader.Read<uint16_t>();
     frame.Mesh.SourceSize.height = reader.Read<uint16_t>();
     frame.Mesh.SourceOffset.x = reader.Read<int32_t>();
@@ -838,8 +838,8 @@ static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
     frame.Mesh.Indices.reserve(index_count);
 
     for (uint16_t i = 0; i < vertex_count; i++) {
-        const uint16_t x = reader.Read<uint16_t>();
-        const uint16_t y = reader.Read<uint16_t>();
+        uint16_t x = reader.Read<uint16_t>();
+        uint16_t y = reader.Read<uint16_t>();
         frame.Mesh.Vertices.emplace_back(x, y);
     }
     for (uint32_t i = 0; i < index_count; i++) {
@@ -872,8 +872,8 @@ static void SkipSpriteMesh(DataReader& reader)
     frame.NextX = reader.Read<int16_t>();
     frame.NextY = reader.Read<int16_t>();
 
-    const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    const auto frame_data = reader.ReadBytes(data_size);
+    size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+    auto frame_data = reader.ReadBytes(data_size);
     frame.Data.assign(frame_data.begin(), frame_data.end());
     ReadSpriteMesh(reader, frame);
 
@@ -907,7 +907,7 @@ static void SkipSpriteMesh(DataReader& reader)
         frame.NextX = reader.Read<int16_t>();
         frame.NextY = reader.Read<int16_t>();
 
-        const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+        size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
         const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
         frame.Data.assign(frame_data.begin(), frame_data.end());
         ReadSpriteMesh(reader, frame);
@@ -932,8 +932,8 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     REQUIRE(!rows.empty());
     REQUIRE(!rows.front().empty());
 
-    const uint16_t width = numeric_cast<uint16_t>(rows.front().size());
-    const uint16_t height = numeric_cast<uint16_t>(rows.size());
+    uint16_t width = numeric_cast<uint16_t>(rows.front().size());
+    uint16_t height = numeric_cast<uint16_t>(rows.size());
     vector<uint8_t> rgba(numeric_cast<size_t>(width) * height * 4);
 
     for (uint16_t y = 0; y < height; y++) {
@@ -952,7 +952,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
                 REQUIRE(rows[y][x] == '.');
             }
 
-            const size_t pixel_pos = (numeric_cast<size_t>(y) * width + x) * 4;
+            size_t pixel_pos = (numeric_cast<size_t>(y) * width + x) * 4;
             rgba[pixel_pos + 0] = 255;
             rgba[pixel_pos + 1] = 255;
             rgba[pixel_pos + 2] = 255;
@@ -989,10 +989,10 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
 
     for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
         REQUIRE(i + 2 < frame.Mesh.Indices.size());
-        const ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
-        const ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
-        const ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
-        const int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x);
+        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
+        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
+        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
+        int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x);
         double_area += std::abs(cross);
     }
 
@@ -1002,14 +1002,14 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
 [[nodiscard]] static auto IsPointInsideBakedMesh(const BakedImageFrame& frame, fpos32 point) -> bool
 {
     for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
-        const ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
-        const ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
-        const ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
-        const float32_t cross_ab = numeric_cast<float32_t>(b.x - a.x) * (point.y - a.y) - numeric_cast<float32_t>(b.y - a.y) * (point.x - a.x);
-        const float32_t cross_bc = numeric_cast<float32_t>(c.x - b.x) * (point.y - b.y) - numeric_cast<float32_t>(c.y - b.y) * (point.x - b.x);
-        const float32_t cross_ca = numeric_cast<float32_t>(a.x - c.x) * (point.y - c.y) - numeric_cast<float32_t>(a.y - c.y) * (point.x - c.x);
-        const bool has_negative = cross_ab < 0.0f || cross_bc < 0.0f || cross_ca < 0.0f;
-        const bool has_positive = cross_ab > 0.0f || cross_bc > 0.0f || cross_ca > 0.0f;
+        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
+        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
+        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
+        float32_t cross_ab = numeric_cast<float32_t>(b.x - a.x) * (point.y - a.y) - numeric_cast<float32_t>(b.y - a.y) * (point.x - a.x);
+        float32_t cross_bc = numeric_cast<float32_t>(c.x - b.x) * (point.y - b.y) - numeric_cast<float32_t>(c.y - b.y) * (point.x - b.x);
+        float32_t cross_ca = numeric_cast<float32_t>(a.x - c.x) * (point.y - c.y) - numeric_cast<float32_t>(a.y - c.y) * (point.x - c.x);
+        bool has_negative = cross_ab < 0.0f || cross_bc < 0.0f || cross_ca < 0.0f;
+        bool has_positive = cross_ab > 0.0f || cross_bc > 0.0f || cross_ca > 0.0f;
 
         if (!(has_negative && has_positive)) {
             return true;
@@ -1031,7 +1031,7 @@ TEST_CASE("ImageBaker")
     SECTION("Setup")
     {
         TestRig rig;
-        const auto bakers = MakeRequestedBakers({string(ImageBaker::NAME)}, rig);
+        auto bakers = MakeRequestedBakers({string(ImageBaker::NAME)}, rig);
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == ImageBaker::NAME);
@@ -1043,14 +1043,14 @@ TEST_CASE("ImageBaker")
     {
         TestRig disabled;
         ConfigureSpriteMesh(disabled, false);
-        const BakedImageFrame disabled_frame = ReadSingleFrame(BakeAlphaMask(disabled, {"...", "...", "..."}));
+        BakedImageFrame disabled_frame = ReadSingleFrame(BakeAlphaMask(disabled, {"...", "...", "..."}));
         CHECK(disabled_frame.MeshKind == SpriteMeshKind::Quad);
         CHECK(disabled_frame.Mesh.Vertices.empty());
         CHECK(disabled_frame.Mesh.Indices.empty());
 
         TestRig enabled;
         ConfigureSpriteMesh(enabled);
-        const BakedImageFrame empty_frame = ReadSingleFrame(BakeAlphaMask(enabled, {"...", "...", "..."}));
+        BakedImageFrame empty_frame = ReadSingleFrame(BakeAlphaMask(enabled, {"...", "...", "..."}));
         CHECK(empty_frame.MeshKind == SpriteMeshKind::Empty);
         CHECK(empty_frame.Mesh.Vertices.empty());
         CHECK(empty_frame.Mesh.Indices.empty());
@@ -1061,7 +1061,7 @@ TEST_CASE("ImageBaker")
 
         TestRig dilation_fills_frame;
         ConfigureSpriteMesh(dilation_fills_frame);
-        const BakedImageFrame dilation_fills_frame_result = ReadSingleFrame(BakeAlphaMask(dilation_fills_frame, {"...", ".#.", "..."}));
+        BakedImageFrame dilation_fills_frame_result = ReadSingleFrame(BakeAlphaMask(dilation_fills_frame, {"...", ".#.", "..."}));
         REQUIRE(dilation_fills_frame_result.MeshKind == SpriteMeshKind::Mesh);
         CHECK(dilation_fills_frame_result.Mesh.Indices.size() <= 6);
     }
@@ -1070,7 +1070,7 @@ TEST_CASE("ImageBaker")
     {
         TestRig rig;
         ConfigureSpriteMesh(rig);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}));
         const BakedImageFrame& frame = sequence.Frames.front();
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
@@ -1084,7 +1084,7 @@ TEST_CASE("ImageBaker")
     {
         TestRig rig;
         ConfigureSpriteMesh(rig);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}));
         const BakedImageFrame& frame = sequence.Frames.front();
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
@@ -1096,7 +1096,7 @@ TEST_CASE("ImageBaker")
     {
         TestRig rig;
         ConfigureSpriteMesh(rig);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}));
         const BakedImageFrame& frame = sequence.Frames.front();
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
@@ -1109,17 +1109,17 @@ TEST_CASE("ImageBaker")
     {
         TestRig threshold;
         ConfigureSpriteMesh(threshold, true, 128);
-        const BakedImageFrame threshold_frame = ReadSingleFrame(BakeAlphaMask(threshold, {"...", ".+.", "..."}));
+        BakedImageFrame threshold_frame = ReadSingleFrame(BakeAlphaMask(threshold, {"...", ".+.", "..."}));
         CHECK(threshold_frame.MeshKind == SpriteMeshKind::Empty);
 
         TestRig below_threshold;
         ConfigureSpriteMesh(below_threshold, true, 127);
-        const BakedImageFrame below_threshold_frame = ReadSingleDirSequence(BakeAlphaMask(below_threshold, {".....", ".....", "..+..", ".....", "....."})).Frames.front();
+        BakedImageFrame below_threshold_frame = ReadSingleDirSequence(BakeAlphaMask(below_threshold, {".....", ".....", "..+..", ".....", "....."})).Frames.front();
         CHECK(below_threshold_frame.MeshKind == SpriteMeshKind::Mesh);
 
         TestRig dilation;
         ConfigureSpriteMesh(dilation);
-        const BakedImageFrame dilation_frame = ReadSingleFrame(BakeAlphaMask(dilation, {".....", ".....", "..#..", ".....", "....."}));
+        BakedImageFrame dilation_frame = ReadSingleFrame(BakeAlphaMask(dilation, {".....", ".....", "..#..", ".....", "....."}));
         REQUIRE(dilation_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(BakedMeshDoubleArea(dilation_frame) == 2);
 
@@ -1130,7 +1130,7 @@ TEST_CASE("ImageBaker")
 
         TestRig simplified_diagonal;
         ConfigureSpriteMesh(simplified_diagonal);
-        const BakedImageFrame simplified_diagonal_frame = ReadSingleFrame(BakeAlphaMask(simplified_diagonal, diagonal_rows));
+        BakedImageFrame simplified_diagonal_frame = ReadSingleFrame(BakeAlphaMask(simplified_diagonal, diagonal_rows));
 
         REQUIRE(simplified_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(simplified_diagonal_frame.Mesh.Vertices.size() <= 12);
@@ -1144,20 +1144,20 @@ TEST_CASE("ImageBaker")
 
         TestRig shallow_notch;
         ConfigureSpriteMesh(shallow_notch);
-        const BakedImageFrame shallow_notch_frame = ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows));
+        BakedImageFrame shallow_notch_frame = ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows));
 
         REQUIRE(shallow_notch_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
 
         vector<string> shallow_diagonal_rows(40, string(80, '.'));
         for (size_t x = 2; x < 78; x++) {
-            const size_t y = 8 + (x - 2) * 19 / 75;
+            size_t y = 8 + (x - 2) * 19 / 75;
             shallow_diagonal_rows[y][x] = '#';
         }
 
         TestRig shallow_diagonal;
         ConfigureSpriteMesh(shallow_diagonal);
-        const BakedImageFrame shallow_diagonal_frame = ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows));
+        BakedImageFrame shallow_diagonal_frame = ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows));
 
         REQUIRE(shallow_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
         for (size_t y = 0; y < shallow_diagonal_rows.size(); y++) {
@@ -1184,7 +1184,7 @@ TEST_CASE("ImageBaker")
 
         TestRig edge_coverage;
         ConfigureSpriteMesh(edge_coverage);
-        const BakedImageSequence edge_coverage_sequence = ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows));
+        BakedImageSequence edge_coverage_sequence = ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows));
         const BakedImageFrame& edge_coverage_frame = edge_coverage_sequence.Frames.front();
 
         REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
@@ -1204,8 +1204,8 @@ TEST_CASE("ImageBaker")
 
         vector<string> diamond_rows(41, string(81, '.'));
         for (size_t y = 0; y < diamond_rows.size(); y++) {
-            const int32_t distance = std::abs(numeric_cast<int32_t>(y) - 20);
-            const int32_t half_width = (20 - distance) * 2;
+            int32_t distance = std::abs(numeric_cast<int32_t>(y) - 20);
+            int32_t half_width = (20 - distance) * 2;
             for (int32_t x = 40 - half_width; x <= 40 + half_width; x++) {
                 diamond_rows[y][numeric_cast<size_t>(x)] = '#';
             }
@@ -1213,7 +1213,7 @@ TEST_CASE("ImageBaker")
 
         TestRig preferred_quad;
         ConfigureSpriteMesh(preferred_quad, true, 0, 2);
-        const BakedImageSequence preferred_quad_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_quad, diamond_rows));
+        BakedImageSequence preferred_quad_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_quad, diamond_rows));
         REQUIRE(preferred_quad_sequence.Frames.size() == 1);
         const BakedImageFrame& preferred_quad_frame = preferred_quad_sequence.Frames.front();
 
@@ -1235,7 +1235,7 @@ TEST_CASE("ImageBaker")
 
         vector<string> wedge_rows(61, string(61, '.'));
         for (size_t y = 5; y <= 55; y++) {
-            const size_t right = 60 - y;
+            size_t right = 60 - y;
             for (size_t x = 5; x <= right; x++) {
                 wedge_rows[y][x] = '#';
             }
@@ -1243,7 +1243,7 @@ TEST_CASE("ImageBaker")
 
         TestRig preferred_triangle;
         ConfigureSpriteMesh(preferred_triangle, true, 0, 1);
-        const BakedImageSequence preferred_triangle_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_triangle, wedge_rows));
+        BakedImageSequence preferred_triangle_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_triangle, wedge_rows));
         REQUIRE(preferred_triangle_sequence.Frames.size() == 1);
         const BakedImageFrame& preferred_triangle_frame = preferred_triangle_sequence.Frames.front();
 
@@ -1261,7 +1261,7 @@ TEST_CASE("ImageBaker")
 
         TestRig preferred_rectangle;
         ConfigureSpriteMesh(preferred_rectangle, true, 0, 2);
-        const BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front();
+        BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front();
 
         REQUIRE(preferred_rectangle_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(preferred_rectangle_frame.Width < 61);
@@ -1272,18 +1272,18 @@ TEST_CASE("ImageBaker")
         CHECK(preferred_rectangle_frame.Mesh.Vertices.size() == 4);
         CHECK(preferred_rectangle_frame.Mesh.Indices.size() == 6);
 
-        const vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
+        vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
         vector<string> adaptive_tree_rows(160, string(107, '.'));
         for (size_t y = 0; y < adaptive_tree_rows.size(); y++) {
             for (size_t x = 0; x < adaptive_tree_rows[y].size(); x++) {
-                const int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
-                const int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
+                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
+                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
                 bool inside = true;
 
                 for (size_t i = 0; i < adaptive_tree_hull.size(); i++) {
-                    const ipos32 a = adaptive_tree_hull[i];
-                    const ipos32 b = adaptive_tree_hull[(i + 1) % adaptive_tree_hull.size()];
-                    const int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                    ipos32 a = adaptive_tree_hull[i];
+                    ipos32 b = adaptive_tree_hull[(i + 1) % adaptive_tree_hull.size()];
+                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
                     inside = inside && cross >= 0;
                 }
 
@@ -1295,7 +1295,7 @@ TEST_CASE("ImageBaker")
 
         TestRig adaptive_padding;
         ConfigureSpriteMesh(adaptive_padding, true, 0, 4096, 1.0f);
-        const BakedImageSequence adaptive_padding_sequence = ReadSingleDirSequence(BakeAlphaMask(adaptive_padding, adaptive_tree_rows));
+        BakedImageSequence adaptive_padding_sequence = ReadSingleDirSequence(BakeAlphaMask(adaptive_padding, adaptive_tree_rows));
         REQUIRE(adaptive_padding_sequence.Frames.size() == 1);
         const BakedImageFrame& adaptive_padding_frame = adaptive_padding_sequence.Frames.front();
 
@@ -1307,18 +1307,18 @@ TEST_CASE("ImageBaker")
         CHECK(adaptive_padding_frame.Mesh.Vertices.size() == 3);
         CHECK(adaptive_padding_frame.Mesh.Indices.size() == 3);
 
-        const vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
+        vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
         vector<string> pentagon_rows(101, string(101, '.'));
         for (size_t y = 0; y < pentagon_rows.size(); y++) {
             for (size_t x = 0; x < pentagon_rows[y].size(); x++) {
-                const int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
-                const int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
+                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
+                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
                 bool inside = true;
 
                 for (size_t i = 0; i < pentagon_hull.size(); i++) {
-                    const ipos32 a = pentagon_hull[i];
-                    const ipos32 b = pentagon_hull[(i + 1) % pentagon_hull.size()];
-                    const int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                    ipos32 a = pentagon_hull[i];
+                    ipos32 b = pentagon_hull[(i + 1) % pentagon_hull.size()];
+                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
                     inside = inside && cross >= 0;
                 }
 
@@ -1330,7 +1330,7 @@ TEST_CASE("ImageBaker")
 
         TestRig enclosing_budget;
         ConfigureSpriteMesh(enclosing_budget, true, 0, 3);
-        const BakedImageFrame enclosing_budget_frame = ReadSingleDirSequence(BakeAlphaMask(enclosing_budget, pentagon_rows)).Frames.front();
+        BakedImageFrame enclosing_budget_frame = ReadSingleDirSequence(BakeAlphaMask(enclosing_budget, pentagon_rows)).Frames.front();
         REQUIRE(enclosing_budget_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(enclosing_budget_frame.Mesh.Indices.size() == 9);
 
@@ -1346,39 +1346,39 @@ TEST_CASE("ImageBaker")
 
         TestRig component_budget;
         ConfigureSpriteMesh(component_budget, true, 0, 4);
-        const BakedImageFrame component_budget_frame = ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front();
+        BakedImageFrame component_budget_frame = ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front();
         REQUIRE(component_budget_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(component_budget_frame.Mesh.Indices.size() == 12);
         CHECK_FALSE(IsPointInsideBakedMesh(component_budget_frame, SourcePointToBakedMeshPoint(component_budget_frame, {55.5f, 35.5f})));
 
         TestRig low_area_weight;
         ConfigureSpriteMesh(low_area_weight, true, 0, 4, 1.0f);
-        const BakedImageFrame low_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front();
+        BakedImageFrame low_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front();
         REQUIRE(low_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(low_area_weight_frame.Mesh.Indices.size() == 6);
         CHECK(IsPointInsideBakedMesh(low_area_weight_frame, SourcePointToBakedMeshPoint(low_area_weight_frame, {55.5f, 35.5f})));
 
         TestRig high_area_weight;
         ConfigureSpriteMesh(high_area_weight, true, 0, 4, 64.0f);
-        const BakedImageFrame high_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front();
+        BakedImageFrame high_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front();
         REQUIRE(high_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(high_area_weight_frame.Mesh.Indices.size() == 12);
         CHECK_FALSE(IsPointInsideBakedMesh(high_area_weight_frame, SourcePointToBakedMeshPoint(high_area_weight_frame, {55.5f, 35.5f})));
 
         TestRig triangle_uncapped;
         ConfigureSpriteMesh(triangle_uncapped);
-        const BakedImageFrame triangle_uncapped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_uncapped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        BakedImageFrame triangle_uncapped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_uncapped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
         REQUIRE(triangle_uncapped_frame.MeshKind == SpriteMeshKind::Mesh);
 
         TestRig triangle_capped;
         ConfigureSpriteMesh(triangle_capped, true, 0, 2);
-        const BakedImageFrame triangle_capped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_capped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        BakedImageFrame triangle_capped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_capped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
         REQUIRE(triangle_capped_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(triangle_capped_frame.Mesh.Indices.size() <= 6);
 
         TestRig unprofitable;
         ConfigureSpriteMesh(unprofitable);
-        const BakedImageFrame unprofitable_frame = ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front();
+        BakedImageFrame unprofitable_frame = ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front();
         CHECK(unprofitable_frame.MeshKind == SpriteMeshKind::Mesh);
     }
 
@@ -1386,8 +1386,8 @@ TEST_CASE("ImageBaker")
     {
         vector<string> rows(123, string(64, '.'));
         for (size_t x = 0; x < 64; x++) {
-            const size_t top = 17 - x * 15 / 63;
-            const size_t bottom = 48 - x * 15 / 63;
+            size_t top = 17 - x * 15 / 63;
+            size_t bottom = 48 - x * 15 / 63;
             for (size_t y = top; y <= bottom; y++) {
                 rows[y][x] = '#';
             }
@@ -1400,7 +1400,7 @@ TEST_CASE("ImageBaker")
 
         TestRig rig;
         ConfigureSpriteMesh(rig, true, 10, 16, 64.0f);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 6);
@@ -1412,9 +1412,9 @@ TEST_CASE("ImageBaker")
     SECTION("SpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
     {
         vector<string> rows(123, string(64, '.'));
-        const vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
+        vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
         for (size_t y = 2; y <= 17; y++) {
-            const size_t left = top_left[y - 2];
+            size_t left = top_left[y - 2];
             for (size_t x = left; x < 64; x++) {
                 rows[y][x] = '#';
             }
@@ -1424,9 +1424,9 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
-        const vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
+        vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
         for (size_t y = 33; y <= 46; y++) {
-            const size_t right = bottom_right[y - 33];
+            size_t right = bottom_right[y - 33];
             for (size_t x = 0; x <= right; x++) {
                 rows[y][x] = '#';
             }
@@ -1444,7 +1444,7 @@ TEST_CASE("ImageBaker")
 
         TestRig rig;
         ConfigureSpriteMesh(rig, true, 10, 16, 200.0f);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 7);
@@ -1458,7 +1458,7 @@ TEST_CASE("ImageBaker")
     SECTION("SpriteMeshExpandedSimplificationEnclosesThinLShape")
     {
         vector<string> rows(123, string(64, '.'));
-        const vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
+        vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
         for (size_t y = 0; y < top_left.size(); y++) {
             for (size_t x = top_left[y]; x < 64; x++) {
                 rows[y][x] = '#';
@@ -1469,7 +1469,7 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
-        const vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
+        vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
         for (size_t y = 26; y <= 42; y++) {
             for (size_t x = 0; x <= lower_right[y - 26]; x++) {
                 rows[y][x] = '#';
@@ -1483,7 +1483,7 @@ TEST_CASE("ImageBaker")
 
         TestRig rig;
         ConfigureSpriteMesh(rig, true, 10, 16, 100.0f);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() > 6);
@@ -1510,7 +1510,7 @@ TEST_CASE("ImageBaker")
 
         TestRig rig;
         ConfigureSpriteMesh(rig, true, 0, 4, 200.0f);
-        const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
+        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() <= 12);
@@ -1538,15 +1538,15 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshOutputIsDeterministic")
     {
-        const vector<string> mask {"......", ".####.", ".#..#.", ".####.", "......"};
+        vector<string> mask {"......", ".####.", ".#..#.", ".####.", "......"};
 
         TestRig first;
         ConfigureSpriteMesh(first);
-        const vector<uint8_t> first_output = BakeAlphaMask(first, mask);
+        vector<uint8_t> first_output = BakeAlphaMask(first, mask);
 
         TestRig second;
         ConfigureSpriteMesh(second);
-        const vector<uint8_t> second_output = BakeAlphaMask(second, mask);
+        vector<uint8_t> second_output = BakeAlphaMask(second, mask);
 
         CHECK(first_output == second_output);
     }
@@ -1651,7 +1651,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "ui/icon.tga");
 
         REQUIRE(rig.Outputs.contains("ui/icon.tga"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("ui/icon.tga"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("ui/icon.tga"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -1698,14 +1698,14 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("gfx/rle.tga"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
         CHECK(frame.Data == vector<uint8_t> {0, 0, 255, 255, 0, 0, 255, 255});
 
         REQUIRE(rig.Outputs.contains("gfx/rle-raw-packets.tga"));
-        const auto raw_packet_frame = ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"));
+        auto raw_packet_frame = ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"));
 
         CHECK(raw_packet_frame.Width == 2);
         CHECK(raw_packet_frame.Height == 1);
@@ -1713,8 +1713,8 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
-        const vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
+        string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
+        vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
         REQUIRE(sprite_info_entries.size() == 2);
         CHECK(sprite_info_entries[0].Info.FrameCount == 1);
         CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
@@ -1739,7 +1739,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.frm"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -1767,7 +1767,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/animated.frm");
 
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -1823,8 +1823,8 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
             const_span<uint8_t> data = reader.ReadBytes(4);
-            const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
-            const vector<uint8_t> expected_data {
+            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),
                 numeric_cast<uint8_t>((color_base + 1) * 4),
                 numeric_cast<uint8_t>((color_base + 2) * 4),
@@ -1840,7 +1840,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
     {
-        const vector<FrmFrameSpec> frames {
+        vector<FrmFrameSpec> frames {
             FrmFrameSpec {
                 .Width = 1,
                 .Height = 1,
@@ -1910,7 +1910,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("gfx/animated.fr0"));
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -1945,7 +1945,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/indexed.png");
 
         REQUIRE(rig.Outputs.contains("gfx/indexed.png"));
-        const auto frame = ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"));
+        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"));
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -1966,35 +1966,35 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("legacy/pixel.rix"));
-        const auto rix_frame = ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"));
+        auto rix_frame = ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"));
 
         CHECK(rix_frame.Width == 1);
         CHECK(rix_frame.Height == 1);
         CHECK(rix_frame.Data == vector<uint8_t> {12, 8, 4, 255});
 
         REQUIRE(rig.Outputs.contains("legacy/blank.zar"));
-        const auto zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"));
+        auto zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"));
 
         CHECK(zar_frame.Width == 1);
         CHECK(zar_frame.Height == 1);
         CHECK(zar_frame.Data == vector<uint8_t> {0, 0, 0, 0});
 
         REQUIRE(rig.Outputs.contains("legacy/palette.zar"));
-        const auto palette_zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"));
+        auto palette_zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"));
 
         CHECK(palette_zar_frame.Width == 3);
         CHECK(palette_zar_frame.Height == 1);
         CHECK(palette_zar_frame.Data == vector<uint8_t> {0x11, 0x22, 0x33, 0xFF, 0x11, 0x22, 0x33, 0x7F, 0x11, 0x22, 0x33, 0x40});
 
         REQUIRE(rig.Outputs.contains("legacy/panel.mos"));
-        const auto mos_frame = ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"));
+        auto mos_frame = ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"));
 
         CHECK(mos_frame.Width == 2);
         CHECK(mos_frame.Height == 1);
         CHECK(mos_frame.Data == vector<uint8_t> {1, 2, 3, 255, 0, 0, 0, 0});
 
         REQUIRE(rig.Outputs.contains("legacy/cycle.bam"));
-        const auto bam_frame = ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"));
+        auto bam_frame = ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"));
 
         CHECK(bam_frame.Width == 4);
         CHECK(bam_frame.Height == 1);
@@ -2003,7 +2003,7 @@ TEST_CASE("ImageBaker")
         CHECK(bam_frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0, 0, 0, 0, 6, 5, 4, 0xFF, 6, 5, 4, 0xFF});
 
         REQUIRE(rig.Outputs.contains("legacy/floor.til"));
-        const auto til_frame = ReadSingleFrame(rig.Outputs.at("legacy/floor.til"));
+        auto til_frame = ReadSingleFrame(rig.Outputs.at("legacy/floor.til"));
 
         CHECK(til_frame.Width == 3);
         CHECK(til_frame.Height == 1);
@@ -2020,7 +2020,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2042,7 +2042,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static-art.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/static-art.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2064,7 +2064,7 @@ TEST_CASE("ImageBaker")
         specific_frame_baker.BakeFiles(specific_frame.GetAllSourceFiles(), "legacy/bam-specific.fofrm");
 
         REQUIRE(specific_frame.Outputs.contains("legacy/bam-specific.fofrm"));
-        const auto selected = ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"));
+        auto selected = ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"));
 
         CHECK(selected.SequenceSize == 1);
         CHECK(selected.AnimTicks == 100);
@@ -2083,7 +2083,7 @@ TEST_CASE("ImageBaker")
         clamped_frame_baker.BakeFiles(clamped_frame.GetAllSourceFiles(), "legacy/bam-clamped.fofrm");
 
         REQUIRE(clamped_frame.Outputs.contains("legacy/bam-clamped.fofrm"));
-        const auto clamped = ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"));
+        auto clamped = ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"));
 
         CHECK(clamped.SequenceSize == 1);
         CHECK(clamped.AnimTicks == 100);
@@ -2105,7 +2105,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-range.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art-range.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 100);
@@ -2127,7 +2127,7 @@ TEST_CASE("ImageBaker")
         forward_baker.BakeFiles(forward.GetAllSourceFiles(), "gfx/art-forward.fofrm");
 
         REQUIRE(forward.Outputs.contains("gfx/art-forward.fofrm"));
-        const auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
+        auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
 
         CHECK(forward_sequence.SequenceSize == 2);
         CHECK(forward_sequence.AnimTicks == 100);
@@ -2152,7 +2152,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-dirs.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art-dirs.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-dirs.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-dirs.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2174,7 +2174,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2196,7 +2196,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2230,12 +2230,12 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == 0);
             CHECK(reader.Read<int16_t>() == 0);
 
-            const auto width = reader.Read<uint16_t>();
-            const auto height = reader.Read<uint16_t>();
-            const auto next_x = reader.Read<int16_t>();
-            const auto next_y = reader.Read<int16_t>();
+            auto width = reader.Read<uint16_t>();
+            auto height = reader.Read<uint16_t>();
+            int16_t next_x = reader.Read<int16_t>();
+            int16_t next_y = reader.Read<int16_t>();
 
-            const size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            size_t data_size = numeric_cast<size_t>(width) * height * 4;
             const_span<uint8_t> data = reader.ReadBytes(data_size);
 
             if (width == 3) {
@@ -2288,7 +2288,7 @@ NextY_1=8
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/anim.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/anim.fofrm"));
-        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"));
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -2318,7 +2318,7 @@ OffsetX=5
         dir_one_baker.BakeFiles(dir_one_without_frames.GetAllSourceFiles(), "gfx/no-dir.fofrm");
 
         REQUIRE(dir_one_without_frames.Outputs.contains("gfx/no-dir.fofrm"));
-        const auto sequence = ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"));
+        auto sequence = ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"));
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2340,12 +2340,12 @@ Frm=dir1.tga
         CHECK_THROWS_AS(direction_gap_baker.BakeFiles(direction_gap.GetAllSourceFiles(), "gfx/gap.fofrm"), ImageBakerException);
         CHECK(direction_gap.Outputs.empty());
 
-        const auto add_toy_loader = [](ImageBaker& baker) {
+        auto add_toy_loader = [](ImageBaker& baker) {
             baker.AddLoader(
                 [](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
                     ignore_unused(opt, reader, files);
 
-                    const string fname_str {fname};
+                    string fname_str {fname};
                     ImageBaker::FrameCollection collection;
                     collection.SequenceSize = fname_str.find("two") != string::npos ? 2 : 1;
                     collection.AnimTicks = 100;
@@ -2449,8 +2449,8 @@ Frm=one.toy
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.Read<bool>());
-            const int16_t offs_x = reader.Read<int16_t>();
-            const int16_t offs_y = reader.Read<int16_t>();
+            int16_t offs_x = reader.Read<int16_t>();
+            int16_t offs_y = reader.Read<int16_t>();
 
             if (dir == 0) {
                 CHECK(offs_x == 1);
@@ -2523,7 +2523,7 @@ Frm=one.toy
         REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
@@ -2536,7 +2536,7 @@ Frm=one.toy
         TestRig rig;
         AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
 
-        const SpriteInfo info {
+        SpriteInfo info {
             .FrameCount = 1,
             .Duration = std::chrono::milliseconds {100},
             .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
@@ -2552,7 +2552,7 @@ Frm=one.toy
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/current.tga");
     }

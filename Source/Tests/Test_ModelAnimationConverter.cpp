@@ -90,8 +90,8 @@ static auto LoadModelAnimationRuntimeTestRig(string_view model_description, stri
         bindings.emplace_back(ModelAnimationRigBindingSource {numeric_cast<int32_t>(clip_index + 1), 0, clip.SourceFile, clip.ClipName, false});
     }
 
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, strex("runtime test for '{}'", model_description));
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, strex("runtime test for '{}'", model_description));
     return LoadModelAnimationRuntimeRig(serialized, model_description, base_model, nearest_sampling);
 }
 
@@ -100,10 +100,10 @@ static auto SampleModelAnimationRuntimeTestMatrices(const ModelAnimationRuntimeR
     FO_STACK_TRACE_ENTRY();
 
     const ModelAnimationRuntimeClip& clip = rig.GetClip(clip_index);
-    const float32_t duration = clip.GetDuration();
-    const float32_t position = ratio < 1.0f ? ratio * duration : std::nextafter(duration, 0.0f);
+    float32_t duration = clip.GetDuration();
+    float32_t position = ratio < 1.0f ? ratio * duration : std::nextafter(duration, 0.0f);
     ModelAnimationRuntimePose pose {&rig};
-    const array<ModelAnimationRuntimePose::TrackInput, 2> body {
+    array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = numeric_cast<int32_t>(clip_index), .Enabled = true, .Position = position, .Weight = 1.0f},
         ModelAnimationRuntimePose::TrackInput {},
     };
@@ -125,7 +125,7 @@ static auto GetModelAnimationTestColumn(const mat44& matrix, size_t column) -> a
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(column < 4, "Matrix column {} is outside test matrix", column);
-    const mat44::length_type matrix_column = numeric_cast<mat44::length_type>(column);
+    mat44::length_type matrix_column = numeric_cast<mat44::length_type>(column);
     return {matrix[matrix_column][0], matrix[matrix_column][1], matrix[matrix_column][2], matrix[matrix_column][3]};
 }
 
@@ -136,7 +136,7 @@ static auto BuildModelAnimationProductionTestRigData() -> ModelAnimationRigData
     ModelSkeletonSource base;
     base.FileName = "Models/ProductionBody.fbx";
     base.Joints = {MakeModelAnimationTestJoint("Root", {"Root"})};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
 
     ModelAnimationSource idle;
     idle.FileName = base.FileName;
@@ -150,9 +150,9 @@ static auto BuildModelAnimationProductionTestRigData() -> ModelAnimationRigData
     move.Duration = 1.0f;
     move.Joints = {MakeModelAnimationTestAnimationJoint("Root", {"Root"}, {0.0f, 1.0f}, {vec3 {1.0f, 0.0f, 0.0f}, vec3 {3.0f, 0.0f, 0.0f}})};
 
-    const vector<ModelAnimationSource> animations {move, idle};
+    vector<ModelAnimationSource> animations {move, idle};
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/ProductionBody.fo3d", base, report, animations, false);
-    const vector<ModelAnimationRigBindingSource> bindings {
+    vector<ModelAnimationRigBindingSource> bindings {
         ModelAnimationRigBindingSource {20, 4, move.FileName, move.Name, true},
         ModelAnimationRigBindingSource {10, 2, idle.FileName, idle.Name, false},
     };
@@ -178,10 +178,10 @@ static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -
     contribution.Joints = base.Joints;
     contribution.Joints.emplace_back(MakeModelAnimationTestJoint("Helper", {"Root", "Helper"}));
     contribution.AnimatedJointHierarchies = {{"Root", "Helper"}};
-    const vector<ModelSkeletonClipSource> contributions {contribution};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, contributions);
-    const vector<float32_t> times = nearest_sampling ? vector<float32_t> {0.0f, 0.5f, 1.0f} : vector<float32_t> {0.0f, 1.0f};
-    const auto constant_values = [&times](float32_t x) { return vector<vec3>(times.size(), vec3 {x, 0.0f, 0.0f}); };
+    vector<ModelSkeletonClipSource> contributions {contribution};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, contributions);
+    vector<float32_t> times = nearest_sampling ? vector<float32_t> {0.0f, 0.5f, 1.0f} : vector<float32_t> {0.0f, 1.0f};
+    auto constant_values = [&times](float32_t x) { return vector<vec3>(times.size(), vec3 {x, 0.0f, 0.0f}); };
 
     ModelAnimationSource body0;
     body0.FileName = "Animations/RuntimeEvaluation.fbx";
@@ -244,9 +244,9 @@ static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -
         MakeModelAnimationTestAnimationJoint("Arm", {"Root", "Arm"}, times, constant_values(2.0f), vector<quaternion>(times.size(), glm::angleAxis(glm::radians(179.0f), glm::normalize(vec3 {0.2f, 0.7f, 0.3f})))),
     };
 
-    const vector<ModelAnimationSource> animations {body0, body1, movement0, movement1, curve, rotation0, rotation1};
+    vector<ModelAnimationSource> animations {body0, body1, movement0, movement1, curve, rotation0, rotation1};
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/RuntimeEvaluation.fo3d", base, report, animations, nearest_sampling);
-    const vector<ModelAnimationRigBindingSource> bindings {
+    vector<ModelAnimationRigBindingSource> bindings {
         ModelAnimationRigBindingSource {1, 0, body0.FileName, body0.Name, false},
         ModelAnimationRigBindingSource {2, 0, body1.FileName, body1.Name, false},
         ModelAnimationRigBindingSource {3, 0, movement0.FileName, movement0.Name, false},
@@ -255,8 +255,8 @@ static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -
         ModelAnimationRigBindingSource {6, 0, rotation0.FileName, rotation0.Name, false},
         ModelAnimationRigBindingSource {7, 0, rotation1.FileName, rotation1.Name, false},
     };
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime evaluation test");
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime evaluation test");
     return LoadModelAnimationRuntimeRig(serialized, "Models/RuntimeEvaluation.fo3d", base.FileName, nearest_sampling);
 }
 
@@ -264,7 +264,7 @@ static auto GetModelAnimationRuntimeEvaluationClip(const ModelAnimationRuntimeRi
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto binding = rig.FindBinding(state_anim, 0);
+    auto binding = rig.FindBinding(state_anim, 0);
 
     if (!binding) {
         throw std::runtime_error("Missing runtime-evaluation binding");
@@ -288,7 +288,7 @@ static auto GetModelAnimationRuntimeEvaluationJoint(const ModelAnimationRuntimeR
 
 TEST_CASE("ModelAnimationConverterProductionRigDataLoadsFromUnalignedOwnedBytes")
 {
-    const ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
+    ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
     unique_ptr<ModelAnimationRuntimeRig> runtime_rig = [&rig_data] {
         vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "production runtime test");
         vector<uint8_t> unaligned;
@@ -308,8 +308,8 @@ TEST_CASE("ModelAnimationConverterProductionRigDataLoadsFromUnalignedOwnedBytes"
     REQUIRE(runtime_rig->GetBaseJointPresence().size() == 1);
     CHECK(runtime_rig->GetBaseJointPresence()[0] == uint8_t {1});
 
-    const auto idle_binding = runtime_rig->FindBinding(10, 2);
-    const auto move_binding = runtime_rig->FindBinding(20, 4);
+    auto idle_binding = runtime_rig->FindBinding(10, 2);
+    auto move_binding = runtime_rig->FindBinding(20, 4);
     REQUIRE(idle_binding);
     REQUIRE(move_binding);
     CHECK_FALSE(idle_binding->Reversed);
@@ -327,9 +327,9 @@ TEST_CASE("ModelAnimationConverterProductionRigDataLoadsFromUnalignedOwnedBytes"
     REQUIRE(move_clip.GetJointPresence().size() == 1);
     CHECK(move_clip.GetJointPresence()[0] == uint8_t {1});
 
-    const auto matrices = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, move_binding->ClipIndex, 0.5f);
+    auto matrices = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, move_binding->ClipIndex, 0.5f);
     REQUIRE(matrices.size() == 1);
-    const auto translation = GetModelAnimationTestColumn(matrices.front(), 3);
+    auto translation = GetModelAnimationTestColumn(matrices.front(), 3);
     CHECK(translation[0] == Catch::Approx(2.0f).margin(1.0e-3f));
     CHECK(translation[1] == Catch::Approx(0.0f).margin(1.0e-3f));
     CHECK(translation[2] == Catch::Approx(0.0f).margin(1.0e-3f));
@@ -340,11 +340,11 @@ TEST_CASE("ModelAnimationRuntimePoseOwnsIndependentHierarchicalRestMatrices")
     STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<ModelAnimationRuntimePose>);
     STATIC_REQUIRE_FALSE(std::is_move_constructible_v<ModelAnimationRuntimePose>);
 
-    const quaternion root_rotation = glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 3.0f}));
-    const quaternion child_rotation = glm::angleAxis(glm::radians(-47.0f), glm::normalize(vec3 {2.0f, 1.0f, 0.5f}));
-    const mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {1.0f, 2.0f, 3.0f}) * glm::mat4_cast(root_rotation) * glm::scale(mat44 {1.0f}, vec3 {2.0f, 1.5f, 0.75f});
-    const mat44 child_rest = glm::translate(mat44 {1.0f}, vec3 {-2.0f, 4.0f, 1.0f}) * glm::mat4_cast(child_rotation) * glm::scale(mat44 {1.0f}, vec3 {0.5f, 1.25f, 3.0f});
-    const mat44 leaf_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 1.0f, 5.0f});
+    quaternion root_rotation = glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 3.0f}));
+    quaternion child_rotation = glm::angleAxis(glm::radians(-47.0f), glm::normalize(vec3 {2.0f, 1.0f, 0.5f}));
+    mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {1.0f, 2.0f, 3.0f}) * glm::mat4_cast(root_rotation) * glm::scale(mat44 {1.0f}, vec3 {2.0f, 1.5f, 0.75f});
+    mat44 child_rest = glm::translate(mat44 {1.0f}, vec3 {-2.0f, 4.0f, 1.0f}) * glm::mat4_cast(child_rotation) * glm::scale(mat44 {1.0f}, vec3 {0.5f, 1.25f, 3.0f});
+    mat44 leaf_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 1.0f, 5.0f});
 
     ModelSkeletonSource base;
     base.FileName = "Models/RuntimePose.fbx";
@@ -353,11 +353,11 @@ TEST_CASE("ModelAnimationRuntimePoseOwnsIndependentHierarchicalRestMatrices")
         MakeModelAnimationTestJoint("Child", {"Root", "Child"}, child_rest),
         MakeModelAnimationTestJoint("Leaf", {"Root", "Child", "Leaf"}, leaf_rest),
     };
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/RuntimePose.fo3d", base, report, {}, false);
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime pose test");
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/RuntimePose.fo3d", base.FileName, false);
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime pose test");
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/RuntimePose.fo3d", base.FileName, false);
 
     ModelAnimationRuntimePose first {runtime_rig.get()};
     ModelAnimationRuntimePose second {runtime_rig.get()};
@@ -365,11 +365,11 @@ TEST_CASE("ModelAnimationRuntimePoseOwnsIndependentHierarchicalRestMatrices")
     REQUIRE(first.GetWorldMatrices().size() == first.GetJointCount());
     CHECK(first.GetWorldMatrices().data() != second.GetWorldMatrices().data());
 
-    const mat44 first_root = glm::translate(mat44 {1.0f}, vec3 {10.0f, -3.0f, 7.0f}) * glm::rotate(mat44 {1.0f}, glm::radians(23.0f), glm::normalize(vec3 {0.0f, 1.0f, 1.0f})) * glm::scale(mat44 {1.0f}, vec3 {1.25f, 0.8f, 1.5f});
-    const mat44 second_root = glm::translate(mat44 {1.0f}, vec3 {-20.0f, 5.0f, 2.0f});
+    mat44 first_root = glm::translate(mat44 {1.0f}, vec3 {10.0f, -3.0f, 7.0f}) * glm::rotate(mat44 {1.0f}, glm::radians(23.0f), glm::normalize(vec3 {0.0f, 1.0f, 1.0f})) * glm::scale(mat44 {1.0f}, vec3 {1.25f, 0.8f, 1.5f});
+    mat44 second_root = glm::translate(mat44 {1.0f}, vec3 {-20.0f, 5.0f, 2.0f});
     first.BuildModelMatrices(first_root);
     second.BuildModelMatrices(second_root);
-    const vector<mat44> second_world_before {second.GetWorldMatrices().begin(), second.GetWorldMatrices().end()};
+    vector<mat44> second_world_before {second.GetWorldMatrices().begin(), second.GetWorldMatrices().end()};
     first.BuildModelMatrices(glm::translate(mat44 {1.0f}, vec3 {100.0f, 200.0f, 300.0f}));
 
     for (size_t joint = 0; joint < second.GetJointCount(); joint++) {
@@ -381,7 +381,7 @@ TEST_CASE("ModelAnimationRuntimePoseOwnsIndependentHierarchicalRestMatrices")
     }
 
     first.BuildModelMatrices(first_root);
-    const array<mat44, 3> expected_world {
+    array<mat44, 3> expected_world {
         first_root * root_rest,
         first_root * root_rest * child_rest,
         first_root * root_rest * child_rest * leaf_rest,
@@ -407,16 +407,16 @@ TEST_CASE("ModelAnimationConverterRejectsEmptyCanonicalRig")
 
 TEST_CASE("ModelAnimationRuntimePoseBlendsPartialBodyAndMaskedMovement")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
-    const size_t leg = GetModelAnimationRuntimeEvaluationJoint(*rig, "Leg");
-    const size_t rest = GetModelAnimationRuntimeEvaluationJoint(*rig, "Rest");
-    const size_t helper = GetModelAnimationRuntimeEvaluationJoint(*rig, "Helper");
-    const int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
-    const int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
-    const int32_t movement0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 3);
-    const int32_t movement1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 4);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
+    size_t leg = GetModelAnimationRuntimeEvaluationJoint(*rig, "Leg");
+    size_t rest = GetModelAnimationRuntimeEvaluationJoint(*rig, "Rest");
+    size_t helper = GetModelAnimationRuntimeEvaluationJoint(*rig, "Helper");
+    int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
+    int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
+    int32_t movement0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 3);
+    int32_t movement1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 4);
     ModelAnimationRuntimePose first {rig.get()};
     ModelAnimationRuntimePose second {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
@@ -426,7 +426,7 @@ TEST_CASE("ModelAnimationRuntimePoseBlendsPartialBodyAndMaskedMovement")
     array<ModelAnimationRuntimePose::TrackInput, 2> movement {};
     first.Evaluate(body, movement, mat44 {1.0f});
 
-    const auto check_local_x = [&first](size_t joint, float32_t expected) { CHECK(first.GetFinalLocalTransform(joint).Translation.x == Catch::Approx(expected).margin(2.0e-2f)); };
+    auto check_local_x = [&first](size_t joint, float32_t expected) { CHECK(first.GetFinalLocalTransform(joint).Translation.x == Catch::Approx(expected).margin(2.0e-2f)); };
     check_local_x(root, 15.0f);
     check_local_x(arm, 20.0f);
     check_local_x(leg, 40.0f);
@@ -468,9 +468,9 @@ TEST_CASE("ModelAnimationRuntimePoseBlendsPartialBodyAndMaskedMovement")
     check_local_x(rest, 6.0f);
     check_local_x(helper, 0.0f);
 
-    const mat44 second_root = glm::translate(mat44 {1.0f}, vec3 {100.0f, 200.0f, 300.0f});
+    mat44 second_root = glm::translate(mat44 {1.0f}, vec3 {100.0f, 200.0f, 300.0f});
     second.Evaluate(body, movement, second_root);
-    const vector<mat44> second_world_before {second.GetWorldMatrices().begin(), second.GetWorldMatrices().end()};
+    vector<mat44> second_world_before {second.GetWorldMatrices().begin(), second.GetWorldMatrices().end()};
     first.Evaluate(body, movement, mat44 {1.0f});
     REQUIRE(first.GetWorldMatrices().data() != second.GetWorldMatrices().data());
 
@@ -485,11 +485,11 @@ TEST_CASE("ModelAnimationRuntimePoseBlendsPartialBodyAndMaskedMovement")
 
 TEST_CASE("ModelAnimationRuntimePoseUsesLegacySlerpForLargeAngleCrossfades")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
-    const int32_t rotation0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 6);
-    const int32_t rotation1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 7);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
+    int32_t rotation0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 6);
+    int32_t rotation1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 7);
     ModelAnimationRuntimePose pose {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = rotation0_clip, .Enabled = true, .Position = 0.5f, .Weight = 0.37f},
@@ -497,14 +497,14 @@ TEST_CASE("ModelAnimationRuntimePoseUsesLegacySlerpForLargeAngleCrossfades")
     };
 
     pose.Evaluate(body, {}, mat44 {1.0f});
-    const array<quaternion, 2> rotation0 {pose.GetBodyLocalTransform(root).Rotation, pose.GetBodyLocalTransform(arm).Rotation};
+    array<quaternion, 2> rotation0 {pose.GetBodyLocalTransform(root).Rotation, pose.GetBodyLocalTransform(arm).Rotation};
     body = {
         ModelAnimationRuntimePose::TrackInput {},
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = rotation1_clip, .Enabled = true, .Position = 0.5f, .Weight = 1.0f},
     };
     pose.Evaluate(body, {}, mat44 {1.0f});
-    const array<quaternion, 2> rotation1 {pose.GetBodyLocalTransform(root).Rotation, pose.GetBodyLocalTransform(arm).Rotation};
-    const array<size_t, 2> joints {root, arm};
+    array<quaternion, 2> rotation1 {pose.GetBodyLocalTransform(root).Rotation, pose.GetBodyLocalTransform(arm).Rotation};
+    array<size_t, 2> joints {root, arm};
 
     for (float32_t weight : array<float32_t, 4> {0.2113f, 0.25f, 0.75f, 0.7887f}) {
         body = {
@@ -514,8 +514,8 @@ TEST_CASE("ModelAnimationRuntimePoseUsesLegacySlerpForLargeAngleCrossfades")
         pose.Evaluate(body, {}, mat44 {1.0f});
 
         for (size_t i = 0; i < joints.size(); i++) {
-            const quaternion expected = glm::normalize(glm::slerp(rotation0[i], rotation1[i], weight));
-            const quaternion actual = pose.GetBodyLocalTransform(joints[i]).Rotation;
+            quaternion expected = glm::normalize(glm::slerp(rotation0[i], rotation1[i], weight));
+            quaternion actual = pose.GetBodyLocalTransform(joints[i]).Rotation;
             CHECK(float_abs(glm::dot(actual, expected)) == Catch::Approx(1.0f).margin(2.0e-5f));
         }
     }
@@ -523,9 +523,9 @@ TEST_CASE("ModelAnimationRuntimePoseUsesLegacySlerpForLargeAngleCrossfades")
 
 TEST_CASE("ModelAnimationRuntimePosePreservesReverseLoopBoundaries")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
     ModelAnimationRuntimePose pose {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = curve_clip, .Enabled = true, .Reversed = true, .Position = 0.0f, .Weight = 1.0f},
@@ -544,11 +544,11 @@ TEST_CASE("ModelAnimationRuntimePosePreservesReverseLoopBoundaries")
 
 TEST_CASE("ModelAnimationRuntimePoseUsesNearestTimelineAndCrossfadeTie")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(true);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
-    const int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
-    const int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(true);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
+    int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
+    int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
     ModelAnimationRuntimePose pose {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = curve_clip, .Enabled = true, .Position = 0.249f, .Weight = 1.0f},
@@ -574,15 +574,15 @@ TEST_CASE("ModelAnimationRuntimePoseUsesNearestTimelineAndCrossfadeTie")
 
 TEST_CASE("ModelAnimationRuntimePoseNearestReversePlaybackSelectsNextAuthoredTimeAtTies")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(true);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(true);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
     ModelAnimationRuntimePose pose {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = curve_clip, .Enabled = true, .Reversed = true, .Weight = 1.0f},
         ModelAnimationRuntimePose::TrackInput {},
     };
-    const array<pair<float32_t, float32_t>, 7> cases {
+    array<pair<float32_t, float32_t>, 7> cases {
         pair {0.249f, 20.0f},
         pair {0.25f, 20.0f},
         pair {0.251f, 10.0f},
@@ -602,27 +602,27 @@ TEST_CASE("ModelAnimationRuntimePoseNearestReversePlaybackSelectsNextAuthoredTim
 
 TEST_CASE("ModelAnimationRuntimePoseKeepsPublicBufferStorageStableAcrossEvaluate")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
-    const size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    const size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
-    const size_t leg = GetModelAnimationRuntimeEvaluationJoint(*rig, "Leg");
-    const int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
-    const int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
-    const int32_t movement0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 3);
-    const int32_t movement1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 4);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
+    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
+    size_t arm = GetModelAnimationRuntimeEvaluationJoint(*rig, "Arm");
+    size_t leg = GetModelAnimationRuntimeEvaluationJoint(*rig, "Leg");
+    int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
+    int32_t body1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 2);
+    int32_t movement0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 3);
+    int32_t movement1_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 4);
     ModelAnimationRuntimePose pose {rig.get()};
     vector<uint8_t> leg_mask(pose.GetJointCount(), uint8_t {0});
     leg_mask[leg] = uint8_t {1};
 
-    const mat44* const world_matrices_data = pose.GetWorldMatrices().data();
-    const size_t world_matrices_extent = pose.GetWorldMatrices().size();
+    const mat44* world_matrices_data = pose.GetWorldMatrices().data();
+    size_t world_matrices_extent = pose.GetWorldMatrices().size();
 
     REQUIRE(world_matrices_data != nullptr);
 
     for (size_t iteration = 0; iteration < 128; iteration++) {
         CAPTURE(iteration);
-        const float32_t position = numeric_cast<float32_t>(iteration) * 0.03125f;
-        const mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {position, -position * 0.5f, position * 0.25f}) * glm::rotate(mat44 {1.0f}, position * 0.1f, vec3 {0.0f, 0.0f, 1.0f});
+        float32_t position = numeric_cast<float32_t>(iteration) * 0.03125f;
+        mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {position, -position * 0.5f, position * 0.25f}) * glm::rotate(mat44 {1.0f}, position * 0.1f, vec3 {0.0f, 0.0f, 1.0f});
         array<ModelAnimationRuntimePose::TrackInput, 2> body {};
         array<ModelAnimationRuntimePose::TrackInput, 2> movement {};
 
@@ -636,7 +636,7 @@ TEST_CASE("ModelAnimationRuntimePoseKeepsPublicBufferStorageStableAcrossEvaluate
                 ModelAnimationRuntimePose::TrackInput {.ClipIndex = body0_clip, .Enabled = true, .Position = position, .Weight = 0.65f},
                 ModelAnimationRuntimePose::TrackInput {.ClipIndex = body1_clip, .Enabled = true, .Reversed = true, .Position = position, .Weight = 0.35f},
             };
-            const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> procedural {
+            array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> procedural {
                 ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = root, .Rotation = glm::angleAxis(glm::radians(17.0f), vec3 {0.0f, 1.0f, 0.0f})},
             };
             pose.Evaluate(body, movement, root_matrix, procedural);
@@ -648,7 +648,7 @@ TEST_CASE("ModelAnimationRuntimePoseKeepsPublicBufferStorageStableAcrossEvaluate
                 ModelAnimationRuntimePose::TrackInput {.ClipIndex = movement0_clip, .Enabled = true, .Position = position, .Weight = 0.7f, .JointMask = leg_mask},
                 ModelAnimationRuntimePose::TrackInput {.ClipIndex = movement1_clip, .Enabled = true, .Reversed = true, .Position = position, .Weight = 0.3f, .JointMask = leg_mask},
             };
-            const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural {
+            array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural {
                 ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = arm, .Rotation = glm::angleAxis(glm::radians(-23.0f), vec3 {1.0f, 0.0f, 0.0f})},
                 ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = leg, .Rotation = glm::angleAxis(glm::radians(11.0f), vec3 {0.0f, 0.0f, 1.0f})},
             };
@@ -667,10 +667,10 @@ TEST_CASE("ModelAnimationRuntimePoseKeepsPublicBufferStorageStableAcrossEvaluate
 
 TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidEvaluationInput")
 {
-    const unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
-    const int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
+    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(false);
+    int32_t body0_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 1);
     ModelAnimationRuntimePose pose {rig.get()};
-    const array<ModelAnimationRuntimePose::TrackInput, 2> valid_body {
+    array<ModelAnimationRuntimePose::TrackInput, 2> valid_body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = body0_clip, .Enabled = true, .Position = 0.5f, .Weight = 1.0f},
         ModelAnimationRuntimePose::TrackInput {},
     };
@@ -727,24 +727,24 @@ TEST_CASE("ModelAnimationConverterProductionRigDataRejectsWrongSkeletonOzzTypeTa
     ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
     REQUIRE_FALSE(rig_data.Clips.empty());
     rig_data.Skeleton.Payload = rig_data.Clips.front().Animation.Payload;
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "wrong skeleton type test");
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "wrong skeleton type test");
     CHECK_THROWS_WITH(LoadModelAnimationRuntimeRig(serialized, "Models/ProductionBody.fo3d", "Models/ProductionBody.fbx", false), Catch::Matchers::ContainsSubstring("wrong type tag"));
 }
 
 TEST_CASE("ModelAnimationConverterProductionRigDataRejectsInterpolationPolicyMismatch")
 {
-    const ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "interpolation policy mismatch test");
+    ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "interpolation policy mismatch test");
     CHECK_THROWS_WITH(LoadModelAnimationRuntimeRig(serialized, "Models/ProductionBody.fo3d", "Models/ProductionBody.fbx", true), Catch::Matchers::ContainsSubstring("nearest-sampling timeline"));
 }
 
 TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
 {
-    const mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {1.0f, 2.0f, 3.0f});
-    const mat44 z_branch_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 4.0f, 0.0f});
-    const mat44 z_child_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, 5.0f});
-    const mat44 a_branch_rest = glm::translate(mat44 {1.0f}, vec3 {6.0f, 0.0f, 0.0f});
-    const mat44 z_leaf_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 7.0f, 0.0f});
+    mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {1.0f, 2.0f, 3.0f});
+    mat44 z_branch_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 4.0f, 0.0f});
+    mat44 z_child_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, 5.0f});
+    mat44 a_branch_rest = glm::translate(mat44 {1.0f}, vec3 {6.0f, 0.0f, 0.0f});
+    mat44 z_leaf_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 7.0f, 0.0f});
 
     ModelSkeletonSource base;
     base.FileName = "Models/HierarchyOrder.fbx";
@@ -766,15 +766,15 @@ TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
     };
     contributed.AnimatedJointHierarchies = {{"Root", "ABranch", "Helper"}};
 
-    const vector<ModelSkeletonClipSource> contributed_clips {contributed};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, contributed_clips);
+    vector<ModelSkeletonClipSource> contributed_clips {contributed};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, contributed_clips);
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/HierarchyOrder.fo3d", base, report, {}, false);
     CHECK(artifacts.BaseJointRemap.SourceToCanonicalJointIndices == vector<uint32_t> {0, 4, 5, 1, 3});
     CHECK(artifacts.BaseJointRemap.CanonicalJointPresent == vector<uint8_t> {1, 1, 0, 1, 1, 1});
 
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime hierarchy-order test");
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/HierarchyOrder.fo3d", base.FileName, false);
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "runtime hierarchy-order test");
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/HierarchyOrder.fo3d", base.FileName, false);
     REQUIRE(runtime_rig->GetJointCount() == 6);
     vector<string> joint_names;
     joint_names.reserve(runtime_rig->GetJointCount());
@@ -785,7 +785,7 @@ TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
 
     CHECK(joint_names == vector<string> {"Root", "ABranch", "Helper", "ZLeaf", "ZBranch", "ZChild"});
 
-    const vector<ModelAnimationRuntimeJoint> source_joints {
+    vector<ModelAnimationRuntimeJoint> source_joints {
         ModelAnimationRuntimeJoint {"Root", -1, root_rest},
         ModelAnimationRuntimeJoint {"ZBranch", 0, z_branch_rest},
         ModelAnimationRuntimeJoint {"ZChild", 1, z_child_rest},
@@ -830,8 +830,8 @@ TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
 
 TEST_CASE("ModelAnimationConverterBuildsCanonicalRigRemapPresenceAndFallbacks")
 {
-    const mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {10.0f, 0.0f, 0.0f});
-    const mat44 z_base_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, 3.0f});
+    mat44 root_rest = glm::translate(mat44 {1.0f}, vec3 {10.0f, 0.0f, 0.0f});
+    mat44 z_base_rest = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, 3.0f});
     ModelSkeletonSource base;
     base.FileName = "Models/Body.fbx";
     base.Joints = {
@@ -848,8 +848,8 @@ TEST_CASE("ModelAnimationConverterBuildsCanonicalRigRemapPresenceAndFallbacks")
         MakeModelAnimationTestJoint("Leaf", {"Armature", "A", "Leaf"}, glm::translate(mat44 {1.0f}, vec3 {50.0f, 0.0f, 0.0f})),
     };
     clip_source.AnimatedJointHierarchies = {{"Armature", "A", "Leaf"}};
-    const vector<ModelSkeletonClipSource> clip_sources {clip_source};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clip_sources);
+    vector<ModelSkeletonClipSource> clip_sources {clip_source};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clip_sources);
 
     ModelAnimationSource animation;
     animation.FileName = clip_source.FileName;
@@ -867,11 +867,11 @@ TEST_CASE("ModelAnimationConverterBuildsCanonicalRigRemapPresenceAndFallbacks")
         MakeModelAnimationTestAnimationJoint("ZBase", {"", "ZBase"}, {0.0f, 1.0f}, {vec3 {0.0f}, vec3 {0.0f}}),
     };
 
-    const vector<ModelAnimationSource> animations {animation, base_animation};
-    const vector<ModelAnimationSource> reordered_animations {base_animation, animation};
+    vector<ModelAnimationSource> animations {animation, base_animation};
+    vector<ModelAnimationSource> reordered_animations {base_animation, animation};
 
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, animations, false);
-    const ModelAnimationRigArtifacts reordered = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, reordered_animations, false);
+    ModelAnimationRigArtifacts reordered = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, reordered_animations, false);
     REQUIRE(artifacts.Clips.size() == 2);
     REQUIRE(reordered.Clips.size() == artifacts.Clips.size());
     CHECK(artifacts.RigSignature == reordered.RigSignature);
@@ -899,24 +899,24 @@ TEST_CASE("ModelAnimationConverterBuildsCanonicalRigRemapPresenceAndFallbacks")
 
     ModelAnimationSource changed_animation = animation;
     changed_animation.Joints.front().Translation.Values.front().y = 3.0f;
-    const ModelAnimationRigArtifacts changed_source = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, vector<ModelAnimationSource> {changed_animation, base_animation}, false);
+    ModelAnimationRigArtifacts changed_source = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, vector<ModelAnimationSource> {changed_animation, base_animation}, false);
     CHECK(artifacts.Clips.front().AnimationMetadata.SourceSignature != changed_source.Clips.front().AnimationMetadata.SourceSignature);
     CHECK(artifacts.Clips.front().AnimationArchive != changed_source.Clips.front().AnimationArchive);
 
-    const ModelAnimationRigArtifacts nearest_policy = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, animations, true);
+    ModelAnimationRigArtifacts nearest_policy = BuildModelAnimationRigArtifacts("Models/Body.fo3d", base, report, animations, true);
     CHECK(artifacts.CacheSignature != nearest_policy.CacheSignature);
 
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Body.fo3d", base.FileName, std::move(artifacts), false);
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Body.fo3d", base.FileName, std::move(artifacts), false);
     REQUIRE(runtime_rig->GetJointCount() == 4);
     CHECK(runtime_rig->GetJointName(0).empty());
     CHECK(runtime_rig->GetJointName(1) == "A");
     CHECK(runtime_rig->GetJointName(2) == "Leaf");
     CHECK(runtime_rig->GetJointName(3) == "ZBase");
-    const auto matrices = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.5f);
-    const auto root_translation = GetModelAnimationTestColumn(matrices[0], 3);
-    const auto contributed_parent_translation = GetModelAnimationTestColumn(matrices[1], 3);
-    const auto leaf_translation = GetModelAnimationTestColumn(matrices[2], 3);
-    const auto base_child_translation = GetModelAnimationTestColumn(matrices[3], 3);
+    auto matrices = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.5f);
+    auto root_translation = GetModelAnimationTestColumn(matrices[0], 3);
+    auto contributed_parent_translation = GetModelAnimationTestColumn(matrices[1], 3);
+    auto leaf_translation = GetModelAnimationTestColumn(matrices[2], 3);
+    auto base_child_translation = GetModelAnimationTestColumn(matrices[3], 3);
     CHECK(root_translation[0] == Catch::Approx(10.0f));
     CHECK(contributed_parent_translation[0] == Catch::Approx(10.0f));
     CHECK(leaf_translation[0] == Catch::Approx(10.0f).margin(1.0e-3f));
@@ -927,19 +927,19 @@ TEST_CASE("ModelAnimationConverterBuildsCanonicalRigRemapPresenceAndFallbacks")
 
 TEST_CASE("ModelAnimationConverterPreservesSignedRestAndPlaybackBoundaries")
 {
-    const quaternion rest_rotation = glm::angleAxis(glm::radians(37.0f), glm::normalize(vec3 {1.0f, 2.0f, 3.0f}));
-    const mat44 mirrored_rest = glm::translate(mat44 {1.0f}, vec3 {4.0f, 5.0f, 6.0f}) * glm::mat4_cast(rest_rotation) * glm::scale(mat44 {1.0f}, vec3 {-2.0f, 3.0f, 4.0f});
+    quaternion rest_rotation = glm::angleAxis(glm::radians(37.0f), glm::normalize(vec3 {1.0f, 2.0f, 3.0f}));
+    mat44 mirrored_rest = glm::translate(mat44 {1.0f}, vec3 {4.0f, 5.0f, 6.0f}) * glm::mat4_cast(rest_rotation) * glm::scale(mat44 {1.0f}, vec3 {-2.0f, 3.0f, 4.0f});
     ModelSkeletonSource base;
     base.FileName = "Models/Mirrored.fbx";
     base.Joints = {MakeModelAnimationTestJoint("Root", {"Root"}, mirrored_rest)};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
 
     ModelAnimationSource animation;
     animation.FileName = base.FileName;
     animation.Name = "Boundary";
     animation.Duration = 1.0f;
-    const quaternion rotation_start = quaternion {1.0f, 0.0f, 0.0f, 0.0f};
-    const quaternion rotation_end = glm::angleAxis(glm::radians(136.0f), vec3 {0.0f, 0.0f, 1.0f});
+    quaternion rotation_start = quaternion {1.0f, 0.0f, 0.0f, 0.0f};
+    quaternion rotation_end = glm::angleAxis(glm::radians(136.0f), vec3 {0.0f, 0.0f, 1.0f});
     ModelAnimationJointSource root_output;
     root_output.OutputName = "Root";
     root_output.Hierarchy = {"Root"};
@@ -950,26 +950,26 @@ TEST_CASE("ModelAnimationConverterPreservesSignedRestAndPlaybackBoundaries")
     root_output.Scale.Times = {-1.0f, 0.5f, 2.0f};
     root_output.Scale.Values = {vec3 {1.0f}, vec3 {3.0f}, vec3 {2.0f}};
     animation.Joints = {root_output};
-    const vector<ModelAnimationSource> animations {animation};
+    vector<ModelAnimationSource> animations {animation};
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/Mirrored.fo3d", base, report, animations, false);
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Mirrored.fo3d", base.FileName, std::move(artifacts), false);
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Mirrored.fo3d", base.FileName, std::move(artifacts), false);
 
-    const auto start_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.0f).front();
-    const auto quarter_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.25f).front();
-    const auto middle_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.5f).front();
-    const auto end_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 1.0f).front();
-    const auto start_translation = GetModelAnimationTestColumn(start_matrix, 3);
-    const auto quarter_translation = GetModelAnimationTestColumn(quarter_matrix, 3);
-    const auto middle_translation = GetModelAnimationTestColumn(middle_matrix, 3);
-    const auto end_translation = GetModelAnimationTestColumn(end_matrix, 3);
-    const auto start_x_axis = GetModelAnimationTestColumn(start_matrix, 0);
-    const auto quarter_x_axis = GetModelAnimationTestColumn(quarter_matrix, 0);
-    const auto middle_x_axis = GetModelAnimationTestColumn(middle_matrix, 0);
-    const auto end_x_axis = GetModelAnimationTestColumn(end_matrix, 0);
-    const float32_t start_scale = glm::length(vec3 {start_x_axis[0], start_x_axis[1], start_x_axis[2]});
-    const float32_t quarter_scale = glm::length(vec3 {quarter_x_axis[0], quarter_x_axis[1], quarter_x_axis[2]});
-    const float32_t middle_scale = glm::length(vec3 {middle_x_axis[0], middle_x_axis[1], middle_x_axis[2]});
-    const float32_t end_scale = glm::length(vec3 {end_x_axis[0], end_x_axis[1], end_x_axis[2]});
+    auto start_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.0f).front();
+    auto quarter_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.25f).front();
+    auto middle_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 0.5f).front();
+    auto end_matrix = SampleModelAnimationRuntimeTestMatrices(*runtime_rig, 0, 1.0f).front();
+    auto start_translation = GetModelAnimationTestColumn(start_matrix, 3);
+    auto quarter_translation = GetModelAnimationTestColumn(quarter_matrix, 3);
+    auto middle_translation = GetModelAnimationTestColumn(middle_matrix, 3);
+    auto end_translation = GetModelAnimationTestColumn(end_matrix, 3);
+    auto start_x_axis = GetModelAnimationTestColumn(start_matrix, 0);
+    auto quarter_x_axis = GetModelAnimationTestColumn(quarter_matrix, 0);
+    auto middle_x_axis = GetModelAnimationTestColumn(middle_matrix, 0);
+    auto end_x_axis = GetModelAnimationTestColumn(end_matrix, 0);
+    float32_t start_scale = glm::length(vec3 {start_x_axis[0], start_x_axis[1], start_x_axis[2]});
+    float32_t quarter_scale = glm::length(vec3 {quarter_x_axis[0], quarter_x_axis[1], quarter_x_axis[2]});
+    float32_t middle_scale = glm::length(vec3 {middle_x_axis[0], middle_x_axis[1], middle_x_axis[2]});
+    float32_t end_scale = glm::length(vec3 {end_x_axis[0], end_x_axis[1], end_x_axis[2]});
     CHECK(start_translation[0] == Catch::Approx(20.0f).margin(2.0e-2f));
     CHECK(quarter_translation[0] == Catch::Approx(25.0f).margin(2.0e-2f));
     CHECK(middle_translation[0] == Catch::Approx(30.0f).margin(2.0e-2f));
@@ -985,15 +985,15 @@ TEST_CASE("ModelAnimationConverterPreservesSignedRestAndPlaybackBoundaries")
     rest_only.FileName = base.FileName;
     rest_only.Name = "RestOnly";
     rest_only.Duration = 1.0f;
-    const vector<ModelAnimationSource> rest_animations {rest_only};
+    vector<ModelAnimationSource> rest_animations {rest_only};
     ModelAnimationRigArtifacts rest_artifacts = BuildModelAnimationRigArtifacts("Models/MirroredRest.fo3d", base, report, rest_animations, false);
-    const unique_ptr<ModelAnimationRuntimeRig> rest_runtime_rig = LoadModelAnimationRuntimeTestRig("Models/MirroredRest.fo3d", base.FileName, std::move(rest_artifacts), false);
-    const auto skeleton_rest_matrix = GetModelAnimationRuntimeTestRestMatrices(*rest_runtime_rig).front();
-    const auto rest_matrix = SampleModelAnimationRuntimeTestMatrices(*rest_runtime_rig, 0, 0.5f).front();
+    unique_ptr<ModelAnimationRuntimeRig> rest_runtime_rig = LoadModelAnimationRuntimeTestRig("Models/MirroredRest.fo3d", base.FileName, std::move(rest_artifacts), false);
+    auto skeleton_rest_matrix = GetModelAnimationRuntimeTestRestMatrices(*rest_runtime_rig).front();
+    auto rest_matrix = SampleModelAnimationRuntimeTestMatrices(*rest_runtime_rig, 0, 0.5f).front();
 
     for (mat44::length_type column = 0; column < 4; column++) {
-        const auto skeleton_rest_column = GetModelAnimationTestColumn(skeleton_rest_matrix, numeric_cast<size_t>(column));
-        const auto actual_column = GetModelAnimationTestColumn(rest_matrix, numeric_cast<size_t>(column));
+        auto skeleton_rest_column = GetModelAnimationTestColumn(skeleton_rest_matrix, numeric_cast<size_t>(column));
+        auto actual_column = GetModelAnimationTestColumn(rest_matrix, numeric_cast<size_t>(column));
 
         for (mat44::length_type row = 0; row < 4; row++) {
             CHECK(skeleton_rest_column[numeric_cast<size_t>(row)] == Catch::Approx(mirrored_rest[column][row]).margin(3.0e-3f));
@@ -1007,9 +1007,9 @@ TEST_CASE("ModelAnimationConverterBoundsRuntimeRotationErrorAgainstLegacySlerp")
     ModelSkeletonSource base;
     base.FileName = "Models/Rotation.fbx";
     base.Joints = {MakeModelAnimationTestJoint("Root", {"Root"})};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
-    const quaternion rotation_start {1.0f, 0.0f, 0.0f, 0.0f};
-    const vector<pair<string, quaternion>> rotation_cases {
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    quaternion rotation_start {1.0f, 0.0f, 0.0f, 0.0f};
+    vector<pair<string, quaternion>> rotation_cases {
         {"wide arc", glm::angleAxis(glm::radians(136.0f), vec3 {0.0f, 0.0f, 1.0f})},
         {"near 180 with negated representation", -glm::angleAxis(glm::radians(179.0f), glm::normalize(vec3 {1.0f, 2.0f, 3.0f}))},
     };
@@ -1023,7 +1023,7 @@ TEST_CASE("ModelAnimationConverterBoundsRuntimeRotationErrorAgainstLegacySlerp")
             animation.Duration = 1.0f;
             animation.Joints = {MakeModelAnimationTestAnimationJoint("Root", {"Root"}, {0.0f, 1.0f}, {vec3 {0.0f}, vec3 {0.0f}}, {rotation_start, rotation_end})};
             ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/Rotation.fo3d", base, report, vector<ModelAnimationSource> {animation}, false);
-            const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Rotation.fo3d", base.FileName, std::move(artifacts), false);
+            unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeTestRig("Models/Rotation.fo3d", base.FileName, std::move(artifacts), false);
             const ModelAnimationRuntimeClip& runtime_clip = runtime_rig->GetClip(0);
             ModelAnimationRuntimePose pose {runtime_rig.get()};
             array<ModelAnimationRuntimePose::TrackInput, 2> body {
@@ -1033,14 +1033,14 @@ TEST_CASE("ModelAnimationConverterBoundsRuntimeRotationErrorAgainstLegacySlerp")
             constexpr size_t sample_count = 97;
 
             for (size_t sample = 1; sample < sample_count; sample++) {
-                const float32_t ratio = numeric_cast<float32_t>(sample) / numeric_cast<float32_t>(sample_count);
-                const quaternion expected = glm::normalize(glm::slerp(rotation_start, rotation_end, ratio));
+                float32_t ratio = numeric_cast<float32_t>(sample) / numeric_cast<float32_t>(sample_count);
+                quaternion expected = glm::normalize(glm::slerp(rotation_start, rotation_end, ratio));
                 body[0].Position = ratio * runtime_clip.GetDuration();
                 pose.Evaluate(body, {}, mat44 {1.0f});
-                const quaternion actual = pose.GetFinalLocalTransform(0).Rotation;
-                const float64_t dot = numeric_cast<float64_t>(expected.w) * numeric_cast<float64_t>(actual.w) + numeric_cast<float64_t>(expected.x) * numeric_cast<float64_t>(actual.x) + numeric_cast<float64_t>(expected.y) * numeric_cast<float64_t>(actual.y) + numeric_cast<float64_t>(expected.z) * numeric_cast<float64_t>(actual.z);
-                const float64_t cosine = std::clamp(std::abs(dot), 0.0, 1.0);
-                const float64_t angular_error = 2.0 * std::acos(cosine);
+                quaternion actual = pose.GetFinalLocalTransform(0).Rotation;
+                float64_t dot = numeric_cast<float64_t>(expected.w) * numeric_cast<float64_t>(actual.w) + numeric_cast<float64_t>(expected.x) * numeric_cast<float64_t>(actual.x) + numeric_cast<float64_t>(expected.y) * numeric_cast<float64_t>(actual.y) + numeric_cast<float64_t>(expected.z) * numeric_cast<float64_t>(actual.z);
+                float64_t cosine = std::clamp(std::abs(dot), 0.0, 1.0);
+                float64_t angular_error = 2.0 * std::acos(cosine);
                 CAPTURE(case_name, ratio, angular_error);
                 CHECK(angular_error <= glm::radians(0.1));
             }
@@ -1062,16 +1062,16 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
     clip_source.ClipName = "Idle";
     clip_source.Joints = base.Joints;
     clip_source.AnimatedJointHierarchies = {{"", "Root"}};
-    const vector<ModelSkeletonClipSource> clip_sources {clip_source};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clip_sources);
+    vector<ModelSkeletonClipSource> clip_sources {clip_source};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clip_sources);
 
     ModelAnimationSource nearest;
     nearest.FileName = clip_source.FileName;
     nearest.Name = clip_source.ClipName;
     nearest.Duration = 1.0f;
     nearest.Joints = {MakeModelAnimationTestAnimationJoint("Root", {"", "Root"}, {0.0f, 0.25f, 1.0f}, {vec3 {0.0f}, vec3 {1.0f}, vec3 {2.0f}})};
-    const vector<ModelAnimationSource> nearest_animations {nearest};
-    const ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, nearest_animations, true);
+    vector<ModelAnimationSource> nearest_animations {nearest};
+    ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, nearest_animations, true);
     REQUIRE(artifacts.Clips.size() == 1);
     CHECK(artifacts.Clips.front().JointRemap.NearestSampleTimes == vector<float32_t> {0.0f, 0.25f, 1.0f});
     CHECK(artifacts.Clips.front().JointRemap.CanonicalJointPresent == vector<uint8_t> {0, 1});
@@ -1102,10 +1102,10 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
     reciprocal_overflow.Duration = std::numeric_limits<float32_t>::denorm_min();
     CHECK_THROWS_WITH(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {reciprocal_overflow}, false), Catch::Matchers::ContainsSubstring("invalid duration"));
 
-    const float32_t first_collapsed_time = std::numeric_limits<float32_t>::denorm_min();
-    const float32_t second_collapsed_time = std::nextafter(first_collapsed_time, std::numeric_limits<float32_t>::infinity());
-    const float32_t collapsed_duration = std::numeric_limits<float32_t>::max();
-    const float32_t inverse_collapsed_duration = 1.0f / collapsed_duration;
+    float32_t first_collapsed_time = std::numeric_limits<float32_t>::denorm_min();
+    float32_t second_collapsed_time = std::nextafter(first_collapsed_time, std::numeric_limits<float32_t>::infinity());
+    float32_t collapsed_duration = std::numeric_limits<float32_t>::max();
+    float32_t inverse_collapsed_duration = 1.0f / collapsed_duration;
     REQUIRE(second_collapsed_time > first_collapsed_time);
     REQUIRE(first_collapsed_time * inverse_collapsed_duration == second_collapsed_time * inverse_collapsed_duration);
     ModelAnimationSource collapsed_ratios = nearest;
@@ -1114,7 +1114,7 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
     collapsed_ratios.Joints = {MakeModelAnimationTestAnimationJoint("Root", {"", "Root"}, {0.0f, first_collapsed_time, second_collapsed_time, collapsed_duration}, {vec3 {0.0f}, vec3 {1.0f}, vec3 {2.0f}, vec3 {3.0f}})};
     CHECK_THROWS_WITH(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {collapsed_ratios}, true), Catch::Matchers::ContainsSubstring("timepoint ratio"));
 
-    const auto make_smooth_timeline = [&base](string_view name, const vector<float32_t>& timeline) {
+    auto make_smooth_timeline = [&base](string_view name, const vector<float32_t>& timeline) {
         ModelAnimationSource result;
         result.FileName = base.FileName;
         result.Name = name;
@@ -1123,12 +1123,12 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
         return result;
     };
 
-    const ModelAnimationSource leading_gap = make_smooth_timeline("LeadingGap", {0.25f, 0.75f});
+    ModelAnimationSource leading_gap = make_smooth_timeline("LeadingGap", {0.25f, 0.75f});
     CHECK_THROWS_AS(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {leading_gap}, false), ModelAnimationConverterException);
 
-    const ModelAnimationSource wholly_before = make_smooth_timeline("WhollyBefore", {-2.0f, -1.0f});
-    const ModelAnimationSource wholly_after = make_smooth_timeline("WhollyAfter", {2.0f, 3.0f});
-    const ModelAnimationSource single_key = make_smooth_timeline("SingleKey", {0.5f});
+    ModelAnimationSource wholly_before = make_smooth_timeline("WhollyBefore", {-2.0f, -1.0f});
+    ModelAnimationSource wholly_after = make_smooth_timeline("WhollyAfter", {2.0f, 3.0f});
+    ModelAnimationSource single_key = make_smooth_timeline("SingleKey", {0.5f});
     CHECK_NOTHROW(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {wholly_before}, false));
     CHECK_NOTHROW(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {wholly_after}, false));
     CHECK_NOTHROW(BuildModelAnimationRigArtifacts("Models/Turret.fo3d", base, report, vector<ModelAnimationSource> {single_key}, false));
@@ -1147,7 +1147,7 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
 
     ModelAnimationSource too_many_times = nearest;
     too_many_times.Name = "TooManyTimes";
-    const size_t time_count = numeric_cast<size_t>(std::numeric_limits<uint16_t>::max()) + 1;
+    size_t time_count = numeric_cast<size_t>(std::numeric_limits<uint16_t>::max()) + 1;
     vector<float32_t> times;
     times.reserve(time_count);
 
@@ -1168,8 +1168,8 @@ TEST_CASE("ModelAnimationConverterValidatesNearestTimelineRootAliasAndNumericLim
     alias_source.ClipName = "RootMotion";
     alias_source.Joints = {MakeModelAnimationTestJoint("Armature", {"Armature"})};
     alias_source.AnimatedJointHierarchies = {{"Armature"}};
-    const vector<ModelSkeletonClipSource> alias_sources {alias_source};
-    const ModelSkeletonCompatibilityReport alias_report = BuildModelSkeletonCompatibilityReport(base, alias_sources);
+    vector<ModelSkeletonClipSource> alias_sources {alias_source};
+    ModelSkeletonCompatibilityReport alias_report = BuildModelSkeletonCompatibilityReport(base, alias_sources);
     ModelAnimationSource alias_animation;
     alias_animation.FileName = alias_source.FileName;
     alias_animation.Name = alias_source.ClipName;
@@ -1186,7 +1186,7 @@ TEST_CASE("ModelAnimationConverterRejectsCanonicalRigAboveOzzJointLimit")
     base.Joints.emplace_back(MakeModelAnimationTestJoint("Root", {"Root"}));
 
     for (uint32_t i = 1; i <= MODEL_ANIMATION_RIG_MAX_JOINTS; i++) {
-        const string name = strex("Joint{:04}", i);
+        string name = strex("Joint{:04}", i);
         ModelSkeletonJoint joint;
         joint.Name = name;
         joint.Hierarchy = {"Root", name};

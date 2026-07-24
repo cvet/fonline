@@ -249,7 +249,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
                 return item;
             }
 
-            const auto count = item->GetCount();
+            int32_t count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
             return item_already;
@@ -310,8 +310,8 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto slot = GetCritterSlot();
-        const auto slot_num = static_cast<size_t>(slot);
+        auto slot = GetCritterSlot();
+        size_t slot_num = static_cast<size_t>(slot);
 
         if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
             return false;

@@ -109,14 +109,14 @@ auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<st
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const BoundsModel model = BuildBoundsModel(model_data);
-        const optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
+        BoundsModel model = BuildBoundsModel(model_data);
+        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
 
         if (!bone_index) {
             return std::nullopt;
         }
 
-        const optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
+        optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
 
         if (!drawable_meshes) {
             return std::nullopt;
@@ -127,7 +127,7 @@ auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<st
 
         for (size_t i = 0; i < model.Bones.size(); i++) {
             if (model.Bones[i].Parent) {
-                const size_t parent = *model.Bones[i].Parent;
+                size_t parent = *model.Bones[i].Parent;
                 FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
                 combined_transforms[i] = combined_transforms[parent] * model.Bones[i].BindTransform;
             }
@@ -163,24 +163,24 @@ auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelA
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const BoundsModel model = BuildBoundsModel(model_data);
-        const BoundsAnimation animation = BuildBoundsAnimation(animation_source);
+        BoundsModel model = BuildBoundsModel(model_data);
+        BoundsAnimation animation = BuildBoundsAnimation(animation_source);
 
-        const optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
-        const optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
+        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
+        optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
 
         if (!bone_index || !output_index) {
             return std::nullopt;
         }
 
-        const optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
+        optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
 
         if (!drawable_meshes) {
             return std::nullopt;
         }
 
-        const vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(model, animation, *output_index);
-        const optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
+        vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(model, animation, *output_index);
+        optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
 
         if (!sample_times) {
             return std::nullopt;
@@ -189,7 +189,7 @@ auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelA
         vector<mat44> combined_transforms(model.Bones.size());
         optional<ModelBounds3D> result;
 
-        for (const float32_t sample_time : *sample_times) {
+        for (float32_t sample_time : *sample_times) {
             if (!BuildCombinedTransforms(model, outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
                 return std::nullopt;
             }
@@ -228,7 +228,7 @@ static void AppendBoundsBone(const ModelMeshBoneData& bone, BoundsModel& model, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t bone_index = model.Bones.size();
+    size_t bone_index = model.Bones.size();
     BoundsBone& bounds_bone = model.Bones.emplace_back();
     bounds_bone.Name = bone.Name;
     bounds_bone.BindTransform = bone.TransformationMatrix;
@@ -345,7 +345,7 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
 
     constexpr float64_t weight_sum_tolerance = 0.001;
     vector<BoundsDrawableMesh> result;
-    const bool all_meshes_disabled = std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end();
+    bool all_meshes_disabled = std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end();
 
     for (const BoundsBone& owner_bone : model.Bones) {
         if (!owner_bone.Mesh || owner_bone.Mesh->Vertices.empty() || owner_bone.Mesh->Indices.empty()) {
@@ -361,7 +361,7 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
 
         vector<bool> referenced_vertices(mesh.Vertices.size());
 
-        for (const vindex_t vertex_index : mesh.Indices) {
+        for (vindex_t vertex_index : mesh.Indices) {
             if (numeric_cast<size_t>(vertex_index) >= mesh.Vertices.size()) {
                 return std::nullopt;
             }
@@ -396,7 +396,7 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
                 continue;
             }
 
-            const auto it = bone_index.find(skin_bone_name);
+            auto it = bone_index.find(skin_bone_name);
 
             if (it == bone_index.end()) {
                 return std::nullopt;
@@ -405,14 +405,14 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
             drawable_mesh.SkinBones.emplace_back(it->second);
         }
 
-        for (const size_t vertex_index : drawable_mesh.VertexIndices) {
+        for (size_t vertex_index : drawable_mesh.VertexIndices) {
             const Vertex3D& vertex = mesh.Vertices[vertex_index];
             float64_t weight_sum = 0.0;
             bool has_influence = false;
 
             for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                const float32_t weight = vertex.BlendWeights[influence];
-                const float32_t raw_index = vertex.BlendIndices[influence];
+                float32_t weight = vertex.BlendWeights[influence];
+                float32_t raw_index = vertex.BlendIndices[influence];
 
                 if (!std::isfinite(weight) || !std::isfinite(raw_index) || weight < 0.0f) {
                     return std::nullopt;
@@ -421,7 +421,7 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
                     continue;
                 }
 
-                const int32_t index = iround<int32_t>(raw_index);
+                int32_t index = iround<int32_t>(raw_index);
 
                 if (index < 0 || numeric_cast<size_t>(index) >= drawable_mesh.SkinBones.size() || !is_float_equal(raw_index, numeric_cast<float32_t>(index))) {
                     return std::nullopt;
@@ -451,7 +451,7 @@ static auto BuildBoneAnimationOutputs(const BoundsModel& model, const BoundsAnim
     vector<nptr<const BoundsAnimationOutput>> result(model.Bones.size());
 
     for (size_t i = 0; i < model.Bones.size(); i++) {
-        if (const auto it = output_index.find(model.Bones[i].Name); it != output_index.end()) {
+        if (auto it = output_index.find(model.Bones[i].Name); it != output_index.end()) {
             result[i] = &animation.Outputs[it->second];
         }
     }
@@ -471,7 +471,7 @@ static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const ve
 
     vector<float32_t> result;
 
-    for (const nptr<const BoundsAnimationOutput> output : outputs) {
+    for (nptr<const BoundsAnimationOutput> output : outputs) {
         if (!output) {
             continue;
         }
@@ -484,12 +484,12 @@ static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const ve
         AppendTrackSampleTimes(output->TranslationTimes, animation.Duration, reversed, result);
     }
 
-    const float64_t interval_count_value = std::ceil(numeric_cast<float64_t>(animation.Duration) * samples_per_second);
-    const size_t interval_count = std::max<size_t>(1, iround<size_t>(interval_count_value));
+    float64_t interval_count_value = std::ceil(numeric_cast<float64_t>(animation.Duration) * samples_per_second);
+    size_t interval_count = std::max<size_t>(1, iround<size_t>(interval_count_value));
     result.reserve(result.size() + interval_count + 1);
 
     for (size_t i = 0; i <= interval_count; i++) {
-        const float64_t factor = numeric_cast<float64_t>(i) / numeric_cast<float64_t>(interval_count);
+        float64_t factor = numeric_cast<float64_t>(i) / numeric_cast<float64_t>(interval_count);
         result.emplace_back(numeric_cast<float32_t>(numeric_cast<float64_t>(animation.Duration) * factor));
     }
 
@@ -502,7 +502,7 @@ static auto ValidateAnimationOutput(const BoundsAnimationOutput& output) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto validate_track = [](const auto& times, const auto& values) {
+    auto validate_track = [](const auto& times, const auto& values) {
         if (times.size() != values.size()) {
             return false;
         }
@@ -530,7 +530,7 @@ static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t dur
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < times.size(); i++) {
-        const float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
+        float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
         sample_times.emplace_back(sample_time);
 
         if (reversed && sample_time > 0.0f) {
@@ -538,8 +538,8 @@ static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t dur
         }
 
         if (i != 0) {
-            const float64_t midpoint = (numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5;
-            const float32_t midpoint_time = numeric_cast<float32_t>(midpoint);
+            float64_t midpoint = (numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5;
+            float32_t midpoint_time = numeric_cast<float32_t>(midpoint);
             sample_times.emplace_back(std::clamp(reversed ? duration - midpoint_time : midpoint_time, 0.0f, duration));
         }
     }
@@ -549,9 +549,9 @@ static auto SampleAnimationOutput(const BoundsAnimationOutput& output, float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vec3 scale = SampleVectorTrack(time, duration, reversed, output.ScaleTimes, output.ScaleValues);
-    const quaternion rotation = SampleRotationTrack(time, duration, reversed, output.RotationTimes, output.RotationValues);
-    const vec3 translation = SampleVectorTrack(time, duration, reversed, output.TranslationTimes, output.TranslationValues);
+    vec3 scale = SampleVectorTrack(time, duration, reversed, output.ScaleTimes, output.ScaleValues);
+    quaternion rotation = SampleRotationTrack(time, duration, reversed, output.RotationTimes, output.RotationValues);
+    vec3 translation = SampleVectorTrack(time, duration, reversed, output.TranslationTimes, output.TranslationValues);
     return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
 }
 
@@ -560,15 +560,15 @@ static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed,
     FO_STACK_TRACE_ENTRY();
 
     if (reversed) {
-        const float32_t reversed_time = duration - time;
+        float32_t reversed_time = duration - time;
 
         for (int32_t i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
             if (i >= 1) {
-                const size_t index = numeric_cast<size_t>(i);
+                size_t index = numeric_cast<size_t>(i);
 
                 if (reversed_time <= times[index] && reversed_time > times[index - 1]) {
                     vec3 result = values[index];
-                    const float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
+                    float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
                     result.x += (values[index - 1].x - result.x) * factor;
                     result.y += (values[index - 1].y - result.y) * factor;
                     result.z += (values[index - 1].z - result.z) * factor;
@@ -587,7 +587,7 @@ static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed,
         if (i + 1 < times.size()) {
             if (time >= times[i] && time < times[i + 1]) {
                 vec3 result = values[i];
-                const float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
+                float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
                 result.x += (values[i + 1].x - result.x) * factor;
                 result.y += (values[i + 1].y - result.y) * factor;
                 result.z += (values[i + 1].z - result.z) * factor;
@@ -607,14 +607,14 @@ static auto SampleRotationTrack(float32_t time, float32_t duration, bool reverse
     FO_STACK_TRACE_ENTRY();
 
     if (reversed) {
-        const float32_t reversed_time = duration - time;
+        float32_t reversed_time = duration - time;
 
         for (int32_t i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
             if (i >= 1) {
-                const size_t index = numeric_cast<size_t>(i);
+                size_t index = numeric_cast<size_t>(i);
 
                 if (reversed_time <= times[index] && reversed_time > times[index - 1]) {
-                    const float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
+                    float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
                     return glm::normalize(glm::slerp(values[index], values[index - 1], factor));
                 }
             }
@@ -629,7 +629,7 @@ static auto SampleRotationTrack(float32_t time, float32_t duration, bool reverse
     for (size_t i = 0; i < times.size(); i++) {
         if (i + 1 < times.size()) {
             if (time >= times[i] && time < times[i + 1]) {
-                const float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
+                float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
                 return glm::normalize(glm::slerp(values[i], values[i + 1], factor));
             }
         }
@@ -649,10 +649,10 @@ static auto BuildCombinedTransforms(const BoundsModel& model, const vector<nptr<
     FO_VERIFY_AND_THROW(combined_transforms.size() == model.Bones.size(), "Combined transform buffer size does not match model hierarchy");
 
     for (size_t i = 0; i < model.Bones.size(); i++) {
-        const mat44 local_transform = outputs[i] ? SampleAnimationOutput(*outputs[i], time, duration, reversed) : model.Bones[i].BindTransform;
+        mat44 local_transform = outputs[i] ? SampleAnimationOutput(*outputs[i], time, duration, reversed) : model.Bones[i].BindTransform;
 
         if (model.Bones[i].Parent) {
-            const size_t parent = *model.Bones[i].Parent;
+            size_t parent = *model.Bones[i].Parent;
             FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
             combined_transforms[i] = combined_transforms[parent] * local_transform;
         }
@@ -680,7 +680,7 @@ static auto IncludeTransformedGeometry(const vector<BoundsDrawableMesh>& drawabl
             return false;
         }
 
-        for (const size_t vertex_index : drawable_mesh.VertexIndices) {
+        for (size_t vertex_index : drawable_mesh.VertexIndices) {
             if (vertex_index >= mesh.Vertices.size()) {
                 return false;
             }
@@ -693,13 +693,13 @@ static auto IncludeTransformedGeometry(const vector<BoundsDrawableMesh>& drawabl
             }
             else {
                 for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                    const float32_t weight = vertex.BlendWeights[influence];
+                    float32_t weight = vertex.BlendWeights[influence];
 
                     if (weight == 0.0f) {
                         continue;
                     }
 
-                    const size_t skin_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
+                    size_t skin_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
 
                     if (skin_index >= drawable_mesh.SkinBones.size() || drawable_mesh.SkinBones[skin_index] >= combined_transforms.size()) {
                         return false;
@@ -740,7 +740,7 @@ static auto IsFinite(const mat44& value) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const ptr<const float32_t> values = glm::value_ptr(value);
+    ptr<const float32_t> values = glm::value_ptr(value);
 
     for (size_t i = 0; i < 16; i++) {
         if (!std::isfinite(values[i])) {

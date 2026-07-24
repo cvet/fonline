@@ -49,20 +49,20 @@ TEST_CASE("Compressor")
     {
         vector<uint8_t> src;
         src.reserve(4096);
-        for (auto i = 0; i < 4096; i++) {
+        for (int32_t i = 0; i < 4096; i++) {
             src.emplace_back(static_cast<uint8_t>(i % 251));
         }
 
-        const auto compressed = Compressor::Compress(src);
+        auto compressed = Compressor::Compress(src);
         CHECK_FALSE(compressed.empty());
 
-        const auto restored = Compressor::Decompress(compressed, 2);
+        auto restored = Compressor::Decompress(compressed, 2);
         CHECK(restored == src);
     }
 
     SECTION("DecompressInvalidData")
     {
-        const vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
+        vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
         CHECK_THROWS_AS((Compressor::Decompress(invalid, 2)), DecompressException);
     }
 
@@ -70,10 +70,10 @@ TEST_CASE("Compressor")
     {
         vector<uint8_t> src(4096, 0x2A);
 
-        const auto compressed = Compressor::Compress(src);
+        auto compressed = Compressor::Compress(src);
         REQUIRE(compressed.size() < src.size());
 
-        const auto restored = Compressor::Decompress(compressed, 1);
+        auto restored = Compressor::Decompress(compressed, 1);
         CHECK(restored == src);
     }
 
@@ -81,7 +81,7 @@ TEST_CASE("Compressor")
     {
         vector<uint8_t> part1;
         vector<uint8_t> part2;
-        for (auto i = 0; i < 128; i++) {
+        for (int32_t i = 0; i < 128; i++) {
             part1.emplace_back(static_cast<uint8_t>(i));
             part2.emplace_back(static_cast<uint8_t>(255 - i));
         }
@@ -109,14 +109,14 @@ TEST_CASE("Compressor")
     {
         StreamDecompressor decompressor;
         vector<uint8_t> result;
-        const vector<uint8_t> invalid = {0x00, 0x00};
+        vector<uint8_t> invalid = {0x00, 0x00};
 
         CHECK_THROWS_AS(decompressor.Decompress(invalid, result), DecompressException);
     }
 
     SECTION("StreamRejectsMalformedContinuationInputWithTypedException")
     {
-        const vector<uint8_t> source(4096, 0x2A);
+        vector<uint8_t> source(4096, 0x2A);
         StreamCompressor compressor;
         vector<uint8_t> compressed;
         compressor.Compress(source, compressed);

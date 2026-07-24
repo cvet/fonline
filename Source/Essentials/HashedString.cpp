@@ -60,7 +60,7 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
 
     shared_lock locker {_hashStorageLocker};
 
@@ -77,15 +77,15 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         return {};
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-            const auto collision_detected = s != it->second->Str;
+            bool collision_detected = s != it->second->Str;
 #else
             const auto collision_detected = s.length() != it->second->Str.length();
 #endif
@@ -124,7 +124,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(it->second.get());
         }
     }
@@ -147,7 +147,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexce
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(it->second.get());
         }
     }

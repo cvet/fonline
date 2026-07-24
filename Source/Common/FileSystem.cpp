@@ -139,8 +139,8 @@ auto File::Load(const FileHeader& fh) -> File
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(fh, "File header is null");
-    auto size = fh.GetSize();
-    auto write_time = fh.GetWriteTime();
+    size_t size = fh.GetSize();
+    uint64_t write_time = fh.GetWriteTime();
     auto data_source = fh.GetDataSource();
     auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
     FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetPackName(), size, write_time);
@@ -418,8 +418,8 @@ auto FileReader::GetBEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t high_byte = _buf[_curPos++];
-    const uint32_t low_byte = _buf[_curPos++];
+    uint32_t high_byte = _buf[_curPos++];
+    uint32_t low_byte = _buf[_curPos++];
     return numeric_cast<uint16_t>((high_byte << 8) | low_byte);
 }
 
@@ -432,8 +432,8 @@ auto FileReader::GetLEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t low_byte = _buf[_curPos++];
-    const uint32_t high_byte = _buf[_curPos++];
+    uint32_t low_byte = _buf[_curPos++];
+    uint32_t high_byte = _buf[_curPos++];
     return numeric_cast<uint16_t>(low_byte | (high_byte << 8));
 }
 
@@ -524,7 +524,7 @@ auto FileCollection::FindFileByName(string_view name_no_ext) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _nameToIndex.find(name_no_ext); it != _nameToIndex.end()) {
+    if (auto it = _nameToIndex.find(name_no_ext); it != _nameToIndex.end()) {
         const auto& fh = _files[it->second];
         return File::Load(fh);
     }
@@ -536,7 +536,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
+    if (auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
         const auto& fh = _files[it->second];
         return File::Load(fh);
     }
@@ -626,7 +626,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
 
             size_t size = 0;
             uint64_t write_time = 0;
-            const auto ok = ds->GetFileInfo(path, size, write_time);
+            bool ok = ds->GetFileInfo(path, size, write_time);
             FO_VERIFY_AND_THROW(ok, "Data source listed a file but did not return its metadata", ds->GetPackName(), path);
             auto file_header = FileHeader(path, size, write_time, ds);
             files.emplace_back(std::move(file_header));
@@ -640,11 +640,11 @@ static auto MatchResourcePathGlob(string_view path, string_view pattern) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t path_length = path.length();
-    const size_t pattern_length = pattern.length();
+    size_t path_length = path.length();
+    size_t pattern_length = pattern.length();
     vector<int8_t> memo((path_length + 1) * (pattern_length + 1), -1);
 
-    const auto match = [&](auto&& self, size_t pattern_pos, size_t path_pos) -> bool {
+    auto match = [&](auto&& self, size_t pattern_pos, size_t path_pos) -> bool {
         int8_t& cached = memo[pattern_pos * (path_length + 1) + path_pos];
 
         if (cached != -1) {
@@ -663,7 +663,7 @@ static auto MatchResourcePathGlob(string_view path, string_view pattern) -> bool
                 ++next_pattern_pos;
             }
 
-            const bool is_globstar = next_pattern_pos - pattern_pos >= 2;
+            bool is_globstar = next_pattern_pos - pattern_pos >= 2;
 
             if (is_globstar) {
                 if (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '/') {
@@ -715,16 +715,16 @@ auto FileSystem::FilterFiles(const_span<string> include_patterns, const_span<str
         normalized_exclude_patterns.emplace_back(strex(pattern).normalize_path_slashes());
     }
 
-    const auto matches_any = [](string_view path, const vector<string>& patterns) -> bool { return std::ranges::any_of(patterns, [path](const string& pattern) { return MatchResourcePathGlob(path, pattern); }); };
+    auto matches_any = [](string_view path, const vector<string>& patterns) -> bool { return std::ranges::any_of(patterns, [path](const string& pattern) { return MatchResourcePathGlob(path, pattern); }); };
 
-    const FileCollection all_files = GetAllFiles();
+    FileCollection all_files = GetAllFiles();
     vector<FileHeader> filtered_files;
     filtered_files.reserve(all_files.GetFilesCount());
 
     for (const FileHeader& file : all_files) {
-        const string_view path = file.GetPath();
-        const bool included = normalized_include_patterns.empty() || matches_any(path, normalized_include_patterns);
-        const bool excluded = matches_any(path, normalized_exclude_patterns);
+        string_view path = file.GetPath();
+        bool included = normalized_include_patterns.empty() || matches_any(path, normalized_include_patterns);
+        bool excluded = matches_any(path, normalized_exclude_patterns);
 
         if (included && !excluded) {
             filtered_files.emplace_back(file.Copy());
@@ -774,7 +774,7 @@ auto FileSystem::ReadFileText(string_view path) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = ReadFile(path);
+    auto file = ReadFile(path);
     return file ? file.GetStr() : string();
 }
 

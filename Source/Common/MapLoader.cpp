@@ -50,7 +50,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     // Walk the file in order: a [ProtoMap] anchor declares a map (named by its $Name, or by the
     // file when it carries none) and owns the nested sections that follow it. A nested prefix is
     // either the CONTEXT_PREFIX token, meaning the anchor above, or an explicit map name
-    const string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
+    string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
 
     struct NestedMapSection
     {
@@ -69,22 +69,22 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
             continue;
         }
 
-        const size_t slash_pos = section_name.find('/');
+        size_t slash_pos = section_name.find('/');
 
         if (slash_pos == string_view::npos) {
             if (section_name != MAP_ANCHOR_SECTION) {
                 throw MapLoaderException("Invalid map file section, expected a ProtoMap anchor or nested map content", section_name, name, file_name);
             }
 
-            const auto anchor_name_it = section_kv->find("$Name");
+            auto anchor_name_it = section_kv->find("$Name");
             cur_anchor_name = anchor_name_it != section_kv->end() ? anchor_name_it->second : string_view {file_stem};
             has_anchor = true;
             anchor_names.emplace_back(cur_anchor_name);
             continue;
         }
 
-        const string_view prefix = section_name.substr(0, slash_pos);
-        const string_view nested_type = section_name.substr(slash_pos + 1);
+        string_view prefix = section_name.substr(0, slash_pos);
+        string_view nested_type = section_name.substr(slash_pos + 1);
 
         if (nested_type != "Critter" && nested_type != "Item") {
             throw MapLoaderException("Unknown nested map section type", section_name, name, file_name);
@@ -115,7 +115,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         }
     }
 
-    const auto collect_map_sections = [&](string_view nested_type) -> vector<ptr<map<string_view, string_view>>> {
+    auto collect_map_sections = [&](string_view nested_type) -> vector<ptr<map<string_view, string_view>>> {
         vector<ptr<map<string_view, string_view>>> sections;
 
         for (const auto& nested_section : nested_sections) {
@@ -133,7 +133,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     unordered_set<ident_t::underlying_type> busy_ids;
     ident_t::underlying_type last_lowest_id = 1;
 
-    const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
+    auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
         if (id <= 0 || !busy_ids.emplace(id).second) {
             auto new_id = last_lowest_id;
 
@@ -152,7 +152,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     // Critters
     for (const auto& pkv : collect_map_sections("Critter")) {
         auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto critter invalid data");
@@ -160,10 +160,10 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        auto id_it = kv->find("$Id");
+        ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (!proto) {
@@ -185,7 +185,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     // Items
     for (const auto& pkv : collect_map_sections("Item")) {
         auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto item invalid data");
@@ -193,10 +193,10 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        auto id_it = kv->find("$Id");
+        ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoItem(hashed_proto_name);
 
         if (!proto) {
@@ -228,13 +228,13 @@ auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vecto
     FO_STACK_TRACE_ENTRY();
 
     auto map_data = ConfigFile(buf, ConfigFileOption::SkipNestedSections);
-    const auto anchor_sections = map_data.GetSections(MAP_ANCHOR_SECTION);
+    auto anchor_sections = map_data.GetSections(MAP_ANCHOR_SECTION);
 
     vector<string> map_names;
     map_names.reserve(anchor_sections.size());
 
     for (const auto& anchor_kv : anchor_sections) {
-        const auto anchor_name_it = anchor_kv->find("$Name");
+        auto anchor_name_it = anchor_kv->find("$Name");
         string map_name = anchor_name_it != anchor_kv->end() ? string(anchor_name_it->second) : strex(file_name).extract_file_name().erase_file_extension().str();
 
         // Several anchors without $Name all resolve to the file stem; enumerating the id once is

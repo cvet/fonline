@@ -56,7 +56,7 @@ namespace
     auto BindUdpLoopback(udp_socket& sock) -> uint16_t
     {
         for (int32_t attempt = 0; attempt != 128; ++attempt) {
-            const uint16_t port = AcquireTestPort();
+            uint16_t port = AcquireTestPort();
 
             if (sock.bind("127.0.0.1", port)) {
                 return port;
@@ -69,7 +69,7 @@ namespace
     auto ListenTcpLoopback(tcp_server& server) -> uint16_t
     {
         for (int32_t attempt = 0; attempt != 128; ++attempt) {
-            const uint16_t port = AcquireTestPort();
+            uint16_t port = AcquireTestPort();
 
             if (server.listen("127.0.0.1", port)) {
                 return port;
@@ -117,19 +117,19 @@ TEST_CASE("NetSockets")
     {
         udp_socket receiver;
         udp_socket sender;
-        const uint16_t receiver_port = BindUdpLoopback(receiver);
+        uint16_t receiver_port = BindUdpLoopback(receiver);
 
         REQUIRE(sender.bind("127.0.0.1", 0));
         REQUIRE(sender.can_write(WriteTimeout));
 
-        const array<uint8_t, 4> payload = {'p', 'i', 'n', 'g'};
+        array<uint8_t, 4> payload = {'p', 'i', 'n', 'g'};
         REQUIRE(sender.send_to("127.0.0.1", receiver_port, payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(receiver.can_read(ReadTimeout));
 
         array<uint8_t, 16> buffer {};
         string host;
         uint16_t port = 0;
-        const int32_t received = receiver.receive_from(buffer, host, port);
+        int32_t received = receiver.receive_from(buffer, host, port);
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));
@@ -140,7 +140,7 @@ TEST_CASE("NetSockets")
     SECTION("TcpLoopbackConnectSendAndReceive")
     {
         tcp_server server;
-        const uint16_t port = ListenTcpLoopback(server);
+        uint16_t port = ListenTcpLoopback(server);
 
         tcp_socket client;
         REQUIRE(client.connect("127.0.0.1", port));
@@ -150,12 +150,12 @@ TEST_CASE("NetSockets")
         tcp_socket accepted = server.accept();
         REQUIRE(accepted.is_valid());
 
-        const array<uint8_t, 5> payload = {'h', 'e', 'l', 'l', 'o'};
+        array<uint8_t, 5> payload = {'h', 'e', 'l', 'l', 'o'};
         REQUIRE(client.send(payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(accepted.can_read(ReadTimeout));
 
         array<uint8_t, 16> buffer {};
-        const int32_t received = accepted.receive(buffer);
+        int32_t received = accepted.receive(buffer);
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));

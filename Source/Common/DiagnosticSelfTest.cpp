@@ -71,7 +71,7 @@ static void RunSelfTestCrash(string_view mode)
     // unguarded engine thread dying (WorkThread jobs are try/catch wrapped, so a
     // job throw is reported-and-continued rather than a process kill).
     if (strvex(mode).starts_with("thread_")) {
-        const string main_mode = strex("main_{}", mode.substr(std::size("thread_") - 1)).str();
+        string main_mode = strex("main_{}", mode.substr(std::size("thread_") - 1)).str();
 
         auto crasher = std::thread([main_mode] {
             // Mirror what every long-lived engine worker thread does at entry so the self-test
@@ -141,7 +141,7 @@ static void CrashByStackOverflow()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int result = RecurseUntilStackOverflow(0);
+    int32_t result = RecurseUntilStackOverflow(0);
     ignore_unused(result);
 
     std::abort();
@@ -160,8 +160,8 @@ static auto RecurseUntilStackOverflow(int depth) -> int
     blocker[0] = static_cast<char>(depth & 0xFF);
     blocker[sizeof(blocker) - 1] = static_cast<char>(depth & 0xFF);
 
-    const StackOverflowRecursor recursor = GetStackOverflowRecursor();
-    const int deeper = recursor(depth + 1);
+    StackOverflowRecursor recursor = GetStackOverflowRecursor();
+    int32_t deeper = recursor(depth + 1);
 
     return deeper + blocker[0] + blocker[sizeof(blocker) - 1];
 }

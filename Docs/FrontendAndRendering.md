@@ -517,6 +517,8 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 
 `ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
 
+Live render bounds and rebasing of already emitted particles are backend capabilities behind the same facade. SPARK provides both for model-attached effects; Effekseer currently reports no live bounds and treats rebasing as a no-op, so its model-attached effects use the advertised canvas/fallback envelope and must not rely on lingering particles remaining world-stable across scratch-frame reallocations.
+
 Seeded respawn is deterministic per particle-system instance in both bundled
 runtimes. Effekseer applies the seed to its manager handle. Each
 `SparkParticleRuntimeBackend` owns an explicit `SPKContext` containing its IO

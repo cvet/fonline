@@ -64,9 +64,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     // Collect map files
     vector<MapBakeEntry> filtered_files;
 
-    const auto check_file = [&](const FileHeader& file_header, string_view map_name) -> bool {
-        const bool server_side = _context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
-        const bool client_side = _context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
+    auto check_file = [&](const FileHeader& file_header, string_view map_name) -> bool {
+        bool server_side = _context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
+        bool client_side = _context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
 
         if (server_side || client_side) {
             if (!server_side) {
@@ -84,7 +84,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).get_file_extension();
+            string ext = strex(file_header.GetPath()).get_file_extension();
 
             if (std::ranges::find(proto_file_extensions, ext) == proto_file_extensions.end()) {
                 continue;
@@ -120,11 +120,11 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         File file;
         bool file_found = false;
-        const string target_map_name = strex(target_path).extract_file_name().erase_file_extension().str();
+        string target_map_name = strex(target_path).extract_file_name().erase_file_extension().str();
 
         for (const auto& proto_ext : proto_file_extensions) {
             if (auto exact_file = files.FindFileByPath(strex(target_path).change_file_extension(proto_ext))) {
-                const auto exact_file_map_names = ResolveMapNames(exact_file);
+                auto exact_file_map_names = ResolveMapNames(exact_file);
 
                 if (std::ranges::find(exact_file_map_names, target_map_name) != exact_file_map_names.end()) {
                     file = std::move(exact_file);
@@ -136,14 +136,14 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         if (!file_found) {
             for (const auto& file_header : files) {
-                const string ext = strex(file_header.GetPath()).get_file_extension();
+                string ext = strex(file_header.GetPath()).get_file_extension();
 
                 if (std::ranges::find(proto_file_extensions, ext) == proto_file_extensions.end()) {
                     continue;
                 }
 
                 File candidate_file = File::Load(file_header);
-                const auto candidate_map_names = ResolveMapNames(candidate_file);
+                auto candidate_map_names = ResolveMapNames(candidate_file);
 
                 if (std::ranges::find(candidate_map_names, target_map_name) != candidate_map_names.end()) {
                     file = std::move(candidate_file);
@@ -189,8 +189,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 #endif
 
     // Bake maps
-    const auto bake_map = [&](const File& file, const string& map_name) {
-        const string file_content = file.GetStr();
+    auto bake_map = [&](const File& file, const string& map_name) {
+        string file_content = file.GetStr();
 
         vector<uint8_t> props_data;
         uint32_t map_cr_count = 0;
@@ -237,8 +237,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto map_item_writer = make_ptr(&map_item_data_writer);
                 map_item_writer->WriteByteVector(props_data);
 
-                const auto is_static = proto->GetStatic();
-                const auto is_hidden = proto->GetHidden();
+                bool is_static = proto->GetStatic();
+                bool is_hidden = proto->GetHidden();
 
                 if (is_static) {
                     auto client_proto = client_engine.GetProtoItem(proto->GetProtoId());
@@ -273,7 +273,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
-                const string_view str = hstr.as_str();
+                string_view str = hstr.as_str();
                 final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
                 final_writer.WriteStringBytes(str);
             }
@@ -295,7 +295,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
-                const string_view str = hstr.as_str();
+                string_view str = hstr.as_str();
                 final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
                 final_writer.WriteStringBytes(str);
             }

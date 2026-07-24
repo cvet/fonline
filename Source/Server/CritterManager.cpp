@@ -68,7 +68,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
                 return item;
             }
 
-            const auto count = item->GetCount();
+            int32_t count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
             return item_already;
@@ -134,7 +134,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
         cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
-    const auto prev_slot = item->GetCritterSlot();
+    auto prev_slot = item->GetCritterSlot();
 
     item->SetCritterId(ident_t {});
     item->SetCritterSlot(CritterItemSlot::Inventory);
@@ -167,7 +167,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
 
     if (props) {
         auto props_copy = props->Copy();
-        const auto cr_props = CritterProperties(props_copy);
+        auto cr_props = CritterProperties(props_copy);
         multihex = cr_props.GetMultihex();
     }
     else {
@@ -175,14 +175,14 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Find better place if target hex busy
-    auto final_hex = hex;
+    mpos final_hex = hex;
 
     if (!map->IsHexesMovable(hex, multihex)) {
-        const auto hexes_around = GeometryHelper::HexesInRadius(2);
-        const auto map_size = map->GetSize();
+        int32_t hexes_around = GeometryHelper::HexesInRadius(2);
+        auto map_size = map->GetSize();
 
         for (int32_t i = 1; i <= hexes_around; i++) {
-            auto check_hex = hex;
+            mpos check_hex = hex;
 
             if (!GeometryHelper::MoveHexAroundAway(check_hex, i, map_size)) {
                 continue;
@@ -204,7 +204,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
-    const ident_t target_map_id = map->GetId();
+    ident_t target_map_id = map->GetId();
 
     _engine->MapMngr.AddCritterToMap(cr, map, final_hex, dir, ident_t {});
 
@@ -300,7 +300,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
             // Each teardown pass must strictly reduce the critter's remaining dependencies; a stalled
             // (or growing) count means the destruction can never converge, so terminate deterministically
             // rather than leave a half-destroyed "undead" critter in the registry until restart.
-            const size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
+            size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
             FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
             prev_deps = remaining_deps;
         }
@@ -323,7 +323,7 @@ void CritterManager::DestroyInventory(ptr<Critter> cr)
         ValidateEntityAccess(item);
         _engine->ItemMngr.DestroyItem(item);
 
-        const size_t remaining_deps = cr->GetInvItems().size();
+        size_t remaining_deps = cr->GetInvItems().size();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter inventory destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }

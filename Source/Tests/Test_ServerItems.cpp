@@ -119,7 +119,7 @@ namespace ServerItemsTest
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -129,7 +129,7 @@ namespace ServerItemsTest
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -138,11 +138,11 @@ namespace ServerItemsTest
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -203,7 +203,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -211,18 +211,18 @@ TEST_CASE("ServerItemCreationAndDestruction")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    const auto item_pid = fn("TestItem");
+    hstring item_pid = fn("TestItem");
     REQUIRE(static_cast<bool>(server->GetProtoItem(item_pid)));
 
-    const auto initial_item_count = server->EntityMngr.GetItemsCount();
-    const auto initial_entity_count = server->EntityMngr.GetEntitiesCount();
+    size_t initial_item_count = server->EntityMngr.GetItemsCount();
+    size_t initial_entity_count = server->EntityMngr.GetEntitiesCount();
 
     // Create item
     auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
 
-    const auto item_id = item->GetId();
+    ident_t item_id = item->GetId();
     CHECK(item->GetProtoId() == item_pid);
     auto found_item = server->EntityMngr.GetItem(item_id);
     REQUIRE(found_item);
@@ -245,7 +245,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 2);
 
     // Destroy items
-    const auto item2_id = item2->GetId();
+    ident_t item2_id = item2->GetId();
     server->ItemMngr.DestroyItem(item2);
     CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(item2_id)));
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 1);
@@ -268,7 +268,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -276,10 +276,10 @@ TEST_CASE("ServerItemAddedToCritterInventory")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    const auto critter_pid = fn("TestCritter");
-    const auto item_pid = fn("TestItem");
+    hstring critter_pid = fn("TestCritter");
+    hstring item_pid = fn("TestItem");
 
     // Create critter
     auto cr = server->CreateCritter(critter_pid, false);
@@ -293,7 +293,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     vector<ptr<Item>> inv_items = cr->GetInvItems();
     CHECK_FALSE(inv_items.empty());
 
-    const auto item_id = item->GetId();
+    ident_t item_id = item->GetId();
     CHECK(cr->GetInvItem(item_id) == item);
 
     // Add second item
@@ -337,7 +337,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -345,12 +345,12 @@ TEST_CASE("ServerCritterLifecycleOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    const auto critter_pid = fn("TestCritter");
+    hstring critter_pid = fn("TestCritter");
 
     // Create multiple critters
-    const auto cr_count_before = server->EntityMngr.GetCrittersCount();
+    size_t cr_count_before = server->EntityMngr.GetCrittersCount();
 
     auto cr1 = server->CreateCritter(critter_pid, false);
     auto cr2 = server->CreateCritter(critter_pid, false);
@@ -394,12 +394,12 @@ TEST_CASE("ServerCritterLifecycleOperations")
     CHECK(player1->GetId() != player2->GetId());
 
     // Unload player critter
-    const auto cr3_id = cr3->GetId();
+    ident_t cr3_id = cr3->GetId();
     server->UnloadCritter(cr3);
     CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr3_id)));
 
     // Health info contains something
-    const auto health = server->GetHealthInfo();
+    string health = server->GetHealthInfo();
     CHECK_FALSE(health.empty());
 
     // Destroy remaining critters
@@ -422,7 +422,7 @@ TEST_CASE("ServerEntityManagerQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -430,10 +430,10 @@ TEST_CASE("ServerEntityManagerQueries")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    const auto critter_pid = fn("TestCritter");
-    const auto item_pid = fn("TestItem");
+    hstring critter_pid = fn("TestCritter");
+    hstring item_pid = fn("TestItem");
 
     // Initial entity counts
     CHECK(server->EntityMngr.GetLocationsCount() == 0);
@@ -441,33 +441,33 @@ TEST_CASE("ServerEntityManagerQueries")
     CHECK(server->EntityMngr.GetPlayersCount() == 0);
 
     // Entities collection
-    const vector<refcount_ptr<ServerEntity>> entities = server->EntityMngr.GetEntities();
-    const auto entities_before = entities.size();
+    vector<refcount_ptr<ServerEntity>> entities = server->EntityMngr.GetEntities();
+    auto entities_before = entities.size();
 
     // Items collection access
-    const vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
-    const auto items_before = items.size();
+    vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
+    auto items_before = items.size();
 
     auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     CHECK(server->EntityMngr.GetItems().size() == items_before + 1);
 
     // Critters collection access
-    const vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
-    const auto cr_before = critters.size();
+    vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
+    auto cr_before = critters.size();
 
     auto cr = server->CreateCritter(critter_pid, false);
     CHECK(server->EntityMngr.GetCritters().size() == cr_before + 1);
 
     // Locations collection (should be empty in this test)
-    const vector<refcount_ptr<Location>> locations = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> locations = server->EntityMngr.GetLocations();
     CHECK(locations.empty());
 
     // Maps collection (should be empty)
-    const vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
     CHECK(maps.empty());
 
     // Players collection (no players connected)
-    const vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
+    vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
     CHECK(players.empty());
 
     // Entities grew after creating item and critter

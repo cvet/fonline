@@ -256,8 +256,8 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
 
     SPK::Ref<SPK::System> base_system;
 
-    if (const auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
-        if (const auto file = _impl->Services.Resources->ReadFile(path)) {
+    if (auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
+        if (auto file = _impl->Services.Resources->ReadFile(path)) {
             const_span<uint8_t> file_data = file.GetDataSpan();
             base_system = _impl->Context.getIOManager().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
         }
@@ -352,8 +352,8 @@ auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optiona
 
     const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getAABBMin();
     const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getAABBMax();
-    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
-    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+    vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
 
     if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
@@ -363,18 +363,18 @@ auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optiona
     bool initialized = false;
 
     for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        const vec3 corner {
+        vec3 corner {
             (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
             (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
             (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
         };
-        const glm::vec4 transformed = _impl->ViewMatrix * glm::vec4 {corner, 1.0f};
+        glm::vec4 transformed = _impl->ViewMatrix * glm::vec4 {corner, 1.0f};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
             return std::nullopt;
         }
 
-        const vec3 point {transformed};
+        vec3 point {transformed};
 
         if (!initialized) {
             result.Min = point;
@@ -414,7 +414,7 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
         return;
     }
 
-    const SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
+    SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
 
     for (size_t group_index = 0; group_index < _impl->RuntimeSystem->getNbGroups(); group_index++) {
         auto&& group = _impl->RuntimeSystem->getGroup(group_index);
@@ -434,8 +434,10 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
-    const auto view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    _impl->TiltInProjection = setup.TiltInProjection;
+
+    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
     mat44 result_position_matrix;
 
     if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
@@ -445,8 +447,8 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
         glm::vec<4, float32_t, glm::defaultp> perspective {};
         quaternion rotation {};
         glm::decompose(view_offset_matrix * setup.World * position_offset_matrix, result_position_scale, rotation, result_position, skew, perspective);
-        const auto result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
-        const auto look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        mat44 result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
+        mat44 look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
         result_position_matrix = result_position_translation_matrix * look_direction_matrix;
     }
     else {
@@ -458,13 +460,13 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     ptr<const float32_t> result_position_matrix_values = glm::value_ptr(result_position_matrix);
     _impl->RuntimeSystem->getTransform().set(result_position_matrix_values.get());
 
-    if (const auto local_position = _impl->BaseSystem->getTransform().getLocalPos(); local_position != SPK::Vector3D()) {
+    if (auto local_position = _impl->BaseSystem->getTransform().getLocalPos(); local_position != SPK::Vector3D()) {
         _impl->RuntimeSystem->getTransform().setPosition(_impl->RuntimeSystem->getTransform().getLocalPos() + local_position);
     }
 
     _impl->RuntimeSystem->updateTransform();
 
-    const auto camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
     _impl->TiltInProjection = setup.TiltInProjection;
@@ -479,14 +481,14 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
     }
 
     FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() != 0, "Cannot prewarm a SPARK particle system without groups", _impl->Path);
-    const float32_t max_lifetime = _impl->RuntimeSystem->getGroup(0)->getMaxLifeTime();
-    const int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
+    float32_t max_lifetime = _impl->RuntimeSystem->getGroup(0)->getMaxLifeTime();
+    int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
     FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
 
     SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
-    const uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
-    const int32_t init_time_ms = numeric_cast<int32_t>(SPK_RANDOM(_impl->Runtime->_impl->Context, 0U, init_time_range));
-    const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
+    uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
+    int32_t init_time_ms = numeric_cast<int32_t>(SPK_RANDOM(_impl->Runtime->_impl->Context, 0U, init_time_range));
+    float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
 
     bool updated = false;
 
@@ -521,7 +523,6 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
     if (delta_seconds > 0.0f) {
         SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
         _impl->RuntimeSystem->updateParticles(delta_seconds);
-
         if (_impl->RuntimeSystem->isAABBComputationEnabled()) {
             _impl->BoundsDirty = false;
         }
@@ -577,7 +578,7 @@ void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool bounds_computation_enabled = RuntimeSystem && RuntimeSystem->isAABBComputationEnabled();
+    bool bounds_computation_enabled = RuntimeSystem && RuntimeSystem->isAABBComputationEnabled();
     SPK::RandomSeedScope random_seed_scope {Runtime->_impl->Context, RandomSeed};
     SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
     RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
@@ -623,7 +624,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        const nptr<const SparkQuadRenderer> spark_renderer {dynamic_cast<const SparkQuadRenderer*>(&renderer)};
+        nptr<const SparkQuadRenderer> spark_renderer {dynamic_cast<const SparkQuadRenderer*>(&renderer)};
         FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
 
         SparkQuadRendererData data;
@@ -680,9 +681,9 @@ namespace SPK::FO
         FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
 
         auto& vbuf = _renderBuf->Vertices;
-        auto& vpos = _renderBuf->VertCount;
+        size_t& vpos = _renderBuf->VertCount;
         auto& ibuf = _renderBuf->Indices;
-        auto& ipos = _renderBuf->IndCount;
+        size_t& ipos = _renderBuf->IndCount;
 
         vpos = vertices;
         ipos = vertices / 4 * 6;
@@ -865,7 +866,7 @@ namespace SPK::FO
             }
         }
 
-        const bool globalOrientation = precomputeOrientation3D(group, //
+        bool globalOrientation = precomputeOrientation3D(group, //
             Vector3D(-_invModelView[0][2], -_invModelView[1][2], -_invModelView[2][2]), //
             Vector3D(_invModelView[0][1], _invModelView[1][1], _invModelView[2][1]), //
             Vector3D(_invModelView[0][3], _invModelView[1][3], _invModelView[2][3]));
@@ -902,8 +903,8 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
-        const Vector3D diag_v(diagonal, diagonal, diagonal);
+        float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
             for (ConstGroupIterator it(group); !it.end(); ++it) {
@@ -1029,7 +1030,7 @@ namespace SPK::FO
         _textureName = string(tex_name);
 
         if (!_textureName.empty() && _runtime) {
-            const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
+            string tex_path = strex(_path).extract_dir().combine_path(_textureName);
             auto&& [tex, tex_data] = _runtime->_impl->Services.TextureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffset = tex_data;
@@ -1066,7 +1067,7 @@ namespace SPK::FO
         upVector.set(0.0f, 1.0f, 0.0f);
 
         if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
-            const auto tmpSize = attrib->getValues<int32_t>();
+            auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
             case 1:
@@ -1094,7 +1095,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("scale"); attrib) {
-            const auto tmpScale = attrib->getValues<float32_t>();
+            auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
             case 1:
@@ -1109,7 +1110,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib) {
-            const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
+            auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
 
             switch (tmpAtlasDimensions.size()) {
             case 1:
@@ -1124,7 +1125,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("look orientation"); attrib) {
-            const auto lookOrient = attrib->getValue<std::string>();
+            auto lookOrient = attrib->getValue<std::string>();
 
             if (lookOrient == "LOOK_CAMERA_PLANE") {
                 lookOrientation = LOOK_CAMERA_PLANE;
@@ -1141,7 +1142,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("up orientation"); attrib) {
-            const auto upOrient = attrib->getValue<std::string>();
+            auto upOrient = attrib->getValue<std::string>();
 
             if (upOrient == "UP_CAMERA") {
                 upOrientation = UP_CAMERA;
@@ -1158,7 +1159,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("locked axis"); attrib) {
-            const auto lockAx = attrib->getValue<std::string>();
+            auto lockAx = attrib->getValue<std::string>();
 
             if (lockAx == "LOCK_LOOK") {
                 lockedAxis = LOCK_LOOK;
@@ -1184,7 +1185,7 @@ namespace SPK::FO
         Renderer::innerExport(descriptor);
 
         if (_drawWidth != 0 || _drawHeight != 0) {
-            const std::vector tmpSize = {_drawWidth, _drawHeight};
+            std::vector tmpSize = {_drawWidth, _drawHeight};
             descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
         }
 
@@ -1196,10 +1197,10 @@ namespace SPK::FO
 
         descriptor.getAttribute("texture")->setValue(std::string(_textureName));
 
-        const std::vector tmpScale = {scaleX, scaleY};
+        std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
-        const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
+        std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {
