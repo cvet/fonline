@@ -1092,11 +1092,21 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
 
     EnsureEntitySynced(player);
 
+    const ident_t requested_id = id ? id : player->GetId();
+
+    scoped_lock lock {_registryLock};
+
+    if (requested_id) {
+        if (_allPlayers.contains(requested_id)) {
+            throw EntityManagerException("Player id is already registered", requested_id);
+        }
+
+        FO_VERIFY_AND_THROW(!_allEntities.contains(requested_id), "Player registry is inconsistent with the global entity registry", requested_id);
+    }
+
     if (id) {
         player->SetId(id);
     }
-
-    scoped_lock lock {_registryLock};
 
     RegisterEntity(player);
     player->SetPersistent(persistent);

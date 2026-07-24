@@ -614,7 +614,7 @@ void TimeEventManager::NotifyCancel(uint32_t event_id)
     }
 }
 
-void TimeEventManager::CancelAllForEntity(ptr<Entity> entity)
+void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -640,7 +640,15 @@ void TimeEventManager::CancelAllForEntity(ptr<Entity> entity)
     }
 
     for (auto cid : cancelled_ids) {
-        NotifyCancel(cid);
+        try {
+            NotifyCancel(cid);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
     }
 }
 

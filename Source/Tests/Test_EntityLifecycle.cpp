@@ -1562,6 +1562,24 @@ TEST_CASE("PlayerRegistrationCppApi")
         CHECK(player1->GetId() != player2->GetId());
     }
 
+    SECTION("RegisterPlayerRejectsDuplicateIdBeforeMutatingCandidate")
+    {
+        auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
+        const ident_t registered_id = registered_player->GetId();
+        auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto candidate = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        server->RequireCurrentSyncContext()->SyncEntity(candidate);
+
+        CHECK_THROWS_WITH(server->EntityMngr.RegisterPlayer(candidate, registered_id), Catch::Matchers::ContainsSubstring("Player id is already registered"));
+
+        CHECK(candidate->GetId() == ident_t {});
+        CHECK(server->EntityMngr.GetPlayer(registered_id) == registered_player);
+        CHECK(server->EntityMngr.GetEntity(registered_id) == registered_player);
+
+        candidate->MarkAsDestroyed();
+    }
+
     SECTION("LoginPlayerToNewRecordThrowsWhenPlayerLoginStopsChain")
     {
         auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));

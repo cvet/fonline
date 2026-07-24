@@ -171,6 +171,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 `Entity::TimeEventData` stores scheduled script callbacks, fire time, repeat duration, and script data. Entities that support time events are declared with the `HasTimeEvents` metadata flag in the `ExportEntity` annotations.
 
+`TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
+
 ## Serialization relationships
 
 Entity state is serialized through property data, not by hand-copying entity fields:
