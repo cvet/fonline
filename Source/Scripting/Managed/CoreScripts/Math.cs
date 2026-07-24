@@ -65,6 +65,27 @@ namespace FOnline
         public static ipos Lerp(ipos v1, ipos v2, float t) => new ipos(Lerp(v1.x, v2.x, t), Lerp(v1.y, v2.y, t));
         public static fpos Lerp(fpos v1, fpos v2, float t) => new fpos(LerpF(v1.x, v2.x, t), LerpF(v1.y, v2.y, t));
 
+        // Signed shortest difference between two directions in degrees, wrapped to [-180, 180].
+        public static float AngleDelta(float from, float to)
+        {
+            float delta = to - from;
+
+            while (delta > 180.0f)
+            {
+                delta -= 360.0f;
+            }
+
+            while (delta < -180.0f)
+            {
+                delta += 360.0f;
+            }
+
+            return delta;
+        }
+
+        // Middle of the smaller arc between two directions in degrees.
+        public static float AngleBisect(float a, float b) => a + AngleDelta(a, b) * 0.5f;
+
         public static float MoveTowards(float current, float target, float step)
         {
             float delta = target - current;

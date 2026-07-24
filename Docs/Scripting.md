@@ -51,7 +51,7 @@ The scripting subsystem has four layers:
 1. **Common runtime facade** — `Source/Common/ScriptSystem.h` / `.cpp` define the backend-agnostic `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, native call adapters, init functions, loop callbacks, and type maps.
 2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the current production backend. `Source/Scripting/Managed/` is an implemented backend that embeds a Mono runtime with the marshalling, event-subscription, and settings bridges described later in this document; `Source/Scripting/Native/` is still a source-root stub. AngelScript owns the longest-running script compiler/runtime path in this tree.
 3. **Script-visible native methods** — `Source/Scripting/*ScriptMethods.cpp` files contain `///@ ExportMethod` functions grouped by runtime side and receiver type. Codegen reads these annotations and emits method descriptors/wrappers.
-4. **Core script library and game scripts** — `Source/Scripting/AngelScript/CoreScripts/*.fos` provides engine-owned reusable script-side helpers. Embedding projects add their own `.fos` files and metadata through project configuration and resource/script baking.
+4. **Core script library and game scripts** — `Source/Scripting/AngelScript/CoreScripts/*.fos` and `Source/Scripting/Managed/CoreScripts/*.cs` provide engine-owned reusable helpers for their respective backends. Embedding projects add their own script files and metadata through project configuration and resource/script baking.
 
 The engine owns the reusable bridge. The embedding project owns game scripts and chooses which features are enabled through project configuration, build presets, and `.fomain` inputs.
 
@@ -179,7 +179,8 @@ Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `
 
 ## Core scripts
 
-The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript/CoreScripts/` and includes reusable modules such as:
+The engine-owned core libraries live in `Source/Scripting/AngelScript/CoreScripts/` and
+`Source/Scripting/Managed/CoreScripts/`. The AngelScript side includes reusable modules such as:
 
 - `Core.fos`
 - `Math.fos`
@@ -195,6 +196,10 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Tween.fos`
 
 Treat these files as engine library code. Game-specific script modules should live in the embedding project instead of expanding the engine core script library with project policy.
+
+Managed CoreScripts provide the equivalent reusable runtime surface where needed. In particular, managed
+`Math.cs` and `Time.cs` mirror the shared `FOnline.Math` / `FOnline.Time` helpers, including normalized angle
+delta and bisector calculations; backend-specific implementations must preserve the same units and wrap rules.
 
 ## Build and baking flow
 
