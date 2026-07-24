@@ -670,6 +670,38 @@ void UsePtr()
 }
 )";
 
+    static constexpr string_view InvokeEntryDirectCallScript = R"(
+namespace AttrTest
+{
+[[InvokeEntry]]
+void SceneEntry(int playerRef, int param)
+{
+}
+
+void CallDirect()
+{
+    SceneEntry(1, 2);
+}
+}
+)";
+
+    static constexpr string_view InvokeEntryReferenceScript = R"(
+namespace AttrTest
+{
+funcdef void SceneEntryFunc(int playerRef, int param);
+
+[[InvokeEntry]]
+void SceneEntry(int playerRef, int param)
+{
+}
+
+void RegisterEntry()
+{
+    SceneEntryFunc@ fn = @SceneEntry;
+}
+}
+)";
+
     static constexpr string_view AttributeParametersScript = R"(
 namespace AttrTest
 {
@@ -1861,6 +1893,50 @@ void TakesIntPlease(int? value)
         CHECK(usage_error.find("void AttrTest::Hidden()") != string::npos);
         CHECK(usage_error.find("void AttrTest::User()") != string::npos);
         CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToInvokeEntryFunctions")
+    {
+        // `[[InvokeEntry]]` marks a function that is dispatched only through the engine's dynamic
+        // `Invoke(name, ...)` global, so it is a built-in direct-call-blocking attribute: no
+        // project-extras list is passed here, proving the engine blocks the direct call on its own.
+        auto parsed = ParseScript("AttributesInvokeEntryDirectCall.fos", InvokeEntryDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        auto mod = BuildModule(engine, "AttrInvokeEntryDirectCall", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("SceneEntry") != string::npos);
+        CHECK(usage_error.find("CallDirect") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("AllowsFunctionReferencesToInvokeEntryFunctions")
+    {
+        // Registering the entry by name (`NameOf(SceneEntry)`) compiles to a function reference, so
+        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked.
+        auto parsed = ParseScript("AttributesInvokeEntryReference.fos", InvokeEntryReferenceScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        auto mod = BuildModule(engine, "AttrInvokeEntryReference", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(usage_error.empty());
     }
 
     SECTION("AllowsFunctionPointersToAttributedFunctions")

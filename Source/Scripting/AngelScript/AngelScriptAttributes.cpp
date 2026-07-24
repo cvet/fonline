@@ -196,6 +196,7 @@ static constexpr array DIRECT_CALL_BLOCKING_ATTRIBUTES {
     string_view {"ItemTrigger"},
     string_view {"ItemStatic"},
     string_view {"ModuleInit"},
+    string_view {"InvokeEntry"},
 };
 
 static auto IsDirectCallBlockingAttribute(string_view base_name, nptr<const vector<string>> project_extras) noexcept -> bool
