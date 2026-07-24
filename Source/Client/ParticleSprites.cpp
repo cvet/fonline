@@ -60,6 +60,26 @@ auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
     return true;
 }
 
+void ParticleSprite::SetDrawInScene(bool draw_in_scene)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Switches an instance between the two render paths the authored "draw in scene" flag selects by default:
+    // rasterizing into the sprite frame through the atlas, or drawing as real geometry into the scene. A preview
+    // host overrides it to inspect an effect's actual geometry instead of its baked frame.
+    if (_drawInScene == draw_in_scene) {
+        return;
+    }
+
+    _drawInScene = draw_in_scene;
+
+    // Scene drawing rebuilds the emitter transform every frame in DrawInScene; the atlas path bakes a fixed one, so
+    // it has to be re-applied when switching back.
+    if (!_drawInScene) {
+        ApplyAtlasSetup();
+    }
+}
+
 auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

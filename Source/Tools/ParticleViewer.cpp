@@ -340,6 +340,19 @@ void ParticleViewer::DrawControls()
     ImGui::SameLine();
     ImGui::Checkbox("Prewarm", &_prewarm);
 
+    // Render path of the selected effect, initialized from its authored `draw in scene` flag: on it draws as real
+    // geometry into the scene, off it rasterizes into its sprite frame through the atlas. Flipping it previews the
+    // other path without touching the resource - the frame clips an atlas effect, so the difference is visible.
+    if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
+        bool draw_in_scene = particle_sprite->IsDirectDraw();
+
+        ImGui::SameLine();
+
+        if (ImGui::Checkbox("Draw in scene", &draw_in_scene)) {
+            particle_sprite->SetDrawInScene(draw_in_scene);
+        }
+    }
+
     // Review facing: the look-direction a critter would pass to an attached effect. Held-LMB drag over the preview
     // turns it too.
     ImGui::SetNextItemWidth(200.0f);
@@ -393,7 +406,10 @@ void ParticleViewer::SelectParticle(string_view path)
         return;
     }
 
+    // The effect keeps its authored render path (the `draw in scene` flag) - the preview shows what the game does.
+    // The `Draw in scene` control below reflects it and can flip it to compare the two paths.
     _previewSprite = std::move(sprite);
+    _appliedScale = 0.0f;
     PlayCurrent();
 }
 
@@ -478,12 +494,22 @@ void ParticleViewer::RenderPreview()
         PlayCurrent();
     }
 
-    // Step the particle simulation. In atlas mode this also renders the current
-    // frame into the factory's atlas (drawn below); draw-in-scene effects are
-    // rendered straight into the preview target instead.
-    (void)_previewSprite->Update();
-
     bool direct = _previewSprite->IsDirectDraw();
+
+    // Scene drawing has no baked frame to magnify, so zoom is applied there as the effect's own scale, which scales
+    // emitter placement and quad sizes together. The atlas path magnifies the baked frame instead, so the effect
+    // itself has to stay at its authored scale or it would overflow the frame it rasterizes into.
+    float32_t effect_scale = direct ? _zoom : 1.0f;
+
+    if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>(); particle_sprite && _appliedScale != effect_scale) {
+        particle_sprite->GetParticle()->SetScale(effect_scale);
+        _appliedScale = effect_scale;
+    }
+
+    // Step the particle simulation. In atlas mode this also renders the current frame into the factory's atlas
+    // (drawn below); a draw-in-scene effect is rendered straight into the preview target instead.
+    _previewSprite->Update();
+
     float32_t draw_scale = _zoom;
 
     auto prev_rt = GetApp()->Render.GetRenderTarget();
