@@ -84,20 +84,7 @@ engine's sized spelling:
 
 Existing fixed-width signed and unsigned types keep their spelling.
 
-The analyzer lives in
-`BuildTools/ExplicitLocalTypes/explicit_local_types.py`. Check mode never edits
-files; apply mode performs only the eligible token replacements:
-
-```bash
-python3 BuildTools/ExplicitLocalTypes/explicit_local_types.py \
-  --mode check \
-  --compilation-database ../Build/LocalVariableAnalysis
-```
-
-Embedding-project native sources can use the same checks through
-`--source-root`. When that directory also contains vendored libraries, combine
-it with `--unit-pattern`, `--source-pattern`, and `--path-pattern` so only
-first-party translation units and authored headers participate.
+See [Enforcement](#enforcement) for how this rule is checked.
 
 ## Use after move
 
@@ -118,34 +105,19 @@ CHECK(value.empty()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-fro
 
 The reason is mandatory and must contain at least eight characters.
 
-## Analyzer
+## Enforcement
 
-`BuildTools/LocalVariableValidator/local_variable_validator.py` owns the
-redundant-local-const and use-after-move gates. It requires a Clang 20+
-compilation database:
+These rules are enforced by an out-of-tree analyzer pair — an explicit-type
+checker and a `clang-query` + `clang-tidy` redundant-const / use-after-move
+validator — that consumes a Clang 20+ `compile_commands.json`. The engine owns
+only the rules above and the `FO_REDUNDANT_CONST_SUPPRESS` /
+`FO_USE_AFTER_MOVE_SUPPRESS` markers; the analyzer itself, the compile-database
+generation, and the CI gate live in the embedding project so the reusable engine
+carries no project-specific tooling.
 
-```bash
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py --self-test
-
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py \
-  --mode apply \
-  --checks redundant-local-const \
-  --compilation-database ../Build/LocalVariableAnalysis
-
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py \
-  --mode full-enforcement \
-  --checks redundant-local-const \
-  --compilation-database ../Build/LocalVariableAnalysis
-
-python3 BuildTools/LocalVariableValidator/local_variable_validator.py \
-  --mode full-enforcement \
-  --checks use-after-move \
-  --compilation-database ../Build/LocalVariableAnalysis
-```
-
-Apply mode is restricted to redundant local `const`. It locates the diagnosed
-top-level token from Clang source ranges and removes only that token, preserving
-pointee, referent, and element constness. Run full enforcement after applying.
-
-The analyzer deliberately does not inventory writes, diagnose mutable locals or
-parameters, or maintain changed/selected migration scopes.
+Last Frontier ships the analyzer as `Tools/ExplicitLocalTypes` and
+`Tools/LocalVariableValidator` and gates it with the nightly/dispatch
+`local-variable-analysis` job over engine `Source` (via `--engine-root Engine`)
+and project `SourceExt`; `--mode check` (explicit types) and `--mode
+full-enforcement` (`redundant-local-const`, `use-after-move`) fail on any
+remaining debt.
