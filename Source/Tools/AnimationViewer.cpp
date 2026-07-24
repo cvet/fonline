@@ -118,13 +118,7 @@ void AnimationViewer::LoadSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto imgui_ini = _settings.GetString("ImGuiLayout");
-
-    if (!imgui_ini.empty()) {
-        ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
-        ImGui::GetIO().WantSaveIniSettings = false;
-    }
-
+    _pendingImguiLayout = _settings.GetString("ImGuiLayout");
     _zoom = numeric_cast<float32_t>(_settings.GetFloat("Zoom", _zoom));
     _dirAngle = numeric_cast<float32_t>(_settings.GetFloat("DirAngle", _dirAngle));
     _directDraw = _settings.GetBool("DirectDraw", _directDraw);
@@ -152,10 +146,12 @@ void AnimationViewer::SaveSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t ini_size = 0;
+    if (ImGui::GetCurrentContext() != nullptr) {
+        size_t ini_size = 0;
 
-    if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size)); ini_data) {
-        _settings.SetString("ImGuiLayout", string_view(ini_data.get(), ini_size));
+        if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size))) {
+            _settings.SetString("ImGuiLayout", string_view(ini_data.get(), ini_size));
+        }
     }
 
     _settings.SetFloat("Zoom", _zoom);
@@ -172,6 +168,12 @@ void AnimationViewer::SaveSettings()
 void AnimationViewer::Draw()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_pendingImguiLayout.empty()) {
+        ImGui::LoadIniSettingsFromMemory(_pendingImguiLayout.c_str(), _pendingImguiLayout.size());
+        ImGui::GetIO().WantSaveIniSettings = false;
+        _pendingImguiLayout.clear();
+    }
 
     if (!_visible) {
         return;

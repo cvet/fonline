@@ -190,6 +190,8 @@ void MapperEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
+    AnimViewer->SaveSettings();
+    PartViewer->SaveSettings();
     ParticleEditors.Shutdown();
 
     while (!LoadedMaps.empty()) {

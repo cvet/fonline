@@ -81,7 +81,7 @@ public:
     void Draw();
 
     // Persists the ImGui layout and the view options (zoom, facing, overlays, last critter) to the per-user
-    // settings store. Loaded in the constructor; a standalone host calls SaveSettings() before teardown.
+    // settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown.
     void SaveSettings();
 
 private:
@@ -121,6 +121,7 @@ private:
     ptr<ResourceManager> _resMngr;
     ptr<GameTimer> _gameTime;
     SettingsStorage _settings {"AnimationViewer"};
+    string _pendingImguiLayout {};
 
     bool _visible {};
     bool _fillViewport {};

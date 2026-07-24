@@ -79,7 +79,7 @@ public:
     void Draw();
 
     // Persists the ImGui layout and the view options (zoom, seed, loop/prewarm, overlays, last effect) to the
-    // per-user settings store. Loaded in the constructor; a standalone host calls SaveSettings() before teardown.
+    // per-user settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown.
     void SaveSettings();
 
 private:
@@ -100,6 +100,7 @@ private:
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
     SettingsStorage _settings {"ParticleViewer"};
+    string _pendingImguiLayout {};
 
     bool _visible {};
     bool _fillViewport {};
