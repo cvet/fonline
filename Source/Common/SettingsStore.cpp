@@ -86,7 +86,7 @@ static auto RegistryReadValue(const string& sub_key, string_view name) -> option
     }
 
     auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    const string name_str = string(name);
+    string name_str = string(name);
     DWORD type = 0;
     DWORD size = 0;
 
@@ -121,9 +121,9 @@ static void RegistryWriteValue(const string& sub_key, string_view name, string_v
     }
 
     auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    const string name_str = string(name);
-    const string value_str = string(value);
-    const DWORD size = numeric_cast<DWORD>(value_str.size() + 1);
+    string name_str = string(name);
+    string value_str = string(value);
+    DWORD size = numeric_cast<DWORD>(value_str.size() + 1);
 
     if (RegSetValueExA(hkey, name_str.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(value_str.c_str()), size) != ERROR_SUCCESS) {
         WriteLog("Settings: failed to write registry value - {}\\{}", sub_key, name);
@@ -141,7 +141,7 @@ static void RegistryDeleteValue(const string& sub_key, string_view name)
     }
 
     auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    const string name_str = string(name);
+    string name_str = string(name);
     (void)RegDeleteValueA(hkey, name_str.c_str());
 }
 
@@ -157,10 +157,10 @@ SettingsStoreImpl::SettingsStoreImpl(string_view app_name)
 
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
     // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary.
-    const string base = Platform::GetUserDataBase();
+    string base = Platform::GetUserDataBase();
 
     if (!base.empty()) {
-        const string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
+        string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
         _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
     }
 
@@ -241,7 +241,7 @@ auto SettingsStore::GetString(string_view key, string_view default_value) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entry = _impl->GetEntry(key);
+    auto entry = _impl->GetEntry(key);
     return entry ? *entry : string(default_value);
 }
 
@@ -249,7 +249,7 @@ auto SettingsStore::GetInt(string_view key, int64_t default_value) const -> int6
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entry = _impl->GetEntry(key);
+    auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_int64() : default_value;
 }
 
@@ -257,7 +257,7 @@ auto SettingsStore::GetBool(string_view key, bool default_value) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entry = _impl->GetEntry(key);
+    auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_bool() : default_value;
 }
 
@@ -265,7 +265,7 @@ auto SettingsStore::GetFloat(string_view key, float64_t default_value) const -> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entry = _impl->GetEntry(key);
+    auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_float64() : default_value;
 }
 

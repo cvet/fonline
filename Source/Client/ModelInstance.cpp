@@ -1034,12 +1034,12 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     }
 
     bool force_full_frame = _modelMngr->_effectMngr->Effects.SkinnedModel != _modelMngr->_effectMngr->Effects.SkinnedModelDefault;
-    const int32_t frame_width = _frameSize.width / FRAME_SCALE;
-    const int32_t frame_height = _frameSize.height / FRAME_SCALE;
-    const ipos32 root_pos = _framePivot;
-    const mat44 root_transformation = _spriteBoundsPoseReady ? _parentMatrix : MakeRootTransformation(root_pos, const_numeric_cast<float32_t>(FRAME_SCALE), false);
-    const vec3 ground_pos = _spriteBoundsPoseReady ? _groundPos : vec3 {root_transformation[3][0], root_transformation[3][1], root_transformation[3][2]};
-    const bool include_shadow = !_shadowDisabled && !_modelInfo->_shadowDisabled;
+    int32_t frame_width = _frameSize.width / FRAME_SCALE;
+    int32_t frame_height = _frameSize.height / FRAME_SCALE;
+    ipos32 root_pos = _framePivot;
+    mat44 root_transformation = _spriteBoundsPoseReady ? _parentMatrix : MakeRootTransformation(root_pos, const_numeric_cast<float32_t>(FRAME_SCALE), false);
+    vec3 ground_pos = _spriteBoundsPoseReady ? _groundPos : vec3 {root_transformation[3][0], root_transformation[3][1], root_transformation[3][2]};
+    bool include_shadow = !_shadowDisabled && !_modelInfo->_shadowDisabled;
 
     if (include_shadow && (!std::isfinite(ground_pos.x) || !std::isfinite(ground_pos.y) || !std::isfinite(ground_pos.z))) {
         return std::nullopt;
@@ -1105,22 +1105,22 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // yields a frame that already covers every direction - attached gear (a backpack, a weapon) that only widens the
     // silhouette at some facings no longer resizes the frame on a turn. Runtime layer/equipment meshes are not in the
     // baked animation bounds, so this is what keeps their contribution direction-independent.
-    const mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
-    const mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
-    const auto facing_delta_matrix = [&](float32_t degrees) -> mat44 {
+    mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
+    mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
+    auto facing_delta_matrix = [&](float32_t degrees) -> mat44 {
         return facing_prefix * glm::rotate(mat44 {1.0f}, degrees * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f}) * facing_prefix_inverse;
     };
-    const mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
-    const mat44 facing_rotation_180 = facing_delta_matrix(180.0f);
+    mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
+    mat44 facing_rotation_180 = facing_delta_matrix(180.0f);
     // A point's projected coordinate traces a sinusoid as the model turns; sampling it at facing, +90 and +180 and
     // taking the harmonic range yields its continuous min/max over every facing, independent of which facing the
     // model currently holds (four discrete samples would give a facing-dependent union). This mirrors the layout's
     // own direction sweep, applied here to the actual runtime geometry.
-    const auto harmonic_range = [](float32_t value_0, float32_t value_90, float32_t value_180) -> pair<float32_t, float32_t> {
-        const float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
-        const float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
-        const float64_t sine = numeric_cast<float64_t>(value_90) - center;
-        const float64_t radius = std::hypot(cosine, sine);
+    auto harmonic_range = [](float32_t value_0, float32_t value_90, float32_t value_180) -> pair<float32_t, float32_t> {
+        float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
+        float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
+        float64_t sine = numeric_cast<float64_t>(value_90) - center;
+        float64_t radius = std::hypot(cosine, sine);
         return {numeric_cast<float32_t>(center - radius), numeric_cast<float32_t>(center + radius)};
     };
     bool has_all_facings_point = false;
@@ -1128,7 +1128,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_min_y {};
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
-    const auto include_mesh_all_facings = [&](vec3 world_pos) {
+    auto include_mesh_all_facings = [&](vec3 world_pos) {
         vec3 projected_0 {};
         vec3 projected_90 {};
         vec3 projected_180 {};
@@ -1142,9 +1142,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             return;
         }
 
-        const float32_t frame_height_sprite = numeric_cast<float32_t>(_frameSize.height);
-        const auto [x_min, x_max] = harmonic_range(projected_0.x / frame_scale, projected_90.x / frame_scale, projected_180.x / frame_scale);
-        const auto [y_min, y_max] = harmonic_range((frame_height_sprite - projected_0.y) / frame_scale, (frame_height_sprite - projected_90.y) / frame_scale, (frame_height_sprite - projected_180.y) / frame_scale);
+        float32_t frame_height_sprite = numeric_cast<float32_t>(_frameSize.height);
+        auto [x_min, x_max] = harmonic_range(projected_0.x / frame_scale, projected_90.x / frame_scale, projected_180.x / frame_scale);
+        auto [y_min, y_max] = harmonic_range((frame_height_sprite - projected_0.y) / frame_scale, (frame_height_sprite - projected_90.y) / frame_scale, (frame_height_sprite - projected_180.y) / frame_scale);
 
         if (!has_all_facings_point) {
             all_facings_min_x = x_min;
@@ -1270,14 +1270,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             // frame; when it starts emitting, the render's frame-expansion pass grows the frame to fit the live
             // particles. Reserving the full particle sprite for a non-emitting system would bloat every model that
             // carries an occasional effect.
-            const optional<ParticleBounds3D> live_bounds = model_particle.Particle->GetLiveBounds();
+            optional<ParticleBounds3D> live_bounds = model_particle.Particle->GetLiveBounds();
 
             if (!live_bounds) {
                 continue;
             }
 
             for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-                const vec3 corner {
+                vec3 corner {
                     (corner_index & 1U) != 0 ? live_bounds->Max.x : live_bounds->Min.x,
                     (corner_index & 2U) != 0 ? live_bounds->Max.y : live_bounds->Min.y,
                     (corner_index & 4U) != 0 ? live_bounds->Max.z : live_bounds->Min.z,
@@ -1309,9 +1309,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return std::nullopt;
     }
 
-    const float32_t frame_width_float = numeric_cast<float32_t>(frame_width);
-    const float32_t frame_height_float = numeric_cast<float32_t>(frame_height);
-    const float32_t guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
+    float32_t frame_width_float = numeric_cast<float32_t>(frame_width);
+    float32_t frame_height_float = numeric_cast<float32_t>(frame_height);
+    float32_t guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
 
     // The frame must contain the current-facing crop (min_x..max_x, which also carries the shadow and any live
     // particles) and the mesh geometry across all facings, so it stays a fixed size while the critter turns.
@@ -1338,14 +1338,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     // Where the model origin sits inside a frame grown to RequiredFrameSize: its offset from the all-facings
     // envelope's top-left (the required frame's top-left), so a frame expansion keeps the origin anchored.
-    const int32_t required_pivot_x = force_full_frame ? root_pos.x : root_pos.x - iround<int32_t>(std::floor(frame_min_x) - guard_padding);
-    const int32_t required_pivot_y = force_full_frame ? root_pos.y : root_pos.y - iround<int32_t>(std::floor(frame_min_y) - guard_padding);
-    const ipos32 required_pivot = {std::clamp(required_pivot_x, 0, required_frame_size->width), std::clamp(required_pivot_y, 0, required_frame_size->height)};
+    int32_t required_pivot_x = force_full_frame ? root_pos.x : root_pos.x - iround<int32_t>(std::floor(frame_min_x) - guard_padding);
+    int32_t required_pivot_y = force_full_frame ? root_pos.y : root_pos.y - iround<int32_t>(std::floor(frame_min_y) - guard_padding);
+    ipos32 required_pivot = {std::clamp(required_pivot_x, 0, required_frame_size->width), std::clamp(required_pivot_y, 0, required_frame_size->height)};
 
-    const int32_t left = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_x) - guard_padding, 0.0f, frame_width_float));
-    const int32_t top = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_y) - guard_padding, 0.0f, frame_height_float));
-    const int32_t right = force_full_frame ? frame_width : iround<int32_t>(std::clamp(std::ceil(max_x) + guard_padding, 0.0f, frame_width_float));
-    const int32_t bottom = force_full_frame ? frame_height : iround<int32_t>(std::clamp(std::ceil(max_y) + guard_padding, 0.0f, frame_height_float));
+    int32_t left = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_x) - guard_padding, 0.0f, frame_width_float));
+    int32_t top = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_y) - guard_padding, 0.0f, frame_height_float));
+    int32_t right = force_full_frame ? frame_width : iround<int32_t>(std::clamp(std::ceil(max_x) + guard_padding, 0.0f, frame_width_float));
+    int32_t bottom = force_full_frame ? frame_height : iround<int32_t>(std::clamp(std::ceil(max_y) + guard_padding, 0.0f, frame_height_float));
 
     if (right <= left || bottom <= top) {
         return std::nullopt;
@@ -1374,8 +1374,8 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return {clip_indices, clip_count};
     };
 
-    const auto [body_animation_indices, body_animation_count] = collect_enabled_clip_indices(_bodyAnimController);
-    const auto [move_animation_indices, move_animation_count] = collect_enabled_clip_indices(_moveAnimController);
+    auto [body_animation_indices, body_animation_count] = collect_enabled_clip_indices(_bodyAnimController);
+    auto [move_animation_indices, move_animation_count] = collect_enabled_clip_indices(_moveAnimController);
 
     return ModelSpriteBounds {
         .Rect = {left, top, right - left, bottom - top},
@@ -1612,14 +1612,14 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     for (auto& model_particle : _modelParticles) {
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
-        const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+        vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
         // The camera tilt is always supplied by the transform the particle inherits from the model, never by the
         // particle's own view matrix: in the atlas path it is baked into the bone world matrix (MakeRootTransformation
         // applies _matRot with the root world placement outermost), and in the direct-scene path it lives in _drawProj.
         // Re-applying it in the view matrix would double-tilt the effect and, worse for the atlas path, rotate the
         // frame-size-dependent root placement so it no longer cancels in _frameProj - the frame-sizing loop then chases
         // an ever-growing projected box across the shared model sprite frame and never converges.
-        const bool tilt_in_proj = true;
+        bool tilt_in_proj = true;
         FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
         const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
 
@@ -2391,9 +2391,9 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
 
     if (old_root_pos) {
-        const vec3 new_root_pos = Convert2dTo3d(frame_pivot);
-        const vec3 rebase_delta = new_root_pos - *old_root_pos;
-        const auto rebase_particles = [&rebase_delta](ptr<ModelInstance> model, const auto& recurse) noexcept -> void {
+        vec3 new_root_pos = Convert2dTo3d(frame_pivot);
+        vec3 rebase_delta = new_root_pos - *old_root_pos;
+        auto rebase_particles = [&rebase_delta](ptr<ModelInstance> model, const auto& recurse) noexcept -> void {
             for (auto& model_particle : model->_modelParticles) {
                 model_particle.Particle->RebaseWorldParticles(rebase_delta);
             }
@@ -2462,7 +2462,7 @@ void ModelInstance::RefreshFrameLayout()
 
     // The model origin sits at its real projected position inside the tight frame (top-left of the draw rect is
     // the frame's top-left), not at a fixed quarter fraction.
-    const ipos32 frame_pivot = {-_drawRect.x, -_drawRect.y};
+    ipos32 frame_pivot = {-_drawRect.x, -_drawRect.y};
 
     if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
         SetupFrame(_layoutDrawSize, frame_pivot);
@@ -2705,7 +2705,7 @@ void ModelInstance::PoseModel(float32_t scale, bool advance_animation)
     float32_t dt = 0.0f;
 
     if (advance_animation) {
-        const auto time = GetTime();
+        auto time = GetTime();
 
         // Full-resolution delta: truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
         // viewer running at a very high frame rate the animation never accumulates time and looks frozen until a
@@ -2848,12 +2848,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
     glm::decompose(binding->Owner->GetWorldMatrix(binding->JointIndex), scale, rot, pos, skew, perspective);
 
-    const auto p = Convert3dTo2d(pos);
+    auto p = Convert3dTo2d(pos);
     // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
     // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction.
-    const int32_t frame_height = _frameSize.height / FRAME_SCALE;
-    const auto x = p.x - _framePivot.x;
-    const auto y = -(p.y - (frame_height - _framePivot.y));
+    int32_t frame_height = _frameSize.height / FRAME_SCALE;
+    auto x = p.x - _framePivot.x;
+    auto y = -(p.y - (frame_height - _framePivot.y));
 
     return ipos32 {x, y};
 }
@@ -2862,7 +2862,7 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto binding = FindPoseJoint(bone_name);
+    auto binding = FindPoseJoint(bone_name);
 
     if (!binding) {
         return std::nullopt;
@@ -2871,7 +2871,7 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
         return std::nullopt;
     }
 
-    const auto bounds = GetSpriteBounds();
+    auto bounds = GetSpriteBounds();
 
     if (!bounds) {
         return std::nullopt;
@@ -2879,10 +2879,10 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
 
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
     const mat44& world = binding->Owner->GetWorldMatrix(binding->JointIndex);
-    const vec3 bone_world = {world[3][0], world[3][1], world[3][2]};
+    vec3 bone_world = {world[3][0], world[3][1], world[3][2]};
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    const mat44 identity {1.0f};
+    mat44 identity {1.0f};
     vec3 projected {};
 
     if (!ProjectPoint(bone_world, identity, _frameProj, viewport, projected) || !std::isfinite(projected.x) || !std::isfinite(projected.y)) {
@@ -2893,9 +2893,9 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
     // bottom, then divided down by the render supersample) so the point lands in
     // the same logical frame the crop rect is taken from, then localise it to
     // the cropped sprite by subtracting the crop origin.
-    const float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
-    const int32_t sprite_x = iround<int32_t>(projected.x / frame_scale);
-    const int32_t sprite_y = iround<int32_t>((numeric_cast<float32_t>(_frameSize.height) - projected.y) / frame_scale);
+    float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
+    int32_t sprite_x = iround<int32_t>(projected.x / frame_scale);
+    int32_t sprite_y = iround<int32_t>((numeric_cast<float32_t>(_frameSize.height) - projected.y) / frame_scale);
 
     return ipos32 {sprite_x - bounds->Rect.x, sprite_y - bounds->Rect.y};
 }

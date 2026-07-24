@@ -258,9 +258,9 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
             system_reference = object_index + 1;
             attribute_position += numeric_cast<size_t>(group_count) * sizeof(uint32_t);
 
-            const bool bounds_defined = read_bool(attribute_position, object_end);
+            bool bounds_defined = read_bool(attribute_position, object_end);
             if (bounds_defined) {
-                const uint32_t bounds_value_count = read_uint32(attribute_position, object_end);
+                uint32_t bounds_value_count = read_uint32(attribute_position, object_end);
                 attribute_position += sizeof(uint32_t);
                 FO_VERIFY_AND_THROW(numeric_cast<size_t>(bounds_value_count) <= (object_end - attribute_position) / sizeof(float32_t), "Particle binary fixture has invalid baked-bounds data");
                 attribute_position += numeric_cast<size_t>(bounds_value_count) * sizeof(float32_t);
@@ -360,7 +360,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     SPK::FO::EnsureSparkParticleObjectsRegistered(spark_context);
     SPK::IO::IOManager& spark_io = spark_context.getIOManager();
 
-    const auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> {
+    auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> {
         return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
     };
 
@@ -378,11 +378,11 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         const vector<uint8_t>& binary = rig.Outputs.at("Particles/UnitTest.spk");
         REQUIRE_FALSE(binary.empty());
 
-        const SPK::Ref<SPK::System> system = load_spk(binary);
+        SPK::Ref<SPK::System> system = load_spk(binary);
         REQUIRE(system);
 
-        const SPK::Vector3D bounds_min = system->getBakedBoundsMin();
-        const SPK::Vector3D bounds_max = system->getBakedBoundsMax();
+        SPK::Vector3D bounds_min = system->getBakedBoundsMin();
+        SPK::Vector3D bounds_max = system->getBakedBoundsMax();
 
         CHECK(std::isfinite(bounds_min.x));
         CHECK(std::isfinite(bounds_min.y));
@@ -405,7 +405,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
-        const SPK::Ref<SPK::System> system = load_spk(rig.Outputs.at("Particles/UnitTest.spk"));
+        SPK::Ref<SPK::System> system = load_spk(rig.Outputs.at("Particles/UnitTest.spk"));
         REQUIRE(system);
 
         const SPK::Vector3D expected_min(-1.5f, -2.0f, -3.25f);
@@ -415,10 +415,10 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         std::ostringstream oss(std::ios::binary);
         REQUIRE(spark_io.save("spk", oss, system));
 
-        const std::string str = oss.str();
+        std::string str = oss.str();
         const vector<uint8_t> resaved(str.begin(), str.end());
 
-        const SPK::Ref<SPK::System> reloaded = load_spk(resaved);
+        SPK::Ref<SPK::System> reloaded = load_spk(resaved);
         REQUIRE(reloaded);
 
         CHECK(reloaded->getBakedBoundsMin().x == Catch::Approx(expected_min.x));
@@ -449,14 +449,14 @@ TEST_CASE("Effekseer baked bounds trailer", "[particle][effekseer]")
     SECTION("RoundtripsBounds")
     {
         vector<uint8_t> binary {'S', 'K', 'F', 'E', 0x10, 0x20, 0x30};
-        const size_t payload_size = binary.size();
-        const vec3 expected_min {-1.5f, -2.0f, -3.25f};
-        const vec3 expected_max {4.0f, 5.5f, 6.75f};
+        size_t payload_size = binary.size();
+        vec3 expected_min {-1.5f, -2.0f, -3.25f};
+        vec3 expected_max {4.0f, 5.5f, 6.75f};
 
         AppendEffekseerBoundsTrailer(binary, expected_min, expected_max);
         CHECK(binary.size() == payload_size + 32);
 
-        const EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(binary);
+        EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(binary);
         CHECK(trailer.PayloadSize == payload_size);
         CHECK(trailer.Min.x == Catch::Approx(expected_min.x));
         CHECK(trailer.Min.y == Catch::Approx(expected_min.y));
@@ -468,14 +468,14 @@ TEST_CASE("Effekseer baked bounds trailer", "[particle][effekseer]")
 
     SECTION("ThrowsOnBinaryWithoutTrailer")
     {
-        const vector<uint8_t> binary {'S', 'K', 'F', 'E', 0x10, 0x20, 0x30};
+        vector<uint8_t> binary {'S', 'K', 'F', 'E', 0x10, 0x20, 0x30};
 
         CHECK_THROWS(ReadEffekseerBoundsTrailer(binary));
     }
 
     SECTION("ThrowsOnTruncatedBinary")
     {
-        const vector<uint8_t> binary {0x01, 0x02, 0x03};
+        vector<uint8_t> binary {0x01, 0x02, 0x03};
 
         CHECK_THROWS(ReadEffekseerBoundsTrailer(binary));
     }

@@ -116,7 +116,7 @@ if(FO_BUILD_MAPPER_LIB)
 
     AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS AnimationViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS AnimationViewerLib ParticleViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_BAKER_LIB)

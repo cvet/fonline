@@ -65,12 +65,8 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
         return std::nullopt;
     }
 
-    // Exact projected extent: the frame is the tight bounding box of the projected model, with the origin placed
-    // at its real position inside it (see CalculateModelSpriteLayout's DrawRect). No legacy quarter/anchor
-    // assumption - the baked bounds already carry the precise geometry, so a low/centred-origin creature no
-    // longer inflates the frame by reserving three quarters of it above a fixed anchor.
-    const float64_t required_width = std::ceil(numeric_cast<float64_t>(max_x) - numeric_cast<float64_t>(min_x));
-    const float64_t required_height = std::ceil(numeric_cast<float64_t>(max_y) - numeric_cast<float64_t>(min_y));
+    float64_t required_width = std::ceil(numeric_cast<float64_t>(max_x) - numeric_cast<float64_t>(min_x));
+    float64_t required_height = std::ceil(numeric_cast<float64_t>(max_y) - numeric_cast<float64_t>(min_y));
 
     if (required_width > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max()) || required_height > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max())) {
         return std::nullopt;
@@ -291,10 +287,8 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
         return std::nullopt;
     }
 
-    // Round up to the frame scale only - the frame is the tight bounding box of the projected model, not a
-    // power-of-two atlas page (the atlas packs the cropped sprite, not this frame), so no extra slack is reserved.
     constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
-    const uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
+    uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
     if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;

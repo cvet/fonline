@@ -477,7 +477,7 @@ void ModelInformation::IndexPoseJointLookups()
         }
 
         FO_VERIFY_AND_THROW(source_bone->Name == _poseJointRuntimeNames[joint_index], "Physical model bone runtime name differs from canonical pose lookup metadata", _fileName, joint_index, source_bone->Name, _poseJointRuntimeNames[joint_index]);
-        const auto [it, inserted] = pose_bone_joint_indexes.emplace(source_bone.as_ptr(), numeric_cast<uint32_t>(joint_index));
+        auto [it, inserted] = pose_bone_joint_indexes.emplace(source_bone.as_ptr(), numeric_cast<uint32_t>(joint_index));
         ignore_unused(it);
         FO_VERIFY_AND_THROW(inserted, "Model pose contains the same physical bone more than once", _fileName, source_bone->Name, joint_index);
     }

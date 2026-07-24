@@ -479,11 +479,11 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     // the fix it found neither and threw MetadataNotFoundException, crashing every standalone tool that boots a
     // BakerDataSource. A .fo3d input is required to make ModelInfoBaker build the engine at all - the plain
     // dependency-order case above uses a non-model placeholder, so ModelInfoBaker returns before that point.
-    const string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
-    const string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
-    const string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
-    const string model_mesh_path = strex(temp_dir).combine_path("model_input/Body.fbx").str();
-    const string metadata_output_dir = strex(temp_dir).combine_path("output/Metadata").str();
+    string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
+    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
+    string model_mesh_path = strex(temp_dir).combine_path("model_input/Body.fbx").str();
+    string metadata_output_dir = strex(temp_dir).combine_path("output/Metadata").str();
 
     ignore_unused(fs_remove_dir_tree(temp_dir));
 
@@ -491,17 +491,17 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     REQUIRE(fs_write_file(model_desc_path, string_view {"Model Body.fbx\n"}));
     REQUIRE(fs_write_file(model_mesh_path, string_view {"placeholder"}));
 
-    const auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
     SetBakerSetupFileWriteTime(metadata_input_path, source_time);
     SetBakerSetupFileWriteTime(model_desc_path, source_time);
     SetBakerSetupFileWriteTime(model_mesh_path, source_time);
 
     // RegisterClientStubMetadata reads the server, client and mapper metadata; write all three newer than the
     // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
-    const array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
+    array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
     for (const string_view target : metadata_targets) {
-        const string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
+        string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
         REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
         SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
     }

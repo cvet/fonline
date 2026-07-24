@@ -61,7 +61,7 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
         for (const string& ext : exts) {
             FO_VERIFY_AND_THROW(!ext.empty(), "Particle runtime backend declares an empty resource extension");
 
-            const auto [it, inserted] = registered_exts.emplace(ext);
+            auto [it, inserted] = registered_exts.emplace(ext);
             ignore_unused(it);
             FO_VERIFY_AND_THROW(inserted, "Particle resource extension is handled by more than one runtime backend", ext);
         }
@@ -235,8 +235,8 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     // about X) at ModelProjFactor px per world unit; project the 8 baked-box corners through that tilt (the ortho
     // drops view Z) to get the 2D frame, and place the emitter - which projects to the view origin - so the box exactly
     // fills the frame. An effect that emitted no particle (no box) falls back to a small default square.
-    const optional<ParticleBounds3D> baked = GetBakedBounds();
-    const float32_t proj_factor = settings.ModelProjFactor;
+    optional<ParticleBounds3D> baked = GetBakedBounds();
+    float32_t proj_factor = settings.ModelProjFactor;
     ParticleSpriteFrame layout;
 
     if (!baked) {
@@ -248,18 +248,18 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
         return layout;
     }
 
-    const float32_t cos_a = std::cos(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
-    const float32_t sin_a = std::sin(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t cos_a = std::cos(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t sin_a = std::sin(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
     float32_t min_x = std::numeric_limits<float32_t>::max();
     float32_t max_x = std::numeric_limits<float32_t>::lowest();
     float32_t min_y = std::numeric_limits<float32_t>::max();
     float32_t max_y = std::numeric_limits<float32_t>::lowest();
 
     for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        const float32_t cx = (corner_index & 1U) != 0 ? baked->Max.x : baked->Min.x;
-        const float32_t cy = (corner_index & 2U) != 0 ? baked->Max.y : baked->Min.y;
-        const float32_t cz = (corner_index & 4U) != 0 ? baked->Max.z : baked->Min.z;
-        const float32_t view_y = cy * cos_a - cz * sin_a;
+        float32_t cx = (corner_index & 1U) != 0 ? baked->Max.x : baked->Min.x;
+        float32_t cy = (corner_index & 2U) != 0 ? baked->Max.y : baked->Min.y;
+        float32_t cz = (corner_index & 4U) != 0 ? baked->Max.z : baked->Min.z;
+        float32_t view_y = cy * cos_a - cz * sin_a;
         min_x = std::min(min_x, cx);
         max_x = std::max(max_x, cx);
         min_y = std::min(min_y, view_y);
@@ -267,7 +267,7 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     }
 
     // A small margin so anti-aliased edges are not clipped by the tight frame.
-    const float32_t margin = 2.0f / proj_factor;
+    float32_t margin = 2.0f / proj_factor;
     min_x -= margin;
     max_x += margin;
     min_y -= margin;
@@ -282,8 +282,8 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 
     // Root convention is root = (width/2 - offset.x, height - offset.y) from the top-left; the emitter projects to
     // (-min_x, -min_y) world units from the box origin, i.e. those pixels from the frame's left and bottom.
-    const int32_t emitter_px_x = iround<int32_t>(-min_x * proj_factor);
-    const int32_t emitter_px_y = iround<int32_t>(-min_y * proj_factor);
+    int32_t emitter_px_x = iround<int32_t>(-min_x * proj_factor);
+    int32_t emitter_px_y = iround<int32_t>(-min_y * proj_factor);
     layout.Offset = {layout.DrawSize.width / 2 - emitter_px_x, emitter_px_y};
 
     return layout;

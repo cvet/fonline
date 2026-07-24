@@ -111,7 +111,7 @@ The executable is built alongside the mapper under `FO_BUILD_MAPPER` and lands i
 
 ## Particle Viewer
 
-`Source/Tools/ParticleViewer.{h,cpp}` is a **view-only** ImGui window for previewing particle effects without launching the game, mirroring the Animation Viewer. Authoring stays in the mapper's `SparkParticleEditor` (`Windows → Particle preview`); this window never edits — it only plays.
+`Source/Tools/ParticleViewer.{h,cpp}` is a **view-only** ImGui window for previewing particle effects without launching the game, mirroring the Animation Viewer. Open it from the mapper's `View` menu (`Particle viewer`); it starts hidden. Authoring stays in the mapper's `SparkParticleEditor` (`Windows → Particle preview`); this window never edits — it only plays.
 
 Layout: particle-resource list with a text filter on the left, preview on the right. The list is every baked runtime resource the particle sprite factory advertises — `ParticleSpriteFactory::GetExtensions()` (`spk` for Spark, `efk` for Effekseer) enumerated through `Resources.FilterFiles(ext)` — so it reflects the loaded content exactly. Selecting one loads it as a `Sprite` through the ordinary `SpriteManager::LoadSprite(path, AtlasType::MapSprites)` path (which routes `.spk`/`.efk` to `ParticleSpriteFactory`, producing a `ParticleSprite`), then plays it.
 
@@ -123,13 +123,12 @@ Debug-draw toggles (all off by default):
 
 - **Root** — a faint crosshair through the anchor, drawn into the target before the effect so it reads as a ground reference.
 - **Draw rect** — the whole sprite frame the effect rasterizes into (`Sprite::GetSize()`), its maximal draw area.
-- **View rect** — the visual rect from `Sprite::GetViewSize()` when the resource carries one; a particle carries none by default, so this is simply skipped for it, but the toggle stays for resources that do.
 
 The window owns no engine services — a host passes `BaseEngine` and `SpriteManager` and calls `Draw()` from its ImGui pass. `SetFillViewport(true)` makes it occupy the whole viewport (used by the standalone application).
 
 ### Library boundary
 
-The viewer ships as its own static library, `ParticleViewerLib`, linking only `ClientLib` + `CommonLib` — no mapper dependency; everything it touches (sprite manager, particle factory, resource file system) is client-side. The standalone application links it directly.
+The viewer ships as its own static library, `ParticleViewerLib`, linking only `ClientLib` + `CommonLib` — no mapper dependency; everything it touches (sprite manager, particle factory, resource file system) is client-side. `MapperLib` links it to offer the `View` → `Particle viewer` entry, and the standalone application links it directly; neither host is privileged.
 
 ### Standalone application
 

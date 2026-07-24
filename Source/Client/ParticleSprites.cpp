@@ -106,8 +106,8 @@ void ParticleSprite::ApplyAtlasSetup() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ParticleSpriteFrame layout = _particle->ComputeSpriteFrame(*_factory->_settings);
-    const mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
+    ParticleSpriteFrame layout = _particle->ComputeSpriteFrame(*_factory->_settings);
+    mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
 
     _particle->Setup(proj, layout.World, {}, _lookDirAngle, {}, false);
 }

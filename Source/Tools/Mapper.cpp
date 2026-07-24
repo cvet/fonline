@@ -91,6 +91,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _curLang.LoadFromResources(Resources, Settings->Language);
 
     AnimViewer = SafeAlloc::MakeUnique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
+    PartViewer = SafeAlloc::MakeUnique<ParticleViewer>(this, &SprMngr);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -165,7 +166,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
     // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
     if (!Settings->NullRenderer) {
-        const auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
+        auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
         if (!imgui_ini.empty()) {
             ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
@@ -1471,6 +1472,11 @@ void MapperEngine::DrawMainPanelImGui()
             if (ImGui::MenuItem("Animation viewer", nullptr, &anim_viewer_visible)) {
                 AnimViewer->SetVisible(anim_viewer_visible);
             }
+
+            bool particle_viewer_visible = PartViewer->IsVisible();
+            if (ImGui::MenuItem("Particle viewer", nullptr, &particle_viewer_visible)) {
+                PartViewer->SetVisible(particle_viewer_visible);
+            }
             ImGui::MenuItem("Script call", nullptr, &ScriptCallWindowVisible);
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
             ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, static_cast<bool>(_curMap));
@@ -1610,6 +1616,7 @@ void MapperEngine::DrawMainPanelImGui()
     DrawCritterAnimationsWindowImGui();
 
     AnimViewer->Draw();
+    PartViewer->Draw();
     DrawScriptCallWindowImGui();
     DrawMapListWindowImGui();
     DrawMapWindowImGui();

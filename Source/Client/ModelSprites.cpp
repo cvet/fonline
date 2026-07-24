@@ -280,9 +280,9 @@ auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBound
 
     // Anchor the sprite on the model origin's exact pixel inside the frame (its ground point), not a fixed
     // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row.
-    const ipos32 pivot = _model->GetFramePivot();
-    const int32_t offset_x = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.x) + normalized_crop.width / 2 - pivot.x);
-    const int32_t offset_y = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.y) + normalized_crop.height - pivot.y);
+    ipos32 pivot = _model->GetFramePivot();
+    int32_t offset_x = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.x) + normalized_crop.width / 2 - pivot.x);
+    int32_t offset_y = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.y) + normalized_crop.height - pivot.y);
     PreparedFrameCrop prepared_crop {
         .FrameSize = frame_size,
         .CropRect = normalized_crop,
@@ -433,8 +433,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     }
 
     // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop.
-    const isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
-    const ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
+    isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
+    ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
         for (ptr<RenderTarget> rt : _rtIntermediate) {
             if (rt->GetTexture()->Size == frame_size) {
                 return rt;
@@ -456,13 +456,13 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     auto prepared_crop = model_spr->PrepareFrameCrop(render_frame_size, bounds);
 
     // Copy render
-    const int32_t l = iround<int32_t>(prepared_crop.AtlasRect.x * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
-    const int32_t t = iround<int32_t>(prepared_crop.AtlasRect.y * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
-    const int32_t w = iround<int32_t>(prepared_crop.AtlasRect.width * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
-    const int32_t h = iround<int32_t>(prepared_crop.AtlasRect.height * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
-    const irect32 region_to = irect32(l, t, w, h);
-    const float32_t frame_scale = numeric_cast<float32_t>(ModelInstance::FRAME_SCALE);
-    const frect32 region_from = {
+    int32_t l = iround<int32_t>(prepared_crop.AtlasRect.x * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
+    int32_t t = iround<int32_t>(prepared_crop.AtlasRect.y * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
+    int32_t w = iround<int32_t>(prepared_crop.AtlasRect.width * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
+    int32_t h = iround<int32_t>(prepared_crop.AtlasRect.height * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
+    irect32 region_to = irect32(l, t, w, h);
+    float32_t frame_scale = numeric_cast<float32_t>(ModelInstance::FRAME_SCALE);
+    frect32 region_from = {
         numeric_cast<float32_t>(prepared_crop.CropRect.x) * frame_scale,
         numeric_cast<float32_t>(prepared_crop.CropRect.y) * frame_scale,
         numeric_cast<float32_t>(prepared_crop.CropRect.width) * frame_scale,

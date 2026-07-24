@@ -507,10 +507,10 @@ void SparkParticleEditor::DrawContent()
         return;
     }
 
-    const ParticleSpriteFrame frame = _impl->Particle->ComputeSpriteFrame(*_impl->Settings);
-    const int32_t draw_width = frame.DrawSize.width;
-    const int32_t draw_height = frame.DrawSize.height;
-    const bool can_save_source = strex(_assetPath).get_file_extension() == "spark";
+    ParticleSpriteFrame frame = _impl->Particle->ComputeSpriteFrame(*_impl->Settings);
+    int32_t draw_width = frame.DrawSize.width;
+    int32_t draw_height = frame.DrawSize.height;
+    bool can_save_source = strex(_assetPath).get_file_extension() == "spark";
 
     if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);

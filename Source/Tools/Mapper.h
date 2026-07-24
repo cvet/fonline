@@ -46,6 +46,7 @@
 #include "Geometry.h"
 #include "AnimationViewer.h"
 #include "ImGuiStuff.h"
+#include "ParticleViewer.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "LocationView.h"
@@ -358,6 +359,7 @@ public:
     bool ContentWindowVisible {};
     bool CritterAnimationsWindowVisible {};
     unique_nptr<AnimationViewer> AnimViewer {};
+    unique_nptr<ParticleViewer> PartViewer {};
     bool ScriptCallWindowVisible {};
     bool MapListWindowVisible {};
     bool MapWindowVisible {};

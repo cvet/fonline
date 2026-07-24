@@ -27,7 +27,7 @@ TEST_CASE("SettingsStore")
     SECTION("MultilineBlobRoundtrip")
     {
         // The ImGui layout blob is multi-line text and must survive the round-trip verbatim.
-        const string blob = "[Window][Preview]\nPos=10,20\nSize=300,400\n\n[Window][List]\nPos=0,0\n";
+        string blob = "[Window][Preview]\nPos=10,20\nSize=300,400\n\n[Window][List]\nPos=0,0\n";
         store.SetString("multiline", blob);
 
         CHECK(store.GetString("multiline") == blob);

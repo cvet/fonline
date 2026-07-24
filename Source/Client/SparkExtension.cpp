@@ -297,8 +297,8 @@ auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<Par
 
     const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
     const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
-    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
-    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+    vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
 
     if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
@@ -323,8 +323,8 @@ auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<Part
 
     const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
     const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
-    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
-    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+    vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
 
     if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
@@ -339,7 +339,7 @@ auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<Part
             (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
             (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
         };
-        const glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
+        glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
             return std::nullopt;
@@ -448,9 +448,9 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
     int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
     FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
 
-    const uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
-    const int32_t init_time_ms = numeric_cast<int32_t>(_impl->RuntimeSystem->generateRandom(0U, init_time_range));
-    const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
+    uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
+    int32_t init_time_ms = numeric_cast<int32_t>(_impl->RuntimeSystem->generateRandom(0U, init_time_range));
+    float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
 
     for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
         _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));

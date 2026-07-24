@@ -1483,8 +1483,8 @@ auto EffekseerParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vec3 raw_min = _impl->BakedBoundsMin;
-    const vec3 raw_max = _impl->BakedBoundsMax;
+    vec3 raw_min = _impl->BakedBoundsMin;
+    vec3 raw_max = _impl->BakedBoundsMax;
 
     if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
@@ -1507,8 +1507,8 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
         return std::nullopt;
     }
 
-    const vec3 raw_min = _impl->BakedBoundsMin;
-    const vec3 raw_max = _impl->BakedBoundsMax;
+    vec3 raw_min = _impl->BakedBoundsMin;
+    vec3 raw_max = _impl->BakedBoundsMax;
 
     if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
@@ -1518,18 +1518,18 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
     bool initialized = false;
 
     for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        const vec3 corner {
+        vec3 corner {
             (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
             (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
             (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
         };
-        const glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
+        glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z)) {
             return std::nullopt;
         }
 
-        const vec3 point {transformed};
+        vec3 point {transformed};
 
         if (!initialized) {
             result.Min = point;
@@ -1739,7 +1739,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
     // The baker appends a mandatory bounds trailer after the Effekseer payload. Split it off (a missing or malformed
     // trailer is a broken invariant of our baked data and throws) so the effect is loaded from the untouched payload
     // and the precomputed box is available for sprite-frame sizing.
-    const EffekseerBoundsTrailer bounds_trailer = ReadEffekseerBoundsTrailer(data);
+    EffekseerBoundsTrailer bounds_trailer = ReadEffekseerBoundsTrailer(data);
 
     if (bounds_trailer.PayloadSize > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         LogEffekseerRejection(path, "binary is too large");
@@ -1795,7 +1795,7 @@ void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bound
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t payload_size = numeric_cast<uint32_t>(binary.size());
+    uint32_t payload_size = numeric_cast<uint32_t>(binary.size());
     const float32_t values[6] = {min_bounds.x, min_bounds.y, min_bounds.z, max_bounds.x, max_bounds.y, max_bounds.z};
 
     for (size_t i = 0; i < 6; i++) {
@@ -1815,8 +1815,8 @@ auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTr
     FO_VERIFY_AND_THROW(binary.size() >= EFFEKSEER_BOUNDS_TRAILER_SIZE, "Baked Effekseer binary is too small to hold its mandatory bounds trailer", binary.size());
     FO_VERIFY_AND_THROW(ReadLittleEndianUint32(binary, binary.size() - sizeof(uint32_t)) == EFFEKSEER_BOUNDS_TRAILER_MAGIC, "Baked Effekseer binary is missing its mandatory bounds trailer magic", binary.size());
 
-    const size_t trailer_offset = binary.size() - EFFEKSEER_BOUNDS_TRAILER_SIZE;
-    const uint32_t payload_size = ReadLittleEndianUint32(binary, binary.size() - 2 * sizeof(uint32_t));
+    size_t trailer_offset = binary.size() - EFFEKSEER_BOUNDS_TRAILER_SIZE;
+    uint32_t payload_size = ReadLittleEndianUint32(binary, binary.size() - 2 * sizeof(uint32_t));
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(payload_size) == trailer_offset, "Baked Effekseer bounds trailer has an inconsistent payload size", payload_size, trailer_offset);
 
     float32_t values[6];

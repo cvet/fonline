@@ -97,7 +97,7 @@ static auto InputBufferView(const array<char, Size>& buffer) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto end = std::find(buffer.begin(), buffer.end(), char {0});
+    auto end = std::find(buffer.begin(), buffer.end(), char {0});
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
@@ -118,7 +118,7 @@ void AnimationViewer::LoadSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto imgui_ini = _settings.GetString("ImGuiLayout");
+    auto imgui_ini = _settings.GetString("ImGuiLayout");
 
     if (!imgui_ini.empty()) {
         ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
@@ -136,7 +136,7 @@ void AnimationViewer::LoadSettings()
 
     // Re-open the last previewed critter, but only if that prototype still exists (content may have changed since
     // the last run), so a stale id never surfaces as a selection error on startup.
-    const auto last_proto = _settings.GetString("SelectedProto");
+    auto last_proto = _settings.GetString("SelectedProto");
 
     if (!last_proto.empty()) {
         for (const auto& [proto_id, proto] : _engine->GetProtoCritters()) {
@@ -217,7 +217,7 @@ void AnimationViewer::Draw()
 
     // Right column split: animation list on top, model hierarchy below it.
     if (ImGui::BeginChild("RightColumn", {0.0f, 0.0f}, ImGuiChildFlags_None)) {
-        const float32_t column_height = ImGui::GetContentRegionAvail().y;
+        float32_t column_height = ImGui::GetContentRegionAvail().y;
 
         if (ImGui::BeginChild("Animations", {0.0f, column_height * 0.5f}, ImGuiChildFlags_Borders)) {
             DrawAnimationList();
@@ -243,16 +243,16 @@ void AnimationViewer::DrawCritterList()
 
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputTextWithHint("##Filter", "Filter", _filterBuf.data(), _filterBuf.size());
-    const string filter = strex(InputBufferView(_filterBuf)).trim().lower().str();
+    string filter = strex(InputBufferView(_filterBuf)).trim().lower().str();
 
     for (const auto& [proto_id, proto] : _engine->GetProtoCritters()) {
-        const string proto_name = string(proto_id);
+        string proto_name = string(proto_id);
 
         if (!filter.empty() && strex(proto_name).lower().str().find(filter) == string::npos) {
             continue;
         }
 
-        const bool selected = proto_id == _selectedProtoId;
+        bool selected = proto_id == _selectedProtoId;
 
         if (ImGui::Selectable(proto_name.c_str(), selected)) {
             SelectCritter(proto_id);
@@ -291,7 +291,7 @@ void AnimationViewer::DrawPreview()
     ImGui::SetNextItemWidth(110.0f);
     ImGui::SliderFloat("Zoom", &_zoom, MIN_ZOOM, MAX_ZOOM, "%.2fx");
 
-    const isize32 sprite_size = _previewSprite->GetSize();
+    isize32 sprite_size = _previewSprite->GetSize();
     ImGui::Text("Sprite: %d x %d px", sprite_size.width, sprite_size.height);
 
     DrawDebugToggles();
@@ -300,8 +300,8 @@ void AnimationViewer::DrawPreview()
 
     if (_renderTarget) {
         auto draw_list = make_ptr(ImGui::GetWindowDrawList());
-        const ImVec2 pos = ImGui::GetCursorScreenPos();
-        const ImVec2 end = {pos.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), pos.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 end = {pos.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), pos.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
 
         if (GetApp()->Render.IsRenderTargetFlipped()) {
             draw_list->AddImage(_renderTarget.get(), pos, end, {0.0f, 1.0f}, {1.0f, 0.0f});
@@ -315,7 +315,7 @@ void AnimationViewer::DrawPreview()
         ImGui::InvisibleButton("PreviewArea", {numeric_cast<float32_t>(PREVIEW_SIZE.width), numeric_cast<float32_t>(PREVIEW_SIZE.height)}, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
         if (ImGui::IsItemActive()) {
-            const ImVec2 drag = ImGui::GetIO().MouseDelta;
+            ImVec2 drag = ImGui::GetIO().MouseDelta;
 
             // Held-LMB horizontal drag rotates the facing left/right.
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && drag.x != 0.0f) {
@@ -333,7 +333,7 @@ void AnimationViewer::DrawPreview()
         // Wheel over the preview zooms, which is what the hand reaches for
         // first when judging a model's size.
         if (ImGui::IsItemHovered()) {
-            const float32_t wheel = ImGui::GetIO().MouseWheel;
+            float32_t wheel = ImGui::GetIO().MouseWheel;
 
             if (wheel != 0.0f) {
                 _zoom = std::clamp(_zoom * (wheel > 0.0f ? ZOOM_WHEEL_STEP : 1.0f / ZOOM_WHEEL_STEP), MIN_ZOOM, MAX_ZOOM);
@@ -383,7 +383,7 @@ void AnimationViewer::DrawAnimationList()
 
     for (size_t i = 0; i < _animations.size(); i++) {
         const auto& entry = _animations[i];
-        const bool playing = numeric_cast<int32_t>(i) == _playingIndex;
+        bool playing = numeric_cast<int32_t>(i) == _playingIndex;
 
         if (ImGui::Selectable(entry.Label.c_str(), playing)) {
             _playingIndex = numeric_cast<int32_t>(i);
@@ -406,7 +406,7 @@ void AnimationViewer::SelectCritter(hstring proto_id)
     _playingIndex = -1;
     _previewSprite = nullptr;
 
-    const auto proto = _engine->GetProtoCritter(proto_id);
+    auto proto = _engine->GetProtoCritter(proto_id);
 
     if (!proto) {
         _selectionError = "Critter prototype is not available";
@@ -417,7 +417,7 @@ void AnimationViewer::SelectCritter(hstring proto_id)
     // with the global setting to place the name-level marker like the game does.
     _protoNameOffset = proto->GetNameOffset();
 
-    const hstring model_name = proto->GetModelName();
+    hstring model_name = proto->GetModelName();
     _selectedModelName = string(model_name);
 
     if (!model_name) {
@@ -447,7 +447,7 @@ void AnimationViewer::ApplyDir()
         return;
     }
 
-    const auto dir = mdir(iround<int32_t>(_dirAngle));
+    auto dir = mdir(iround<int32_t>(_dirAngle));
     _previewSprite->SetDir(dir);
 
 #if FO_ENABLE_3D
@@ -481,19 +481,19 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         return;
     }
 
-    const auto registrator = proto->GetProperties()->GetRegistrator();
+    auto registrator = proto->GetProperties()->GetRegistrator();
 
     for (const auto& pair_text : mapping) {
-        const auto sep = pair_text.find('=');
+        auto sep = pair_text.find('=');
 
         if (sep == string::npos) {
             WriteLog("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
             continue;
         }
 
-        const string prop_name = string(strvex(string_view(pair_text).substr(0, sep)).trim());
-        const string index_text = string(strvex(string_view(pair_text).substr(sep + 1)).trim());
-        const auto prop = registrator->FindProperty(prop_name);
+        string prop_name = string(strvex(string_view(pair_text).substr(0, sep)).trim());
+        string index_text = string(strvex(string_view(pair_text).substr(sep + 1)).trim());
+        auto prop = registrator->FindProperty(prop_name);
 
         if (!prop || prop->IsDisabled()) {
             continue;
@@ -504,7 +504,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
             continue;
         }
 
-        const int32_t layer_index = strex(index_text).to_int32();
+        int32_t layer_index = strex(index_text).to_int32();
 
         if (layer_index < 0) {
             continue;
@@ -546,8 +546,8 @@ void AnimationViewer::CollectAnimations()
     // for a given pair is the evidence that the animation exists.
     for (int32_t state_anim = 1; state_anim <= PROBE_STATE_ANIM_MAX; state_anim++) {
         for (int32_t action_anim = 1; action_anim <= PROBE_ACTION_ANIM_MAX; action_anim++) {
-            const auto state_value = static_cast<CritterStateAnim>(state_anim);
-            const auto action_value = static_cast<CritterActionAnim>(action_anim);
+            auto state_value = static_cast<CritterStateAnim>(state_anim);
+            auto action_value = static_cast<CritterActionAnim>(action_anim);
 
             if (_resMngr->GetCritterAnimFrames(_selectedProtoId ? _engine->GetProtoCritter(_selectedProtoId)->GetModelName() : hstring(), state_value, action_value, mdir(iround<int32_t>(_dirAngle)))) {
                 _animations.emplace_back(AnimationEntry {.StateAnim = state_value, .ActionAnim = action_value, .Label = MakeAnimationLabel(state_value, action_value)});
@@ -577,14 +577,14 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
             flags = CombineEnum(flags, ModelAnimFlags::NoSmooth);
         }
 
-        const auto layers = _modelLayers.empty() ? nptr<const int32_t> {} : nptr<const int32_t> {_modelLayers.data()};
+        auto layers = _modelLayers.empty() ? nptr<const int32_t> {} : nptr<const int32_t> {_modelLayers.data()};
         (void)model->PlayAnim(entry.StateAnim, entry.ActionAnim, layers, 0.0f, flags);
         model->StartMeshGeneration();
         return;
     }
 #endif
 
-    const auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.ToHashedString(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
+    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.ToHashedString(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
 
     if (frames) {
         _previewSprite = frames->MakeCopy();
@@ -603,7 +603,7 @@ void AnimationViewer::PlayIdle(bool instant)
     }
 
     // Idle is the resting state a reviewer expects to see between clips.
-    const auto idle_entry = AnimationEntry {.StateAnim = CritterStateAnim::Unarmed, .ActionAnim = CritterActionAnim::Idle, .Label = {}};
+    auto idle_entry = AnimationEntry {.StateAnim = CritterStateAnim::Unarmed, .ActionAnim = CritterActionAnim::Idle, .Label = {}};
     PlayAnimation(idle_entry, true, instant);
 }
 
@@ -661,7 +661,7 @@ void AnimationViewer::RenderPreview()
 
         // Direct: scale the model to the zoom and draw it 1:1. Sprite: keep it at
         // native scale and let the baked frame be magnified (`draw_scale`).
-        const float32_t model_scale = direct ? _zoom : 1.0f;
+        float32_t model_scale = direct ? _zoom : 1.0f;
 
         if (model_scale != _appliedModelScale) {
             model_spr->GetModel()->SetScale(model_scale, model_scale, model_scale);
@@ -689,7 +689,7 @@ void AnimationViewer::RenderPreview()
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
 
     // Camera pan shifts the whole view (model + crosshair + overlays) together.
-    const ipos32 anchor = {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
+    ipos32 anchor = {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
 
     // Background crosshair through the (panned) root anchor, drawn first so it
     // reads as a ground reference behind the model.
@@ -703,10 +703,10 @@ void AnimationViewer::RenderPreview()
     // offset, exactly as MapSprite::GetSpriteRootOffset computes it for the map.
     // `draw_scale` is the residual on-screen scale after the model's own render
     // scale (1.0 when the render resolution already matches the zoom).
-    const isize32 sprite_size = _previewSprite->GetSize();
-    const ipos32 sprite_offset = _previewSprite->GetOffset();
-    const ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
-    const ipos32 pos = {
+    isize32 sprite_size = _previewSprite->GetSize();
+    ipos32 sprite_offset = _previewSprite->GetOffset();
+    ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
+    ipos32 pos = {
         anchor.x - iround<int32_t>(numeric_cast<float32_t>(root_in_sprite.x) * draw_scale),
         anchor.y - iround<int32_t>(numeric_cast<float32_t>(root_in_sprite.y) * draw_scale),
     };
@@ -717,14 +717,14 @@ void AnimationViewer::RenderPreview()
         // and widen the ortho depth range so a scaled-up model is not clipped by
         // the near/far planes. DrawInScene anchors the model root to `anchor`.
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
-        const float32_t depth_half = std::max(64.0f, _appliedModelScale * 64.0f);
+        float32_t depth_half = std::max(64.0f, _appliedModelScale * 64.0f);
         GetApp()->Render.SetOrthoDepthRange(-depth_half, depth_half);
         auto restore_depth = scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });
         _previewSprite->DrawInScene(fpos32 {numeric_cast<float32_t>(anchor.x), numeric_cast<float32_t>(anchor.y)}, 0.0f);
 #endif
     }
     else {
-        const isize32 scaled = {iround<int32_t>(numeric_cast<float32_t>(sprite_size.width) * draw_scale), iround<int32_t>(numeric_cast<float32_t>(sprite_size.height) * draw_scale)};
+        isize32 scaled = {iround<int32_t>(numeric_cast<float32_t>(sprite_size.width) * draw_scale), iround<int32_t>(numeric_cast<float32_t>(sprite_size.height) * draw_scale)};
         _sprMngr->DrawSpriteSize(_previewSprite.get(), pos, scaled, true, false, Color::Neutral);
         _sprMngr->Flush();
     }
@@ -741,7 +741,7 @@ void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
 
     // Two full-span segments (LineList draws consecutive point pairs), crossing
     // at the anchor to mark the root the same way for every clip.
-    const array<PrimitivePoint, 4> lines = {
+    array<PrimitivePoint, 4> lines = {
         PrimitivePoint {.PointPos = {anchor.x, 0}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {anchor.x, PREVIEW_SIZE.height}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {0, anchor.y}, .PointColor = ROOT_CROSSHAIR_COLOR},
@@ -758,21 +758,21 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     // Map a sprite-local pixel to the preview render target (same transform the
     // model draw uses: top-left at sprite_pos, scaled by the residual draw scale;
     // sprite-local geometry already carries the model's own render scale).
-    const auto to_screen = [&](ipos32 sl) -> ipos32 {
+    auto to_screen = [&](ipos32 sl) -> ipos32 {
         return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)};
     };
 
     vector<PrimitivePoint> lines;
 
-    const auto add_segment = [&](ipos32 a, ipos32 b, ucolor color) {
+    auto add_segment = [&](ipos32 a, ipos32 b, ucolor color) {
         lines.emplace_back(PrimitivePoint {.PointPos = a, .PointColor = color});
         lines.emplace_back(PrimitivePoint {.PointPos = b, .PointColor = color});
     };
-    const auto add_rect = [&](irect32 sprite_rect, ucolor color) {
-        const ipos32 tl = to_screen({sprite_rect.x, sprite_rect.y});
-        const ipos32 tr = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y});
-        const ipos32 br = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y + sprite_rect.height});
-        const ipos32 bl = to_screen({sprite_rect.x, sprite_rect.y + sprite_rect.height});
+    auto add_rect = [&](irect32 sprite_rect, ucolor color) {
+        ipos32 tl = to_screen({sprite_rect.x, sprite_rect.y});
+        ipos32 tr = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y});
+        ipos32 br = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y + sprite_rect.height});
+        ipos32 bl = to_screen({sprite_rect.x, sprite_rect.y + sprite_rect.height});
         add_segment(tl, tr, color);
         add_segment(tr, br, color);
         add_segment(br, bl, color);
@@ -780,7 +780,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     };
     // Fixed screen-size cross (takes an already-mapped screen point) so a marker
     // stays the same size at any zoom.
-    const auto add_cross = [&](ipos32 c, ucolor color) {
+    auto add_cross = [&](ipos32 c, ucolor color) {
         add_segment({c.x - OVERLAY_CROSS_HALF, c.y}, {c.x + OVERLAY_CROSS_HALF, c.y}, color);
         add_segment({c.x, c.y - OVERLAY_CROSS_HALF}, {c.x, c.y + OVERLAY_CROSS_HALF}, color);
     };
@@ -796,10 +796,10 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
         if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
             // The frame's top-left in sprite-local space: the model origin sits at the exact frame pivot inside the
             // frame and at root_in_sprite inside the crop, so the frame origin (0,0) maps to root_in_sprite - pivot.
-            const isize32 draw_size = model_spr->GetModel()->GetDrawSize();
-            const ipos32 pivot = model_spr->GetModel()->GetFramePivot();
-            const ipos32 sprite_offset = _previewSprite->GetOffset();
-            const ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
+            isize32 draw_size = model_spr->GetModel()->GetDrawSize();
+            ipos32 pivot = model_spr->GetModel()->GetFramePivot();
+            ipos32 sprite_offset = _previewSprite->GetOffset();
+            ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
             render_local = {
                 root_in_sprite.x - pivot.x,
                 root_in_sprite.y - pivot.y,
@@ -814,7 +814,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     // View rect / name point live in the sprite's view size, which the map
     // renderer positions bottom-centred inside the frame (MapSprite::GetViewRect).
     if (const auto view_size = _previewSprite->GetViewSize(); view_size.has_value() && (_drawViewRect || _drawNameLevel)) {
-        const irect32 view_local = {
+        irect32 view_local = {
             sprite_size.width / 2 - view_size->width / 2 + view_size->x,
             sprite_size.height - view_size->height + view_size->y,
             view_size->width,
@@ -829,8 +829,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             // GetNameTextPos: view-rect top + global NameOffset + the per-critter
             // NameOffset from the proto. Those offsets are game pixels, so they
             // scale by the full on-screen zoom (`_zoom`), not the residual draw scale.
-            const ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
-            const int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
+            ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
+            int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
             add_segment({0, name_y}, {PREVIEW_SIZE.width, name_y}, NAME_POINT_COLOR);
         }
     }
@@ -874,7 +874,7 @@ void AnimationViewer::DrawHierarchy()
         return;
     }
 
-    const auto root_bone = model_spr->GetModel()->GetInformation()->GetRootBone();
+    auto root_bone = model_spr->GetModel()->GetInformation()->GetRootBone();
 
     ImGui::TextDisabled("Tick a bone to mark it in the preview");
 
@@ -896,8 +896,8 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const hstring name = bone->Name;
-    const string name_str = string(name);
+    hstring name = bone->Name;
+    string name_str = string(name);
 
     ImGui::PushID(bone.get());
 
@@ -915,7 +915,7 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone)
     ImGui::SameLine();
 
     // Colour the label with the bone's marker colour so tree and preview match.
-    const ucolor color = BoneColor(name);
+    ucolor color = BoneColor(name);
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(color.comp.r, color.comp.g, color.comp.b, 255));
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
@@ -924,7 +924,7 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone)
         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
     }
 
-    const bool open = ImGui::TreeNodeEx(name_str.c_str(), flags);
+    bool open = ImGui::TreeNodeEx(name_str.c_str(), flags);
     ImGui::PopStyleColor();
 
     if (open && !bone->Children.empty()) {
@@ -943,7 +943,7 @@ auto AnimationViewer::BoneColor(hstring bone_name) -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string name = string(bone_name);
+    string name = string(bone_name);
     uint32_t hash = 2166136261u;
 
     // FNV-1a over the raw bytes; static_cast is the byte reinterpretation a hash
@@ -961,13 +961,13 @@ auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterAct
 
     bool state_failed = false;
     bool action_failed = false;
-    const auto state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
-    const auto action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
+    auto state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
+    auto action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
 
     // Unnamed values still deserve a row: authored content may use a raw value
     // the enum does not spell out, and hiding it would misreport coverage.
-    const string state_label = state_failed ? strex("{}", static_cast<int32_t>(state_anim)).str() : string(state_name);
-    const string action_label = action_failed ? strex("{}", static_cast<int32_t>(action_anim)).str() : string(action_name);
+    string state_label = state_failed ? strex("{}", static_cast<int32_t>(state_anim)).str() : string(state_name);
+    string action_label = action_failed ? strex("{}", static_cast<int32_t>(action_anim)).str() : string(action_name);
 
     return strex("{} / {}", state_label, action_label).str();
 }

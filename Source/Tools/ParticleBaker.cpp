@@ -500,7 +500,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
             max_lifetime = std::max(max_lifetime, simulation->getGroup(i)->getMaxLifeTime());
         }
 
-        const float32_t sim_duration = max_lifetime * SPARK_BOUNDS_LIFETIME_FACTOR + SPARK_BOUNDS_MIN_DURATION;
+        float32_t sim_duration = max_lifetime * SPARK_BOUNDS_LIFETIME_FACTOR + SPARK_BOUNDS_MIN_DURATION;
         SPK::Vector3D bounds_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
         SPK::Vector3D bounds_max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         bool any_particles = false;
@@ -617,7 +617,7 @@ static void SimulateEffekseerBounds(string_view source_path, const_span<uint8_t>
     setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
     manager->SetSetting(setting);
 
-    const ptr<EffekseerBoundsCollector> collector_ptr {&collector};
+    ptr<EffekseerBoundsCollector> collector_ptr {&collector};
     manager->SetSpriteRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::SpriteRenderer>>(collector_ptr));
     manager->SetRibbonRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RibbonRenderer>>(collector_ptr));
     manager->SetRingRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RingRenderer>>(collector_ptr));
@@ -630,7 +630,7 @@ static void SimulateEffekseerBounds(string_view source_path, const_span<uint8_t>
         throw ParticleBakerException("Effekseer bounds simulation could not load the compiled effect", source_path);
     }
 
-    const Effekseer::Handle handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    Effekseer::Handle handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
 
     if (handle < 0) {
         throw ParticleBakerException("Effekseer bounds simulation could not play the effect", source_path);
@@ -697,7 +697,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         SimulateEffekseerBounds(output_path, compiled.Binary, bounds_min, bounds_max);
         AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max);
 
-        const vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
+        vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
         uint64_t dependency_write_time = 0;
         string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
         WriteLog("Baking Effekseer particle: {} -> {}", file.GetPath(), output_path);
