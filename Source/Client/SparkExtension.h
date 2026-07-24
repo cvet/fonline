@@ -71,11 +71,10 @@ public:
     ~SparkParticleRuntimeSystem() override;
 
     [[nodiscard]] auto IsActive() const -> bool override;
-    [[nodiscard]] auto GetDrawSize(isize32 default_size) const -> isize32 override;
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
-    [[nodiscard]] auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D> override;
+    [[nodiscard]] auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D> override;
+    [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D> override;
 
-    void EnableBoundsComputation() noexcept override;
     void RebaseWorldParticles(vec3 delta) noexcept override;
     void Setup(const ParticleRuntimeSetup& setup) override;
     auto Prewarm() -> float32_t override;
@@ -89,6 +88,8 @@ public:
 
 private:
     SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system);
+
+    void RecreateRuntimeSystem(uint32_t random_seed);
 
     struct Impl;
     unique_ptr<Impl> _impl;
@@ -129,8 +130,6 @@ namespace SPK::FO
         bool AlphaTest {};
         bool DepthWrite {};
         float32_t AlphaTestThreshold {};
-        int32_t DrawWidth {};
-        int32_t DrawHeight {};
         bool DrawInScene {};
         string EffectName {};
         string TextureName {};

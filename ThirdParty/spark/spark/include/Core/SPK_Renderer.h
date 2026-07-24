@@ -104,7 +104,7 @@ namespace SPK
 		virtual  void init(const Particle& particle,DataSet* dataSet) const {};
 		virtual  void update(const Group& group,DataSet* dataSet) const {};
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const = 0;
+		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) = 0;
 		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const = 0;
 	};
 

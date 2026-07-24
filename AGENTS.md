@@ -69,7 +69,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
-- Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface.
+- Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.
 - Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
 - Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
 - Every standalone native module must be created as a complete `.h` + `.cpp` pair and both files must be registered in the owning build source list. A named subsystem/module must never be introduced as a lone header; keep the translation unit as the module anchor even when all current declarations are passive data and no out-of-line implementation is needed yet. Pure template/constexpr/umbrella headers are not standalone modules.

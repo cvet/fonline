@@ -129,6 +129,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.inc"
+    "${FO_ENGINE_ROOT}/Source/Common/SettingsStorage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/SettingsStorage.h"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.cpp"
@@ -297,6 +299,14 @@ AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
+AppendList(FO_ANIMATION_VIEWER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/AnimationViewer.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AnimationViewer.cpp")
+
+AppendList(FO_PARTICLE_VIEWER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleViewer.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleViewer.cpp")
+
 AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
@@ -413,6 +423,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BakerSetup.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CacheStorage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_SettingsStorage.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigBaker.cpp"
@@ -440,6 +451,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GlobalData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImGui.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
@@ -455,6 +467,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSpriteLayout.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSkeletonCompatibility.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSourceLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_OzzAnimation.cpp"

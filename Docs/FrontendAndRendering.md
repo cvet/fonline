@@ -214,8 +214,13 @@ and derives their extrema for every continuous facing angle. Body plus projected
 shadow determines both the animation-wide `DrawRect` and the active logical
 scratch-frame dimensions. The separate view bound prefers `Unarmed + Idle`,
 then any Idle, then a deterministic animation/static fallback; projecting it
-over all directions yields the stable `ViewRect`. Each frame dimension is rounded up to a power of two, and the ground root remains at
-`(DrawWidth / 2, 3 * DrawHeight / 4)`. The view rectangle deliberately excludes
+over all directions yields the stable `ViewRect`. Each logical frame is the **tight**
+projected extent of the current animation (aligned up to the sprite frame scale, not
+padded to a power of two), and the ground root sits at its **exact** projected pixel
+inside that frame (`(-DrawRect.x, -DrawRect.y)`, exposed as `ModelInstance::GetFramePivot()`)
+rather than a fixed `(DrawWidth / 2, 3 * DrawHeight / 4)` fraction. A low or
+centre-origin creature therefore no longer reserves a tall empty frame above a
+fixed anchor. The view rectangle deliberately excludes
 the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
@@ -223,7 +228,16 @@ the model turns or changes animation.
 The automatic logical frame owns the reusable 2x scratch render target. After
 the pose is evaluated, the client combines its per-animation prediction with an
 exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
-their projected shadow. If that exact envelope needs a larger logical frame,
+their projected shadow. This mesh envelope is taken **across all facings**, not just the
+current one: each vertex's projected coordinate traces a sinusoid as the model turns, so
+sampling it at the current facing, +90 and +180 and keeping the harmonic (continuous)
+range yields a facing-independent extent. Runtime layer/equipment meshes (a backpack, a
+held weapon) are not in the baked animation bounds, so this is what keeps the frame a
+**fixed size while the critter turns** instead of resizing each time a facing pushes the
+gear wider. Only currently-emitting particle systems extend this envelope;
+a dormant effect (for example furnace smoke that is not puffing) reserves no frame
+space and is absorbed by the expansion pass if and when it starts emitting. If that
+exact envelope needs a larger logical frame,
 the client expands the frame and rerenders before copying; a bounded retry loop
 rejects a layout that does not converge. Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,

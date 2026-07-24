@@ -467,6 +467,77 @@ Bakers = {}
     CHECK(data_source.IsFileExists("Metadata.fometa-client"));
     CHECK(fs_remove_dir_tree(temp_dir));
 }
+
+TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
+{
+    using namespace BakerTests;
+
+    // Regression: a baker may read another baker's output while the data source is still discovering outputs.
+    // ModelInfoBaker builds a BakerClientEngine during the discovery pass, which reads the baked metadata back
+    // through the data source (re-entrancy). Reindex must publish the input resources before the discovery loop
+    // and each discovered output to the live index as it goes, so this mid-loop on-demand read resolves; before
+    // the fix it found neither and threw MetadataNotFoundException, crashing every standalone tool that boots a
+    // BakerDataSource. A .fo3d input is required to make ModelInfoBaker build the engine at all - the plain
+    // dependency-order case above uses a non-model placeholder, so ModelInfoBaker returns before that point.
+    string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
+    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
+    string model_mesh_path = strex(temp_dir).combine_path("model_input/Body.fbx").str();
+    string metadata_output_dir = strex(temp_dir).combine_path("output/Metadata").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+    REQUIRE(fs_write_file(model_desc_path, string_view {"Model Body.fbx\n"}));
+    REQUIRE(fs_write_file(model_mesh_path, string_view {"placeholder"}));
+
+    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    SetBakerSetupFileWriteTime(metadata_input_path, source_time);
+    SetBakerSetupFileWriteTime(model_desc_path, source_time);
+    SetBakerSetupFileWriteTime(model_mesh_path, source_time);
+
+    // RegisterClientStubMetadata reads the server, client and mapper metadata; write all three newer than the
+    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
+    array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
+
+    for (const string_view target : metadata_targets) {
+        string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
+        REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+        SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
+    }
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile(
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = ModelInfo
+InputDirs = model_input
+IncludePatterns = **/*
+Bakers = {}
+)",
+        strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read.
+    CHECK_NOTHROW(BakerDataSource {&settings});
+
+    BakerDataSource data_source {&settings};
+
+    CHECK(data_source.IsFileExists("Metadata.fometa-server"));
+    CHECK(data_source.IsFileExists("Metadata.fometa-client"));
+    CHECK(data_source.IsFileExists("Metadata.fometa-mapper"));
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
 #endif
 
 TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
