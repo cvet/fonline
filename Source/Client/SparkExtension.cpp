@@ -170,7 +170,6 @@ struct SparkParticleRuntimeSystem::Impl
     mat44 BoundsMatrix {};
     std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
     bool BaseSystemDetached {};
-    bool TiltInProjection {};
 };
 
 static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
@@ -368,10 +367,7 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_impl->TiltInProjection) {
-        return;
-    }
-
+    // Camera-tilt placement does not change that already-emitted SPARK positions live in world space.
     FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
 
     if (delta == vec3 {}) {
@@ -393,8 +389,6 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
     FO_STACK_TRACE_ENTRY();
-
-    _impl->TiltInProjection = setup.TiltInProjection;
 
     mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
     mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
@@ -429,7 +423,6 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
-    _impl->TiltInProjection = setup.TiltInProjection;
 
     // Bake-time bounds are stored in emitter-local space. Fold the system's world placement (bone/entity matrix plus
     // offsets, just applied above) into a single frame transform so a static box lands where the live particles emit

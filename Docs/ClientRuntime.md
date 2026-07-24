@@ -336,7 +336,11 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   quads and trails drive bounded frame expansion after their first update, with
   the advertised canvas retained as the pre-update fallback. Frame changes
   rebase already emitted atlas-space particles so expansion does not move them,
-  and particles force a full-frame crop. A non-default model effect also disables the tight
+  and particles force a full-frame crop. Full-frame cropping does not freeze the
+  frame pivot: expansion still derives the model-origin position from the complete
+  geometry/particle envelope, and a pivot-only change triggers another sizing pose,
+  so added space lands on the side where the effect extends instead of accumulating
+  to the right and bottom. A non-default model effect also disables the tight
   crop; effects that displace vertices beyond ordinary skinned geometry need a
   separate conservative rendering contract because bounds schema version 2 does
   not encode shader displacement.

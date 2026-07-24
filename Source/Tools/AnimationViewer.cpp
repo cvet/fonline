@@ -67,8 +67,16 @@ static constexpr int32_t OVERLAY_CROSS_HALF = 5; // marker cross arm length, scr
 // Distinct bright colours cycled by bone-name hash so a bone's tree entry and
 // its viewport marker share the same colour.
 static constexpr array<ucolor, 10> BONE_PALETTE = {
-    ucolor {239, 83, 80}, ucolor {255, 167, 38}, ucolor {255, 238, 88}, ucolor {156, 204, 101}, ucolor {38, 198, 218},
-    ucolor {66, 165, 245}, ucolor {126, 87, 194}, ucolor {236, 64, 122}, ucolor {141, 110, 99}, ucolor {189, 189, 189},
+    ucolor {239, 83, 80},
+    ucolor {255, 167, 38},
+    ucolor {255, 238, 88},
+    ucolor {156, 204, 101},
+    ucolor {38, 198, 218},
+    ucolor {66, 165, 245},
+    ucolor {126, 87, 194},
+    ucolor {236, 64, 122},
+    ucolor {141, 110, 99},
+    ucolor {189, 189, 189},
 };
 
 // 2D critters have no authored clip table, so the viewer probes the sprite
@@ -760,9 +768,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     // Map a sprite-local pixel to the preview render target (same transform the
     // model draw uses: top-left at sprite_pos, scaled by the residual draw scale;
     // sprite-local geometry already carries the model's own render scale).
-    auto to_screen = [&](ipos32 sl) -> ipos32 {
-        return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)};
-    };
+    auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };
 
     vector<PrimitivePoint> lines;
 

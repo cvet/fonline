@@ -1107,7 +1107,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // baked animation bounds, so this is what keeps their contribution direction-independent.
     mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
     mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
-    auto facing_delta_matrix = [&](float32_t degrees) -> mat44 {
+    auto facing_delta_matrix = [&](float32_t degrees) -> mat44 { //
         return facing_prefix * glm::rotate(mat44 {1.0f}, degrees * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f}) * facing_prefix_inverse;
     };
     mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
@@ -1327,20 +1327,11 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         frame_max_y = std::max(frame_max_y, all_facings_max_y);
     }
 
-    optional<isize32> required_frame_size = CalculateModelSpriteFrameSize(frame_min_x - numeric_cast<float32_t>(root_pos.x) - guard_padding, frame_min_y - numeric_cast<float32_t>(root_pos.y) - guard_padding, frame_max_x - numeric_cast<float32_t>(root_pos.x) + guard_padding, frame_max_y - numeric_cast<float32_t>(root_pos.y) + guard_padding);
+    auto required_frame = CalculateModelSpriteFramePlacement(frame_min_x, frame_min_y, frame_max_x, frame_max_y, root_pos, guard_padding, _layoutDrawSize);
 
-    if (!required_frame_size) {
+    if (!required_frame) {
         return std::nullopt;
     }
-
-    required_frame_size->width = std::max(required_frame_size->width, _layoutDrawSize.width);
-    required_frame_size->height = std::max(required_frame_size->height, _layoutDrawSize.height);
-
-    // Where the model origin sits inside a frame grown to RequiredFrameSize: its offset from the all-facings
-    // envelope's top-left (the required frame's top-left), so a frame expansion keeps the origin anchored.
-    int32_t required_pivot_x = force_full_frame ? root_pos.x : root_pos.x - iround<int32_t>(std::floor(frame_min_x) - guard_padding);
-    int32_t required_pivot_y = force_full_frame ? root_pos.y : root_pos.y - iround<int32_t>(std::floor(frame_min_y) - guard_padding);
-    ipos32 required_pivot = {std::clamp(required_pivot_x, 0, required_frame_size->width), std::clamp(required_pivot_y, 0, required_frame_size->height)};
 
     int32_t left = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_x) - guard_padding, 0.0f, frame_width_float));
     int32_t top = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_y) - guard_padding, 0.0f, frame_height_float));
@@ -1379,8 +1370,8 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     return ModelSpriteBounds {
         .Rect = {left, top, right - left, bottom - top},
-        .RequiredFrameSize = *required_frame_size,
-        .Pivot = required_pivot,
+        .RequiredFrameSize = required_frame->Size,
+        .Pivot = required_frame->Pivot,
         .EnvelopeId =
             {
                 .BodyAnimationIndices = body_animation_indices,

@@ -555,9 +555,7 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
 
     // Map a sprite-local pixel to the preview render target (same transform the
     // effect draw uses: top-left at sprite_pos, scaled by the draw scale).
-    auto to_screen = [&](ipos32 sl) -> ipos32 {
-        return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)};
-    };
+    auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };
 
     vector<PrimitivePoint> lines;
 

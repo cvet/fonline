@@ -143,7 +143,11 @@ void ModelSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
+    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them.
+    _model->PrepareFrameLayout();
+    _model->PoseForSpriteFrame(false);
     _model->PrewarmParticles();
+    _model->RequestRedraw();
 }
 
 void ModelSprite::SetDir(mdir dir)
@@ -422,11 +426,19 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         model_spr->GetModel()->PoseForSpriteFrame(size_pass == 0);
         bounds = model_spr->_model->GetSpriteBounds();
 
-        if (bounds && (bounds->RequiredFrameSize.width > render_frame_size.width || bounds->RequiredFrameSize.height > render_frame_size.height)) {
-            FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", render_frame_size, bounds->RequiredFrameSize);
-            model_spr->_model->SetupFrame(bounds->RequiredFrameSize, bounds->Pivot);
-            render_frame_size = bounds->RequiredFrameSize;
-            continue;
+        if (bounds) {
+            isize32 settled_frame_size {
+                std::max(render_frame_size.width, bounds->RequiredFrameSize.width),
+                std::max(render_frame_size.height, bounds->RequiredFrameSize.height),
+            };
+
+            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame.
+            if (settled_frame_size != render_frame_size || bounds->Pivot != model_spr->GetModel()->GetFramePivot()) {
+                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", render_frame_size, settled_frame_size);
+                model_spr->_model->SetupFrame(settled_frame_size, bounds->Pivot);
+                render_frame_size = settled_frame_size;
+                continue;
+            }
         }
 
         break;

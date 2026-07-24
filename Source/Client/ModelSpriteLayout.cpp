@@ -82,6 +82,36 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
     return isize32 {*width, *height};
 }
 
+auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(guard_padding) || guard_padding < 0.0f || minimum_size.width <= 0 || minimum_size.height <= 0) {
+        return std::nullopt;
+    }
+
+    optional<isize32> required_size = CalculateModelSpriteFrameSize(min_x - numeric_cast<float32_t>(current_pivot.x) - guard_padding, min_y - numeric_cast<float32_t>(current_pivot.y) - guard_padding, max_x - numeric_cast<float32_t>(current_pivot.x) + guard_padding, max_y - numeric_cast<float32_t>(current_pivot.y) + guard_padding);
+
+    if (!required_size) {
+        return std::nullopt;
+    }
+
+    required_size->width = std::max(required_size->width, minimum_size.width);
+    required_size->height = std::max(required_size->height, minimum_size.height);
+
+    float64_t required_pivot_x = numeric_cast<float64_t>(current_pivot.x) - std::round(std::floor(numeric_cast<float64_t>(min_x)) - numeric_cast<float64_t>(guard_padding));
+    float64_t required_pivot_y = numeric_cast<float64_t>(current_pivot.y) - std::round(std::floor(numeric_cast<float64_t>(min_y)) - numeric_cast<float64_t>(guard_padding));
+
+    return ModelSpriteFramePlacement {
+        .Size = *required_size,
+        .Pivot =
+            {
+                iround<int32_t>(std::clamp(required_pivot_x, 0.0, numeric_cast<float64_t>(required_size->width))),
+                iround<int32_t>(std::clamp(required_pivot_y, 0.0, numeric_cast<float64_t>(required_size->height))),
+            },
+    };
+}
+
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>
 {
     FO_STACK_TRACE_ENTRY();

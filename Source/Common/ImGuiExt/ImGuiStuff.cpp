@@ -78,3 +78,16 @@ void ImGuiExt::Init()
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);
     ImGui::CreateContext();
 }
+
+auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (ini_data.empty() || ImGui::GetCurrentContext() == nullptr) {
+        return false;
+    }
+
+    ImGui::LoadIniSettingsFromMemory(ini_data.data(), ini_data.size());
+    ImGui::GetIO().WantSaveIniSettings = false;
+    return true;
+}

@@ -523,7 +523,7 @@ InputDirs = model_input
 IncludePatterns = **/*
 Bakers = {}
 )",
-            strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
+        strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);

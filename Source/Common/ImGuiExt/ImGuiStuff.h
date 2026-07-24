@@ -44,6 +44,7 @@
 namespace ImGuiExt
 {
     void Init();
+    auto LoadIniSettingsIfContext(std::string_view ini_data) -> bool;
 }
 
 FO_BEGIN_NAMESPACE
