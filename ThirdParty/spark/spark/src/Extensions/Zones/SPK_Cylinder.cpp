@@ -135,7 +135,7 @@ namespace SPK
 
 	bool Cylinder::intersects(const Vector3D& v0,const Vector3D& v1,float radius,Vector3D* normal) const
 	{
-		SPK_LOG_INFO("The intersection is not implemented yet with the Cylinder Zone");
+		SPK_LOG_WARNING("The intersection is not implemented yet with the Cylinder Zone");
 		return false;
 	}
 

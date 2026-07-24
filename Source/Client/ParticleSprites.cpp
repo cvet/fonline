@@ -92,7 +92,24 @@ void ParticleSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(dir);
+    // A critter passes its facing here as the effect's look direction; mdir already carries the continuous angle.
+    _lookDirAngle = numeric_cast<float32_t>(dir.angle());
+
+    // Atlas effects bake with a fixed emitter transform, so re-apply it now; scene-drawn effects rebuild their
+    // transform every frame in DrawInScene and pick up the new angle there.
+    if (!_drawInScene) {
+        ApplyAtlasSetup();
+    }
+}
+
+void ParticleSprite::ApplyAtlasSetup() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ParticleSpriteFrame layout = _particle->ComputeSpriteFrame(*_factory->_settings);
+    mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
+
+    _particle->Setup(proj, layout.World, {}, _lookDirAngle, {}, false);
 }
 
 void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
@@ -149,7 +166,7 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     mat44 proj_base = scene_ortho * cam_view * local_to_world;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
-    _particle->Setup(proj, mat44 {1.0f}, {}, 0.0f, vec3 {0.0f, 0.0f, 0.0f}, true);
+    _particle->Setup(proj, mat44 {1.0f}, {}, _lookDirAngle, vec3 {0.0f, 0.0f, 0.0f}, true);
 
     if (_prewarmPending) {
         _particle->Prewarm();
@@ -186,27 +203,22 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
         return nullptr;
     }
 
-    isize32 draw_size = particle->GetDrawSize();
-    float32_t frame_ratio = numeric_cast<float32_t>(draw_size.width) / numeric_cast<float32_t>(draw_size.height);
-    float32_t proj_height = numeric_cast<float32_t>(draw_size.height) * (1.0f / _settings->ModelProjFactor);
-    float32_t proj_width = proj_height * frame_ratio;
-    mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    mat44 world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
+    ParticleSpriteFrame layout = particle->ComputeSpriteFrame(*_settings);
+    mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
 
-    particle->Setup(proj, world, {}, {}, {});
+    particle->Setup(proj, layout.World, {}, {}, {});
 
-    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, draw_size);
+    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, layout.DrawSize);
 
     frect32 atlas_rect;
     atlas_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
-    atlas_rect.width = numeric_cast<float32_t>(draw_size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
-    atlas_rect.height = numeric_cast<float32_t>(draw_size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
+    atlas_rect.width = numeric_cast<float32_t>(layout.DrawSize.width) / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.height = numeric_cast<float32_t>(layout.DrawSize.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
-    ipos32 offset = ipos32(0, draw_size.height / 4);
     bool draw_in_scene = particle->GetDrawInScene();
     auto particle_value = SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle));
-    return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, draw_size, offset, atlas, std::move(atlas_allocation), atlas_rect, this, std::move(particle_value), draw_in_scene);
+    return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, layout.DrawSize, layout.Offset, atlas, std::move(atlas_allocation), atlas_rect, this, std::move(particle_value), draw_in_scene);
 }
 
 auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>

@@ -175,6 +175,7 @@ FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smoo
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
 FIXED_SETTING(vector<string>, Render, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
+FIXED_SETTING(vector<string>, Render, ModelLayerProperties); // Critter properties feeding model layers, as "<PropertyName>=<LayerIndex>" pairs; tools use them to dress a prototype the way the game does
 VARIABLE_SETTING(bool, Render, WindowCentered, true); // If true, window is centered
 VARIABLE_SETTING(bool, Render, WindowResizable, false); // If true, window is resizable
 VARIABLE_SETTING(bool, Render, HeadlessWindow, false); // If true, window is created hidden for off-screen rendering
@@ -189,7 +190,7 @@ FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); 
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
-VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite triangle edges are overlaid for geometry debugging
+VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled

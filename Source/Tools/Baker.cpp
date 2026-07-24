@@ -778,8 +778,11 @@ auto BakerDataSource::Reindex() -> bool
         };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
+        // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
+        // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
+        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
         for (const auto& dir : res_pack.InputDirs) {
-            res_entry.InputDir.AddDirSource(dir, true);
+            res_entry.InputDir.AddDirSource(dir, true, true);
         }
         for (const auto& path : res_pack.InputFiles) {
             string dir = strex(path).extract_dir().str();
@@ -795,11 +798,35 @@ auto BakerDataSource::Reindex() -> bool
         }
     }
 
+    // Input resources must be published before the discovery pass runs the bakers: a baker can read another
+    // baker's output while it discovers its own (for example ModelInfoBaker builds a BakerClientEngine that
+    // reads the baked metadata), which re-enters this data source through _outputResources and resolves the
+    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it.
+    _inputResources = std::move(input_resources);
+
     // Evaluate output files
     unordered_map<string, uint64_t> output_files;
 
+    unordered_map<string, uint64_t> previous_output_files;
+
+    {
+        scoped_lock locker {_outputFilesLocker};
+
+        previous_output_files = _outputFiles;
+    }
+
     auto check_file = [&](string_view path, uint64_t write_time) {
         output_files.insert_or_assign(string(path), write_time);
+
+        // Publish live so a later baker in this same discovery pass can resolve an earlier baker's output
+        // on-demand (bakers run in dependency order, e.g. metadata before model info). Additive so no entry is
+        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes.
+        {
+            scoped_lock locker {_outputFilesLocker};
+
+            _outputFiles.insert_or_assign(string(path), write_time);
+        }
+
         return false;
     };
 
@@ -808,17 +835,15 @@ auto BakerDataSource::Reindex() -> bool
         FO_UNREACHABLE_PLACE();
     };
 
-    for (size_t i = 0; i < input_resources.size(); i++) {
+    for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_pack = res_packs[i];
-        const auto& res_entry = input_resources[i];
+        const auto& res_entry = _inputResources[i];
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources, nullptr, true);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
             bakers[j]->BakeFiles(res_entry.InputFiles);
         }
     }
-
-    _inputResources = std::move(input_resources);
 
     bool input_files_changed = _inputFileIndex != input_file_index;
     _inputFileIndex = std::move(input_file_index);
@@ -828,7 +853,7 @@ auto BakerDataSource::Reindex() -> bool
     {
         scoped_lock locker {_outputFilesLocker};
 
-        changed |= _outputFiles != output_files;
+        changed |= previous_output_files != output_files;
         _outputFiles = std::move(output_files);
     }
 

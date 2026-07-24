@@ -69,9 +69,12 @@ public:
     void DrawInScene(fpos32 scene_pos, float32_t depth) const override;
 
 private:
+    void ApplyAtlasSetup() const;
+
     ptr<ParticleSpriteFactory> _factory;
     bool _drawInScene {};
     mutable bool _prewarmPending {};
+    float32_t _lookDirAngle {};
     mutable unique_ptr<ParticleSystem> _particle;
 };
 

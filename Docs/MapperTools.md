@@ -62,6 +62,81 @@ Do not put authoritative gameplay policy in mapper helpers. The mapper can inspe
 
 Do not document one game's mapper binary name or content pipeline as universal engine behavior. The sections below include Last Frontier examples because this repository is currently embedded there; reusable mechanics are the `MapperEngine` lifecycle, mapper script helper surface, and headless render capability.
 
+## Animation Viewer
+
+`Source/Tools/AnimationViewer.{h,cpp}` is an ImGui window for reviewing critters and their animations without launching the game: pick a prototype, see it rendered at its real in-game size, and click any animation the critter actually has to play it. Open it from the mapper's `View` menu (`Animation viewer`); it starts hidden.
+
+Layout: prototype list with a text filter on the left, preview in the middle, animation list on the right. The preview draws into its own offscreen `RenderTexture` (the pattern `ParticleEditor` uses, including the `IsRenderTargetFlipped()` orientation handling), so it is independent of the map view. On selection the model is **prewarmed**: idle is played with `ModelAnimFlags::NoSmooth` so it settles at once (the first frame is the idle pose, not a cross-fade from the bind pose), and `Sprite::Prewarm()` first establishes the current model pose and attachment-bone transforms, then warms the particle systems so any effects are already emitting at their authored attachment rather than the model origin. If the resulting effect expands the atlas frame, live SPARK particles are rebased with the frame root before the settled pose is rendered. A non-looped clip falls back to idle when it ends (with a normal blend), so the window never sits on a frozen last frame.
+
+The animation and particle viewers persist their layouts and review controls between runs. A host constructed without an active ImGui context (notably headless mapper/unit-test setup) still loads the non-ImGui controls but defers each saved ImGui layout; persisted desktop state must never make headless construction depend on GUI initialization order.
+
+Review controls: facing is an **angle** (degrees), the same currency the engine uses — a 2D sprite takes its hex direction from the angle (`mdir::hex()`) and a 3D model rotates to it (`mdir(angle)`, applied snapped so a review sees the pose at once). The `Angle` slider sets it directly, and **holding the left mouse button and dragging horizontally over the preview turns the critter left/right** (`DRAG_DEG_PER_PX` per pixel); the preview image is an `InvisibleButton` so it captures the drag and the zoom wheel. **Holding the right mouse button and dragging pans** the view (a camera offset applied to the anchor, moving the model, crosshair, and overlays together); the pan resets when a different critter is selected. The default 210° is hex direction 3 (`dir*60+30`), the front-facing review angle. Because the model rotates continuously while a sprite snaps to the nearest hex frame, the same drag reads as smooth turning for models and stepped turning for 2D critters. `Zoom` scales the review (so `1.00x` is exactly what the map shows) and also responds to the mouse wheel while the pointer is over the preview. In the default **sprite** path the model is rendered at native scale into the atlas and that baked frame is then magnified, so zoom shows honest sprite pixelation — exactly what the game's cached sprite looks like blown up. To inspect the model without that quantization, tick **Direct draw** (below), which renders the real geometry at the zoom.
+
+The preview pins the critter **root** — the hex ground point the game stands critters on — to a fixed anchor (horizontal centre, two-thirds down). That point inside a sprite is bottom-centre adjusted by the sprite offset, `(size.width/2 - offset.x, size.height - offset.y)`, exactly the value `MapSprite::GetSpriteRootOffset()` subtracts from the hex screen position when drawing the map (do **not** confuse it with `Sprite::GetOffset()` itself, which is near the sprite top and marks the head, not the feet). The preview places the sprite so that point lands on the anchor (`pos = anchor - root_in_sprite*zoom`). Anchoring by the root instead of centering the per-clip bounds keeps the feet still from clip to clip. A faint crosshair is drawn through the anchor into the render target before the model (`SpriteManager::DrawPoints`, `LineList`), so it reads as a ground reference behind the creature and marks where the root is.
+
+Debug-draw toggles (under the `Angle`/`Zoom` row) overlay a model's authored anchor geometry so a bad rig is visible at a glance:
+
+- **Direct draw** (off by default) — renders a 3D model as real geometry straight into the scene depth buffer (`Sprite::DrawInScene`), instead of through the cached atlas sprite. The model is scaled to the zoom (`ModelInstance::SetScale`) and drawn 1:1, so it stays crisp at any magnification; the ortho depth range is widened for the draw so a scaled-up model is not near/far clipped. Off = the atlas-sprite path (native render magnified — pixelated at high zoom, exactly what the game uses by default, `Render.ModelDirectDraw = false`). 2D critters always use the atlas path.
+- **Root** — the ground crosshair described above.
+- **Name level** — a full-width horizontal line at the height where the critter name would sit: the top of the view rect shifted by the global `Settings->NameOffset` **plus the prototype's own `NameOffset` property** (`proto->GetNameOffset()`), matching `CritterHexView::GetNameTextPos` (`Settings->NameOffset + GetNameOffset()`).
+- **Draw rect** — the whole frame the model rasterizes into (the maximal drawing area): for a 3D model `ModelInstance::GetDrawSize()`, placed so the model origin sits at its exact pixel inside the frame (`ModelInstance::GetFramePivot()`). The frame is the **tight** projected extent of the model's *current animation* (the active clip's baked bounds), with the origin anchored at its real projected position — there is no fixed "root at three-quarters" fraction and no power-of-two padding, so a low or centre-origin creature (a crab) no longer reserves a tall empty frame. It is per-animation and direction-independent (the layout excludes the facing rotation); if a rotated pose or an emitting particle projects past the frame, the render's frame-expansion pass grows it and recomputes the pivot from the expanded envelope, including for particle-driven full-frame crops. The overlay box is positioned from the same pivot, so it always matches where the model actually rasterizes.
+- **View rect** — the visual/logical rect from `Sprite::GetViewSize()`, sourced from the model's stable **idle-pose** bounds (`_viewBounds`), not the current animation. It stays put across the animation set for a given configuration (so an extreme frame such as a strike can extend past it), which is why name/UI text anchors to it. Positioned bottom-centred as `MapSprite::GetViewRect` does.
+
+All overlays are drawn on top of the model (except the root crosshair, which stays behind it) as `LineList` primitives, and rects are scaled by the review zoom while marker crosses keep a fixed screen size.
+
+Below the animation list is a **Model hierarchy** sub-window (3D models only): the model's bone tree from `ModelInformation::GetRootBone()`, each node with a checkbox. Ticking a bone marks its position in the preview with a coloured cross; the tree label and the cross share a colour hashed from the bone name so several enabled bones stay distinguishable. A bone's sprite position comes from `ModelInstance::GetBoneSpritePos()`, which projects the bone's world matrix through the model's frame projection and converts it into the cropped sprite's pixel space (matching `GetSpriteBounds`' bottom-up Y convention), so the marker lands on the bone regardless of clip or zoom. Selecting a different critter clears the enabled set.
+
+`SetFillViewport(true)` makes the window occupy the whole viewport without a title bar or move/resize handles — used by the standalone application, where the window is the entire program.
+
+Prototypes are dressed the way the game dresses them: `Render.ModelLayerProperties` declares `<PropertyName>=<LayerIndex>` pairs, and the viewer reads those properties off the prototype to build the model layer array passed to `PlayAnim`. Which property feeds which layer is game-specific (armor, clothing, hair slots), so it lives in settings rather than engine code; without the setting a critter renders in its bare default layers. A mapped property that is disabled on the host's engine side (e.g. a server-only property under a `ClientSide` engine) is skipped rather than read, so the tool stays generic — it never hard-codes a game property name and never throws on a scope mismatch. This dresses the model with the prototype's own layer values; game-specific dressing beyond that (equipped/starting items resolved through project scripts) is intentionally left to the game, not the engine tool.
+
+Both critter families go through the same `Sprite` surface:
+
+- **3D** (`.fo3d`): the animation list is the model description's authored clip table, read through `ModelInformation::GetAvailableAnimations()` (reachable from an instance via `ModelInstance::GetInformation()`). No probing, so the list cannot contain entries the model does not have.
+- **2D** (sprite sheets): there is no authored clip table, so the viewer probes `ResourceManager::GetCritterAnimFrames(...)` across the declared enum ranges; a resolvable frame set is the evidence that the animation exists.
+
+Animation rows are labelled with resolved enum names (`Unarmed / Idle`); a value the enum does not name falls back to its raw number rather than being hidden, so authored content using unnamed values still shows up.
+
+The window owns no engine services — a host passes `BaseEngine`, `SpriteManager`, `ResourceManager`, and `GameTimer` and calls `Draw()` from its ImGui pass — so any ImGui-capable host can embed it.
+
+### Library boundary
+
+The viewer ships as its own static library, `AnimationViewerLib`, linking only `ClientLib` + `CommonLib`. It has **no mapper dependency**: everything it touches (prototypes, sprite manager, resource manager, model instances) is client-side. `MapperLib` links it to offer the `View` → `Animation viewer` entry, and the standalone application links it directly; neither host is privileged.
+
+### Standalone application
+
+`Source/Applications/AnimationViewerApp.cpp` builds `<DevName>_AnimationViewer`, which boots straight into the viewer with no map, no mapper UI, and no server connection. It owns a plain `ClientEngine` — the client constructor already builds every service the viewer needs (effects, sprite manager with the model/particle/default factories, fonts, indexed resources, prototypes) — and drives its own minimal frame (`FrameAdvance` → `UpdateEffects` → `FontMngr.FrameUpdate` → `BeginScene` → viewer draw → `EndScene`) rather than the client's networked main loop. The window opens on start, since it is the whole application.
+
+Note that constructing a `ClientEngine` also initializes AngelScript and fires the embedding game's client start events, so project client scripts run in this process. They have no window of their own here (only the viewer is drawn), but the startup cost and any side effects of those scripts are present. Skipping them would require an engine-level opt-out, which is deliberately not introduced for a dev tool.
+
+The executable is built alongside the mapper under `FO_BUILD_MAPPER` and lands in its own `AnimationViewer` binary directory.
+
+## Particle Viewer
+
+`Source/Tools/ParticleViewer.{h,cpp}` is a **view-only** ImGui window for previewing particle effects without launching the game, mirroring the Animation Viewer. Open it from the mapper's `View` menu (`Particle viewer`); it starts hidden. Authoring stays in the mapper's `SparkParticleEditor` (`Windows → Particle preview`); this window never edits — it only plays.
+
+Layout: particle-resource list with a text filter on the left, preview on the right. The list is every baked runtime resource the particle sprite factory advertises — `ParticleSpriteFactory::GetExtensions()` (`spk` for Spark, `efk` for Effekseer) enumerated through `Resources.FilterFiles(ext)` — so it reflects the loaded content exactly. Selecting one loads it as a `Sprite` through the ordinary `SpriteManager::LoadSprite(path, AtlasType::MapSprites)` path (which routes `.spk`/`.efk` to `ParticleSpriteFactory`, producing a `ParticleSprite`), then plays it.
+
+A particle does not auto-play on load. The viewer starts it with `ParticleSprite::PlayWithSeed(seed)` (which `Respawn(seed)`s the system and begins emission) and, when **Prewarm** is on, warms it so the window opens mid-effect rather than on a cold start. Each frame it steps `Sprite::Update()`; with **Loop** on it restarts a finite burst once it finishes (`IsPlaying()` goes false) so a one-shot effect keeps replaying. The seed is the per-system random seed: a fixed `Seed` replays a burst identically, **New seed** reseeds and restarts, and **Replay** restarts with the current seed.
+
+The preview draws into its own offscreen `RenderTexture` (the Animation Viewer pattern, including `IsRenderTargetFlipped()` handling) and pins the effect **root** — bottom-centre adjusted by the sprite offset, `(size.width/2 - offset.x, size.height - offset.y)`, the same value `MapSprite::GetSpriteRootOffset()` uses — to a fixed anchor, so it stays put while the effect evolves. `Zoom` (slider + mouse wheel over the preview) magnifies the atlas frame; **holding the right mouse button and dragging pans** (the pan moves effect, crosshair, and overlays together, and resets on a new selection). Atlas-mode effects render through `Update()`→`DrawToAtlas()` then `DrawSpriteSize`; a draw-in-scene effect (`Sprite::IsDirectDraw()`) is drawn with `Sprite::DrawInScene` under a widened ortho depth range instead.
+
+Debug-draw toggles (all off by default):
+
+- **Root** — a faint crosshair through the anchor, drawn into the target before the effect so it reads as a ground reference.
+- **Draw rect** — the whole sprite frame the effect rasterizes into (`Sprite::GetSize()`), its maximal draw area.
+- **Show wireframe** — magenta triangle edges of the actual particle geometry (every SPARK/Effekseer quad), drawn by the particle backends while `Render.DrawWireframe` is set; the viewer scopes the setting to its preview render only, so a hosting mapper scene stays unaffected.
+
+The window owns no engine services — a host passes `BaseEngine` and `SpriteManager` and calls `Draw()` from its ImGui pass. `SetFillViewport(true)` makes it occupy the whole viewport (used by the standalone application).
+
+### Library boundary
+
+The viewer ships as its own static library, `ParticleViewerLib`, linking only `ClientLib` + `CommonLib` — no mapper dependency; everything it touches (sprite manager, particle factory, resource file system) is client-side. `MapperLib` links it to offer the `View` → `Particle viewer` entry, and the standalone application links it directly; neither host is privileged.
+
+### Standalone application
+
+`Source/Applications/ParticleViewerApp.cpp` builds `<DevName>_ParticleViewer`, which boots straight into the viewer with no map, no mapper UI, and no server connection. It owns a plain `ClientEngine` (whose constructor already registers the particle sprite factory and indexes resources) and drives its own minimal frame, exactly like the Animation Viewer app; the same `ClientEngine` startup note applies (project client scripts run in-process). It is built alongside the mapper under `FO_BUILD_MAPPER` and lands in its own `ParticleViewer` binary directory. VS Code tasks: `Build :: LF Particle Viewer` / `Launch Particle Viewer [windows]`.
+
 ## Existing project workflows
 
 ### Interactive particle preview

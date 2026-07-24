@@ -33,6 +33,7 @@
 
 #include "ParticleBaker.h"
 #include "EffekseerCompiler.h"
+#include "EffekseerExtension.h"
 #include "SparkExtension.h"
 
 #if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
@@ -453,14 +454,20 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 }
 
 #if FO_SPARK_PARTICLES
+// Bounds simulation tuning: step the effect at a fixed rate for several particle lifetimes so a continuous emitter
+// reaches steady state and a one-shot burst fully expands, capped so a pathologically long-lived effect cannot
+// stall the bake.
+static constexpr float32_t SPARK_BOUNDS_SIM_STEP = 0.05f;
+static constexpr float32_t SPARK_BOUNDS_LIFETIME_FACTOR = 3.0f;
+static constexpr float32_t SPARK_BOUNDS_MIN_DURATION = 1.0f;
+static constexpr size_t SPARK_BOUNDS_MAX_STEPS = 2000;
+
 void ParticleBaker::BakeSparkFile(const File& file) const
 {
     FO_STACK_TRACE_ENTRY();
 
     string_view source_path = file.GetPath();
     string output_path = strex(source_path).change_file_extension("spk");
-
-    WriteLog("Baking SPARK particle: {} -> {}", source_path, output_path);
 
     // Load SPARK XML
     const_span<uint8_t> file_data = file.GetDataSpan();
@@ -471,6 +478,52 @@ void ParticleBaker::BakeSparkFile(const File& file) const
     }
 
     ValidateSparkTexturePaths(file, system);
+
+    // Precompute the effect's maximal extent by simulating a deterministic run of a throwaway copy, and bake it as
+    // the system bounds. The runtime then frames an emitting instance from this static box (transformed to view
+    // space) instead of enabling per-frame AABB computation. Rendering is not needed to measure particle positions,
+    // so no renderer setup is performed here.
+    {
+        SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
+
+        // Measure in emitter-local space: identity transform so the box captures only the effect's own layout, not
+        // an authored world placement. The runtime folds the actual bone/entity transform back in when framing.
+        simulation->getTransform().reset();
+        simulation->enableAABBComputation(true);
+        simulation->initialize();
+
+        float32_t max_lifetime = 0.0f;
+
+        for (size_t i = 0; i < simulation->getNbGroups(); i++) {
+            max_lifetime = std::max(max_lifetime, simulation->getGroup(i)->getMaxLifeTime());
+        }
+
+        float32_t sim_duration = max_lifetime * SPARK_BOUNDS_LIFETIME_FACTOR + SPARK_BOUNDS_MIN_DURATION;
+        SPK::Vector3D bounds_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+        SPK::Vector3D bounds_max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+        bool any_particles = false;
+        float32_t elapsed = 0.0f;
+
+        for (size_t step = 0; step < SPARK_BOUNDS_MAX_STEPS && elapsed < sim_duration; step++) {
+            simulation->updateParticles(SPARK_BOUNDS_SIM_STEP);
+            elapsed += SPARK_BOUNDS_SIM_STEP;
+
+            if (simulation->getNbParticles() != 0) {
+                bounds_min.setMin(simulation->getAABBMin());
+                bounds_max.setMax(simulation->getAABBMax());
+                any_particles = true;
+            }
+        }
+
+        // Baked bounds are mandatory: a system that never emits a particle across its full simulated lifetime has no
+        // measurable extent and cannot be framed at runtime, so treat it as broken content rather than baking an
+        // empty box.
+        if (!any_particles) {
+            throw ParticleBakerException("SPARK particle system emitted no particles while baking its bounds", source_path);
+        }
+
+        system->setBakedBounds(bounds_min, bounds_max);
+    }
 
     // Save to SPARK binary format
     std::ostringstream oss(std::ios::binary);
@@ -487,6 +540,130 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 #endif
 
 #if FO_EFFEKSEER_PARTICLES
+// Bounds simulation tuning: play the compiled effect on a headless CPU manager and union the world-space extent of
+// its drawn particles across a bounded window. A one-shot effect finishes early; the frame cap bounds a looping effect.
+static constexpr int32_t EFFEKSEER_BOUNDS_MAX_FRAMES = 600;
+static constexpr int32_t EFFEKSEER_BOUNDS_SIM_INSTANCES = 4000;
+
+// Accumulates the world-space positions of the particles drawn during the bounds simulation. Kept in our own code
+// (fed by the collecting renderers below through Effekseer's public renderer interface) so no Effekseer core change is
+// needed to read the instance transforms.
+class EffekseerBoundsCollector final
+{
+public:
+    void Include(const Effekseer::SIMD::Vec3f& position)
+    {
+        _min.x = std::min(_min.x, position.GetX());
+        _min.y = std::min(_min.y, position.GetY());
+        _min.z = std::min(_min.z, position.GetZ());
+        _max.x = std::max(_max.x, position.GetX());
+        _max.y = std::max(_max.y, position.GetY());
+        _max.z = std::max(_max.z, position.GetZ());
+        _hasBounds = true;
+    }
+
+    [[nodiscard]] auto HasBounds() const -> bool { return _hasBounds; }
+    [[nodiscard]] auto GetMin() const -> vec3 { return _min; }
+    [[nodiscard]] auto GetMax() const -> vec3 { return _max; }
+
+private:
+    vec3 _min {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+    vec3 _max {-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()};
+    bool _hasBounds {};
+};
+
+// A minimal renderer that discards geometry and only records each drawn particle's world position (its SRTMatrix43
+// translation, which every renderer family exposes). Instantiated for every family - sprite, ribbon, ring, track,
+// and model - so any effect contributes to the bounds. The body carries no stack-trace marker because it is an inline
+// template method.
+template <typename TRenderer>
+class EffekseerBoundsRenderer final : public TRenderer
+{
+public:
+    explicit EffekseerBoundsRenderer(ptr<EffekseerBoundsCollector> collector) :
+        _collector {collector}
+    {
+    }
+
+    void Rendering(const typename TRenderer::NodeParameter& parameter, const typename TRenderer::InstanceParameter& instance, void* user_data) override
+    {
+        ignore_unused(parameter, user_data);
+        _collector->Include(instance.SRTMatrix43.GetTranslation());
+    }
+
+private:
+    ptr<EffekseerBoundsCollector> _collector;
+};
+
+// Precompute an Effekseer effect's maximal world-space extent by simulating it and collecting the particle positions
+// through our own renderers, so the runtime frames an emitting instance from a static box (like the SPARK baked
+// bounds) instead of measuring live particles every frame.
+static void SimulateEffekseerBounds(string_view source_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The collector outlives the manager (declared first, destroyed last) so the renderers' borrow stays valid for the
+    // manager's whole lifetime.
+    EffekseerBoundsCollector collector;
+    Effekseer::ManagerRef manager = Effekseer::Manager::Create(EFFEKSEER_BOUNDS_SIM_INSTANCES);
+
+    if (!manager) {
+        throw ParticleBakerException("Failed to create an Effekseer manager for bounds simulation", source_path);
+    }
+
+    Effekseer::SettingRef setting = Effekseer::Setting::Create();
+    setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
+    manager->SetSetting(setting);
+
+    ptr<EffekseerBoundsCollector> collector_ptr {&collector};
+    manager->SetSpriteRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::SpriteRenderer>>(collector_ptr));
+    manager->SetRibbonRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RibbonRenderer>>(collector_ptr));
+    manager->SetRingRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RingRenderer>>(collector_ptr));
+    manager->SetTrackRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::TrackRenderer>>(collector_ptr));
+    manager->SetModelRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::ModelRenderer>>(collector_ptr));
+
+    Effekseer::EffectRef effect = Effekseer::Effect::Create(manager, binary.data(), numeric_cast<int32_t>(binary.size()), 1.0f, nullptr);
+
+    if (!effect) {
+        throw ParticleBakerException("Effekseer bounds simulation could not load the compiled effect", source_path);
+    }
+
+    Effekseer::Handle handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+
+    if (handle < 0) {
+        throw ParticleBakerException("Effekseer bounds simulation could not play the effect", source_path);
+    }
+
+    // Draw every frame with culling disabled so the collecting renderers receive every live particle regardless of
+    // camera; the collector reads the camera-independent world transform, so the camera only needs to be finite.
+    Effekseer::Manager::DrawParameter draw_parameter;
+    draw_parameter.CameraCullingMask = manager->GetCameraCullingMaskToShowAllEffects();
+    draw_parameter.CameraPosition = {0.0f, 0.0f, 1.0f};
+    draw_parameter.CameraFrontDirection = {0.0f, 0.0f, -1.0f};
+
+    for (int32_t frame = 0; frame < EFFEKSEER_BOUNDS_MAX_FRAMES && manager->Exists(handle); frame++) {
+        manager->BeginUpdate();
+        manager->UpdateHandle(handle, 1.0f);
+        manager->EndUpdate();
+
+        if (manager->Exists(handle)) {
+            manager->DrawHandle(handle, draw_parameter);
+        }
+    }
+
+    // Bounds are mandatory, so a box is always produced. An effect that draws nothing across the whole window (a
+    // logic-only, GPU-particle, or otherwise non-renderable coverage sample) has no measurable extent, so it gets a
+    // degenerate box at the origin and reserves no frame space at runtime.
+    if (collector.HasBounds()) {
+        out_min = collector.GetMin();
+        out_max = collector.GetMax();
+    }
+    else {
+        out_min = vec3 {};
+        out_max = vec3 {};
+    }
+}
+
 void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
 {
     FO_STACK_TRACE_ENTRY();
@@ -510,10 +687,17 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         }
 
         ValidateEffekseerRuntimeBinary(output_path, compiled.Binary);
+
+        // Precompute the bounds from the pure Effekseer payload, then append them as a trailer so the runtime frames
+        // the effect from a static box. Validation above ran on the untrailered binary.
+        vec3 bounds_min;
+        vec3 bounds_max;
+        SimulateEffekseerBounds(output_path, compiled.Binary, bounds_min, bounds_max);
+        AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max);
+
         vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
         uint64_t dependency_write_time = 0;
         string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
-        WriteLog("Baking Effekseer particle: {} -> {}", file.GetPath(), output_path);
         _context->WriteData(output_path, compiled.Binary);
         string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
 

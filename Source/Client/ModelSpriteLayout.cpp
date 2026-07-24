@@ -65,11 +65,8 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
         return std::nullopt;
     }
 
-    float64_t horizontal_radius = std::max(std::abs(numeric_cast<float64_t>(min_x)), std::abs(numeric_cast<float64_t>(max_x)));
-    float64_t top_distance = std::max(0.0, -numeric_cast<float64_t>(min_y));
-    float64_t bottom_distance = std::max(0.0, numeric_cast<float64_t>(max_y));
-    float64_t required_width = std::ceil(horizontal_radius * 2.0);
-    float64_t required_height = std::ceil(std::max(top_distance * (4.0 / 3.0), bottom_distance * 4.0));
+    float64_t required_width = std::ceil(numeric_cast<float64_t>(max_x) - numeric_cast<float64_t>(min_x));
+    float64_t required_height = std::ceil(numeric_cast<float64_t>(max_y) - numeric_cast<float64_t>(min_y));
 
     if (required_width > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max()) || required_height > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max())) {
         return std::nullopt;
@@ -83,6 +80,36 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
     }
 
     return isize32 {*width, *height};
+}
+
+auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(guard_padding) || guard_padding < 0.0f || minimum_size.width <= 0 || minimum_size.height <= 0) {
+        return std::nullopt;
+    }
+
+    optional<isize32> required_size = CalculateModelSpriteFrameSize(min_x - numeric_cast<float32_t>(current_pivot.x) - guard_padding, min_y - numeric_cast<float32_t>(current_pivot.y) - guard_padding, max_x - numeric_cast<float32_t>(current_pivot.x) + guard_padding, max_y - numeric_cast<float32_t>(current_pivot.y) + guard_padding);
+
+    if (!required_size) {
+        return std::nullopt;
+    }
+
+    required_size->width = std::max(required_size->width, minimum_size.width);
+    required_size->height = std::max(required_size->height, minimum_size.height);
+
+    float64_t required_pivot_x = numeric_cast<float64_t>(current_pivot.x) - std::round(std::floor(numeric_cast<float64_t>(min_x)) - numeric_cast<float64_t>(guard_padding));
+    float64_t required_pivot_y = numeric_cast<float64_t>(current_pivot.y) - std::round(std::floor(numeric_cast<float64_t>(min_y)) - numeric_cast<float64_t>(guard_padding));
+
+    return ModelSpriteFramePlacement {
+        .Size = *required_size,
+        .Pivot =
+            {
+                iround<int32_t>(std::clamp(required_pivot_x, 0.0, numeric_cast<float64_t>(required_size->width))),
+                iround<int32_t>(std::clamp(required_pivot_y, 0.0, numeric_cast<float64_t>(required_size->height))),
+            },
+    };
 }
 
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>
@@ -286,16 +313,14 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
 
     constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
 
-    // Reject beyond the logical limit before the ceiling: std::bit_ceil is undefined once the result is not
-    // representable in its type, so the input must be bounded first. This also subsumes the uint32 range check.
     if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 
-    uint32_t rounded = std::bit_ceil(numeric_cast<uint32_t>(value));
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
+    uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
-    // Still reachable: the ceiling of a value just under the limit rounds up past it.
-    if (rounded > max_logical_frame_dimension) {
+    if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 

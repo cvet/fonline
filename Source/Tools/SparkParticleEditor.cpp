@@ -507,7 +507,9 @@ void SparkParticleEditor::DrawContent()
         return;
     }
 
-    auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
+    ParticleSpriteFrame frame = _impl->Particle->ComputeSpriteFrame(*_impl->Settings);
+    int32_t draw_width = frame.DrawSize.width;
+    int32_t draw_height = frame.DrawSize.height;
     bool can_save_source = strex(_assetPath).get_file_extension() == "spark";
 
     if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
@@ -1579,8 +1581,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
     renderer_changed |= ImGui::Checkbox("DepthWrite", &data.DepthWrite);
     renderer_changed |= ImGui::InputFloat("AlphaThreshold", &data.AlphaTestThreshold);
 
-    renderer_changed |= ImGui::InputInt("DrawWidth", &data.DrawWidth);
-    renderer_changed |= ImGui::InputInt("DrawHeight", &data.DrawHeight);
     renderer_changed |= ImGui::Checkbox("DrawInScene", &data.DrawInScene);
 
     // Effect

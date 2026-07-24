@@ -332,11 +332,15 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   allocation. An atlas
   slot only expands while its active animation/mesh/shadow envelope identity is
   unchanged, then may shrink once when a transition settles or mesh composition
-  changes. Model-attached particles enable SPARK live-AABB computation; emitted
-  quads and trails drive bounded frame expansion after their first update, with
-  the advertised canvas retained as the pre-update fallback. Frame changes
-  rebase already emitted atlas-space particles so expansion does not move them,
-  and particles force a full-frame crop. A non-default model effect also disables the tight
+  changes. An emitting model-attached particle contributes its mandatory
+  bake-time bounds, transformed through the current attachment, without a
+  per-frame live-AABB walk. Frame changes rebase already emitted atlas-space
+  particles so expansion does not move them, and particles force a full-frame
+  crop. Full-frame cropping does not freeze the
+  frame pivot: expansion still derives the model-origin position from the complete
+  geometry/particle envelope, and a pivot-only change triggers another sizing pose,
+  so added space lands on the side where the effect extends instead of accumulating
+  to the right and bottom. A non-default model effect also disables the tight
   crop; effects that displace vertices beyond ordinary skinned geometry need a
   separate conservative rendering contract because bounds schema version 2 does
   not encode shader displacement.
@@ -356,6 +360,14 @@ selects one by resource extension. Every live particle owns exactly one
 `ParticleRuntimeSystem`; common timing, scale, and render scheduling stay in
 `ParticleSystem`, while simulation and backend-specific rendering are virtual
 runtime operations.
+
+Model attachments do not own a `ParticleSprite`, so their simulation is advanced
+explicitly by `ModelInstance::ProcessAnimation` after the current bone transform is
+applied. The particle receives the model's logical frame delta; zero-delta sizing
+re-poses update placement without advancing emission a second time. Prewarming
+defers a model-clock reset until the next real animation advance, preventing time
+spent waiting off-screen from becoming one large first update that destroys the
+warmed particle-age distribution.
 
 Resource invalidation follows the same neutral boundary:
 `SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
