@@ -145,7 +145,7 @@ void ModelSprite::Prewarm()
 
     // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them.
     _model->PrepareFrameLayout();
-    _model->PoseForSpriteFrame(false);
+    _model->PoseSpriteFrame(false);
     _model->PrewarmParticles();
     _model->RequestRedraw();
 }
@@ -216,7 +216,7 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     mat44 proj_base = scene_ortho * cam_view;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
-    _model->Draw(proj, settings.ModelProjFactor);
+    _model->DrawInScene(proj, settings.ModelProjFactor);
 }
 
 void ModelSprite::SetupFrame(isize32 frame_size)
@@ -423,7 +423,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {
-        model_spr->GetModel()->PoseForSpriteFrame(size_pass == 0);
+        model_spr->GetModel()->PoseSpriteFrame(size_pass == 0);
         bounds = model_spr->_model->GetSpriteBounds();
 
         if (bounds) {
@@ -461,7 +461,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
-    model_spr->GetModel()->RenderSpriteFrame();
+    model_spr->GetModel()->DrawSpriteFrame();
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_model_rt_on_fail.release();
 

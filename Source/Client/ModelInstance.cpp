@@ -117,7 +117,7 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-void ModelInstance::MoveModel(ipos32 offset)
+void ModelInstance::AddMoveOffset(ipos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -784,7 +784,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     return mesh_changed;
 }
 
-void ModelInstance::UpdatePose(bool staying_pose, bool moving, int32_t moving_speed)
+void ModelInstance::SetMovementState(bool staying_pose, bool moving, int32_t moving_speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2695,46 +2695,39 @@ auto ModelInstance::NeedDraw() const -> bool
     return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_modelMngr->_animUpdateThreshold);
 }
 
-void ModelInstance::PoseForSpriteFrame(bool advance_animation)
+void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Pose the model into its sprite frame without rendering. GetSpriteBounds derives the frame extent from the posed
     // skeleton and the baked particle box, never from rendered pixels, so DrawModelToAtlas sizes the frame from this
-    // pose and only then renders once (RenderSpriteFrame) at the final size - it never renders just to measure.
+    // pose and only then draws once (DrawSpriteFrame) at the final size - it never draws just to measure.
     _drawProj = _frameProj;
     _directSceneDraw = false;
-    PoseModel(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
+    Pose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
 }
 
-void ModelInstance::RenderSpriteFrame()
+void ModelInstance::DrawSpriteFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Render the pose established by the preceding PoseForSpriteFrame into the currently bound sprite render target.
-    RenderModel(true);
+    // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target.
+    DrawPosed(true);
 }
 
-void ModelInstance::Draw(const mat44& proj, float32_t scale)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawFrame(proj, scale, true, true, true);
-}
-
-void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles, bool advance_animation)
+void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 {
     FO_STACK_TRACE_ENTRY();
 
     _drawProj = proj;
-    _directSceneDraw = direct_scene;
+    _directSceneDraw = true;
     auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
 
-    PoseModel(scale, advance_animation);
-    RenderModel(draw_particles);
+    Pose(scale, true);
+    DrawPosed(true);
 }
 
-void ModelInstance::PoseModel(float32_t scale, bool advance_animation)
+void ModelInstance::Pose(float32_t scale, bool advance_animation)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2769,7 +2762,7 @@ void ModelInstance::PoseModel(float32_t scale, bool advance_animation)
     _spriteBoundsPoseReady = !_directSceneDraw;
 }
 
-void ModelInstance::RenderModel(bool draw_particles)
+void ModelInstance::DrawPosed(bool draw_particles)
 {
     FO_STACK_TRACE_ENTRY();
 

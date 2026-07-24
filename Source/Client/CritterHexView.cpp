@@ -326,7 +326,7 @@ void CritterHexView::RefreshView(bool no_smooth)
             moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving->GetSpeed()) / scale);
         }
 
-        _model->UpdatePose(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
+        _model->SetMovementState(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
     }
 #endif
 
@@ -736,7 +736,7 @@ void CritterHexView::ProcessMoving()
             model_offset.x -= hex_offset.x - progress.HexOffset.x;
             model_offset.y -= hex_offset.y - progress.HexOffset.y;
 
-            _model->MoveModel(model_offset);
+            _model->AddMoveOffset(model_offset);
         }
 #endif
 

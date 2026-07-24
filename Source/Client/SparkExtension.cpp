@@ -327,7 +327,6 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Camera-tilt placement does not change that already-emitted SPARK positions live in world space.
     FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
 
     if (delta == vec3 {}) {
@@ -376,11 +375,6 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
     result_position_matrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
 
-    // SPARK sizes a quad from the group's graphical radius in absolute world units and never applies the system
-    // transform to it, so a scaled placement would move and space the particles while leaving each sprite at its
-    // authored size - furnace smoke on a critter drew at half the model's scale in the atlas path. Effekseer scales its
-    // sprites with the effect's root matrix; mirror that here by rescaling each group's authored radius, so the whole
-    // effect follows its placement. Validated before the first mutation so a broken placement cannot half-apply.
     float32_t system_scale = std::max({glm::length(vec3 {result_position_matrix[0]}), glm::length(vec3 {result_position_matrix[1]}), glm::length(vec3 {result_position_matrix[2]})});
     FO_VERIFY_AND_THROW(std::isfinite(system_scale) && system_scale > 0.0f, "SPARK particle system placement has a degenerate scale", _impl->Path, system_scale);
     FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() == _impl->BaseSystem->getNbGroups(), "SPARK runtime system lost groups of its base system", _impl->Path, _impl->RuntimeSystem->getNbGroups(), _impl->BaseSystem->getNbGroups());
@@ -402,9 +396,6 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
 
-    // Bake-time bounds are stored in emitter-local space. Fold the system's world placement (bone/entity matrix plus
-    // offsets, just applied above) into a single frame transform so a static box lands where the live particles emit
-    // instead of at the model origin. getWorld() shares glm's column-contiguous layout that set() consumed.
     ptr<const float32_t> system_world_matrix_values = _impl->RuntimeSystem->getTransform().getWorld();
     _impl->BoundsMatrix = _impl->ViewMatrix * glm::make_mat4(system_world_matrix_values.get());
 }
@@ -815,11 +806,6 @@ namespace SPK::FO
         }
     }
 
-    // SPARK's world-space AABB for the group: every particle position grown by the quad's half-diagonal, the farthest
-    // a corner can reach once the in-plane angle interpolator turns it. This answers SPK::Renderer's interface, which
-    // only asks for a world box. It is not what sizes a sprite frame - the frame folds the position box through the
-    // model transform and adds the billboard radius in the view plane, because a camera-facing quad is neither scaled
-    // by that transform nor rotated by the model's facing.
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
     {
         FO_STACK_TRACE_ENTRY();

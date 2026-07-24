@@ -64,17 +64,12 @@ void ParticleSprite::SetDrawInScene(bool draw_in_scene)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Switches an instance between the two render paths the authored "draw in scene" flag selects by default:
-    // rasterizing into the sprite frame through the atlas, or drawing as real geometry into the scene. A preview
-    // host overrides it to inspect an effect's actual geometry instead of its baked frame.
     if (_drawInScene == draw_in_scene) {
         return;
     }
 
     _drawInScene = draw_in_scene;
 
-    // Scene drawing rebuilds the emitter transform every frame in DrawInScene; the atlas path bakes a fixed one, so
-    // it has to be re-applied when switching back.
     if (!_drawInScene) {
         ApplyAtlasSetup();
     }
@@ -112,11 +107,8 @@ void ParticleSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // A critter passes its facing here as the effect's look direction; mdir already carries the continuous angle.
     _lookDirAngle = numeric_cast<float32_t>(dir.angle());
 
-    // Atlas effects bake with a fixed emitter transform, so re-apply it now; scene-drawn effects rebuild their
-    // transform every frame in DrawInScene and pick up the new angle there.
     if (!_drawInScene) {
         ApplyAtlasSetup();
     }

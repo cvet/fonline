@@ -381,10 +381,6 @@ void ParticleSystem::Update()
     FO_STACK_TRACE_ENTRY();
 
     nanotime time = GetTime();
-
-    // Use the full-resolution delta. Truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
-    // preview running at a very high frame rate the effect never accumulates time and looks frozen until an occasional
-    // slower frame (e.g. while the mouse moves) crosses the 1 ms boundary.
     float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
 
     if (_forceDraw && delta_seconds <= 0.0f) {

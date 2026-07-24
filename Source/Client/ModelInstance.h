@@ -114,11 +114,11 @@ public:
     void SetScale(float32_t sx, float32_t sy, float32_t sz);
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
-    void PoseForSpriteFrame(bool advance_animation);
-    void RenderSpriteFrame();
-    void Draw(const mat44& proj, float32_t scale);
-    void MoveModel(ipos32 offset);
-    void UpdatePose(bool staying_pose, bool moving, int32_t moving_speed);
+    void PoseSpriteFrame(bool advance_animation);
+    void DrawSpriteFrame();
+    void DrawInScene(const mat44& proj, float32_t scale);
+    void AddMoveOffset(ipos32 offset);
+    void SetMovementState(bool staying_pose, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
@@ -182,9 +182,8 @@ private:
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
     void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
-    void PoseModel(float32_t scale, bool advance_animation);
-    void RenderModel(bool draw_particles);
-    void DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles, bool advance_animation);
+    void Pose(float32_t scale, bool advance_animation);
+    void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
     void SnapshotAnimationWorldMatrices();
     void BuildRestWorldMatrices();
