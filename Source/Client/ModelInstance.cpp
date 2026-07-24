@@ -102,6 +102,16 @@ void ModelInstance::PrewarmParticles()
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_modelParticles.empty()) {
+        return;
+    }
+
+    // Prewarming owns its own simulated time. Reset the model clock on the next actual animation advance rather than
+    // here: a newly prepared model may still wait off-screen before its first draw. Feeding that wall time into every
+    // attached emitter as one giant frame would expire the warmed distribution and respawn a continuous effect as one
+    // detached-looking clump.
+    _resetDrawTimeOnNextAnimationAdvance = true;
+
     for (auto& model_particle : _modelParticles) {
         model_particle.Particle->Prewarm();
     }
@@ -1604,6 +1614,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     for (auto& model_particle : _modelParticles) {
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
         vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+
         // The camera tilt is always supplied by the transform the particle inherits from the model, never by the
         // particle's own view matrix: in the atlas path it is baked into the bone world matrix (MakeRootTransformation
         // applies _matRot with the root world placement outermost), and in the direct-scene path it lives in _drawProj.
@@ -1620,6 +1631,11 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         else {
             model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
+
+        // Model-attached effects do not own a ParticleSprite update loop. Advance them from the same logical delta as
+        // the skeletal pose, after applying the current attachment transform, so continuous emitters remain visible
+        // and follow animated bones. Frame-layout re-poses pass zero and therefore never advance the effect twice.
+        model_particle.Particle->Update(std::max(elapsed, 0.0f));
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
@@ -2701,7 +2717,11 @@ void ModelInstance::PoseModel(float32_t scale, bool advance_animation)
         // Full-resolution delta: truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
         // viewer running at a very high frame rate the animation never accumulates time and looks frozen until a
         // slower frame crosses the 1 ms boundary.
-        dt = numeric_cast<float32_t>((time - _lastDrawTime).nanoseconds()) * 1e-9f;
+        if (!_resetDrawTimeOnNextAnimationAdvance) {
+            dt = numeric_cast<float32_t>((time - _lastDrawTime).nanoseconds()) * 1e-9f;
+        }
+
+        _resetDrawTimeOnNextAnimationAdvance = false;
         _lastDrawTime = time;
     }
 

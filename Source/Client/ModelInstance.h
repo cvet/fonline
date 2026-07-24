@@ -225,6 +225,7 @@ private:
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
+    bool _resetDrawTimeOnNextAnimationAdvance {};
     mat44 _matRot {};
     mat44 _matScale {1.0f};
     mat44 _matScaleBase {};

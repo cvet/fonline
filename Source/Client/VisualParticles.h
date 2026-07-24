@@ -86,6 +86,7 @@ public:
     void Respawn();
     auto Respawn(int32_t seed) -> bool;
     void Update();
+    void Update(float32_t delta_seconds);
     void RefreshRenderTransform();
     void Draw();
     void SetScale(float32_t scale);

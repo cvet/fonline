@@ -835,6 +835,28 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
     }
 }
 
+TEST_CASE("Particle facade advances a model-attached effect from an explicit frame delta", "[particle][effekseer-runtime]")
+{
+    EffekseerRuntimeTestRig rig;
+    optional<ParticleSystem> created_system = rig.CreateManagedSystem();
+    REQUIRE(created_system);
+
+    ParticleSystem& system = *created_system;
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
+    REQUIRE(system.Respawn(977));
+
+    constexpr float32_t frame_delta = 1.0f / 30.0f;
+    system.Update(frame_delta);
+
+    CHECK(system.GetElapsedTime() == Catch::Approx(frame_delta));
+    CHECK(system.IsActive());
+
+    rig.ClearDraws();
+    system.Draw();
+    CheckEffekseerFixtureGeometry(rig.GetDraws());
+}
+
 TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[particle][effekseer-runtime]")
 {
     EffekseerRuntimeTestRig rig {false};

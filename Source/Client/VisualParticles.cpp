@@ -390,7 +390,14 @@ void ParticleSystem::Update()
     }
 
     _lastUpdateTime = time;
+    Update(delta_seconds);
+}
 
+void ParticleSystem::Update(float32_t delta_seconds)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
     bool was_active = _runtimeSystem->IsActive();
 
     if (!was_active) {
