@@ -38,7 +38,7 @@
 #include "AnyData.h"
 #include "CacheStorage.h"
 #include "Client.h"
-#include "SettingsStore.h"
+#include "SettingsStorage.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
@@ -478,7 +478,7 @@ private:
 
     // Per-user editor settings (currently the ImGui window layout). Registry-backed on Windows, file-backed
     // elsewhere; distinct from the resource Cache so tool preferences do not live in the baked-resource store.
-    SettingsStore _uiSettings {"Mapper"};
+    SettingsStorage _uiSettings {"Mapper"};
 };
 
 FO_END_NAMESPACE

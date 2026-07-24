@@ -37,7 +37,7 @@
 
 #include "EngineBase.h"
 #include "ResourceManager.h"
-#include "SettingsStore.h"
+#include "SettingsStorage.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -120,7 +120,7 @@ private:
     ptr<SpriteManager> _sprMngr;
     ptr<ResourceManager> _resMngr;
     ptr<GameTimer> _gameTime;
-    SettingsStore _settings {"AnimationViewer"};
+    SettingsStorage _settings {"AnimationViewer"};
 
     bool _visible {};
     bool _fillViewport {};

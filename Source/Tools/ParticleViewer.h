@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
-#include "SettingsStore.h"
+#include "SettingsStorage.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -99,7 +99,7 @@ private:
 
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
-    SettingsStore _settings {"ParticleViewer"};
+    SettingsStorage _settings {"ParticleViewer"};
 
     bool _visible {};
     bool _fillViewport {};

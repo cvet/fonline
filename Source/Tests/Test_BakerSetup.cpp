@@ -509,7 +509,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
 
-    auto config = ConfigFile("BakerDataSourceReentrantMetadata.fomain",
+    auto config = ConfigFile(
         strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]

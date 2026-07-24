@@ -31,8 +31,7 @@
 // SOFTWARE.
 //
 
-#include "SettingsStore.h"
-
+#include "SettingsStorage.h"
 #include "CacheStorage.h"
 
 #if FO_WINDOWS
@@ -43,18 +42,18 @@
 
 FO_BEGIN_NAMESPACE
 
-// Backend of SettingsStore. Values are always stored as strings (typed accessors serialize through them), so the
+// Backend of SettingsStorage. Values are always stored as strings (typed accessors serialize through them), so the
 // registry and the file backend behave identically. On Windows a value is a REG_SZ under the application subkey;
 // elsewhere it is one entry in a per-application CacheStorage.
-class SettingsStoreImpl
+class SettingsStorageImpl
 {
 public:
-    explicit SettingsStoreImpl(string_view app_name);
-    SettingsStoreImpl(const SettingsStoreImpl&) = delete;
-    SettingsStoreImpl(SettingsStoreImpl&&) noexcept = delete;
-    auto operator=(const SettingsStoreImpl&) = delete;
-    auto operator=(SettingsStoreImpl&&) noexcept = delete;
-    ~SettingsStoreImpl() = default;
+    explicit SettingsStorageImpl(string_view app_name);
+    SettingsStorageImpl(const SettingsStorageImpl&) = delete;
+    SettingsStorageImpl(SettingsStorageImpl&&) noexcept = delete;
+    auto operator=(const SettingsStorageImpl&) = delete;
+    auto operator=(SettingsStorageImpl&&) noexcept = delete;
+    ~SettingsStorageImpl() = default;
 
     [[nodiscard]] auto HasEntry(string_view key) const -> bool;
     [[nodiscard]] auto GetEntry(string_view key) const -> optional<string>;
@@ -147,7 +146,7 @@ static void RegistryDeleteValue(const string& sub_key, string_view name)
 
 #endif
 
-SettingsStoreImpl::SettingsStoreImpl(string_view app_name)
+SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -167,14 +166,14 @@ SettingsStoreImpl::SettingsStoreImpl(string_view app_name)
 #endif
 }
 
-auto SettingsStoreImpl::HasEntry(string_view key) const -> bool
+auto SettingsStorageImpl::HasEntry(string_view key) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return GetEntry(key).has_value();
 }
 
-auto SettingsStoreImpl::GetEntry(string_view key) const -> optional<string>
+auto SettingsStorageImpl::GetEntry(string_view key) const -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -191,7 +190,7 @@ auto SettingsStoreImpl::GetEntry(string_view key) const -> optional<string>
 #endif
 }
 
-void SettingsStoreImpl::SetEntry(string_view key, string_view value)
+void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -206,7 +205,7 @@ void SettingsStoreImpl::SetEntry(string_view key, string_view value)
 #endif
 }
 
-void SettingsStoreImpl::RemoveEntry(string_view key)
+void SettingsStorageImpl::RemoveEntry(string_view key)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -221,23 +220,23 @@ void SettingsStoreImpl::RemoveEntry(string_view key)
 #endif
 }
 
-SettingsStore::SettingsStore(string_view app_name) :
-    _impl {SafeAlloc::MakeUnique<SettingsStoreImpl>(app_name)}
+SettingsStorage::SettingsStorage(string_view app_name) :
+    _impl {SafeAlloc::MakeUnique<SettingsStorageImpl>(app_name)}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-SettingsStore::SettingsStore(SettingsStore&&) noexcept = default;
-SettingsStore::~SettingsStore() = default;
+SettingsStorage::SettingsStorage(SettingsStorage&&) noexcept = default;
+SettingsStorage::~SettingsStorage() = default;
 
-auto SettingsStore::HasKey(string_view key) const -> bool
+auto SettingsStorage::HasKey(string_view key) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return _impl->HasEntry(key);
 }
 
-auto SettingsStore::GetString(string_view key, string_view default_value) const -> string
+auto SettingsStorage::GetString(string_view key, string_view default_value) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -245,7 +244,7 @@ auto SettingsStore::GetString(string_view key, string_view default_value) const 
     return entry ? *entry : string(default_value);
 }
 
-auto SettingsStore::GetInt(string_view key, int64_t default_value) const -> int64_t
+auto SettingsStorage::GetInt(string_view key, int64_t default_value) const -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -253,7 +252,7 @@ auto SettingsStore::GetInt(string_view key, int64_t default_value) const -> int6
     return entry ? strex(*entry).to_int64() : default_value;
 }
 
-auto SettingsStore::GetBool(string_view key, bool default_value) const -> bool
+auto SettingsStorage::GetBool(string_view key, bool default_value) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -261,7 +260,7 @@ auto SettingsStore::GetBool(string_view key, bool default_value) const -> bool
     return entry ? strex(*entry).to_bool() : default_value;
 }
 
-auto SettingsStore::GetFloat(string_view key, float64_t default_value) const -> float64_t
+auto SettingsStorage::GetFloat(string_view key, float64_t default_value) const -> float64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -269,35 +268,35 @@ auto SettingsStore::GetFloat(string_view key, float64_t default_value) const -> 
     return entry ? strex(*entry).to_float64() : default_value;
 }
 
-void SettingsStore::SetString(string_view key, string_view value)
+void SettingsStorage::SetString(string_view key, string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->SetEntry(key, value);
 }
 
-void SettingsStore::SetInt(string_view key, int64_t value)
+void SettingsStorage::SetInt(string_view key, int64_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->SetEntry(key, strex("{}", value).str());
 }
 
-void SettingsStore::SetBool(string_view key, bool value)
+void SettingsStorage::SetBool(string_view key, bool value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->SetEntry(key, value ? "1" : "0");
 }
 
-void SettingsStore::SetFloat(string_view key, float64_t value)
+void SettingsStorage::SetFloat(string_view key, float64_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->SetEntry(key, strex("{}", value).str());
 }
 
-void SettingsStore::Remove(string_view key)
+void SettingsStorage::Remove(string_view key)
 {
     FO_STACK_TRACE_ENTRY();
 

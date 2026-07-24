@@ -1,14 +1,14 @@
 #include "catch_amalgamated.hpp"
 
-#include "SettingsStore.h"
+#include "SettingsStorage.h"
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("SettingsStore")
+TEST_CASE("SettingsStorage")
 {
     // Uses the real platform backend (registry on Windows, file store elsewhere) under a dedicated application
     // name so it never touches a tool's real settings. Every key is removed after use to leave no residue.
-    SettingsStore store {"Test_SettingsStore"};
+    SettingsStorage store {"Test_SettingsStorage"};
 
     for (const string_view key : {"str", "multiline", "int", "bool_true", "bool_false", "float"}) {
         store.Remove(key);

@@ -37,22 +37,22 @@
 
 FO_BEGIN_NAMESPACE
 
-class SettingsStoreImpl;
+class SettingsStorageImpl;
 
 // Small per-user key/value store for tool and editor settings (ImGui window layout, editor options, last
 // selection, ...). Values are scoped by an application name so different tools never collide. On Windows the
 // backing store is the registry under HKCU\Software\FOnline\<app_name>; on other platforms it is a file store
 // under the per-user data directory. Persistence is best-effort: a backend failure is logged, never thrown, so a
 // tool never dies because its settings could not be written.
-class SettingsStore
+class SettingsStorage
 {
 public:
-    explicit SettingsStore(string_view app_name);
-    SettingsStore(const SettingsStore&) = delete;
-    SettingsStore(SettingsStore&&) noexcept;
-    auto operator=(const SettingsStore&) = delete;
-    auto operator=(SettingsStore&&) noexcept = delete;
-    ~SettingsStore();
+    explicit SettingsStorage(string_view app_name);
+    SettingsStorage(const SettingsStorage&) = delete;
+    SettingsStorage(SettingsStorage&&) noexcept;
+    auto operator=(const SettingsStorage&) = delete;
+    auto operator=(SettingsStorage&&) noexcept = delete;
+    ~SettingsStorage();
 
     [[nodiscard]] auto HasKey(string_view key) const -> bool;
     [[nodiscard]] auto GetString(string_view key, string_view default_value = "") const -> string;
@@ -67,7 +67,7 @@ public:
     void Remove(string_view key);
 
 private:
-    unique_ptr<SettingsStoreImpl> _impl;
+    unique_ptr<SettingsStorageImpl> _impl;
 };
 
 FO_END_NAMESPACE
