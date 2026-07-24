@@ -78,7 +78,7 @@ static auto MakeValidModelSourceAsset(string_view path, uint64_t write_time) -> 
 
 TEST_CASE("ModelSourceAssetValidationRejectsInvalidSourceData")
 {
-    const ModelSourceAsset valid = MakeValidModelSourceAsset("Models/Test.fbx", 17);
+    ModelSourceAsset valid = MakeValidModelSourceAsset("Models/Test.fbx", 17);
     REQUIRE_NOTHROW(ValidateModelSourceAsset(valid));
 
     SECTION("NonFiniteRestTransform")
@@ -225,14 +225,14 @@ TEST_CASE("ModelSourceAssetCacheLoadsOneSharedAssetForParallelCallers")
 {
     BakerTests::MemoryFileSet source_files {"ModelSourceCache"};
     source_files.AddTextFile("Models/Test.fbx", "callback fixture", 73);
-    const FileCollection files = source_files.GetFileSystem().GetAllFiles();
+    FileCollection files = source_files.GetFileSystem().GetAllFiles();
     std::atomic<size_t> load_count {};
     std::promise<void> load_entered_promise;
     std::future<void> load_entered = load_entered_promise.get_future();
     std::promise<void> release_load_promise;
-    const std::shared_future<void> release_load = release_load_promise.get_future().share();
+    std::shared_future<void> release_load = release_load_promise.get_future().share();
     bool load_released = false;
-    const auto release_load_guard = scope_exit([&]() noexcept {
+    auto release_load_guard = scope_exit([&]() noexcept {
         if (!load_released) {
             safe_call([&] { release_load_promise.set_value(); });
         }
@@ -255,7 +255,7 @@ TEST_CASE("ModelSourceAssetCacheLoadsOneSharedAssetForParallelCallers")
     REQUIRE(load_entered.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
     release_load_promise.set_value();
     load_released = true;
-    const shared_ptr<const ModelSourceAsset> first = loads.front().get();
+    shared_ptr<const ModelSourceAsset> first = loads.front().get();
     REQUIRE(first);
     CHECK(first->FileName == "Models/Test.fbx");
     CHECK(first->WriteTime == 73);
@@ -272,14 +272,14 @@ TEST_CASE("ModelSourceAssetCacheFansOutOneLoadException")
 {
     BakerTests::MemoryFileSet source_files {"ModelSourceCacheFailure"};
     source_files.AddTextFile("Models/Broken.fbx", "callback fixture", 11);
-    const FileCollection files = source_files.GetFileSystem().GetAllFiles();
+    FileCollection files = source_files.GetFileSystem().GetAllFiles();
     std::atomic<size_t> load_count {};
     std::promise<void> load_entered_promise;
     std::future<void> load_entered = load_entered_promise.get_future();
     std::promise<void> release_load_promise;
-    const std::shared_future<void> release_load = release_load_promise.get_future().share();
+    std::shared_future<void> release_load = release_load_promise.get_future().share();
     bool load_released = false;
-    const auto release_load_guard = scope_exit([&]() noexcept {
+    auto release_load_guard = scope_exit([&]() noexcept {
         if (!load_released) {
             safe_call([&] { release_load_promise.set_value(); });
         }
@@ -323,7 +323,7 @@ TEST_CASE("ModelSourceAssetCacheFansOutOneLoadException")
 
 TEST_CASE("ModelSourceAssetCacheRejectsMissingPathBeforeCallback")
 {
-    const FileCollection files {vector<FileHeader> {}};
+    FileCollection files {vector<FileHeader> {}};
     size_t load_count = 0;
     ModelSourceAssetCache cache {files, [&](string_view path, const File& file) {
                                      load_count++;
@@ -339,7 +339,7 @@ TEST_CASE("LoadModelSourceAssetRejectsMalformedInput")
 {
     BakerTests::MemoryFileSet source_files {"ModelSourceMalformed"};
     source_files.AddTextFile("Models/Malformed.fbx", "this is not an FBX file", 5);
-    const File file = source_files.ReadFile("Models/Malformed.fbx");
+    File file = source_files.ReadFile("Models/Malformed.fbx");
 
     REQUIRE(file);
     CHECK_THROWS_WITH(LoadModelSourceAsset("Models/Malformed.fbx", file), Catch::Matchers::ContainsSubstring("Unable to load model source"));
@@ -355,10 +355,10 @@ f 1 2 3
 )";
     BakerTests::MemoryFileSet source_files {"ModelSourceObj"};
     source_files.AddTextFile("Models/Triangle.obj", source, 29);
-    const File file = source_files.ReadFile("Models/Triangle.obj");
+    File file = source_files.ReadFile("Models/Triangle.obj");
 
     REQUIRE(file);
-    const ModelSourceAsset asset = LoadModelSourceAsset("Models/Triangle.obj", file);
+    ModelSourceAsset asset = LoadModelSourceAsset("Models/Triangle.obj", file);
     CHECK(asset.FileName == "Models/Triangle.obj");
     CHECK(asset.WriteTime == 29);
     CHECK(asset.Skeleton.FileName == asset.FileName);
@@ -400,10 +400,10 @@ Connections:  {
 )";
     BakerTests::MemoryFileSet source_files {"ModelSourceAsciiFbx"};
     source_files.AddTextFile("Models/TestRoot.fbx", source, 31);
-    const File file = source_files.ReadFile("Models/TestRoot.fbx");
+    File file = source_files.ReadFile("Models/TestRoot.fbx");
 
     REQUIRE(file);
-    const ModelSourceAsset asset = LoadModelSourceAsset("Models/TestRoot.fbx", file);
+    ModelSourceAsset asset = LoadModelSourceAsset("Models/TestRoot.fbx", file);
     REQUIRE(asset.Skeleton.Joints.size() == 2);
     CHECK(asset.Skeleton.Joints[0].Hierarchy == vector<string> {""});
     CHECK(asset.Skeleton.Joints[1].Name == "TestRoot");

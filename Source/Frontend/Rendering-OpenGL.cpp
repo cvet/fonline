@@ -151,7 +151,7 @@ static auto LoadOpenGlFunction(const char* name) noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const SDL_FunctionPointer function = SDL_GL_GetProcAddress(name);
+    SDL_FunctionPointer function = SDL_GL_GetProcAddress(name);
     return reinterpret_cast<T>(function); // NOLINT(clang-diagnostic-cast-function-type-strict)
 }
 
@@ -325,7 +325,7 @@ static auto GetOpenGlString(GLenum name) noexcept -> nptr<const char>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto chars = make_nptr(glGetString(name));
+    auto chars = make_nptr(glGetString(name));
 
     if (!chars) {
         return nullptr;
@@ -373,7 +373,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     _ctx->GlContext = SDL_GL_CreateContext(_ctx->SdlWindow.get());
     FO_VERIFY_AND_THROW(_ctx->GlContext, "OpenGL context was not created", SDL_GetError());
 
-    const auto make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
+    bool make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
     FO_VERIFY_AND_THROW(make_current, "OpenGL context could not be made current", SDL_GetError());
 
     if (settings.VSync) {
@@ -420,8 +420,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     {
         string missing_funcs;
 
-        const auto check_loaded = [&](const char* fn_name, bool is_null) {
-            const string_view sv = fn_name;
+        auto check_loaded = [&](const char* fn_name, bool is_null) {
+            string_view sv = fn_name;
             if (is_null && !sv.ends_with("EXT") && !sv.ends_with("APPLE")) {
                 if (!missing_funcs.empty()) {
                     missing_funcs += ", ";
@@ -440,10 +440,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     int32_t gl_major = 0;
     int32_t gl_minor = 0;
 
-    const auto version_str = GetOpenGlString(GL_VERSION);
+    auto version_str = GetOpenGlString(GL_VERSION);
 
     if (version_str) {
-        const auto parts = strvex(version_str.get()).split('.');
+        auto parts = strvex(version_str.get()).split('.');
 
         if (parts.size() >= 1) {
             gl_major = numeric_cast<int32_t>(strvex(parts[0]).to_int64());
@@ -453,8 +453,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
     }
 
-    const auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
-    const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
+    auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
+    auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
 
     _ctx->OGL_version_2_0 = at_least(2, 0);
     _ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
@@ -481,9 +481,9 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     // Check OpenGL extensions
     size_t extension_errors = 0;
 
-    const auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
+    auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
-            const string msg = critical ? "Critical" : "Not critical";
+            string msg = critical ? "Critical" : "Not critical";
             WriteLog("OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
@@ -554,8 +554,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
-    auto atlas_h = atlas_w;
+    int32_t atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
+    int32_t atlas_h = atlas_w;
     atlas_w = std::min(max_viewport_size[0], atlas_w);
     atlas_h = std::min(max_viewport_size[1], atlas_h);
     FO_VERIFY_AND_THROW(atlas_w >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas width is below the required minimum", AppRender::MIN_ATLAS_SIZE);
@@ -648,7 +648,7 @@ void OpenGL_Renderer::Present()
     SDL_GL_SwapWindow(_ctx->SdlWindow.get());
 #endif
 
-    if (const auto err = glGetError(); err != GL_NO_ERROR) {
+    if (auto err = glGetError(); err != GL_NO_ERROR) {
         throw RenderingException("OpenGL error", err);
     }
 
@@ -741,10 +741,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl_es";
         }
 
-        const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         FO_VERIFY_AND_THROW(!vert_content.empty(), "OpenGL effect vertex shader content is empty after loading", name, pass + 1, vert_fname);
-        const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         FO_VERIFY_AND_THROW(!frag_content.empty(), "OpenGL effect fragment shader content is empty after loading", name, pass + 1, frag_fname);
 
@@ -760,7 +760,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glShaderSource(fs, 1, fs_source.get_pp(), nullptr));
 
         // Info parser
-        const auto get_shader_compile_log = [](GLuint shader) -> string {
+        auto get_shader_compile_log = [](GLuint shader) -> string {
             string result = "(no info)";
             int32_t len = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
@@ -777,7 +777,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             return result;
         };
 
-        const auto get_program_compile_log = [](GLuint program) -> string {
+        auto get_program_compile_log = [](GLuint program) -> string {
             string result = "(no info)";
             int32_t len = 0;
             glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
@@ -800,7 +800,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled));
 
         if (compiled == 0) {
-            const auto vert_log = get_shader_compile_log(vs);
+            string vert_log = get_shader_compile_log(vs);
             GL(glDeleteShader(vs));
             GL(glDeleteShader(fs));
             throw EffectLoadException("Vertex shader not compiled", vert_fname, vert_content, vert_log);
@@ -811,7 +811,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled));
 
         if (compiled == 0) {
-            const auto frag_log = get_shader_compile_log(fs);
+            string frag_log = get_shader_compile_log(fs);
             GL(glDeleteShader(vs));
             GL(glDeleteShader(fs));
             throw EffectLoadException("Fragment shader not compiled", frag_fname, frag_content, frag_log);
@@ -828,9 +828,9 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
 
         if (linked == 0) {
-            const auto program_log = get_program_compile_log(program);
-            const auto vert_log = get_shader_compile_log(vs);
-            const auto frag_log = get_shader_compile_log(fs);
+            string program_log = get_program_compile_log(program);
+            string vert_log = get_shader_compile_log(vs);
+            string frag_log = get_shader_compile_log(fs);
             GL(glDetachShader(program, vs));
             GL(glDetachShader(program, fs));
             GL(glDeleteShader(vs));
@@ -842,9 +842,9 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         opengl_effect->Program[pass] = program;
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
+            auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
                 if (block_pos != -1) {
-                    if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
+                    if (GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
                         GL(glUniformBlockBinding(program, index, block_pos));
                     }
                 }
@@ -872,12 +872,12 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto r_l = right - left;
-    const auto t_b = top - bottom;
-    const auto f_n = farp - nearp;
-    const auto tx = -(right + left) / (right - left);
-    const auto ty = -(top + bottom) / (top - bottom);
-    const auto tz = -(farp + nearp) / (farp - nearp);
+    float32_t r_l = right - left;
+    float32_t t_b = top - bottom;
+    float32_t f_n = farp - nearp;
+    float32_t tx = -(right + left) / (right - left);
+    float32_t ty = -(top + bottom) / (top - bottom);
+    float32_t tz = -(farp + nearp) / (farp - nearp);
 
     mat44 result {1.0f};
 
@@ -950,10 +950,10 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
         _ctx->BaseFrameBufObjBinded = true;
 
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
+        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
+        int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (_ctx->BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (_ctx->BaseFrameBufSize.height - fit_height) / 2;
@@ -997,10 +997,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
-        const auto g = numeric_cast<float32_t>(color.value().comp.g) / 255.0f;
-        const auto b = numeric_cast<float32_t>(color.value().comp.b) / 255.0f;
-        const auto a = numeric_cast<float32_t>(color.value().comp.a) / 255.0f;
+        float32_t r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
+        float32_t g = numeric_cast<float32_t>(color.value().comp.g) / 255.0f;
+        float32_t b = numeric_cast<float32_t>(color.value().comp.b) / 255.0f;
+        float32_t a = numeric_cast<float32_t>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -1032,8 +1032,8 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
     int32_t b;
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
-        const float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
-        const float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
+        float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
+        float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
 
         l = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
         t = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
@@ -1102,7 +1102,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 
     ucolor result;
 
-    auto prev_fbo = 0;
+    int32_t prev_fbo = 0;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
@@ -1147,8 +1147,8 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture update rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture update rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
-    const size_t src_pitch = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
-    const size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch + numeric_cast<size_t>(size.width)) : 0;
+    size_t src_pitch = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
+    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch + numeric_cast<size_t>(size.width)) : 0;
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
     if (use_dest_pitch) {
@@ -1254,7 +1254,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+    int32_t buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
     // Fill vertex buffer
     GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
@@ -1286,7 +1286,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     // Fill index buffer
-    const auto upload_indices = custom_indices_size.value_or(IndCount);
+    auto upload_indices = custom_indices_size.value_or(IndCount);
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
     auto source_indices = make_nptr(Indices.data());
@@ -1525,12 +1525,12 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     size_t block_sizes[max_uniform_blocks] = {};
 
     if (GL_HAS(uniform_buffer_object)) {
-        const size_t alignment = numeric_cast<size_t>(_ctx->UniformOffsetAlignment);
+        size_t alignment = numeric_cast<size_t>(_ctx->UniformOffsetAlignment);
         auto& scratch = _ctx->UniformScratch;
         scratch.clear();
         size_t block_index = 0;
 
-        const auto gather_block = [&](bool need_buf, auto& buf, bool reset_buf) {
+        auto gather_block = [&](bool need_buf, auto& buf, bool reset_buf) {
             FO_VERIFY_AND_THROW(block_index < max_uniform_blocks, "Too many OpenGL uniform blocks in draw");
 
             if (!need_buf || !buf.has_value()) {
@@ -1539,7 +1539,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             }
 
             const auto& buf_value = buf.value();
-            const size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
+            size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
             scratch.resize(aligned_offset + sizeof(buf_value));
             MemCopy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
             block_offsets[block_index] = aligned_offset;
@@ -1591,8 +1591,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
     }
 
-    const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
-    const size_t start_offset = start_index * sizeof(vindex_t);
+    int32_t draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
+    size_t start_offset = start_index * sizeof(vindex_t);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
@@ -1604,8 +1604,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (GL_HAS(uniform_buffer_object)) {
             size_t bind_block_index = 0;
 
-            const auto bind_block = [&](int32_t pos) {
-                const size_t block_index = bind_block_index;
+            auto bind_block = [&](int32_t pos) {
+                size_t block_index = bind_block_index;
                 bind_block_index++;
 
                 if (block_sizes[block_index] != 0 && pos != -1) {
@@ -1699,8 +1699,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (GL_HAS(uniform_buffer_object)) {
             size_t unbind_block_index = 0;
 
-            const auto unbind_block = [&](int32_t pos) {
-                const size_t block_index = unbind_block_index;
+            auto unbind_block = [&](int32_t pos) {
+                size_t block_index = unbind_block_index;
                 unbind_block_index++;
 
                 if (block_sizes[block_index] != 0 && pos != -1) {

@@ -85,7 +85,7 @@ static auto DescribeTypeId(ptr<AngelScript::asIScriptEngine> engine, int32_t typ
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type_info = GetTypeInfoById(engine, typeId);
-    const nptr<const char> decl = engine->GetTypeDeclaration(typeId, true);
+    nptr<const char> decl = engine->GetTypeDeclaration(typeId, true);
     AngelScript::asQWORD type_flags = 0;
 
     if (type_info) {
@@ -103,7 +103,7 @@ static auto DescribeTypeInfo(ptr<AngelScript::asIScriptEngine> engine, nptr<Ange
         return "<null>";
     }
 
-    const nptr<const char> decl = engine->GetTypeDeclaration(type_info->GetTypeId(), true);
+    nptr<const char> decl = engine->GetTypeDeclaration(type_info->GetTypeId(), true);
     return strex("typeId={}, decl='{}', flags=0x{:X}", type_info->GetTypeId(), decl ? decl.get() : "<null>", type_info->GetFlags());
 }
 
@@ -133,10 +133,10 @@ auto ScriptType::GetName() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const char> ns = _typeInfo->GetNamespace();
-    const nptr<const char> name = _typeInfo->GetName();
-    const string_view ns_view = ns ? string_view {ns.get()} : string_view {};
-    const string_view name_view = name ? string_view {name.get()} : string_view {};
+    nptr<const char> ns = _typeInfo->GetNamespace();
+    nptr<const char> name = _typeInfo->GetName();
+    string_view ns_view = ns ? string_view {ns.get()} : string_view {};
+    string_view name_view = name ? string_view {name.get()} : string_view {};
 
     if (!ns_view.empty()) {
         return string(ns_view).append("::").append(name_view);
@@ -149,7 +149,7 @@ auto ScriptType::GetNameWithoutNamespace() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const char> name = _typeInfo->GetName();
+    nptr<const char> name = _typeInfo->GetName();
     return name ? string {name.get()} : string {};
 }
 
@@ -157,7 +157,7 @@ auto ScriptType::GetNamespace() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const char> ns = _typeInfo->GetNamespace();
+    nptr<const char> ns = _typeInfo->GetNamespace();
     return ns ? string {ns.get()} : string {};
 }
 
@@ -165,7 +165,7 @@ auto ScriptType::GetModule() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
+    nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
     if (!module) {
         return "(global)";
     }
@@ -184,7 +184,7 @@ auto ScriptType::IsGlobal() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
+    nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
     return !module;
 }
 
@@ -270,7 +270,7 @@ auto ScriptType::Implements(const ScriptType* other) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref = other;
     return other_ref && _typeInfo->Implements(other_ref->_typeInfo.get());
 }
 
@@ -278,7 +278,7 @@ auto ScriptType::Equals(const ScriptType* other) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref = other;
     return other_ref && _typeInfo == other_ref->_typeInfo;
 }
 
@@ -286,7 +286,7 @@ auto ScriptType::DerivesFrom(const ScriptType* other) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref = other;
     return other_ref && _typeInfo->DerivesFrom(other_ref->_typeInfo.get());
 }
 
@@ -354,7 +354,7 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
 
     if (enum_type) {
         for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
-            const string name = enum_type->enumValues[i]->name.AddressOf();
+            string name = enum_type->enumValues[i]->name.AddressOf();
             result->InsertLast(make_nptr(&name).void_cast());
         }
     }
@@ -394,7 +394,7 @@ void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
-    const nptr<void> out_object = *out;
+    nptr<void> out_object = *out;
 
     if (out_object) {
         throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
@@ -417,7 +417,7 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
-    const nptr<void> out_object = *out;
+    nptr<void> out_object = *out;
 
     if (out_object) {
         throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
@@ -543,7 +543,7 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
     for (int32_t i = 0; i < numeric_cast<int32_t>(engine->GetModuleCount()); i++) {
         nptr<AngelScript::asIScriptModule> module = engine->GetModuleByIndex(i);
         FO_VERIFY_AND_THROW(module, "Missing script module at index");
-        const string name = module->GetName();
+        string name = module->GetName();
         modules->InsertLast(make_nptr(&name).void_cast());
     }
 
@@ -599,7 +599,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
     auto enums = ScriptArray::Create(array_type);
 
     if (global) {
-        const auto count = engine->GetEnumCount();
+        auto count = engine->GetEnumCount();
 
         for (AngelScript::asUINT i = 0; i < count; i++) {
             nptr<AngelScript::asITypeInfo> enum_type = engine->GetEnumByIndex(i);
@@ -617,7 +617,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             return enums;
         }
 
-        const auto count = module->GetEnumCount();
+        auto count = module->GetEnumCount();
 
         for (AngelScript::asUINT i = 0; i < count; i++) {
             nptr<AngelScript::asITypeInfo> enum_type = module->GetEnumByIndex(i);
@@ -652,7 +652,7 @@ static auto GetEnumsModule(string module_name) -> ScriptArray*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto module_name_cstr = make_ptr(module_name.c_str());
+    auto module_name_cstr = make_ptr(module_name.c_str());
     auto enums = CreateEnumsInternal(false, module_name_cstr);
     return enums.release_ownership();
 }
@@ -665,7 +665,7 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     int32_t count = 0;
-    const auto stack_size = ctx->GetCallstackSize();
+    auto stack_size = ctx->GetCallstackSize();
 
     for (AngelScript::asUINT i = 0; i < stack_size; i++) {
         nptr<const AngelScript::asIScriptFunction> func = ctx->GetFunction(i);
@@ -673,11 +673,11 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
         int32_t line = ctx->GetLineNumber(i, &column);
 
         if (func) {
-            const string name = func->GetModuleName();
+            string name = func->GetModuleName();
             modules->InsertLast(make_nptr(&name).void_cast());
 
-            const bool include_ns = include_namespace && func->GetNamespace()[0] != 0;
-            const string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
+            bool include_ns = include_namespace && func->GetNamespace()[0] != 0;
+            string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
             names->InsertLast(make_nptr(&decl).void_cast());
 
             lines->InsertLast(make_nptr(&line).void_cast());
@@ -734,7 +734,7 @@ static void RegisterTypeMethod(ptr<AngelScript::asIScriptEngine> engine, string_
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string declaration_str(declaration);
+    string declaration_str(declaration);
 
     int32_t as_result = 0;
     FO_AS_VERIFY(engine->RegisterObjectMethod("type", declaration_str.c_str(), func_pointer, FO_SCRIPT_METHOD_CONV));
@@ -745,7 +745,7 @@ static void RegisterTypeFuncThisMethod(ptr<AngelScript::asIScriptEngine> engine,
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string declaration_str(declaration);
+    string declaration_str(declaration);
 
     int32_t as_result = 0;
     FO_AS_VERIFY(engine->RegisterObjectMethod("type", declaration_str.c_str(), func_pointer, FO_SCRIPT_FUNC_THIS_CONV));
@@ -775,7 +775,7 @@ static void ScriptType_Instantiate_Generic(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto self = GetGenericScriptTypeObject(generic);
     auto out = GetGenericOutObjectSlot(generic, 0);
-    const auto out_type_id = generic->GetArgTypeId(0);
+    int32_t out_type_id = generic->GetArgTypeId(0);
 
     self->Instantiate(out, out_type_id);
 }
@@ -788,9 +788,9 @@ static void ScriptType_InstantiateCopy_Generic(AngelScript::asIScriptGeneric* ge
     auto self = GetGenericScriptTypeObject(generic);
     auto in = GetGenericArgAddress(generic, 0);
     FO_VERIFY_AND_THROW(in, "Input object is null");
-    const auto in_type_id = generic->GetArgTypeId(0);
+    int32_t in_type_id = generic->GetArgTypeId(0);
     auto out = GetGenericOutObjectSlot(generic, 1);
-    const auto out_type_id = generic->GetArgTypeId(1);
+    int32_t out_type_id = generic->GetArgTypeId(1);
 
     self->InstantiateCopy(in, in_type_id, out, out_type_id);
 }

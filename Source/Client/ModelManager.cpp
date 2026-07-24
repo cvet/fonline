@@ -104,7 +104,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _engineMetadata->Hashes.ToHashedString(fname);
+    hstring name_hashed = _engineMetadata->Hashes.ToHashedString(fname);
 
     for (size_t i = 0; i != _loadedModels.size(); ++i) {
         auto root_bone = _loadedModels[i].as_ptr();
@@ -127,7 +127,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     }
 
     // Load file data
-    const auto file = _resources->ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
@@ -172,7 +172,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
         auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
-        const string_view tex_name = mesh->DiffuseTexture;
+        string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
@@ -283,7 +283,7 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_
     FO_STACK_TRACE_ENTRY();
 
     auto bone = SafeAlloc::MakeUnique<ModelBone>();
-    const hstring source_name = hash_resolver.ToHashedString(source.Name);
+    hstring source_name = hash_resolver.ToHashedString(source.Name);
     bone->Name = source_name;
     bone->SourceName = source_name;
     bone->RestLocalTransform = source.TransformationMatrix;

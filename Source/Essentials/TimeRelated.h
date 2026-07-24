@@ -272,31 +272,31 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
         FO_NAMESPACE string buf;
 
         if (value < std::chrono::milliseconds {1}) {
-            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
+            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
             std::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
             std::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
             std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
-            const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
-            const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
+            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
+            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            const auto day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
-            const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
-            const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int32_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
+            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
+            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
+            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
             std::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
@@ -314,7 +314,7 @@ struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE s
     {
         FO_NAMESPACE string buf;
 
-        const auto td = FO_NAMESPACE nanotime(value).desc(true);
+        auto td = FO_NAMESPACE nanotime(value).desc(true);
         std::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);

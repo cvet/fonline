@@ -122,7 +122,7 @@ void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
     {
         scoped_lock locker {_dataLocker};
 
-        const auto fire_time = nanotime::now() + delay;
+        nanotime fire_time = nanotime::now() + delay;
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
             _jobs.emplace_back(fire_time, std::move(job));
@@ -248,7 +248,7 @@ void WorkThread::ThreadEntry() noexcept
                 }
 
                 if (!_jobs.empty()) {
-                    const auto cur_time = nanotime::now();
+                    nanotime cur_time = nanotime::now();
                     nanotime soonest_fire;
                     bool has_pending = false;
 
@@ -277,7 +277,7 @@ void WorkThread::ThreadEntry() noexcept
 
             if (job) {
                 try {
-                    const auto next_call_delay = job();
+                    auto next_call_delay = job();
 
                     // Schedule repeat
                     if (next_call_delay.has_value()) {

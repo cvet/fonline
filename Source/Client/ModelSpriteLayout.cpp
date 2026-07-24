@@ -76,8 +76,8 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
         return std::nullopt;
     }
 
-    const optional<int32_t> width = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_width)));
-    const optional<int32_t> height = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_height)));
+    optional<int32_t> width = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_width)));
+    optional<int32_t> height = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_height)));
 
     if (!width || !height) {
         return std::nullopt;
@@ -94,23 +94,23 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
         return std::nullopt;
     }
 
-    const glm::vec4 ground = post_direction_transform * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
+    glm::vec4 ground = post_direction_transform * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
 
     if (!std::isfinite(ground.x) || !std::isfinite(ground.y) || !std::isfinite(ground.z) || ground.w != 1.0f) {
         return std::nullopt;
     }
 
-    const vec3 ground_pos {ground};
+    vec3 ground_pos {ground};
     ProjectedLayoutBounds body_bounds;
     ProjectedLayoutBounds draw_bounds;
 
     for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        const vec3 corner {
+        vec3 corner {
             (corner_index & 1U) != 0 ? bounds.Max.x : bounds.Min.x,
             (corner_index & 2U) != 0 ? bounds.Max.y : bounds.Min.y,
             (corner_index & 4U) != 0 ? bounds.Max.z : bounds.Min.z,
         };
-        const glm::vec4 transformed = pre_direction_transform * glm::vec4 {corner, 1.0f};
+        glm::vec4 transformed = pre_direction_transform * glm::vec4 {corner, 1.0f};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || transformed.w != 1.0f) {
             return std::nullopt;
@@ -134,33 +134,33 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
     draw_bounds.MaxX += MODEL_SPRITE_LAYOUT_GUARD;
     draw_bounds.MaxY += MODEL_SPRITE_LAYOUT_GUARD;
 
-    const optional<isize32> draw_size = CalculateModelSpriteFrameSize(draw_bounds.MinX, draw_bounds.MinY, draw_bounds.MaxX, draw_bounds.MaxY);
+    optional<isize32> draw_size = CalculateModelSpriteFrameSize(draw_bounds.MinX, draw_bounds.MinY, draw_bounds.MaxX, draw_bounds.MaxY);
 
     if (!draw_size) {
         return std::nullopt;
     }
 
-    const float64_t view_left = std::floor(numeric_cast<float64_t>(body_bounds.MinX));
-    const float64_t view_top = std::floor(numeric_cast<float64_t>(body_bounds.MinY));
-    const float64_t view_right = std::ceil(numeric_cast<float64_t>(body_bounds.MaxX));
-    const float64_t view_bottom = std::ceil(numeric_cast<float64_t>(body_bounds.MaxY));
-    const float64_t draw_left = std::floor(numeric_cast<float64_t>(draw_bounds.MinX));
-    const float64_t draw_top = std::floor(numeric_cast<float64_t>(draw_bounds.MinY));
-    const float64_t draw_right = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxX));
-    const float64_t draw_bottom = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxY));
+    float64_t view_left = std::floor(numeric_cast<float64_t>(body_bounds.MinX));
+    float64_t view_top = std::floor(numeric_cast<float64_t>(body_bounds.MinY));
+    float64_t view_right = std::ceil(numeric_cast<float64_t>(body_bounds.MaxX));
+    float64_t view_bottom = std::ceil(numeric_cast<float64_t>(body_bounds.MaxY));
+    float64_t draw_left = std::floor(numeric_cast<float64_t>(draw_bounds.MinX));
+    float64_t draw_top = std::floor(numeric_cast<float64_t>(draw_bounds.MinY));
+    float64_t draw_right = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxX));
+    float64_t draw_bottom = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxY));
 
     if (view_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || view_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max())) {
         return std::nullopt;
     }
 
-    const int32_t view_rect_left = iround<int32_t>(view_left);
-    const int32_t view_rect_top = iround<int32_t>(view_top);
-    const int32_t view_rect_right = iround<int32_t>(view_right);
-    const int32_t view_rect_bottom = iround<int32_t>(view_bottom);
-    const int32_t draw_rect_left = iround<int32_t>(draw_left);
-    const int32_t draw_rect_top = iround<int32_t>(draw_top);
-    const int32_t draw_rect_right = iround<int32_t>(draw_right);
-    const int32_t draw_rect_bottom = iround<int32_t>(draw_bottom);
+    int32_t view_rect_left = iround<int32_t>(view_left);
+    int32_t view_rect_top = iround<int32_t>(view_top);
+    int32_t view_rect_right = iround<int32_t>(view_right);
+    int32_t view_rect_bottom = iround<int32_t>(view_bottom);
+    int32_t draw_rect_left = iround<int32_t>(draw_left);
+    int32_t draw_rect_top = iround<int32_t>(draw_top);
+    int32_t draw_rect_right = iround<int32_t>(draw_right);
+    int32_t draw_rect_bottom = iround<int32_t>(draw_bottom);
 
     if (view_rect_right <= view_rect_left || view_rect_bottom <= view_rect_top || draw_rect_right <= draw_rect_left || draw_rect_bottom <= draw_rect_top) {
         return std::nullopt;
@@ -177,7 +177,7 @@ static auto IsFinite(const mat44& value) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const ptr<const float32_t> values = glm::value_ptr(value);
+    ptr<const float32_t> values = glm::value_ptr(value);
 
     for (size_t i = 0; i < 16; i++) {
         if (!std::isfinite(values[i])) {
@@ -192,12 +192,12 @@ static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float3
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
-    const float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
-    const float64_t sine = numeric_cast<float64_t>(value_90) - center;
-    const float64_t radius = std::hypot(cosine, sine);
-    const float64_t range_min = center - radius;
-    const float64_t range_max = center + radius;
+    float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
+    float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
+    float64_t sine = numeric_cast<float64_t>(value_90) - center;
+    float64_t radius = std::hypot(cosine, sine);
+    float64_t range_min = center - radius;
+    float64_t range_max = center + radius;
 
     if (!std::isfinite(range_min) || !std::isfinite(range_max) || range_min < numeric_cast<float64_t>(std::numeric_limits<float32_t>::lowest()) || range_max > numeric_cast<float64_t>(std::numeric_limits<float32_t>::max())) {
         return std::nullopt;
@@ -233,8 +233,8 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
     constexpr array<float32_t, 3> angles {0.0f, 90.0f, 180.0f};
 
     for (size_t i = 0; i < angles.size(); i++) {
-        const mat44 direction_transform = glm::rotate(mat44 {1.0f}, angles[i] * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
-        const glm::vec4 world = post_direction_transform * direction_transform * glm::vec4 {point, 1.0f};
+        mat44 direction_transform = glm::rotate(mat44 {1.0f}, angles[i] * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        glm::vec4 world = post_direction_transform * direction_transform * glm::vec4 {point, 1.0f};
 
         if (!std::isfinite(world.x) || !std::isfinite(world.y) || !std::isfinite(world.z) || world.w != 1.0f) {
             return false;
@@ -243,10 +243,10 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
         world_points[i] = vec3 {world};
     }
 
-    const auto screen_x = [projection_factor](const vec3& value) { return value.x * projection_factor; };
-    const auto screen_y = [projection_factor](const vec3& value) { return -value.y * projection_factor; };
-    const optional<pair<float32_t, float32_t>> body_x_range = CalculateHarmonicRange(screen_x(world_points[0]), screen_x(world_points[1]), screen_x(world_points[2]));
-    const optional<pair<float32_t, float32_t>> body_y_range = CalculateHarmonicRange(screen_y(world_points[0]), screen_y(world_points[1]), screen_y(world_points[2]));
+    auto screen_x = [projection_factor](const vec3& value) { return value.x * projection_factor; };
+    auto screen_y = [projection_factor](const vec3& value) { return -value.y * projection_factor; };
+    optional<pair<float32_t, float32_t>> body_x_range = CalculateHarmonicRange(screen_x(world_points[0]), screen_x(world_points[1]), screen_x(world_points[2]));
+    optional<pair<float32_t, float32_t>> body_y_range = CalculateHarmonicRange(screen_y(world_points[0]), screen_y(world_points[1]), screen_y(world_points[2]));
 
     if (!body_x_range || !body_y_range) {
         return false;
@@ -270,8 +270,8 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
         shadow_pos.z -= 10.0f;
     }
 
-    const optional<pair<float32_t, float32_t>> shadow_x_range = CalculateHarmonicRange(screen_x(shadow_points[0]), screen_x(shadow_points[1]), screen_x(shadow_points[2]));
-    const optional<pair<float32_t, float32_t>> shadow_y_range = CalculateHarmonicRange(screen_y(shadow_points[0]), screen_y(shadow_points[1]), screen_y(shadow_points[2]));
+    optional<pair<float32_t, float32_t>> shadow_x_range = CalculateHarmonicRange(screen_x(shadow_points[0]), screen_x(shadow_points[1]), screen_x(shadow_points[2]));
+    optional<pair<float32_t, float32_t>> shadow_y_range = CalculateHarmonicRange(screen_y(shadow_points[0]), screen_y(shadow_points[1]), screen_y(shadow_points[2]));
 
     if (!shadow_x_range || !shadow_y_range) {
         return false;

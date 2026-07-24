@@ -499,6 +499,8 @@ These base shaders are deliberately written for the **lowest Direct3D feature le
 
 Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults.
 
+`FlushMap` is the boundary between the intermediate map render target and the completed viewport layer. Its RGB is already alpha-composited, so a map flush effect must neither multiply RGB by the render-target alpha nor propagate that intermediate coverage into the completed frame. Both `Flush_Map` and the optional `Flush_Map_BlackWhite` therefore write opaque output alpha (`1.0`); embedding-project `FlushMap` overrides must preserve the same contract. Generic `FlushRenderTarget` remains an RGBA-preserving blit because model, particle, GUI, and other offscreen surfaces still need their authored alpha.
+
 An **embedding project that targets richer hardware** keeps its own advanced-profile copies in a resource pack that bakes *after* `Core`/`Embedded` under the same resource name, so the project copy shadows the engine base at runtime while the engine keeps the minimal fallback. The richer copy is free to use `gl_FragCoord`, derivatives, per-fragment lighting, and similar; the engine base is not.
 
 ## Per-effect depth state and the shared map depth buffer
@@ -528,6 +530,8 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 - **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`; `Update()` advances simulation even when the sprite is not visible, and `DrawInScene` refreshes the current scene transform without advancing frame time before rendering directly into `_rtMap` through the map view-proj. Particles therefore keep their lifetime offscreen and depth-sort against scene geometry instead of being baked to a flat sprite.
 
 `ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+
+Live render bounds and rebasing of already emitted particles are backend capabilities behind the same facade. SPARK provides both for model-attached effects; Effekseer currently reports no live bounds and treats rebasing as a no-op, so its model-attached effects use the advertised canvas/fallback envelope and must not rely on lingering particles remaining world-stable across scratch-frame reallocations.
 
 Seeded respawn is deterministic per particle-system instance in both bundled
 runtimes. Effekseer applies the seed to its manager handle. Each

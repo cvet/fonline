@@ -186,7 +186,7 @@ void Location::RestoreMap(ptr<Map> map)
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add an already destroyed map to a location", map->GetId());
     FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a map that is being destroyed to a location", map->GetId());
 
-    const size_t maps_count = _locMaps.size();
+    size_t maps_count = _locMaps.size();
     vec_add_unique_value(_locMaps, map.hold_ref());
     FO_VERIFY_AND_THROW(_locMaps.size() == maps_count + 1, "Restored map was not added to the location map list");
     map->SetLocation(this);

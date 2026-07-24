@@ -251,8 +251,8 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterOnHex(ptr<MapView> self, mp
     vector<ptr<CritterHexView>> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](ptr<const CritterHexView> cr1, ptr<const CritterHexView> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -274,8 +274,8 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self,
     vector<ptr<CritterHexView>> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](ptr<const CritterHexView> cr1, ptr<const CritterHexView> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -351,8 +351,8 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersOnHex(ptr<MapView> 
     vector<ptr<CritterHexView>> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](ptr<const CritterHexView> cr1, ptr<const CritterHexView> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -369,8 +369,8 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInRadius(ptr<MapVie
     vector<ptr<CritterHexView>> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](ptr<const CritterHexView> cr1, ptr<const CritterHexView> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -440,8 +440,8 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
         return {};
     }
 
-    auto to_hex = toHex;
-    const auto init_to_hex = toHex;
+    mpos to_hex = toHex;
+    mpos init_to_hex = toHex;
 
     if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
         return {};
@@ -481,8 +481,8 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
         return {};
     }
 
-    auto to_hex = toHex;
-    const auto init_to_hex = toHex;
+    mpos to_hex = toHex;
+    mpos init_to_hex = toHex;
 
     if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
         return {};
@@ -514,8 +514,8 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, 
         return cut > 0 ? 0 : 1;
     }
 
-    auto to_hex = toHex;
-    const auto init_to_hex = toHex;
+    mpos to_hex = toHex;
+    mpos init_to_hex = toHex;
 
     if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
         return 0;
@@ -525,7 +525,7 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, 
         return 0;
     }
 
-    const auto result = self->FindPath(nullptr, fromHex, to_hex, -1);
+    auto result = self->FindPath(nullptr, fromHex, to_hex, -1);
 
     if (!result) {
         return 0;
@@ -551,8 +551,8 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         return cut > 0 ? 0 : 1;
     }
 
-    auto to_hex = toHex;
-    const auto init_to_hex = toHex;
+    mpos to_hex = toHex;
+    mpos init_to_hex = toHex;
 
     if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
         return 0;
@@ -562,7 +562,7 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         return 0;
     }
 
-    const auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1);
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1);
 
     if (!result) {
         return 0;
@@ -642,11 +642,11 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(ptr<MapView> self, float32_t targetZoom
         return;
     }
 
-    const fsize32 screen_size = fsize32(self->GetScreenSize());
+    fsize32 screen_size = fsize32(self->GetScreenSize());
     auto input = self->GetEngine()->SprMngr.GetInput();
-    const fpos32 mouse_pos = input->IsMouseAvailable() ? fpos32(input->GetMousePosition()) : fpos32 {screen_size.width / 2.0f, screen_size.height / 2.0f};
-    const float32_t mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
-    const float32_t mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
+    fpos32 mouse_pos = input->IsMouseAvailable() ? fpos32(input->GetMousePosition()) : fpos32 {screen_size.width / 2.0f, screen_size.height / 2.0f};
+    float32_t mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
+    float32_t mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
 
     self->ChangeZoom(targetZoom, {mouse_x_factor, mouse_y_factor});
 }
@@ -658,8 +658,8 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(ptr<MapView> self, mpos hex)
         throw ScriptException("Invalid hex provided");
     }
 
-    const ipos32 hex_pos = self->GetHexMapPos(hex);
-    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_pos = self->GetHexMapPos(hex);
+    ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     return self->MapToScreenPos(hex_pos + hex_center);
 }
 
@@ -680,9 +680,9 @@ FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(ptr<MapView> self, mpos hex)
         throw ScriptException("Invalid hex provided");
     }
 
-    const ipos32 hex_pos = self->GetHexMapPos(hex);
-    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    const ipos32 map_pos = hex_pos + hex_center;
+    ipos32 hex_pos = self->GetHexMapPos(hex);
+    ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 map_pos = hex_pos + hex_center;
     return (fpos32(map_pos) - self->GetScrollOffset()) * self->GetSpritesZoom();
 }
 
@@ -721,10 +721,10 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
 
     // SetTransparentEgg expects a hex-center-relative offset; GetHexMapPos is the cell top-left,
     // so reference the hex visual center (top-left + half a hex) when measuring the sprite center.
-    const irect32 rect = cr_hex->GetViewRect();
-    const ipos32 hex_pos = self->GetHexMapPos(cr_hex->GetHex());
-    const ipos32 hex_center = {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
-    const ipos32 center_offset = {rect.x + rect.width / 2 - hex_center.x, rect.y + rect.height / 2 - hex_center.y};
+    irect32 rect = cr_hex->GetViewRect();
+    ipos32 hex_pos = self->GetHexMapPos(cr_hex->GetHex());
+    ipos32 hex_center = {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 center_offset = {rect.x + rect.width / 2 - hex_center.x, rect.y + rect.height / 2 - hex_center.y};
     self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
 }
 
@@ -770,13 +770,13 @@ FO_SCRIPT_API bool Client_Map_IsHexValid(ptr<MapView> self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(ptr<MapView> self)
 {
-    const msize map_size = self->GetSize();
+    msize map_size = self->GetSize();
     vector<mpos> hexes;
     hexes.reserve(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height));
 
     for (int32_t hy = 0; hy < map_size.height; hy++) {
         for (int32_t hx = 0; hx < map_size.width; hx++) {
-            const mpos hex = map_size.from_raw_pos(hx, hy);
+            mpos hex = map_size.from_raw_pos(hx, hy);
 
             if (self->IsHexToDraw(hex)) {
                 hexes.emplace_back(hex);

@@ -61,7 +61,7 @@ public:
 
         auto pstr = cast_from_void<const string*>(str);
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
-        const auto owned_string = adopt_unique_ptr(pstr);
+        auto owned_string = adopt_unique_ptr(pstr);
         ignore_unused(owned_string);
         return 0;
     }
@@ -367,7 +367,7 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
             if (length) {
                 if (!str.empty()) {
                     size_t decode_length = str.length();
-                    const auto str_begin = ScriptStringCStrAt(str, 0);
+                    auto str_begin = ScriptStringCStrAt(str, 0);
                     utf8::Decode(str_begin.get(), decode_length);
                     *length = numeric_cast<int32_t>(decode_length);
                 }
@@ -467,7 +467,7 @@ static int32_t ScriptString_FindFirst(const string& str, const string& sub, int3
         return -1;
     }
 
-    const auto pos = str.find(sub, start);
+    auto pos = str.find(sub, start);
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -479,7 +479,7 @@ static auto ScriptString_FindLast(const string& str, const string& sub, int32_t 
         return -1;
     }
 
-    const auto pos = str.rfind(sub);
+    auto pos = str.rfind(sub);
     return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -491,7 +491,7 @@ static auto ScriptString_FindFirstOf(const string& str, const string& chars, int
         return -1;
     }
 
-    const auto pos = str.find_first_of(chars, start);
+    auto pos = str.find_first_of(chars, start);
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -503,7 +503,7 @@ static auto ScriptString_FindFirstNotOf(const string& str, const string& chars, 
         return -1;
     }
 
-    const auto pos = str.find_first_not_of(chars, start);
+    auto pos = str.find_first_not_of(chars, start);
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -515,7 +515,7 @@ static auto ScriptString_FindLastOf(const string& str, const string& chars, int3
         return -1;
     }
 
-    const auto pos = str.find_last_of(chars);
+    auto pos = str.find_last_of(chars);
     return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -527,7 +527,7 @@ static auto ScriptString_FindLastNotOf(const string& str, const string& chars, i
         return -1;
     }
 
-    const auto pos = str.find_last_not_of(chars, start);
+    auto pos = str.find_last_not_of(chars, start);
     return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
@@ -541,7 +541,7 @@ static auto ScriptString_GetAt(const string& str, int32_t i) -> string
         throw ScriptException("Out of range", i, length);
     }
 
-    const auto str_pos = ScriptStringCStrAt(str, numeric_cast<size_t>(i));
+    auto str_pos = ScriptStringCStrAt(str, numeric_cast<size_t>(i));
     return string(str_pos.get(), length);
 }
 
@@ -616,9 +616,9 @@ static auto ScriptString_ToInt(const string& str, int32_t def_val) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value = ScriptStringParseInt64(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -631,9 +631,9 @@ static auto ScriptString_ToInt64(const string& str, int64_t def_val) -> int64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value = ScriptStringParseInt64(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -646,9 +646,9 @@ static auto ScriptString_ToFloat(const string& str, float32_t def_val) -> float3
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value = ScriptStringParseDouble(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -661,9 +661,9 @@ static auto ScriptString_ToDouble(const string& str, float64_t def_val) -> float
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value = ScriptStringParseDouble(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -676,9 +676,9 @@ static auto ScriptString_TryToInt(const string& str, int32_t& result) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value = ScriptStringParseInt64(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -692,9 +692,9 @@ static auto ScriptString_TryToInt64(const string& str, int64_t& result) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value = ScriptStringParseInt64(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -708,9 +708,9 @@ static auto ScriptString_TryToFloat(const string& str, float32_t& result) -> boo
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value = ScriptStringParseDouble(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -724,9 +724,9 @@ static auto ScriptString_TryToDouble(const string& str, float64_t& result) -> bo
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin = ScriptStringCStrAt(str, 0);
     nptr<char> end_str {};
-    const float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value = ScriptStringParseDouble(str_begin, end_str);
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -776,13 +776,13 @@ static auto ScriptString_Trim(const string& str, const string& chars) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const size_t first = str.find_first_not_of(chars);
+    size_t first = str.find_first_not_of(chars);
 
     if (first == string::npos) {
         return "";
     }
 
-    const size_t last = str.find_last_not_of(chars);
+    size_t last = str.find_last_not_of(chars);
     return str.substr(first, last - first + 1);
 }
 
@@ -790,7 +790,7 @@ static auto ScriptString_TrimBegin(const string& str, const string& chars) -> st
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const size_t first = str.find_first_not_of(chars);
+    size_t first = str.find_first_not_of(chars);
 
     if (first == string::npos) {
         return "";
@@ -803,7 +803,7 @@ static auto ScriptString_TrimEnd(const string& str, const string& chars) -> stri
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const size_t last = str.find_last_not_of(chars);
+    size_t last = str.find_last_not_of(chars);
 
     if (last == string::npos) {
         return str;
@@ -875,9 +875,9 @@ static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -
     string result;
 
     if (array->GetSize() != 0) {
-        const auto size = numeric_cast<int32_t>(array->GetSize());
+        int32_t size = numeric_cast<int32_t>(array->GetSize());
         size_t capacity = size * str.size();
-        const size_t max_capacity = numeric_cast<size_t>(std::numeric_limits<int32_t>::max());
+        size_t max_capacity = numeric_cast<size_t>(std::numeric_limits<int32_t>::max());
 
         for (int32_t i = 0; i < size; i++) {
             ptr<const string> entry = array->AtAs<const string>(i);

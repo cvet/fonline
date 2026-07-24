@@ -37,24 +37,29 @@
 
 FO_BEGIN_NAMESPACE
 
+// Section names are stored verbatim. A name containing '/' is a nested section: the parser only
+// recognizes the nesting syntax, never what a prefix means - resolving a prefix against the section
+// it belongs to is the consuming format's rule, and GetOrderedSections() exposes the file order it
+// needs for that. ConfigFileOption::SkipNestedSections parses only non-nested sections and skips
+// nested section bodies, which keeps header enumeration cheap on files with large nested payloads.
+
 enum class ConfigFileOption : uint8_t
 {
     None = 0,
     CollectContent = 0x1,
-    ReadFirstSection = 0x2,
+    SkipNestedSections = 0x2,
 };
 
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(string_view name_hint, string str, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(string str, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
-    ConfigFile(ConfigFile&&) noexcept;
+    ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept -> ConfigFile&;
-    ~ConfigFile();
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    ~ConfigFile() = default;
 
-    [[nodiscard]] auto GetNameHint() const noexcept -> string_view { return _fileNameHint; }
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;
@@ -64,12 +69,11 @@ public:
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string_view, string_view>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<ptr<map<string_view, string_view>>>;
     [[nodiscard]] auto GetSections() noexcept -> ptr<multimap<string_view, map<string_view, string_view>>>;
+    [[nodiscard]] auto GetOrderedSections() const noexcept -> const vector<pair<string_view, ptr<map<string_view, string_view>>>>& { return _orderedSections; }
     [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> nptr<const map<string_view, string_view>>;
     [[nodiscard]] auto GetSectionContent(string_view section_name) const -> string_view;
 
 private:
-    struct Data;
-
     auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
     void TrimConfigRange(string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char ch) -> bool;
@@ -77,10 +81,10 @@ private:
     auto StoreOwnedString(string_view value) -> string_view;
     auto StoreOwnedString(string&& value) -> string_view;
 
-    string _fileNameHint;
     ConfigFileOption _options;
-    unique_ptr<Data> _data;
+    list<string> _ownedStrings {}; // List nodes keep their address across a move, an SSO string member would not
     multimap<string_view, map<string_view, string_view>> _sectionKeyValues {};
+    vector<pair<string_view, ptr<map<string_view, string_view>>>> _orderedSections {};
 };
 
 FO_END_NAMESPACE

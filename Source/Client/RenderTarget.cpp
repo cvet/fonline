@@ -112,8 +112,8 @@ void RenderTargetManager::ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size)
 
     _flush();
 
-    const bool linear_filtered = rt->_texture->LinearFiltered;
-    const bool with_depth = rt->_texture->WithDepth;
+    bool linear_filtered = rt->_texture->LinearFiltered;
+    bool with_depth = rt->_texture->WithDepth;
 
     rt->_texture = CreateRenderTargetTexture(size, linear_filtered, with_depth);
     rt->_size = size;
@@ -123,7 +123,7 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto tex_size = size;
+    isize32 tex_size = size;
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
 
@@ -143,7 +143,7 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto redundant = !_rtStack.empty() && _rtStack.back() == rt;
+    bool redundant = !_rtStack.empty() && _rtStack.back() == rt;
 
     if (!redundant) {
         _flush();
@@ -158,7 +158,7 @@ void RenderTargetManager::PopRenderTarget()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
+    bool redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
 
     if (!redundant) {
         _flush();
@@ -196,7 +196,7 @@ auto RenderTargetManager::GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos3
     }
 
     // Read one pixel
-    const auto color = rt->_texture->GetTexturePixel(pos);
+    ucolor color = rt->_texture->GetTexturePixel(pos);
 
     // Refresh picks
     rt->_lastPixelPicks.emplace(rt->_lastPixelPicks.begin(), pos, color);
@@ -224,7 +224,7 @@ void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
         return;
     }
 
-    const auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
+    auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
         auto check_rt_ptr = check_rt.as_ptr();
         return check_rt_ptr == rt;
     });
@@ -250,13 +250,13 @@ void RenderTargetManager::DumpTextures() const
         atlases_memory_size += numeric_cast<size_t>(rt->_texture->Size.width) * rt->_texture->Size.height * 4;
     }
 
-    const auto time = nanotime::now().desc(true);
-    const string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    time_desc_t time = nanotime::now().desc(true);
+    string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
-    const auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
-        const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
+    auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
+        string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
         auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
         WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
     };

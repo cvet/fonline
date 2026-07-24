@@ -100,8 +100,8 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const size_t arg_count = numeric_cast<size_t>(argc);
-        const auto service_argv = make_nptr(argv);
+        size_t arg_count = numeric_cast<size_t>(argc);
+        auto service_argv = make_nptr(argv);
         FO_VERIFY_AND_THROW(arg_count == 0 || service_argv, "Service argument vector is null with a non-zero argument count");
 
         static std::vector<std::string> args_holder;
@@ -117,7 +117,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             args[i] = args_holder[i].data();
         }
 
-        const CommandLineArgs service_args {args};
+        CommandLineArgs service_args {args};
         InitApp(service_args, AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {
@@ -182,19 +182,19 @@ int main(int argc, char** argv)
         }
         else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
             // Delete
-            const SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;
             }
 
-            const SC_HANDLE service = ::OpenServiceW(manager, ServiceName, DELETE);
+            SC_HANDLE service = ::OpenServiceW(manager, ServiceName, DELETE);
             if (service == nullptr) {
                 ::CloseServiceHandle(manager);
                 return 0;
             }
 
-            const auto error = (::DeleteService(service) == FALSE);
+            bool error = (::DeleteService(service) == FALSE);
             if (!error) {
                 ::MessageBoxW(nullptr, L"Service deleted", ServiceName, MB_OK | MB_ICONASTERISK);
             }
@@ -211,7 +211,7 @@ int main(int argc, char** argv)
         }
         else {
             // Register or manage service
-            const SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;
@@ -219,13 +219,13 @@ int main(int argc, char** argv)
 
             // Manage service
             SC_HANDLE service = ::OpenServiceW(manager, ServiceName, SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START);
-            auto error = false;
+            bool error = false;
 
             // Evaluate service path
             constexpr DWORD buf_len = 4096 * 2;
             wchar_t buf[buf_len];
             ::GetModuleFileNameW(nullptr, buf, buf_len);
-            const auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
+            auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
             auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed

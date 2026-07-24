@@ -46,7 +46,7 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
     vector<uint8_t> data;
     data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
 
-    const auto append_scalar = [&data](auto scalar) {
+    auto append_scalar = [&data](auto scalar) {
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
         auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
@@ -157,11 +157,11 @@ auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vecto
         }
     }
 
-    const auto first_new_sequence = _nextOutgoingSequence;
+    uint32_t first_new_sequence = _nextOutgoingSequence;
 
     while (consumed < new_data.size() && _pendingBytes < _options.MaxPendingBytes) {
-        const auto free_window = _options.MaxPendingBytes - _pendingBytes;
-        const auto chunk_size = std::min({new_data.size() - consumed, _options.MaxPayload, free_window});
+        size_t free_window = _options.MaxPendingBytes - _pendingBytes;
+        auto chunk_size = std::min({new_data.size() - consumed, _options.MaxPayload, free_window});
 
         if (chunk_size == 0) {
             break;
@@ -218,7 +218,7 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
         _nextIncomingSequence++;
 
         while (true) {
-            const auto it = _receivedPackets.find(_nextIncomingSequence);
+            auto it = _receivedPackets.find(_nextIncomingSequence);
 
             if (it == _receivedPackets.end()) {
                 break;
@@ -303,7 +303,7 @@ void UdpOrderedChannel::RebuildAckBits() noexcept
             continue;
         }
 
-        const auto diff = sequence - _nextIncomingSequence;
+        auto diff = sequence - _nextIncomingSequence;
 
         if (diff < 32U) {
             _ackBits |= 1U << diff;
@@ -339,7 +339,7 @@ auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_seq
         return true;
     }
 
-    const auto diff = sequence - ack_sequence - 1;
+    uint32_t diff = sequence - ack_sequence - 1;
     return diff < 32U && (ack_bits & (1U << diff)) != 0;
 }
 
@@ -376,7 +376,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     uint16_t payload_size = 0;
     uint16_t reserved = 0;
 
-    const auto read_scalar = [&data, &pos](auto& scalar) {
+    auto read_scalar = [&data, &pos](auto& scalar) {
         using ScalarType = std::remove_reference_t<decltype(scalar)>;
         static_assert(std::is_trivially_copyable_v<ScalarType>);
 
@@ -427,7 +427,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         return false;
     }
 
-    const bool payload_flag_set = (flags & 0x01) != 0;
+    bool payload_flag_set = (flags & 0x01) != 0;
 
     if (payload_flag_set != (payload_size != 0)) {
         return false;

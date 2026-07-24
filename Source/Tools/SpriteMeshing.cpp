@@ -129,9 +129,9 @@ auto BuildSpriteMesh(const vector<uint8_t>& rgba, isize32 size, const SpriteMesh
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t width = size.width;
-    const int32_t height = size.height;
-    const size_t pixel_count = numeric_cast<size_t>(size.width) * size.height;
+    int32_t width = size.width;
+    int32_t height = size.height;
+    size_t pixel_count = numeric_cast<size_t>(size.width) * size.height;
     FO_VERIFY_AND_THROW(rgba.size() == pixel_count * 4, "Sprite mesh RGBA payload size does not match dimensions", rgba.size(), size);
     BakedSpriteMesh result;
     result.DoubleArea = numeric_cast<uint64_t>(reference_quad_double_area);
@@ -167,7 +167,7 @@ auto BuildSpriteMesh(const vector<uint8_t>& rgba, isize32 size, const SpriteMesh
     }
 
     vector<uint8_t> dilated_mask = DilateSpriteMask(original_mask, width, height, SPRITE_MESH_DILATION);
-    const size_t dilated_pixels = numeric_cast<size_t>(std::ranges::count(dilated_mask, uint8_t {1}));
+    size_t dilated_pixels = numeric_cast<size_t>(std::ranges::count(dilated_mask, uint8_t {1}));
     result.DilatedComponentCount = CountSpriteMaskComponents(dilated_mask, width, height);
 
     if (dilated_pixels == pixel_count) {
@@ -261,7 +261,7 @@ static auto CountSpriteMaskComponents(const_span<uint8_t> mask, int32_t width, i
 
     vector<uint8_t> visited(mask.size());
     vector<size_t> pending;
-    const size_t row_width = numeric_cast<size_t>(width);
+    size_t row_width = numeric_cast<size_t>(width);
     uint32_t components = 0;
 
     for (size_t start = 0; start < mask.size(); start++) {
@@ -275,11 +275,11 @@ static auto CountSpriteMaskComponents(const_span<uint8_t> mask, int32_t width, i
         pending.emplace_back(start);
 
         while (!pending.empty()) {
-            const size_t current = pending.back();
+            size_t current = pending.back();
             pending.pop_back();
-            const size_t x = current % row_width;
+            size_t x = current % row_width;
 
-            const auto add_neighbor = [&](size_t neighbor) {
+            auto add_neighbor = [&](size_t neighbor) {
                 if (mask[neighbor] != 0 && visited[neighbor] == 0) {
                     visited[neighbor] = 1;
                     pending.emplace_back(neighbor);
@@ -318,7 +318,7 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
     // A separable square dilation keeps the configured pixel padding conservative while staying linear in image area.
     for (int32_t y = 0; y < height; y++) {
         size_t visible_count = 0;
-        const int32_t initial_right = std::min(width - 1, radius);
+        int32_t initial_right = std::min(width - 1, radius);
 
         for (int32_t x = 0; x <= initial_right; x++) {
             visible_count += source[numeric_cast<size_t>(y) * width + x] != 0 ? 1u : 0u;
@@ -327,8 +327,8 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
         for (int32_t x = 0; x < width; x++) {
             horizontal[numeric_cast<size_t>(y) * width + x] = visible_count != 0 ? uint8_t {1} : uint8_t {0};
 
-            const int32_t remove_x = x - radius;
-            const int32_t add_x = x + radius + 1;
+            int32_t remove_x = x - radius;
+            int32_t add_x = x + radius + 1;
 
             if (remove_x >= 0) {
                 visible_count -= source[numeric_cast<size_t>(y) * width + remove_x] != 0 ? 1u : 0u;
@@ -341,7 +341,7 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
 
     for (int32_t x = 0; x < width; x++) {
         size_t visible_count = 0;
-        const int32_t initial_bottom = std::min(height - 1, radius);
+        int32_t initial_bottom = std::min(height - 1, radius);
 
         for (int32_t y = 0; y <= initial_bottom; y++) {
             visible_count += horizontal[numeric_cast<size_t>(y) * width + x] != 0 ? 1u : 0u;
@@ -350,8 +350,8 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
         for (int32_t y = 0; y < height; y++) {
             result[numeric_cast<size_t>(y) * width + x] = visible_count != 0 ? uint8_t {1} : uint8_t {0};
 
-            const int32_t remove_y = y - radius;
-            const int32_t add_y = y + radius + 1;
+            int32_t remove_y = y - radius;
+            int32_t add_y = y + radius + 1;
 
             if (remove_y >= 0) {
                 visible_count -= horizontal[numeric_cast<size_t>(remove_y) * width + x] != 0 ? 1u : 0u;
@@ -372,8 +372,8 @@ static auto SpriteContourDoubleArea(const vector<ipos32>& points) noexcept -> in
     int64_t double_area = 0;
 
     for (size_t i = 0; i < points.size(); i++) {
-        const ipos32 current = points[i];
-        const ipos32 next = points[(i + 1) % points.size()];
+        ipos32 current = points[i];
+        ipos32 next = points[(i + 1) % points.size()];
         double_area += numeric_cast<int64_t>(current.x) * next.y - numeric_cast<int64_t>(next.x) * current.y;
     }
 
@@ -422,7 +422,7 @@ static void NormalizeSpriteContour(vector<ipos32>& points)
     vector<ipos32> unique_points;
     unique_points.reserve(points.size());
 
-    for (const ipos32 point : points) {
+    for (ipos32 point : points) {
         if (unique_points.empty() || unique_points.back() != point) {
             unique_points.emplace_back(point);
         }
@@ -439,9 +439,9 @@ static void NormalizeSpriteContour(vector<ipos32>& points)
         normalized.reserve(unique_points.size());
 
         for (size_t i = 0; i < unique_points.size(); i++) {
-            const ipos32 previous = unique_points[(i + unique_points.size() - 1) % unique_points.size()];
-            const ipos32 current = unique_points[i];
-            const ipos32 next = unique_points[(i + 1) % unique_points.size()];
+            ipos32 previous = unique_points[(i + unique_points.size() - 1) % unique_points.size()];
+            ipos32 current = unique_points[i];
+            ipos32 next = unique_points[(i + 1) % unique_points.size()];
 
             if (SpritePointCross(previous, current, next) == 0 && IsSpritePointBetween(previous, current, next)) {
                 changed = true;
@@ -461,20 +461,20 @@ static auto SpritePointSegmentDistanceSquared(ipos32 point, ipos32 segment_start
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const float64_t dx = numeric_cast<float64_t>(segment_end.x - segment_start.x);
-    const float64_t dy = numeric_cast<float64_t>(segment_end.y - segment_start.y);
+    float64_t dx = numeric_cast<float64_t>(segment_end.x - segment_start.x);
+    float64_t dy = numeric_cast<float64_t>(segment_end.y - segment_start.y);
 
     if (is_float_equal(dx, 0.0) && is_float_equal(dy, 0.0)) {
-        const float64_t point_dx = numeric_cast<float64_t>(point.x - segment_start.x);
-        const float64_t point_dy = numeric_cast<float64_t>(point.y - segment_start.y);
+        float64_t point_dx = numeric_cast<float64_t>(point.x - segment_start.x);
+        float64_t point_dy = numeric_cast<float64_t>(point.y - segment_start.y);
         return point_dx * point_dx + point_dy * point_dy;
     }
 
-    const float64_t projection = std::clamp((numeric_cast<float64_t>(point.x - segment_start.x) * dx + numeric_cast<float64_t>(point.y - segment_start.y) * dy) / (dx * dx + dy * dy), 0.0, 1.0);
-    const float64_t projected_x = numeric_cast<float64_t>(segment_start.x) + projection * dx;
-    const float64_t projected_y = numeric_cast<float64_t>(segment_start.y) + projection * dy;
-    const float64_t point_dx = numeric_cast<float64_t>(point.x) - projected_x;
-    const float64_t point_dy = numeric_cast<float64_t>(point.y) - projected_y;
+    float64_t projection = std::clamp((numeric_cast<float64_t>(point.x - segment_start.x) * dx + numeric_cast<float64_t>(point.y - segment_start.y) * dy) / (dx * dx + dy * dy), 0.0, 1.0);
+    float64_t projected_x = numeric_cast<float64_t>(segment_start.x) + projection * dx;
+    float64_t projected_y = numeric_cast<float64_t>(segment_start.y) + projection * dy;
+    float64_t point_dx = numeric_cast<float64_t>(point.x) - projected_x;
+    float64_t point_dy = numeric_cast<float64_t>(point.y) - projected_y;
     return point_dx * point_dx + point_dy * point_dy;
 }
 
@@ -494,14 +494,14 @@ static auto SimplifyOpenSpriteContour(const vector<ipos32>& points, float64_t to
     ranges.emplace_back(0, points.size() - 1);
 
     while (!ranges.empty()) {
-        const auto range = ranges.back();
+        auto range = ranges.back();
         ranges.pop_back();
 
         float64_t farthest_distance = tolerance_squared;
         optional<size_t> farthest_index;
 
         for (size_t i = range.first + 1; i < range.second; i++) {
-            const float64_t distance = SpritePointSegmentDistanceSquared(points[i], points[range.first], points[range.second]);
+            float64_t distance = SpritePointSegmentDistanceSquared(points[i], points[range.first], points[range.second]);
 
             if (distance > farthest_distance) {
                 farthest_distance = distance;
@@ -540,9 +540,9 @@ static void SimplifyClosedSpriteContour(vector<ipos32>& points, float32_t tolera
     int64_t split_distance = -1;
 
     for (size_t i = 1; i < points.size(); i++) {
-        const int64_t dx = numeric_cast<int64_t>(points[i].x) - points[0].x;
-        const int64_t dy = numeric_cast<int64_t>(points[i].y) - points[0].y;
-        const int64_t distance = dx * dx + dy * dy;
+        int64_t dx = numeric_cast<int64_t>(points[i].x) - points[0].x;
+        int64_t dy = numeric_cast<int64_t>(points[i].y) - points[0].y;
+        int64_t distance = dx * dx + dy * dy;
 
         if (distance > split_distance) {
             split_distance = distance;
@@ -554,7 +554,7 @@ static void SimplifyClosedSpriteContour(vector<ipos32>& points, float32_t tolera
     vector<ipos32> second_half(points.begin() + numeric_cast<ptrdiff_t>(split_index), points.end());
     second_half.emplace_back(points.front());
 
-    const float64_t tolerance_squared = numeric_cast<float64_t>(tolerance) * tolerance;
+    float64_t tolerance_squared = numeric_cast<float64_t>(tolerance) * tolerance;
     first_half = SimplifyOpenSpriteContour(first_half, tolerance_squared);
     second_half = SimplifyOpenSpriteContour(second_half, tolerance_squared);
 
@@ -581,7 +581,7 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
         return;
     }
 
-    const vector<ipos32> source = points;
+    vector<ipos32> source = points;
     vector<ipos32> simplified = points;
     SimplifyClosedSpriteContour(simplified, tolerance);
 
@@ -593,11 +593,11 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
     source_indices.reserve(simplified.size());
     size_t search_from = 0;
 
-    for (const ipos32 point : simplified) {
+    for (ipos32 point : simplified) {
         optional<size_t> found;
 
         for (size_t offset = 0; offset < source.size(); offset++) {
-            const size_t index = (search_from + offset) % source.size();
+            size_t index = (search_from + offset) % source.size();
             if (source[index] == point) {
                 found = index;
                 break;
@@ -624,23 +624,23 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
     constexpr float64_t quantization_margin = 0.5;
 
     for (size_t i = 0; i < simplified.size(); i++) {
-        const ipos32 a = simplified[i];
-        const ipos32 b = simplified[(i + 1) % simplified.size()];
-        const int64_t direction_x = numeric_cast<int64_t>(b.x) - a.x;
-        const int64_t direction_y = numeric_cast<int64_t>(b.y) - a.y;
+        ipos32 a = simplified[i];
+        ipos32 b = simplified[(i + 1) % simplified.size()];
+        int64_t direction_x = numeric_cast<int64_t>(b.x) - a.x;
+        int64_t direction_y = numeric_cast<int64_t>(b.y) - a.y;
 
         if (direction_x == 0 && direction_y == 0) {
             return;
         }
 
-        const int64_t normal_x = -direction_y;
-        const int64_t normal_y = direction_x;
+        int64_t normal_x = -direction_y;
+        int64_t normal_y = direction_x;
         int64_t limit = std::numeric_limits<int64_t>::max();
         size_t source_index = source_indices[i];
-        const size_t source_end = source_indices[(i + 1) % simplified.size()];
+        size_t source_end = source_indices[(i + 1) % simplified.size()];
 
         while (true) {
-            const ipos32 point = source[source_index];
+            ipos32 point = source[source_index];
             limit = std::min(limit, normal_x * point.x + normal_y * point.y);
 
             if (source_index == source_end) {
@@ -650,7 +650,7 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
             source_index = (source_index + 1) % source.size();
         }
 
-        const float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
+        float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
         lines.emplace_back(SupportLine {.NormalX = normal_x, .NormalY = normal_y, .Limit = numeric_cast<float64_t>(limit) - margin});
     }
 
@@ -660,16 +660,16 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
     for (size_t i = 0; i < lines.size(); i++) {
         const SupportLine& previous = lines[(i + lines.size() - 1) % lines.size()];
         const SupportLine& current = lines[i];
-        const int64_t integer_determinant = previous.NormalX * current.NormalY - previous.NormalY * current.NormalX;
+        int64_t integer_determinant = previous.NormalX * current.NormalY - previous.NormalY * current.NormalX;
 
         if (integer_determinant == 0) {
             return;
         }
 
-        const float64_t determinant = numeric_cast<float64_t>(integer_determinant);
-        const float64_t x = (previous.Limit * numeric_cast<float64_t>(current.NormalY) - numeric_cast<float64_t>(previous.NormalY) * current.Limit) / determinant;
-        const float64_t y = (numeric_cast<float64_t>(previous.NormalX) * current.Limit - previous.Limit * numeric_cast<float64_t>(current.NormalX)) / determinant;
-        const optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
+        float64_t determinant = numeric_cast<float64_t>(integer_determinant);
+        float64_t x = (previous.Limit * numeric_cast<float64_t>(current.NormalY) - numeric_cast<float64_t>(previous.NormalY) * current.Limit) / determinant;
+        float64_t y = (numeric_cast<float64_t>(previous.NormalX) * current.Limit - previous.Limit * numeric_cast<float64_t>(current.NormalX)) / determinant;
+        optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
 
         if (!point.has_value()) {
             return;
@@ -692,13 +692,13 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
         return false;
     }
 
-    const size_t previous_index = (point_index + points.size() - 1) % points.size();
-    const size_t next_index = (point_index + 1) % points.size();
-    const ipos32 previous = points[previous_index];
-    const ipos32 removed = points[point_index];
-    const ipos32 next = points[next_index];
-    const int64_t removed_side = SpritePointCross(previous, next, removed);
-    const bool chord_clips_contour = contour_double_area > 0 ? removed_side < 0 : removed_side > 0;
+    size_t previous_index = (point_index + points.size() - 1) % points.size();
+    size_t next_index = (point_index + 1) % points.size();
+    ipos32 previous = points[previous_index];
+    ipos32 removed = points[point_index];
+    ipos32 next = points[next_index];
+    int64_t removed_side = SpritePointCross(previous, next, removed);
+    bool chord_clips_contour = contour_double_area > 0 ? removed_side < 0 : removed_side > 0;
 
     if (!chord_clips_contour) {
         points.erase(points.begin() + numeric_cast<ptrdiff_t>(point_index));
@@ -706,11 +706,11 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
         return points.size() >= 3;
     }
 
-    const ipos32 before_previous = points[(previous_index + points.size() - 1) % points.size()];
-    const ipos32 after_next = points[(next_index + 1) % points.size()];
-    const float64_t replacement_direction_x = numeric_cast<float64_t>(next.x - previous.x);
-    const float64_t replacement_direction_y = numeric_cast<float64_t>(next.y - previous.y);
-    const float64_t replacement_length = std::hypot(replacement_direction_x, replacement_direction_y);
+    ipos32 before_previous = points[(previous_index + points.size() - 1) % points.size()];
+    ipos32 after_next = points[(next_index + 1) % points.size()];
+    float64_t replacement_direction_x = numeric_cast<float64_t>(next.x - previous.x);
+    float64_t replacement_direction_y = numeric_cast<float64_t>(next.y - previous.y);
+    float64_t replacement_length = std::hypot(replacement_direction_x, replacement_direction_y);
 
     if (replacement_length == 0.0) {
         return false;
@@ -718,30 +718,30 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
 
     // Preserve the removed exterior support point by moving the replacement chord through it;
     // intersecting the adjacent edge lines keeps the vertex count one lower without clipping the contour.
-    const float64_t replacement_x = removed.x;
-    const float64_t replacement_y = removed.y;
+    float64_t replacement_x = removed.x;
+    float64_t replacement_y = removed.y;
 
-    const auto intersect_lines = [](float64_t first_x, float64_t first_y, float64_t first_direction_x, float64_t first_direction_y, float64_t second_x, float64_t second_y, float64_t second_direction_x, float64_t second_direction_y) -> optional<pair<float64_t, float64_t>> {
-        const float64_t determinant = first_direction_x * second_direction_y - first_direction_y * second_direction_x;
+    auto intersect_lines = [](float64_t first_x, float64_t first_y, float64_t first_direction_x, float64_t first_direction_y, float64_t second_x, float64_t second_y, float64_t second_direction_x, float64_t second_direction_y) -> optional<pair<float64_t, float64_t>> {
+        float64_t determinant = first_direction_x * second_direction_y - first_direction_y * second_direction_x;
 
         if (std::abs(determinant) <= std::numeric_limits<float64_t>::epsilon()) {
             return std::nullopt;
         }
 
-        const float64_t offset_x = second_x - first_x;
-        const float64_t offset_y = second_y - first_y;
-        const float64_t factor = (offset_x * second_direction_y - offset_y * second_direction_x) / determinant;
+        float64_t offset_x = second_x - first_x;
+        float64_t offset_y = second_y - first_y;
+        float64_t factor = (offset_x * second_direction_y - offset_y * second_direction_x) / determinant;
         return pair<float64_t, float64_t> {first_x + first_direction_x * factor, first_y + first_direction_y * factor};
     };
 
-    const optional<pair<float64_t, float64_t>> new_previous = intersect_lines(before_previous.x, before_previous.y, previous.x - before_previous.x, previous.y - before_previous.y, replacement_x, replacement_y, replacement_direction_x, replacement_direction_y);
-    const optional<pair<float64_t, float64_t>> new_next = intersect_lines(replacement_x, replacement_y, replacement_direction_x, replacement_direction_y, next.x, next.y, after_next.x - next.x, after_next.y - next.y);
+    optional<pair<float64_t, float64_t>> new_previous = intersect_lines(before_previous.x, before_previous.y, previous.x - before_previous.x, previous.y - before_previous.y, replacement_x, replacement_y, replacement_direction_x, replacement_direction_y);
+    optional<pair<float64_t, float64_t>> new_next = intersect_lines(replacement_x, replacement_y, replacement_direction_x, replacement_direction_y, next.x, next.y, after_next.x - next.x, after_next.y - next.y);
     if (!new_previous.has_value() || !new_next.has_value()) {
         return false;
     }
 
-    const optional<ipos32> new_previous_point = RoundSpriteIntersectionPoint(new_previous->first, new_previous->second);
-    const optional<ipos32> new_next_point = RoundSpriteIntersectionPoint(new_next->first, new_next->second);
+    optional<ipos32> new_previous_point = RoundSpriteIntersectionPoint(new_previous->first, new_previous->second);
+    optional<ipos32> new_next_point = RoundSpriteIntersectionPoint(new_next->first, new_next->second);
 
     if (!new_previous_point.has_value() || !new_next_point.has_value()) {
         return false;
@@ -766,7 +766,7 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
     }
 
     NormalizeSpriteContour(reduced);
-    const int64_t reduced_double_area = SpriteContourDoubleArea(reduced);
+    int64_t reduced_double_area = SpriteContourDoubleArea(reduced);
 
     if (reduced.size() < 3 || reduced_double_area == 0 || (reduced_double_area > 0) != (contour_double_area > 0)) {
         return false;
@@ -796,7 +796,7 @@ static auto BuildSpriteConvexHull(const vector<SpriteContour>& contours) -> vect
     vector<ipos32> hull;
     hull.reserve(points.size() * 2);
 
-    for (const ipos32 point : points) {
+    for (ipos32 point : points) {
         while (hull.size() >= 2 && SpritePointCross(hull[hull.size() - 2], hull.back(), point) <= 0) {
             hull.pop_back();
         }
@@ -804,10 +804,10 @@ static auto BuildSpriteConvexHull(const vector<SpriteContour>& contours) -> vect
         hull.emplace_back(point);
     }
 
-    const size_t lower_size = hull.size();
+    size_t lower_size = hull.size();
 
     for (size_t i = points.size() - 1; i > 0; i--) {
-        const ipos32 point = points[i - 1];
+        ipos32 point = points[i - 1];
 
         while (hull.size() > lower_size && SpritePointCross(hull[hull.size() - 2], hull.back(), point) <= 0) {
             hull.pop_back();
@@ -839,7 +839,7 @@ static auto DoesSpriteConvexPolygonCoverHull(const vector<ipos32>& polygon, cons
         bool has_negative_cross = false;
 
         for (size_t i = 0; i < polygon.size(); i++) {
-            const int64_t cross = SpritePointCross(polygon[i], polygon[(i + 1) % polygon.size()], hull_point);
+            int64_t cross = SpritePointCross(polygon[i], polygon[(i + 1) % polygon.size()], hull_point);
             has_positive_cross = has_positive_cross || cross > 0;
             has_negative_cross = has_negative_cross || cross < 0;
         }
@@ -886,11 +886,11 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
     vector<SpriteBoundaryEdge> edges;
     unordered_map<uint64_t, uint8_t> outgoing_edges;
 
-    const auto add_edge = [&edges, &outgoing_edges](ipos32 start, uint8_t direction) {
+    auto add_edge = [&edges, &outgoing_edges](ipos32 start, uint8_t direction) {
         edges.emplace_back(SpriteBoundaryEdge {.Start = start, .Direction = direction});
         outgoing_edges[SpriteGridPointKey(start)] |= numeric_cast<uint8_t>(1u << direction);
     };
-    const auto is_visible = [&mask, width, height](int32_t x, int32_t y) -> bool { return x >= 0 && x < width && y >= 0 && y < height && mask[numeric_cast<size_t>(y) * width + x] != 0; };
+    auto is_visible = [&mask, width, height](int32_t x, int32_t y) -> bool { return x >= 0 && x < width && y >= 0 && y < height && mask[numeric_cast<size_t>(y) * width + x] != 0; };
 
     for (int32_t y = 0; y < height; y++) {
         for (int32_t x = 0; x < width; x++) {
@@ -917,9 +917,9 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
     vector<SpriteContour> contours;
 
     for (const SpriteBoundaryEdge& first_edge : edges) {
-        const uint64_t first_key = SpriteGridPointKey(first_edge.Start);
+        uint64_t first_key = SpriteGridPointKey(first_edge.Start);
         auto first_outgoing = outgoing_edges.find(first_key);
-        const uint8_t first_bit = numeric_cast<uint8_t>(1u << first_edge.Direction);
+        uint8_t first_bit = numeric_cast<uint8_t>(1u << first_edge.Direction);
 
         if (first_outgoing == outgoing_edges.end() || (first_outgoing->second & first_bit) == 0) {
             continue;
@@ -951,8 +951,8 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
             };
             optional<uint8_t> next_direction;
 
-            for (const uint8_t direction : candidate_directions) {
-                const uint8_t bit = numeric_cast<uint8_t>(1u << direction);
+            for (uint8_t direction : candidate_directions) {
+                uint8_t bit = numeric_cast<uint8_t>(1u << direction);
 
                 if ((outgoing->second & bit) != 0) {
                     next_direction = direction;
@@ -982,7 +982,7 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
             return std::nullopt;
         }
 
-        const int64_t double_area = SpriteContourDoubleArea(points);
+        int64_t double_area = SpriteContourDoubleArea(points);
 
         if (double_area == 0) {
             return std::nullopt;
@@ -1011,7 +1011,7 @@ static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const ve
     }
 
     constexpr int64_t coordinate_scale = 256;
-    const auto make_paths = [](const vector<SpriteContour>& source_contours) -> Clipper2Lib::Paths64 {
+    auto make_paths = [](const vector<SpriteContour>& source_contours) -> Clipper2Lib::Paths64 {
         Clipper2Lib::Paths64 paths;
         paths.reserve(source_contours.size());
 
@@ -1019,7 +1019,7 @@ static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const ve
             Clipper2Lib::Path64& path = paths.emplace_back();
             path.reserve(contour.Points.size());
 
-            for (const ipos32 point : contour.Points) {
+            for (ipos32 point : contour.Points) {
                 path.emplace_back(numeric_cast<int64_t>(point.x) * coordinate_scale, numeric_cast<int64_t>(point.y) * coordinate_scale);
             }
         }
@@ -1063,8 +1063,8 @@ static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const ve
         points.reserve(offset_path.size());
 
         for (const Clipper2Lib::Point64& point : offset_path) {
-            const int32_t x = std::clamp(iround<int32_t>(numeric_cast<float64_t>(point.x) / coordinate_scale), 0, width);
-            const int32_t y = std::clamp(iround<int32_t>(numeric_cast<float64_t>(point.y) / coordinate_scale), 0, height);
+            int32_t x = std::clamp(iround<int32_t>(numeric_cast<float64_t>(point.x) / coordinate_scale), 0, width);
+            int32_t y = std::clamp(iround<int32_t>(numeric_cast<float64_t>(point.y) / coordinate_scale), 0, height);
             points.emplace_back(x, y);
         }
 
@@ -1074,7 +1074,7 @@ static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const ve
             continue;
         }
 
-        const int64_t double_area = SpriteContourDoubleArea(points);
+        int64_t double_area = SpriteContourDoubleArea(points);
 
         if (double_area != 0) {
             result.emplace_back(SpriteContour {.Points = std::move(points), .DoubleArea = double_area});
@@ -1104,7 +1104,7 @@ static auto InflateSimplifiedSpriteContours(const vector<SpriteContour>& contour
         Clipper2Lib::Path64& path = paths.emplace_back();
         path.reserve(contour.Points.size());
 
-        for (const ipos32 point : contour.Points) {
+        for (ipos32 point : contour.Points) {
             path.emplace_back(numeric_cast<int64_t>(point.x) * coordinate_scale, numeric_cast<int64_t>(point.y) * coordinate_scale);
         }
     }
@@ -1123,7 +1123,7 @@ static auto InflateSimplifiedSpriteContours(const vector<SpriteContour>& contour
         vector<ipos32> points;
         points.reserve(path.size());
 
-        for (const Clipper2Lib::Point64 point : path) {
+        for (Clipper2Lib::Point64 point : path) {
             points.emplace_back(iround<int32_t>(numeric_cast<float64_t>(point.x) / coordinate_scale), iround<int32_t>(numeric_cast<float64_t>(point.y) / coordinate_scale));
         }
 
@@ -1133,7 +1133,7 @@ static auto InflateSimplifiedSpriteContours(const vector<SpriteContour>& contour
             continue;
         }
 
-        const int64_t double_area = SpriteContourDoubleArea(points);
+        int64_t double_area = SpriteContourDoubleArea(points);
 
         if (double_area != 0) {
             result.emplace_back(SpriteContour {.Points = std::move(points), .DoubleArea = double_area});
@@ -1148,8 +1148,8 @@ static auto IsPointOnSpriteContour(ipos32 point, const vector<ipos32>& contour) 
     FO_NO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < contour.size(); i++) {
-        const ipos32 a = contour[i];
-        const ipos32 b = contour[(i + 1) % contour.size()];
+        ipos32 a = contour[i];
+        ipos32 b = contour[(i + 1) % contour.size()];
 
         if (SpritePointCross(a, b, point) == 0 && IsSpritePointBetween(a, point, b)) {
             return true;
@@ -1170,12 +1170,12 @@ static auto IsPointStrictlyInsideSpriteContour(ipos32 point, const vector<ipos32
     bool inside = false;
 
     for (size_t i = 0, j = contour.size() - 1; i < contour.size(); j = i++) {
-        const ipos32 a = contour[i];
-        const ipos32 b = contour[j];
-        const bool crosses_y = (a.y > point.y) != (b.y > point.y);
+        ipos32 a = contour[i];
+        ipos32 b = contour[j];
+        bool crosses_y = (a.y > point.y) != (b.y > point.y);
 
         if (crosses_y) {
-            const float64_t crossing_x = numeric_cast<float64_t>(b.x - a.x) * numeric_cast<float64_t>(point.y - a.y) / numeric_cast<float64_t>(b.y - a.y) + a.x;
+            float64_t crossing_x = numeric_cast<float64_t>(b.x - a.x) * numeric_cast<float64_t>(point.y - a.y) / numeric_cast<float64_t>(b.y - a.y) + a.x;
 
             if (numeric_cast<float64_t>(point.x) < crossing_x) {
                 inside = !inside;
@@ -1214,7 +1214,7 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
             return std::nullopt;
         }
 
-        for (const ipos32 point : contour.Points) {
+        for (ipos32 point : contour.Points) {
             if (point.x < 0 || point.x > width || point.y < 0 || point.y > height) {
                 return std::nullopt;
             }
@@ -1241,8 +1241,8 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
 
     vector<vector<size_t>> holes_by_outer(outer_indices.size());
 
-    for (const size_t hole_index : hole_indices) {
-        const ipos32 probe = contours[hole_index].Points.front();
+    for (size_t hole_index : hole_indices) {
+        ipos32 probe = contours[hole_index].Points.front();
         optional<size_t> owner;
         int64_t owner_area = std::numeric_limits<int64_t>::max();
 
@@ -1272,12 +1272,12 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
 
         size_t polygon_vertex_count = 0;
 
-        for (const size_t contour_index : polygon_contours) {
+        for (size_t contour_index : polygon_contours) {
             const vector<ipos32>& contour_points = contours[contour_index].Points;
             vector<EarcutPoint>& ring = polygon.emplace_back();
             ring.reserve(contour_points.size());
 
-            for (const ipos32 point : contour_points) {
+            for (ipos32 point : contour_points) {
                 ring.push_back(EarcutPoint {numeric_cast<float64_t>(point.x), numeric_cast<float64_t>(point.y)});
                 mesh.Vertices.emplace_back(point);
             }
@@ -1285,8 +1285,8 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
             polygon_vertex_count += contour_points.size();
         }
 
-        const size_t vertex_base = mesh.Vertices.size() - polygon_vertex_count;
-        const std::vector<uint32_t> local_indices = mapbox::earcut<uint32_t>(polygon);
+        size_t vertex_base = mesh.Vertices.size() - polygon_vertex_count;
+        std::vector<uint32_t> local_indices = mapbox::earcut<uint32_t>(polygon);
 
         if (local_indices.empty() || local_indices.size() % 3 != 0) {
             return std::nullopt;
@@ -1297,12 +1297,12 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
 
         mesh.Indices.reserve(mesh.Indices.size() + local_indices.size());
 
-        for (const uint32_t local_index : local_indices) {
+        for (uint32_t local_index : local_indices) {
             if (local_index >= polygon_vertex_count) {
                 return std::nullopt;
             }
 
-            const size_t global_index = vertex_base + local_index;
+            size_t global_index = vertex_base + local_index;
 
             if (global_index > std::numeric_limits<uint16_t>::max()) {
                 return std::nullopt;
@@ -1334,8 +1334,8 @@ static auto ClipSpriteValidationPolygon(const array<SpriteValidationPoint, 8>& s
         return 0;
     }
 
-    const auto get_coordinate = [x_axis](const SpriteValidationPoint& point) noexcept -> float64_t { return x_axis ? point.X : point.Y; };
-    const auto is_inside = [keep_greater, boundary](float64_t coordinate) noexcept -> bool { return keep_greater ? coordinate >= boundary : coordinate <= boundary; };
+    auto get_coordinate = [x_axis](const SpriteValidationPoint& point) noexcept -> float64_t { return x_axis ? point.X : point.Y; };
+    auto is_inside = [keep_greater, boundary](float64_t coordinate) noexcept -> bool { return keep_greater ? coordinate >= boundary : coordinate <= boundary; };
 
     size_t destination_count = 0;
     SpriteValidationPoint previous = source[source_count - 1];
@@ -1343,12 +1343,12 @@ static auto ClipSpriteValidationPolygon(const array<SpriteValidationPoint, 8>& s
     bool previous_inside = is_inside(previous_coordinate);
 
     for (size_t i = 0; i < source_count; i++) {
-        const SpriteValidationPoint current = source[i];
-        const float64_t current_coordinate = get_coordinate(current);
-        const bool current_inside = is_inside(current_coordinate);
+        SpriteValidationPoint current = source[i];
+        float64_t current_coordinate = get_coordinate(current);
+        bool current_inside = is_inside(current_coordinate);
 
         if (previous_inside != current_inside) {
-            const float64_t factor = (boundary - previous_coordinate) / (current_coordinate - previous_coordinate);
+            float64_t factor = (boundary - previous_coordinate) / (current_coordinate - previous_coordinate);
             FO_STRONG_ASSERT(destination_count < destination.size(), "Sprite validation polygon exceeds clipping capacity");
             destination[destination_count++] = SpriteValidationPoint {
                 .X = previous.X + (current.X - previous.X) * factor,
@@ -1379,10 +1379,10 @@ static auto SpriteTrianglePixelCoveredDoubleArea(ipos32 a, ipos32 b, ipos32 c, i
     first[1] = SpriteValidationPoint {.X = numeric_cast<float64_t>(b.x), .Y = numeric_cast<float64_t>(b.y)};
     first[2] = SpriteValidationPoint {.X = numeric_cast<float64_t>(c.x), .Y = numeric_cast<float64_t>(c.y)};
 
-    const float64_t min_x = numeric_cast<float64_t>(pixel_x);
-    const float64_t min_y = numeric_cast<float64_t>(pixel_y);
-    const float64_t max_x = min_x + 1.0;
-    const float64_t max_y = min_y + 1.0;
+    float64_t min_x = numeric_cast<float64_t>(pixel_x);
+    float64_t min_y = numeric_cast<float64_t>(pixel_y);
+    float64_t max_x = min_x + 1.0;
+    float64_t max_y = min_y + 1.0;
     size_t point_count = ClipSpriteValidationPolygon(first, 3, second, true, min_x, true);
     point_count = ClipSpriteValidationPolygon(second, point_count, first, true, max_x, false);
     point_count = ClipSpriteValidationPolygon(first, point_count, second, false, min_y, true);
@@ -1422,13 +1422,13 @@ static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteCo
 
     mesh_double_area = 0;
     size_t validation_cells = 0;
-    const size_t pixel_count = original_mask.size();
+    size_t pixel_count = original_mask.size();
 
     if (!tolerance_mask.empty() && tolerance_mask.size() != pixel_count) {
         return SpriteMeshBuildFailure::InvalidMeshShape;
     }
 
-    const size_t validation_limit = pixel_count > (std::numeric_limits<size_t>::max() - 1'000'000u) / 32u ? std::numeric_limits<size_t>::max() : pixel_count * 32u + 1'000'000u;
+    size_t validation_limit = pixel_count > (std::numeric_limits<size_t>::max() - 1'000'000u) / 32u ? std::numeric_limits<size_t>::max() : pixel_count * 32u + 1'000'000u;
 
     struct TriangleBounds
     {
@@ -1445,18 +1445,18 @@ static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteCo
     triangles.reserve(mesh.Indices.size() / 3);
 
     for (size_t i = 0; i < mesh.Indices.size(); i += 3) {
-        const uint16_t index_a = mesh.Indices[i];
-        const uint16_t index_b = mesh.Indices[i + 1];
-        const uint16_t index_c = mesh.Indices[i + 2];
+        uint16_t index_a = mesh.Indices[i];
+        uint16_t index_b = mesh.Indices[i + 1];
+        uint16_t index_c = mesh.Indices[i + 2];
 
         if (index_a >= mesh.Vertices.size() || index_b >= mesh.Vertices.size() || index_c >= mesh.Vertices.size()) {
             return SpriteMeshBuildFailure::InvalidIndex;
         }
 
-        const ipos32 a = mesh.Vertices[index_a];
-        const ipos32 b = mesh.Vertices[index_b];
-        const ipos32 c = mesh.Vertices[index_c];
-        const int64_t triangle_double_area = SpriteTriangleDoubleArea(a, b, c);
+        ipos32 a = mesh.Vertices[index_a];
+        ipos32 b = mesh.Vertices[index_b];
+        ipos32 c = mesh.Vertices[index_c];
+        int64_t triangle_double_area = SpriteTriangleDoubleArea(a, b, c);
 
         if (triangle_double_area == 0) {
             return SpriteMeshBuildFailure::DegenerateTriangle;
@@ -1467,11 +1467,11 @@ static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteCo
 
         mesh_double_area += triangle_double_area;
 
-        const int32_t min_x = std::clamp(std::min({a.x, b.x, c.x}), 0, width - 1);
-        const int32_t min_y = std::clamp(std::min({a.y, b.y, c.y}), 0, height - 1);
-        const int32_t max_x = std::clamp(std::max({a.x, b.x, c.x}), 0, width - 1);
-        const int32_t max_y = std::clamp(std::max({a.y, b.y, c.y}), 0, height - 1);
-        const size_t bbox_cells = numeric_cast<size_t>(max_x - min_x + 1) * numeric_cast<size_t>(max_y - min_y + 1);
+        int32_t min_x = std::clamp(std::min({a.x, b.x, c.x}), 0, width - 1);
+        int32_t min_y = std::clamp(std::min({a.y, b.y, c.y}), 0, height - 1);
+        int32_t max_x = std::clamp(std::max({a.x, b.x, c.x}), 0, width - 1);
+        int32_t max_y = std::clamp(std::max({a.y, b.y, c.y}), 0, height - 1);
+        size_t bbox_cells = numeric_cast<size_t>(max_x - min_x + 1) * numeric_cast<size_t>(max_y - min_y + 1);
 
         if (bbox_cells > validation_limit - std::min(validation_limit, validation_cells)) {
             return SpriteMeshBuildFailure::ValidationLimit;
@@ -1523,7 +1523,7 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::ContourExtraction};
     }
 
-    const vector<ipos32> hull = BuildSpriteConvexHull(*exact_contours);
+    vector<ipos32> hull = BuildSpriteConvexHull(*exact_contours);
 
     if (hull.size() < 3) {
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::InvalidMeshShape};
@@ -1541,11 +1541,11 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
     constexpr float64_t quantization_margin = 0.25;
 
     for (size_t i = 0; i < hull.size(); i++) {
-        const ipos32 current = hull[i];
-        const ipos32 next = hull[(i + 1) % hull.size()];
+        ipos32 current = hull[i];
+        ipos32 next = hull[(i + 1) % hull.size()];
         int64_t direction_x = numeric_cast<int64_t>(next.x) - current.x;
         int64_t direction_y = numeric_cast<int64_t>(next.y) - current.y;
-        const int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
+        int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
 
         if (divisor == 0) {
             continue;
@@ -1554,16 +1554,16 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
         direction_x /= divisor;
         direction_y /= divisor;
 
-        const int64_t normal_x = direction_y;
-        const int64_t normal_y = -direction_x;
-        const bool duplicate = std::ranges::any_of(lines, [normal_x, normal_y](const SpriteHullLine& line) { return line.NormalX == normal_x && line.NormalY == normal_y; });
+        int64_t normal_x = direction_y;
+        int64_t normal_y = -direction_x;
+        bool duplicate = std::ranges::any_of(lines, [normal_x, normal_y](const SpriteHullLine& line) { return line.NormalX == normal_x && line.NormalY == normal_y; });
 
         if (duplicate) {
             continue;
         }
 
-        const float64_t support = numeric_cast<float64_t>(normal_x * current.x + normal_y * current.y);
-        const float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
+        float64_t support = numeric_cast<float64_t>(normal_x * current.x + normal_y * current.y);
+        float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
         lines.emplace_back(SpriteHullLine {.NormalX = normal_x, .NormalY = normal_y, .Limit = support + margin});
     }
 
@@ -1579,7 +1579,7 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
     for (size_t first = 0; first + 2 < lines.size(); first++) {
         for (size_t second = first + 1; second + 1 < lines.size(); second++) {
             for (size_t third = second + 1; third < lines.size(); third++) {
-                const array<const SpriteHullLine*, 3> triangle_lines {&lines[first], &lines[second], &lines[third]};
+                array<const SpriteHullLine*, 3> triangle_lines {&lines[first], &lines[second], &lines[third]};
                 vector<ipos32> points;
                 points.reserve(3);
                 bool valid_intersections = true;
@@ -1587,17 +1587,17 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
                 for (size_t i = 0; i < triangle_lines.size(); i++) {
                     const SpriteHullLine& a = *triangle_lines[i];
                     const SpriteHullLine& b = *triangle_lines[(i + 1) % triangle_lines.size()];
-                    const int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
+                    int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
 
                     if (integer_determinant == 0) {
                         valid_intersections = false;
                         break;
                     }
 
-                    const float64_t determinant = numeric_cast<float64_t>(integer_determinant);
-                    const float64_t x = (a.Limit * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * b.Limit) / determinant;
-                    const float64_t y = (numeric_cast<float64_t>(a.NormalX) * b.Limit - a.Limit * numeric_cast<float64_t>(b.NormalX)) / determinant;
-                    const optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
+                    float64_t determinant = numeric_cast<float64_t>(integer_determinant);
+                    float64_t x = (a.Limit * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * b.Limit) / determinant;
+                    float64_t y = (numeric_cast<float64_t>(a.NormalX) * b.Limit - a.Limit * numeric_cast<float64_t>(b.NormalX)) / determinant;
+                    optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
 
                     if (!point.has_value()) {
                         valid_intersections = false;
@@ -1622,7 +1622,7 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
                     continue;
                 }
 
-                const int64_t candidate_double_area = std::abs(SpriteContourDoubleArea(points));
+                int64_t candidate_double_area = std::abs(SpriteContourDoubleArea(points));
 
                 if (candidate_double_area == 0 || candidate_double_area >= best_double_area) {
                     continue;
@@ -1656,7 +1656,7 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::Triangulation};
     }
 
-    const SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, contours, mask, {}, width, height, mesh_double_area);
+    SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, contours, mask, {}, width, height, mesh_double_area);
 
     if (validation_failure != SpriteMeshBuildFailure::None) {
         return SpriteMeshBuildAttempt {.Failure = validation_failure};
@@ -1675,7 +1675,7 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::ContourExtraction};
     }
 
-    const vector<ipos32> hull = BuildSpriteConvexHull(*exact_contours);
+    vector<ipos32> hull = BuildSpriteConvexHull(*exact_contours);
 
     if (hull.size() < 3) {
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::InvalidMeshShape};
@@ -1692,8 +1692,8 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
     vector<SpriteHullSupport> supports;
     supports.reserve(hull.size());
 
-    const auto add_support = [&supports, &hull](int64_t normal_x, int64_t normal_y) {
-        const bool duplicate = std::ranges::any_of(supports, [normal_x, normal_y](const SpriteHullSupport& support) { return support.NormalX == normal_x && support.NormalY == normal_y; });
+    auto add_support = [&supports, &hull](int64_t normal_x, int64_t normal_y) {
+        bool duplicate = std::ranges::any_of(supports, [normal_x, normal_y](const SpriteHullSupport& support) { return support.NormalX == normal_x && support.NormalY == normal_y; });
 
         if (duplicate) {
             return;
@@ -1702,8 +1702,8 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
         int64_t minimum = std::numeric_limits<int64_t>::max();
         int64_t maximum = std::numeric_limits<int64_t>::min();
 
-        for (const ipos32 point : hull) {
-            const int64_t projection = normal_x * point.x + normal_y * point.y;
+        for (ipos32 point : hull) {
+            int64_t projection = normal_x * point.x + normal_y * point.y;
             minimum = std::min(minimum, projection);
             maximum = std::max(maximum, projection);
         }
@@ -1712,11 +1712,11 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
     };
 
     for (size_t i = 0; i < hull.size(); i++) {
-        const ipos32 current = hull[i];
-        const ipos32 next = hull[(i + 1) % hull.size()];
+        ipos32 current = hull[i];
+        ipos32 next = hull[(i + 1) % hull.size()];
         int64_t direction_x = numeric_cast<int64_t>(next.x) - current.x;
         int64_t direction_y = numeric_cast<int64_t>(next.y) - current.y;
-        const int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
+        int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
 
         if (divisor == 0) {
             continue;
@@ -1730,8 +1730,8 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
             direction_y = -direction_y;
         }
 
-        const int64_t normal_x = -direction_y;
-        const int64_t normal_y = direction_x;
+        int64_t normal_x = -direction_y;
+        int64_t normal_y = direction_x;
         add_support(normal_x, normal_y);
     }
 
@@ -1752,28 +1752,28 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
         for (size_t second = first + 1; second < supports.size(); second++) {
             const SpriteHullSupport& a = supports[first];
             const SpriteHullSupport& b = supports[second];
-            const int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
+            int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
 
             if (integer_determinant == 0) {
                 continue;
             }
 
-            const float64_t determinant = numeric_cast<float64_t>(integer_determinant);
-            const float64_t margin_a = std::hypot(numeric_cast<float64_t>(a.NormalX), numeric_cast<float64_t>(a.NormalY)) * quantization_margin;
-            const float64_t margin_b = std::hypot(numeric_cast<float64_t>(b.NormalX), numeric_cast<float64_t>(b.NormalY)) * quantization_margin;
-            const float64_t a_minimum = numeric_cast<float64_t>(a.Minimum) - margin_a;
-            const float64_t a_maximum = numeric_cast<float64_t>(a.Maximum) + margin_a;
-            const float64_t b_minimum = numeric_cast<float64_t>(b.Minimum) - margin_b;
-            const float64_t b_maximum = numeric_cast<float64_t>(b.Maximum) + margin_b;
-            const array<pair<float64_t, float64_t>, 4> support_values {{{a_minimum, b_minimum}, {a_maximum, b_minimum}, {a_maximum, b_maximum}, {a_minimum, b_maximum}}};
+            float64_t determinant = numeric_cast<float64_t>(integer_determinant);
+            float64_t margin_a = std::hypot(numeric_cast<float64_t>(a.NormalX), numeric_cast<float64_t>(a.NormalY)) * quantization_margin;
+            float64_t margin_b = std::hypot(numeric_cast<float64_t>(b.NormalX), numeric_cast<float64_t>(b.NormalY)) * quantization_margin;
+            float64_t a_minimum = numeric_cast<float64_t>(a.Minimum) - margin_a;
+            float64_t a_maximum = numeric_cast<float64_t>(a.Maximum) + margin_a;
+            float64_t b_minimum = numeric_cast<float64_t>(b.Minimum) - margin_b;
+            float64_t b_maximum = numeric_cast<float64_t>(b.Maximum) + margin_b;
+            array<pair<float64_t, float64_t>, 4> support_values {{{a_minimum, b_minimum}, {a_maximum, b_minimum}, {a_maximum, b_maximum}, {a_minimum, b_maximum}}};
             vector<ipos32> points;
             points.reserve(4);
             bool points_fit_frame = true;
 
             for (const auto& [support_a, support_b] : support_values) {
-                const float64_t x = (support_a * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * support_b) / determinant;
-                const float64_t y = (numeric_cast<float64_t>(a.NormalX) * support_b - support_a * numeric_cast<float64_t>(b.NormalX)) / determinant;
-                const optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
+                float64_t x = (support_a * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * support_b) / determinant;
+                float64_t y = (numeric_cast<float64_t>(a.NormalX) * support_b - support_a * numeric_cast<float64_t>(b.NormalX)) / determinant;
+                optional<ipos32> point = RoundSpriteIntersectionPoint(x, y);
 
                 if (!point.has_value()) {
                     points_fit_frame = false;
@@ -1802,7 +1802,7 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
                 continue;
             }
 
-            const int64_t candidate_double_area = std::abs(SpriteContourDoubleArea(points));
+            int64_t candidate_double_area = std::abs(SpriteContourDoubleArea(points));
 
             if (candidate_double_area > 0 && candidate_double_area < best_double_area) {
                 best_double_area = candidate_double_area;
@@ -1833,7 +1833,7 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::Triangulation};
     }
 
-    const SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, contours, mask, {}, width, height, mesh_double_area);
+    SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, contours, mask, {}, width, height, mesh_double_area);
 
     if (validation_failure != SpriteMeshBuildFailure::None) {
         return SpriteMeshBuildAttempt {.Failure = validation_failure};
@@ -1850,7 +1850,7 @@ static auto MergeSpriteMeshCandidates(const SpriteMeshCandidate& left, const Spr
         return std::nullopt;
     }
 
-    const size_t vertex_offset = left.Mesh.Vertices.size();
+    size_t vertex_offset = left.Mesh.Vertices.size();
 
     if (vertex_offset + right.Mesh.Vertices.size() > std::numeric_limits<uint16_t>::max()) {
         return std::nullopt;
@@ -1863,7 +1863,7 @@ static auto MergeSpriteMeshCandidates(const SpriteMeshCandidate& left, const Spr
     merged.Mesh.Indices.reserve(left.Mesh.Indices.size() + right.Mesh.Indices.size());
     merged.Mesh.Indices.insert(merged.Mesh.Indices.end(), left.Mesh.Indices.begin(), left.Mesh.Indices.end());
 
-    for (const uint16_t index : right.Mesh.Indices) {
+    for (uint16_t index : right.Mesh.Indices) {
         merged.Mesh.Indices.emplace_back(numeric_cast<uint16_t>(vertex_offset + index));
     }
 
@@ -1879,7 +1879,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<ipos32> hull = BuildSpriteConvexHull(source_contours);
+    vector<ipos32> hull = BuildSpriteConvexHull(source_contours);
 
     if (hull.size() < 3 || max_triangles == 0) {
         return {};
@@ -1897,11 +1897,11 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
     constexpr float64_t quantization_margin = 1.0;
 
     for (size_t i = 0; i < hull.size(); i++) {
-        const ipos32 current = hull[i];
-        const ipos32 next = hull[(i + 1) % hull.size()];
+        ipos32 current = hull[i];
+        ipos32 next = hull[(i + 1) % hull.size()];
         int64_t direction_x = numeric_cast<int64_t>(next.x) - current.x;
         int64_t direction_y = numeric_cast<int64_t>(next.y) - current.y;
-        const int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
+        int64_t divisor = std::gcd(std::abs(direction_x), std::abs(direction_y));
 
         if (divisor == 0) {
             continue;
@@ -1909,15 +1909,15 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
 
         direction_x /= divisor;
         direction_y /= divisor;
-        const int64_t normal_x = direction_y;
-        const int64_t normal_y = -direction_x;
+        int64_t normal_x = direction_y;
+        int64_t normal_y = -direction_x;
 
         if (std::ranges::any_of(lines, [normal_x, normal_y](const SpriteHullLine& line) { return line.NormalX == normal_x && line.NormalY == normal_y; })) {
             continue;
         }
 
-        const float64_t support = numeric_cast<float64_t>(normal_x * current.x + normal_y * current.y);
-        const float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
+        float64_t support = numeric_cast<float64_t>(normal_x * current.x + normal_y * current.y);
+        float64_t margin = std::hypot(numeric_cast<float64_t>(normal_x), numeric_cast<float64_t>(normal_y)) * quantization_margin;
         lines.emplace_back(SpriteHullLine {.NormalX = normal_x, .NormalY = normal_y, .Limit = support + margin});
     }
 
@@ -1927,18 +1927,18 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         return {};
     }
 
-    const auto intersect_lines = [&lines](size_t first, size_t second) -> optional<pair<float64_t, float64_t>> {
+    auto intersect_lines = [&lines](size_t first, size_t second) -> optional<pair<float64_t, float64_t>> {
         const SpriteHullLine& a = lines[first];
         const SpriteHullLine& b = lines[second];
-        const int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
+        int64_t integer_determinant = a.NormalX * b.NormalY - a.NormalY * b.NormalX;
 
         if (integer_determinant == 0) {
             return std::nullopt;
         }
 
-        const float64_t determinant = numeric_cast<float64_t>(integer_determinant);
-        const float64_t x = (a.Limit * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * b.Limit) / determinant;
-        const float64_t y = (numeric_cast<float64_t>(a.NormalX) * b.Limit - a.Limit * numeric_cast<float64_t>(b.NormalX)) / determinant;
+        float64_t determinant = numeric_cast<float64_t>(integer_determinant);
+        float64_t x = (a.Limit * numeric_cast<float64_t>(b.NormalY) - numeric_cast<float64_t>(a.NormalY) * b.Limit) / determinant;
+        float64_t y = (numeric_cast<float64_t>(a.NormalX) * b.Limit - a.Limit * numeric_cast<float64_t>(b.NormalX)) / determinant;
         return pair<float64_t, float64_t> {x, y};
     };
 
@@ -1964,29 +1964,29 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         active_lines[i].Next = (i + 1) % active_lines.size();
     }
 
-    const auto compare_removals = [](const HullLineRemoval& left, const HullLineRemoval& right) { return left.Cost != right.Cost ? left.Cost > right.Cost : left.Index > right.Index; };
+    auto compare_removals = [](const HullLineRemoval& left, const HullLineRemoval& right) { return left.Cost != right.Cost ? left.Cost > right.Cost : left.Index > right.Index; };
     std::priority_queue<HullLineRemoval, vector<HullLineRemoval>, decltype(compare_removals)> removals {compare_removals};
 
-    const auto queue_removal = [&active_lines, &intersect_lines, &removals](size_t index) {
+    auto queue_removal = [&active_lines, &intersect_lines, &removals](size_t index) {
         const ActiveHullLine& current = active_lines[index];
 
         if (!current.Active) {
             return;
         }
 
-        const optional<pair<float64_t, float64_t>> previous_intersection = intersect_lines(current.Previous, index);
-        const optional<pair<float64_t, float64_t>> next_intersection = intersect_lines(index, current.Next);
-        const optional<pair<float64_t, float64_t>> replacement_intersection = intersect_lines(current.Previous, current.Next);
+        optional<pair<float64_t, float64_t>> previous_intersection = intersect_lines(current.Previous, index);
+        optional<pair<float64_t, float64_t>> next_intersection = intersect_lines(index, current.Next);
+        optional<pair<float64_t, float64_t>> replacement_intersection = intersect_lines(current.Previous, current.Next);
 
         if (!previous_intersection.has_value() || !next_intersection.has_value() || !replacement_intersection.has_value()) {
             return;
         }
 
-        const float64_t ab_x = next_intersection->first - previous_intersection->first;
-        const float64_t ab_y = next_intersection->second - previous_intersection->second;
-        const float64_t ac_x = replacement_intersection->first - previous_intersection->first;
-        const float64_t ac_y = replacement_intersection->second - previous_intersection->second;
-        const float64_t cost = std::abs(ab_x * ac_y - ab_y * ac_x);
+        float64_t ab_x = next_intersection->first - previous_intersection->first;
+        float64_t ab_y = next_intersection->second - previous_intersection->second;
+        float64_t ac_x = replacement_intersection->first - previous_intersection->first;
+        float64_t ac_y = replacement_intersection->second - previous_intersection->second;
+        float64_t cost = std::abs(ab_x * ac_y - ab_y * ac_x);
         removals.emplace(HullLineRemoval {.Cost = cost, .Index = index, .Revision = current.Revision});
     };
 
@@ -1997,7 +1997,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
     vector<optional<SpriteMeshCandidate>> candidates_by_triangle(max_triangles + 1);
     size_t active_count = active_lines.size();
 
-    const auto collect_active_indices = [&active_lines](size_t expected_count) -> optional<vector<size_t>> {
+    auto collect_active_indices = [&active_lines](size_t expected_count) -> optional<vector<size_t>> {
         size_t first = 0;
 
         while (first < active_lines.size() && !active_lines[first].Active) {
@@ -2023,7 +2023,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         return active_indices;
     };
 
-    const auto build_candidate = [&intersect_lines, &hull, width, height](const vector<size_t>& active_indices) -> optional<SpriteMeshCandidate> {
+    auto build_candidate = [&intersect_lines, &hull, width, height](const vector<size_t>& active_indices) -> optional<SpriteMeshCandidate> {
         if (active_indices.size() < 3) {
             return std::nullopt;
         }
@@ -2031,13 +2031,13 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         vector<ipos32> points;
         points.reserve(active_indices.size());
         for (size_t i = 0; i < active_indices.size(); i++) {
-            const optional<pair<float64_t, float64_t>> intersection = intersect_lines(active_indices[i], active_indices[(i + 1) % active_indices.size()]);
+            optional<pair<float64_t, float64_t>> intersection = intersect_lines(active_indices[i], active_indices[(i + 1) % active_indices.size()]);
 
             if (!intersection.has_value()) {
                 return std::nullopt;
             }
 
-            const optional<ipos32> point = RoundSpriteIntersectionPoint(intersection->first, intersection->second);
+            optional<ipos32> point = RoundSpriteIntersectionPoint(intersection->first, intersection->second);
 
             if (!point.has_value()) {
                 return std::nullopt;
@@ -2076,8 +2076,8 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         return SpriteMeshCandidate {.Mesh = std::move(*mesh), .Enclosures = std::move(enclosures), .DoubleArea = double_area};
     };
 
-    const auto store_candidate = [&candidates_by_triangle, max_triangles](SpriteMeshCandidate incoming) {
-        const size_t triangle_count = incoming.Mesh.Indices.size() / 3;
+    auto store_candidate = [&candidates_by_triangle, max_triangles](SpriteMeshCandidate incoming) {
+        size_t triangle_count = incoming.Mesh.Indices.size() / 3;
 
         if (triangle_count == 0 || triangle_count > max_triangles) {
             return;
@@ -2090,7 +2090,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         }
     };
 
-    const auto capture_candidate = [&]() {
+    auto capture_candidate = [&]() {
         if (active_count < 3 || active_count > max_triangles + 2) {
             return;
         }
@@ -2108,7 +2108,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         }
     };
 
-    const size_t beam_start_count = std::min(lines.size(), max_triangles + 2 + SPRITE_MESH_CANDIDATE_REMOVAL_DEPTH);
+    size_t beam_start_count = std::min(lines.size(), max_triangles + 2 + SPRITE_MESH_CANDIDATE_REMOVAL_DEPTH);
     optional<vector<size_t>> beam_seed;
 
     while (active_count >= 3) {
@@ -2125,7 +2125,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         optional<size_t> removal_index;
 
         while (!removals.empty()) {
-            const HullLineRemoval removal = removals.top();
+            HullLineRemoval removal = removals.top();
             removals.pop();
 
             if (active_lines[removal.Index].Active && active_lines[removal.Index].Revision == removal.Revision) {
@@ -2138,8 +2138,8 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         }
 
         ActiveHullLine& removed = active_lines[*removal_index];
-        const size_t previous = removed.Previous;
-        const size_t next = removed.Next;
+        size_t previous = removed.Previous;
+        size_t next = removed.Next;
         removed.Active = false;
         active_lines[previous].Next = next;
         active_lines[next].Previous = previous;
@@ -2178,7 +2178,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
                         continue;
                     }
 
-                    const bool duplicate = std::ranges::any_of(next_states, [&reduced_indices](const GreedyBeamState& existing) { return existing.ActiveIndices == reduced_indices; });
+                    bool duplicate = std::ranges::any_of(next_states, [&reduced_indices](const GreedyBeamState& existing) { return existing.ActiveIndices == reduced_indices; });
 
                     if (!duplicate) {
                         next_states.emplace_back(GreedyBeamState {.ActiveIndices = std::move(reduced_indices), .Candidate = std::move(*candidate)});
@@ -2220,7 +2220,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
         return {};
     }
 
-    const auto build_candidate = [&](const vector<SpriteContour>& candidate_contours) -> optional<SpriteMeshCandidate> {
+    auto build_candidate = [&](const vector<SpriteContour>& candidate_contours) -> optional<SpriteMeshCandidate> {
         for (const SpriteContour& contour : candidate_contours) {
             if (contour.Points.size() < 3 || contour.DoubleArea == 0) {
                 return std::nullopt;
@@ -2233,7 +2233,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
             return std::nullopt;
         }
 
-        const size_t triangle_count = mesh->Indices.size() / 3;
+        size_t triangle_count = mesh->Indices.size() / 3;
 
         if (triangle_count == 0) {
             return std::nullopt;
@@ -2257,7 +2257,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
         return {};
     }
 
-    const size_t base_triangle_count = base_candidate->Mesh.Indices.size() / 3;
+    size_t base_triangle_count = base_candidate->Mesh.Indices.size() / 3;
 
     if (base_triangle_count > max_triangles + SPRITE_MESH_CANDIDATE_REMOVAL_DEPTH) {
         return {};
@@ -2265,15 +2265,15 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
 
     vector<vector<SpriteMeshCandidate>> candidates_by_triangle(max_triangles + 1);
 
-    const auto store_candidate = [&candidates_by_triangle, max_triangles](const SpriteMeshCandidate& candidate) {
-        const size_t triangle_count = candidate.Mesh.Indices.size() / 3;
+    auto store_candidate = [&candidates_by_triangle, max_triangles](const SpriteMeshCandidate& candidate) {
+        size_t triangle_count = candidate.Mesh.Indices.size() / 3;
 
         if (triangle_count == 0 || triangle_count > max_triangles) {
             return;
         }
 
         vector<SpriteMeshCandidate>& stored = candidates_by_triangle[triangle_count];
-        const bool duplicate = std::ranges::any_of(stored, [&candidate](const SpriteMeshCandidate& existing) { return existing.Mesh.Vertices == candidate.Mesh.Vertices && existing.Mesh.Indices == candidate.Mesh.Indices; });
+        bool duplicate = std::ranges::any_of(stored, [&candidate](const SpriteMeshCandidate& existing) { return existing.Mesh.Vertices == candidate.Mesh.Vertices && existing.Mesh.Indices == candidate.Mesh.Indices; });
 
         if (!duplicate) {
             stored.emplace_back(candidate);
@@ -2351,7 +2351,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
                 continue;
             }
 
-            const bool duplicate = std::ranges::any_of(next_states, [&candidate](const RemovalState& state) { return state.Candidate.Mesh.Vertices == candidate->Mesh.Vertices && state.Candidate.Mesh.Indices == candidate->Mesh.Indices; });
+            bool duplicate = std::ranges::any_of(next_states, [&candidate](const RemovalState& state) { return state.Candidate.Mesh.Vertices == candidate->Mesh.Vertices && state.Candidate.Mesh.Indices == candidate->Mesh.Indices; });
 
             if (duplicate) {
                 continue;
@@ -2402,7 +2402,7 @@ static auto BuildSpriteContourCluster(const SpriteContour& contour) -> SpriteCon
         .MaxY = contour.Points.front().y,
     };
 
-    for (const ipos32 point : contour.Points) {
+    for (ipos32 point : contour.Points) {
         cluster.MinX = std::min(cluster.MinX, point.x);
         cluster.MinY = std::min(cluster.MinY, point.y);
         cluster.MaxX = std::max(cluster.MaxX, point.x);
@@ -2433,17 +2433,17 @@ static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_co
         return {};
     }
 
-    const auto append_partition_candidates = [width, height, max_triangles](const vector<SpriteContourCluster>& clusters, vector<SpriteMeshCandidate>& result) {
+    auto append_partition_candidates = [width, height, max_triangles](const vector<SpriteContourCluster>& clusters, vector<SpriteMeshCandidate>& result) {
         if (clusters.size() <= 1 || clusters.size() > max_triangles) {
             return;
         }
 
-        const bool contains_clustered_components = std::ranges::any_of(clusters, [](const SpriteContourCluster& cluster) { return cluster.Contours.size() > 1; });
+        bool contains_clustered_components = std::ranges::any_of(clusters, [](const SpriteContourCluster& cluster) { return cluster.Contours.size() > 1; });
         vector<vector<SpriteMeshCandidate>> states(max_triangles + 1);
         states[0].emplace_back(SpriteMeshCandidate {});
 
         for (const SpriteContourCluster& cluster : clusters) {
-            const vector<SpriteMeshCandidate> cluster_candidates = BuildGreedyEnclosingSpriteCandidates(cluster.Contours, width, height, max_triangles);
+            vector<SpriteMeshCandidate> cluster_candidates = BuildGreedyEnclosingSpriteCandidates(cluster.Contours, width, height, max_triangles);
 
             if (cluster_candidates.empty()) {
                 return;
@@ -2454,7 +2454,7 @@ static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_co
             for (size_t used = 0; used < states.size(); used++) {
                 for (const SpriteMeshCandidate& state : states[used]) {
                     for (const SpriteMeshCandidate& component : cluster_candidates) {
-                        const size_t component_triangles = component.Mesh.Indices.size() / 3;
+                        size_t component_triangles = component.Mesh.Indices.size() / 3;
 
                         if (component_triangles == 0 || component_triangles > max_triangles - used) {
                             continue;
@@ -2467,7 +2467,7 @@ static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_co
                         }
 
                         vector<SpriteMeshCandidate>& destination = next_states[used + component_triangles];
-                        const bool duplicate = std::ranges::any_of(destination, [&merged](const SpriteMeshCandidate& candidate) { return candidate.Mesh.Vertices == merged->Mesh.Vertices && candidate.Mesh.Indices == merged->Mesh.Indices; });
+                        bool duplicate = std::ranges::any_of(destination, [&merged](const SpriteMeshCandidate& candidate) { return candidate.Mesh.Vertices == merged->Mesh.Vertices && candidate.Mesh.Indices == merged->Mesh.Indices; });
 
                         if (duplicate) {
                             continue;
@@ -2515,12 +2515,12 @@ static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_co
             for (size_t right = left + 1; right < clusters.size(); right++) {
                 const SpriteContourCluster& a = clusters[left];
                 const SpriteContourCluster& b = clusters[right];
-                const int64_t gap_x = std::max<int64_t>({0, numeric_cast<int64_t>(a.MinX) - b.MaxX, numeric_cast<int64_t>(b.MinX) - a.MaxX});
-                const int64_t gap_y = std::max<int64_t>({0, numeric_cast<int64_t>(a.MinY) - b.MaxY, numeric_cast<int64_t>(b.MinY) - a.MaxY});
-                const int64_t distance = gap_x * gap_x + gap_y * gap_y;
-                const int64_t combined_width = numeric_cast<int64_t>(std::max(a.MaxX, b.MaxX)) - std::min(a.MinX, b.MinX);
-                const int64_t combined_height = numeric_cast<int64_t>(std::max(a.MaxY, b.MaxY)) - std::min(a.MinY, b.MinY);
-                const int64_t combined_area = combined_width * combined_height;
+                int64_t gap_x = std::max<int64_t>({0, numeric_cast<int64_t>(a.MinX) - b.MaxX, numeric_cast<int64_t>(b.MinX) - a.MaxX});
+                int64_t gap_y = std::max<int64_t>({0, numeric_cast<int64_t>(a.MinY) - b.MaxY, numeric_cast<int64_t>(b.MinY) - a.MaxY});
+                int64_t distance = gap_x * gap_x + gap_y * gap_y;
+                int64_t combined_width = numeric_cast<int64_t>(std::max(a.MaxX, b.MaxX)) - std::min(a.MinX, b.MinX);
+                int64_t combined_height = numeric_cast<int64_t>(std::max(a.MaxY, b.MaxY)) - std::min(a.MinY, b.MinY);
+                int64_t combined_area = combined_width * combined_height;
 
                 if (distance < best_distance || (distance == best_distance && combined_area < best_combined_area)) {
                     best_left = left;
@@ -2582,14 +2582,14 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
         }
     }
 
-    const size_t visible_pixels = numeric_cast<size_t>(std::ranges::count(original_mask, uint8_t {1}));
+    size_t visible_pixels = numeric_cast<size_t>(std::ranges::count(original_mask, uint8_t {1}));
     optional<SpriteMeshCandidate> best;
     float64_t best_score = -2.0;
     optional<SpriteMeshCandidateSummary> best_valid_candidate;
     constexpr float64_t score_epsilon = 0.000001;
 
-    const auto consider_candidate = [&](SpriteMeshCandidate candidate) {
-        const size_t triangle_count = candidate.Mesh.Indices.size() / 3;
+    auto consider_candidate = [&](SpriteMeshCandidate candidate) {
+        size_t triangle_count = candidate.Mesh.Indices.size() / 3;
 
         if (triangle_count == 0 || triangle_count > config.MaxTriangles || candidate.DoubleArea <= 0 || candidate.DoubleArea > reference_quad_double_area) {
             return;
@@ -2597,7 +2597,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
 
         if (!candidate.Validated) {
             int64_t validated_double_area = 0;
-            const SpriteMeshBuildFailure failure = ValidateSpriteMesh(candidate.Mesh, candidate.Enclosures, dilated_mask, {}, width, height, validated_double_area);
+            SpriteMeshBuildFailure failure = ValidateSpriteMesh(candidate.Mesh, candidate.Enclosures, dilated_mask, {}, width, height, validated_double_area);
 
             if (failure != SpriteMeshBuildFailure::None) {
                 return;
@@ -2606,13 +2606,13 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
             candidate.DoubleArea = validated_double_area;
         }
 
-        const float64_t saved_area_ratio = 1.0 - numeric_cast<float64_t>(candidate.DoubleArea) / numeric_cast<float64_t>(reference_quad_double_area);
-        const float64_t score = saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count);
+        float64_t saved_area_ratio = 1.0 - numeric_cast<float64_t>(candidate.DoubleArea) / numeric_cast<float64_t>(reference_quad_double_area);
+        float64_t score = saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count);
         candidate.Score = score;
 
-        const uint64_t candidate_double_area = numeric_cast<uint64_t>(candidate.DoubleArea);
-        const bool better_valid_score = !best_valid_candidate.has_value() || score > best_valid_candidate->Score + score_epsilon;
-        const bool equal_valid_score_with_smaller_area = best_valid_candidate.has_value() && std::abs(score - best_valid_candidate->Score) <= score_epsilon && candidate_double_area < best_valid_candidate->DoubleArea;
+        uint64_t candidate_double_area = numeric_cast<uint64_t>(candidate.DoubleArea);
+        bool better_valid_score = !best_valid_candidate.has_value() || score > best_valid_candidate->Score + score_epsilon;
+        bool equal_valid_score_with_smaller_area = best_valid_candidate.has_value() && std::abs(score - best_valid_candidate->Score) <= score_epsilon && candidate_double_area < best_valid_candidate->DoubleArea;
 
         if (better_valid_score || equal_valid_score_with_smaller_area) {
             best_valid_candidate = SpriteMeshCandidateSummary {
@@ -2626,8 +2626,8 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
             };
         }
 
-        const bool better_score = score > best_score + score_epsilon;
-        const bool equal_score_with_smaller_area = best.has_value() && std::abs(score - best_score) <= score_epsilon && candidate.DoubleArea < best->DoubleArea;
+        bool better_score = score > best_score + score_epsilon;
+        bool equal_score_with_smaller_area = best.has_value() && std::abs(score - best_score) <= score_epsilon && candidate.DoubleArea < best->DoubleArea;
 
         if (better_score || equal_score_with_smaller_area) {
             best = std::move(candidate);
@@ -2639,18 +2639,18 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
         consider_candidate(std::move(candidate));
     }
 
-    const int64_t minimum_detailed_double_area = numeric_cast<int64_t>(visible_pixels) * 2;
-    const float64_t maximum_detailed_saved_ratio = 1.0 - numeric_cast<float64_t>(minimum_detailed_double_area) / numeric_cast<float64_t>(reference_quad_double_area);
-    const float64_t maximum_detailed_score = maximum_detailed_saved_ratio * config.AreaSavingsWeight - 1.0;
+    int64_t minimum_detailed_double_area = numeric_cast<int64_t>(visible_pixels) * 2;
+    float64_t maximum_detailed_saved_ratio = 1.0 - numeric_cast<float64_t>(minimum_detailed_double_area) / numeric_cast<float64_t>(reference_quad_double_area);
+    float64_t maximum_detailed_score = maximum_detailed_saved_ratio * config.AreaSavingsWeight - 1.0;
 
     if (maximum_detailed_score > best_score + score_epsilon) {
         optional<vector<SpriteContour>> original_exact_contours = ExtractSpriteContours(original_mask, width, height, 0.0f);
 
         if (original_exact_contours.has_value() && !original_exact_contours->empty()) {
-            const float32_t maximum_tolerance = numeric_cast<float32_t>(std::max(width, height));
-            const vector<uint8_t> detailed_tolerance_mask = DilateSpriteMask(dilated_mask, width, height, 1);
+            float32_t maximum_tolerance = numeric_cast<float32_t>(std::max(width, height));
+            vector<uint8_t> detailed_tolerance_mask = DilateSpriteMask(dilated_mask, width, height, 1);
             constexpr size_t maximum_detailed_attempts = 10;
-            const auto advance_tolerance = [](float32_t& tolerance) {
+            auto advance_tolerance = [](float32_t& tolerance) {
                 if (tolerance == 0.5f) {
                     tolerance = 1.0f;
                 }
@@ -2671,7 +2671,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
                 optional<vector<SpriteContour>> simplified_contours = ExtractSpriteContours(original_mask, width, height, tolerance);
 
                 if (simplified_contours.has_value() && !simplified_contours->empty()) {
-                    const auto submit_detailed_attempt = [&](SpriteMeshBuildAttempt attempt, int64_t attempt_double_area) {
+                    auto submit_detailed_attempt = [&](SpriteMeshBuildAttempt attempt, int64_t attempt_double_area) {
                         if (attempt.Mesh.has_value() && !attempt.Mesh->Indices.empty() && attempt.Mesh->Indices.size() / 3 <= config.MaxTriangles && attempt_double_area > 0 && attempt_double_area <= reference_quad_double_area) {
                             consider_candidate(SpriteMeshCandidate {
                                 .Mesh = std::move(*attempt.Mesh),
@@ -2688,21 +2688,21 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
                     SpriteMeshBuildAttempt constrained_attempt = TryBuildSpriteMesh(original_mask, dilated_mask, *simplified_contours, *original_exact_contours, *exact_contours, width, height, tolerance, SPRITE_MESH_DILATION, constrained_double_area);
                     submit_detailed_attempt(std::move(constrained_attempt), constrained_double_area);
 
-                    const auto validate_detailed_candidates = [&](vector<SpriteMeshCandidate>& detailed_candidates, const_span<uint8_t> validation_mask, SpriteMeshCandidateSource source, int32_t actual_dilation) {
+                    auto validate_detailed_candidates = [&](vector<SpriteMeshCandidate>& detailed_candidates, const_span<uint8_t> validation_mask, SpriteMeshCandidateSource source, int32_t actual_dilation) {
                         vector<bool> accepted_triangle_counts(config.MaxTriangles + 1);
 
                         for (SpriteMeshCandidate& candidate : detailed_candidates) {
-                            const size_t triangle_count = candidate.Mesh.Indices.size() / 3;
+                            size_t triangle_count = candidate.Mesh.Indices.size() / 3;
 
                             if (triangle_count == 0 || triangle_count > config.MaxTriangles || accepted_triangle_counts[triangle_count] || candidate.DoubleArea <= 0 || candidate.DoubleArea > reference_quad_double_area) {
                                 continue;
                             }
 
-                            const float64_t saved_area_ratio = 1.0 - numeric_cast<float64_t>(candidate.DoubleArea) / numeric_cast<float64_t>(reference_quad_double_area);
-                            const float64_t score = saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count);
-                            const uint64_t candidate_double_area = numeric_cast<uint64_t>(candidate.DoubleArea);
-                            const bool can_improve_selected = score > best_score + score_epsilon || (best.has_value() && std::abs(score - best_score) <= score_epsilon && candidate.DoubleArea < best->DoubleArea);
-                            const bool can_improve_report = !best_valid_candidate.has_value() || score > best_valid_candidate->Score + score_epsilon || (std::abs(score - best_valid_candidate->Score) <= score_epsilon && candidate_double_area < best_valid_candidate->DoubleArea);
+                            float64_t saved_area_ratio = 1.0 - numeric_cast<float64_t>(candidate.DoubleArea) / numeric_cast<float64_t>(reference_quad_double_area);
+                            float64_t score = saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count);
+                            uint64_t candidate_double_area = numeric_cast<uint64_t>(candidate.DoubleArea);
+                            bool can_improve_selected = score > best_score + score_epsilon || (best.has_value() && std::abs(score - best_score) <= score_epsilon && candidate.DoubleArea < best->DoubleArea);
+                            bool can_improve_report = !best_valid_candidate.has_value() || score > best_valid_candidate->Score + score_epsilon || (std::abs(score - best_valid_candidate->Score) <= score_epsilon && candidate_double_area < best_valid_candidate->DoubleArea);
 
                             if (!can_improve_selected && !can_improve_report) {
                                 accepted_triangle_counts[triangle_count] = true;
@@ -2710,7 +2710,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
                             }
 
                             int64_t validated_double_area = 0;
-                            const SpriteMeshBuildFailure failure = ValidateSpriteMesh(candidate.Mesh, candidate.Enclosures, original_mask, validation_mask, width, height, validated_double_area);
+                            SpriteMeshBuildFailure failure = ValidateSpriteMesh(candidate.Mesh, candidate.Enclosures, original_mask, validation_mask, width, height, validated_double_area);
 
                             if (failure != SpriteMeshBuildFailure::None) {
                                 continue;
@@ -2732,7 +2732,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
                     // Douglas-Peucker bounds discarded points by the tolerance. Expanding by
                     // that distance turns a simplified contour into a cover candidate; any
                     // resulting transparent overdraw is compared by the normal score.
-                    const int32_t enclosing_dilation = std::min(SPRITE_MESH_MAXIMUM_PADDING, SPRITE_MESH_DILATION + iround<int32_t>(std::ceil(tolerance)));
+                    int32_t enclosing_dilation = std::min(SPRITE_MESH_MAXIMUM_PADDING, SPRITE_MESH_DILATION + iround<int32_t>(std::ceil(tolerance)));
                     vector<SpriteMeshCandidate> expanded_candidates = BuildSimplifiedSpriteCandidates(*simplified_contours, width, height, enclosing_dilation, config.MaxTriangles);
                     validate_detailed_candidates(expanded_candidates, {}, SpriteMeshCandidateSource::DetailedExpanded, enclosing_dilation);
                 }
@@ -2743,7 +2743,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
     }
 
     if (!best.has_value()) {
-        const SpriteMeshQuadReason quad_reason = best_valid_candidate.has_value() ? SpriteMeshQuadReason::ScorePreferredQuad : SpriteMeshQuadReason::NoValidCandidate;
+        SpriteMeshQuadReason quad_reason = best_valid_candidate.has_value() ? SpriteMeshQuadReason::ScorePreferredQuad : SpriteMeshQuadReason::NoValidCandidate;
         return SpriteMeshSearchResult {.BestRejectedCandidate = std::move(best_valid_candidate), .QuadReason = quad_reason};
     }
 
@@ -2760,7 +2760,7 @@ static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vecto
         return SpriteMeshBuildAttempt {.Failure = SpriteMeshBuildFailure::ContourOffset};
     }
 
-    const bool cleanup_offset_contours = dilation > 0 && simplify_tolerance > 0.0f;
+    bool cleanup_offset_contours = dilation > 0 && simplify_tolerance > 0.0f;
 
     if (cleanup_offset_contours) {
         for (SpriteContour& contour : *contours) {
@@ -2798,7 +2798,7 @@ static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vecto
         tolerance_mask = cleanup_tolerance_mask;
     }
 
-    const SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, *contours, original_mask, tolerance_mask, width, height, mesh_double_area);
+    SpriteMeshBuildFailure validation_failure = ValidateSpriteMesh(*mesh, *contours, original_mask, tolerance_mask, width, height, mesh_double_area);
 
     if (validation_failure != SpriteMeshBuildFailure::None) {
         return SpriteMeshBuildAttempt {.Failure = validation_failure};

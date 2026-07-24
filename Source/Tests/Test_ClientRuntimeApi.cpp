@@ -78,8 +78,8 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("ValidExportsAreAccepted")
     {
-        const ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
-            const CommandLineArgs args {argc, argv};
+        ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
+            CommandLineArgs args {argc, argv};
             if (raw_runtime_result != nullptr) {
                 auto result = make_ptr(raw_runtime_result);
                 result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
@@ -175,7 +175,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.Success = true;
         runtime_result->RequestedRuntimePath = "runtime";
 
-        const optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime);
+        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime);
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -188,7 +188,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.ResultKind = ClientRuntimeResultKind::Shutdown;
         runtime_result->Result.Success = true;
 
-        const optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion);
+        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion);
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -198,8 +198,8 @@ TEST_CASE("ClientRuntimeApi")
     {
         // Both helpers depend on Platform::GetExePath, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended.
-        const auto live = GetClientRuntimeLivePath();
-        const auto staging = MakeClientRuntimeStagingPath(live);
+        string live = GetClientRuntimeLivePath();
+        string staging = MakeClientRuntimeStagingPath(live);
 
         CHECK_FALSE(live.empty());
         CHECK_FALSE(staging.empty());
@@ -210,7 +210,7 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("CurrentRuntimeLibraryNameIsNonEmpty")
     {
-        const auto name = GetCurrentClientRuntimeLibraryName();
+        string name = GetCurrentClientRuntimeLibraryName();
 
         CHECK_FALSE(name.empty());
         // Library name must not contain a path separator — it is a basename, not a path.
@@ -220,20 +220,20 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("InstalledRuntimeBootstrapRoundTrip")
     {
-        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        const string temp_dir = fs_path_to_string(base);
-        const string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        const string runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        const string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+        string temp_dir = fs_path_to_string(base);
+        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
+        string runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
+        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
         ignore_unused(fs_remove_dir_tree(temp_dir));
 
         REQUIRE(WriteClientRuntimeBootstrapTarget(bootstrap_path, runtime_path, runtime_file_name));
 
-        const optional<string> restored_path = ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name);
+        optional<string> restored_path = ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name);
         REQUIRE(restored_path.has_value());
         CHECK(restored_path.value() == runtime_path);
 
-        const string fallback_path = fs_resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
+        string fallback_path = fs_resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == fallback_path);
 
         REQUIRE(fs_write_file(MakeClientRuntimeStagingPath(runtime_path), "staged"));
@@ -247,18 +247,18 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("InstalledRuntimeBootstrapRejectsUnsafeTargets")
     {
-        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        const string temp_dir = fs_path_to_string(base);
-        const string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        const string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("runtime.path").str());
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+        string temp_dir = fs_path_to_string(base);
+        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
+        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("runtime.path").str());
         ignore_unused(fs_remove_dir_tree(temp_dir));
 
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, "relative/Runtime.dll", runtime_file_name));
 
-        const string wrong_runtime_path = fs_resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
+        string wrong_runtime_path = fs_resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, wrong_runtime_path, runtime_file_name));
 
-        const string valid_runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
+        string valid_runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
         REQUIRE(fs_write_file(bootstrap_path, strex("{}\n{}", valid_runtime_path, valid_runtime_path).str()));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
 

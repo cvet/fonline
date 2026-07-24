@@ -70,7 +70,7 @@ TEST_CASE("NullRenderer")
     {
         auto tex = renderer.CreateTexture({4, 4}, false, false);
 
-        const array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
+        array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
         tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data);
 
         CHECK(tex->GetTexturePixel({0, 0}) == row_data[0]);

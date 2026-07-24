@@ -75,14 +75,14 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
+    uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
     function<InterthreadDataCallback(InterthreadDataCallback)> listener;
 
     {
         scoped_lock locker {InterthreadListenersLocker};
 
-        const auto it = InterthreadListeners.find(port);
+        auto it = InterthreadListeners.find(port);
 
         if (it == InterthreadListeners.end()) {
             throw NetworkClientException("Interthread listener is not available", port);
@@ -156,7 +156,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
     scoped_lock locker {state->ReceivedLocker};
 
     FO_VERIFY_AND_THROW(!state->Received.empty(), "Interthread client receive was called without a pending packet", buf.size());
-    const size_t recv_size = state->Received.size();
+    size_t recv_size = state->Received.size();
 
     while (buf.size() < recv_size) {
         buf.resize(buf.size() * 2);

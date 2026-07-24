@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace MapOpsTest
 {
@@ -339,7 +339,7 @@ namespace MapOpsTest
         Item item3 = cr.AddItem("TestItem".hstr(), 1);
         if (item3 is null) return -11;
 )"
-                                          R"(
+                                    R"(
         Item? movedPartialToContainer = Game.MoveItem(item3, 1, container);
         if (movedPartialToContainer is null) return -12;
 
@@ -421,7 +421,7 @@ namespace MapOpsTest
         array<Item> destroyedToMap = {destroyedMapItem};
         Game.MoveItems(destroyedToMap, map, mpos(26, 26));
 )"
-                                          R"(
+                                    R"(
         Item container = source.AddItem("TestItem2".hstr(), 1);
         Item contItem1 = source.AddItem("TestItem".hstr(), 1);
         Item contItem2 = source.AddItem("TestItem2".hstr(), 1);
@@ -588,7 +588,7 @@ namespace MapOpsTest
         Item item = map.AddItem(nearby, "TestItem".hstr(), 1);
         if (item is null) return -3;
 )"
-                                          R"(
+                                    R"(
         ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -4;
 
@@ -791,7 +791,7 @@ namespace MapOpsTest
         Location loc = CreateTestLocation();
         if (loc is null) {
 )"
-                                          R"(
+                                    R"(
             return;
         }
 
@@ -4708,7 +4708,7 @@ namespace MapOpsTest
                 {"Scripts/MapOpsTest.fos", script_source},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -4822,8 +4822,8 @@ namespace MapOpsTest
 
 #if FO_ANGELSCRIPT_SCRIPTING
         BakerServerEngine script_engine {rig.BakedFiles};
-        const vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-            const string message_str = string(message);
+        vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
@@ -4836,15 +4836,15 @@ namespace MapOpsTest
         rig.AddSourceFile("StaticMap.fomap",
             "[ProtoMap]\n"
             "$Name = StaticMap\n"
-            "[Critter]\n"
+            "[$Name/Critter]\n"
             "$Id = 11\n"
             "$Proto = TestStaticCritter\n"
             "Hex = 10 11\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 21\n"
             "$Proto = TestStaticItem\n"
             "Hex = 12 13\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 22\n"
             "$Proto = TestStaticHiddenItem\n"
             "Hex = 14 15\n");
@@ -4858,7 +4858,7 @@ namespace MapOpsTest
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -4869,34 +4869,34 @@ namespace MapOpsTest
 
         BakerServerEngine proto_engine {compiler_resources};
         BakerClientEngine client_proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
-        const auto client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
-        const auto client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
+        hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
+        auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
         REQUIRE(static_cast<bool>(critter_registrator));
-        const auto multihex_property = critter_registrator->FindProperty("Multihex");
+        auto multihex_property = critter_registrator->FindProperty("Multihex");
         REQUIRE(static_cast<bool>(multihex_property));
-        const vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
             {"TestCritter", {}},
             {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
         };
-        const auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
-        const auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
-        const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
-        const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        const auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
-        const auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        const auto static_map_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "StaticMap", msize {50, 50});
-        const auto static_map_client_proto_blob = MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50});
-        const auto fomap_blob = MakeEmptyMapBlob();
-        const auto static_fomap_blob = MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob);
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
+        auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
+        auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
+        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
+        auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
+        auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto static_map_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "StaticMap", msize {50, 50});
+        auto static_map_client_proto_blob = MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50});
+        auto fomap_blob = MakeEmptyMapBlob();
+        auto static_fomap_blob = MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob);
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -4950,12 +4950,12 @@ namespace MapOpsTest
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_FUNC(func_name) \
     { \
@@ -4969,7 +4969,7 @@ namespace MapOpsTest
     { \
         auto func = server->FindFunc<void>(get_func(func_name)); \
         REQUIRE(func); \
-        const auto prev_callback = GetExceptionCallback(); \
+        auto prev_callback = GetExceptionCallback(); \
         string message; \
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
@@ -5278,17 +5278,17 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
             }
         });
     });
-    const auto startup_error = WaitForStart(server.get());
+    string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto static_map_pid = server->Hashes.ToHashedString("StaticMap");
-    const auto static_critter_pid = server->Hashes.ToHashedString("TestStaticCritter");
-    const auto visible_item_pid = server->Hashes.ToHashedString("TestStaticItem");
-    const auto hidden_item_pid = server->Hashes.ToHashedString("TestStaticHiddenItem");
-    const auto map_proto = server->GetProtoMap(static_map_pid);
+    hstring static_map_pid = server->Hashes.ToHashedString("StaticMap");
+    hstring static_critter_pid = server->Hashes.ToHashedString("TestStaticCritter");
+    hstring visible_item_pid = server->Hashes.ToHashedString("TestStaticItem");
+    hstring hidden_item_pid = server->Hashes.ToHashedString("TestStaticHiddenItem");
+    auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 
     auto static_map = server->MapMngr.GetStaticMap(map_proto);
@@ -5303,8 +5303,8 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     REQUIRE(static_map->StaticItemsById.contains(ident_t {21}));
     REQUIRE(static_map->StaticItemsById.contains(ident_t {22}));
 
-    const auto visible_item = static_map->StaticItemsById.at(ident_t {21});
-    const auto hidden_item = static_map->StaticItemsById.at(ident_t {22});
+    auto visible_item = static_map->StaticItemsById.at(ident_t {21});
+    auto hidden_item = static_map->StaticItemsById.at(ident_t {22});
     CHECK(visible_item->GetProtoId() == visible_item_pid);
     CHECK(hidden_item->GetProtoId() == hidden_item_pid);
     CHECK(visible_item->GetHex() == mpos {12, 13});

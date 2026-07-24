@@ -68,8 +68,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).get_file_extension();
-        const auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
+        string ext = strex(file_header.GetPath()).get_file_extension();
+        auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
 
         if (it == _context->Settings->ProtoFileExtensions.end()) {
             continue;
@@ -104,20 +104,19 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    const auto engine = BakerServerEngine(*_context->BakedFiles);
-    const auto proto_rule_name = engine.Hashes.ToHashedString("Proto");
-    const auto item_type_name = engine.Hashes.ToHashedString("Item");
-    const auto critter_type_name = engine.Hashes.ToHashedString("Critter");
-    const auto map_type_name = engine.Hashes.ToHashedString("Map");
-    const auto location_type_name = engine.Hashes.ToHashedString("Location");
+    auto engine = BakerServerEngine(*_context->BakedFiles);
+    hstring proto_rule_name = engine.Hashes.ToHashedString("Proto");
+    hstring item_type_name = engine.Hashes.ToHashedString("Item");
+    hstring critter_type_name = engine.Hashes.ToHashedString("Critter");
+    hstring map_type_name = engine.Hashes.ToHashedString("Map");
+    hstring location_type_name = engine.Hashes.ToHashedString("Location");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : filtered_files) {
-        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
-        const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
+        // Nested ($Name/...-addressed) sections carry map content, never proto declarations
+        auto fopro = ConfigFile(file.GetStr(), ConfigFileOption::SkipNestedSections);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -127,13 +126,10 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
             hstring type_name;
 
-            if (is_fomap && section_name == "Header") {
-                type_name = engine.Hashes.ToHashedString("Map");
-            }
-            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
-            else if (const auto section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+            else if (hstring section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
                 type_name = section_type;
             }
             else {
@@ -160,8 +156,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 section_kv.emplace(string(key), string(value));
             }
 
-            const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
-            auto pid = engine.Hashes.ToHashedString(name);
+            auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
+            hstring pid = engine.Hashes.ToHashedString(name);
             pid = engine.CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
             auto& file_protos = all_file_protos[type_name];
@@ -177,7 +173,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     // Process data
     unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> all_proto_texts;
 
-    const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
+    auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
             FO_VERIFY_AND_THROW(!key.empty(), "Prototype text key/value map contains an empty key while merging inherited text", value);
 
@@ -192,19 +188,19 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         const auto& file_proto_pids = file_protos.second;
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
-            const auto base_name = pid.as_str();
+            string_view base_name = pid.as_str();
             FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
             map<string, string> proto_kv;
 
             function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
-                const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
+                auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
-                    auto parent_pid = engine.Hashes.ToHashedString(parent_name);
+                    hstring parent_pid = engine.Hashes.ToHashedString(parent_name);
                     parent_pid = engine.CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
 
-                    const auto it_parent = file_proto_pids.find(parent_pid);
+                    auto it_parent = file_proto_pids.find(parent_pid);
 
                     if (it_parent == file_proto_pids.end()) {
                         if (base_name == name) {
@@ -226,7 +222,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
             all_proto_texts[type_name][pid] = {};
 
-            const auto text_pack_name = [&]() -> string_view {
+            auto text_pack_name = [&]() -> string_view {
                 if (type_name == item_type_name) {
                     return "Items";
                 }
@@ -245,14 +241,14 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             for (auto&& [key, value] : proto_kv) {
                 FO_VERIFY_AND_THROW(strvex(key).starts_with("$Text"), "Proto text key must start with $Text", key);
 
-                const auto key_tok = strex(key).split(' ');
-                const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
+                auto key_tok = strex(key).split(' ');
+                string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
                 FO_VERIFY_AND_THROW(key_tok.size() <= 4, "Prototype text key has too many tokens", type_name, pid, key, key_tok.size(), 4);
 
-                const string_view key2 = key_tok.size() >= 3 ? string_view {key_tok[2]} : string_view {};
-                const string_view key3 = key_tok.size() >= 4 ? string_view {key_tok[3]} : string_view {};
-                const auto text_key = TextPackKey::FromPack(engine.Hashes, text_pack_name, pid.as_str(), key2, key3);
+                string_view key2 = key_tok.size() >= 3 ? string_view {key_tok[2]} : string_view {};
+                string_view key3 = key_tok.size() >= 4 ? string_view {key_tok[3]} : string_view {};
+                auto text_key = TextPackKey::FromPack(engine.Hashes, text_pack_name, pid.as_str(), key2, key3);
 
                 auto& lang_packs_map = all_proto_texts[type_name][pid];
                 lang_packs_map.try_emplace(lang, &engine.Hashes);
@@ -275,10 +271,10 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         lang_packs.emplace_back(lang, std::move(empty_lang_pack));
     }
 
-    const auto fill_proto_texts = [&](hstring entity_name, string_view pack_name) {
+    auto fill_proto_texts = [&](hstring entity_name, string_view pack_name) {
         for (auto&& [pid, proto_texts] : all_proto_texts[entity_name]) {
             for (const auto& proto_text : proto_texts) {
-                const auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
+                auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
                 if (it != lang_packs.end()) {
                     auto& text_pack = it->second.at(string(pack_name));

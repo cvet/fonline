@@ -108,7 +108,7 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto buf = SendCallback();
+    auto buf = SendCallback();
 
     if (!buf.empty()) {
         scoped_lock locker {_sendLocker};

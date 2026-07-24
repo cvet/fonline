@@ -47,7 +47,7 @@ TEST_CASE("Platform")
 {
     SECTION("GetExePathReturnsExistingPath")
     {
-        const auto exe_path = Platform::GetExePath();
+        auto exe_path = Platform::GetExePath();
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
@@ -57,7 +57,7 @@ TEST_CASE("Platform")
 
     SECTION("CurrentProcessIdStringMatchesRuntime")
     {
-        const auto pid_str = Platform::GetCurrentProcessIdStr();
+        string pid_str = Platform::GetCurrentProcessIdStr();
 
         CHECK_FALSE(pid_str.empty());
         CHECK(pid_str.find_first_not_of("0123456789") == std::string::npos);
@@ -75,7 +75,7 @@ TEST_CASE("Platform")
     SECTION("GetFuncAddrCanResolveProcessSymbols")
     {
         using FuncPtr = void (*)();
-        const FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, "getpid");
+        FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, "getpid");
 
 #if FO_LINUX || FO_MAC
         CHECK(func != nullptr);
@@ -106,7 +106,7 @@ TEST_CASE("Platform")
 
     SECTION("CpuUsageSnapshotIsWellFormed")
     {
-        const Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
+        Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
         REQUIRE_FALSE(snapshot.Cores.empty());
@@ -123,12 +123,12 @@ TEST_CASE("Platform")
 
     SECTION("GetUserDataBaseResolvesFromEnvironment")
     {
-        const auto save_env = [](const char* name) -> optional<string> {
+        auto save_env = [](const char* name) -> optional<string> {
             const char* value = std::getenv(name);
             return value != nullptr ? optional<string> {string(value)} : optional<string> {};
         };
 
-        const auto set_env = [](const char* name, const char* value) {
+        auto set_env = [](const char* name, const char* value) {
 #if FO_WINDOWS
             _putenv_s(name, value);
 #else
@@ -141,23 +141,23 @@ TEST_CASE("Platform")
 #endif
         };
 
-        const auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
+        auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
 
         // The resolver reads the OS user-data env vars directly (no SDL/shell32). Drive each platform's
         // primary var and its documented fallback, capture the results, then restore the real env.
 #if FO_WINDOWS
-        const auto saved_local = save_env("LOCALAPPDATA");
-        const auto saved_roaming = save_env("APPDATA");
+        auto saved_local = save_env("LOCALAPPDATA");
+        auto saved_roaming = save_env("APPDATA");
 
-        const auto local_dir = strex("C:").combine_path("AppData/Local").str();
-        const auto roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
+        string local_dir = strex("C:").combine_path("AppData/Local").str();
+        string roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
 
         set_env("LOCALAPPDATA", local_dir.c_str());
-        const auto from_local = Platform::GetUserDataBase();
+        string from_local = Platform::GetUserDataBase();
 
         set_env("LOCALAPPDATA", "");
         set_env("APPDATA", roaming_dir.c_str());
-        const auto from_roaming = Platform::GetUserDataBase();
+        string from_roaming = Platform::GetUserDataBase();
 
         restore_env("LOCALAPPDATA", saved_local);
         restore_env("APPDATA", saved_roaming);

@@ -64,7 +64,7 @@ TEST_CASE("Model animation allocator returns aligned storage")
     REQUIRE(allocator);
 
     constexpr array<size_t, 7> alignments {1, 2, 4, 8, 16, 32, 64};
-    for (const size_t alignment : alignments) {
+    for (size_t alignment : alignments) {
         nptr<void> block {allocator->Allocate(33, alignment)};
         REQUIRE(block);
         CHECK(block.as_uintptr() % alignment == 0);

@@ -66,7 +66,7 @@ void MovingContext::RecalculateMetrics()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto metrics = EvaluateMetrics();
+    auto metrics = EvaluateMetrics();
 
     _endHex = metrics.EndHex;
     _wholeTime = metrics.WholeTime;
@@ -88,7 +88,7 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
     segment_end_hex = segment_start_hex;
 
     for (uint16_t j = control_step_begin; j < control_step_end; j++) {
-        const auto move_ok = GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize);
+        bool move_ok = GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize);
         FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
     }
 
@@ -103,7 +103,7 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
         oy += _endHexOffset.y;
     }
 
-    const float32_t proj_oy = numeric_cast<float32_t>(oy) * GeometryHelper::GetYProj();
+    float32_t proj_oy = numeric_cast<float32_t>(oy) * GeometryHelper::GetYProj();
     offset = {ox, oy};
     dist = std::sqrt(numeric_cast<float32_t>(ox * ox) + proj_oy * proj_oy);
 }
@@ -119,8 +119,8 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
         return raw_progress;
     }
 
-    const float32_t normalized_time = std::clamp(elapsed_time_ms / _wholeTime, 0.0f, 1.0f);
-    const float32_t dist_pos = _wholeDist * normalized_time;
+    float32_t normalized_time = std::clamp(elapsed_time_ms / _wholeTime, 0.0f, 1.0f);
+    float32_t dist_pos = _wholeDist * normalized_time;
     float32_t cur_dist = 0.0f;
     mpos next_start_hex = _startHex;
     uint16_t control_step_begin = 0;
@@ -130,19 +130,19 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
         ipos32 segment_offset;
         float32_t dist = 0.0f;
         EvaluateSegment(control_step_begin, _controlSteps[i], next_start_hex, i == _controlSteps.size() - 1, segment_end_hex, segment_offset, dist);
-        const float32_t clamped_dist = std::max(dist, 0.0001f);
+        float32_t clamped_dist = std::max(dist, 0.0001f);
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + clamped_dist) || (normalized_time == 1.0f && i == _controlSteps.size() - 1)) {
-            const auto normalized_dist = std::clamp((dist_pos - cur_dist) / clamped_dist, 0.0f, 1.0f);
+            float32_t normalized_dist = std::clamp((dist_pos - cur_dist) / clamped_dist, 0.0f, 1.0f);
 
-            const auto step_index = control_step_begin + iround<int32_t>(normalized_dist * numeric_cast<float32_t>(_controlSteps[i] - control_step_begin));
+            int32_t step_index = control_step_begin + iround<int32_t>(normalized_dist * numeric_cast<float32_t>(_controlSteps[i] - control_step_begin));
             FO_VERIFY_AND_THROW(step_index >= numeric_cast<int32_t>(control_step_begin), "Interpolated movement step is before the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
             FO_VERIFY_AND_THROW(step_index <= numeric_cast<int32_t>(_controlSteps[i]), "Interpolated movement step is after the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
 
-            auto current_hex = next_start_hex;
+            mpos current_hex = next_start_hex;
 
             for (int32_t j = control_step_begin; j < step_index; j++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize);
+                bool move_ok = GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize);
                 FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
             }
 
@@ -170,11 +170,11 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 
     FO_VERIFY_AND_THROW(_speed != 0, "Speed must be non-zero");
 
-    const auto diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
-    const auto elapsed_time = _elapsedTime;
+    float32_t diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
+    float32_t elapsed_time = _elapsedTime;
 
-    const timespan new_offset_time = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
-    const float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
+    timespan new_offset_time = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
+    float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
 
     _wholeTime = new_whole_time;
     _startTime = current_time;
@@ -216,7 +216,7 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
     MovingMetrics metrics;
     metrics.EndHex = _startHex;
 
-    const auto base_move_speed = numeric_cast<float32_t>(_speed);
+    float32_t base_move_speed = numeric_cast<float32_t>(_speed);
     mpos next_start_hex = _startHex;
     uint16_t control_step_begin = 0;
 
@@ -263,18 +263,18 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto best_hex = fallback_hex;
-    auto best_dist = GeometryHelper::GetDistance(from_hex, best_hex);
+    mpos best_hex = fallback_hex;
+    int32_t best_dist = GeometryHelper::GetDistance(from_hex, best_hex);
 
     if (_steps.empty()) {
-        const auto end_dist = GeometryHelper::GetDistance(from_hex, _endHex);
+        int32_t end_dist = GeometryHelper::GetDistance(from_hex, _endHex);
 
         if (end_dist < best_dist) {
             best_hex = _endHex;
             best_dist = end_dist;
         }
 
-        const auto current_dist = GeometryHelper::GetDistance(from_hex, current_hex);
+        int32_t current_dist = GeometryHelper::GetDistance(from_hex, current_hex);
 
         if (current_dist < best_dist) {
             best_hex = current_hex;
@@ -283,10 +283,10 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
         return best_hex;
     }
 
-    auto hex = _startHex;
+    mpos hex = _startHex;
     bool use_path_point = hex == current_hex;
 
-    for (const auto step : _steps) {
+    for (auto step : _steps) {
         if (!GeometryHelper::MoveHexByDir(hex, step, _mapSize)) {
             break;
         }
@@ -296,7 +296,7 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
             continue;
         }
 
-        const auto dist = GeometryHelper::GetDistance(from_hex, hex);
+        int32_t dist = GeometryHelper::GetDistance(from_hex, hex);
 
         if (dist < best_dist) {
             best_dist = dist;
@@ -333,7 +333,7 @@ auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
         path_hexes.emplace_back(hex);
     }
 
-    for (const auto step : _steps) {
+    for (auto step : _steps) {
         if (!GeometryHelper::MoveHexByDir(hex, step, _mapSize)) {
             break;
         }
@@ -354,7 +354,7 @@ auto MovingContext::EvaluateProgress() const -> MovingProgress
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto raw_progress = EvaluateRawProgress(_elapsedTime);
+    auto raw_progress = EvaluateRawProgress(_elapsedTime);
     return BuildProgress(raw_progress, raw_progress.Hex);
 }
 
@@ -384,9 +384,9 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
         current_oy -= _startHexOffset.y;
     }
 
-    const auto lerp = [](int32_t a, int32_t b, float32_t t) -> float32_t { return numeric_cast<float32_t>(a) * (1.0f - t) + numeric_cast<float32_t>(b) * t; };
-    const float32_t offset_x = lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_ox);
-    const float32_t offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_oy);
+    auto lerp = [](int32_t a, int32_t b, float32_t t) -> float32_t { return numeric_cast<float32_t>(a) * (1.0f - t) + numeric_cast<float32_t>(b) * t; };
+    float32_t offset_x = lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_ox);
+    float32_t offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_oy);
 
     // HexOffset is intentionally NOT clamped here: current_hex (the rounded step) can lag the smooth
     // lerp position by a full hex on offset-row spacing, and client prediction reconciliation
@@ -411,7 +411,7 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float32_t runtime_elapsed = GetRuntimeElapsedTime(current_time);
+    float32_t runtime_elapsed = GetRuntimeElapsedTime(current_time);
 
     if (runtime_elapsed <= _elapsedTime) {
         _elapsedTime = runtime_elapsed;
@@ -432,7 +432,7 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
     float32_t high = runtime_elapsed;
 
     for (size_t i = 0; i < NEXT_HEX_TIME_SEARCH_ITERATIONS; i++) {
-        const float32_t middle = (low + high) * 0.5f;
+        float32_t middle = (low + high) * 0.5f;
 
         if (EvaluateRawProgress(middle).Hex == current_hex) {
             low = middle;

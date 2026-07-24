@@ -169,7 +169,7 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
 
     if (_disconnectRequested) {
         if (socket.can_write()) {
-            const auto packet = _channel.MakeDisconnectPacket();
+            auto packet = _channel.MakeDisconnectPacket();
             socket.send_to(_host, _port, packet);
             _disconnectRequested = false;
         }
@@ -178,7 +178,7 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
     }
 
     if (_sendRequested) {
-        const auto buf = SendCallback();
+        auto buf = SendCallback();
 
         if (!buf.empty()) {
             _pendingOutput.insert(_pendingOutput.end(), buf.begin(), buf.end());
@@ -188,7 +188,7 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
     }
 
     if (!_pendingOutput.empty() || _channel.NeedSend(now)) {
-        const auto consumed = _channel.PrepareOutput(_pendingOutput, packets, now);
+        size_t consumed = _channel.PrepareOutput(_pendingOutput, packets, now);
 
         if (consumed != 0) {
             _pendingOutput.erase(_pendingOutput.begin(), _pendingOutput.begin() + numeric_cast<ptrdiff_t>(consumed));
@@ -257,8 +257,8 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> se
         throw NetworkServerException("Can't bind UDP server socket");
     }
 
-    const auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
-    const auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
+    auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
     _packetBuf.resize(std::max(packet_capacity, net_capacity));
     _runThread = run_thread("Network-Udp", [this] { Run(); });
 }
@@ -297,7 +297,7 @@ void NetworkServer_UdpSockets::Run()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto tick = std::chrono::milliseconds {std::max(_settings->UdpSendUpdateInterval, 1)};
+    auto tick = std::chrono::milliseconds {std::max(_settings->UdpSendUpdateInterval, 1)};
 
     while (!_stopped) {
         try {
@@ -321,7 +321,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         string host;
         uint16_t port = 0;
         auto packet_buf = make_span(_packetBuf);
-        const auto received = _socket.receive_from(packet_buf, host, port);
+        int32_t received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
@@ -329,7 +329,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         UdpPacketInfo packet;
         FO_STRONG_ASSERT(numeric_cast<size_t>(received) <= _packetBuf.size(), "Received byte count exceeds the packet buffer size");
-        const auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
+        auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
@@ -349,7 +349,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         {
             scoped_lock locker {_connectionsLocker};
-            const auto it = _sessions.find(packet.SessionId);
+            auto it = _sessions.find(packet.SessionId);
 
             if (it != _sessions.end()) {
                 connection = it->second;
@@ -372,11 +372,11 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
     {
         scoped_lock locker {_connectionsLocker};
 
-        const auto endpoint_key = MakeEndpointKey(host, port);
-        const auto endpoint_it = _endpointToSession.find(endpoint_key);
+        string endpoint_key = MakeEndpointKey(host, port);
+        auto endpoint_it = _endpointToSession.find(endpoint_key);
 
         if (endpoint_it != _endpointToSession.end()) {
-            const auto session_it = _sessions.find(endpoint_it->second);
+            auto session_it = _sessions.find(endpoint_it->second);
 
             if (session_it != _sessions.end()) {
                 connection = session_it->second;
@@ -384,7 +384,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
         }
 
         if (!connection) {
-            auto session_id = GenerateSessionId();
+            uint32_t session_id = GenerateSessionId();
 
             while (session_id == 0 || _sessions.count(session_id) != 0) {
                 session_id = GenerateSessionId();
@@ -397,7 +397,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
         }
     }
 
-    const auto accept_packet = MakeUdpAcceptPacket(connection->GetSessionId(), packet.Value);
+    auto accept_packet = MakeUdpAcceptPacket(connection->GetSessionId(), packet.Value);
     _socket.send_to(connection->GetHost(), connection->GetPort(), accept_packet);
 
     if (is_new_connection) {

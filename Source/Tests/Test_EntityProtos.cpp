@@ -77,8 +77,8 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
+        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
         auto item_registrator = meta.GetPropertyRegistrator("Item");
         auto critter_registrator = meta.GetPropertyRegistrator("Critter");
 
@@ -105,7 +105,7 @@ TEST_CASE("EntityProtos")
         auto registrator = meta.GetPropertyRegistrator("TestEntity");
         REQUIRE(static_cast<bool>(registrator));
 
-        const hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
+        hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
         ProtoCustomEntity proto {custom_pid, registrator};
 
         CHECK(proto.GetProtoId() == custom_pid);
@@ -118,7 +118,7 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        const hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
+        hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
         auto registrator = meta.GetPropertyRegistrator("TestEntity");
         REQUIRE(static_cast<bool>(registrator));
 
@@ -153,7 +153,7 @@ TEST_CASE("EntityProtos")
         std::thread reader {[&] {
             reader_started.store(true, std::memory_order_release);
 
-            const nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+            nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
             while (!entity->IsDestroying() && nanotime::now() < deadline) {
                 std::this_thread::yield();
             }

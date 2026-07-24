@@ -205,7 +205,7 @@ public:
 
     void EnableMapperMode();
     void SetScrollCheck(bool enabled);
-    void LoadFromFile(string_view map_name, const string& str);
+    void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
     void Process();
 
@@ -307,7 +307,7 @@ public:
     void ClearIgnorePids();
 
     void SetHeaderExtraFields(map<string, string> fields);
-    auto SaveToText() const -> string;
+    auto SaveToText(string_view save_name) const -> string;
 
 private:
     struct TransparentEggInfo

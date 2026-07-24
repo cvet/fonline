@@ -44,7 +44,7 @@ extern void CreateGlobalData()
     static std::once_flag once;
 
     std::call_once(once, [] {
-        for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
+        for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
             CreateGlobalDataCallbacks[i]();
         }
     });
@@ -52,7 +52,7 @@ extern void CreateGlobalData()
 
 extern void DeleteGlobalData()
 {
-    for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
+    for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
     }
 }

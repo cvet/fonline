@@ -24,6 +24,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [Essentials.md](Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
 - [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary and migration rules.
 - [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md) — `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
+- [LocalVariables.md](LocalVariables.md) — explicit simple local types, redundant top-level local `const`, and use-after-move validation.
 
 ## Build and generation
 

@@ -67,7 +67,7 @@ namespace
 
         FO_VERIFY_AND_THROW(offset <= data.size(), "Tail offset past end of buffer");
 
-        const size_t size = data.size() - offset;
+        size_t size = data.size() - offset;
 
         if (size == 0) {
             return {};
@@ -102,7 +102,7 @@ TEST_CASE("NetworkUdp::Packets")
 {
     SECTION("ConnectAndAcceptRoundTrip")
     {
-        const auto connect = MakeUdpConnectPacket(0xDEADBEEFU);
+        auto connect = MakeUdpConnectPacket(0xDEADBEEFU);
         UdpPacketInfo connect_info;
         REQUIRE(TryParseUdpPacket(connect, connect_info));
         CHECK(connect_info.Type == UdpPacketType::Connect);
@@ -110,7 +110,7 @@ TEST_CASE("NetworkUdp::Packets")
         CHECK(connect_info.Value == 0xDEADBEEFU);
         CHECK(connect_info.Payload.empty());
 
-        const auto accept = MakeUdpAcceptPacket(0xCAFEBABEU, 0xDEADBEEFU);
+        auto accept = MakeUdpAcceptPacket(0xCAFEBABEU, 0xDEADBEEFU);
         UdpPacketInfo accept_info;
         REQUIRE(TryParseUdpPacket(accept, accept_info));
         CHECK(accept_info.Type == UdpPacketType::Accept);
@@ -127,7 +127,7 @@ TEST_CASE("NetworkUdp::Packets")
         CHECK_FALSE(TryParseUdpPacket({}, info));
 
         // Truncated header
-        const vector<uint8_t> tiny(4, 0xFF);
+        vector<uint8_t> tiny(4, 0xFF);
         CHECK_FALSE(TryParseUdpPacket(tiny, info));
 
         // Bad magic
@@ -144,7 +144,7 @@ TEST_CASE("NetworkUdp::Packets")
 
 TEST_CASE("NetworkUdp::OrderedChannel")
 {
-    const auto base_time = nanotime(int64_t {1});
+    nanotime base_time = nanotime(int64_t {1});
 
     SECTION("DeliversInOrderAndChunksByMaxPayload")
     {
@@ -153,10 +153,10 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         sender.SetSessionId(42);
         receiver.SetSessionId(42);
 
-        const auto data = Bytes("hello world!");
+        auto data = Bytes("hello world!");
 
         vector<vector<uint8_t>> wire;
-        const auto consumed = sender.PrepareOutput(data, wire, base_time);
+        size_t consumed = sender.PrepareOutput(data, wire, base_time);
 
         CHECK(consumed == data.size());
         // 12 bytes / 4 per packet => 3 packets
@@ -175,7 +175,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(4));
         UdpOrderedChannel receiver(MakeOptions(4));
 
-        const auto data = Bytes("ABCDEFGH");
+        auto data = Bytes("ABCDEFGH");
 
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
@@ -203,7 +203,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(8));
         UdpOrderedChannel receiver(MakeOptions(8));
 
-        const auto data = Bytes("dupdupdu");
+        auto data = Bytes("dupdupdu");
 
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
@@ -225,7 +225,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(4, 1024, 100));
         UdpOrderedChannel receiver(MakeOptions(4));
 
-        const auto data = Bytes("packet1+packet2+packet3-");
+        auto data = Bytes("packet1+packet2+packet3-");
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         REQUIRE(wire.size() == 6); // 24 bytes / 4
@@ -241,7 +241,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
 
         // After ack, sender past the resend timeout should NOT resend any payload (everything acked).
         vector<vector<uint8_t>> after_ack;
-        const auto t = BumpTime(base_time, 1000);
+        nanotime t = BumpTime(base_time, 1000);
         sender.PrepareOutput({}, after_ack, t);
         CHECK(after_ack.empty());
         CHECK_FALSE(sender.NeedSend(t));
@@ -252,13 +252,13 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(8, 1024, /*resend*/ 50));
         UdpOrderedChannel receiver(MakeOptions(8));
 
-        const auto data = Bytes("resendme");
+        auto data = Bytes("resendme");
         vector<vector<uint8_t>> first_wire;
         REQUIRE(sender.PrepareOutput(data, first_wire, base_time) == data.size());
         REQUIRE(first_wire.size() == 1);
 
         // Pretend the wire packet was lost. Bump time past the resend timeout.
-        const auto later = BumpTime(base_time, 75);
+        nanotime later = BumpTime(base_time, 75);
         REQUIRE(sender.NeedSend(later));
 
         vector<vector<uint8_t>> resend_wire;
@@ -279,19 +279,19 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(/*max_payload*/ 8, /*window*/ 16));
         UdpOrderedChannel receiver(MakeOptions(8));
 
-        const auto data = Bytes("AAAAAAAA"
-                                "BBBBBBBB"
-                                "CCCCCCCC");
+        auto data = Bytes("AAAAAAAA"
+                          "BBBBBBBB"
+                          "CCCCCCCC");
         vector<vector<uint8_t>> wire;
-        const auto consumed_first = sender.PrepareOutput(data, wire, base_time);
+        size_t consumed_first = sender.PrepareOutput(data, wire, base_time);
         CHECK(consumed_first == 16);
         CHECK(wire.size() == 2);
         CHECK_FALSE(sender.CanAcceptPayload());
 
         // Try sending more — nothing should fit until window opens.
-        const auto leftover = BytesTail(data, consumed_first);
+        auto leftover = BytesTail(data, consumed_first);
         vector<vector<uint8_t>> wire_blocked;
-        const auto consumed_blocked = sender.PrepareOutput(leftover, wire_blocked, BumpTime(base_time, 5));
+        size_t consumed_blocked = sender.PrepareOutput(leftover, wire_blocked, BumpTime(base_time, 5));
         CHECK(consumed_blocked == 0);
 
         // Receiver acks both.
@@ -303,7 +303,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         CHECK(sender.CanAcceptPayload());
 
         vector<vector<uint8_t>> wire_after;
-        const auto consumed_after = sender.PrepareOutput(leftover, wire_after, BumpTime(base_time, 10));
+        size_t consumed_after = sender.PrepareOutput(leftover, wire_after, BumpTime(base_time, 10));
         CHECK(consumed_after == leftover.size());
         CHECK(wire_after.size() == 1);
     }
@@ -315,7 +315,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(8));
         UdpOrderedChannel receiver(MakeOptions(8));
 
-        const auto data = Bytes("oneshot!");
+        auto data = Bytes("oneshot!");
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         REQUIRE(FeedAll(wire, receiver) == 1);
@@ -344,7 +344,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel sender(MakeOptions(8));
         UdpOrderedChannel receiver(MakeOptions(8));
 
-        const auto data = Bytes("ackonly!");
+        auto data = Bytes("ackonly!");
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         REQUIRE(FeedAll(wire, receiver) == 1);
@@ -374,14 +374,14 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel receiver(MakeOptions(4));
 
         // Send 3 packets first, then a 4th that should trigger redundancy of 2 of the first 3.
-        const auto data1 = Bytes("AAAA"
-                                 "BBBB"
-                                 "CCCC");
+        auto data1 = Bytes("AAAA"
+                           "BBBB"
+                           "CCCC");
         vector<vector<uint8_t>> wire1;
         REQUIRE(sender.PrepareOutput(data1, wire1, base_time) == data1.size());
         REQUIRE(wire1.size() == 3);
 
-        const auto data2 = Bytes("DDDD");
+        auto data2 = Bytes("DDDD");
         vector<vector<uint8_t>> wire2;
         REQUIRE(sender.PrepareOutput(data2, wire2, BumpTime(base_time, 5)) == data2.size());
         // 1 new + 2 redundant = 3 packets.
@@ -395,7 +395,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         CHECK_FALSE(receiver.HasReadyData());
 
         // Sender retries A on resend timeout.
-        const auto retry_time = BumpTime(base_time, 200);
+        nanotime retry_time = BumpTime(base_time, 200);
         vector<vector<uint8_t>> wire3;
         sender.PrepareOutput({}, wire3, retry_time);
         REQUIRE_FALSE(wire3.empty());
@@ -411,7 +411,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         UdpOrderedChannel ch(MakeOptions());
         ch.SetSessionId(0xABCDU);
 
-        const auto raw = ch.MakeDisconnectPacket();
+        auto raw = ch.MakeDisconnectPacket();
         UdpPacketInfo info;
         REQUIRE(TryParseUdpPacket(raw, info));
         CHECK(info.Type == UdpPacketType::Disconnect);
@@ -425,7 +425,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         sender.SetSessionId(0x55U);
         CHECK(sender.HasSession());
 
-        const auto data = Bytes("resetme!");
+        auto data = Bytes("resetme!");
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         // After sending, NeedSend at base_time is false (just sent), but pending is non-empty.

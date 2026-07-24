@@ -84,8 +84,8 @@ TEST_CASE("NetBuffer")
         out_buf.Write<uint16_t>(321);
         out_buf.EndMsg();
 
-        const auto data = out_buf.GetData();
-        const auto partial_size = data.size() - 1;
+        auto data = out_buf.GetData();
+        size_t partial_size = data.size() - 1;
 
         NetInBuffer in_buf {8};
         in_buf.AddData(data.first(partial_size));
@@ -109,7 +109,7 @@ TEST_CASE("NetBuffer")
         out_buf.Write<string_view>("secret");
         out_buf.EndMsg();
 
-        const auto data = out_buf.GetData();
+        auto data = out_buf.GetData();
         CHECK(data.size() > sizeof(uint32_t));
 
         uint32_t stored_signature = 0;
@@ -129,7 +129,7 @@ TEST_CASE("NetBuffer")
     SECTION("HashedStringRoundtrip")
     {
         HashStorage hashes {};
-        const auto value = hashes.ToHashedString("net_hash_value");
+        hstring value = hashes.ToHashedString("net_hash_value");
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
@@ -137,7 +137,7 @@ TEST_CASE("NetBuffer")
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
 
-        const auto read_value = in_buf.Read<hstring>(hashes);
+        hstring read_value = in_buf.Read<hstring>(hashes);
         CHECK(read_value == value);
         CHECK(read_value.as_str() == "net_hash_value");
     }
@@ -145,7 +145,7 @@ TEST_CASE("NetBuffer")
     SECTION("UnresolvedHashReportsWithHandlerAndCanBeLearned")
     {
         HashStorage sender {};
-        const auto value = sender.ToHashedString("runtime_only_hash");
+        hstring value = sender.ToHashedString("runtime_only_hash");
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
@@ -162,12 +162,12 @@ TEST_CASE("NetBuffer")
         CHECK(reported_hash == value.as_hash());
 
         // Learning the string (as the client does from the server's HashList) makes the same hash resolve
-        const auto learned = receiver.ToHashedString("runtime_only_hash");
+        hstring learned = receiver.ToHashedString("runtime_only_hash");
         CHECK(learned.as_hash() == value.as_hash());
 
         NetInBuffer in_buf_again {8};
         in_buf_again.AddData(out_buf.GetData());
-        const auto read_value = in_buf_again.Read<hstring>(receiver);
+        hstring read_value = in_buf_again.Read<hstring>(receiver);
         CHECK(read_value.as_hash() == value.as_hash());
         CHECK(read_value.as_str() == "runtime_only_hash");
     }
@@ -175,7 +175,7 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidSignatureThrows")
     {
         NetInBuffer in_buf {8};
-        const uint32_t invalid_signature = 0xDEADBEEF;
+        uint32_t invalid_signature = 0xDEADBEEF;
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
@@ -184,8 +184,8 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidMessageLengthThrowsAndResetsBuffer")
     {
         NetInBuffer in_buf {8};
-        const uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
-        const uint32_t invalid_len = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1;
+        uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
+        uint32_t invalid_len = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1;
 
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&signature), sizeof(signature)});
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_len), sizeof(invalid_len)});
@@ -200,7 +200,7 @@ TEST_CASE("NetBuffer")
         // A client-declared string length larger than the bytes actually buffered must be rejected
         // before the resize, so a tiny message cannot amplify into a multi-GB allocation
         NetInBuffer in_buf {8};
-        const uint32_t bogus_len = 0xFFFFFFFF;
+        uint32_t bogus_len = 0xFFFFFFFF;
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&bogus_len), sizeof(bogus_len)});
 
         CHECK_THROWS_AS(in_buf.Read<string>(), NetBufferException);
@@ -214,7 +214,7 @@ TEST_CASE("NetBuffer")
         out_buf.StartMsg(NetMessage::Ping);
         out_buf.Write<uint32_t>(0);
         out_buf.EndMsg();
-        const auto data = out_buf.GetData();
+        auto data = out_buf.GetData();
 
         NetInBuffer in_buf {8};
         in_buf.SetMaxMsgLen(data.size() - 1);
@@ -246,7 +246,7 @@ TEST_CASE("NetBufferAdversarial")
     {
         constexpr uint32_t key = 0x00BEEF01;
 
-        const auto build_frame = [&](uint32_t variant) {
+        auto build_frame = [&](uint32_t variant) {
             NetOutBuffer out {16};
             out.SetEncryptKey(key);
             out.StartMsg(NetMessage::RemoteCall);
@@ -254,12 +254,12 @@ TEST_CASE("NetBufferAdversarial")
             out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
             out.Write<uint16_t>(static_cast<uint16_t>(variant));
             out.EndMsg();
-            const auto data = out.GetData();
+            auto data = out.GetData();
             return vector<uint8_t> {data.begin(), data.end()};
         };
 
         uint32_t rng = 0x1234567;
-        const auto next = [&rng]() {
+        auto next = [&rng]() {
             rng = rng * 1664525U + 1013904223U;
             return rng;
         };
@@ -272,7 +272,7 @@ TEST_CASE("NetBufferAdversarial")
 
             // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips.
             if (iter % 8 != 0 && !frame.empty()) {
-                const int flips = static_cast<int>(next() % 3) + 1;
+                int32_t flips = static_cast<int32_t>(next() % 3) + 1;
                 for (int f = 0; f < flips; f++) {
                     frame[next() % frame.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
                 }
@@ -307,9 +307,9 @@ TEST_CASE("NetBufferAdversarial")
     // before allocating, and a well-formed blob must round-trip.
     SECTION("PropsDataWireRoundtripAndCorruption")
     {
-        const vector<uint8_t> a {1, 2, 3, 4};
-        const vector<uint8_t> b {};
-        const vector<uint8_t> c {9, 9, 9};
+        vector<uint8_t> a {1, 2, 3, 4};
+        vector<uint8_t> b {};
+        vector<uint8_t> c {9, 9, 9};
         vector<nptr<const uint8_t>> ptrs {a.data(), b.data(), c.data()};
         vector<uint32_t> sizes {static_cast<uint32_t>(a.size()), static_cast<uint32_t>(b.size()), static_cast<uint32_t>(c.size())};
 

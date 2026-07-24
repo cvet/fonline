@@ -60,7 +60,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace LocEntity
 {
@@ -728,7 +728,7 @@ namespace LocEntity
 )";
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "LocEntityScripts", {{"Scripts/LocEntity.fos", script_source}}, [](string_view message) {
-            const auto message_str = string(message);
+            string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
@@ -787,7 +787,7 @@ namespace LocEntity
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = MakeLocEntityMetadataBlob();
+        auto metadata_blob = MakeLocEntityMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -796,17 +796,17 @@ namespace LocEntity
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        const auto fomap_blob = MakeEmptyMapBlob();
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto fomap_blob = MakeEmptyMapBlob();
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -855,12 +855,12 @@ namespace LocEntity
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_LEM_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("LocEntity::" func_name)); \
@@ -1092,8 +1092,8 @@ TEST_CASE("LoadUnloadCritter")
 
         server->EntityMngr.MakePersistent(cr, true, true);
 
-        const ident_t cr_id = cr->GetId();
-        const ident_t item_id = item->GetId();
+        ident_t cr_id = cr->GetId();
+        ident_t item_id = item->GetId();
 
         server->DbStorage.Delete(get_func("Items"), item_id);
         server->UnloadCritter(cr);
@@ -1126,26 +1126,26 @@ TEST_CASE("LoadUnloadCritter")
 
         server->EntityMngr.MakePersistent(cr, true, true);
 
-        const hstring custom_type = get_func("CoverageTarget");
-        const hstring custom_entry = get_func("CoverageItems");
+        hstring custom_type = get_func("CoverageTarget");
+        hstring custom_entry = get_func("CoverageItems");
         auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
         auto custom_holder = custom.hold_ref();
 
-        const ident_t custom_id = custom->GetId();
+        ident_t custom_id = custom->GetId();
         REQUIRE(custom_id);
         CHECK(custom->GetTypeName() == custom_type);
         CHECK(custom->GetCustomHolderId() == cr->GetId());
         CHECK(custom->GetCustomHolderEntry() == custom_entry);
         CHECK(custom->IsPersistent());
 
-        const auto parent = custom->GetParent();
+        auto parent = custom->GetParent();
         REQUIRE(parent);
         CHECK(parent == cr);
 
-        const auto holder_prop = server->GetEntityHolderIdsProp(cr, custom_entry);
+        auto holder_prop = server->GetEntityHolderIdsProp(cr, custom_entry);
         CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {custom_id});
 
-        const auto inner_entities = cr->GetInnerEntities(custom_entry);
+        auto inner_entities = cr->GetInnerEntities(custom_entry);
         REQUIRE(inner_entities);
         REQUIRE(inner_entities->size() == 1);
         CHECK(inner_entities->front() == custom);
@@ -1173,8 +1173,8 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(container, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t container_id = container->GetId();
-        const ident_t inner_id = inner->GetId();
+        ident_t container_id = container->GetId();
+        ident_t inner_id = inner->GetId();
 
         REQUIRE(container_id);
         REQUIRE(inner_id);
@@ -1204,7 +1204,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetInnerItemIds() == vector<ident_t> {inner_id});
         CHECK(server->EntityMngr.GetItem(container_id) == loaded);
 
-        const auto loaded_inner_items = loaded->GetAllInnerItems();
+        auto loaded_inner_items = loaded->GetAllInnerItems();
         REQUIRE(loaded_inner_items.size() == 1);
 
         auto loaded_inner = loaded_inner_items.front();
@@ -1222,10 +1222,10 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadMapRestoresCrittersAndItems")
     {
-        const vector<hstring> map_pids {get_func("TestMap")};
+        vector<hstring> map_pids {get_func("TestMap")};
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
 
-        const auto loc_maps = loc->GetMaps();
+        auto loc_maps = loc->GetMaps();
         REQUIRE(loc_maps.size() == 1);
 
         auto map = loc_maps.front();
@@ -1238,10 +1238,10 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t loc_id = loc->GetId();
-        const ident_t map_id = map->GetId();
-        const ident_t cr_id = cr->GetId();
-        const ident_t item_id = item->GetId();
+        ident_t loc_id = loc->GetId();
+        ident_t map_id = map->GetId();
+        ident_t cr_id = cr->GetId();
+        ident_t item_id = item->GetId();
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -1250,15 +1250,15 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
         CHECK(map->GetItemIds() == vector<ident_t> {item_id});
 
-        const auto locations_collection = get_func("Locations");
-        const auto maps_collection = get_func("Maps");
-        const auto critters_collection = get_func("Critters");
-        const auto items_collection = get_func("Items");
+        hstring locations_collection = get_func("Locations");
+        hstring maps_collection = get_func("Maps");
+        hstring critters_collection = get_func("Critters");
+        hstring items_collection = get_func("Items");
 
-        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
-        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
-        const auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
-        const auto item_doc = server->DbStorage.Get(items_collection, item_id);
+        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
+        auto item_doc = server->DbStorage.Get(items_collection, item_id);
 
         REQUIRE_FALSE(loc_doc.Empty());
         REQUIRE_FALSE(map_doc.Empty());
@@ -1318,10 +1318,10 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadMapClampsInvalidCritterAndItemHex")
     {
-        const vector<hstring> map_pids {get_func("TestMap")};
+        vector<hstring> map_pids {get_func("TestMap")};
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
 
-        const auto loc_maps = loc->GetMaps();
+        auto loc_maps = loc->GetMaps();
         REQUIRE(loc_maps.size() == 1);
 
         auto map = loc_maps.front();
@@ -1334,21 +1334,21 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t loc_id = loc->GetId();
-        const ident_t map_id = map->GetId();
-        const ident_t cr_id = cr->GetId();
-        const ident_t item_id = item->GetId();
+        ident_t loc_id = loc->GetId();
+        ident_t map_id = map->GetId();
+        ident_t cr_id = cr->GetId();
+        ident_t item_id = item->GetId();
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
         REQUIRE(cr_id);
         REQUIRE(item_id);
 
-        const auto maps_collection = get_func("Maps");
-        const auto critters_collection = get_func("Critters");
-        const auto items_collection = get_func("Items");
+        hstring maps_collection = get_func("Maps");
+        hstring critters_collection = get_func("Critters");
+        hstring items_collection = get_func("Items");
 
-        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
         auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
         auto item_doc = server->DbStorage.Get(items_collection, item_id);
 
@@ -1410,10 +1410,10 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadMapPrunesMissingCritterAndItemRefs")
     {
-        const vector<hstring> map_pids {get_func("TestMap")};
+        vector<hstring> map_pids {get_func("TestMap")};
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
 
-        const auto loc_maps = loc->GetMaps();
+        auto loc_maps = loc->GetMaps();
         REQUIRE(loc_maps.size() == 1);
 
         auto map = loc_maps.front();
@@ -1426,10 +1426,10 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t loc_id = loc->GetId();
-        const ident_t map_id = map->GetId();
-        const ident_t cr_id = cr->GetId();
-        const ident_t item_id = item->GetId();
+        ident_t loc_id = loc->GetId();
+        ident_t map_id = map->GetId();
+        ident_t cr_id = cr->GetId();
+        ident_t item_id = item->GetId();
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -1438,8 +1438,8 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
         CHECK(map->GetItemIds() == vector<ident_t> {item_id});
 
-        const auto maps_collection = get_func("Maps");
-        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        hstring maps_collection = get_func("Maps");
+        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
         REQUIRE_FALSE(map_doc.Empty());
 
         server->MapMngr.DestroyLocation(loc);
@@ -1476,10 +1476,10 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadLocationRestoresMapRefs")
     {
-        const vector<hstring> map_pids {get_func("TestMap")};
+        vector<hstring> map_pids {get_func("TestMap")};
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
 
-        const auto loc_maps = loc->GetMaps();
+        auto loc_maps = loc->GetMaps();
         REQUIRE(loc_maps.size() == 1);
 
         auto map = loc_maps.front();
@@ -1487,8 +1487,8 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t loc_id = loc->GetId();
-        const ident_t map_id = map->GetId();
+        ident_t loc_id = loc->GetId();
+        ident_t map_id = map->GetId();
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -1497,11 +1497,11 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetLocMapIndex() == 0);
         CHECK(map->GetLocation() == loc);
 
-        const auto locations_collection = get_func("Locations");
-        const auto maps_collection = get_func("Maps");
+        hstring locations_collection = get_func("Locations");
+        hstring maps_collection = get_func("Maps");
 
-        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
-        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
 
         REQUIRE_FALSE(loc_doc.Empty());
         REQUIRE_FALSE(map_doc.Empty());
@@ -1528,7 +1528,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetMapIds() == vector<ident_t> {map_id});
         CHECK(server->EntityMngr.GetLocation(loc_id) == loaded);
 
-        const auto loaded_maps = loaded->GetMaps();
+        auto loaded_maps = loaded->GetMaps();
         REQUIRE(loaded_maps.size() == 1);
 
         auto loaded_map = loaded_maps.front();
@@ -1549,10 +1549,10 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadLocationPrunesMissingMapRefs")
     {
-        const vector<hstring> map_pids {get_func("TestMap")};
+        vector<hstring> map_pids {get_func("TestMap")};
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
 
-        const auto loc_maps = loc->GetMaps();
+        auto loc_maps = loc->GetMaps();
         REQUIRE(loc_maps.size() == 1);
 
         auto map = loc_maps.front();
@@ -1560,15 +1560,15 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        const ident_t loc_id = loc->GetId();
-        const ident_t map_id = map->GetId();
+        ident_t loc_id = loc->GetId();
+        ident_t map_id = map->GetId();
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
         CHECK(loc->GetMapIds() == vector<ident_t> {map_id});
 
-        const auto locations_collection = get_func("Locations");
-        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        hstring locations_collection = get_func("Locations");
+        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
         REQUIRE_FALSE(loc_doc.Empty());
 
         server->MapMngr.DestroyLocation(loc);
@@ -1619,7 +1619,7 @@ TEST_CASE("LocationCppApiTests")
 
     SECTION("CreateMultipleLocations")
     {
-        const auto initial_count = server->EntityMngr.GetLocationsCount();
+        size_t initial_count = server->EntityMngr.GetLocationsCount();
 
         auto loc1 = server->MapMngr.CreateLocation(get_func("TestLocation"));
         auto loc2 = server->MapMngr.CreateLocation(get_func("TestLocation"));
@@ -1641,7 +1641,7 @@ TEST_CASE("LocationCppApiTests")
     {
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
 
-        const auto loc_id = loc->GetId();
+        ident_t loc_id = loc->GetId();
         auto found_loc = server->EntityMngr.GetLocation(loc_id);
         REQUIRE(found_loc);
         CHECK(found_loc == loc);
@@ -1665,7 +1665,7 @@ TEST_CASE("CritterCppApiAdvanced")
 
     SECTION("CreateMultipleCritters")
     {
-        const auto initial_count = server->EntityMngr.GetCrittersCount();
+        size_t initial_count = server->EntityMngr.GetCrittersCount();
 
         auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
@@ -1698,7 +1698,7 @@ TEST_CASE("CritterCppApiAdvanced")
         auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
         REQUIRE(static_cast<bool>(item));
 
-        const auto inv_items = cr->GetInvItems();
+        auto inv_items = cr->GetInvItems();
         CHECK_FALSE(inv_items.empty());
 
         server->CrMngr.DestroyCritter(cr);
@@ -1708,7 +1708,7 @@ TEST_CASE("CritterCppApiAdvanced")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
-        const auto cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
         auto found_cr = server->EntityMngr.GetCritter(cr_id);
         REQUIRE(found_cr);
         CHECK(found_cr == cr);
@@ -1725,13 +1725,13 @@ TEST_CASE("ItemCppApiAdvanced")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
-        const auto initial_item_count = server->EntityMngr.GetItemsCount();
+        size_t initial_item_count = server->EntityMngr.GetItemsCount();
 
         auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 10);
         REQUIRE(static_cast<bool>(item));
         CHECK(server->EntityMngr.GetItemsCount() >= initial_item_count + 1);
 
-        const auto item_id = item->GetId();
+        ident_t item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
         REQUIRE(found);
         CHECK(nptr<Item> {found} == item);
@@ -1746,7 +1746,7 @@ TEST_CASE("ItemCppApiAdvanced")
         auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
         REQUIRE(static_cast<bool>(item));
 
-        const auto item_id = item->GetId();
+        ident_t item_id = item->GetId();
         server->ItemMngr.DestroyItem(item);
 
         auto gone = server->EntityMngr.GetItem(item_id);
@@ -1762,7 +1762,7 @@ TEST_CASE("ServerHealthInfoCpp")
 
     SECTION("HealthInfoContent")
     {
-        const auto info = server->GetHealthInfo();
+        string info = server->GetHealthInfo();
         CHECK_FALSE(info.empty());
         CHECK(info.find("Server uptime") != string::npos);
     }
@@ -1782,8 +1782,8 @@ TEST_CASE("EntityManagerCountsCpp")
 
     SECTION("CountsAfterCreation")
     {
-        const auto initial_cr = server->EntityMngr.GetCrittersCount();
-        const auto initial_loc = server->EntityMngr.GetLocationsCount();
+        size_t initial_cr = server->EntityMngr.GetCrittersCount();
+        size_t initial_loc = server->EntityMngr.GetLocationsCount();
 
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));

@@ -52,7 +52,7 @@ static auto ResolveAtlasSpriteLogicalOffset(isize32 frame_size, ipos32 frame_off
         return frame_offset;
     }
 
-    const isize32 logical_size = mesh_data->SourceSize;
+    isize32 logical_size = mesh_data->SourceSize;
 
     return {
         frame_offset.x - frame_size.width / 2 + logical_size.width / 2 - mesh_data->SourceOffset.x,
@@ -66,7 +66,7 @@ static auto ResolveAtlasSpriteFrameSize(const SpriteMeshData& mesh) -> isize32
 
     isize32 frame_size {};
 
-    for (const ipos32 vertex : mesh.Vertices) {
+    for (ipos32 vertex : mesh.Vertices) {
         frame_size.width = std::max(frame_size.width, vertex.x);
         frame_size.height = std::max(frame_size.height, vertex.y);
     }
@@ -90,7 +90,7 @@ AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offse
 }
 
 AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
-    Sprite(std::move(other)),
+    Sprite(other._sprMngr, other._size, other._offset),
     _atlas {other._atlas},
     _atlasRect {other._atlasRect},
     _hitTestData {std::move(other._hitTestData)},
@@ -99,6 +99,8 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
 {
     FO_STACK_TRACE_ENTRY();
 
+    _drawEffect = other._drawEffect;
+    other._drawEffect = nullptr;
     other._atlas = nullptr;
 
     if (_atlasAllocation) {
@@ -142,7 +144,7 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
         pos -= _meshData->SourceOffset;
     }
 
-    const isize32 frame_size = _meshData.has_value() && !_meshData->Indices.empty() ? ResolveAtlasSpriteFrameSize(*_meshData) : _size;
+    isize32 frame_size = _meshData.has_value() && !_meshData->Indices.empty() ? ResolveAtlasSpriteFrameSize(*_meshData) : _size;
 
     if (!frame_size.is_valid_pos(pos)) {
         return false;
@@ -188,31 +190,31 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
         dbuf->CheckAllocBuf(mesh.Vertices.size(), mesh.Indices.size());
 
         auto& vbuf = dbuf->Vertices;
-        auto& vpos = dbuf->VertCount;
+        size_t& vpos = dbuf->VertCount;
         auto& ibuf = dbuf->Indices;
-        auto& ipos = dbuf->IndCount;
-        const size_t base_vpos = vpos;
+        size_t& ipos = dbuf->IndCount;
+        size_t base_vpos = vpos;
         FO_VERIFY_AND_THROW(_size == mesh.SourceSize, "Atlas sprite logical size differs from its mesh source size", _size, mesh.SourceSize);
 
-        const isize32 frame_size = ResolveAtlasSpriteFrameSize(mesh);
-        const float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
-        const float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
-        const float32_t logical_width = numeric_cast<float32_t>(mesh.SourceSize.width);
-        const float32_t logical_height = numeric_cast<float32_t>(mesh.SourceSize.height);
-        const ucolor color_left = std::get<0>(colors);
-        const ucolor color_right = std::get<1>(colors);
-        const uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
+        isize32 frame_size = ResolveAtlasSpriteFrameSize(mesh);
+        float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
+        float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
+        float32_t logical_width = numeric_cast<float32_t>(mesh.SourceSize.width);
+        float32_t logical_height = numeric_cast<float32_t>(mesh.SourceSize.height);
+        ucolor color_left = std::get<0>(colors);
+        ucolor color_right = std::get<1>(colors);
+        uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
 
-        for (const ipos32 local_pos : mesh.Vertices) {
-            const ipos32 source_pos = local_pos + mesh.SourceOffset;
-            const float32_t logical_x = numeric_cast<float32_t>(source_pos.x) / logical_width;
-            const float32_t logical_y = numeric_cast<float32_t>(source_pos.y) / logical_height;
-            const float32_t frame_x = numeric_cast<float32_t>(local_pos.x) / frame_width;
-            const float32_t frame_y = numeric_cast<float32_t>(local_pos.y) / frame_height;
-            const int32_t source_x = std::clamp(source_pos.x, 0, mesh.SourceSize.width);
-            const uint32_t color_x = numeric_cast<uint32_t>(source_x);
-            const auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
-                const uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
+        for (ipos32 local_pos : mesh.Vertices) {
+            ipos32 source_pos = local_pos + mesh.SourceOffset;
+            float32_t logical_x = numeric_cast<float32_t>(source_pos.x) / logical_width;
+            float32_t logical_y = numeric_cast<float32_t>(source_pos.y) / logical_height;
+            float32_t frame_x = numeric_cast<float32_t>(local_pos.x) / frame_width;
+            float32_t frame_y = numeric_cast<float32_t>(local_pos.y) / frame_height;
+            int32_t source_x = std::clamp(source_pos.x, 0, mesh.SourceSize.width);
+            uint32_t color_x = numeric_cast<uint32_t>(source_x);
+            auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
+                uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
                 return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
             };
             auto& vertex = vbuf[vpos++];
@@ -232,7 +234,7 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
             };
         }
 
-        for (const uint16_t local_index : mesh.Indices) {
+        for (uint16_t local_index : mesh.Indices) {
             ibuf[ipos++] = numeric_cast<vindex_t>(base_vpos + local_index);
         }
 
@@ -242,9 +244,9 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     dbuf->CheckAllocBuf(4, 6);
 
     auto& vbuf = dbuf->Vertices;
-    auto& vpos = dbuf->VertCount;
+    size_t& vpos = dbuf->VertCount;
     auto& ibuf = dbuf->Indices;
-    auto& ipos = dbuf->IndCount;
+    size_t& ipos = dbuf->IndCount;
 
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
@@ -304,18 +306,18 @@ auto AtlasSprite::ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) cons
         return std::nullopt;
     }
 
-    const isize32 source_size = _size;
-    const ipos32 frame_offset = _meshData.has_value() ? _meshData->SourceOffset : ipos32 {};
-    const isize32 frame_size = _meshData.has_value() ? ResolveAtlasSpriteFrameSize(*_meshData) : source_size;
-    const fpos32 requested_begin {
+    isize32 source_size = _size;
+    ipos32 frame_offset = _meshData.has_value() ? _meshData->SourceOffset : ipos32 {};
+    isize32 frame_size = _meshData.has_value() ? ResolveAtlasSpriteFrameSize(*_meshData) : source_size;
+    fpos32 requested_begin {
         uv0.x * numeric_cast<float32_t>(source_size.width),
         uv0.y * numeric_cast<float32_t>(source_size.height),
     };
-    const fpos32 requested_end {
+    fpos32 requested_end {
         uv1.x * numeric_cast<float32_t>(source_size.width),
         uv1.y * numeric_cast<float32_t>(source_size.height),
     };
-    const fsize32 requested_size {
+    fsize32 requested_size {
         requested_end.x - requested_begin.x,
         requested_end.y - requested_begin.y,
     };
@@ -324,11 +326,11 @@ auto AtlasSprite::ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) cons
         return std::nullopt;
     }
 
-    const fpos32 clipped_begin {
+    fpos32 clipped_begin {
         std::max(requested_begin.x, numeric_cast<float32_t>(frame_offset.x)),
         std::max(requested_begin.y, numeric_cast<float32_t>(frame_offset.y)),
     };
-    const fpos32 clipped_end {
+    fpos32 clipped_end {
         std::min(requested_end.x, numeric_cast<float32_t>(frame_offset.x + frame_size.width)),
         std::min(requested_end.y, numeric_cast<float32_t>(frame_offset.y + frame_size.height)),
     };
@@ -337,16 +339,16 @@ auto AtlasSprite::ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) cons
         return std::nullopt;
     }
 
-    const float32_t destination_left = pos.x + pos.width * (clipped_begin.x - requested_begin.x) / requested_size.width;
-    const float32_t destination_top = pos.y + pos.height * (clipped_begin.y - requested_begin.y) / requested_size.height;
-    const float32_t destination_right = pos.x + pos.width * (clipped_end.x - requested_begin.x) / requested_size.width;
-    const float32_t destination_bottom = pos.y + pos.height * (clipped_end.y - requested_begin.y) / requested_size.height;
-    const float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
-    const float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
-    const float32_t texture_left = _atlasRect.x + _atlasRect.width * (clipped_begin.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
-    const float32_t texture_top = _atlasRect.y + _atlasRect.height * (clipped_begin.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
-    const float32_t texture_right = _atlasRect.x + _atlasRect.width * (clipped_end.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
-    const float32_t texture_bottom = _atlasRect.y + _atlasRect.height * (clipped_end.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
+    float32_t destination_left = pos.x + pos.width * (clipped_begin.x - requested_begin.x) / requested_size.width;
+    float32_t destination_top = pos.y + pos.height * (clipped_begin.y - requested_begin.y) / requested_size.height;
+    float32_t destination_right = pos.x + pos.width * (clipped_end.x - requested_begin.x) / requested_size.width;
+    float32_t destination_bottom = pos.y + pos.height * (clipped_end.y - requested_begin.y) / requested_size.height;
+    float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
+    float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
+    float32_t texture_left = _atlasRect.x + _atlasRect.width * (clipped_begin.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
+    float32_t texture_top = _atlasRect.y + _atlasRect.height * (clipped_begin.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
+    float32_t texture_right = _atlasRect.x + _atlasRect.width * (clipped_end.x - numeric_cast<float32_t>(frame_offset.x)) / frame_width;
+    float32_t texture_bottom = _atlasRect.y + _atlasRect.height * (clipped_end.y - numeric_cast<float32_t>(frame_offset.y)) / frame_height;
 
     return AtlasSpriteRegion {
         .DrawRect =
@@ -370,7 +372,7 @@ auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<AtlasSpriteRegion> region = ResolveRegion(uv0, uv1, pos);
+    optional<AtlasSpriteRegion> region = ResolveRegion(uv0, uv1, pos);
 
     if (!region.has_value()) {
         return 0;
@@ -382,9 +384,9 @@ auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 
     dbuf->CheckAllocBuf(4, 6);
 
     auto& vbuf = dbuf->Vertices;
-    auto& vpos = dbuf->VertCount;
+    size_t& vpos = dbuf->VertCount;
     auto& ibuf = dbuf->Indices;
-    auto& ipos = dbuf->IndCount;
+    size_t& ipos = dbuf->IndCount;
 
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
@@ -596,16 +598,16 @@ auto SpriteSheet::Update() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (_playing) {
-        const auto cur_tick = _sprMngr->GetTimer().GetFrameTime();
-        const auto dt = (cur_tick - _startTick).to_ms<int32_t>();
-        const auto frm_count = numeric_cast<int32_t>(_framesCount);
-        const auto ticks_per_frame = numeric_cast<int32_t>(_wholeTicks) / frm_count;
-        const auto frames_passed = dt / ticks_per_frame;
+        nanotime cur_tick = _sprMngr->GetTimer().GetFrameTime();
+        int32_t dt = (cur_tick - _startTick).to_ms<int32_t>();
+        int32_t frm_count = numeric_cast<int32_t>(_framesCount);
+        int32_t ticks_per_frame = numeric_cast<int32_t>(_wholeTicks) / frm_count;
+        int32_t frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
             _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
 
-            auto index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
+            int32_t index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
 
             if (_looped) {
                 if (index < 0 || index >= frm_count) {
@@ -663,7 +665,7 @@ auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dir_value = dir.hex().value();
+    int8_t dir_value = dir.hex().value();
     if (dir_value == 0 || _dirCount == 1) {
         return this;
     }
@@ -675,7 +677,7 @@ auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dir_value = dir.hex().value();
+    int8_t dir_value = dir.hex().value();
     if (dir_value == 0 || _dirCount == 1) {
         return this;
     }
@@ -695,7 +697,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _sprMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -704,7 +706,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
     FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Sprite resource has no sprite animation info", path);
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    const uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
+    uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
     FO_VERIFY_AND_THROW(direction_count == 1 || direction_count == GameSettings::MAP_DIR_COUNT, "Sprite file direction count is unsupported", direction_count, GameSettings::MAP_DIR_COUNT);
 
     shared_ptr<Sprite> result;
@@ -713,7 +715,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
 
         for (uint8_t i = 0; i < direction_count; i++) {
-            const mdir dir = hdir(i);
+            mdir dir = hdir(i);
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
             SpriteResourceDirectionData& direction = resource.Directions[i];
@@ -733,7 +735,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     dir_anim->_spr[j] = std::move(spr);
                 }
                 else {
-                    const uint16_t index = *frame.SharedFrameIndex;
+                    uint16_t index = *frame.SharedFrameIndex;
                     dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
                     dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
                 }
@@ -756,7 +758,7 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _sprMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -785,10 +787,10 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     vector<bool> hit_test_data;
 
     if (pixels) {
-        const size_t width = numeric_cast<size_t>(size.width);
-        const size_t height = numeric_cast<size_t>(size.height);
+        size_t width = numeric_cast<size_t>(size.width);
+        size_t height = numeric_cast<size_t>(size.height);
         auto pixel_ptr = pixels.as_ptr();
-        const auto pixel_data = make_span(pixel_ptr, width * height);
+        auto pixel_data = make_span(pixel_ptr, width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 
@@ -806,7 +808,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        const auto border_pixels = make_span(make_ptr(_borderBuf.data()), numeric_cast<size_t>(size.height + 2));
+        auto border_pixels = make_span(make_ptr(_borderBuf.data()), numeric_cast<size_t>(size.height + 2));
         tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, border_pixels);
 
         // Right
