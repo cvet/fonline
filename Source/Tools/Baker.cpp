@@ -778,8 +778,11 @@ auto BakerDataSource::Reindex() -> bool
         };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
+        // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
+        // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
+        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
         for (const auto& dir : res_pack.InputDirs) {
-            res_entry.InputDir.AddDirSource(dir, true);
+            res_entry.InputDir.AddDirSource(dir, true, true);
         }
         for (const auto& path : res_pack.InputFiles) {
             string dir = strex(path).extract_dir().str();
