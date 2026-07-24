@@ -122,6 +122,7 @@ private:
     // Diagnostic overlays, all opt-in (off by default).
     bool _drawRoot {};
     bool _drawDrawRect {};
+    bool _showWireframe {};
 };
 
 FO_END_NAMESPACE

@@ -101,7 +101,7 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
 }
 
 ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader) :
-    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader)})},
+    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .Settings = settings})},
     _settings {settings},
     _gameTime {game_time}
 {

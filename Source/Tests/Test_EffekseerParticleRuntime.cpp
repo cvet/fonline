@@ -356,6 +356,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
 
             return {_texture.as_nptr(), EffekseerFixtureAtlasRect};
         },
+        .Settings = &_settings,
     })}
 {
     FO_STACK_TRACE_ENTRY();

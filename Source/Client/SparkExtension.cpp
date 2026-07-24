@@ -53,6 +53,8 @@ namespace SPK::FO
     public:
         SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render);
 
+        [[nodiscard]] auto GetDrawBuffer() const -> const RenderDrawBuffer& { return *_renderBuf; }
+
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
         void SetNextTexCoord(float32_t tu, float32_t tv);
@@ -150,6 +152,7 @@ static constexpr float32_t SPARK_PREWARM_STEP = 0.5f;
 struct SparkParticleRuntimeBackend::Impl
 {
     ParticleRuntimeServices Services;
+    unique_nptr<RenderDrawBuffer> WireframeBuf {};
     SPK::SPKContext Context {};
     unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
     mat44 ViewProjectionMatrix {};
@@ -835,6 +838,10 @@ namespace SPK::FO
         _effect->MainTex = _texture;
 
         spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
+
+        if (_runtime->_impl->Services.Settings->DrawWireframe) {
+            DrawParticleBufferWireframe(_runtime->_impl->Services.EffectMngr, _runtime->_impl->Services.Render, _runtime->_impl->WireframeBuf, spark_render_buffer->GetDrawBuffer(), numeric_cast<size_t>(group.getNbParticles()) * 6, _runtime->_impl->ViewProjectionMatrix);
+        }
     }
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const

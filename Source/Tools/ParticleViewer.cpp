@@ -101,6 +101,7 @@ void ParticleViewer::LoadSettings()
     _prewarm = _settings.GetBool("Prewarm", _prewarm);
     _drawRoot = _settings.GetBool("DrawRoot", _drawRoot);
     _drawDrawRect = _settings.GetBool("DrawDrawRect", _drawDrawRect);
+    _showWireframe = _settings.GetBool("ShowWireframe", _showWireframe);
 
     // Re-open the last previewed effect, but only if that resource still exists, so a removed/renamed file never
     // surfaces as a selection error on startup.
@@ -134,6 +135,7 @@ void ParticleViewer::SaveSettings()
     _settings.SetBool("Prewarm", _prewarm);
     _settings.SetBool("DrawRoot", _drawRoot);
     _settings.SetBool("DrawDrawRect", _drawDrawRect);
+    _settings.SetBool("ShowWireframe", _showWireframe);
     _settings.SetString("SelectedPath", _selectedPath);
 }
 
@@ -354,6 +356,8 @@ void ParticleViewer::DrawDebugToggles()
     ImGui::Checkbox("Root", &_drawRoot);
     ImGui::SameLine();
     ImGui::Checkbox("Draw rect", &_drawDrawRect);
+    ImGui::SameLine();
+    ImGui::Checkbox("Show wireframe", &_showWireframe);
 }
 
 void ParticleViewer::SelectParticle(string_view path)
@@ -453,6 +457,12 @@ void ParticleViewer::RenderPreview()
     if (!_previewSprite) {
         return;
     }
+
+    // Scope the wireframe overlay to the preview render only: the particle backends draw quad edges while
+    // Render.DrawWireframe is set, and restoring it right after keeps a hosting mapper scene unaffected.
+    bool prev_draw_wireframe = _engine->Settings->DrawWireframe;
+    _engine->Settings->DrawWireframe = _showWireframe;
+    auto wireframe_guard = scope_exit([&]() noexcept { _engine->Settings->DrawWireframe = prev_draw_wireframe; });
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
         // Nearest filtering: ImGui presents the target scaled by the display's

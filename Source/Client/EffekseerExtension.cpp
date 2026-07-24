@@ -555,8 +555,11 @@ static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const 
 class FOnlineEffekseerSpriteRenderer final : public Effekseer::SpriteRenderer
 {
 public:
-    FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
+        _effectMngr {effect_mngr},
+        _render {render},
+        _settings {settings},
         _multiplyEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorMul.fofx")},
         _addEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorAdd.fofx")},
         _drawBuffer {render->CreateDrawBuffer(false)}
@@ -797,12 +800,20 @@ private:
         MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture->RenderTextureRef;
         effect->DrawBuffer(_drawBuffer, 0, index_count);
+
+        if (_settings->DrawWireframe) {
+            DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
+        }
     }
 
     shared_ptr<EffekseerDrawBinding> _binding;
     nptr<RenderEffect> _multiplyEffect {};
     nptr<RenderEffect> _addEffect {};
     unique_ptr<RenderDrawBuffer> _drawBuffer;
+    unique_nptr<RenderDrawBuffer> _wireframeBuf {};
+    ptr<EffectManager> _effectMngr;
+    ptr<IAppRender> _render;
+    ptr<RenderSettings> _settings;
     optional<EffekseerSpriteNodeSnapshot> _node {};
     size_t _declaredInstanceCount {};
     vector<EffekseerSpriteInstanceSnapshot> _instances {};
@@ -811,8 +822,11 @@ private:
 class FOnlineEffekseerRingRenderer final : public Effekseer::RingRenderer
 {
 public:
-    FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
+        _effectMngr {effect_mngr},
+        _render {render},
+        _settings {settings},
         _multiplyEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorMul.fofx")},
         _addEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorAdd.fofx")},
         _drawBuffer {render->CreateDrawBuffer(false)},
@@ -1183,12 +1197,20 @@ private:
         MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = render_texture;
         effect->DrawBuffer(_drawBuffer, 0, index_count);
+
+        if (_settings->DrawWireframe) {
+            DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
+        }
     }
 
     shared_ptr<EffekseerDrawBinding> _binding;
     nptr<RenderEffect> _multiplyEffect {};
     nptr<RenderEffect> _addEffect {};
     unique_ptr<RenderDrawBuffer> _drawBuffer;
+    unique_nptr<RenderDrawBuffer> _wireframeBuf {};
+    ptr<EffectManager> _effectMngr;
+    ptr<IAppRender> _render;
+    ptr<RenderSettings> _settings;
     unique_ptr<RenderTexture> _whiteTexture;
     optional<EffekseerRingNodeSnapshot> _node {};
     size_t _declaredInstanceCount {};
@@ -1378,15 +1400,15 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
 
 struct EffekseerRuntimeState
 {
-    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleTextureLoader texture_loader) :
+    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, ParticleTextureLoader texture_loader) :
         Binding {SafeAlloc::MakeShared<EffekseerDrawBinding>()},
         Setting {Effekseer::Setting::Create()},
         Manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX)},
         TextureLoader {Effekseer::MakeRefPtr<FOnlineEffekseerTextureLoader>(std::move(texture_loader))},
         GpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
-        SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, Binding)},
+        SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, settings, Binding)},
         RibbonRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::RibbonRenderer>>(Binding)},
-        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, Binding)},
+        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, settings, Binding)},
         TrackRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::TrackRenderer>>(Binding)},
         ModelRenderer {Effekseer::MakeRefPtr<RejectingEffekseerRenderer<Effekseer::ModelRenderer>>(Binding)}
     {
@@ -1442,7 +1464,7 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
 struct EffekseerParticleRuntimeBackend::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services) :
-        Runtime {SafeAlloc::MakeShared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.TextureLoader)},
+        Runtime {SafeAlloc::MakeShared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.Settings, services.TextureLoader)},
         Resources {services.Resources}
     {
         FO_STACK_TRACE_ENTRY();

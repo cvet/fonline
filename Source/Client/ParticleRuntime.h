@@ -40,17 +40,19 @@ FO_BEGIN_NAMESPACE
 class EffectManager;
 class FileSystem;
 class IAppRender;
+class RenderDrawBuffer;
 class RenderTexture;
+struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
-struct ParticleBounds3D final
+struct ParticleBounds3D
 {
     vec3 Min {};
     vec3 Max {};
 };
 
-struct ParticleRuntimeSetup final
+struct ParticleRuntimeSetup
 {
     mat44 Projection {};
     mat44 World {};
@@ -62,12 +64,13 @@ struct ParticleRuntimeSetup final
     bool TiltInProjection {};
 };
 
-struct ParticleRuntimeServices final
+struct ParticleRuntimeServices
 {
     ptr<EffectManager> EffectMngr;
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
     ParticleTextureLoader TextureLoader;
+    ptr<RenderSettings> Settings;
 };
 
 class ParticleRuntimeSystem
@@ -110,6 +113,13 @@ public:
     virtual void InvalidateResource(string_view path) = 0;
 };
 
-[[nodiscard]] auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
+// Create particle runtime backends for all available particle systems.
+// The returned vector is sorted by backend priority, with the first backend being the most preferred.
+auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
+
+// Debug wireframe overlay for particle geometry: re-draws a particle draw buffer's triangles as a line list through
+// the primitive effect with the same projection, mirroring the sprite-batch wireframe from Render.DrawWireframe. The
+// overlay buffer is created lazily on first use and reused between draws.
+void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 
 FO_END_NAMESPACE

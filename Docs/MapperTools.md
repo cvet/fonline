@@ -123,6 +123,7 @@ Debug-draw toggles (all off by default):
 
 - **Root** — a faint crosshair through the anchor, drawn into the target before the effect so it reads as a ground reference.
 - **Draw rect** — the whole sprite frame the effect rasterizes into (`Sprite::GetSize()`), its maximal draw area.
+- **Show wireframe** — magenta triangle edges of the actual particle geometry (every SPARK/Effekseer quad), drawn by the particle backends while `Render.DrawWireframe` is set; the viewer scopes the setting to its preview render only, so a hosting mapper scene stays unaffected.
 
 The window owns no engine services — a host passes `BaseEngine` and `SpriteManager` and calls `Draw()` from its ImGui pass. `SetFillViewport(true)` makes it occupy the whole viewport (used by the standalone application).
 

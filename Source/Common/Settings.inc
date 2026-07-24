@@ -190,7 +190,7 @@ FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); 
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
-VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite triangle edges are overlaid for geometry debugging
+VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
