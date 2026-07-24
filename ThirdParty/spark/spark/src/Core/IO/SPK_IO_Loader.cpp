@@ -53,15 +53,15 @@ namespace IO
 			if (system)
 			{
 				unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
-				SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+				SPK_LOG_DEBUG("The system has been successfully loaded in " << loadTime << "ms");
 			}
 			else
-				SPK_LOG_INFO("An error occurred while loading the System");
+				SPK_LOG_WARNING("An error occurred while loading the System");
 			return system;
 		}
 		else
 		{
-			SPK_LOG_INFO("An error occurred while loading the System");
+			SPK_LOG_WARNING("An error occurred while loading the System");
 			return SPK_NULL_REF;
 		}
 	}
@@ -94,15 +94,15 @@ namespace IO
             if (system)
             {
                 unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
-                SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+                SPK_LOG_DEBUG("The system has been successfully loaded in " << loadTime << "ms");
             }
             else
-                SPK_LOG_INFO("An error occurred while loading the System");
+                SPK_LOG_WARNING("An error occurred while loading the System");
             return system;
         }
         else
         {
-            SPK_LOG_INFO("An error occurred while loading the System");
+            SPK_LOG_WARNING("An error occurred while loading the System");
             return SPK_NULL_REF;
         }
     }

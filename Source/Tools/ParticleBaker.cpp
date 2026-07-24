@@ -469,8 +469,6 @@ void ParticleBaker::BakeSparkFile(const File& file) const
     string_view source_path = file.GetPath();
     string output_path = strex(source_path).change_file_extension("spk");
 
-    WriteLog("Baking SPARK particle: {} -> {}", source_path, output_path);
-
     // Load SPARK XML
     const_span<uint8_t> file_data = file.GetDataSpan();
     auto system = _sparkContext->getIOManager().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
@@ -700,7 +698,6 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
         uint64_t dependency_write_time = 0;
         string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
-        WriteLog("Baking Effekseer particle: {} -> {}", file.GetPath(), output_path);
         _context->WriteData(output_path, compiled.Binary);
         string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
 
