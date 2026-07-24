@@ -119,10 +119,10 @@ void ParticleViewer::SaveSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::GetCurrentContext() != nullptr) {
+    if (auto ctx = make_nptr(ImGui::GetCurrentContext())) {
         size_t ini_size = 0;
 
-        if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size)); ini_data) {
+        if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size))) {
             _settings.SetString("ImGuiLayout", string_view(ini_data.get(), ini_size));
         }
     }

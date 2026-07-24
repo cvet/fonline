@@ -146,7 +146,7 @@ void AnimationViewer::SaveSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::GetCurrentContext() != nullptr) {
+    if (auto ctx = make_nptr(ImGui::GetCurrentContext())) {
         size_t ini_size = 0;
 
         if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size))) {
