@@ -81,11 +81,10 @@ public:
     virtual ~ParticleRuntimeSystem() = default;
 
     [[nodiscard]] virtual auto IsActive() const -> bool = 0;
-    [[nodiscard]] virtual auto GetDrawSize(isize32 default_size) const -> isize32 = 0;
     [[nodiscard]] virtual auto GetDrawInScene() const -> bool = 0;
-    [[nodiscard]] virtual auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] virtual auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] virtual auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
 
-    virtual void EnableBoundsComputation() noexcept;
     virtual void RebaseWorldParticles(vec3 delta) noexcept;
     virtual void Setup(const ParticleRuntimeSetup& setup) = 0;
     virtual auto Prewarm() -> float32_t = 0;

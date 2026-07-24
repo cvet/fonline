@@ -84,6 +84,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.h"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
+    "${FO_ENGINE_ROOT}/Source/Common/SettingsStore.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/SettingsStore.h"
     "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.h"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.cpp"
@@ -297,6 +299,14 @@ AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
+AppendList(FO_ANIMATION_VIEWER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/AnimationViewer.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AnimationViewer.cpp")
+
+AppendList(FO_PARTICLE_VIEWER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleViewer.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleViewer.cpp")
+
 AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
@@ -413,6 +423,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BakerSetup.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CacheStorage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_SettingsStore.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigBaker.cpp"

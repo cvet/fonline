@@ -71,7 +71,6 @@ namespace SPK::FO
 
         SPK_START_DESCRIPTION
         SPK_PARENT_ATTRIBUTES(Renderer)
-        SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
         SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
         SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
@@ -90,10 +89,6 @@ namespace SPK::FO
         ~SparkQuadRenderer() override = default;
 
         [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
-
-        auto GetDrawWidth() const -> int32_t;
-        auto GetDrawHeight() const -> int32_t;
-        void SetDrawSize(int32_t width, int32_t height);
 
         auto GetDrawInScene() const -> bool;
         void SetDrawInScene(bool draw_in_scene);
@@ -115,8 +110,6 @@ namespace SPK::FO
         string _path {};
         nptr<FO_NAMESPACE SparkParticleRuntimeBackend> _runtime {};
 
-        int32_t _drawWidth {};
-        int32_t _drawHeight {};
         bool _drawInScene {};
 
         string _effectName {};
@@ -156,12 +149,6 @@ static constexpr float32_t SPARK_PREWARM_STEP = 0.5f;
 
 struct SparkParticleRuntimeBackend::Impl
 {
-    explicit Impl(const ParticleRuntimeServices& services) :
-        Services {services}
-    {
-        FO_STACK_TRACE_ENTRY();
-    }
-
     ParticleRuntimeServices Services;
     SPK::SPKContext Context {};
     unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
@@ -171,29 +158,15 @@ struct SparkParticleRuntimeBackend::Impl
 
 struct SparkParticleRuntimeSystem::Impl
 {
-    Impl(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
-        Runtime {runtime},
-        Path {path},
-        BaseSystem {std::move(base_system)}
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        RandomSeed = std::uniform_int_distribution<uint32_t> {}(RandomGenerator);
-        RecreateRuntimeSystem();
-    }
-
-    void RecreateRuntimeSystem();
-
     ptr<SparkParticleRuntimeBackend> Runtime;
     string Path;
     SPK::Ref<SPK::System> RuntimeSystem {};
     SPK::Ref<SPK::System> BaseSystem {};
     mat44 ViewProjectionMatrix {};
     mat44 ViewMatrix {};
+    mat44 BoundsMatrix {};
     std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
-    uint32_t RandomSeed {};
     bool BaseSystemDetached {};
-    bool BoundsDirty {};
     bool TiltInProjection {};
 };
 
@@ -283,9 +256,11 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
 }
 
 SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
-    _impl {SafeAlloc::MakeUnique<Impl>(runtime, path, std::move(base_system))}
+    _impl {SafeAlloc::MakeUnique<Impl>(Impl {.Runtime = runtime, .Path = string {path}, .BaseSystem = std::move(base_system)})}
 {
     FO_STACK_TRACE_ENTRY();
+
+    RecreateRuntimeSystem(std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
 }
 
 SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
@@ -298,32 +273,6 @@ auto SparkParticleRuntimeSystem::IsActive() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     return _impl->RuntimeSystem->isActive();
-}
-
-auto SparkParticleRuntimeSystem::GetDrawSize(isize32 default_size) const -> isize32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    int32_t max_draw_width = 0;
-    int32_t max_draw_height = 0;
-
-    for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
-        auto&& group = _impl->RuntimeSystem->getGroup(i);
-
-        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
-            max_draw_width = std::max(max_draw_width, renderer->GetDrawWidth());
-            max_draw_height = std::max(max_draw_height, renderer->GetDrawHeight());
-        }
-    }
-
-    if (max_draw_width == 0) {
-        max_draw_width = default_size.width;
-    }
-    if (max_draw_height == 0) {
-        max_draw_height = default_size.height;
-    }
-
-    return {max_draw_width, max_draw_height};
 }
 
 auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
@@ -342,16 +291,38 @@ auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
     return false;
 }
 
-auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    if (!_impl->RuntimeSystem->isAABBComputationEnabled() || _impl->BoundsDirty || _impl->RuntimeSystem->getNbParticles() == 0) {
+    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
+    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
+    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+
+    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
         return std::nullopt;
     }
 
-    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getAABBMin();
-    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getAABBMax();
+    ParticleBounds3D result;
+    result.Min = raw_min;
+    result.Max = raw_max;
+    return result;
+}
+
+auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Frame the effect from its bake-time extent (a static box computed by simulating the effect during baking, and
+    // mandatory for every baked system), and only while it is actually emitting - a cheap particle-count check, no
+    // per-frame AABB computation. A dormant system (no live particles) reserves nothing.
+    if (_impl->RuntimeSystem->getNbParticles() == 0) {
+        return std::nullopt;
+    }
+
+    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
+    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
     const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
     const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
 
@@ -368,7 +339,7 @@ auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optiona
             (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
             (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
         };
-        const glm::vec4 transformed = _impl->ViewMatrix * glm::vec4 {corner, 1.0f};
+        const glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
             return std::nullopt;
@@ -388,16 +359,6 @@ auto SparkParticleRuntimeSystem::GetRenderViewBounds() const noexcept -> optiona
     }
 
     return result;
-}
-
-void SparkParticleRuntimeSystem::EnableBoundsComputation() noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!_impl->RuntimeSystem->isAABBComputationEnabled()) {
-        _impl->RuntimeSystem->enableAABBComputation(true);
-        _impl->BoundsDirty = true;
-    }
 }
 
 void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
@@ -423,10 +384,6 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
             particle_it->position() += spark_delta;
             particle_it->oldPosition() += spark_delta;
         }
-    }
-
-    if (_impl->RuntimeSystem->isAABBComputationEnabled()) {
-        _impl->BoundsDirty = true;
     }
 }
 
@@ -468,6 +425,12 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
     _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
     _impl->TiltInProjection = setup.TiltInProjection;
+
+    // Bake-time bounds are stored in emitter-local space. Fold the system's world placement (bone/entity matrix plus
+    // offsets, just applied above) into a single frame transform so a static box lands where the live particles emit
+    // instead of at the model origin. getWorld() shares glm's column-contiguous layout that set() consumed.
+    ptr<const float32_t> system_world_matrix_values = _impl->RuntimeSystem->getTransform().getWorld();
+    _impl->BoundsMatrix = _impl->ViewMatrix * glm::make_mat4(system_world_matrix_values.get());
 }
 
 auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
@@ -483,20 +446,12 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
     const int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
     FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
 
-    SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
     const uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
-    const int32_t init_time_ms = numeric_cast<int32_t>(SPK_RANDOM(_impl->Runtime->_impl->Context, 0U, init_time_range));
+    const int32_t init_time_ms = numeric_cast<int32_t>(_impl->RuntimeSystem->generateRandom(0U, init_time_range));
     const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
-
-    bool updated = false;
 
     for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
         _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));
-        updated = true;
-    }
-
-    if (updated && _impl->RuntimeSystem->isAABBComputationEnabled()) {
-        _impl->BoundsDirty = false;
     }
 
     return init_time;
@@ -506,8 +461,7 @@ void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->RandomSeed = seed ? std::bit_cast<uint32_t>(*seed) : std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator);
-    _impl->RecreateRuntimeSystem();
+    RecreateRuntimeSystem(seed ? std::bit_cast<uint32_t>(*seed) : std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
 }
 
 void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
@@ -519,16 +473,7 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
     }
 
     if (delta_seconds > 0.0f) {
-        SPK::RandomSeedScope random_seed_scope {_impl->Runtime->_impl->Context, _impl->RandomSeed};
         _impl->RuntimeSystem->updateParticles(delta_seconds);
-
-        if (_impl->RuntimeSystem->isAABBComputationEnabled()) {
-            _impl->BoundsDirty = false;
-        }
-    }
-    else if (_impl->BoundsDirty) {
-        _impl->RuntimeSystem->updateParticles(0.0f);
-        _impl->BoundsDirty = false;
     }
 }
 
@@ -557,7 +502,7 @@ auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System
     if (!_impl->BaseSystemDetached) {
         _impl->BaseSystem = SPK::SPKObject::copy(_impl->BaseSystem);
         _impl->BaseSystemDetached = true;
-        _impl->RecreateRuntimeSystem();
+        RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
     }
 
     return _impl->BaseSystem;
@@ -570,20 +515,17 @@ void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
     FO_VERIFY_AND_THROW(system, "Cannot replace a SPARK base system with a null system", _impl->Path);
     _impl->BaseSystem = std::move(system);
     _impl->BaseSystemDetached = true;
-    _impl->RecreateRuntimeSystem();
+    RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
 }
 
-void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
+void SparkParticleRuntimeSystem::RecreateRuntimeSystem(uint32_t random_seed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool bounds_computation_enabled = RuntimeSystem && RuntimeSystem->isAABBComputationEnabled();
-    SPK::RandomSeedScope random_seed_scope {Runtime->_impl->Context, RandomSeed};
-    SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
-    RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
-    RuntimeSystem->initialize();
-    RuntimeSystem->enableAABBComputation(bounds_computation_enabled);
-    BoundsDirty = bounds_computation_enabled;
+    SetupSparkSystemRenderers(_impl->Path, _impl->BaseSystem, _impl->Runtime);
+    _impl->RuntimeSystem = SPK::SPKObject::copy(_impl->BaseSystem);
+    _impl->RuntimeSystem->setRandomSeed(random_seed);
+    _impl->RuntimeSystem->initialize();
 }
 
 FO_END_NAMESPACE
@@ -631,8 +573,6 @@ namespace SPK::FO
         data.AlphaTest = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_ALPHA_TEST);
         data.DepthWrite = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_DEPTH_WRITE);
         data.AlphaTestThreshold = spark_renderer->getAlphaTestThreshold();
-        data.DrawWidth = spark_renderer->GetDrawWidth();
-        data.DrawHeight = spark_renderer->GetDrawHeight();
         data.DrawInScene = spark_renderer->GetDrawInScene();
         data.EffectName = spark_renderer->GetEffectName();
         data.TextureName = spark_renderer->GetTextureName();
@@ -659,7 +599,6 @@ namespace SPK::FO
         spark_renderer->enableRenderingOption(RENDERING_OPTION_ALPHA_TEST, data.AlphaTest);
         spark_renderer->enableRenderingOption(RENDERING_OPTION_DEPTH_WRITE, data.DepthWrite);
         spark_renderer->setAlphaTestThreshold(data.AlphaTestThreshold);
-        spark_renderer->SetDrawSize(data.DrawWidth, data.DrawHeight);
         spark_renderer->SetDrawInScene(data.DrawInScene);
         spark_renderer->SetEffectName(data.EffectName);
         spark_renderer->SetTextureName(data.TextureName);
@@ -958,28 +897,6 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetDrawWidth() const -> int32_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _drawWidth;
-    }
-
-    auto SparkQuadRenderer::GetDrawHeight() const -> int32_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _drawHeight;
-    }
-
-    void SparkQuadRenderer::SetDrawSize(int32_t width, int32_t height)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _drawWidth = width;
-        _drawHeight = height;
-    }
-
     auto SparkQuadRenderer::GetDrawInScene() const -> bool
     {
         FO_STACK_TRACE_ENTRY();
@@ -1045,8 +962,6 @@ namespace SPK::FO
 
         Renderer::innerImport(descriptor);
 
-        _drawWidth = 0;
-        _drawHeight = 0;
         _drawInScene = false;
 
         _effectName = "";
@@ -1064,22 +979,6 @@ namespace SPK::FO
         lockedAxis = LOCK_UP;
         lookVector.set(0.0f, 0.0f, 1.0f);
         upVector.set(0.0f, 1.0f, 0.0f);
-
-        if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
-            const auto tmpSize = attrib->getValues<int32_t>();
-
-            switch (tmpSize.size()) {
-            case 1:
-                _drawWidth = tmpSize[0];
-                break;
-            case 2:
-                _drawWidth = tmpSize[0];
-                _drawHeight = tmpSize[1];
-                break;
-            default:
-                break;
-            }
-        }
 
         if (auto attrib = descriptor.getAttributeWithValue("draw in scene"); attrib) {
             _drawInScene = attrib->getValue<bool>();
@@ -1182,11 +1081,6 @@ namespace SPK::FO
         FO_STACK_TRACE_ENTRY();
 
         Renderer::innerExport(descriptor);
-
-        if (_drawWidth != 0 || _drawHeight != 0) {
-            const std::vector tmpSize = {_drawWidth, _drawHeight};
-            descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
-        }
 
         if (_drawInScene) {
             descriptor.getAttribute("draw in scene")->setValue(_drawInScene);

@@ -237,10 +237,10 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _viewBounds = anim_info->Model->ViewBounds;
     FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds) && IsValidModelBounds(_viewBounds), "Baked model contains invalid model or view bounds", name);
     _animationBounds.resize(animation_runtime_rig->GetClipCount());
-    FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
+    FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone), "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
-        FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
+        FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name), "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
     const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
@@ -642,6 +642,37 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     return anim_index;
 }
 
+auto ModelInformation::GetAvailableAnimations() const -> vector<pair<CritterStateAnim, CritterActionAnim>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<pair<CritterStateAnim, CritterActionAnim>> result;
+    result.reserve(_animIndexes.size());
+
+    for (const auto& [anim_pair, anim_index] : _animIndexes) {
+        result.emplace_back(anim_pair);
+    }
+
+    std::sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.first != rhs.first) {
+            return lhs.first < rhs.first;
+        }
+        return lhs.second < rhs.second;
+    });
+
+    return result;
+}
+
+auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A loaded model always has a hierarchy (both load paths reject a missing
+    // one) and its root bone is a non-null ptr, so absence is an invariant break.
+    FO_VERIFY_AND_THROW(_hierarchy, "Model information has no hierarchy", _fileName);
+    return _hierarchy->_rootBone;
+}
+
 auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -748,7 +779,7 @@ auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(_hierarchy != nullptr, "Missing required hierarchy");
+    FO_VERIFY_AND_THROW(_hierarchy, "Missing required hierarchy");
     FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds), "Model has invalid bounds", _fileName, _modelBounds.Min.x, _modelBounds.Min.y, _modelBounds.Min.z, _modelBounds.Max.x, _modelBounds.Max.y, _modelBounds.Max.z);
     FO_VERIFY_AND_THROW(IsValidModelBounds(_viewBounds), "Model has invalid view bounds", _fileName, _viewBounds.Min.x, _viewBounds.Min.y, _viewBounds.Min.z, _viewBounds.Max.x, _viewBounds.Max.y, _viewBounds.Max.z);
     FO_VERIFY_AND_THROW(!_poseJointRuntimeNames.empty() && _poseJointRuntimeNames.size() == _poseJointCanonicalNames.size() && _poseJointRuntimeNames.size() == _poseBones.size(), "Model canonical pose metadata is incomplete", _fileName, _poseJointRuntimeNames.size(), _poseJointCanonicalNames.size(), _poseBones.size());

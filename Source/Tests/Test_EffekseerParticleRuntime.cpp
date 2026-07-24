@@ -296,6 +296,10 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
     static constexpr string_view effect_config = "[Effect]\nPasses = 1\n";
     static constexpr string_view effect_info = "[EffectInfo]\nMainTex = 0\nProjBuf = 1\n";
 
+    // A baked .efk always carries the mandatory bounds trailer, and the runtime throws on a binary missing one. The
+    // cooked fixtures are the raw Effekseer payload, so append a representative trailer here (its box does not affect
+    // the geometry these tests assert).
+    AppendEffekseerBoundsTrailer(effect_data, vec3 {-1.0f, -1.0f, -1.0f}, vec3 {1.0f, 1.0f, 1.0f});
     source.AddFile(effect_path, std::move(effect_data));
     source.AddFile("Effects/Particles_ColorMul.fofx", effect_config);
     source.AddFile("Effects/Particles_ColorMul.fofx-1-info", effect_info);

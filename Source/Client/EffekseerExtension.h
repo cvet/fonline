@@ -58,8 +58,9 @@ public:
     ~EffekseerParticleRuntimeSystem() override;
 
     [[nodiscard]] auto IsActive() const -> bool override;
-    [[nodiscard]] auto GetDrawSize(isize32 default_size) const -> isize32 override;
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
+    [[nodiscard]] auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D> override;
+    [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D> override;
 
     void Setup(const ParticleRuntimeSetup& setup) override;
     auto Prewarm() -> float32_t override;
@@ -94,6 +95,23 @@ private:
 
     unique_ptr<Impl> _impl;
 };
+
+// A baked Effekseer effect carries its precomputed world-space bounds as a fixed-size trailer appended after the
+// compiled "SKFE" payload (the effect keeps its magic at offset 0). Only our runtime reads the .efk - it is never
+// reopened by the Effekseer editor - so appending the trailer is safe: the baker writes it, and the runtime splits it
+// back off and hands the untouched payload to Effekseer::Effect::Create. Baking the trailer is mandatory, so a
+// missing or malformed one is a broken invariant of our baked data and throws rather than being silently skipped.
+constexpr uint32_t EFFEKSEER_BOUNDS_TRAILER_MAGIC = 0x42424546u; // bytes 'F','E','B','B' little-endian
+
+struct EffekseerBoundsTrailer
+{
+    size_t PayloadSize {}; // number of Effekseer payload bytes preceding the trailer
+    vec3 Min {};
+    vec3 Max {};
+};
+
+void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds);
+auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTrailer;
 
 FO_END_NAMESPACE
 

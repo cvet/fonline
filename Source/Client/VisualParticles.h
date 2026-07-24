@@ -46,6 +46,17 @@ FO_BEGIN_NAMESPACE
 
 class ParticleManager;
 
+// Sprite-frame layout derived from a particle's baked bounds: the atlas frame size in pixels, the root offset within
+// it, the ortho extent in world units, and the world transform that seats the effect inside the frame.
+struct ParticleSpriteFrame
+{
+    isize32 DrawSize {};
+    ipos32 Offset {};
+    float32_t ProjWidth {};
+    float32_t ProjHeight {};
+    mat44 World {1.0f};
+};
+
 class ParticleSystem final
 {
     friend class ParticleManager;
@@ -62,13 +73,13 @@ public:
     [[nodiscard]] auto GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>;
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
-    [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
-    [[nodiscard]] auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] auto GetBakedBounds() const -> optional<ParticleBounds3D>;
+    [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] auto ComputeSpriteFrame(const RenderSettings& settings) const -> ParticleSpriteFrame;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void EnableBoundsComputation() noexcept;
     void RebaseWorldParticles(vec3 delta) noexcept;
     void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();

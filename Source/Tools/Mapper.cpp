@@ -44,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr ipos32 MAPPER_CONSOLE_WINDOW_OFFSET = {0, 6};
-static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.ini";
+static constexpr string_view MAPPER_IMGUI_SETTINGS_KEY = "ImGuiLayout";
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
@@ -89,6 +89,8 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
+
+    AnimViewer = SafeAlloc::MakeUnique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -163,7 +165,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
     // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
     if (!Settings->NullRenderer) {
-        const auto imgui_ini = Cache.GetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY);
+        const auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
         if (!imgui_ini.empty()) {
             ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
@@ -243,7 +245,7 @@ void MapperEngine::ResetImGuiSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, "");
+    _uiSettings.Remove(MAPPER_IMGUI_SETTINGS_KEY);
     ImGui::LoadIniSettingsFromMemory("", 0);
     ImGui::GetIO().WantSaveIniSettings = false;
 
@@ -317,7 +319,7 @@ void MapperEngine::MapperMainLoop()
         size_t ini_size = 0;
 
         if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size)); ini_data) {
-            Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, string_view(ini_data.get(), ini_size));
+            _uiSettings.SetString(MAPPER_IMGUI_SETTINGS_KEY, string_view(ini_data.get(), ini_size));
         }
 
         io.WantSaveIniSettings = false;
@@ -1463,6 +1465,11 @@ void MapperEngine::DrawMainPanelImGui()
             }
 
             ImGui::MenuItem("Critter animations", nullptr, &CritterAnimationsWindowVisible);
+
+            bool anim_viewer_visible = AnimViewer->IsVisible();
+            if (ImGui::MenuItem("Animation viewer", nullptr, &anim_viewer_visible)) {
+                AnimViewer->SetVisible(anim_viewer_visible);
+            }
             ImGui::MenuItem("Script call", nullptr, &ScriptCallWindowVisible);
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
             ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, static_cast<bool>(_curMap));
@@ -1600,6 +1607,8 @@ void MapperEngine::DrawMainPanelImGui()
     DrawWorkspaceWindowImGui();
     DrawContentWindowImGui();
     DrawCritterAnimationsWindowImGui();
+
+    AnimViewer->Draw();
     DrawScriptCallWindowImGui();
     DrawMapListWindowImGui();
     DrawMapWindowImGui();

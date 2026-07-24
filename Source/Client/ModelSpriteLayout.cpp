@@ -65,11 +65,12 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
         return std::nullopt;
     }
 
-    const float64_t horizontal_radius = std::max(std::abs(numeric_cast<float64_t>(min_x)), std::abs(numeric_cast<float64_t>(max_x)));
-    const float64_t top_distance = std::max(0.0, -numeric_cast<float64_t>(min_y));
-    const float64_t bottom_distance = std::max(0.0, numeric_cast<float64_t>(max_y));
-    const float64_t required_width = std::ceil(horizontal_radius * 2.0);
-    const float64_t required_height = std::ceil(std::max(top_distance * (4.0 / 3.0), bottom_distance * 4.0));
+    // Exact projected extent: the frame is the tight bounding box of the projected model, with the origin placed
+    // at its real position inside it (see CalculateModelSpriteLayout's DrawRect). No legacy quarter/anchor
+    // assumption - the baked bounds already carry the precise geometry, so a low/centred-origin creature no
+    // longer inflates the frame by reserving three quarters of it above a fixed anchor.
+    const float64_t required_width = std::ceil(numeric_cast<float64_t>(max_x) - numeric_cast<float64_t>(min_x));
+    const float64_t required_height = std::ceil(numeric_cast<float64_t>(max_y) - numeric_cast<float64_t>(min_y));
 
     if (required_width > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max()) || required_height > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max())) {
         return std::nullopt;
@@ -286,16 +287,16 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
 
     constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
 
-    // Reject beyond the logical limit before the ceiling: std::bit_ceil is undefined once the result is not
-    // representable in its type, so the input must be bounded first. This also subsumes the uint32 range check.
     if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 
-    const uint32_t rounded = std::bit_ceil(numeric_cast<uint32_t>(value));
+    // Round up to the frame scale only - the frame is the tight bounding box of the projected model, not a
+    // power-of-two atlas page (the atlas packs the cropped sprite, not this frame), so no extra slack is reserved.
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
+    const uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
-    // Still reachable: the ceiling of a value just under the limit rounds up past it.
-    if (rounded > max_logical_frame_dimension) {
+    if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 

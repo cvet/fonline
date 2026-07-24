@@ -31,50 +31,43 @@
 // SOFTWARE.
 //
 
-#include "ParticleRuntime.h"
+#pragma once
 
-#include "EffekseerExtension.h"
-#include "SparkExtension.h"
+#include "Common.h"
 
 FO_BEGIN_NAMESPACE
 
-auto ParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
+class SettingsStoreImpl;
+
+// Small per-user key/value store for tool and editor settings (ImGui window layout, editor options, last
+// selection, ...). Values are scoped by an application name so different tools never collide. On Windows the
+// backing store is the registry under HKCU\Software\FOnline\<app_name>; on other platforms it is a file store
+// under the per-user data directory. Persistence is best-effort: a backend failure is logged, never thrown, so a
+// tool never dies because its settings could not be written.
+class SettingsStore
 {
-    FO_NO_STACK_TRACE_ENTRY();
+public:
+    explicit SettingsStore(string_view app_name);
+    SettingsStore(const SettingsStore&) = delete;
+    SettingsStore(SettingsStore&&) noexcept;
+    auto operator=(const SettingsStore&) = delete;
+    auto operator=(SettingsStore&&) noexcept = delete;
+    ~SettingsStore();
 
-    return std::nullopt;
-}
+    [[nodiscard]] auto HasKey(string_view key) const -> bool;
+    [[nodiscard]] auto GetString(string_view key, string_view default_value = "") const -> string;
+    [[nodiscard]] auto GetInt(string_view key, int64_t default_value = 0) const -> int64_t;
+    [[nodiscard]] auto GetBool(string_view key, bool default_value = false) const -> bool;
+    [[nodiscard]] auto GetFloat(string_view key, float64_t default_value = 0.0) const -> float64_t;
 
-auto ParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
-{
-    FO_NO_STACK_TRACE_ENTRY();
+    void SetString(string_view key, string_view value);
+    void SetInt(string_view key, int64_t value);
+    void SetBool(string_view key, bool value);
+    void SetFloat(string_view key, float64_t value);
+    void Remove(string_view key);
 
-    return std::nullopt;
-}
-
-void ParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ignore_unused(delta);
-}
-
-auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(services);
-
-    vector<unique_ptr<ParticleRuntimeBackend>> backends;
-
-#if FO_SPARK_PARTICLES
-    backends.emplace_back(SafeAlloc::MakeUnique<SparkParticleRuntimeBackend>(services));
-#endif
-#if FO_EFFEKSEER_PARTICLES
-    backends.emplace_back(SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(services));
-#endif
-
-    return backends;
-}
+private:
+    unique_ptr<SettingsStoreImpl> _impl;
+};
 
 FO_END_NAMESPACE

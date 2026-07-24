@@ -106,9 +106,17 @@ if(FO_BUILD_SERVER_LIB)
 endif()
 
 if(FO_BUILD_MAPPER_LIB)
+    AddCoreStaticLibrary(AnimationViewerLib FO_ANIMATION_VIEWER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ClientLib CommonLib)
+
+    AddCoreStaticLibrary(ParticleViewerLib FO_PARTICLE_VIEWER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ClientLib CommonLib)
+
     AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS AnimationViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_BAKER_LIB)

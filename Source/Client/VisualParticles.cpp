@@ -206,14 +206,6 @@ auto ParticleSystem::GetElapsedTime() const -> float32_t
     return numeric_cast<float32_t>(_elapsedTime);
 }
 
-auto ParticleSystem::GetDrawSize() const -> isize32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const isize32 default_size {_particleMngr->_settings->DefaultParticleDrawWidth, _particleMngr->_settings->DefaultParticleDrawHeight};
-    return _runtimeSystem->GetDrawSize(default_size);
-}
-
 auto ParticleSystem::GetDrawInScene() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -221,18 +213,80 @@ auto ParticleSystem::GetDrawInScene() const -> bool
     return _runtimeSystem->GetDrawInScene();
 }
 
-auto ParticleSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+auto ParticleSystem::GetBakedBounds() const -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    return _runtimeSystem->GetRenderViewBounds();
+    return _runtimeSystem->GetBakedBounds();
 }
 
-void ParticleSystem::EnableBoundsComputation() noexcept
+auto ParticleSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _runtimeSystem->EnableBoundsComputation();
+    return _runtimeSystem->GetLiveBounds();
+}
+
+auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const -> ParticleSpriteFrame
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Size the sprite frame to the effect's baked extent. The atlas draws the effect through the map camera (a tilt
+    // about X) at ModelProjFactor px per world unit; project the 8 baked-box corners through that tilt (the ortho
+    // drops view Z) to get the 2D frame, and place the emitter - which projects to the view origin - so the box exactly
+    // fills the frame. An effect that emitted no particle (no box) falls back to a small default square.
+    const optional<ParticleBounds3D> baked = GetBakedBounds();
+    const float32_t proj_factor = settings.ModelProjFactor;
+    ParticleSpriteFrame layout;
+
+    if (!baked) {
+        layout.DrawSize = {settings.DefaultParticleDrawWidth, settings.DefaultParticleDrawHeight};
+        layout.Offset = {0, settings.DefaultParticleDrawHeight / 4};
+        layout.ProjHeight = numeric_cast<float32_t>(layout.DrawSize.height) / proj_factor;
+        layout.ProjWidth = numeric_cast<float32_t>(layout.DrawSize.width) / proj_factor;
+        layout.World = glm::translate(mat44 {1.0f}, vec3 {layout.ProjWidth / 2.0f, layout.ProjHeight / 4.0f, 0.0f});
+        return layout;
+    }
+
+    const float32_t cos_a = std::cos(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    const float32_t sin_a = std::sin(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t min_x = std::numeric_limits<float32_t>::max();
+    float32_t max_x = std::numeric_limits<float32_t>::lowest();
+    float32_t min_y = std::numeric_limits<float32_t>::max();
+    float32_t max_y = std::numeric_limits<float32_t>::lowest();
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        const float32_t cx = (corner_index & 1U) != 0 ? baked->Max.x : baked->Min.x;
+        const float32_t cy = (corner_index & 2U) != 0 ? baked->Max.y : baked->Min.y;
+        const float32_t cz = (corner_index & 4U) != 0 ? baked->Max.z : baked->Min.z;
+        const float32_t view_y = cy * cos_a - cz * sin_a;
+        min_x = std::min(min_x, cx);
+        max_x = std::max(max_x, cx);
+        min_y = std::min(min_y, view_y);
+        max_y = std::max(max_y, view_y);
+    }
+
+    // A small margin so anti-aliased edges are not clipped by the tight frame.
+    const float32_t margin = 2.0f / proj_factor;
+    min_x -= margin;
+    max_x += margin;
+    min_y -= margin;
+    max_y += margin;
+
+    layout.ProjWidth = max_x - min_x;
+    layout.ProjHeight = max_y - min_y;
+    layout.DrawSize = {std::max(2, iround<int32_t>(layout.ProjWidth * proj_factor)), std::max(2, iround<int32_t>(layout.ProjHeight * proj_factor))};
+
+    // tilt(translate(T)).xy = (T.x, T.y*cos - T.z*sin); with T.z = 0 the box min corner maps to the frame origin.
+    layout.World = glm::translate(mat44 {1.0f}, vec3 {-min_x, -min_y / cos_a, 0.0f});
+
+    // Root convention is root = (width/2 - offset.x, height - offset.y) from the top-left; the emitter projects to
+    // (-min_x, -min_y) world units from the box origin, i.e. those pixels from the frame's left and bottom.
+    const int32_t emitter_px_x = iround<int32_t>(-min_x * proj_factor);
+    const int32_t emitter_px_y = iround<int32_t>(-min_y * proj_factor);
+    layout.Offset = {layout.DrawSize.width / 2 - emitter_px_x, emitter_px_y};
+
+    return layout;
 }
 
 void ParticleSystem::RebaseWorldParticles(vec3 delta) noexcept
@@ -325,7 +379,11 @@ void ParticleSystem::Update()
     FO_STACK_TRACE_ENTRY();
 
     const nanotime time = GetTime();
-    float32_t delta_seconds = (time - _lastUpdateTime).to_ms<float32_t>() * 0.001f;
+
+    // Use the full-resolution delta. Truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
+    // preview running at a very high frame rate the effect never accumulates time and looks frozen until an occasional
+    // slower frame (e.g. while the mouse moves) crosses the 1 ms boundary.
+    float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
 
     if (_forceDraw && delta_seconds <= 0.0f) {
         delta_seconds = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;

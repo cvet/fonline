@@ -63,6 +63,7 @@ struct ModelSpriteBounds
 {
     irect32 Rect {};
     isize32 RequiredFrameSize {};
+    ipos32 Pivot {};
     ModelSpriteBoundsEnvelopeId EnvelopeId {};
 };
 
