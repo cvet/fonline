@@ -106,11 +106,12 @@ constexpr uint32_t EFFEKSEER_BOUNDS_TRAILER_MAGIC = 0x42424546u; // bytes 'F','E
 struct EffekseerBoundsTrailer
 {
     size_t PayloadSize {}; // number of Effekseer payload bytes preceding the trailer
-    vec3 Min {};
-    vec3 Max {};
+    vec3 PositionMin {};
+    vec3 PositionMax {};
+    float32_t BillboardRadius {};
 };
 
-void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds);
+void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius);
 auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTrailer;
 
 FO_END_NAMESPACE

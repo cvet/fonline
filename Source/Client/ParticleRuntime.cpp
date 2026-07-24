@@ -41,6 +41,71 @@ FO_BEGIN_NAMESPACE
 
 static constexpr ucolor PARTICLE_WIREFRAME_COLOR {255, 0, 255, 255};
 
+auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(position_min.x) || !std::isfinite(position_min.y) || !std::isfinite(position_min.z) || //
+        !std::isfinite(position_max.x) || !std::isfinite(position_max.y) || !std::isfinite(position_max.z) || //
+        position_min.x > position_max.x || position_min.y > position_max.y || position_min.z > position_max.z) {
+        return std::nullopt;
+    }
+    if (!std::isfinite(billboard_radius) || billboard_radius < 0.0f) {
+        return std::nullopt;
+    }
+
+    ParticleBounds3D result;
+    result.PositionMin = position_min;
+    result.PositionMax = position_max;
+    result.BillboardRadius = billboard_radius;
+    return result;
+}
+
+auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // The radius is a length in the emitter's own space, so it follows the placement's scale - the same scale the
+    // renderers apply to the sprite - but never its rotation: a camera-facing quad keeps the same screen footprint at
+    // every orientation.
+    float32_t placement_scale = std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})});
+
+    if (!std::isfinite(placement_scale) || placement_scale <= 0.0f) {
+        return std::nullopt;
+    }
+
+    ParticleBounds3D result;
+    result.BillboardRadius = bounds.BillboardRadius * placement_scale;
+    bool initialized = false;
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        vec3 corner {
+            (corner_index & 1U) != 0 ? bounds.PositionMax.x : bounds.PositionMin.x,
+            (corner_index & 2U) != 0 ? bounds.PositionMax.y : bounds.PositionMin.y,
+            (corner_index & 4U) != 0 ? bounds.PositionMax.z : bounds.PositionMin.z,
+        };
+        glm::vec4 transformed = matrix * glm::vec4 {corner, 1.0f};
+
+        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
+            return std::nullopt;
+        }
+
+        vec3 point {transformed};
+
+        if (!initialized) {
+            result.PositionMin = point;
+            result.PositionMax = point;
+            initialized = true;
+        }
+        else {
+            result.PositionMin = glm::min(result.PositionMin, point);
+            result.PositionMax = glm::max(result.PositionMax, point);
+        }
+    }
+
+    return result;
+}
+
 auto ParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
     FO_NO_STACK_TRACE_ENTRY();

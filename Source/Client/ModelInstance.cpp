@@ -1064,7 +1064,25 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t max_x {};
     float32_t max_y {};
 
-    auto include_projected_point = [&](vec3 world_pos) -> bool {
+    // Sprite-pixel length of a world-space extent under the frame projection. The projection is orthographic, so the
+    // difference between two projected points is exact and independent of where they sit in the frame.
+    auto project_sprite_length = [&](float32_t world_length) -> optional<float32_t> {
+        vec3 projected_origin {};
+        vec3 projected_offset {};
+        if (!ProjectPoint(vec3 {}, identity, _frameProj, viewport, projected_origin) || !ProjectPoint(vec3 {world_length, 0.0f, 0.0f}, identity, _frameProj, viewport, projected_offset)) {
+            return std::nullopt;
+        }
+        if (!std::isfinite(projected_origin.x) || !std::isfinite(projected_offset.x)) {
+            return std::nullopt;
+        }
+
+        return std::abs(projected_offset.x - projected_origin.x) / frame_scale;
+    };
+
+    // Merge a projected world point into the frame envelope, grown by a padding in sprite pixels. The padding carries a
+    // particle's camera-facing billboard radius, which is a screen-space disc around the particle position rather than
+    // another world point; mesh geometry passes zero.
+    auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
         vec3 projected_pos {};
         if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
             return false;
@@ -1074,21 +1092,24 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         float32_t sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
 
         if (!has_projected_point) {
-            min_x = max_x = sprite_x;
-            min_y = max_y = sprite_y;
+            min_x = sprite_x - padding;
+            max_x = sprite_x + padding;
+            min_y = sprite_y - padding;
+            max_y = sprite_y + padding;
             has_projected_point = true;
         }
         else {
-            min_x = std::min(min_x, sprite_x);
-            min_y = std::min(min_y, sprite_y);
-            max_x = std::max(max_x, sprite_x);
-            max_y = std::max(max_y, sprite_y);
+            min_x = std::min(min_x, sprite_x - padding);
+            min_y = std::min(min_y, sprite_y - padding);
+            max_x = std::max(max_x, sprite_x + padding);
+            max_y = std::max(max_y, sprite_y + padding);
         }
 
         return true;
     };
+
     auto include_world_point = [&](vec3 world_pos) -> bool {
-        if (!include_projected_point(world_pos)) {
+        if (!include_projected_point(world_pos, 0.0f)) {
             return false;
         }
 
@@ -1101,7 +1122,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             shadow_pos.y += shadow_distance * SHADOW_CAMERA_ANGLE_SIN;
             shadow_pos.z -= 10.0f;
 
-            if (!include_projected_point(shadow_pos)) {
+            if (!include_projected_point(shadow_pos, 0.0f)) {
                 return false;
             }
         }
@@ -1138,7 +1159,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_min_y {};
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
-    auto include_mesh_all_facings = [&](vec3 world_pos) {
+    auto include_mesh_all_facings = [&](vec3 world_pos, float32_t padding) {
         vec3 projected_0 {};
         vec3 projected_90 {};
         vec3 projected_180 {};
@@ -1153,8 +1174,12 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         }
 
         float32_t frame_height_sprite = numeric_cast<float32_t>(_frameSize.height);
-        auto [x_min, x_max] = harmonic_range(projected_0.x / frame_scale, projected_90.x / frame_scale, projected_180.x / frame_scale);
-        auto [y_min, y_max] = harmonic_range((frame_height_sprite - projected_0.y) / frame_scale, (frame_height_sprite - projected_90.y) / frame_scale, (frame_height_sprite - projected_180.y) / frame_scale);
+        auto [swept_x_min, swept_x_max] = harmonic_range(projected_0.x / frame_scale, projected_90.x / frame_scale, projected_180.x / frame_scale);
+        auto [swept_y_min, swept_y_max] = harmonic_range((frame_height_sprite - projected_0.y) / frame_scale, (frame_height_sprite - projected_90.y) / frame_scale, (frame_height_sprite - projected_180.y) / frame_scale);
+        float32_t x_min = swept_x_min - padding;
+        float32_t x_max = swept_x_max + padding;
+        float32_t y_min = swept_y_min - padding;
+        float32_t y_max = swept_y_max + padding;
 
         if (!has_all_facings_point) {
             all_facings_min_x = x_min;
@@ -1226,7 +1251,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                     return std::nullopt;
                 }
 
-                include_mesh_all_facings(vec3 {transformed_pos});
+                include_mesh_all_facings(vec3 {transformed_pos}, 0.0f);
             }
         }
     }
@@ -1286,20 +1311,31 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 continue;
             }
 
+            // The radius already carries the placement's scale, so only the projection is left to turn it into sprite
+            // pixels, and it is then added as padding around each projected position. Feeding it as another world
+            // point instead would let the all-facings sweep rotate it too, reserving well over the space a
+            // camera-facing quad actually covers.
+            optional<float32_t> billboard_padding = project_sprite_length(live_bounds->BillboardRadius);
+
+            if (!billboard_padding) {
+                return false;
+            }
+
             for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
                 vec3 corner {
-                    (corner_index & 1U) != 0 ? live_bounds->Max.x : live_bounds->Min.x,
-                    (corner_index & 2U) != 0 ? live_bounds->Max.y : live_bounds->Min.y,
-                    (corner_index & 4U) != 0 ? live_bounds->Max.z : live_bounds->Min.z,
+                    (corner_index & 1U) != 0 ? live_bounds->PositionMax.x : live_bounds->PositionMin.x,
+                    (corner_index & 2U) != 0 ? live_bounds->PositionMax.y : live_bounds->PositionMin.y,
+                    (corner_index & 4U) != 0 ? live_bounds->PositionMax.z : live_bounds->PositionMin.z,
                 };
 
-                if (!include_projected_point(corner)) {
+                if (!include_projected_point(corner, *billboard_padding)) {
                     return false;
                 }
 
                 // Keep the emitting effect (e.g. furnace smoke) inside the frame at every facing, not just the
-                // current one, so a turn does not clip it - same all-facings envelope the mesh geometry uses.
-                include_mesh_all_facings(corner);
+                // current one, so a turn does not clip it - same all-facings envelope the mesh geometry uses. Only
+                // the particle position is swept; the quad faces the camera at every facing.
+                include_mesh_all_facings(corner, *billboard_padding);
             }
 
             has_geometry = true;

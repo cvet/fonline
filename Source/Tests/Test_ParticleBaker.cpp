@@ -123,6 +123,50 @@ static constexpr string_view NonEmittingParticle = R"PARTICLE(
 </SPARK>
 )PARTICLE";
 
+static constexpr string_view FullyTransparentParticle = R"PARTICLE(
+<SPARK>
+  <System name="FullyTransparentParticle">
+    <attrib id="groups">
+      <Group name="FullyTransparentGroup">
+        <attrib id="capacity" value="4" />
+        <attrib id="life time" value="1;1" />
+        <attrib id="color interpolator">
+          <ColorGraphInterpolator>
+            <attrib id="graph keys" value="0;1" />
+            <attrib id="graph values" value="0x00000000;0x00000000" />
+            <attrib id="graph values 2" value="0x00000000;0x00000000" />
+            <attrib id="looping enabled" value="false" />
+          </ColorGraphInterpolator>
+        </attrib>
+        <attrib id="emitters">
+          <StaticEmitter>
+            <attrib id="tank" value="1" />
+            <attrib id="flow" value="-1" />
+            <attrib id="force" value="0" />
+            <attrib id="zone">
+              <Point>
+                <attrib id="position" value="(0,0,0)" />
+              </Point>
+            </attrib>
+            <attrib id="full" value="false" />
+          </StaticEmitter>
+        </attrib>
+        <attrib id="renderer">
+          <SparkQuadRenderer>
+            <attrib id="draw in scene" value="true" />
+            <attrib id="active" value="true" />
+            <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+            <attrib id="texture" value="TestParticle.png" />
+            <attrib id="scale" value="1.5;2" />
+            <attrib id="atlas dimensions" value="2;3" />
+          </SparkQuadRenderer>
+        </attrib>
+      </Group>
+    </attrib>
+  </System>
+</SPARK>
+)PARTICLE";
+
 static constexpr string_view MalformedParticle = R"(<SPARK><System name="Broken">)";
 #endif
 
@@ -360,12 +404,14 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     SPK::FO::EnsureSparkParticleObjectsRegistered(spark_context);
     SPK::IO::IOManager& spark_io = spark_context.getIOManager();
 
-    auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> {
-        return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size()));
-    };
+    auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> { return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size())); };
 
-    // The baker simulates the effect and records its maximal extent so the runtime frames an emitting instance from a
-    // static box instead of computing an axis-aligned bounding box every frame.
+    // The baker simulates the effect and records its extent so the runtime frames an emitting instance from a static
+    // measurement instead of computing an axis-aligned bounding box every frame. Position extent and billboard radius
+    // are recorded apart: the fixture emits one motionless particle at the origin from a point zone, so its position
+    // box is degenerate and the whole extent lives in the quad radius. That radius is the group's graphical radius
+    // (default 1) times the renderer's quad diagonal, sqrt(1.5^2 + 2^2) = 2.5 - it must not leak into the box, because
+    // the runtime transforms the box with the emitter's world placement but never scales the quad.
     SECTION("BakerComputesAndStoresBoundsFromSimulation")
     {
         TestRig rig;
@@ -384,15 +430,13 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         SPK::Vector3D bounds_min = system->getBakedBoundsMin();
         SPK::Vector3D bounds_max = system->getBakedBoundsMax();
 
-        CHECK(std::isfinite(bounds_min.x));
-        CHECK(std::isfinite(bounds_min.y));
-        CHECK(std::isfinite(bounds_min.z));
-        CHECK(std::isfinite(bounds_max.x));
-        CHECK(std::isfinite(bounds_max.y));
-        CHECK(std::isfinite(bounds_max.z));
-        CHECK(bounds_min.x <= bounds_max.x);
-        CHECK(bounds_min.y <= bounds_max.y);
-        CHECK(bounds_min.z <= bounds_max.z);
+        CHECK(bounds_min.x == Catch::Approx(0.0f));
+        CHECK(bounds_min.y == Catch::Approx(0.0f));
+        CHECK(bounds_min.z == Catch::Approx(0.0f));
+        CHECK(bounds_max.x == Catch::Approx(0.0f));
+        CHECK(bounds_max.y == Catch::Approx(0.0f));
+        CHECK(bounds_max.z == Catch::Approx(0.0f));
+        CHECK(system->getBakedBillboardRadius() == Catch::Approx(2.5f));
     }
 
     // An explicit box must survive the binary save/load unchanged so the runtime reads back exactly what the baker
@@ -410,7 +454,8 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
 
         const SPK::Vector3D expected_min(-1.5f, -2.0f, -3.25f);
         const SPK::Vector3D expected_max(4.0f, 5.5f, 6.75f);
-        system->setBakedBounds(expected_min, expected_max);
+        const float expected_radius = 0.375f;
+        system->setBakedBounds(expected_min, expected_max, expected_radius);
 
         std::ostringstream oss(std::ios::binary);
         REQUIRE(spark_io.save("spk", oss, system));
@@ -427,6 +472,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         CHECK(reloaded->getBakedBoundsMax().x == Catch::Approx(expected_max.x));
         CHECK(reloaded->getBakedBoundsMax().y == Catch::Approx(expected_max.y));
         CHECK(reloaded->getBakedBoundsMax().z == Catch::Approx(expected_max.z));
+        CHECK(reloaded->getBakedBillboardRadius() == Catch::Approx(expected_radius));
     }
 
     // Baked bounds are mandatory: a particle system that never emits cannot be measured, so the baker rejects it
@@ -438,7 +484,19 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
 
         ParticleBaker baker(rig.MakeContext());
 
-        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("emitted no particles"));
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("no visible particles"));
+    }
+
+    // A fully transparent particle draws nothing, so it must not reserve frame space. Measuring it would inflate every
+    // effect whose colour graph fades out at the end of life, where the particle is also at its largest.
+    SECTION("RejectsSystemWhoseParticlesAreFullyTransparent")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Transparent.spark", FullyTransparentParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("no visible particles"));
     }
 }
 #endif
@@ -452,18 +510,20 @@ TEST_CASE("Effekseer baked bounds trailer", "[particle][effekseer]")
         size_t payload_size = binary.size();
         vec3 expected_min {-1.5f, -2.0f, -3.25f};
         vec3 expected_max {4.0f, 5.5f, 6.75f};
+        float32_t expected_radius = 0.375f;
 
-        AppendEffekseerBoundsTrailer(binary, expected_min, expected_max);
-        CHECK(binary.size() == payload_size + 32);
+        AppendEffekseerBoundsTrailer(binary, expected_min, expected_max, expected_radius);
+        CHECK(binary.size() == payload_size + 36);
 
         EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(binary);
         CHECK(trailer.PayloadSize == payload_size);
-        CHECK(trailer.Min.x == Catch::Approx(expected_min.x));
-        CHECK(trailer.Min.y == Catch::Approx(expected_min.y));
-        CHECK(trailer.Min.z == Catch::Approx(expected_min.z));
-        CHECK(trailer.Max.x == Catch::Approx(expected_max.x));
-        CHECK(trailer.Max.y == Catch::Approx(expected_max.y));
-        CHECK(trailer.Max.z == Catch::Approx(expected_max.z));
+        CHECK(trailer.PositionMin.x == Catch::Approx(expected_min.x));
+        CHECK(trailer.PositionMin.y == Catch::Approx(expected_min.y));
+        CHECK(trailer.PositionMin.z == Catch::Approx(expected_min.z));
+        CHECK(trailer.PositionMax.x == Catch::Approx(expected_max.x));
+        CHECK(trailer.PositionMax.y == Catch::Approx(expected_max.y));
+        CHECK(trailer.PositionMax.z == Catch::Approx(expected_max.z));
+        CHECK(trailer.BillboardRadius == Catch::Approx(expected_radius));
     }
 
     SECTION("ThrowsOnBinaryWithoutTrailer")

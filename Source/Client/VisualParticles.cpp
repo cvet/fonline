@@ -232,9 +232,10 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     FO_STACK_TRACE_ENTRY();
 
     // Size the sprite frame to the effect's baked extent. The atlas draws the effect through the map camera (a tilt
-    // about X) at ModelProjFactor px per world unit; project the 8 baked-box corners through that tilt (the ortho
-    // drops view Z) to get the 2D frame, and place the emitter - which projects to the view origin - so the box exactly
-    // fills the frame. An effect that emitted no particle (no box) falls back to a small default square.
+    // about X) at ModelProjFactor px per world unit; project the 8 corners of the baked position box through that tilt
+    // (the ortho drops view Z), grow the result by the billboard radius - a view-plane length the tilt must not touch -
+    // and place the emitter, which projects to the view origin, so the extent exactly fills the frame. An effect that
+    // showed no particle (no box) falls back to a small default square.
     optional<ParticleBounds3D> baked = GetBakedBounds();
     float32_t proj_factor = settings.ModelProjFactor;
     ParticleSpriteFrame layout;
@@ -256,9 +257,9 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     float32_t max_y = std::numeric_limits<float32_t>::lowest();
 
     for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        float32_t cx = (corner_index & 1U) != 0 ? baked->Max.x : baked->Min.x;
-        float32_t cy = (corner_index & 2U) != 0 ? baked->Max.y : baked->Min.y;
-        float32_t cz = (corner_index & 4U) != 0 ? baked->Max.z : baked->Min.z;
+        float32_t cx = (corner_index & 1U) != 0 ? baked->PositionMax.x : baked->PositionMin.x;
+        float32_t cy = (corner_index & 2U) != 0 ? baked->PositionMax.y : baked->PositionMin.y;
+        float32_t cz = (corner_index & 4U) != 0 ? baked->PositionMax.z : baked->PositionMin.z;
         float32_t view_y = cy * cos_a - cz * sin_a;
         min_x = std::min(min_x, cx);
         max_x = std::max(max_x, cx);
@@ -266,8 +267,9 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
         max_y = std::max(max_y, view_y);
     }
 
-    // A small margin so anti-aliased edges are not clipped by the tight frame.
-    float32_t margin = 2.0f / proj_factor;
+    // A small margin so anti-aliased edges are not clipped by the tight frame, plus the billboard radius: the quad
+    // faces the camera, so its half-extent applies to both frame axes and is added once, after the tilt.
+    float32_t margin = 2.0f / proj_factor + baked->BillboardRadius;
     min_x -= margin;
     max_x += margin;
     min_y -= margin;

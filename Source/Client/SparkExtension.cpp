@@ -297,70 +297,30 @@ auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<Par
 {
     FO_STACK_TRACE_ENTRY();
 
-    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
-    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
-    vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
-    vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+    const SPK::Vector3D& position_min = _impl->RuntimeSystem->getBakedBoundsMin();
+    const SPK::Vector3D& position_max = _impl->RuntimeSystem->getBakedBoundsMax();
 
-    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
-        return std::nullopt;
-    }
-
-    ParticleBounds3D result;
-    result.Min = raw_min;
-    result.Max = raw_max;
-    return result;
+    return MakeParticleBounds(vec3 {position_min.x, position_min.y, position_min.z}, vec3 {position_max.x, position_max.y, position_max.z}, _impl->RuntimeSystem->getBakedBillboardRadius());
 }
 
 auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Frame the effect from its bake-time extent (a static box computed by simulating the effect during baking, and
-    // mandatory for every baked system), and only while it is actually emitting - a cheap particle-count check, no
-    // per-frame AABB computation. A dormant system (no live particles) reserves nothing.
+    // Frame the effect from its bake-time extent (measured by simulating the effect during baking, and mandatory for
+    // every baked system), and only while it is actually emitting - a cheap particle-count check, no per-frame AABB
+    // computation. A dormant system (no live particles) reserves nothing.
     if (_impl->RuntimeSystem->getNbParticles() == 0) {
         return std::nullopt;
     }
 
-    const SPK::Vector3D& aabb_min = _impl->RuntimeSystem->getBakedBoundsMin();
-    const SPK::Vector3D& aabb_max = _impl->RuntimeSystem->getBakedBoundsMax();
-    vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
-    vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+    optional<ParticleBounds3D> baked = GetBakedBounds();
 
-    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
+    if (!baked) {
         return std::nullopt;
     }
 
-    ParticleBounds3D result;
-    bool initialized = false;
-
-    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        vec3 corner {
-            (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
-            (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
-            (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
-        };
-        glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
-
-        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
-            return std::nullopt;
-        }
-
-        vec3 point {transformed};
-
-        if (!initialized) {
-            result.Min = point;
-            result.Max = point;
-            initialized = true;
-        }
-        else {
-            result.Min = glm::min(result.Min, point);
-            result.Max = glm::max(result.Max, point);
-        }
-    }
-
-    return result;
+    return TransformParticleBounds(*baked, _impl->BoundsMatrix);
 }
 
 void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
@@ -403,13 +363,31 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
         glm::decompose(view_offset_matrix * setup.World * position_offset_matrix, result_position_scale, rotation, result_position, skew, perspective);
         mat44 result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
         mat44 look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
-        result_position_matrix = result_position_translation_matrix * look_direction_matrix;
+
+        // The authored look direction replaces the placement's *rotation* only. Its scale must survive, or an effect
+        // whose system carries a local transform would ignore the scale of the matrix that places it - the model sprite
+        // frame renders at ModelInstance::FRAME_SCALE - and end up drawn at a different size than an otherwise
+        // identical effect whose system transform happens to be identity (the branch below).
+        result_position_matrix = result_position_translation_matrix * look_direction_matrix * glm::scale(mat44 {1.0f}, result_position_scale);
     }
     else {
         result_position_matrix = view_offset_matrix * setup.World * position_offset_matrix;
     }
 
     result_position_matrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
+
+    // SPARK sizes a quad from the group's graphical radius in absolute world units and never applies the system
+    // transform to it, so a scaled placement would move and space the particles while leaving each sprite at its
+    // authored size - furnace smoke on a critter drew at half the model's scale in the atlas path. Effekseer scales its
+    // sprites with the effect's root matrix; mirror that here by rescaling each group's authored radius, so the whole
+    // effect follows its placement. Validated before the first mutation so a broken placement cannot half-apply.
+    float32_t system_scale = std::max({glm::length(vec3 {result_position_matrix[0]}), glm::length(vec3 {result_position_matrix[1]}), glm::length(vec3 {result_position_matrix[2]})});
+    FO_VERIFY_AND_THROW(std::isfinite(system_scale) && system_scale > 0.0f, "SPARK particle system placement has a degenerate scale", _impl->Path, system_scale);
+    FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() == _impl->BaseSystem->getNbGroups(), "SPARK runtime system lost groups of its base system", _impl->Path, _impl->RuntimeSystem->getNbGroups(), _impl->BaseSystem->getNbGroups());
+
+    for (size_t group_index = 0; group_index < _impl->RuntimeSystem->getNbGroups(); group_index++) {
+        _impl->RuntimeSystem->getGroup(group_index)->setGraphicalRadius(_impl->BaseSystem->getGroup(group_index)->getGraphicalRadius() * system_scale);
+    }
 
     ptr<const float32_t> result_position_matrix_values = glm::value_ptr(result_position_matrix);
     _impl->RuntimeSystem->getTransform().set(result_position_matrix_values.get());
@@ -837,6 +815,11 @@ namespace SPK::FO
         }
     }
 
+    // SPARK's world-space AABB for the group: every particle position grown by the quad's half-diagonal, the farthest
+    // a corner can reach once the in-plane angle interpolator turns it. This answers SPK::Renderer's interface, which
+    // only asks for a world box. It is not what sizes a sprite frame - the frame folds the position box through the
+    // model transform and adds the billboard radius in the view plane, because a camera-facing quad is neither scaled
+    // by that transform nor rotated by the model's facing.
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
     {
         FO_STACK_TRACE_ENTRY();

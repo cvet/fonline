@@ -236,12 +236,13 @@ private:
 
 struct EffekseerParticleRuntimeSystem::Impl
 {
-    Impl(shared_ptr<EffekseerRuntimeState> runtime, Effekseer::EffectRef effect, string path, vec3 bounds_min, vec3 bounds_max) :
+    Impl(shared_ptr<EffekseerRuntimeState> runtime, Effekseer::EffectRef effect, string path, vec3 position_min, vec3 position_max, float32_t billboard_radius) :
         Runtime {std::move(runtime)},
         Effect {std::move(effect)},
         Path {std::move(path)},
-        BakedBoundsMin {bounds_min},
-        BakedBoundsMax {bounds_max}
+        BakedPositionMin {position_min},
+        BakedPositionMax {position_max},
+        BakedBillboardRadius {billboard_radius}
     {
         FO_STACK_TRACE_ENTRY();
     }
@@ -264,8 +265,9 @@ struct EffekseerParticleRuntimeSystem::Impl
     mat44 ViewProjMatrix {1.0f};
     mat44 ViewMatrix {1.0f};
     mat44 BoundsMatrix {1.0f};
-    vec3 BakedBoundsMin {};
-    vec3 BakedBoundsMax {};
+    vec3 BakedPositionMin {};
+    vec3 BakedPositionMax {};
+    float32_t BakedBillboardRadius {};
     std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
     bool Failed {};
 };
@@ -1505,17 +1507,7 @@ auto EffekseerParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional
 {
     FO_STACK_TRACE_ENTRY();
 
-    vec3 raw_min = _impl->BakedBoundsMin;
-    vec3 raw_max = _impl->BakedBoundsMax;
-
-    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
-        return std::nullopt;
-    }
-
-    ParticleBounds3D result;
-    result.Min = raw_min;
-    result.Max = raw_max;
-    return result;
+    return MakeParticleBounds(_impl->BakedPositionMin, _impl->BakedPositionMax, _impl->BakedBillboardRadius);
 }
 
 auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
@@ -1529,42 +1521,13 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
         return std::nullopt;
     }
 
-    vec3 raw_min = _impl->BakedBoundsMin;
-    vec3 raw_max = _impl->BakedBoundsMax;
+    optional<ParticleBounds3D> baked = MakeParticleBounds(_impl->BakedPositionMin, _impl->BakedPositionMax, _impl->BakedBillboardRadius);
 
-    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
+    if (!baked) {
         return std::nullopt;
     }
 
-    ParticleBounds3D result;
-    bool initialized = false;
-
-    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        vec3 corner {
-            (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
-            (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
-            (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
-        };
-        glm::vec4 transformed = _impl->BoundsMatrix * glm::vec4 {corner, 1.0f};
-
-        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z)) {
-            return std::nullopt;
-        }
-
-        vec3 point {transformed};
-
-        if (!initialized) {
-            result.Min = point;
-            result.Max = point;
-            initialized = true;
-        }
-        else {
-            result.Min = glm::min(result.Min, point);
-            result.Max = glm::max(result.Max, point);
-        }
-    }
-
-    return result;
+    return TransformParticleBounds(*baked, _impl->BoundsMatrix);
 }
 
 void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
@@ -1781,7 +1744,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    auto system = SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem>(SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem::Impl>(_impl->Runtime, std::move(effect), string {path}, bounds_trailer.Min, bounds_trailer.Max));
+    auto system = SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem>(SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem::Impl>(_impl->Runtime, std::move(effect), string {path}, bounds_trailer.PositionMin, bounds_trailer.PositionMax, bounds_trailer.BillboardRadius));
     system->Respawn(0);
 
     if (!system->IsActive()) {
@@ -1794,7 +1757,8 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 // Bounds trailer, all little-endian: [6 x float32 min/max][uint32 payload size][uint32 magic]. A fixed size lets the
 // runtime probe the tail without scanning, and the payload-size cross-check makes a false positive on an untrailered
 // binary effectively impossible.
-static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_SIZE = 6 * sizeof(float32_t) + 2 * sizeof(uint32_t);
+static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_FLOATS = 7; // position box min/max, then the billboard radius
+static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_SIZE = EFFEKSEER_BOUNDS_TRAILER_FLOATS * sizeof(float32_t) + 2 * sizeof(uint32_t);
 
 static void WriteLittleEndianUint32(vector<uint8_t>& out, uint32_t value)
 {
@@ -1813,14 +1777,14 @@ static auto ReadLittleEndianUint32(const_span<uint8_t> data, size_t offset) -> u
     return uint32_t {data[offset]} | (uint32_t {data[offset + 1]} << 8) | (uint32_t {data[offset + 2]} << 16) | (uint32_t {data[offset + 3]} << 24);
 }
 
-void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds)
+void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
     uint32_t payload_size = numeric_cast<uint32_t>(binary.size());
-    const float32_t values[6] = {min_bounds.x, min_bounds.y, min_bounds.z, max_bounds.x, max_bounds.y, max_bounds.z};
+    const float32_t values[EFFEKSEER_BOUNDS_TRAILER_FLOATS] = {min_bounds.x, min_bounds.y, min_bounds.z, max_bounds.x, max_bounds.y, max_bounds.z, billboard_radius};
 
-    for (size_t i = 0; i < 6; i++) {
+    for (size_t i = 0; i < EFFEKSEER_BOUNDS_TRAILER_FLOATS; i++) {
         WriteLittleEndianUint32(binary, std::bit_cast<uint32_t>(values[i]));
     }
 
@@ -1841,16 +1805,17 @@ auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTr
     uint32_t payload_size = ReadLittleEndianUint32(binary, binary.size() - 2 * sizeof(uint32_t));
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(payload_size) == trailer_offset, "Baked Effekseer bounds trailer has an inconsistent payload size", payload_size, trailer_offset);
 
-    float32_t values[6];
+    float32_t values[EFFEKSEER_BOUNDS_TRAILER_FLOATS];
 
-    for (size_t i = 0; i < 6; i++) {
+    for (size_t i = 0; i < EFFEKSEER_BOUNDS_TRAILER_FLOATS; i++) {
         values[i] = std::bit_cast<float32_t>(ReadLittleEndianUint32(binary, trailer_offset + i * sizeof(uint32_t)));
     }
 
     EffekseerBoundsTrailer trailer;
     trailer.PayloadSize = numeric_cast<size_t>(payload_size);
-    trailer.Min = vec3 {values[0], values[1], values[2]};
-    trailer.Max = vec3 {values[3], values[4], values[5]};
+    trailer.PositionMin = vec3 {values[0], values[1], values[2]};
+    trailer.PositionMax = vec3 {values[3], values[4], values[5]};
+    trailer.BillboardRadius = values[6];
     return trailer;
 }
 

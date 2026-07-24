@@ -185,14 +185,17 @@ namespace SPK
 		*/
 		const Vector3D& getAABBMax() const;
 
-		// Baked bounds: the maximum axis-aligned bounding box the effect reaches over its lifecycle, computed once
-		// at bake time and serialized into every particle system, so the runtime frames an emitting system from this
-		// precomputed extent (getBakedBoundsMin/getBakedBoundsMax) instead of enabling per-frame AABB computation.
-		// Kept separate from the runtime AABBMin/AABBMax (which updateParticles overwrites). Baking these bounds is
-		// mandatory, so a loaded particle system always carries them.
-		void setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds);
+		// Baked bounds: the extent the effect reaches over its lifecycle, computed once at bake time and serialized
+		// into every particle system, so the runtime frames an emitting system from this precomputed extent instead
+		// of enabling per-frame AABB computation. The box holds the particle positions only; the billboard radius is
+		// the largest half-extent a single particle's quad reaches, which the renderer sizes from the group radius in
+		// absolute world units and never scales by the system transform, so it stays a separate scalar. Kept apart
+		// from the runtime AABBMin/AABBMax (which updateParticles overwrites). Baking these bounds is mandatory, so a
+		// loaded particle system always carries them.
+		void setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds,float billboardRadius);
 		const Vector3D& getBakedBoundsMin() const;
 		const Vector3D& getBakedBoundsMax() const;
+		float getBakedBillboardRadius() const;
 
 		/////////////////////
 		// Camera position //
@@ -344,6 +347,7 @@ namespace SPK
 		// AABB computation is off) so the precomputed box survives every update.
 		Vector3D bakedBoundsMin;
 		Vector3D bakedBoundsMax;
+		float bakedBillboardRadius;
 
 		unsigned int randomSeed; // per-system random stream state
 
@@ -395,10 +399,11 @@ namespace SPK
 		return AABBMax;
 	}
 
-	inline void System::setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds)
+	inline void System::setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds,float billboardRadius)
 	{
 		bakedBoundsMin = minBounds;
 		bakedBoundsMax = maxBounds;
+		bakedBillboardRadius = billboardRadius;
 	}
 
 	inline const Vector3D& System::getBakedBoundsMin() const
@@ -409,6 +414,11 @@ namespace SPK
 	inline const Vector3D& System::getBakedBoundsMax() const
 	{
 		return bakedBoundsMax;
+	}
+
+	inline float System::getBakedBillboardRadius() const
+	{
+		return bakedBillboardRadius;
 	}
 
 	inline void System::setCameraPosition(const Vector3D& cameraPosition)

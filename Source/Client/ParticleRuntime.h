@@ -46,11 +46,28 @@ struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
+// Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
+// position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas
+// frame scale, entity scale) in full and rotates with the model's facing. The billboard radius is the largest
+// half-extent one particle's camera-facing sprite reaches: it follows only the placement's *scale*, because a sprite
+// always faces the camera and keeps the same screen footprint at every facing, so it is added once in the view plane
+// and never rotated or swept.
 struct ParticleBounds3D
 {
-    vec3 Min {};
-    vec3 Max {};
+    vec3 PositionMin {};
+    vec3 PositionMax {};
+    float32_t BillboardRadius {};
 };
+
+// Validate a measured bake-time extent. An inverted or non-finite box and a negative radius mean the baked data cannot
+// frame anything, so the caller reserves no space instead of trusting it.
+auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>;
+
+// Fold a bake-time extent through a frame transform (the emitter's world placement combined with the view matrix).
+// The position box follows the matrix outright; the billboard radius follows only its scale, because the renderers
+// scale a sprite with the effect's placement while a camera-facing quad keeps the same screen footprint at every
+// facing - so the radius must never be rotated or swept.
+auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>;
 
 struct ParticleRuntimeSetup
 {

@@ -44,6 +44,7 @@ namespace SPK
         AABBComputationEnabled(false),
         AABBMin(),
         AABBMax(),
+        bakedBillboardRadius(0.0f),
         randomSeed(0) // per-system random stream state
 	{}
 
@@ -63,6 +64,7 @@ namespace SPK
         AABBMax(system.AABBMax),
         bakedBoundsMin(system.bakedBoundsMin),
         bakedBoundsMax(system.bakedBoundsMax),
+        bakedBillboardRadius(system.bakedBillboardRadius),
         randomSeed(system.randomSeed) // per-system random stream state
 	{
 		for (std::vector<Ref<Group> >::const_iterator it = system.groups.begin(); it != system.groups.end(); ++it)
@@ -305,10 +307,11 @@ namespace SPK
 		if ((attrib = descriptor.getAttributeWithValue("bounds")))
 		{
 			const auto bounds = attrib->getValues<float>();
-			if (bounds.size() == 6)
+			if (bounds.size() == 7)
 			{
 				bakedBoundsMin.set(bounds[0],bounds[1],bounds[2]);
 				bakedBoundsMax.set(bounds[3],bounds[4],bounds[5]);
+				bakedBillboardRadius = bounds[6];
 			}
 		}
 	}
@@ -319,8 +322,8 @@ namespace SPK
 		if (getNbGroups() > 0)
 			descriptor.getAttribute("groups")->setValuesRef(&groups[0],getNbGroups());
 
-		const float bounds[6] = {bakedBoundsMin.x,bakedBoundsMin.y,bakedBoundsMin.z,bakedBoundsMax.x,bakedBoundsMax.y,bakedBoundsMax.z};
-		descriptor.getAttribute("bounds")->setValues(bounds,6);
+		const float bounds[7] = {bakedBoundsMin.x,bakedBoundsMin.y,bakedBoundsMin.z,bakedBoundsMax.x,bakedBoundsMax.y,bakedBoundsMax.z,bakedBillboardRadius};
+		descriptor.getAttribute("bounds")->setValues(bounds,7);
 	}
 
 	void System::setGroupSystem(const Ref<Group>& group,System* system,bool remove)
