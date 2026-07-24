@@ -53,10 +53,10 @@ namespace IO
 		if (result)
 		{
 			unsigned int saveTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
-			SPK_LOG_INFO("The system has been successfully saved in " << saveTime << "ms");
+			SPK_LOG_DEBUG("The system has been successfully saved in " << saveTime << "ms");
 		}
 		else
-			SPK_LOG_INFO("An error occurred while saving the System");
+			SPK_LOG_WARNING("An error occurred while saving the System");
 
 		return result;
 
