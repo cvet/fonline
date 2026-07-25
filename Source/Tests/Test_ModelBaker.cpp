@@ -1666,7 +1666,7 @@ TEST_CASE("ModelInfoBakerValidations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttachParticles Particles/Missing.fope Link Hand\n", 1);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttachParticles Particles/Missing.fopts Link Hand\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Hand", true);
 
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
@@ -2083,7 +2083,7 @@ AnimLayerValue 0 1 2 7
 StateAnimEqual 0 0
 ActionAnimEqual 1 1
 Layer 1 Value 2 Root Link Body
-Layer 2 Value 3 AttachParticles Particles/Test.fope Link Body
+Layer 2 Value 3 AttachParticles Particles/Test.fopts Link Body
 Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Body
 )",
             1);
@@ -2093,7 +2093,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         AddTestModel(rig, "Critters/Cut.fbx", "CutShape", true);
         rig.AddBakedFile("Critters/Body.tga", "stub");
         rig.AddBakedFile("Effects/Test.fofx", "stub");
-        rig.AddBakedFile("Particles/Test.fope", "stub");
+        rig.AddBakedFile("Particles/Test.fopts", "stub");
 
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
@@ -2140,7 +2140,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         SavedModelInfoLink particles_link = ReadSavedModelInfoLink(reader);
         CHECK(particles_link.Layer == 2);
         CHECK(particles_link.LayerValue == 3);
-        CHECK(particles_link.ChildName == "Particles/Test.fope");
+        CHECK(particles_link.ChildName == "Particles/Test.fopts");
         CHECK(particles_link.IsParticles);
 
         SavedModelInfoLink attached_link = ReadSavedModelInfoLink(reader);
