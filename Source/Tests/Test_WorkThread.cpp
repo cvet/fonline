@@ -98,7 +98,7 @@ TEST_CASE("WorkThread")
         std::atomic_int32_t runs = 0;
 
         worker.AddJob([&]() -> optional<timespan> {
-            const int32_t next_run = ++runs;
+            int32_t next_run = ++runs;
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
@@ -142,7 +142,7 @@ TEST_CASE("WorkThread")
 
     SECTION("ExceptionHandlerRunsBeforeGlobalExceptionReport")
     {
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         WorkThread worker {"ExceptionOrderWorker"};
@@ -200,7 +200,7 @@ TEST_CASE("WorkThread")
 
         worker.Wait();
 
-        const WorkThread::Diagnostics diagnostics = worker.GetDiagnostics();
+        WorkThread::Diagnostics diagnostics = worker.GetDiagnostics();
         CHECK(diagnostics.CompletedJobs == 2);
         CHECK(diagnostics.QueuedJobs == 0);
         CHECK_FALSE(diagnostics.JobActive);
@@ -212,7 +212,7 @@ TEST_CASE("WorkThread")
         std::atomic_int32_t runs = 0;
 
         worker.AddJob([&]() -> optional<timespan> {
-            const int32_t next_run = ++runs;
+            int32_t next_run = ++runs;
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
@@ -289,7 +289,7 @@ TEST_CASE("WorkThread")
 
         thread controller = run_thread("ChaosController", [&]() {
             uint32_t rng = 0xC0FFEEU;
-            const auto next = [&rng]() {
+            auto next = [&rng]() {
                 rng = rng * 1664525U + 1013904223U;
                 return rng;
             };

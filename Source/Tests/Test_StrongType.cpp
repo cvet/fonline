@@ -46,8 +46,8 @@ TEST_CASE("StrongType")
 {
     SECTION("ComparisonsAndBool")
     {
-        const test_meter a {10};
-        const test_meter b {20};
+        test_meter a {10};
+        test_meter b {20};
 
         CHECK(a < b);
         CHECK(a <= b);
@@ -59,8 +59,8 @@ TEST_CASE("StrongType")
 
     SECTION("Arithmetics")
     {
-        const test_meter a {10};
-        const test_meter b {4};
+        test_meter a {10};
+        test_meter b {4};
 
         CHECK((a + b).underlying_value() == 14);
         CHECK((a - b).underlying_value() == 6);
@@ -90,7 +90,7 @@ TEST_CASE("StrongType")
 
     SECTION("Formatting")
     {
-        const test_meter value {123};
+        test_meter value {123};
         CHECK(std::format("{}", value) == "123");
     }
 

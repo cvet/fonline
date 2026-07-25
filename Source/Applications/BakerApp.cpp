@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {

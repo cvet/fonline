@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempMountedDir(string_view name) -> string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(base);
 }
 
@@ -47,8 +47,8 @@ TEST_CASE("FileSystem")
 {
     SECTION("MountedDirectorySupportsFilteringAndReading")
     {
-        const string temp_dir = MakeTempMountedDir("filesystem_mount");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempMountedDir("filesystem_mount");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/a.txt").str(), string_view {"alpha"}));
@@ -66,57 +66,57 @@ TEST_CASE("FileSystem")
         CHECK_FALSE(fs.IsFileExists("missing.txt"));
         CHECK(fs.ReadFileText("texts/a.txt") == "alpha");
 
-        const FileHeader header = fs.ReadFileHeader("texts/a.txt");
+        FileHeader header = fs.ReadFileHeader("texts/a.txt");
         REQUIRE(header);
         CHECK(header.GetNameNoExt() == "a");
         CHECK(header.GetPath() == "texts/a.txt");
         CHECK(header.GetSize() == 5);
         CHECK(header.GetDataSource()->IsDiskDir());
 
-        const File file = fs.ReadFile("texts/b.bin");
+        File file = fs.ReadFile("texts/b.bin");
         REQUIRE(file);
         CHECK(file.GetStr() == "beta");
 
-        const FileCollection txt_files = fs.FilterFiles("txt");
+        FileCollection txt_files = fs.FilterFiles("txt");
         CHECK(txt_files.GetFilesCount() == 4);
         CHECK(txt_files.FindFileByName("a").GetStr() == "alpha");
         CHECK(txt_files.FindFileByPath("root.txt").GetStr() == "root");
 
-        const FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
+        FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
         CHECK(text_dir_files.GetFilesCount() == 3);
 
-        const FileCollection all_files = fs.GetAllFiles();
+        FileCollection all_files = fs.GetAllFiles();
         CHECK(all_files.GetFilesCount() == 7);
 
-        const vector<string> no_patterns;
-        const vector<string> root_txt_patterns = {"*.txt"};
-        const FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
+        vector<string> no_patterns;
+        vector<string> root_txt_patterns = {"*.txt"};
+        FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
         REQUIRE(root_txt_files.GetFilesCount() == 1);
         CHECK(root_txt_files.FindFileByPath("root.txt"));
 
-        const vector<string> recursive_txt_patterns = {"**/*.txt"};
-        const FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
+        vector<string> recursive_txt_patterns = {"**/*.txt"};
+        FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
         CHECK(recursive_txt_files.GetFilesCount() == 4);
         CHECK(recursive_txt_files.FindFileByPath("texts/nested/c.txt"));
 
-        const vector<string> direct_text_patterns = {"texts/*.txt"};
-        const FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
+        vector<string> direct_text_patterns = {"texts/*.txt"};
+        FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
         REQUIRE(direct_text_files.GetFilesCount() == 2);
         CHECK(direct_text_files.FindFileByPath("texts/a.txt"));
 
-        const vector<string> root_name_patterns = {"**/root.txt"};
-        const FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
+        vector<string> root_name_patterns = {"**/root.txt"};
+        FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
         REQUIRE(root_name_files.GetFilesCount() == 1);
         CHECK(root_name_files.FindFileByPath("root.txt"));
 
-        const vector<string> map_patterns = {"maps\\**\\*.fomap"};
-        const vector<string> scratch_map_patterns = {"**/_*.fomap"};
-        const FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
+        vector<string> map_patterns = {"maps\\**\\*.fomap"};
+        vector<string> scratch_map_patterns = {"**/_*.fomap"};
+        FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
         REQUIRE(authored_maps.GetFilesCount() == 1);
         CHECK(authored_maps.FindFileByPath("maps/Generated/Authored.fomap"));
 
-        const vector<string> single_character_patterns = {"**/?.txt"};
-        const FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
+        vector<string> single_character_patterns = {"**/?.txt"};
+        FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
         CHECK(single_character_names.GetFilesCount() == 2);
 
         CHECK(fs_remove_dir_tree(temp_dir));
@@ -124,7 +124,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsEndianReadsSeekingAndFragments")
     {
-        const array<uint8_t, 15> data {{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 'O', 'K'}};
+        array<uint8_t, 15> data {{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 'O', 'K'}};
 
         FileReader reader {{data.data(), data.size()}};
 
@@ -147,7 +147,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsNullTerminatedAndTrailingFragmentCases")
     {
-        const array<uint8_t, 11> data {{'H', 'i', 0, 'B', 'y', 'e', 0, 'O', 'K', '!', '!'}};
+        array<uint8_t, 11> data {{'H', 'i', 0, 'B', 'y', 'e', 0, 'O', 'K', '!', '!'}};
 
         FileReader reader {{data.data(), data.size()}};
 
@@ -166,8 +166,8 @@ TEST_CASE("FileSystem")
 
     SECTION("FileCollectionReportsMissingEntriesWithoutThrowing")
     {
-        const string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("entries/one.txt").str(), string_view {"one"}));
@@ -175,7 +175,7 @@ TEST_CASE("FileSystem")
         FileSystem fs;
         fs.AddDirSource(temp_dir, true);
 
-        const FileCollection files = fs.GetAllFiles();
+        FileCollection files = fs.GetAllFiles();
         REQUIRE(files.GetFilesCount() == 1);
         CHECK(files.GetFileByIndex(0).GetNameNoExt() == "one");
         CHECK_FALSE(files.FindFileByName("missing"));
@@ -186,8 +186,8 @@ TEST_CASE("FileSystem")
 
     SECTION("CachedDirectoryCanRefreshItsFileIndex")
     {
-        const string temp_dir = MakeTempMountedDir("filesystem_refresh");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempMountedDir("filesystem_refresh");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first"}));

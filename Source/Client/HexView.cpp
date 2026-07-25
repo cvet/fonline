@@ -51,7 +51,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
 
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
-    const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
 
     _mapSpr = mspr;
@@ -74,7 +74,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     _extraMapSpr->remove_if([](auto&& entry) { return !entry.second; });
     auto& entry = _extraMapSpr->emplace_back();
 
-    const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
 
     auto map_spr = entry.first;
@@ -141,7 +141,7 @@ void HexView::StartFade(uint8_t from_alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto time = _map->GetEngine()->GameTime.GetFrameTime();
+    nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
 
     _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->FadingDuration};
     _fadeFromAlpha = from_alpha;
@@ -155,10 +155,10 @@ void HexView::EvaluateCurAlpha()
     FO_STACK_TRACE_ENTRY();
 
     if (_fading) {
-        const auto time = _map->GetEngine()->GameTime.GetFrameTime();
-        const int32_t fading_duration = _map->GetEngine()->Settings->FadingDuration;
-        const int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
-        const float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
+        nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
+        int32_t fading_duration = _map->GetEngine()->Settings->FadingDuration;
+        int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
+        float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
 
         if (t >= 1.0f) {
             _fading = false;
@@ -181,7 +181,7 @@ void HexView::SetTargetAlpha(uint8_t alpha)
         return;
     }
 
-    const auto from_alpha = _curAlpha;
+    uint8_t from_alpha = _curAlpha;
     _targetAlpha = alpha;
     StartFade(from_alpha);
 }
@@ -271,7 +271,7 @@ void HexView::SetSpriteVisiblity(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hidden = !enabled;
+    bool hidden = !enabled;
 
     if (_mapSprHidden == hidden) {
         return;

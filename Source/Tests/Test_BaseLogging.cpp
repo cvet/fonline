@@ -48,8 +48,8 @@ TEST_CASE("BaseLogging")
 {
     SECTION("LogToFileWritesMessages")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "base.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "base.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -66,14 +66,14 @@ TEST_CASE("BaseLogging")
         input.close();
         LogToFile(NullLogPath);
 
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 
     SECTION("LogToFileTruncatesPreviousContent")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "trunc.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "trunc.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -93,14 +93,14 @@ TEST_CASE("BaseLogging")
         CHECK(content == "second\n");
 
         input.close();
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 
     SECTION("LogToFileAppendsWhenRequested")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "append.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "append.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -122,14 +122,14 @@ TEST_CASE("BaseLogging")
         CHECK(content == "existing\nengine\n");
 
         input.close();
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 
     SECTION("AsyncLoggingDeliversAllMessagesInOrder")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "async.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "async.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -151,20 +151,20 @@ TEST_CASE("BaseLogging")
 
         std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
         for (int32_t i = 0; i < message_count; i++) {
-            const auto needle = strex("async-line-{}\n", i);
+            strex needle = strex("async-line-{}\n", i);
             CHECK(content.find(string_view {needle}) != std::string::npos);
         }
         CHECK(content.find("Dropped") == std::string::npos);
 
         input.close();
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 
     SECTION("AsyncLoggingCanBeToggled")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "toggle.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "toggle.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -197,14 +197,14 @@ TEST_CASE("BaseLogging")
         CHECK(content.find("sync-after\n") != std::string::npos);
 
         input.close();
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 
     SECTION("SuspendAsyncLogWritingFlushesWithoutJoiningWorker")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "suspend.log";
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / "logs" / "suspend.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -227,7 +227,7 @@ TEST_CASE("BaseLogging")
         SetAsyncLogWriting(false);
         LogToFile(NullLogPath);
 
-        const auto removed = std::filesystem::remove_all(temp_root);
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
 }

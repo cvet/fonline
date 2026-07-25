@@ -46,7 +46,7 @@ static auto ParticleInputBufferView(const array<char, Size>& buffer) -> string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto end = std::find(buffer.begin(), buffer.end(), '\0');
+    auto end = std::find(buffer.begin(), buffer.end(), '\0');
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
@@ -58,8 +58,8 @@ static auto ParticlePathContainsCaseInsensitive(string_view text, string_view fi
         return true;
     }
 
-    const string normalized_text = strex(text).lower().str();
-    const string normalized_filter = strex(filter).lower().str();
+    string normalized_text = strex(text).lower().str();
+    string normalized_filter = strex(filter).lower().str();
     return normalized_text.find(normalized_filter) != string::npos;
 }
 
@@ -134,7 +134,7 @@ void ParticlePreviewSubEditor::Initialize()
     _prewarm = _mapper->Settings->ParticlePreviewPrewarm;
     _windowVisible = true;
 
-    if (const optional<mpos> preview_hex = ResolveHex()) {
+    if (optional<mpos> preview_hex = ResolveHex()) {
         Play(*preview_hex);
     }
     else {
@@ -258,8 +258,8 @@ void ParticlePreviewSubEditor::DrawWindows()
         RefreshResources(true);
     }
 
-    const string_view particle_filter = ParticleInputBufferView(_filterBuf);
-    const size_t visible_resource_count = std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return ParticlePathContainsCaseInsensitive(particle_path, particle_filter); });
+    string_view particle_filter = ParticleInputBufferView(_filterBuf);
+    size_t visible_resource_count = std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return ParticlePathContainsCaseInsensitive(particle_path, particle_filter); });
     ImGui::Text("Resources: %d", numeric_cast<int32_t>(visible_resource_count));
 
     if (ImGui::BeginChild("##ParticlePreviewResources", {0.0f, 230.0f}, true)) {
@@ -268,7 +268,7 @@ void ParticlePreviewSubEditor::DrawWindows()
                 continue;
             }
 
-            const bool selected = _resourcePath == particle_path;
+            bool selected = _resourcePath == particle_path;
 
             if (ImGui::Selectable(particle_path.c_str(), selected) && !selected) {
                 Remove();
@@ -295,7 +295,7 @@ void ParticlePreviewSubEditor::DrawWindows()
         _useMapCenter = true;
     }
 
-    const optional<mpos> placement_hex = ResolveHex();
+    optional<mpos> placement_hex = ResolveHex();
 
     if (placement_hex) {
         ImGui::Text("Placement hex: %d, %d", placement_hex->x, placement_hex->y);
@@ -322,7 +322,7 @@ void ParticlePreviewSubEditor::DrawWindows()
     ImGui::Checkbox("Prewarm", &_prewarm);
     ImGui::TextDisabled("Scale, offset, seed and prewarm apply on Play or Restart.");
 
-    const bool can_play = !_resourcePath.empty() && placement_hex.has_value();
+    bool can_play = !_resourcePath.empty() && placement_hex.has_value();
     ImGui::BeginDisabled(!can_play);
     if (ImGui::Button("Play")) {
         Play(*placement_hex);
@@ -425,7 +425,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool resources_changed = _mapper->Resources.ReindexDataSources();
+    bool resources_changed = _mapper->Resources.ReindexDataSources();
 
     if (_resourcesIndexed && !force_reload && !resources_changed) {
         return;
@@ -436,11 +436,11 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     unordered_map<string, pair<size_t, uint64_t>> resource_index;
 
     for (const string& particle_extension : _extensions) {
-        const FileCollection particle_files = _mapper->Resources.FilterFiles(particle_extension);
+        FileCollection particle_files = _mapper->Resources.FilterFiles(particle_extension);
         resource_paths.reserve(resource_paths.size() + particle_files.GetFilesCount());
 
         for (const auto& particle_file : particle_files) {
-            const string particle_path {particle_file.GetPath()};
+            string particle_path {particle_file.GetPath()};
             resource_paths.emplace_back(particle_path);
             resource_dirs.emplace(strex(particle_path).extract_dir().format_path().str());
         }
@@ -450,7 +450,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     resource_paths.erase(std::ranges::unique(resource_paths).begin(), resource_paths.end());
 
     for (const string& resource_dir : resource_dirs) {
-        const FileCollection dependency_files = _mapper->Resources.FilterFiles("", resource_dir);
+        FileCollection dependency_files = _mapper->Resources.FilterFiles("", resource_dir);
 
         for (const auto& dependency_file : dependency_files) {
             resource_index.insert_or_assign(string(dependency_file.GetPath()), pair {dependency_file.GetSize(), dependency_file.GetWriteTime()});
@@ -463,7 +463,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     size_t removed_count = 0;
 
     for (const auto& [path, stamp] : resource_index) {
-        if (const auto it = _resourceIndex.find(path); it == _resourceIndex.end()) {
+        if (auto it = _resourceIndex.find(path); it == _resourceIndex.end()) {
             changed_paths.emplace(path);
             added_count++;
         }
@@ -492,14 +492,14 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
         _mapper->SprMngr.InvalidateSpriteResource(changed_path);
     }
 
-    const bool had_index = _resourcesIndexed;
-    const bool preview_was_active = static_cast<bool>(_previewSprite);
-    const mpos preview_hex = _previewHex;
+    bool had_index = _resourcesIndexed;
+    bool preview_was_active = static_cast<bool>(_previewSprite);
+    mpos preview_hex = _previewHex;
     bool selected_resource_changed = force_reload;
 
     if (!_resourcePath.empty() && !selected_resource_changed) {
-        const string selected_dir = strex(_resourcePath).extract_dir().format_path().str();
-        const string selected_dir_prefix = selected_dir.empty() ? string() : strex("{}/", selected_dir).str();
+        string selected_dir = strex(_resourcePath).extract_dir().format_path().str();
+        string selected_dir_prefix = selected_dir.empty() ? string() : strex("{}/", selected_dir).str();
 
         selected_resource_changed = std::ranges::any_of(changed_paths, [&](const string& changed_path) { return changed_path == _resourcePath || (!selected_dir_prefix.empty() && changed_path.starts_with(selected_dir_prefix)); });
     }
@@ -508,7 +508,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     _resourceIndex = std::move(resource_index);
     _resourcesIndexed = true;
 
-    const bool selected_resource_exists = _resourcePath.empty() || std::ranges::find(_resourcePaths, _resourcePath) != _resourcePaths.end();
+    bool selected_resource_exists = _resourcePath.empty() || std::ranges::find(_resourcePaths, _resourcePath) != _resourcePaths.end();
 
     if (!selected_resource_exists) {
         Remove();
@@ -542,8 +542,8 @@ auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
     }
 
     auto cur_map = _mapper->GetCurMap().as_ptr();
-    const isize32 screen_size = cur_map->GetScreenSize();
-    const ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
+    isize32 screen_size = cur_map->GetScreenSize();
+    ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
     mpos center_hex;
 
     if (!cur_map->GetHexAtScreen(screen_center, center_hex, nullptr)) {

@@ -178,7 +178,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto update_key_state = [this](KeyCode key, bool pressed) {
+        auto update_key_state = [this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
             }

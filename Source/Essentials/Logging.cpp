@@ -151,11 +151,11 @@ static void EmitLogMessage(LogType type, string_view message, nptr<const Catched
     result.reserve(message.length() + 64);
 
     if (!Logging->TagsDisabled) {
-        const time_desc_t time = nanotime::now().desc(true);
+        time_desc_t time = nanotime::now().desc(true);
         result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
         result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
-        if (const std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
+        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
             result += strex("[{}] ", get_this_thread_name());
         }
     }
@@ -201,8 +201,8 @@ static void FlushLogMessageRepeatsLocked()
         return;
     }
 
-    const optional<LogType> last_log_type = Logging->LastLogType;
-    const uint64_t same_message_count = Logging->SameLogMessageCount;
+    optional<LogType> last_log_type = Logging->LastLogType;
+    uint64_t same_message_count = Logging->SameLogMessageCount;
 
     ClearLastLogMessage();
 

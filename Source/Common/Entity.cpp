@@ -51,7 +51,7 @@ void Entity::AddRef() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto old = _refCounter.fetch_add(1, std::memory_order_relaxed);
+    auto old = _refCounter.fetch_add(1, std::memory_order_relaxed);
     FO_STRONG_ASSERT(old > 0, "AddRef called for expired entity", old);
 }
 
@@ -59,7 +59,7 @@ void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    int32_t old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
     FO_STRONG_ASSERT(old > 0, "Release called for expired entity", old);
 
     if (old == 1) {
@@ -87,7 +87,7 @@ auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_events) {
-        if (const auto it = _events->find(event_name); it != _events->end() && !it->second.empty()) {
+        if (auto it = _events->find(event_name); it != _events->end() && !it->second.empty()) {
             return true;
         }
     }
@@ -100,7 +100,7 @@ auto Entity::FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_events) {
-        if (const auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
             return &it->second;
         }
     }
@@ -118,7 +118,7 @@ auto Entity::EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCal
         _events.emplace();
     }
 
-    if (const auto it = _events->find(event_name); it != _events->end()) {
+    if (auto it = _events->find(event_name); it != _events->end()) {
         return &it->second;
     }
 
@@ -140,7 +140,7 @@ void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr
     FO_STACK_TRACE_ENTRY();
 
     if (_events) {
-        if (const auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
             UnsubscribeEvent(&it->second, subscription_ptr);
         }
     }
@@ -151,7 +151,7 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
     FO_STACK_TRACE_ENTRY();
 
     if (_events) {
-        if (const auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
             it->second.clear();
         }
     }
@@ -178,7 +178,7 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
     FO_VERIFY_AND_RETURN_VALUE(!IsDestroyed(), EventResult::ContinueChain, "Destroyed entity tried to fire an event", GetName(), GetTypeName(), GetId(), event_name);
 
     if (_events) {
-        if (const auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
             return FireEvent(it->second, call);
         }
     }
@@ -212,7 +212,7 @@ void Entity::UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks->end()) {
+    if (auto it = std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks->end()) {
         callbacks->erase(it);
     }
 }
@@ -229,7 +229,7 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
 
     bool had_exception = false;
 
-    const small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
 
     for (const auto& cb : callbacks_snapshot) {
         EventResult result = EventResult::ContinueChain;
@@ -375,7 +375,7 @@ auto Entity::GetInnerEntities(hstring entry) const noexcept -> nptr<const vector
         return nullptr;
     }
 
-    const auto it_entry = _innerEntities->find(entry);
+    auto it_entry = _innerEntities->find(entry);
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -392,7 +392,7 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_pt
         return nullptr;
     }
 
-    const auto it_entry = _innerEntities->find(entry);
+    auto it_entry = _innerEntities->find(entry);
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -430,7 +430,7 @@ void Entity::AddInnerEntity(hstring entry, ptr<Entity> entity)
 
     auto entity_ref_holder = entity.hold_ref();
 
-    if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
+    if (auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
         _innerEntities->emplace(entry, vector<refcount_ptr<Entity>> {entity_ref_holder});
     }
     else {

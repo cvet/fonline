@@ -314,15 +314,15 @@ namespace
         auto pp_ctx = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
         REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
 
-        for (const auto define : defines) {
+        for (auto define : defines) {
             Preprocessor::Define(pp_ctx.get(), std::string(define));
         }
         Preprocessor::StringOutStream pp_errors;
         Preprocessor::LexemList lexems;
         auto loader = SingleScriptLoader {string(path), string(script)};
-        const auto std_path = std::string {path};
+        auto std_path = std::string {path};
 
-        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
+        int32_t pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
         REQUIRE(pp_errors_count == 0);
         REQUIRE(pp_errors.String.empty());
 
@@ -414,7 +414,7 @@ namespace
         auto module = make_nptr(engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE));
         REQUIRE(module);
         REQUIRE(module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        const auto build_result = module->Build();
+        int32_t build_result = module->Build();
         if (build_result < 0) {
             for (const auto& entry : messages.Entries) {
                 INFO("AS message: " << entry);
@@ -468,7 +468,7 @@ namespace
         REQUIRE(user_data->Attributes.size() == expected.size());
 
         size_t index = 0;
-        for (const auto attr : expected) {
+        for (auto attr : expected) {
             CHECK(user_data->Attributes[index] == attr);
             index++;
         }
@@ -1324,7 +1324,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
     SECTION("RendersDefaultValuesForMetadataArgs")
     {
         EngineMetadata meta {[] { }};
-        const vector<ArgDesc> args = {
+        vector<ArgDesc> args = {
             {.Name = "value", .Type = meta.ResolveComplexType("int32"), .DefaultValue = "42"},
             {.Name = "label", .Type = meta.ResolveComplexType("string"), .DefaultValue = "\"fresh\""},
         };
@@ -1348,15 +1348,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         const auto& player_type = meta.GetBaseType("Player");
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
 
-        const ComplexTypeDesc simple_int = MakeComplexType(int_type);
-        const ComplexTypeDesc mutable_int {.Kind = ComplexTypeKind::Simple, .BaseType = int_type, .IsMutable = true};
-        const ComplexTypeDesc critter_arg = MakeComplexType(critter_type);
-        const ComplexTypeDesc player_arg = MakeComplexType(player_type);
-        const ComplexTypeDesc ref_arg = MakeComplexType(route_snapshot_type);
-        const ComplexTypeDesc mutable_ref_arg {.Kind = ComplexTypeKind::Simple, .BaseType = route_snapshot_type, .IsMutable = true};
-        const ComplexTypeDesc string_array {.Kind = ComplexTypeKind::Array, .BaseType = string_type};
-        const ComplexTypeDesc int_dict {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = string_type};
-        const ComplexTypeDesc int_array_dict {.Kind = ComplexTypeKind::DictOfArray, .BaseType = int_type, .KeyType = string_type};
+        ComplexTypeDesc simple_int = MakeComplexType(int_type);
+        ComplexTypeDesc mutable_int {.Kind = ComplexTypeKind::Simple, .BaseType = int_type, .IsMutable = true};
+        ComplexTypeDesc critter_arg = MakeComplexType(critter_type);
+        ComplexTypeDesc player_arg = MakeComplexType(player_type);
+        ComplexTypeDesc ref_arg = MakeComplexType(route_snapshot_type);
+        ComplexTypeDesc mutable_ref_arg {.Kind = ComplexTypeKind::Simple, .BaseType = route_snapshot_type, .IsMutable = true};
+        ComplexTypeDesc string_array {.Kind = ComplexTypeKind::Array, .BaseType = string_type};
+        ComplexTypeDesc int_dict {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = string_type};
+        ComplexTypeDesc int_array_dict {.Kind = ComplexTypeKind::DictOfArray, .BaseType = int_type, .KeyType = string_type};
 
         auto callback_args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
         callback_args->emplace_back();
@@ -1396,7 +1396,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(MakeScriptReturnName(ref_arg, true) == "RouteSnapshot@");
         CHECK(MakeScriptReturnName(string_array) == "array<string>@");
 
-        const vector<ArgDesc> args = {
+        vector<ArgDesc> args = {
             {.Name = "targets", .Type = string_array, .Nullable = true},
             {.Name = "lookup", .Type = int_array_dict},
             {.Name = "snapshot", .Type = ref_arg, .DefaultValue = "null"},
@@ -1423,13 +1423,13 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterRefType("RouteSnapshot");
 
         PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
-        const auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-        const auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-        const auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
-        const auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
-        const auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-        const auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-        const auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+        auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
 
         CHECK(MakeScriptPropertyName(int_prop) == "int");
         CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");
@@ -1442,7 +1442,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 
     SECTION("ChecksAllowedScriptNamespaces")
     {
-        const vector<string> allowed_namespaces = {"Server", "", "Quest::"};
+        vector<string> allowed_namespaces = {"Server", "", "Quest::"};
 
         CHECK(IsScriptNamespaceAllowed("Server", allowed_namespaces));
         CHECK(IsScriptNamespaceAllowed("ServerTools", allowed_namespaces));
@@ -1500,17 +1500,17 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 
     SECTION("DescribesPrimitiveScriptObjects")
     {
-        const bool bool_value = true;
-        const int8_t int8_value = -8;
-        const int16_t int16_value = -1600;
-        const int32_t int32_value = -320000;
-        const int64_t int64_value = -64000000;
-        const uint8_t uint8_value = 8;
-        const uint16_t uint16_value = 1600;
-        const uint32_t uint32_value = 320000;
-        const uint64_t uint64_value = 64000000;
-        const float32_t float_value = 1.5f;
-        const float64_t double_value = 2.25;
+        bool bool_value = true;
+        int8_t int8_value = -8;
+        int16_t int16_value = -1600;
+        int32_t int32_value = -320000;
+        int64_t int64_value = -64000000;
+        uint8_t uint8_value = 8;
+        uint16_t uint16_value = 1600;
+        uint32_t uint32_value = 320000;
+        uint64_t uint64_value = 64000000;
+        float32_t float_value = 1.5f;
+        float64_t double_value = 2.25;
 
         CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_VOID) == "void");
         CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_BOOL) == "bool: true");
@@ -1601,7 +1601,7 @@ void NamespacedCall()
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrTestModule", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
         CHECK(ValidateAttributedFunctionUsage(mod).empty());
@@ -1625,7 +1625,7 @@ void NamespacedCall()
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrAfterClass", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -1644,7 +1644,7 @@ void NamespacedCall()
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrWithParameters", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -1728,10 +1728,10 @@ void NamespacedCall()
         REQUIRE(load_mod->LoadByteCode(&load_stream) >= 0);
 
         auto reader = DataReader {payload};
-        const auto records = DeserializeFunctionAttributeRecords(reader);
+        auto records = DeserializeFunctionAttributeRecords(reader);
         reader.VerifyEnd();
 
-        const auto bind_error = BindFunctionAttributeRecords(load_mod, records);
+        string bind_error = BindFunctionAttributeRecords(load_mod, records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
         CHECK(ValidateAttributedFunctionUsage(load_mod).empty());
@@ -1772,7 +1772,7 @@ void NamespacedCall()
         RegisterDummyCritterType(engine);
 
         auto mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -1828,11 +1828,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrInvalidModuleInitPriority", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto special_attr_error = ValidateSpecialFunctionAttributes(mod);
+        string special_attr_error = ValidateSpecialFunctionAttributes(mod);
         CHECK(!special_attr_error.empty());
         CHECK(special_attr_error.find("[[ModuleInit(bad)]]") != string::npos);
         CHECK(special_attr_error.find("optional single integer priority") != string::npos);
@@ -1851,12 +1851,12 @@ void TakesIntPlease(int? value)
         // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
         // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
         // rather than as a viral marker (Rule 2 default for unknown attributes).
-        const vector<string> project_blocking_extras {"EngineOnly"};
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
+        vector<string> project_blocking_extras {"EngineOnly"};
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod, nullptr, nullptr, &project_blocking_extras);
+        string usage_error = ValidateAttributedFunctionUsage(mod, nullptr, nullptr, &project_blocking_extras);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void AttrTest::Hidden()") != string::npos);
         CHECK(usage_error.find("void AttrTest::User()") != string::npos);
@@ -1873,11 +1873,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrFuncPtr", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(usage_error.empty());
     }
 
@@ -1892,11 +1892,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1911,11 +1911,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1930,11 +1930,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to Subscribe/Unsubscribe must be marked [[Event]]") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -1951,13 +1951,13 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventMethodPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void Listener::OnEvent()"), {"Event"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1972,11 +1972,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventMethodNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to Subscribe/Unsubscribe must be marked [[Event]]") != string::npos);
         CHECK(event_error.find("void Listener::OnEvent()") != string::npos);
@@ -1992,11 +1992,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrEventDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnEvent()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2014,11 +2014,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[Event]] can only be passed to Subscribe/Unsubscribe") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -2035,13 +2035,13 @@ void TakesIntPlease(int? value)
         RegisterDummySchedulerApi(engine);
 
         auto mod = BuildModule(engine, "AttrTimeEventPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void OnTick()"), {"TimeEvent"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -2056,11 +2056,11 @@ void TakesIntPlease(int? value)
         RegisterDummySchedulerApi(engine);
 
         auto mod = BuildModule(engine, "AttrTimeEventNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to time-event APIs (StartTimeEvent, StopTimeEvent, CountTimeEvent, RepeatTimeEvent, SetTimeEventData) must be marked [[TimeEvent]]") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -2076,11 +2076,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrTimeEventDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnTick()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2098,11 +2098,11 @@ void TakesIntPlease(int? value)
         RegisterDummySchedulerApi(engine);
 
         auto mod = BuildModule(engine, "AttrTimeEventWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[TimeEvent]] can only be passed to time-event APIs") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -2119,11 +2119,11 @@ void TakesIntPlease(int? value)
         RegisterDummySchedulerApi(engine);
 
         auto mod = BuildModule(engine, "AttrEventUsedForTimeEvent", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[Event]] can only be passed to Subscribe/Unsubscribe") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -2140,11 +2140,11 @@ void TakesIntPlease(int? value)
         RegisterDummyEventApi(engine);
 
         auto mod = BuildModule(engine, "AttrTimeEventUsedForEvent", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[TimeEvent]] can only be passed to time-event APIs") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -2161,11 +2161,11 @@ void TakesIntPlease(int? value)
         RegisterDummyAnimCallbackApi(engine);
 
         auto mod = BuildModule(engine, "AttrAnimCallbackPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -2180,11 +2180,11 @@ void TakesIntPlease(int? value)
         RegisterDummyAnimCallbackApi(engine);
 
         auto mod = BuildModule(engine, "AttrAnimCallbackNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to AddAnimCallback must be marked [[AnimCallback]]") != string::npos);
         CHECK(event_error.find("void OnAnim(Critter@)") != string::npos);
@@ -2201,11 +2201,11 @@ void TakesIntPlease(int? value)
         RegisterDummyAnimCallbackApi(engine);
 
         auto mod = BuildModule(engine, "AttrAnimCallbackDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnAnim(Critter@)") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2223,11 +2223,11 @@ void TakesIntPlease(int? value)
         RegisterDummyAnimCallbackApi(engine);
 
         auto mod = BuildModule(engine, "AttrAnimCallbackWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[AnimCallback]] can only be passed to AddAnimCallback") != string::npos);
         CHECK(event_error.find("void OnAnim(Critter@)") != string::npos);
@@ -2244,13 +2244,13 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertyGetterPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "int OnGet(int)"), {"PropertyGetter"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -2265,11 +2265,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertyGetterNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to property getter APIs (SetPropertyGetter) must be marked [[PropertyGetter]]") != string::npos);
         CHECK(event_error.find("int OnGet(int)") != string::npos);
@@ -2285,11 +2285,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrPropertyGetterDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("int OnGet(int)") != string::npos);
         CHECK(usage_error.find("int CallDirect()") != string::npos);
@@ -2307,11 +2307,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertyGetterWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[PropertyGetter]] can only be passed to property getter APIs (SetPropertyGetter)") != string::npos);
         CHECK(event_error.find("int OnGet(int)") != string::npos);
@@ -2328,13 +2328,13 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertySetterPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void OnSet(int)"), {"PropertySetter"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -2349,11 +2349,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertySetterNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to property setter API (AddPropertySetter) must be marked [[PropertySetter]]") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
@@ -2369,11 +2369,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrPropertySetterDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnSet(int)") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2391,11 +2391,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPropertyApi(engine);
 
         auto mod = BuildModule(engine, "AttrPropertySetterWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[PropertySetter]] can only be passed to property setter API (AddPropertySetter)") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
@@ -2413,7 +2413,7 @@ void TakesIntPlease(int? value)
         RegisterDummyCritterType(engine);
 
         auto mod = BuildModule(engine, "AttrAdminRemoteCallPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2435,12 +2435,12 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrAdminRemoteCallDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CHECK(ValidateAdminRemoteCallAttributes(mod).empty());
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void Run()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2458,11 +2458,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);
         CHECK(usage_error.find("void RemoteCallTest::CallDirect(Player@)") != string::npos);
@@ -2479,11 +2479,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void RemoteCallTest::Activate(int)") != string::npos);
         CHECK(usage_error.find("void RemoteCallTest::CallDirect()") != string::npos);
@@ -2500,11 +2500,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void ItemTriggerTest::Triggered()") != string::npos);
         CHECK(usage_error.find("void ItemTriggerTest::CallDirect()") != string::npos);
@@ -2521,11 +2521,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void ItemStaticTest::StaticCall()") != string::npos);
         CHECK(usage_error.find("void ItemStaticTest::CallDirect()") != string::npos);
@@ -2543,11 +2543,11 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "AttrAdminRemoteCallWrongSignature", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod);
+        string admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod);
         CHECK(!admin_remote_call_error.empty());
         CHECK(admin_remote_call_error.find("[[AdminRemoteCall]]") != string::npos);
         CHECK(admin_remote_call_error.find("~run entrypoint") != string::npos);
@@ -2565,7 +2565,7 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2573,7 +2573,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2587,7 +2587,7 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "RemoteCallClientPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2595,7 +2595,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ClientSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2611,7 +2611,7 @@ void TakesIntPlease(int? value)
         RegisterDummyRouteSnapshotType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2621,7 +2621,7 @@ void TakesIntPlease(int? value)
         meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2636,7 +2636,7 @@ void TakesIntPlease(int? value)
         RegisterDummyRouteSnapshotType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2646,7 +2646,7 @@ void TakesIntPlease(int? value)
         meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2662,7 +2662,7 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "LegacyRemoteCallServerComment", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2673,7 +2673,7 @@ void TakesIntPlease(int? value)
         auto func = FindScriptFunction(mod, "void RemoteCallTest::Activate(Player@, int)");
         CheckAttributes(func, {});
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("must be marked [[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);
@@ -2690,7 +2690,7 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerWrongSignature", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2698,7 +2698,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("has no matching ///@ RemoteCall declaration") != string::npos);
@@ -2716,7 +2716,7 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerWrongSide", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2724,7 +2724,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ClientRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("uses the wrong remote-call attribute for this engine side") != string::npos);
@@ -2741,7 +2741,7 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "RemoteCallClientExtra", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2749,7 +2749,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ClientSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ClientRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("has no matching ///@ RemoteCall declaration") != string::npos);
@@ -2767,7 +2767,7 @@ void TakesIntPlease(int? value)
         RegisterDummyPlayerType(engine);
 
         auto mod = BuildModule(engine, "RemoteCallServerMissingAttribute", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2775,7 +2775,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("must be marked [[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);

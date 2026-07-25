@@ -233,8 +233,22 @@ def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'11',
-		['clang-20', 'clang-format-20', 'llvm-20', 'build-essential', 'git', 'cmake', 'python3', 'python3-pytest', 'wget', 'unzip', 'binutils-dev'],
+		'12',
+		[
+			'clang-20',
+			'clang-format-20',
+			'clang-tools-20',
+			'clang-tidy-20',
+			'llvm-20',
+			'build-essential',
+			'git',
+			'cmake',
+			'python3',
+			'python3-pytest',
+			'wget',
+			'unzip',
+			'binutils-dev',
+		],
 	),
 	'linux-packages': (
 		'7',

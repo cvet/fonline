@@ -64,7 +64,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fos") {
             continue;
@@ -78,9 +78,9 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         return;
     }
 
-    const bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-server", max_write_time);
-    const bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-client", max_write_time);
-    const bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-mapper", max_write_time);
+    bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-server", max_write_time);
+    bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-client", max_write_time);
+    bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-mapper", max_write_time);
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
@@ -91,7 +91,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     mutex messages_locker;
     unordered_set<string> messages;
 
-    const auto message_callback = [&](string_view message) {
+    auto message_callback = [&](string_view message) {
         scoped_lock lock {messages_locker};
 
         if (messages.contains(message)) {

@@ -90,8 +90,8 @@ auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> proje
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    const string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
-    const XmlNode project = ParseXmlProject(project_path, xml);
+    string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
+    XmlNode project = ParseXmlProject(project_path, xml);
     return CompileProject(project_path, project);
 }
 
@@ -103,8 +103,8 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    const string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
-    const XmlNode project = ParseXmlProject(project_path, xml);
+    string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
+    XmlNode project = ParseXmlProject(project_path, xml);
     CompilerContext context = CreateCompilerContext(project_path, project);
     return vector<string> {context.Dependencies.begin(), context.Dependencies.end()};
 }
@@ -146,13 +146,13 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
             continue;
         }
 
-        const size_t end = value.find(';', pos + 1);
+        size_t end = value.find(';', pos + 1);
 
         if (end == string_view::npos) {
             throw EffekseerCompilerException("Effekseer project contains an unterminated XML entity", project_path);
         }
 
-        const string_view entity = value.substr(pos + 1, end - pos - 1);
+        string_view entity = value.substr(pos + 1, end - pos - 1);
 
         if (entity == "amp") {
             result.push_back('&');
@@ -200,7 +200,7 @@ public:
         SkipSpace();
 
         if (StartsWith("<?xml")) {
-            const size_t declaration_end = _xml.find("?>", _position + 5);
+            size_t declaration_end = _xml.find("?>", _position + 5);
 
             if (declaration_end == string_view::npos) {
                 Fail("Effekseer project has an unterminated XML declaration");
@@ -251,11 +251,11 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const size_t begin = _position;
+        size_t begin = _position;
 
         while (_position < _xml.size()) {
-            const char ch = _xml[_position];
-            const bool valid = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_';
+            char ch = _xml[_position];
+            bool valid = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_';
 
             if (!valid) {
                 break;
@@ -303,7 +303,7 @@ private:
             }
             if (StartsWith("</")) {
                 _position += 2;
-                const string closing_name = ParseName();
+                string closing_name = ParseName();
                 SkipSpace();
 
                 if (_position >= _xml.size() || _xml[_position] != '>') {
@@ -354,7 +354,7 @@ private:
         return nullptr;
     }
 
-    const auto it = std::ranges::find(node->Children, name, &XmlNode::Name);
+    auto it = std::ranges::find(node->Children, name, &XmlNode::Name);
     return it != node->Children.end() ? &*it : nullptr;
 }
 
@@ -363,8 +363,8 @@ private:
     FO_NO_STACK_TRACE_ENTRY();
 
     while (node && !path.empty()) {
-        const size_t separator = path.find('/');
-        const string_view name = path.substr(0, separator);
+        size_t separator = path.find('/');
+        string_view name = path.substr(0, separator);
         node = Child(node, name);
 
         if (separator == string_view::npos) {
@@ -467,7 +467,7 @@ void BinaryWriter::WriteInt32(int32_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const uint32_t encoded = std::bit_cast<uint32_t>(value);
+    uint32_t encoded = std::bit_cast<uint32_t>(value);
     _data.emplace_back(numeric_cast<uint8_t>(encoded & 0xffU));
     _data.emplace_back(numeric_cast<uint8_t>((encoded >> 8U) & 0xffU));
     _data.emplace_back(numeric_cast<uint8_t>((encoded >> 16U) & 0xffU));
@@ -500,11 +500,11 @@ void BinaryWriter::WriteUtf16(string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const wstring wide = strex(value).to_wide_char();
+    wstring wide = strex(value).to_wide_char();
     WriteInt32(numeric_cast<int32_t>(wide.size() + 1));
 
-    for (const wchar_t ch : wide) {
-        const uint32_t codepoint = numeric_cast<uint32_t>(ch);
+    for (wchar_t ch : wide) {
+        uint32_t codepoint = numeric_cast<uint32_t>(ch);
 
         if (codepoint > 0xffffU) {
             throw EffekseerCompilerException("Effekseer dependency path contains a non-BMP character", value);
@@ -594,11 +594,11 @@ static void WriteRandomVector3(BinaryWriter& writer, nptr<const XmlNode> node, f
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const float32_t gradient_start = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(start) + 45.0) / 180.0 * std::numbers::pi));
-    const float32_t gradient_end = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(end) + 45.0) / 180.0 * std::numbers::pi));
-    const float32_t c = gradient_start;
-    const float32_t a = gradient_end - gradient_start - (1.0f - c) * 2.0f;
-    const float32_t b = (gradient_end - gradient_start - a * 3.0f) / 2.0f;
+    float32_t gradient_start = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(start) + 45.0) / 180.0 * std::numbers::pi));
+    float32_t gradient_end = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(end) + 45.0) / 180.0 * std::numbers::pi));
+    float32_t c = gradient_start;
+    float32_t a = gradient_end - gradient_start - (1.0f - c) * 2.0f;
+    float32_t b = (gradient_end - gradient_start - a * 3.0f) / 2.0f;
     return {a, b, c};
 }
 
@@ -606,9 +606,9 @@ static void WriteLegacyEasing(BinaryWriter& writer, int32_t start, int32_t end)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto coefficients = EasingCoefficients(start, end);
+    auto coefficients = EasingCoefficients(start, end);
 
-    for (const float32_t coefficient : coefficients) {
+    for (float32_t coefficient : coefficients) {
         writer.WriteFloat(coefficient);
     }
 }
@@ -626,7 +626,7 @@ static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, f
     WriteRandomVector3(data, Find(node, "Start"), default_x, default_y, default_z, multiplier);
     WriteRandomVector3(data, Find(node, "End"), default_x, default_y, default_z, multiplier);
 
-    const bool middle_enabled = BoolValue(node, "IsMiddleEnabled", false);
+    bool middle_enabled = BoolValue(node, "IsMiddleEnabled", false);
     data.WriteInt32(middle_enabled ? 1 : 0);
 
     if (middle_enabled) {
@@ -635,7 +635,7 @@ static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, f
         WriteRandomVector3(data, Find(node, "Middle"), default_x, default_y, default_z, multiplier);
     }
 
-    const int32_t easing_type = IntValue(node, "Type", 0);
+    int32_t easing_type = IntValue(node, "Type", 0);
     data.WriteInt32(easing_type);
 
     if (easing_type == 0) {
@@ -643,7 +643,7 @@ static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, f
     }
 
     if (BoolValue(node, "IsRandomGroupEnabled", false)) {
-        const std::array<int32_t, 3> ids {IntValue(node, "RandomGroupX", 0), IntValue(node, "RandomGroupY", 1), IntValue(node, "RandomGroupZ", 2)};
+        std::array<int32_t, 3> ids {IntValue(node, "RandomGroupX", 0), IntValue(node, "RandomGroupY", 1), IntValue(node, "RandomGroupZ", 2)};
         map<int32_t, int32_t> channels;
         int32_t next_channel = 0;
         int32_t encoded = 0;
@@ -662,7 +662,7 @@ static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, f
         data.WriteInt32(0x00020100);
     }
 
-    const bool individual_enabled = BoolValue(node, "IsIndividualTypeEnabled", false);
+    bool individual_enabled = BoolValue(node, "IsIndividualTypeEnabled", false);
     data.WriteInt32(individual_enabled ? 1 : 0);
 
     if (individual_enabled) {
@@ -687,7 +687,7 @@ static void WriteFloatEasing(BinaryWriter& writer, nptr<const XmlNode> node, flo
     WriteRandomFloat(data, Find(node, "Start"), default_value, multiplier);
     WriteRandomFloat(data, Find(node, "End"), default_value, multiplier);
 
-    const bool middle_enabled = BoolValue(node, "IsMiddleEnabled", false);
+    bool middle_enabled = BoolValue(node, "IsMiddleEnabled", false);
     data.WriteInt32(middle_enabled ? 1 : 0);
 
     if (middle_enabled) {
@@ -696,7 +696,7 @@ static void WriteFloatEasing(BinaryWriter& writer, nptr<const XmlNode> node, flo
         WriteRandomFloat(data, Find(node, "Middle"), default_value, multiplier);
     }
 
-    const int32_t easing_type = IntValue(node, "Type", 0);
+    int32_t easing_type = IntValue(node, "Type", 0);
     data.WriteInt32(easing_type);
 
     if (easing_type == 0) {
@@ -744,8 +744,8 @@ struct CurveKey final
             continue;
         }
 
-        const int32_t frame = IntValue(&key_node, "Frame", 0);
-        const float32_t value = FloatValue(&key_node, "Value", 0.0f);
+        int32_t frame = IntValue(&key_node, "Frame", 0);
+        float32_t value = FloatValue(&key_node, "Value", 0.0f);
         keys.emplace_back(CurveKey {
             .Frame = frame,
             .Value = value,
@@ -779,27 +779,27 @@ struct CurveKey final
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const float32_t c3_source = x3 - x0 + 3.0f * (x1 - x2);
-    const float32_t c2_source = 3.0f * (x0 - 2.0f * x1 + x2);
-    const float32_t c1_source = 3.0f * (x1 - x0);
-    const float32_t c0_source = x0 - frame;
+    float32_t c3_source = x3 - x0 + 3.0f * (x1 - x2);
+    float32_t c2_source = 3.0f * (x0 - 2.0f * x1 + x2);
+    float32_t c1_source = 3.0f * (x1 - x0);
+    float32_t c0_source = x0 - frame;
 
     if (c3_source != 0.0f) {
-        const float32_t c2 = c2_source / c3_source;
-        const float32_t c1 = c1_source / c3_source;
-        const float32_t c0 = c0_source / c3_source;
-        const float32_t p = c1 / 3.0f - c2 * c2 / 9.0f;
-        const float32_t q = (2.0f * c2 * c2 * c2 / 27.0f - c2 / 3.0f * c1 + c0) / 2.0f;
-        const float32_t discriminant = q * q + p * p * p;
+        float32_t c2 = c2_source / c3_source;
+        float32_t c1 = c1_source / c3_source;
+        float32_t c0 = c0_source / c3_source;
+        float32_t p = c1 / 3.0f - c2 * c2 / 9.0f;
+        float32_t q = (2.0f * c2 * c2 * c2 / 27.0f - c2 / 3.0f * c1 + c0) / 2.0f;
+        float32_t discriminant = q * q + p * p * p;
 
         if (discriminant > 0.0f) {
-            const float32_t root = numeric_cast<float32_t>(std::sqrt(discriminant));
-            const float32_t result = CubicRoot(-q + root) + CubicRoot(-q - root) - c2 / 3.0f;
+            float32_t root = numeric_cast<float32_t>(std::sqrt(discriminant));
+            float32_t result = CubicRoot(-q + root) + CubicRoot(-q - root) - c2 / 3.0f;
             return IsCurveRootValid(result) ? optional<float32_t> {result} : std::nullopt;
         }
         if (discriminant == 0.0f) {
-            for (const float32_t sign : {1.0f, -1.0f}) {
-                const float32_t result = sign * 2.0f * CubicRoot(-q) - c2 / 3.0f;
+            for (float32_t sign : {1.0f, -1.0f}) {
+                float32_t result = sign * 2.0f * CubicRoot(-q) - c2 / 3.0f;
 
                 if (IsCurveRootValid(result)) {
                     return result;
@@ -809,11 +809,11 @@ struct CurveKey final
             return std::nullopt;
         }
 
-        const float32_t phi = numeric_cast<float32_t>(std::acos(-q / std::sqrt(-(p * p * p))));
-        const float32_t root = numeric_cast<float32_t>(std::sqrt(-p));
+        float32_t phi = numeric_cast<float32_t>(std::acos(-q / std::sqrt(-(p * p * p))));
+        float32_t root = numeric_cast<float32_t>(std::sqrt(-p));
 
         for (size_t index = 0; index < 3; ++index) {
-            const float32_t result = 2.0f * root * numeric_cast<float32_t>(std::cos(phi / 3.0 + numeric_cast<float64_t>(index) * 2.0 * std::numbers::pi / 3.0)) - c2 / 3.0f;
+            float32_t result = 2.0f * root * numeric_cast<float32_t>(std::cos(phi / 3.0 + numeric_cast<float64_t>(index) * 2.0 * std::numbers::pi / 3.0)) - c2 / 3.0f;
 
             if (IsCurveRootValid(result)) {
                 return result;
@@ -827,10 +827,10 @@ struct CurveKey final
     float32_t second = std::numeric_limits<float32_t>::quiet_NaN();
 
     if (c2_source != 0.0f) {
-        const float32_t discriminant = c1_source * c1_source - 4.0f * c2_source * c0_source;
+        float32_t discriminant = c1_source * c1_source - 4.0f * c2_source * c0_source;
 
         if (discriminant > 0.0f) {
-            const float32_t root = numeric_cast<float32_t>(std::sqrt(discriminant));
+            float32_t root = numeric_cast<float32_t>(std::sqrt(discriminant));
             first = (-c1_source - root) / (2.0f * c2_source);
             second = (-c1_source + root) / (2.0f * c2_source);
         }
@@ -859,7 +859,7 @@ struct CurveKey final
         return default_value;
     }
 
-    const int32_t length = keys.back().Frame - keys.front().Frame;
+    int32_t length = keys.back().Frame - keys.front().Frame;
 
     if (length == 0) {
         return keys.front().Value;
@@ -883,7 +883,7 @@ struct CurveKey final
     size_t right_index = keys.size() - 1;
 
     while (right_index - left_index > 1) {
-        const size_t middle = (left_index + right_index) / 2;
+        size_t middle = (left_index + right_index) / 2;
 
         if (keys[middle].Frame <= frame) {
             left_index = middle;
@@ -897,7 +897,7 @@ struct CurveKey final
     const CurveKey& right = keys[right_index];
 
     if (left.Interpolation == 1) {
-        const float32_t frame_distance = numeric_cast<float32_t>(right.Frame - left.Frame);
+        float32_t frame_distance = numeric_cast<float32_t>(right.Frame - left.Frame);
         return frame_distance == 0.0f ? left.Value : (right.Value - left.Value) / frame_distance * numeric_cast<float32_t>(frame - left.Frame) + left.Value;
     }
     if (left.Frame == frame) {
@@ -908,28 +908,28 @@ struct CurveKey final
     float32_t left_right_y = left.RightY;
     float32_t right_left_x = right.LeftX;
     float32_t right_left_y = right.LeftY;
-    const float32_t handle_right = std::abs(numeric_cast<float32_t>(left.Frame) - left_right_x);
-    const float32_t handle_left = std::abs(numeric_cast<float32_t>(right.Frame) - right_left_x);
-    const float32_t segment = numeric_cast<float32_t>(right.Frame - left.Frame);
+    float32_t handle_right = std::abs(numeric_cast<float32_t>(left.Frame) - left_right_x);
+    float32_t handle_left = std::abs(numeric_cast<float32_t>(right.Frame) - right_left_x);
+    float32_t segment = numeric_cast<float32_t>(right.Frame - left.Frame);
 
     if (handle_right + handle_left > segment && handle_right + handle_left != 0.0f) {
-        const float32_t factor = segment / (handle_right + handle_left);
+        float32_t factor = segment / (handle_right + handle_left);
         left_right_x = numeric_cast<float32_t>(left.Frame) - factor * (numeric_cast<float32_t>(left.Frame) - left_right_x);
         left_right_y = left.Value - factor * (left.Value - left_right_y);
         right_left_x = numeric_cast<float32_t>(right.Frame) - factor * (numeric_cast<float32_t>(right.Frame) - right_left_x);
         right_left_y = right.Value - factor * (right.Value - right_left_y);
     }
 
-    const optional<float32_t> t = SolveCurveT(numeric_cast<float32_t>(frame), numeric_cast<float32_t>(left.Frame), left_right_x, right_left_x, numeric_cast<float32_t>(right.Frame));
+    optional<float32_t> t = SolveCurveT(numeric_cast<float32_t>(frame), numeric_cast<float32_t>(left.Frame), left_right_x, right_left_x, numeric_cast<float32_t>(right.Frame));
 
     if (!t) {
         return 0.0f;
     }
 
-    const float32_t c0 = left.Value;
-    const float32_t c1 = 3.0f * (left_right_y - left.Value);
-    const float32_t c2 = 3.0f * (left.Value - 2.0f * left_right_y + right_left_y);
-    const float32_t c3 = right.Value - left.Value + 3.0f * (left_right_y - right_left_y);
+    float32_t c0 = left.Value;
+    float32_t c1 = 3.0f * (left_right_y - left.Value);
+    float32_t c2 = 3.0f * (left.Value - 2.0f * left_right_y + right_left_y);
+    float32_t c3 = right.Value - left.Value + 3.0f * (left_right_y - right_left_y);
     return c0 + *t * c1 + *t * *t * c2 + *t * *t * *t * c3;
 }
 
@@ -937,14 +937,14 @@ static void WriteCurveChannel(BinaryWriter& writer, nptr<const XmlNode> channel,
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t start_edge = IntValue(channel, "StartType", 0);
-    const int32_t end_edge = IntValue(channel, "EndType", 0);
+    int32_t start_edge = IntValue(channel, "StartType", 0);
+    int32_t end_edge = IntValue(channel, "EndType", 0);
     writer.WriteInt32(start_edge);
     writer.WriteInt32(end_edge);
     writer.WriteFloat(FloatValue(channel, "OffsetMax", 0.0f));
     writer.WriteFloat(FloatValue(channel, "OffsetMin", 0.0f));
 
-    const vector<CurveKey> keys = ReadCurveKeys(channel);
+    vector<CurveKey> keys = ReadCurveKeys(channel);
 
     if (keys.empty()) {
         for (size_t index = 0; index < 4; ++index) {
@@ -954,14 +954,14 @@ static void WriteCurveChannel(BinaryWriter& writer, nptr<const XmlNode> channel,
         return;
     }
 
-    const int32_t sampling = IntValue(channel, "Sampling", 10);
+    int32_t sampling = IntValue(channel, "Sampling", 10);
 
     if (sampling <= 0) {
         throw EffekseerCompilerException("Effekseer FCurve sampling must be positive", sampling);
     }
 
-    const int32_t length = keys.back().Frame - keys.front().Frame;
-    const int32_t count = length % sampling > 0 ? length / sampling + 2 : length / sampling + 1;
+    int32_t length = keys.back().Frame - keys.front().Frame;
+    int32_t count = length % sampling > 0 ? length / sampling + 2 : length / sampling + 1;
     writer.WriteInt32(keys.front().Frame);
     writer.WriteInt32(length);
     writer.WriteInt32(sampling);
@@ -1063,7 +1063,7 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
         return {};
     }
 
-    const string normalized = strex(path).normalize_path_slashes();
+    string normalized = strex(path).normalize_path_slashes();
     return strex(normalized).change_file_extension(ext);
 }
 
@@ -1092,12 +1092,12 @@ static void CollectResources(CompilerContext& context)
     for (nptr<const XmlNode> node : context.ExportedNodes) {
         nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
         nptr<const XmlNode> drawing = Find(node, "DrawingValues");
-        const int32_t material = IntValue(renderer, "Material", 0);
-        const bool rendered = IsRenderedNode(node);
+        int32_t material = IntValue(renderer, "Material", 0);
+        bool rendered = IsRenderedNode(node);
 
         if (rendered) {
-            const string color_path {Text(renderer, "ColorTexture")};
-            const string normal_path {Text(renderer, "NormalTexture")};
+            string color_path {Text(renderer, "ColorTexture")};
+            string normal_path {Text(renderer, "NormalTexture")};
 
             if (!color_path.empty()) {
                 if (material == 6) {
@@ -1112,14 +1112,14 @@ static void CollectResources(CompilerContext& context)
             }
 
             if (NodeDrawingType(node) == 5) {
-                const string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
+                string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
 
                 if (!model_path.empty()) {
                     models.emplace(model_path);
                 }
             }
             if (IntValue(Find(node, "SoundValues"), "Type", 0) == 1) {
-                const string wave_path {Text(Find(node, "SoundValues"), "Sound/Wave")};
+                string wave_path {Text(Find(node, "SoundValues"), "Sound/Wave")};
 
                 if (!wave_path.empty()) {
                     waves.emplace(wave_path);
@@ -1130,14 +1130,14 @@ static void CollectResources(CompilerContext& context)
         nptr<const XmlNode> generation = Find(node, "GenerationLocationValues");
 
         if (IntValue(generation, "Type", 0) == 2) {
-            const string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
+            string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
 
             if (!model_path.empty()) {
                 models.emplace(model_path);
             }
         }
         if (IntValue(Find(node, "LocationValues"), "Type", 0) == 4) {
-            const string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
+            string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
 
             if (!curve_path.empty()) {
                 curves.emplace(curve_path);
@@ -1198,7 +1198,7 @@ static void WriteCommonValues(BinaryWriter& writer, nptr<const XmlNode> node)
     data.WriteInt32(DynamicEquationIndex(generation, "TriggerCount/DynamicEquationMin/Index"));
 
     data.WriteInt32(BoolValue(common, "MaxGeneration/Infinite", false) ? std::numeric_limits<int32_t>::max() : IntValue(common, "MaxGeneration/Value", 1));
-    const int32_t location_effect = IntValue(common, "LocationEffectType", 2);
+    int32_t location_effect = IntValue(common, "LocationEffectType", 2);
     data.WriteInt32(location_effect);
     data.WriteInt32(IntValue(common, "RotationEffectType", 2));
     data.WriteInt32(IntValue(common, "ScaleEffectType", 2));
@@ -1238,7 +1238,7 @@ static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, 
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> values = Find(node, "LocationValues");
-    const int32_t type = IntValue(values, "Type", 0);
+    int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -1268,7 +1268,7 @@ static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, 
         writer.WriteSized(data);
     }
     else if (type == 4) {
-        const string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
+        string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
         writer.WriteInt32(path.empty() || !context.Curves.contains(path) ? -1 : context.Curves.at(path));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/Scale", 1.0f));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/MoveSpeed", 1.0f));
@@ -1291,7 +1291,7 @@ static void WriteLocationAbsValues(BinaryWriter& writer, nptr<const XmlNode> nod
 
     for (int32_t index = 1; index <= 4; ++index) {
         nptr<const XmlNode> field = Child(values, strex("LocalForceField{}", index));
-        const int32_t type = IntValue(field, "Type", 0);
+        int32_t type = IntValue(field, "Type", 0);
         writer.WriteInt32(type);
         writer.WriteFloat(FloatValue(field, "Power", 1.0f));
         WriteVector3(writer, Find(field, "Position"));
@@ -1319,7 +1319,7 @@ static void WriteLocationAbsValues(BinaryWriter& writer, nptr<const XmlNode> nod
         }
 
         nptr<const XmlNode> falloff = Find(field, "Falloff");
-        const int32_t falloff_type = IntValue(falloff, "Type", 0);
+        int32_t falloff_type = IntValue(falloff, "Type", 0);
         writer.WriteInt32(falloff_type);
 
         if (falloff_type != 0) {
@@ -1346,7 +1346,7 @@ static void WriteRotationValues(BinaryWriter& writer, nptr<const XmlNode> node)
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> values = Find(node, "RotationValues");
-    const int32_t type = IntValue(values, "Type", 0);
+    int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -1407,7 +1407,7 @@ static void WriteScaleValues(BinaryWriter& writer, nptr<const XmlNode> node)
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> values = Find(node, "ScalingValues");
-    const int32_t type = IntValue(values, "Type", 0);
+    int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -1462,7 +1462,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 
     nptr<const XmlNode> values = Find(node, "GenerationLocationValues");
     writer.WriteInt32(BoolValue(values, "EffectsRotation", false) ? 1 : 0);
-    const int32_t type = IntValue(values, "Type", 0);
+    int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -1475,11 +1475,11 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
     else if (type == 2) {
         nptr<const XmlNode> model = Find(values, "Model");
-        const int32_t reference_type = IntValue(model, "ModelReference", 0);
+        int32_t reference_type = IntValue(model, "ModelReference", 0);
         writer.WriteInt32(reference_type);
 
         if (reference_type == 0) {
-            const string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+            string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
             writer.WriteInt32(!model_path.empty() && context.Models.contains(model_path) ? context.Models.at(model_path) : -1);
         }
         else if (reference_type == 1) {
@@ -1519,7 +1519,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(strex(path).normalize_path_slashes())}).lexically_normal();
+    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(strex(path).normalize_path_slashes())}).lexically_normal();
     return fs_path_to_string(resolved);
 }
 
@@ -1527,13 +1527,13 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<string> bytes = fs_read_file(ResolveDependencyPath(context, path));
+    optional<string> bytes = fs_read_file(ResolveDependencyPath(context, path));
 
     if (!bytes || bytes->size() < 18) {
         return std::nullopt;
     }
 
-    const ptr<const uint8_t> data = ptr<const char> {bytes->data()}.reinterpret_as<const uint8_t>();
+    ptr<const uint8_t> data = ptr<const char> {bytes->data()}.reinterpret_as<const uint8_t>();
     constexpr std::array<uint8_t, 8> signature {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
     uint32_t width = 0;
     uint32_t height = 0;
@@ -1548,7 +1548,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
     else {
         constexpr string_view tga_footer {"TRUEVISION-XFILE.\0", 18};
-        const bool has_tga_footer = bytes->size() >= tga_footer.size() && string_view {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()} == tga_footer;
+        bool has_tga_footer = bytes->size() >= tga_footer.size() && string_view {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()} == tga_footer;
 
         if (strex(path).get_file_extension() != "tga" && !has_tga_footer) {
             return std::nullopt;
@@ -1569,7 +1569,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto it = indices.find(string {path});
+    auto it = indices.find(string {path});
     return it != indices.end() && ReadTextureSize(context, path) ? it->second : -1;
 }
 
@@ -1580,12 +1580,12 @@ static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, con
     float32_t width = 128.0f;
     float32_t height = 128.0f;
 
-    if (const auto size = ReadTextureSize(context, texture_path)) {
+    if (auto size = ReadTextureSize(context, texture_path)) {
         width = size->first;
         height = size->second;
     }
 
-    const int32_t type = IntValue(renderer, "UV", 0);
+    int32_t type = IntValue(renderer, "UV", 0);
     writer.WriteInt32(type);
 
     if (type == 1) {
@@ -1628,9 +1628,9 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
-    const int32_t material = IntValue(renderer, "Material", 0);
-    const string color_path {Text(renderer, "ColorTexture")};
-    const string normal_path {Text(renderer, "NormalTexture")};
+    int32_t material = IntValue(renderer, "Material", 0);
+    string color_path {Text(renderer, "ColorTexture")};
+    string normal_path {Text(renderer, "NormalTexture")};
     writer.WriteInt32(material);
 
     if (material == 0 || material == 7) {
@@ -1670,7 +1670,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     writer.WriteInt32(BoolValue(renderer, "ZTest", true) ? 1 : 0);
     writer.WriteInt32(BoolValue(renderer, "ZWrite", false) ? 1 : 0);
 
-    const int32_t fade_in_type = IntValue(renderer, "FadeInType", 0);
+    int32_t fade_in_type = IntValue(renderer, "FadeInType", 0);
     writer.WriteInt32(fade_in_type);
 
     if (fade_in_type == 1) {
@@ -1678,7 +1678,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
         WriteLegacyEasing(writer, IntValue(renderer, "FadeIn/StartSpeed", 0), IntValue(renderer, "FadeIn/EndSpeed", 0));
     }
 
-    const int32_t fade_out_type = IntValue(renderer, "FadeOutType", 0);
+    int32_t fade_out_type = IntValue(renderer, "FadeOutType", 0);
     writer.WriteInt32(fade_out_type);
 
     if (fade_out_type == 1 || fade_out_type == 2) {
@@ -1714,7 +1714,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32_t value = IntValue(node, path, default_value);
+    int32_t value = IntValue(node, path, default_value);
 
     if (value < 0 || value > 255) {
         throw EffekseerCompilerException("Effekseer color channel is outside byte range", path, value);
@@ -1727,14 +1727,14 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32_t h = hue;
-    const int32_t s = saturation;
-    const int32_t v = value;
-    const int32_t section = h / 42 % 6;
-    const int32_t fraction = h % 42 * 6;
-    const int32_t p = std::clamp((v * (256 - s)) >> 8, 0, 255);
-    const int32_t q = std::clamp((v * (256 - ((s * fraction) >> 8))) >> 8, 0, 255);
-    const int32_t t = std::clamp((v * (256 - ((s * (252 - fraction)) >> 8))) >> 8, 0, 255);
+    int32_t h = hue;
+    int32_t s = saturation;
+    int32_t v = value;
+    int32_t section = h / 42 % 6;
+    int32_t fraction = h % 42 * 6;
+    int32_t p = std::clamp((v * (256 - s)) >> 8, 0, 255);
+    int32_t q = std::clamp((v * (256 - ((s * fraction) >> 8))) >> 8, 0, 255);
+    int32_t t = std::clamp((v * (256 - ((s * (252 - fraction)) >> 8))) >> 8, 0, 255);
 
     switch (section) {
     case 0:
@@ -1759,10 +1759,10 @@ static void WriteColor(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t d
     uint8_t r = ByteValue(node, "R", default_r);
     uint8_t g = ByteValue(node, "G", default_g);
     uint8_t b = ByteValue(node, "B", default_b);
-    const uint8_t a = ByteValue(node, "A", default_a);
+    uint8_t a = ByteValue(node, "A", default_a);
 
     if (IntValue(node, "ColorSpace", 0) == 1) {
-        const auto rgb = HsvToRgb(r, g, b);
+        auto rgb = HsvToRgb(r, g, b);
         r = rgb[0];
         g = rgb[1];
         b = rgb[2];
@@ -1781,12 +1781,12 @@ static void WriteRandomColor(BinaryWriter& writer, nptr<const XmlNode> node, uin
     writer.WriteUInt8(numeric_cast<uint8_t>(IntValue(node, "ColorSpace", 0)));
     writer.WriteUInt8(0);
 
-    for (const string_view channel : {string_view {"R"}, string_view {"G"}, string_view {"B"}, string_view {"A"}}) {
-        const uint8_t default_value = channel == "R" ? default_r : channel == "G" ? default_g : channel == "B" ? default_b : default_a;
+    for (string_view channel : {string_view {"R"}, string_view {"G"}, string_view {"B"}, string_view {"A"}}) {
+        uint8_t default_value = channel == "R" ? default_r : channel == "G" ? default_g : channel == "B" ? default_b : default_a;
         writer.WriteUInt8(ByteValue(Child(node, channel), "Max", default_value));
     }
-    for (const string_view channel : {string_view {"R"}, string_view {"G"}, string_view {"B"}, string_view {"A"}}) {
-        const uint8_t default_value = channel == "R" ? default_r : channel == "G" ? default_g : channel == "B" ? default_b : default_a;
+    for (string_view channel : {string_view {"R"}, string_view {"G"}, string_view {"B"}, string_view {"A"}}) {
+        uint8_t default_value = channel == "R" ? default_r : channel == "G" ? default_g : channel == "B" ? default_b : default_a;
         writer.WriteUInt8(ByteValue(Child(node, channel), "Min", default_value));
     }
 }
@@ -1824,7 +1824,7 @@ static void WriteGradient(BinaryWriter& writer, nptr<const XmlNode> node)
         }
     }
     else {
-        for (const float32_t position : {0.0f, 1.0f}) {
+        for (float32_t position : {0.0f, 1.0f}) {
             writer.WriteFloat(position);
             writer.WriteFloat(1.0f);
             writer.WriteFloat(1.0f);
@@ -1859,7 +1859,7 @@ static void WriteStandardColor(BinaryWriter& writer, nptr<const XmlNode> node, u
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t type = IntValue(node, "Type", 0);
+    int32_t type = IntValue(node, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -1893,7 +1893,7 @@ static void WriteTextureUvType(BinaryWriter& writer, nptr<const XmlNode> drawing
     FO_NO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> uv = Find(drawing, "TextureUVType");
-    const int32_t type = IntValue(uv, "Type", 0);
+    int32_t type = IntValue(uv, "Type", 0);
     writer.WriteInt32(type);
 
     if (type == 2) {
@@ -1916,7 +1916,7 @@ static void WriteSpriteRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
     writer.WriteInt32(IntValue(sprite, "Billboard", 0));
     WriteStandardColor(writer, Find(drawing, "ColorAll"));
 
-    const int32_t color_type = IntValue(sprite, "Color", 0);
+    int32_t color_type = IntValue(sprite, "Color", 0);
     writer.WriteInt32(color_type);
 
     if (color_type == 1) {
@@ -1929,7 +1929,7 @@ static void WriteSpriteRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
     writer.WriteInt32(1);
 
     if (IntValue(sprite, "Position", 0) == 0) {
-        for (const float32_t value : {-0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f}) {
+        for (float32_t value : {-0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f}) {
             writer.WriteFloat(value);
         }
     }
@@ -1950,7 +1950,7 @@ static void WriteRibbonRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
     writer.WriteInt32(IntValue(drawing, "TrailTimeSource", 1));
     writer.WriteInt32(BoolValue(ribbon, "ViewpointDependent", false) ? 1 : 0);
 
-    const int32_t color_all = IntValue(ribbon, "ColorAll", 0);
+    int32_t color_all = IntValue(ribbon, "ColorAll", 0);
     writer.WriteInt32(color_all);
 
     if (color_all == 0) {
@@ -1963,7 +1963,7 @@ static void WriteRibbonRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
         WriteColorEasing(writer, Find(ribbon, "ColorAll_Easing"));
     }
 
-    const int32_t color = IntValue(ribbon, "Color", 0);
+    int32_t color = IntValue(ribbon, "Color", 0);
     writer.WriteInt32(color);
 
     if (color == 1) {
@@ -1990,7 +1990,7 @@ static void WriteRingShape(BinaryWriter& writer, nptr<const XmlNode> ring)
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> shape = Find(ring, "RingShape");
-    const int32_t type = IntValue(shape, "Type", 0);
+    int32_t type = IntValue(shape, "Type", 0);
     writer.WriteInt32(type);
 
     if (type != 1) {
@@ -2000,7 +2000,7 @@ static void WriteRingShape(BinaryWriter& writer, nptr<const XmlNode> ring)
     nptr<const XmlNode> crescent = Find(shape, "Crescent");
     writer.WriteFloat(FloatValue(crescent, "StartingFade", 0.0f));
     writer.WriteFloat(FloatValue(crescent, "EndingFade", 0.0f));
-    const int32_t starting_type = IntValue(crescent, "StartingAngle", 0);
+    int32_t starting_type = IntValue(crescent, "StartingAngle", 0);
     writer.WriteInt32(starting_type);
 
     if (starting_type == 0) {
@@ -2013,7 +2013,7 @@ static void WriteRingShape(BinaryWriter& writer, nptr<const XmlNode> ring)
         WriteFloatEasing(writer, Find(crescent, "StartingAngle_Easing"), 0.0f, 1.0f, true);
     }
 
-    const int32_t ending_type = IntValue(crescent, "EndingAngle", 0);
+    int32_t ending_type = IntValue(crescent, "EndingAngle", 0);
     writer.WriteInt32(ending_type);
 
     if (ending_type == 0) {
@@ -2042,22 +2042,22 @@ static void WriteRingLocation(BinaryWriter& writer, nptr<const XmlNode> ring, st
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t type = IntValue(ring, name, 0);
+    int32_t type = IntValue(ring, name, 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
-        const string fixed_path = strex("{}_Fixed/Location", name);
+        string fixed_path = strex("{}_Fixed/Location", name);
         WriteVector2(writer, Find(ring, fixed_path), default_x, 0.0f);
     }
     else if (type == 1) {
-        const string pva_path = strex("{}_PVA", name);
+        string pva_path = strex("{}_PVA", name);
         nptr<const XmlNode> pva = Find(ring, pva_path);
         WriteRandomVector2(writer, Find(pva, "Location"), default_x, 0.0f);
         WriteRandomVector2(writer, Find(pva, "Velocity"));
         WriteRandomVector2(writer, Find(pva, "Acceleration"));
     }
     else if (type == 2) {
-        const string easing_path = strex("{}_Easing", name);
+        string easing_path = strex("{}_Easing", name);
         nptr<const XmlNode> easing = Find(ring, easing_path);
         WriteRandomVector2(writer, Find(easing, "Start"));
         WriteRandomVector2(writer, Find(easing, "End"));
@@ -2069,7 +2069,7 @@ static void WriteRingColor(BinaryWriter& writer, nptr<const XmlNode> ring, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32_t type = IntValue(ring, name, 0);
+    int32_t type = IntValue(ring, name, 0);
     writer.WriteInt32(type);
 
     if (type == 0) {
@@ -2093,7 +2093,7 @@ static void WriteRingRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
     WriteRingShape(writer, ring);
     writer.WriteInt32(IntValue(ring, "VertexCount", 16));
 
-    const int32_t viewing_type = IntValue(ring, "ViewingAngle", 0);
+    int32_t viewing_type = IntValue(ring, "ViewingAngle", 0);
     writer.WriteInt32(viewing_type);
 
     if (viewing_type == 0) {
@@ -2109,7 +2109,7 @@ static void WriteRingRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
     WriteRingLocation(writer, ring, "Outer", 2.0f);
     WriteRingLocation(writer, ring, "Inner", 1.0f);
 
-    const int32_t center_type = IntValue(ring, "CenterRatio", 0);
+    int32_t center_type = IntValue(ring, "CenterRatio", 0);
     writer.WriteInt32(center_type);
 
     if (center_type == 0) {
@@ -2132,12 +2132,12 @@ static void WriteModelRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> model = Find(drawing, "Model");
-    const int32_t reference_type = IntValue(model, "ModelReference", 0);
+    int32_t reference_type = IntValue(model, "ModelReference", 0);
     writer.WriteInt32(reference_type);
 
     if (reference_type == 0) {
         writer.WriteFloat(1.0f);
-        const string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+        string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
         writer.WriteInt32(!path.empty() && context.Models.contains(path) ? context.Models.at(path) : -1);
     }
     else if (reference_type == 1) {
@@ -2168,7 +2168,7 @@ static void WriteTrackRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
     writer.WriteInt32(IntValue(drawing, "TrailSmoothing", 1));
     writer.WriteInt32(IntValue(drawing, "TrailTimeSource", 1));
 
-    for (const string_view color : {string_view {"TrailColorLeft"}, string_view {"TrailColorLeftMiddle"}, string_view {"TrailColorCenter"}, string_view {"TrailColorCenterMiddle"}, string_view {"TrailColorRight"}, string_view {"TrailColorRightMiddle"}}) {
+    for (string_view color : {string_view {"TrailColorLeft"}, string_view {"TrailColorLeftMiddle"}, string_view {"TrailColorCenter"}, string_view {"TrailColorCenterMiddle"}, string_view {"TrailColorRight"}, string_view {"TrailColorRightMiddle"}}) {
         WriteStandardColor(writer, Find(drawing, color));
     }
 }
@@ -2178,7 +2178,7 @@ static void WriteRendererValues(BinaryWriter& writer, nptr<const XmlNode> node, 
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> drawing = Find(node, "DrawingValues");
-    const int32_t type = exported ? NodeDrawingType(node) : 0;
+    int32_t type = exported ? NodeDrawingType(node) : 0;
     writer.WriteInt32(type);
 
     switch (type) {
@@ -2209,7 +2209,7 @@ static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, con
     FO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> values = Find(node, "SoundValues");
-    const int32_t type = IntValue(values, "Type", 0);
+    int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
 
     if (type != 1) {
@@ -2217,7 +2217,7 @@ static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, con
     }
 
     nptr<const XmlNode> sound = Find(values, "Sound");
-    const string wave {Text(sound, "Wave")};
+    string wave {Text(sound, "Wave")};
     writer.WriteInt32(!wave.empty() && context.Waves.contains(wave) ? context.Waves.at(wave) : -1);
     WriteRandomFloat(writer, Find(sound, "Volume"), 1.0f);
     WriteRandomFloat(writer, Find(sound, "Pitch"), 0.0f);
@@ -2247,7 +2247,7 @@ static void WriteKillRules(BinaryWriter& writer, nptr<const XmlNode> node)
     FO_NO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> rules = Find(node, "KillRulesValues");
-    const int32_t type = IntValue(rules, "Type", 0);
+    int32_t type = IntValue(rules, "Type", 0);
     writer.WriteInt32(type);
     writer.WriteInt32(BoolValue(rules, "IsScaleAndRotationApplied", true) ? 1 : 0);
 
@@ -2258,13 +2258,13 @@ static void WriteKillRules(BinaryWriter& writer, nptr<const XmlNode> node)
     }
     else if (type == 2) {
         constexpr std::array<std::array<float32_t, 3>, 6> normals {{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}};
-        const int32_t axis = IntValue(rules, "PlaneAxis", 2);
+        int32_t axis = IntValue(rules, "PlaneAxis", 2);
 
         if (axis < 0 || axis >= numeric_cast<int32_t>(normals.size())) {
             throw EffekseerCompilerException("Effekseer kill-plane axis is invalid", axis);
         }
 
-        for (const float32_t value : normals[numeric_cast<size_t>(axis)]) {
+        for (float32_t value : normals[numeric_cast<size_t>(axis)]) {
             writer.WriteFloat(value);
         }
 
@@ -2306,7 +2306,7 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
             return false;
         }
 
-        const int32_t inheritance = IntValue(Find(&child, "RendererCommonValues"), "ColorInheritType", 0);
+        int32_t inheritance = IntValue(Find(&child, "RendererCommonValues"), "ColorInheritType", 0);
         return inheritance == 1 || inheritance == 2;
     });
 }
@@ -2326,11 +2326,11 @@ static void WriteNode(BinaryWriter& writer, nptr<const XmlNode> node, const Comp
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool renderer_exported = NodeIsRendered(node) || HasChildColorInheritance(node);
+    bool renderer_exported = NodeIsRendered(node) || HasChildColorInheritance(node);
     writer.WriteInt32(OutputNodeType(node, renderer_exported));
     BinaryWriter data;
     data.WriteInt32(NodeIsRendered(node) ? 1 : 0);
-    const auto render_index = context.RenderIndices.find(node);
+    auto render_index = context.RenderIndices.find(node);
     data.WriteInt32(render_index != context.RenderIndices.end() ? render_index->second : -1);
     WriteCommonValues(data, node);
     WriteLocationValues(data, node, context);
@@ -2377,8 +2377,8 @@ static void BuildRenderIndices(CompilerContext& context)
     }
 
     std::ranges::stable_sort(sorted, [](const auto& left, const auto& right) {
-        const int32_t left_priority = IntValue(Find(left.first, "DepthValues"), "DrawingPriority", 0);
-        const int32_t right_priority = IntValue(Find(right.first, "DepthValues"), "DrawingPriority", 0);
+        int32_t left_priority = IntValue(Find(left.first, "DepthValues"), "DrawingPriority", 0);
+        int32_t right_priority = IntValue(Find(right.first, "DepthValues"), "DrawingPriority", 0);
         return left_priority != right_priority ? left_priority < right_priority : left.second < right.second;
     });
 
@@ -2473,12 +2473,12 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
 
     writer.WriteInt32(0);
     writer.WriteInt32(numeric_cast<int32_t>(context.ExportedNodes.size()));
-    const int32_t priority_threshold = numeric_cast<int32_t>(std::ranges::count_if(context.ExportedNodes, [](nptr<const XmlNode> node) { return IntValue(Find(node, "DepthValues"), "DrawingPriority", 0) < 0; }));
+    int32_t priority_threshold = numeric_cast<int32_t>(std::ranges::count_if(context.ExportedNodes, [](nptr<const XmlNode> node) { return IntValue(Find(node, "DepthValues"), "DrawingPriority", 0) < 0; }));
     writer.WriteInt32(priority_threshold);
     writer.WriteFloat(1.0f);
     writer.WriteInt32(IntValue(Find(&project, "Global"), "RandomSeed", -1));
     nptr<const XmlNode> culling = Find(&project, "Culling");
-    const int32_t culling_type = IntValue(culling, "Type", 0);
+    int32_t culling_type = IntValue(culling, "Type", 0);
     writer.WriteInt32(culling_type);
 
     if (culling_type == 1) {

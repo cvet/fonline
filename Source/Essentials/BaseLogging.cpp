@@ -55,7 +55,7 @@ struct BaseLoggingData
     BaseLoggingData()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        const auto result = std::at_quick_exit(FlushLogAtExit);
+        int32_t result = std::at_quick_exit(FlushLogAtExit);
         ignore_unused(result);
 #else
         ignore_unused(FlushLogAtExit);
@@ -101,7 +101,7 @@ extern void LogToFile(string_view path, bool append)
             BaseLogging->LogFileHandle.close();
         }
 
-        const auto open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+        int32_t open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
         BaseLogging->LogFileHandle.open(std::string(path), open_mode);
 
         if (!BaseLogging->LogFileHandle) {
@@ -354,7 +354,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
     bool resolution_succeeded = false;
 
     try {
-        const auto resolved = ResolveStackTrace(st);
+        auto resolved = ResolveStackTrace(st);
 
         for (const auto& frame : resolved) {
             WriteBaseLog("- [");
@@ -365,7 +365,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
             if (!frame.File.empty()) {
                 std::string_view file_name {frame.File};
 
-                if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                if (auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
                     file_name = file_name.substr(pos + 1);
                 }
 
@@ -398,7 +398,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
         for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
             WriteBaseLog("- [Native] 0x");
-            const NativeStackFrameAddress addr = st.NativeFrames[i];
+            NativeStackFrameAddress addr = st.NativeFrames[i];
             WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
             WriteBaseLog("\n");
         }

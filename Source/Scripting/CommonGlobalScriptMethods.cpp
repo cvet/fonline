@@ -103,7 +103,7 @@ FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> 
 FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
 #if FO_ENABLE_3D
-    const auto anim_info = engine->GetAnimationInfo(modelName);
+    auto anim_info = engine->GetAnimationInfo(modelName);
 
     if (!anim_info) {
         return {};
@@ -114,7 +114,7 @@ FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, 
     }
 
     const ModelAnimationInfo& model_anim_info = *anim_info->Model;
-    const auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
+    auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
     return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan {};
 #else
     ignore_unused(engine, modelName, stateAnim, actionAnim);
@@ -134,7 +134,7 @@ FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_vie
     ignore_unused(engine);
 
     size_t decode_length = text.length();
-    const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
@@ -146,7 +146,7 @@ FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs
     ignore_unused(engine);
 
     char buf[4];
-    const auto len = utf8::Encode(ucs, buf);
+    size_t len = utf8::Encode(ucs, buf);
     return {buf, len};
 }
 
@@ -195,7 +195,7 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, 
 {
     ignore_unused(engine);
 
-    auto rotated = dir.angle();
+    int16_t rotated = dir.angle();
 
     if (clockwise) {
         rotated += step;
@@ -246,17 +246,17 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
         throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
     }
 
-    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
     LineTracer tracer(fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset);
 
     vector<mpos> line;
     line.reserve(numeric_cast<size_t>(dist));
 
-    auto cur_hex = fromHex;
+    mpos cur_hex = fromHex;
 
-    for (auto i = 0; i < dist; i++) {
-        const auto prev_hex = cur_hex;
+    for (int32_t i = 0; i < dist; i++) {
+        mpos prev_hex = cur_hex;
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -288,18 +288,18 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
         throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
     }
 
-    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
 
     LineTracer tracer(fromHex, dirAngle, dist, mapSize, start_offset, target_offset);
 
     vector<mpos> line;
     line.reserve(numeric_cast<size_t>(dist));
 
-    auto cur_hex = fromHex;
+    mpos cur_hex = fromHex;
 
-    for (auto i = 0; i < dist; i++) {
-        const auto prev_hex = cur_hex;
+    for (int32_t i = 0; i < dist; i++) {
+        mpos prev_hex = cur_hex;
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -557,7 +557,7 @@ FO_SCRIPT_API void Common_Game_UnpackTime(ptr<BaseEngine> engine, nanotime time,
 {
     ignore_unused(engine);
 
-    const auto time_desc = time.desc(true);
+    time_desc_t time_desc = time.desc(true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -578,7 +578,7 @@ FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(ptr<BaseEngine> engine, 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, synctime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond)
 {
-    const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
+    time_desc_t time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;

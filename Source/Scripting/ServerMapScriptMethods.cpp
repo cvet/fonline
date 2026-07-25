@@ -704,8 +704,8 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersOnHex(ptr<Map> self, mp
     vector<ptr<Critter>> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [hex](ptr<const Critter> cr1, ptr<const Critter> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -733,8 +733,8 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersInRadius(ptr<Map> self,
     }
 
     std::ranges::stable_sort(critters, [hex](ptr<const Critter> cr1, ptr<const Critter> cr2) {
-        const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -874,7 +874,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> sel
     span<ptr<Critter>> map_critters = self->GetCritters();
 
     for (ptr<Critter> cr : map_critters) {
-        const mpos hex = cr->GetHex();
+        mpos hex = cr->GetHex();
 
         if (cr->CheckFind(findType) && GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.emplace_back(cr);
@@ -888,7 +888,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> sel
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle);
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle);
     toHex = trace_output.PreBlock;
 }
 
@@ -896,7 +896,7 @@ FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& to
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, true);
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, true);
 
     if (trace_output.HasLastMovable) {
         toHex = trace_output.LastMovable;
@@ -923,7 +923,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
+    auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -948,7 +948,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
+    auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -967,7 +967,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
     if (targetHexes.empty()) {
         throw ScriptException("Empty target hexes arg");
     }
-    for (const mpos candidateHex : targetHexes) {
+    for (mpos candidateHex : targetHexes) {
         if (!self->GetSize().is_valid_pos(candidateHex)) {
             throw ScriptException("Invalid target hex arg");
         }
@@ -979,7 +979,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
+    auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
     pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
 
     if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
@@ -997,7 +997,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
     if (targetHexes.empty()) {
         throw ScriptException("Empty target hexes arg");
     }
-    for (const mpos candidateHex : targetHexes) {
+    for (mpos candidateHex : targetHexes) {
         if (!self->GetSize().is_valid_pos(candidateHex)) {
             throw ScriptException("Invalid target hex arg");
         }
@@ -1011,7 +1011,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));
+    auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));
     pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
 
     if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
@@ -1300,7 +1300,7 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(ptr<Map> self, ptr<Critter> cr, mpos
 
     ValidateEntityAccess(cr);
 
-    auto from_hex = hex;
+    mpos from_hex = hex;
 
     if (GeometryHelper::MoveHexByDir(from_hex, dir.reverse(), self->GetSize())) {
         self->VerifyTrigger(cr, from_hex, hex, dir);

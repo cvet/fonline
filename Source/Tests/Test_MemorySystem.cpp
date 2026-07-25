@@ -55,14 +55,14 @@ TEST_CASE("MemorySystem")
             int32_t Value {};
         };
 
-        const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
+        auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
         CHECK(unique_value->Value == 123);
 
-        const auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
+        auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
+        auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);

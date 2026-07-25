@@ -33,6 +33,7 @@
 
 #include "ParticleBaker.h"
 #include "EffekseerCompiler.h"
+#include "EffekseerExtension.h"
 #include "SparkExtension.h"
 
 #if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
@@ -53,7 +54,7 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::filesystem::path particle_dir {fs_make_path(strex(particle_file.GetPath()).extract_dir().normalize_path_slashes())};
+    std::filesystem::path particle_dir {fs_make_path(strex(particle_file.GetPath()).extract_dir().normalize_path_slashes())};
 
     for (size_t group_index = 0; group_index < system->getNbGroups(); group_index++) {
         const SPK::Ref<SPK::Group>& group = system->getGroup(group_index);
@@ -63,8 +64,8 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
             continue;
         }
 
-        const SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
-        const string texture_path {renderer_data.TextureName};
+        SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
+        string texture_path {renderer_data.TextureName};
 
         if (texture_path.empty()) {
             continue;
@@ -73,16 +74,16 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
             throw ParticleBakerException("SPARK particle has an invalid texture path", particle_file.GetPath(), texture_path);
         }
 
-        const string normalized_path = strex(texture_path).normalize_path_slashes();
-        const bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
-        const std::filesystem::path relative_path {fs_make_path(normalized_path)};
+        string normalized_path = strex(texture_path).normalize_path_slashes();
+        bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
+        std::filesystem::path relative_path {fs_make_path(normalized_path)};
 
         if (normalized_path.starts_with('/') || has_drive_prefix || relative_path.is_absolute()) {
             throw ParticleBakerException("SPARK particle texture path must be relative", particle_file.GetPath(), texture_path);
         }
 
-        const std::filesystem::path resolved_path = (particle_dir / relative_path).lexically_normal();
-        const auto first_component = resolved_path.begin();
+        std::filesystem::path resolved_path = (particle_dir / relative_path).lexically_normal();
+        auto first_component = resolved_path.begin();
 
         if (resolved_path.empty() || resolved_path.is_absolute() || (first_component != resolved_path.end() && *first_component == "..")) {
             throw ParticleBakerException("SPARK particle texture path escapes its resource source", particle_file.GetPath(), texture_path, particle_file.GetDataSource()->GetPackName());
@@ -114,21 +115,21 @@ static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<v
     }
 
     vector<string> paths;
-    const size_t project_line_end = snapshot.find('\n', EffekseerDependencyCacheHeader.size());
+    size_t project_line_end = snapshot.find('\n', EffekseerDependencyCacheHeader.size());
 
     if (project_line_end == string::npos) {
         return std::nullopt;
     }
 
-    const string_view project_line = snapshot.substr(EffekseerDependencyCacheHeader.size(), project_line_end - EffekseerDependencyCacheHeader.size());
-    const size_t project_first_tab = project_line.find('\t');
-    const size_t project_second_tab = project_first_tab != string::npos ? project_line.find('\t', project_first_tab + 1) : string::npos;
+    string_view project_line = snapshot.substr(EffekseerDependencyCacheHeader.size(), project_line_end - EffekseerDependencyCacheHeader.size());
+    size_t project_first_tab = project_line.find('\t');
+    size_t project_second_tab = project_first_tab != string::npos ? project_line.find('\t', project_first_tab + 1) : string::npos;
 
     if (project_first_tab == 0 || project_second_tab == string::npos || project_line.find('\t', project_second_tab + 1) != string::npos) {
         return std::nullopt;
     }
 
-    const string_view project_path = project_line.substr(0, project_first_tab);
+    string_view project_path = project_line.substr(0, project_first_tab);
 
     if (!std::filesystem::path {fs_make_path(project_path)}.is_absolute()) {
         return std::nullopt;
@@ -137,12 +138,12 @@ static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<v
     size_t line_start = project_line_end + 1;
 
     while (line_start < snapshot.size()) {
-        const size_t line_end = snapshot.find('\n', line_start);
-        const string_view line = snapshot.substr(line_start, line_end != string::npos ? line_end - line_start : snapshot.size() - line_start);
+        size_t line_end = snapshot.find('\n', line_start);
+        string_view line = snapshot.substr(line_start, line_end != string::npos ? line_end - line_start : snapshot.size() - line_start);
 
         if (!line.empty()) {
-            const size_t first_tab = line.find('\t');
-            const size_t second_tab = first_tab != string::npos ? line.find('\t', first_tab + 1) : string::npos;
+            size_t first_tab = line.find('\t');
+            size_t second_tab = first_tab != string::npos ? line.find('\t', first_tab + 1) : string::npos;
 
             if (first_tab == 0 || second_tab == string::npos || line.find('\t', second_tab + 1) != string::npos) {
                 return std::nullopt;
@@ -176,8 +177,8 @@ static auto BuildEffekseerDependencySnapshot(string_view project_path, size_t pr
     max_write_time = project_write_time;
 
     for (const string& dependency_path : dependency_paths) {
-        const optional<size_t> dependency_size = fs_file_size(dependency_path);
-        const uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        optional<size_t> dependency_size = fs_file_size(dependency_path);
+        uint64_t dependency_write_time = fs_last_write_time(dependency_path);
 
         if (dependency_size && dependency_write_time != 0) {
             snapshot += strex("{}\t{}\t{}\n", dependency_path, *dependency_size, dependency_write_time);
@@ -195,8 +196,8 @@ static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& contex
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint64_t source_write_time = project_file.GetWriteTime();
-    const string cache_path = GetEffekseerDependencyCachePath(context, output_path);
+    uint64_t source_write_time = project_file.GetWriteTime();
+    string cache_path = GetEffekseerDependencyCachePath(context, output_path);
 
     if (cache_path.empty()) {
         return source_write_time;
@@ -205,11 +206,11 @@ static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& contex
         return source_write_time;
     }
 
-    const string project_path = fs_resolve_path(project_file.GetDiskPath());
-    const optional<string> cached_snapshot = fs_read_file(cache_path);
-    const optional<vector<string>> dependency_paths = cached_snapshot ? ParseEffekseerDependencySnapshot(*cached_snapshot) : std::nullopt;
+    string project_path = fs_resolve_path(project_file.GetDiskPath());
+    optional<string> cached_snapshot = fs_read_file(cache_path);
+    optional<vector<string>> dependency_paths = cached_snapshot ? ParseEffekseerDependencySnapshot(*cached_snapshot) : std::nullopt;
     uint64_t dependency_write_time = 0;
-    const optional<string> current_snapshot = dependency_paths ? optional<string> {BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), source_write_time, *dependency_paths, dependency_write_time)} : std::nullopt;
+    optional<string> current_snapshot = dependency_paths ? optional<string> {BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), source_write_time, *dependency_paths, dependency_write_time)} : std::nullopt;
 
     if (cached_snapshot && current_snapshot && *cached_snapshot == *current_snapshot) {
         return dependency_write_time;
@@ -223,10 +224,10 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
     FO_STACK_TRACE_ENTRY();
 
     vector<string> resolved_paths;
-    const string project_path = fs_resolve_path(project_file.GetDiskPath());
-    const string source_root_path = fs_resolve_path(project_file.GetDataSource()->GetPackName());
-    const std::filesystem::path project_dir = std::filesystem::path {fs_make_path(project_path)}.parent_path();
-    const std::filesystem::path source_root = std::filesystem::path {fs_make_path(source_root_path)}.lexically_normal();
+    string project_path = fs_resolve_path(project_file.GetDiskPath());
+    string source_root_path = fs_resolve_path(project_file.GetDataSource()->GetPackName());
+    std::filesystem::path project_dir = std::filesystem::path {fs_make_path(project_path)}.parent_path();
+    std::filesystem::path source_root = std::filesystem::path {fs_make_path(source_root_path)}.lexically_normal();
 
     for (string dependency_path : compiler_dependencies) {
         if (dependency_path.empty()) {
@@ -236,15 +237,15 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
             throw ParticleBakerException("Effekseer compiler produced an invalid dependency path", project_path, dependency_path);
         }
 
-        const std::filesystem::path relative_path {fs_make_path(strex(dependency_path).normalize_path_slashes())};
+        std::filesystem::path relative_path {fs_make_path(strex(dependency_path).normalize_path_slashes())};
 
         if (relative_path.is_absolute()) {
             throw ParticleBakerException("Effekseer project dependency path must be relative", project_path, dependency_path);
         }
 
-        const std::filesystem::path resolved_path = (project_dir / relative_path).lexically_normal();
-        const std::filesystem::path source_relative_path = resolved_path.lexically_relative(source_root);
-        const auto first_component = source_relative_path.begin();
+        std::filesystem::path resolved_path = (project_dir / relative_path).lexically_normal();
+        std::filesystem::path source_relative_path = resolved_path.lexically_relative(source_root);
+        auto first_component = source_relative_path.begin();
 
         if (source_relative_path.empty() || source_relative_path.is_absolute() || (first_component != source_relative_path.end() && *first_component == "..")) {
             throw ParticleBakerException("Effekseer project dependency escapes its directory resource source", project_file.GetPath(), dependency_path, source_root_path);
@@ -254,7 +255,7 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
     }
 
     std::ranges::sort(resolved_paths);
-    const auto unique_end = std::ranges::unique(resolved_paths).begin();
+    auto unique_end = std::ranges::unique(resolved_paths).begin();
     resolved_paths.erase(unique_end, resolved_paths.end());
     return resolved_paths;
 }
@@ -263,7 +264,7 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string project_path = fs_resolve_path(project_file.GetDiskPath());
+    string project_path = fs_resolve_path(project_file.GetDiskPath());
     vector<string> compiler_dependencies;
 
     try {
@@ -273,17 +274,17 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
         throw ParticleBakerException("Effekseer project dependency scan failed", project_file.GetPath(), ex.what());
     }
 
-    const vector<string> dependency_paths = ResolveEffekseerDependencyPaths(project_file, compiler_dependencies);
+    vector<string> dependency_paths = ResolveEffekseerDependencyPaths(project_file, compiler_dependencies);
     uint64_t dependency_write_time = 0;
-    const string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), project_file.GetWriteTime(), dependency_paths, dependency_write_time);
-    const string cache_path = GetEffekseerDependencyCachePath(context, output_path);
+    string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), project_file.GetWriteTime(), dependency_paths, dependency_write_time);
+    string cache_path = GetEffekseerDependencyCachePath(context, output_path);
 
     if (!cache_path.empty() && !fs_write_file(cache_path, dependency_snapshot)) {
         throw ParticleBakerException("Failed to refresh Effekseer dependency cache", output_path, cache_path);
     }
 
     if (!context.Settings->BakeOutput.empty()) {
-        const string baked_output_path = strex(context.Settings->BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
+        string baked_output_path = strex(context.Settings->BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
 
         if (fs_exists(baked_output_path) && !fs_remove_file(baked_output_path)) {
             throw ParticleBakerException("Failed to invalidate stale Effekseer particle", output_path, baked_output_path);
@@ -303,7 +304,7 @@ static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t>
         throw ParticleBakerException("Effekseer compiler produced a truncated particle", path);
     }
 
-    const string_view actual_magic {ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), magic_size};
+    string_view actual_magic {ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), magic_size};
 
     if (actual_magic != "SKFE") {
         throw ParticleBakerException("Effekseer compiler produced invalid particle magic", path, actual_magic);
@@ -312,8 +313,8 @@ static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t>
         throw ParticleBakerException("Effekseer compiler produced an oversized particle", path, file_data.size());
     }
 
-    const Effekseer::SettingRef setting = Effekseer::Setting::Create();
-    const Effekseer::EffectRef effect = Effekseer::Effect::Create(setting, file_data.data(), numeric_cast<int32_t>(file_data.size()), 1.0f, u"");
+    Effekseer::SettingRef setting = Effekseer::Setting::Create();
+    Effekseer::EffectRef effect = Effekseer::Effect::Create(setting, file_data.data(), numeric_cast<int32_t>(file_data.size()), 1.0f, u"");
 
     if (!effect) {
         throw ParticleBakerException("Effekseer core rejected compiled particle", path);
@@ -346,11 +347,11 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 
     vector<File> spark_files;
     vector<File> effekseer_files;
-    const string target_ext = target_path.empty() ? string {} : strex(target_path).get_file_extension();
+    string target_ext = target_path.empty() ? string {} : strex(target_path).get_file_extension();
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).get_file_extension();
+            string ext = strex(file_header.GetPath()).get_file_extension();
 
 #if FO_SPARK_PARTICLES
             if (ext == "spk") {
@@ -358,7 +359,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
             }
 
             if (ext == "spark") {
-                const string output_path = strex(file_header.GetPath()).change_file_extension("spk");
+                string output_path = strex(file_header.GetPath()).change_file_extension("spk");
 
                 if (!_context->BakeChecker || _context->BakeChecker(output_path, file_header.GetWriteTime())) {
                     spark_files.emplace_back(File::Load(file_header));
@@ -374,8 +375,8 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
             }
 
             if (ext == "efkproj") {
-                const string output_path = strex(file_header.GetPath()).change_file_extension("efk");
-                const optional<uint64_t> dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file_header, output_path);
+                string output_path = strex(file_header.GetPath()).change_file_extension("efk");
+                optional<uint64_t> dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file_header, output_path);
 
                 if (dependency_write_time) {
                     if (!_context->BakeChecker || _context->BakeChecker(output_path, *dependency_write_time)) {
@@ -384,7 +385,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 }
                 else {
                     File file = File::Load(file_header);
-                    const uint64_t fresh_dependency_write_time = RefreshEffekseerDependencySnapshot(*_context, file, output_path);
+                    uint64_t fresh_dependency_write_time = RefreshEffekseerDependencySnapshot(*_context, file, output_path);
 
                     if (!_context->BakeChecker || _context->BakeChecker(output_path, fresh_dependency_write_time)) {
                         effekseer_files.emplace_back(std::move(file));
@@ -398,7 +399,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
     else {
 #if FO_SPARK_PARTICLES
         if (target_ext == "spk") {
-            const string source_path = strex(target_path).change_file_extension("spark");
+            string source_path = strex(target_path).change_file_extension("spark");
 
             if (files.FindFileByPath(target_path)) {
                 throw ParticleBakerException("Authored SPARK particles must use the text .spark format", source_path);
@@ -413,8 +414,8 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 #endif
 #if FO_EFFEKSEER_PARTICLES
         if (target_ext == "efk") {
-            const string source_path = strex(target_path).change_file_extension("efkproj");
-            const string output_path = strex(source_path).change_file_extension("efk");
+            string source_path = strex(target_path).change_file_extension("efkproj");
+            string output_path = strex(source_path).change_file_extension("efk");
 
             if (files.FindFileByPath(output_path)) {
                 throw ParticleBakerException("Authored Effekseer particles must use the text .efkproj format", source_path);
@@ -423,8 +424,8 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
             auto file = files.FindFileByPath(source_path);
 
             if (file) {
-                const optional<uint64_t> cached_dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file, output_path);
-                const uint64_t dependency_write_time = cached_dependency_write_time ? *cached_dependency_write_time : RefreshEffekseerDependencySnapshot(*_context, file, output_path);
+                optional<uint64_t> cached_dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file, output_path);
+                uint64_t dependency_write_time = cached_dependency_write_time ? *cached_dependency_write_time : RefreshEffekseerDependencySnapshot(*_context, file, output_path);
 
                 if (!_context->BakeChecker || _context->BakeChecker(output_path, dependency_write_time)) {
                     effekseer_files.emplace_back(std::move(file));
@@ -453,14 +454,20 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 }
 
 #if FO_SPARK_PARTICLES
+// Bounds simulation tuning: step the effect at a fixed rate for several particle lifetimes so a continuous emitter
+// reaches steady state and a one-shot burst fully expands, capped so a pathologically long-lived effect cannot
+// stall the bake.
+static constexpr float32_t SPARK_BOUNDS_SIM_STEP = 0.05f;
+static constexpr float32_t SPARK_BOUNDS_LIFETIME_FACTOR = 3.0f;
+static constexpr float32_t SPARK_BOUNDS_MIN_DURATION = 1.0f;
+static constexpr size_t SPARK_BOUNDS_MAX_STEPS = 2000;
+
 void ParticleBaker::BakeSparkFile(const File& file) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view source_path = file.GetPath();
-    const string output_path = strex(source_path).change_file_extension("spk");
-
-    WriteLog("Baking SPARK particle: {} -> {}", source_path, output_path);
+    string_view source_path = file.GetPath();
+    string output_path = strex(source_path).change_file_extension("spk");
 
     // Load SPARK XML
     const_span<uint8_t> file_data = file.GetDataSpan();
@@ -472,6 +479,86 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
     ValidateSparkTexturePaths(file, system);
 
+    // Precompute the effect's extent by simulating a deterministic run of a throwaway copy, and bake it as the system
+    // bounds. The runtime then frames an emitting instance from this static measurement instead of computing an AABB
+    // every frame. Positions and the billboard radius are measured separately: the position box is transformed by the
+    // emitter's world placement at runtime, while the quad radius is an absolute world length that must be added in
+    // the view plane and never scaled or rotated with the model. Rendering is not needed to measure either, so no
+    // renderer setup is performed here.
+    {
+        SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
+
+        // Measure in emitter-local space: identity transform so the box captures only the effect's own layout, not
+        // an authored world placement. The runtime folds the actual bone/entity transform back in when framing.
+        simulation->getTransform().reset();
+        simulation->initialize();
+
+        float32_t max_lifetime = 0.0f;
+        vector<float32_t> group_quad_radii;
+        group_quad_radii.reserve(simulation->getNbGroups());
+
+        for (size_t i = 0; i < simulation->getNbGroups(); i++) {
+            const SPK::Ref<SPK::Group>& group = simulation->getGroup(i);
+            max_lifetime = std::max(max_lifetime, group->getMaxLifeTime());
+            const SPK::Ref<SPK::Renderer>& renderer = group->getRenderer();
+            float32_t quad_radius = 0.0f;
+
+            // Half-extent one particle's quad reaches in this group at unit scale, in world units. A SPARK quad is
+            // sized from the group's graphical radius alone (Oriented3DRenderBehavior sizes the side/up vectors from
+            // it, then multiplies by the renderer scale and the particle's PARAM_SCALE) and the system transform never
+            // touches it, so this is an absolute length. The in-plane angle interpolator can turn the quad to any
+            // orientation, so the corner distance - the half-diagonal - is the tight orientation-independent radius.
+            if (renderer && renderer->isActive() && SPK::FO::IsSparkQuadRenderer(*renderer)) {
+                SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
+                quad_radius = group->getGraphicalRadius() * std::sqrt(renderer_data.ScaleX * renderer_data.ScaleX + renderer_data.ScaleY * renderer_data.ScaleY);
+            }
+
+            group_quad_radii.push_back(quad_radius);
+        }
+
+        float32_t sim_duration = max_lifetime * SPARK_BOUNDS_LIFETIME_FACTOR + SPARK_BOUNDS_MIN_DURATION;
+        SPK::Vector3D bounds_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+        SPK::Vector3D bounds_max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+        float32_t billboard_radius = 0.0f;
+        bool any_particles = false;
+        float32_t elapsed = 0.0f;
+
+        for (size_t step = 0; step < SPARK_BOUNDS_MAX_STEPS && elapsed < sim_duration; step++) {
+            simulation->updateParticles(SPARK_BOUNDS_SIM_STEP);
+            elapsed += SPARK_BOUNDS_SIM_STEP;
+
+            for (size_t group_index = 0; group_index < simulation->getNbGroups(); group_index++) {
+                const SPK::Ref<SPK::Group>& group = simulation->getGroup(group_index);
+                float32_t group_quad_radius = group_quad_radii[group_index];
+                bool scale_enabled = group->isEnabled(SPK::PARAM_SCALE);
+
+                for (SPK::ConstGroupIterator it(*group); !it.end(); ++it) {
+                    // A fully transparent particle draws nothing, so it must reserve no frame space. Effects commonly
+                    // reach their largest scale at the end of life, exactly where the authored colour graph has
+                    // already faded the particle out.
+                    if (it->getColor().a == 0) {
+                        continue;
+                    }
+
+                    bounds_min.setMin(it->position());
+                    bounds_max.setMax(it->position());
+                    float32_t particle_scale = scale_enabled ? it->getParamNC(SPK::PARAM_SCALE) : 1.0f;
+                    billboard_radius = std::max(billboard_radius, group_quad_radius * particle_scale);
+                    any_particles = true;
+                }
+            }
+        }
+
+        // Baked bounds are mandatory: a system that never shows a particle across its full simulated lifetime has no
+        // measurable extent and cannot be framed at runtime, so treat it as broken content rather than baking an
+        // empty box.
+        if (!any_particles) {
+            throw ParticleBakerException("SPARK particle system showed no visible particles while baking its bounds", source_path);
+        }
+
+        system->setBakedBounds(bounds_min, bounds_max, billboard_radius);
+    }
+
     // Save to SPARK binary format
     std::ostringstream oss(std::ios::binary);
 
@@ -479,7 +566,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
         throw ParticleBakerException("Failed to save SPARK particle binary", source_path);
     }
 
-    const std::string str = oss.str();
+    std::string str = oss.str();
     vector<uint8_t> binary(str.begin(), str.end());
 
     _context->WriteData(output_path, binary);
@@ -487,6 +574,182 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 #endif
 
 #if FO_EFFEKSEER_PARTICLES
+// Bounds simulation tuning: play the compiled effect on a headless CPU manager and union the world-space extent of
+// its drawn particles across a bounded window. A one-shot effect finishes early; the frame cap bounds a looping effect.
+static constexpr int32_t EFFEKSEER_BOUNDS_MAX_FRAMES = 600;
+static constexpr int32_t EFFEKSEER_BOUNDS_SIM_INSTANCES = 4000;
+
+// Accumulates the world-space positions of the particles drawn during the bounds simulation. Kept in our own code
+// (fed by the collecting renderers below through Effekseer's public renderer interface) so no Effekseer core change is
+// needed to read the instance transforms.
+class EffekseerBoundsCollector final
+{
+public:
+    void Include(const Effekseer::SIMD::Vec3f& position, float32_t billboard_radius)
+    {
+        // Non-finite instance geometry cannot be drawn - the runtime renderers reject an effect that emits it - so it
+        // must not enter the measurement either, where it would poison the whole baked extent.
+        if (!std::isfinite(position.GetX()) || !std::isfinite(position.GetY()) || !std::isfinite(position.GetZ()) || !std::isfinite(billboard_radius)) {
+            return;
+        }
+
+        _min.x = std::min(_min.x, position.GetX());
+        _min.y = std::min(_min.y, position.GetY());
+        _min.z = std::min(_min.z, position.GetZ());
+        _max.x = std::max(_max.x, position.GetX());
+        _max.y = std::max(_max.y, position.GetY());
+        _max.z = std::max(_max.z, position.GetZ());
+        _billboardRadius = std::max(_billboardRadius, billboard_radius);
+        _hasBounds = true;
+    }
+
+    [[nodiscard]] auto HasBounds() const -> bool { return _hasBounds; }
+    [[nodiscard]] auto GetMin() const -> vec3 { return _min; }
+    [[nodiscard]] auto GetMax() const -> vec3 { return _max; }
+    [[nodiscard]] auto GetBillboardRadius() const -> float32_t { return _billboardRadius; }
+
+private:
+    vec3 _min {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+    vec3 _max {-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()};
+    float32_t _billboardRadius {};
+    bool _hasBounds {};
+};
+
+// Half-extent of one drawn instance in its own local space, read from the same instance parameters our renderers build
+// their vertices from. Only the sprite and ring families are rendered - RejectingEffekseerRenderer refuses ribbon,
+// track, and model nodes when the effect loads - so only those two report an extent and everything else falls through
+// to the zero overload and contributes positions alone.
+template<typename TInstanceParameter>
+static auto GetEffekseerInstanceLocalExtent(const TInstanceParameter& instance) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(instance);
+
+    return 0.0f;
+}
+
+static auto GetEffekseerInstanceLocalExtent(const Effekseer::SpriteRenderer::InstanceParameter& instance) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float32_t extent = 0.0f;
+
+    for (const Effekseer::SIMD::Vec2f& position : instance.Positions) {
+        extent = std::max(extent, std::hypot(position.GetX(), position.GetY()));
+    }
+
+    return extent;
+}
+
+static auto GetEffekseerInstanceLocalExtent(const Effekseer::RingRenderer::InstanceParameter& instance) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float32_t outer = std::hypot(instance.OuterLocation.GetX(), instance.OuterLocation.GetY());
+    float32_t inner = std::hypot(instance.InnerLocation.GetX(), instance.InnerLocation.GetY());
+    return std::max(outer, inner);
+}
+
+// A minimal renderer that discards geometry and only records each drawn particle's world position (its SRTMatrix43
+// translation, which every renderer family exposes) plus the world-space half-extent of its shape. Instantiated for
+// every family - sprite, ribbon, ring, track, and model - so any effect contributes to the bounds. The body carries no
+// stack-trace marker because it is an inline template method.
+template<typename TRenderer>
+class EffekseerBoundsRenderer final : public TRenderer
+{
+public:
+    explicit EffekseerBoundsRenderer(ptr<EffekseerBoundsCollector> collector) :
+        _collector {collector}
+    {
+    }
+
+    void Rendering(const typename TRenderer::NodeParameter& parameter, const typename TRenderer::InstanceParameter& instance, void* user_data) override
+    {
+        ignore_unused(parameter, user_data);
+
+        // The local extent is expressed in the instance's own space, so stretch it by the largest axis scale of the
+        // instance transform to get an orientation-independent world radius.
+        Effekseer::SIMD::Vec3f scale = instance.SRTMatrix43.GetScale();
+        float32_t max_axis_scale = std::max({std::abs(scale.GetX()), std::abs(scale.GetY()), std::abs(scale.GetZ())});
+        _collector->Include(instance.SRTMatrix43.GetTranslation(), GetEffekseerInstanceLocalExtent(instance) * max_axis_scale);
+    }
+
+private:
+    ptr<EffekseerBoundsCollector> _collector;
+};
+
+// Precompute an Effekseer effect's maximal world-space extent by simulating it and collecting the particle positions
+// through our own renderers, so the runtime frames an emitting instance from a static box (like the SPARK baked
+// bounds) instead of measuring live particles every frame.
+static void SimulateEffekseerBounds(string_view source_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max, float32_t& out_billboard_radius)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The collector outlives the manager (declared first, destroyed last) so the renderers' borrow stays valid for the
+    // manager's whole lifetime.
+    EffekseerBoundsCollector collector;
+    Effekseer::ManagerRef manager = Effekseer::Manager::Create(EFFEKSEER_BOUNDS_SIM_INSTANCES);
+
+    if (!manager) {
+        throw ParticleBakerException("Failed to create an Effekseer manager for bounds simulation", source_path);
+    }
+
+    Effekseer::SettingRef setting = Effekseer::Setting::Create();
+    setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
+    manager->SetSetting(setting);
+
+    ptr<EffekseerBoundsCollector> collector_ptr {&collector};
+    manager->SetSpriteRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::SpriteRenderer>>(collector_ptr));
+    manager->SetRibbonRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RibbonRenderer>>(collector_ptr));
+    manager->SetRingRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RingRenderer>>(collector_ptr));
+    manager->SetTrackRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::TrackRenderer>>(collector_ptr));
+    manager->SetModelRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::ModelRenderer>>(collector_ptr));
+
+    Effekseer::EffectRef effect = Effekseer::Effect::Create(manager, binary.data(), numeric_cast<int32_t>(binary.size()), 1.0f, nullptr);
+
+    if (!effect) {
+        throw ParticleBakerException("Effekseer bounds simulation could not load the compiled effect", source_path);
+    }
+
+    Effekseer::Handle handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+
+    if (handle < 0) {
+        throw ParticleBakerException("Effekseer bounds simulation could not play the effect", source_path);
+    }
+
+    // Draw every frame with culling disabled so the collecting renderers receive every live particle regardless of
+    // camera; the collector reads the camera-independent world transform, so the camera only needs to be finite.
+    Effekseer::Manager::DrawParameter draw_parameter;
+    draw_parameter.CameraCullingMask = manager->GetCameraCullingMaskToShowAllEffects();
+    draw_parameter.CameraPosition = {0.0f, 0.0f, 1.0f};
+    draw_parameter.CameraFrontDirection = {0.0f, 0.0f, -1.0f};
+
+    for (int32_t frame = 0; frame < EFFEKSEER_BOUNDS_MAX_FRAMES && manager->Exists(handle); frame++) {
+        manager->BeginUpdate();
+        manager->UpdateHandle(handle, 1.0f);
+        manager->EndUpdate();
+
+        if (manager->Exists(handle)) {
+            manager->DrawHandle(handle, draw_parameter);
+        }
+    }
+
+    // Bounds are mandatory, so a box is always produced. An effect that draws nothing across the whole window (a
+    // logic-only, GPU-particle, or otherwise non-renderable coverage sample) has no measurable extent, so it gets a
+    // degenerate box at the origin and reserves no frame space at runtime.
+    if (collector.HasBounds()) {
+        out_min = collector.GetMin();
+        out_max = collector.GetMax();
+        out_billboard_radius = collector.GetBillboardRadius();
+    }
+    else {
+        out_min = vec3 {};
+        out_max = vec3 {};
+        out_billboard_radius = 0.0f;
+    }
+}
+
 void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
 {
     FO_STACK_TRACE_ENTRY();
@@ -498,8 +761,8 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
             throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetPackName());
         }
 
-        const string project_path = fs_resolve_path(file.GetDiskPath());
-        const string output_path = strex(file.GetPath()).change_file_extension("efk");
+        string project_path = fs_resolve_path(file.GetDiskPath());
+        string output_path = strex(file.GetPath()).change_file_extension("efk");
         EffekseerCompilerOutput compiled;
 
         try {
@@ -510,12 +773,20 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         }
 
         ValidateEffekseerRuntimeBinary(output_path, compiled.Binary);
-        const vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
+
+        // Precompute the bounds from the pure Effekseer payload, then append them as a trailer so the runtime frames
+        // the effect from a static box. Validation above ran on the untrailered binary.
+        vec3 bounds_min;
+        vec3 bounds_max;
+        float32_t billboard_radius;
+        SimulateEffekseerBounds(output_path, compiled.Binary, bounds_min, bounds_max, billboard_radius);
+        AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max, billboard_radius);
+
+        vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
         uint64_t dependency_write_time = 0;
-        const string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
-        WriteLog("Baking Effekseer particle: {} -> {}", file.GetPath(), output_path);
+        string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
         _context->WriteData(output_path, compiled.Binary);
-        const string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
+        string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
 
         if (!cache_path.empty() && !fs_write_file(cache_path, dependency_snapshot)) {
             throw ParticleBakerException("Failed to write Effekseer dependency cache", output_path, cache_path);

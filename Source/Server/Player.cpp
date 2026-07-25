@@ -243,7 +243,7 @@ void Player::Send_LoginSuccess()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    const auto player_data = StoreData(true);
+    auto player_data = StoreData(true);
 
     scoped_lock conn_lock {_connectionLock};
 
@@ -255,7 +255,7 @@ void Player::Send_LoginSuccess()
         _engine->LockForPropertyAccess();
         auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
 
-        const auto global_vars_data = _engine->StoreData(false);
+        auto global_vars_data = _engine->StoreData(false);
         out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
     }
 
@@ -272,11 +272,11 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
 
     auto controlled_cr = GetControlledCritter();
     nptr<const Critter> cr_lookup = cr;
-    const bool is_chosen = controlled_cr == cr_lookup;
+    bool is_chosen = controlled_cr == cr_lookup;
 
-    const auto cr_data = cr->StoreData(is_chosen);
+    auto cr_data = cr->StoreData(is_chosen);
 
-    const auto inv_items = cr->GetInvItems();
+    auto inv_items = cr->GetInvItems();
     vector<ptr<const Item>> send_items;
     send_items.reserve(inv_items.size());
 
@@ -320,7 +320,7 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
         out_buf->Write(vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full);
     }
 
-    const auto cr_attached = cr->GetAttachedCritters();
+    auto cr_attached = cr->GetAttachedCritters();
 
     out_buf->Write(cr->GetIsAttached());
     out_buf->Write(numeric_cast<uint16_t>(cr_attached.size()));
@@ -406,8 +406,8 @@ void Player::Send_LoadMap(nptr<const Map> map)
     if (map) {
         FO_VERIFY_AND_THROW(loc, "Map has no owning location");
 
-        const auto map_data = map->StoreData(false);
-        const auto loc_data = loc->StoreData(false);
+        auto map_data = map->StoreData(false);
+        auto loc_data = loc->StoreData(false);
         out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
         out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
         SendInnerEntities(*out_buf, loc, false);
@@ -426,9 +426,9 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
         return;
     }
 
-    const auto props = entity->GetProperties();
+    auto props = entity->GetProperties();
     props->ValidateForRawData(prop);
-    const auto prop_raw_data = props->GetRawData(prop);
+    auto prop_raw_data = props->GetRawData(prop);
 
     scoped_lock conn_lock {_connectionLock};
 
@@ -439,30 +439,30 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
 
     switch (type) {
     case NetProperty::CritterItem: {
-        const auto item = entity.dyn_cast<Item>();
-        const auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto item = entity.dyn_cast<Item>();
+        auto server_entity = entity.dyn_cast<ServerEntity>();
         FO_VERIFY_AND_THROW(item, "Missing item instance");
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(item->GetCritterId());
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::Critter: {
-        const auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity = entity.dyn_cast<ServerEntity>();
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::MapItem: {
-        const auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity = entity.dyn_cast<ServerEntity>();
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
-        const auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity = entity.dyn_cast<ServerEntity>();
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::CustomEntity: {
-        const auto custom_entity = entity.dyn_cast<CustomEntity>();
+        auto custom_entity = entity.dyn_cast<CustomEntity>();
         FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
         out_buf->Write(custom_entity->GetId());
     } break;
@@ -541,7 +541,7 @@ void Player::Send_Action(ptr<const Critter> from_cr, CritterAction action, int32
 
     auto controlled_cr = GetControlledCritter();
     nptr<const Critter> source_cr = from_cr;
-    const bool is_chosen = controlled_cr == source_cr;
+    bool is_chosen = controlled_cr == source_cr;
 
     scoped_lock conn_lock {_connectionLock};
 
@@ -566,12 +566,12 @@ void Player::Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_it
 
     auto controlled_cr = GetControlledCritter();
     nptr<const Critter> source_cr = from_cr;
-    const bool is_chosen = controlled_cr == source_cr;
+    bool is_chosen = controlled_cr == source_cr;
 
     vector<ptr<const Item>> send_items;
 
     if (!is_chosen) {
-        const auto inv_items = from_cr->GetInvItems();
+        auto inv_items = from_cr->GetInvItems();
         send_items.reserve(inv_items.size());
 
         for (ptr<const Item> item : inv_items) {
@@ -798,7 +798,7 @@ void Player::Send_InitData(const_span<uint8_t> update_desc)
         _engine->LockForPropertyAccess();
         auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
 
-        const auto global_vars_data = _engine->StoreData(false);
+        auto global_vars_data = _engine->StoreData(false);
         out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
     }
 
@@ -881,7 +881,7 @@ void Player::Send_Attachments(ptr<const Critter> from_cr)
     out_buf->Write(from_cr->GetIsAttached());
     out_buf->Write(from_cr->GetAttachMaster());
 
-    const auto from_cr_attached = from_cr->GetAttachedCritters();
+    auto from_cr_attached = from_cr->GetAttachedCritters();
     out_buf->Write(numeric_cast<uint16_t>(from_cr_attached.size()));
 
     for (const auto& attached_cr : from_cr_attached) {
@@ -896,7 +896,7 @@ void Player::Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned)
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(entity);
 
-    const auto data = entity->StoreData(owned);
+    auto data = entity->StoreData(owned);
 
     scoped_lock conn_lock {_connectionLock};
 
@@ -906,7 +906,7 @@ void Player::Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned)
     out_buf->Write(entity->GetCustomHolderEntry());
     out_buf->Write(entity->GetId());
 
-    const auto entity_with_proto = entity.dyn_cast<CustomEntityWithProto>();
+    auto entity_with_proto = entity.dyn_cast<CustomEntityWithProto>();
     if (entity_with_proto) {
         FO_VERIFY_AND_THROW(_engine->GetEntityType(entity->GetTypeName()).HasProtos, "Entity type has no prototypes but a proto entity was requested");
         out_buf->Write(entity_with_proto->GetProtoId());
@@ -946,7 +946,7 @@ void Player::SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, b
         out_buf.Write(item->GetCritterSlot());
     }
 
-    const auto item_data = item->StoreData(owned);
+    auto item_data = item->StoreData(owned);
     out_buf.WritePropsData(*item_data.Data, *item_data.Sizes);
 
     if (with_inner_entities) {
@@ -974,7 +974,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
     uint16_t entries_count = 0;
 
     for (const auto& entry : *entries_entities | std::views::keys) {
-        const auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
+        auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
 
         if (entry_sync == EntityHolderEntrySync::PublicSync || (entry_sync == EntityHolderEntrySync::OwnerSync && owned)) {
             entries_count++;
@@ -988,7 +988,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
     }
 
     for (auto&& [entry, entities] : *entries_entities) {
-        const auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
+        auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
 
         if (entry_sync == EntityHolderEntrySync::NoSync || (entry_sync == EntityHolderEntrySync::OwnerSync && !owned)) {
             continue;
@@ -1000,11 +1000,11 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
         for (const auto& entity : entities) {
             auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
 
-            const auto data = custom_entity->StoreData(owned);
+            auto data = custom_entity->StoreData(owned);
 
             out_buf.Write(custom_entity->GetId());
 
-            const auto custom_entity_with_proto = (nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>();
+            auto custom_entity_with_proto = (nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>();
             if (custom_entity_with_proto) {
                 out_buf.Write(custom_entity_with_proto->GetProtoId());
             }
@@ -1037,13 +1037,13 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     out_buf.Write(moving->GetStartHex());
     out_buf.Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
 
-    for (const auto step : moving->GetSteps()) {
+    for (auto step : moving->GetSteps()) {
         out_buf.Write(step.hex());
     }
 
     out_buf.Write(numeric_cast<uint16_t>(moving->GetControlSteps().size()));
 
-    for (const auto control_step : moving->GetControlSteps()) {
+    for (auto control_step : moving->GetControlSteps()) {
         out_buf.Write(control_step);
     }
 

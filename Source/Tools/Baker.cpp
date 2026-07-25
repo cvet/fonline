@@ -92,21 +92,21 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
 
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
-        const string pack_name = _context->PackName;
-        const string stored_baker_name = _context->BakerName;
+        string pack_name = _context->PackName;
+        string stored_baker_name = _context->BakerName;
 
         if (ctx->BakeChecker) {
-            const BakeCheckerCallback bake_checker = ctx->BakeChecker;
+            BakeCheckerCallback bake_checker = ctx->BakeChecker;
             _context->BakeChecker = [report, pack_name, stored_baker_name, bake_checker](string_view path, uint64_t write_time) mutable {
-                const bool scheduled = bake_checker(path, write_time);
+                bool scheduled = bake_checker(path, write_time);
                 report->RecordOutputCheck(pack_name, stored_baker_name, path, scheduled);
                 return scheduled;
             };
         }
 
-        const AsyncWriteDataCallback write_data = ctx->WriteData;
+        AsyncWriteDataCallback write_data = ctx->WriteData;
         _context->WriteData = [report, pack_name, stored_baker_name, write_data](string_view path, const_span<uint8_t> data) mutable {
-            const BakingWriteResult result = write_data(path, data);
+            BakingWriteResult result = write_data(path, data);
             report->RecordOutputSubmission(pack_name, stored_baker_name, path, data.size(), result);
             return result;
         };
@@ -244,7 +244,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
         report_path = GetBakingReportPath(_settings->BakeOutput);
 
         if (!report_path.empty()) {
-            const auto remove_old_report_ok = fs_remove_file(report_path);
+            bool remove_old_report_ok = fs_remove_file(report_path);
             FO_VERIFY_AND_THROW(remove_old_report_ok, "Unable to delete the previous baking report", report_path);
         }
 
@@ -264,20 +264,20 @@ auto MasterBaker::BakeAll() noexcept -> bool
 
         if (!report_path.empty()) {
             try {
-                const string report_dir = strex(report_path).extract_dir();
+                string report_dir = strex(report_path).extract_dir();
                 if (!report_dir.empty()) {
-                    const auto create_report_dir_ok = fs_create_directories(report_dir);
+                    bool create_report_dir_ok = fs_create_directories(report_dir);
                     FO_VERIFY_AND_THROW(create_report_dir_ok, "Unable to create the baking report directory", report_dir);
                 }
 
-                const string report_data = _report->Serialize();
-                const auto write_report_ok = fs_write_file(report_path, report_data);
+                string report_data = _report->Serialize();
+                bool write_report_ok = fs_write_file(report_path, report_data);
                 FO_VERIFY_AND_THROW(write_report_ok, "Unable to write the baking report", report_path);
                 WriteLog("Baking report saved to {}", report_path);
 
                 if (success && _report->IsFullRebuild()) {
-                    const string full_report_path = GetFullBakingReportPath(_settings->BakeOutput);
-                    const auto write_full_report_ok = fs_write_file(full_report_path, report_data);
+                    string full_report_path = GetFullBakingReportPath(_settings->BakeOutput);
+                    bool write_full_report_ok = fs_write_file(full_report_path, report_data);
                     FO_VERIFY_AND_THROW(write_full_report_ok, "Unable to write the full baking report", full_report_path);
                     WriteLog("Full baking report saved to {}", full_report_path);
                 }
@@ -296,16 +296,16 @@ void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const TimeMeter backing_time;
+    TimeMeter backing_time;
 
     WriteLog("Start baking");
 
     FO_VERIFY_AND_THROW(!_settings->BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
-    const auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
+    auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
 
-    const auto build_hash_path = make_output_path("Resources.build-hash");
-    const auto prev_build_hash = fs_read_file(build_hash_path);
-    const auto build_hash_deleted = fs_remove_file(build_hash_path);
+    string build_hash_path = make_output_path("Resources.build-hash");
+    auto prev_build_hash = fs_read_file(build_hash_path);
+    bool build_hash_deleted = fs_remove_file(build_hash_path);
     FO_VERIFY_AND_THROW(build_hash_deleted, "Unable to delete the previous build hash file", build_hash_path);
 
     std::atomic_bool force_baking = false;
@@ -323,7 +323,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     if (force_baking) {
-        const auto delete_output_ok = fs_remove_dir_tree(_settings->BakeOutput);
+        bool delete_output_ok = fs_remove_dir_tree(_settings->BakeOutput);
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
@@ -336,7 +336,7 @@ void MasterBaker::BakeAllInternal()
 
     _report->SetRebuildMode(force_baking, rebuild_reason);
 
-    const auto make_output_ok = fs_create_directories(_settings->BakeOutput);
+    bool make_output_ok = fs_create_directories(_settings->BakeOutput);
     FO_VERIFY_AND_THROW(make_output_ok, "Unable to recreate baking output dir");
 
     FileSystem baking_output;
@@ -361,9 +361,9 @@ void MasterBaker::BakeAllInternal()
         bool Done {};
     };
 
-    const auto prepare_bake_pack = [ // clang-format off
-            &settings = std::as_const(*_settings),
-            &baking_output_ = std::as_const(baking_output),
+    auto prepare_bake_pack = [ // clang-format off
+            &settings = *_settings,
+            &baking_output_ = baking_output,
             &force_baking,
             report = _report // clang-format on
     ](const ResourcePackInfo& res_pack, const string& output_dir) -> unique_ptr<PackBakeContext> {
@@ -380,8 +380,8 @@ void MasterBaker::BakeAllInternal()
             pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
         }
         for (const auto& input_file : res_pack.InputFiles) {
-            const auto dir = strex(input_file).extract_dir().str();
-            const auto pack = strex(input_file).extract_file_name().erase_file_extension().str();
+            string dir = strex(input_file).extract_dir().str();
+            string pack = strex(input_file).extract_file_name().erase_file_extension().str();
             pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
@@ -392,7 +392,7 @@ void MasterBaker::BakeAllInternal()
             pack_bake_context->InputBytes += numeric_cast<uint64_t>(file.GetSize());
         }
 
-        const auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
+        auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
             // to be guarded; without it concurrent emplace() races on the bucket array.
             {
@@ -402,7 +402,7 @@ void MasterBaker::BakeAllInternal()
             }
 
             if (!force_baking) {
-                const auto file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));
+                uint64_t file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));
                 return write_time > file_write_time;
             }
             else {
@@ -410,17 +410,17 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        const auto write_data = [context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
-            const auto res_path = strex(context->OutputDir).combine_path(path).str();
+        auto write_data = [context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
+            string res_path = strex(context->OutputDir).combine_path(path).str();
 
             if (!fs_compare_file_content(res_path, baked_data)) {
-                const auto res_file_write_ok = fs_write_file(res_path, baked_data);
+                bool res_file_write_ok = fs_write_file(res_path, baked_data);
                 FO_VERIFY_AND_THROW(res_file_write_ok, "Unable to write baked resource file", res_path);
                 ++context->BakedFiles;
                 return BakingWriteResult::Changed;
             }
             else {
-                const auto res_file_touch_ok = fs_touch_file(res_path);
+                bool res_file_touch_ok = fs_touch_file(res_path);
                 FO_VERIFY_AND_THROW(res_file_touch_ok, "Unable to update the timestamp of an unchanged baked resource file", res_path);
                 return BakingWriteResult::Unchanged;
             }
@@ -435,7 +435,7 @@ void MasterBaker::BakeAllInternal()
         return pack_bake_context;
     };
 
-    const auto bake_pack = [](ptr<PackBakeContext> bake_context, int32_t bake_order) {
+    auto bake_pack = [](ptr<PackBakeContext> bake_context, int32_t bake_order) {
         for (size_t i = 0; i != bake_context->Bakers.size(); ++i) {
             auto baker = bake_context->Bakers[i].as_ptr();
 
@@ -445,13 +445,13 @@ void MasterBaker::BakeAllInternal()
                     bake_context->FirstBake = true;
 
                     bake_context->BakingTime.Resume();
-                    const auto make_res_output_ok = fs_create_directories(bake_context->OutputDir);
+                    bool make_res_output_ok = fs_create_directories(bake_context->OutputDir);
                     FO_VERIFY_AND_THROW(make_res_output_ok, "Unable to create the resource pack output directory", bake_context->OutputDir);
                     bake_context->BakingTime.Pause();
                 }
 
                 bake_context->BakingTime.Resume();
-                const TimeMeter baker_time;
+                TimeMeter baker_time;
                 try {
                     baker->BakeFiles(bake_context->FilteredFiles);
                     bake_context->BakingTime.Pause();
@@ -472,9 +472,9 @@ void MasterBaker::BakeAllInternal()
 
         // Check if it's last iteration for this pack
         if (bake_context->FirstBake && !bake_context->Done) {
-            const auto it = std::ranges::max_element(bake_context->Bakers, {}, [](auto&& baker) { return baker->GetOrder(); });
+            auto it = std::ranges::max_element(bake_context->Bakers, {}, [](auto&& baker) { return baker->GetOrder(); });
             FO_VERIFY_AND_THROW(it != bake_context->Bakers.end(), "Lookup failed in bake context bakers");
-            const auto max_order = (*it)->GetOrder();
+            int32_t max_order = (*it)->GetOrder();
 
             if (bake_order == max_order) {
                 WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
@@ -487,7 +487,7 @@ void MasterBaker::BakeAllInternal()
 
     size_t errors = 0;
     const auto& res_packs = _settings->GetResourcePacks();
-    const auto async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
+    async_launch_mode async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
 
     // Prepare bake contexts
     vector<unique_ptr<PackBakeContext>> pack_bake_contexts;
@@ -498,7 +498,7 @@ void MasterBaker::BakeAllInternal()
 
         for (const auto& res_pack : res_packs) {
             auto res_pack_ptr = make_ptr(&res_pack);
-            const string output_path = make_output_path(res_pack.Name);
+            string output_path = make_output_path(res_pack.Name);
             prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
 
@@ -584,7 +584,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     // Delete outdated files
-    const auto exclude_all_ext = [](string_view path) -> string {
+    auto exclude_all_ext = [](string_view path) -> string {
         size_t pos = path.rfind('/');
         pos = path.find('.', pos != string::npos ? pos : 0);
         return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
@@ -611,14 +611,14 @@ void MasterBaker::BakeAllInternal()
         }
 
         if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-            const auto remove_outdated_ok = fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
+            bool remove_outdated_ok = fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
             FO_VERIFY_AND_THROW(remove_outdated_ok, "Unable to delete outdated baked resource", path);
             _report->RecordOutdatedFile(path);
             WriteLog("Delete outdated file {}", path);
         }
     });
 
-    const string effekseer_cache_dir = strex(_settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer");
+    string effekseer_cache_dir = strex(_settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer");
 
     if (fs_is_dir(effekseer_cache_dir)) {
         constexpr string_view dependency_cache_suffix = ".deps";
@@ -627,7 +627,7 @@ void MasterBaker::BakeAllInternal()
             ignore_unused(size, write_time);
 
             if (path.ends_with(dependency_cache_suffix)) {
-                const string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
+                string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
 
                 if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
                     fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
@@ -641,7 +641,7 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Time {}", backing_time.GetDuration());
     WriteLog("Baking complete!");
 
-    const auto build_hash_write_ok = fs_write_file(build_hash_path, FO_BUILD_HASH);
+    bool build_hash_write_ok = fs_write_file(build_hash_path, FO_BUILD_HASH);
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
 }
 
@@ -698,7 +698,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
-                const auto res_name = props.GetValue<hstring>(prop);
+                auto res_name = props.GetValue<hstring>(prop);
 
                 if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
                     WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
@@ -710,9 +710,9 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                     continue;
                 }
 
-                const auto res_names = props.GetValue<vector<hstring>>(prop);
+                auto res_names = props.GetValue<vector<hstring>>(prop);
 
-                for (const auto res_name : res_names) {
+                for (auto res_name : res_names) {
                     if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
                         WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
@@ -727,9 +727,9 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
         if (script_sys && !prop->GetBaseScriptFuncType().empty()) {
             if (prop->IsPlainData()) {
-                const auto func_name = props.GetValue<hstring>(prop);
+                auto func_name = props.GetValue<hstring>(prop);
 
-                const auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
+                auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
 
                 if (rule_it == script_func_verify.end()) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
@@ -761,7 +761,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 
     _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
-    Reindex();
+    ignore_unused(Reindex());
 }
 
 auto BakerDataSource::Reindex() -> bool
@@ -769,7 +769,7 @@ auto BakerDataSource::Reindex() -> bool
     FO_STACK_TRACE_ENTRY();
 
     // Prepare input resources
-    const auto res_packs = _settings->GetResourcePacks();
+    auto res_packs = _settings->GetResourcePacks();
     vector<ResourcesInputEntry> input_resources;
     unordered_map<string, pair<size_t, uint64_t>> input_file_index;
     input_resources.reserve(res_packs.size());
@@ -777,46 +777,73 @@ auto BakerDataSource::Reindex() -> bool
     for (const auto& res_pack : res_packs) {
         auto& res_entry = input_resources.emplace_back();
         res_entry.Name = res_pack.Name;
-        const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
-        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) {
+        auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
+        auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) {
             WriteData(res_pack_name, path, data);
             return BakingWriteResult::Changed;
         };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
+        // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
+        // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
+        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
         for (const auto& dir : res_pack.InputDirs) {
-            res_entry.InputDir.AddDirSource(dir, true);
+            res_entry.InputDir.AddDirSource(dir, true, true);
         }
         for (const auto& path : res_pack.InputFiles) {
-            const auto dir = strex(path).extract_dir().str();
-            const auto pack = strex(path).extract_file_name().erase_file_extension().str();
+            string dir = strex(path).extract_dir().str();
+            string pack = strex(path).extract_file_name().erase_file_extension().str();
             res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
         res_entry.InputFiles = res_entry.InputDir.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
 
         for (const auto& input_file : res_entry.InputFiles) {
-            const string index_key = strex("{}\n{}", res_entry.Name, input_file.GetPath()).str();
+            string index_key = strex("{}\n{}", res_entry.Name, input_file.GetPath()).str();
             input_file_index.insert_or_assign(index_key, pair {input_file.GetSize(), input_file.GetWriteTime()});
         }
     }
 
+    // Input resources must be published before the discovery pass runs the bakers: a baker can read another
+    // baker's output while it discovers its own (for example ModelInfoBaker builds a BakerClientEngine that
+    // reads the baked metadata), which re-enters this data source through _outputResources and resolves the
+    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it.
+    _inputResources = std::move(input_resources);
+
     // Evaluate output files
     unordered_map<string, uint64_t> output_files;
 
-    const auto check_file = [&](string_view path, uint64_t write_time) {
+    unordered_map<string, uint64_t> previous_output_files;
+
+    {
+        scoped_lock locker {_outputFilesLocker};
+
+        previous_output_files = _outputFiles;
+    }
+
+    auto check_file = [&](string_view path, uint64_t write_time) {
         output_files.insert_or_assign(string(path), write_time);
+
+        // Publish live so a later baker in this same discovery pass can resolve an earlier baker's output
+        // on-demand (bakers run in dependency order, e.g. metadata before model info). Additive so no entry is
+        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes.
+        {
+            scoped_lock locker {_outputFilesLocker};
+
+            _outputFiles.insert_or_assign(string(path), write_time);
+        }
+
         return false;
     };
 
-    const auto write_file = [](string_view path, span<const uint8_t> data) -> BakingWriteResult {
+    auto write_file = [](string_view path, span<const uint8_t> data) -> BakingWriteResult {
         ignore_unused(path, data);
         FO_UNREACHABLE_PLACE();
     };
 
-    for (size_t i = 0; i < input_resources.size(); i++) {
+    for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_pack = res_packs[i];
-        const auto& res_entry = input_resources[i];
+        const auto& res_entry = _inputResources[i];
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources, nullptr, true);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
@@ -824,9 +851,7 @@ auto BakerDataSource::Reindex() -> bool
         }
     }
 
-    _inputResources = std::move(input_resources);
-
-    const bool input_files_changed = _inputFileIndex != input_file_index;
+    bool input_files_changed = _inputFileIndex != input_file_index;
     _inputFileIndex = std::move(input_file_index);
 
     bool changed = input_files_changed;
@@ -834,7 +859,7 @@ auto BakerDataSource::Reindex() -> bool
     {
         scoped_lock locker {_outputFilesLocker};
 
-        changed |= _outputFiles != output_files;
+        changed |= previous_output_files != output_files;
         _outputFiles = std::move(output_files);
     }
 
@@ -852,7 +877,7 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_path = MakeOutputPath(res_pack_name, path);
+    string output_path = MakeOutputPath(res_pack_name, path);
 
     if (write_time > fs_last_write_time(output_path)) {
         scoped_lock locker {_outputFilesLocker};
@@ -868,8 +893,8 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, spa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_path = MakeOutputPath(res_pack_name, path);
-    const auto write_file_ok = fs_write_file(output_path, data);
+    string output_path = MakeOutputPath(res_pack_name, path);
+    bool write_file_ok = fs_write_file(output_path, data);
     FO_VERIFY_AND_THROW(write_file_ok, "Unable to write the baked output file", output_path);
 }
 
@@ -882,7 +907,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     {
         scoped_lock locker {_outputFilesLocker};
 
-        const auto it = _outputFiles.find(path);
+        auto it = _outputFiles.find(path);
 
         if (it == _outputFiles.end()) {
             return std::nullopt;
@@ -891,7 +916,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
         input_write_time = it->second;
     }
 
-    const auto accept_output_path = [&](string_view output_path) -> string {
+    auto accept_output_path = [&](string_view output_path) -> string {
         write_time = input_write_time;
         FO_VERIFY_AND_THROW(write_time != 0, "Baked output file write time is not available");
 
@@ -901,11 +926,11 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     // Try find already baked
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        const auto output_path = MakeOutputPath(res_entry.Name, path);
+        string output_path = MakeOutputPath(res_entry.Name, path);
 
         if (fs_exists(output_path)) {
             if (input_write_time > fs_last_write_time(output_path)) {
-                const auto delete_output_file_ok = fs_remove_file(output_path);
+                bool delete_output_file_ok = fs_remove_file(output_path);
                 FO_VERIFY_AND_THROW(delete_output_file_ok, "Unable to delete the stale baked output file", output_path);
                 break;
             }
@@ -917,7 +942,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     // Runtime baking
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        const auto output_path = MakeOutputPath(res_entry.Name, path);
+        string output_path = MakeOutputPath(res_entry.Name, path);
 
         for (const auto& baker : res_entry.Bakers) {
             baker->BakeFiles(res_entry.InputFiles, path);
@@ -928,7 +953,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
                 scoped_lock locker {_outputFilesLocker};
 
                 input_write_time = _outputFiles.at(string(path));
-                const auto output_write_time = fs_last_write_time(output_path);
+                uint64_t output_write_time = fs_last_write_time(output_path);
                 FO_VERIFY_AND_THROW(input_write_time < output_write_time, "Baked output file is not newer than the newest source input", path, output_path, input_write_time, output_write_time);
             }
 
@@ -943,13 +968,13 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_path = ResolveFilePath(path, write_time);
+    auto output_path = ResolveFilePath(path, write_time);
 
     if (!output_path) {
         return false;
     }
 
-    const auto output_size = fs_file_size(*output_path);
+    auto output_size = fs_file_size(*output_path);
     FO_VERIFY_AND_THROW(output_size, "Unable to query the size of the baked output file", *output_path);
 
     size = numeric_cast<size_t>(*output_size);
@@ -976,13 +1001,13 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_path = ResolveFilePath(path, write_time);
+    auto output_path = ResolveFilePath(path, write_time);
 
     if (!output_path) {
         return nullptr;
     }
 
-    const auto output_data = fs_read_file(*output_path);
+    auto output_data = fs_read_file(*output_path);
     FO_VERIFY_AND_THROW(output_data, "Unable to read the baked output file", *output_path);
 
     size = output_data->size();

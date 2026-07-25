@@ -284,7 +284,7 @@ namespace CallTest
 )"},
                 },
                 [](string_view message) {
-                    const auto message_str = string(message);
+                    string message_str = string(message);
 
                     if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                         throw ScriptSystemException(message_str);
@@ -304,7 +304,7 @@ namespace CallTest
             FileSystem compiler_resources;
             compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-            const auto script_blob = MakeScriptBinary(compiler_resources);
+            auto script_blob = MakeScriptBinary(compiler_resources);
 
             auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CallTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -349,7 +349,7 @@ TEST_CASE("AngelScriptCallShapes")
         });
     });
 
-    const auto startup_error = CallTestRig::WaitForStart(server);
+    string startup_error = CallTestRig::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -357,9 +357,9 @@ TEST_CASE("AngelScriptCallShapes")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    const auto call_and_check = [&](string_view func_name, int64_t expected) {
+    auto call_and_check = [&](string_view func_name, int64_t expected) {
         INFO(func_name);
         auto func = server->FindFunc<int64_t>(fn(func_name));
         REQUIRE(func);
@@ -442,7 +442,7 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
             NativeDataProvider::WriteHandleSlot(call.RetData, returned_obj);
         };
         func_desc.ReturnValueCleaner = [&release_count, returned_obj](ptr<void> ret_data) {
-            const nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);
+            nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);
 
             if (stored_obj == returned_obj) {
                 release_count++;

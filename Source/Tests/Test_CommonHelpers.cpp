@@ -124,22 +124,22 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorAlgorithms")
     {
-        const vector<int32_t> values = {5, 1, 3, 2};
+        vector<int32_t> values = {5, 1, 3, 2};
 
-        const auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
         CHECK(filtered == vector<int32_t> {5, 1, 3});
 
-        const auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
+        auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
         CHECK(transformed == vector<int32_t> {50, 10, 30, 20});
 
-        const auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
         CHECK(sorted == vector<int32_t> {1, 2, 3, 5});
 
         CHECK(vec_exists(values, 3));
         CHECK_FALSE(vec_exists(values, 7));
 
-        const set<int32_t> uniq = {9, 8, 7};
-        const auto copied = to_vector(uniq);
+        set<int32_t> uniq = {9, 8, 7};
+        auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
     }
 
@@ -153,28 +153,28 @@ TEST_CASE("CommonHelpers")
         STATIC_REQUIRE(std::same_as<rebind_vector_t<set<int32_t>, int64_t>, vector<int64_t>>);
 
         // A small_vector input keeps its kind (and inline capacity) through every producing helper
-        const small_vector<int32_t, 4> values = {5, 1, 3, 2};
+        small_vector<int32_t, 4> values = {5, 1, 3, 2};
 
-        const auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(filtered)>, small_vector<int32_t, 4>>);
         CHECK(filtered == small_vector<int32_t, 4> {5, 1, 3});
 
-        const auto transformed = vec_transform(values, [](int32_t v) -> int64_t { return v * 10; });
+        auto transformed = vec_transform(values, [](int32_t v) -> int64_t { return v * 10; });
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(transformed)>, small_vector<int64_t, 4>>);
         CHECK(transformed == small_vector<int64_t, 4> {50, 10, 30, 20});
 
-        const auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(sorted)>, small_vector<int32_t, 4>>);
         CHECK(sorted == small_vector<int32_t, 4> {1, 2, 3, 5});
 
         // A plain vector input still yields a vector (backward compatible)
-        const vector<int32_t> vec_values = {5, 1, 3, 2};
-        const auto vec_filtered = vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; });
+        vector<int32_t> vec_values = {5, 1, 3, 2};
+        auto vec_filtered = vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; });
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(vec_filtered)>, vector<int32_t>>);
 
         // A non-vector range materializes as a plain vector
-        const set<int32_t> set_values = {5, 1, 3, 2};
-        const auto set_sorted = vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; });
+        set<int32_t> set_values = {5, 1, 3, 2};
+        auto set_sorted = vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; });
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(set_sorted)>, vector<int32_t>>);
         CHECK(set_sorted == vector<int32_t> {1, 2, 3, 5});
     }
@@ -185,7 +185,7 @@ TEST_CASE("CommonHelpers")
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
 
-        const auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
+        auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
         CHECK(transformed == vector<int32_t> {4, 9});
     }
 

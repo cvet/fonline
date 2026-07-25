@@ -56,8 +56,8 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).get_file_extension();
-            const auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
+            string ext = strex(file_header.GetPath()).get_file_extension();
+            auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
 
             if (it == _context->Settings->RawCopyFileExtensions.end()) {
                 continue;
@@ -70,8 +70,8 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
         }
     }
     else {
-        const string ext = strex(target_path).get_file_extension();
-        const auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
+        string ext = strex(target_path).get_file_extension();
+        auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
 
         if (it == _context->Settings->RawCopyFileExtensions.end()) {
             return;

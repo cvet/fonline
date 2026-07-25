@@ -122,7 +122,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
         span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
-            const auto volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
+            int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
             _audio->MixAudio(output, mix_buffer, numeric_cast<int32_t>(volume));
             ++it;
         }
@@ -229,7 +229,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fixed_fname = string(fname);
+    string fixed_fname = string(fname);
     string ext = strex(fname).get_file_extension();
 
     // Default ext
@@ -264,7 +264,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _resources->ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
@@ -272,7 +272,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
 
     auto reader = file.GetReader();
 
-    auto dw_buf = reader.GetLEUInt32();
+    uint32_t dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
@@ -374,7 +374,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _resources->ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
@@ -382,13 +382,13 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
 
     vector<uint8_t> acm_data = file.GetData();
 
-    auto channels = 0;
-    auto freq = 0;
-    auto samples = 0;
+    int32_t channels = 0;
+    int32_t freq = 0;
+    int32_t samples = 0;
     auto acm_data_ptr = make_nptr(acm_data.data());
     FO_VERIFY_AND_THROW(acm_data.empty() || acm_data_ptr, "Non-empty ACM data has a null pointer");
     auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
-    const auto buf_size = samples * 2;
+    int32_t buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = is_music ? 2 : 1;
@@ -401,7 +401,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
     auto base_buf_bytes = make_nptr(base_buf.data());
     auto buf = base_buf_bytes.reinterpret_as<uint16_t>();
-    const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
+    int32_t dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");
@@ -426,7 +426,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     callbacks.read_func = [](void* output_buf, size_t size, size_t count, void* datasource) -> size_t {
         auto file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
-        const size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
+        size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
             FO_VERIFY_AND_THROW(output_buf != nullptr, "Ogg read output buffer is null");
@@ -488,7 +488,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     FileReader reader = file.GetReader();
     auto file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
-    const auto error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
+    int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);
@@ -533,7 +533,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     while (true) {
         auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
-        const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = numeric_cast<int32_t>(ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr));
 
         if (result <= 0) {
@@ -574,7 +574,7 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
 
     while (true) {
         auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
-        const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr);
 
         if (result <= 0) {
@@ -622,10 +622,10 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Make 'NAME'
-    const string sound_name = strex(name).erase_file_extension().lower();
+    string sound_name = strex(name).erase_file_extension().lower();
 
     // Find base
-    const auto it = sound_names.find(sound_name);
+    auto it = sound_names.find(sound_name);
 
     if (it != sound_names.end()) {
         return Load(it->second, false, timespan::zero);
@@ -639,7 +639,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     if (count != 0u) {
-        const int32_t random_index = std::uniform_int_distribution<int32_t> {1, count}(_randomGenerator);
+        int32_t random_index = std::uniform_int_distribution<int32_t> {1, count}(_randomGenerator);
         return Load(sound_names.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero);
     }
 

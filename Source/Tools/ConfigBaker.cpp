@@ -61,9 +61,9 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     unordered_set<string> configs_to_bake;
 
-    const auto check_bake_config = [&](string_view sub_config) {
-        const auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
-            const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
+    auto check_bake_config = [&](string_view sub_config) {
+        auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
+            string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
             if (!_context->BakeChecker || _context->BakeChecker(cfg_name, std::numeric_limits<uint64_t>::max())) {
                 configs_to_bake.emplace(sub_config);
             }
@@ -77,14 +77,14 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     std::ranges::for_each(_context->Settings->GetSubConfigs(), [&](auto&& sub_config) { check_bake_config(sub_config.Name); });
 
     if (!configs_to_bake.empty()) {
-        const auto server_engine = BakerServerEngine(*_context->BakedFiles);
-        const auto client_engine = BakerClientEngine(*_context->BakedFiles);
+        auto server_engine = BakerServerEngine(*_context->BakedFiles);
+        auto client_engine = BakerClientEngine(*_context->BakedFiles);
 
-        const auto bake_config = [&](string_view sub_config) -> bool {
+        auto bake_config = [&](string_view sub_config) -> bool {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
-            const string config_path = _context->Settings->GetAppliedConfigs().front();
-            const string_view config_name = strvex(config_path).extract_file_name();
-            const string config_dir = strex(config_path).extract_dir();
+            string config_path = _context->Settings->GetAppliedConfigs().front();
+            string_view config_name = strvex(config_path).extract_file_name();
+            string config_dir = strex(config_path).extract_dir();
 
             auto maincfg = GlobalSettings(true);
             maincfg.ApplyConfigAtPath(config_name, config_dir);
@@ -93,7 +93,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 maincfg.ApplySubConfigSection(sub_config);
             }
 
-            const auto config_settings = maincfg.Save();
+            auto config_settings = maincfg.Save();
 
             auto server_settings = GetServerSettings();
             auto client_settings = GetClientSettings();
@@ -113,10 +113,10 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             int32_t settings_errors = 0;
 
             for (auto&& [key, value] : config_settings) {
-                const auto is_server_setting = server_settings.count(key) != 0;
-                const auto is_client_setting = client_settings.count(key) != 0;
-                const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                const auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
+                bool is_server_setting = server_settings.count(key) != 0;
+                bool is_client_setting = client_settings.count(key) != 0;
+                bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
+                auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
 
                 if (!skip_write) {
                     server_config_content += strex("{}={}\n", key, shortened_value);
@@ -149,8 +149,8 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             }
 
             if (settings_errors == 0) {
-                const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
-                    const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
+                auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
+                    string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
                     _context->WriteData(cfg_name, make_const_span(cfg_content));
                 };
 

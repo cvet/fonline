@@ -1501,7 +1501,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto strong_ref_count() const noexcept -> size_t
     {
-        const int64_t refs = _strongRefs.load(std::memory_order_relaxed);
+        int64_t refs = _strongRefs.load(std::memory_order_relaxed);
         return refs > 0 ? static_cast<size_t>(refs) : 0;
     }
 

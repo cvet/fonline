@@ -80,7 +80,7 @@ auto TextureAtlasLayout::FindBestFitScore(isize32 size) -> optional<FitScore>
         RebuildFreeRectangles();
     }
 
-    const optional<Placement> placement = FindBestPlacement(size);
+    optional<Placement> placement = FindBestPlacement(size);
     return placement ? optional<FitScore> {placement->Score} : std::nullopt;
 }
 
@@ -97,7 +97,7 @@ auto TextureAtlasLayout::Allocate(isize32 size) -> unique_del_nptr<Allocation>
         RebuildFreeRectangles();
     }
 
-    const optional<Placement> placement = FindBestPlacement(size);
+    optional<Placement> placement = FindBestPlacement(size);
 
     if (!placement) {
         return {};
@@ -138,7 +138,7 @@ void TextureAtlasLayout::DrawDumpOverlay(span<ucolor> pixels) const
 
     FO_VERIFY_AND_THROW(pixels.size() == GetArea(_size), "Atlas dump pixel count does not match atlas dimensions", pixels.size(), _size);
 
-    for (const auto allocation : _activeAllocations) {
+    for (auto allocation : _activeAllocations) {
         DrawAllocationOverlay(*allocation, pixels);
     }
 }
@@ -149,13 +149,13 @@ auto TextureAtlasLayout::FindBestPlacement(isize32 size) const noexcept -> optio
 
     optional<Placement> best_placement;
 
-    for (const irect32 free_rectangle : _freeRectangles) {
+    for (irect32 free_rectangle : _freeRectangles) {
         if (free_rectangle.width < size.width || free_rectangle.height < size.height) {
             continue;
         }
 
-        const int32_t remaining_width = free_rectangle.width - size.width;
-        const int32_t remaining_height = free_rectangle.height - size.height;
+        int32_t remaining_width = free_rectangle.width - size.width;
+        int32_t remaining_height = free_rectangle.height - size.height;
         Placement candidate {
             .Rectangle = {free_rectangle.pos(), size},
             .Score =
@@ -170,13 +170,13 @@ auto TextureAtlasLayout::FindBestPlacement(isize32 size) const noexcept -> optio
                 },
         };
 
-        const auto candidate_score = std::tie(candidate.Score.ShortSideFit, candidate.Score.LongSideFit, candidate.Score.AreaWaste, candidate.Score.Y, candidate.Score.X, candidate.Score.FreeWidth, candidate.Score.FreeHeight);
+        auto candidate_score = std::tie(candidate.Score.ShortSideFit, candidate.Score.LongSideFit, candidate.Score.AreaWaste, candidate.Score.Y, candidate.Score.X, candidate.Score.FreeWidth, candidate.Score.FreeHeight);
 
         if (!best_placement) {
             best_placement = candidate;
         }
         else {
-            const auto best_score = std::tie(best_placement->Score.ShortSideFit, best_placement->Score.LongSideFit, best_placement->Score.AreaWaste, best_placement->Score.Y, best_placement->Score.X, best_placement->Score.FreeWidth, best_placement->Score.FreeHeight);
+            auto best_score = std::tie(best_placement->Score.ShortSideFit, best_placement->Score.LongSideFit, best_placement->Score.AreaWaste, best_placement->Score.Y, best_placement->Score.X, best_placement->Score.FreeWidth, best_placement->Score.FreeHeight);
 
             if (candidate_score < best_score) {
                 best_placement = candidate;
@@ -208,10 +208,10 @@ void TextureAtlasLayout::Release(ptr<Allocation> allocation) noexcept
     FO_STRONG_ASSERT(allocation->_layout == this, "Atlas allocation belongs to another layout");
     FO_STRONG_ASSERT(allocation->_active, "Atlas allocation is already inactive");
     FO_STRONG_ASSERT(allocation->_activeIndex < _activeAllocations.size() && _activeAllocations[allocation->_activeIndex] == allocation, "Atlas active allocation index is inconsistent", allocation->_activeIndex, _activeAllocations.size());
-    const size_t allocation_area = GetArea(allocation->_rectangle.size());
+    size_t allocation_area = GetArea(allocation->_rectangle.size());
     FO_STRONG_ASSERT(_usedArea >= allocation_area, "Atlas used area underflow", _usedArea, allocation->_rectangle);
 
-    const size_t released_index = allocation->_activeIndex;
+    size_t released_index = allocation->_activeIndex;
     auto moved_allocation = _activeAllocations.back();
     _activeAllocations[released_index] = moved_allocation;
     moved_allocation->_activeIndex = released_index;
@@ -234,13 +234,13 @@ void TextureAtlasLayout::RebuildFreeRectangles()
     vector<irect32> used_rectangles;
     used_rectangles.reserve(_activeAllocations.size());
 
-    for (const auto allocation : _activeAllocations) {
+    for (auto allocation : _activeAllocations) {
         used_rectangles.emplace_back(allocation->_rectangle);
     }
 
     std::sort(used_rectangles.begin(), used_rectangles.end());
 
-    for (const irect32 used_rectangle : used_rectangles) {
+    for (irect32 used_rectangle : used_rectangles) {
         SplitFreeRectangles(rebuilt_free_rectangles, used_rectangle);
     }
 
@@ -255,16 +255,16 @@ void TextureAtlasLayout::SplitFreeRectangles(vector<irect32>& free_rectangles, i
     vector<irect32> split_rectangles;
     split_rectangles.reserve(free_rectangles.size() * 2);
 
-    for (const irect32 free_rectangle : free_rectangles) {
+    for (irect32 free_rectangle : free_rectangles) {
         if (!Intersects(free_rectangle, used_rectangle)) {
             split_rectangles.emplace_back(free_rectangle);
             continue;
         }
 
-        const int32_t free_right = free_rectangle.x + free_rectangle.width;
-        const int32_t free_bottom = free_rectangle.y + free_rectangle.height;
-        const int32_t used_right = used_rectangle.x + used_rectangle.width;
-        const int32_t used_bottom = used_rectangle.y + used_rectangle.height;
+        int32_t free_right = free_rectangle.x + free_rectangle.width;
+        int32_t free_bottom = free_rectangle.y + free_rectangle.height;
+        int32_t used_right = used_rectangle.x + used_rectangle.width;
+        int32_t used_bottom = used_rectangle.y + used_rectangle.height;
 
         if (used_rectangle.y > free_rectangle.y && used_rectangle.y < free_bottom) {
             split_rectangles.emplace_back(free_rectangle.x, free_rectangle.y, free_rectangle.width, used_rectangle.y - free_rectangle.y);
@@ -299,7 +299,7 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
                 continue;
             }
 
-            const bool duplicate_with_earlier = free_rectangles[i] == free_rectangles[j] && j < i;
+            bool duplicate_with_earlier = free_rectangles[i] == free_rectangles[j] && j < i;
 
             if (Contains(free_rectangles[j], free_rectangles[i]) && (free_rectangles[i] != free_rectangles[j] || duplicate_with_earlier)) {
                 contained = true;
@@ -319,11 +319,11 @@ void TextureAtlasLayout::DrawAllocationOverlay(const Allocation& allocation, spa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ipos32 allocation_pos = allocation.GetPosition();
-    const isize32 allocation_size = allocation.GetSize();
-    const ipos32 sprite_origin = {allocation_pos.x + ATLAS_SPRITES_PADDING, allocation_pos.y + ATLAS_SPRITES_PADDING};
-    const ipos32 sprite_end = {allocation_pos.x + allocation_size.width - ATLAS_SPRITES_PADDING, allocation_pos.y + allocation_size.height - ATLAS_SPRITES_PADDING};
-    const auto sprite_mesh = allocation.GetSpriteMesh();
+    ipos32 allocation_pos = allocation.GetPosition();
+    isize32 allocation_size = allocation.GetSize();
+    ipos32 sprite_origin = {allocation_pos.x + ATLAS_SPRITES_PADDING, allocation_pos.y + ATLAS_SPRITES_PADDING};
+    ipos32 sprite_end = {allocation_pos.x + allocation_size.width - ATLAS_SPRITES_PADDING, allocation_pos.y + allocation_size.height - ATLAS_SPRITES_PADDING};
+    auto sprite_mesh = allocation.GetSpriteMesh();
 
     if (!sprite_mesh) {
         DrawAtlasDumpLine(pixels, _size, sprite_origin, {sprite_end.x, sprite_origin.y}, ATLAS_DUMP_QUAD_COLOR);
@@ -337,24 +337,24 @@ void TextureAtlasLayout::DrawAllocationOverlay(const Allocation& allocation, spa
     }
     else {
         for (size_t i = 0; i + 2 < sprite_mesh->Indices.size(); i += 3) {
-            const uint16_t index_a = sprite_mesh->Indices[i];
-            const uint16_t index_b = sprite_mesh->Indices[i + 1];
-            const uint16_t index_c = sprite_mesh->Indices[i + 2];
+            uint16_t index_a = sprite_mesh->Indices[i];
+            uint16_t index_b = sprite_mesh->Indices[i + 1];
+            uint16_t index_c = sprite_mesh->Indices[i + 2];
 
             if (index_a >= sprite_mesh->Vertices.size() || index_b >= sprite_mesh->Vertices.size() || index_c >= sprite_mesh->Vertices.size()) {
                 continue;
             }
 
-            const ipos32 a = sprite_origin + sprite_mesh->Vertices[index_a];
-            const ipos32 b = sprite_origin + sprite_mesh->Vertices[index_b];
-            const ipos32 c = sprite_origin + sprite_mesh->Vertices[index_c];
+            ipos32 a = sprite_origin + sprite_mesh->Vertices[index_a];
+            ipos32 b = sprite_origin + sprite_mesh->Vertices[index_b];
+            ipos32 c = sprite_origin + sprite_mesh->Vertices[index_c];
             DrawAtlasDumpLine(pixels, _size, a, b, ATLAS_DUMP_MESH_COLOR);
             DrawAtlasDumpLine(pixels, _size, b, c, ATLAS_DUMP_MESH_COLOR);
             DrawAtlasDumpLine(pixels, _size, c, a, ATLAS_DUMP_MESH_COLOR);
         }
 
-        for (const ipos32 vertex : sprite_mesh->Vertices) {
-            const ipos32 vertex_pos = sprite_origin + vertex;
+        for (ipos32 vertex : sprite_mesh->Vertices) {
+            ipos32 vertex_pos = sprite_origin + vertex;
 
             if (_size.is_valid_pos(vertex_pos)) {
                 pixels[numeric_cast<size_t>(vertex_pos.y) * _size.width + vertex_pos.x] = ATLAS_DUMP_VERTEX_COLOR;
@@ -367,10 +367,10 @@ void TextureAtlasLayout::DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_si
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32_t dx = std::abs(to.x - from.x);
-    const int32_t sx = from.x < to.x ? 1 : -1;
-    const int32_t dy = -std::abs(to.y - from.y);
-    const int32_t sy = from.y < to.y ? 1 : -1;
+    int32_t dx = std::abs(to.x - from.x);
+    int32_t sx = from.x < to.x ? 1 : -1;
+    int32_t dy = -std::abs(to.y - from.y);
+    int32_t sy = from.y < to.y ? 1 : -1;
     int32_t error = dx + dy;
 
     while (true) {
@@ -382,7 +382,7 @@ void TextureAtlasLayout::DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_si
             break;
         }
 
-        const int32_t double_error = error * 2;
+        int32_t double_error = error * 2;
 
         if (double_error >= dy) {
             error += dy;
@@ -484,7 +484,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     FO_VERIFY_AND_THROW(size.width <= std::numeric_limits<int32_t>::max() - ATLAS_SPRITES_PADDING * 2, "Requested atlas allocation width overflows padding", size.width);
     FO_VERIFY_AND_THROW(size.height <= std::numeric_limits<int32_t>::max() - ATLAS_SPRITES_PADDING * 2, "Requested atlas allocation height overflows padding", size.height);
 
-    const isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
+    isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
         for (auto& check_atlas : _allAtlases) {
@@ -492,20 +492,20 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
                 continue;
             }
 
-            const optional<TextureAtlasLayout::FitScore> check_fit = check_atlas->GetLayout()->FindBestFitScore(size_with_padding);
+            optional<TextureAtlasLayout::FitScore> check_fit = check_atlas->GetLayout()->FindBestFitScore(size_with_padding);
 
             if (!check_fit) {
                 continue;
             }
 
-            const auto check_score = std::tie(check_fit->ShortSideFit, check_fit->LongSideFit, check_fit->AreaWaste);
+            auto check_score = std::tie(check_fit->ShortSideFit, check_fit->LongSideFit, check_fit->AreaWaste);
 
             if (!best_fit) {
                 atlas = check_atlas;
                 best_fit = check_fit;
             }
             else {
-                const auto best_score = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
+                auto best_score = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
 
                 if (check_score < best_score) {
                     atlas = check_atlas;
@@ -531,8 +531,8 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     FO_VERIFY_AND_THROW(atlas, "Atlas placement is missing its atlas");
     FO_VERIFY_AND_THROW(atlas_allocation, "Atlas placement is missing its allocation");
 
-    const ipos32 allocation_pos = atlas_allocation->GetPosition();
-    const ipos32 pos = {allocation_pos.x + ATLAS_SPRITES_PADDING, allocation_pos.y + ATLAS_SPRITES_PADDING};
+    ipos32 allocation_pos = atlas_allocation->GetPosition();
+    ipos32 pos = {allocation_pos.x + ATLAS_SPRITES_PADDING, allocation_pos.y + ATLAS_SPRITES_PADDING};
 
     return {atlas, take_not_null(atlas_allocation), pos};
 }
@@ -544,12 +544,12 @@ void TextureAtlasManager::DumpAtlases() const
     size_t atlases_memory_size = 0;
 
     for (size_t i = 0; i < _allAtlases.size(); i++) {
-        const isize32 atlas_size = _allAtlases[i]->GetSize();
+        isize32 atlas_size = _allAtlases[i]->GetSize();
         atlases_memory_size += numeric_cast<size_t>(atlas_size.width) * numeric_cast<size_t>(atlas_size.height) * sizeof(ucolor);
     }
 
-    const auto time = nanotime::now().desc(true);
-    const string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    time_desc_t time = nanotime::now().desc(true);
+    string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
@@ -574,7 +574,7 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
+        string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
         auto tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
         atlas->GetLayout()->DrawDumpOverlay(tex_data);
         WriteSimpleTga(fname, atlas->GetSize(), std::move(tex_data));

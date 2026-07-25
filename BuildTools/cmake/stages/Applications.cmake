@@ -132,6 +132,26 @@ if(FO_BUILD_MAPPER)
         LINK_LIBS AppFrontend MapperLib ClientLib BakerLib
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
+
+    AddExecutableApplication(${FO_DEV_NAME}_AnimationViewer "${FO_ENGINE_ROOT}/Source/Applications/AnimationViewerApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_ANIMATION_VIEWER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_AnimationViewer
+        TESTING_APP 0
+        LINK_LIBS AppFrontend AnimationViewerLib ClientLib BakerLib
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
+
+    AddExecutableApplication(${FO_DEV_NAME}_ParticleViewer "${FO_ENGINE_ROOT}/Source/Applications/ParticleViewerApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_PARTICLE_VIEWER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ParticleViewer
+        TESTING_APP 0
+        LINK_LIBS AppFrontend ParticleViewerLib ClientLib BakerLib
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_ASCOMPILER)

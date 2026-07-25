@@ -40,7 +40,7 @@ static auto GetRequiredSpriteInfoValue(const map<string_view, string_view>& valu
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = values.find(key);
+    auto it = values.find(key);
     FO_VERIFY_AND_THROW(it != values.end(), "Sprite info section is missing a required key", file_name, section_name, key);
     return it->second;
 }
@@ -49,15 +49,15 @@ static auto ParseSpriteInfoIntValues(const map<string_view, string_view>& values
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<string_view> tokens = strvex(GetRequiredSpriteInfoValue(values, file_name, section_name, key)).split(' ');
+    vector<string_view> tokens = strvex(GetRequiredSpriteInfoValue(values, file_name, section_name, key)).split(' ');
     vector<int32_t> result;
     result.reserve(tokens.size());
 
-    for (const string_view token : tokens) {
+    for (string_view token : tokens) {
         int32_t value {};
         auto token_begin = make_nptr(token.data());
         ptr<const char> token_end = token_begin.offset(token.size());
-        const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
+        auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
         FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Sprite info integer contains invalid text", file_name, section_name, key, token);
         result.emplace_back(value);
     }
@@ -69,7 +69,7 @@ static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, s
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<int32_t> parsed_values = ParseSpriteInfoIntValues(values, file_name, section_name, key);
+    vector<int32_t> parsed_values = ParseSpriteInfoIntValues(values, file_name, section_name, key);
     FO_VERIFY_AND_THROW(parsed_values.size() == 1, "Sprite info scalar must contain exactly one value", file_name, section_name, key, parsed_values.size());
     return parsed_values.front();
 }
@@ -96,10 +96,10 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);
         FO_VERIFY_AND_THROW(resource_paths.emplace(entry.ResourcePath).second, "Sprite info resource contains a duplicate resource path", file_name, entry.ResourcePath);
 
-        const int32_t info_version = ParseSpriteInfoScalar(values, file_name, section_name, "InfoVersion");
-        const int32_t frame_count = ParseSpriteInfoScalar(values, file_name, section_name, "FrameCount");
-        const int32_t duration_ms = ParseSpriteInfoScalar(values, file_name, section_name, "DurationMs");
-        const int32_t direction_count = ParseSpriteInfoScalar(values, file_name, section_name, "DirectionCount");
+        int32_t info_version = ParseSpriteInfoScalar(values, file_name, section_name, "InfoVersion");
+        int32_t frame_count = ParseSpriteInfoScalar(values, file_name, section_name, "FrameCount");
+        int32_t duration_ms = ParseSpriteInfoScalar(values, file_name, section_name, "DurationMs");
+        int32_t direction_count = ParseSpriteInfoScalar(values, file_name, section_name, "DirectionCount");
         FO_VERIFY_AND_THROW(info_version == SPRITE_INFO_VERSION, "Sprite info version is unsupported", file_name, section_name, info_version, SPRITE_INFO_VERSION);
         FO_VERIFY_AND_THROW(frame_count > 0, "Sprite info frame count must be positive", file_name, section_name, frame_count);
         FO_VERIFY_AND_THROW(duration_ms >= 0, "Sprite info duration must not be negative", file_name, section_name, duration_ms);
@@ -109,14 +109,14 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         entry.Info.Duration = std::chrono::milliseconds {duration_ms};
         entry.Info.Directions.resize(numeric_cast<size_t>(direction_count));
 
-        const vector<int32_t> shared_frame_indices = ParseSpriteInfoIntValues(values, file_name, section_name, "SharedFrameIndices");
-        const vector<int32_t> offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "OffsetsX");
-        const vector<int32_t> offsets_y = ParseSpriteInfoIntValues(values, file_name, section_name, "OffsetsY");
-        const vector<int32_t> widths = ParseSpriteInfoIntValues(values, file_name, section_name, "Widths");
-        const vector<int32_t> heights = ParseSpriteInfoIntValues(values, file_name, section_name, "Heights");
-        const vector<int32_t> next_offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsX");
-        const vector<int32_t> next_offsets_y = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsY");
-        const size_t value_count = numeric_cast<size_t>(frame_count) * numeric_cast<size_t>(direction_count);
+        vector<int32_t> shared_frame_indices = ParseSpriteInfoIntValues(values, file_name, section_name, "SharedFrameIndices");
+        vector<int32_t> offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "OffsetsX");
+        vector<int32_t> offsets_y = ParseSpriteInfoIntValues(values, file_name, section_name, "OffsetsY");
+        vector<int32_t> widths = ParseSpriteInfoIntValues(values, file_name, section_name, "Widths");
+        vector<int32_t> heights = ParseSpriteInfoIntValues(values, file_name, section_name, "Heights");
+        vector<int32_t> next_offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsX");
+        vector<int32_t> next_offsets_y = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsY");
+        size_t value_count = numeric_cast<size_t>(frame_count) * numeric_cast<size_t>(direction_count);
         FO_VERIFY_AND_THROW(shared_frame_indices.size() == value_count && offsets_x.size() == value_count && offsets_y.size() == value_count && widths.size() == value_count && heights.size() == value_count && next_offsets_x.size() == value_count && next_offsets_y.size() == value_count, "Sprite info frame arrays have different sizes", file_name, section_name, value_count, shared_frame_indices.size(), offsets_x.size(), offsets_y.size(), widths.size(), heights.size(), next_offsets_x.size(), next_offsets_y.size());
 
         size_t value_index = 0;
@@ -131,7 +131,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
                 frame.NextOffset = {next_offsets_x[value_index], next_offsets_y[value_index]};
                 FO_VERIFY_AND_THROW(frame.Size.width > 0 && frame.Size.height > 0, "Sprite info frame dimensions must be positive", file_name, section_name, value_index, frame.Size);
 
-                const int32_t shared_frame_index = shared_frame_indices[value_index];
+                int32_t shared_frame_index = shared_frame_indices[value_index];
 
                 if (shared_frame_index >= 0) {
                     FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite info shared frame points outside previously decoded frames", file_name, section_name, value_index, shared_frame_index, frame_index);
@@ -164,7 +164,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
     set<string_view> resource_paths;
     string result;
 
-    for (const size_t entry_index : entry_order) {
+    for (size_t entry_index : entry_order) {
         const SpriteInfoFileEntry& entry = entries[entry_index];
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty() && !entry.ResourcePath.empty(), "Sprite info file entry contains an empty path", entry.SourcePath, entry.ResourcePath);
         FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
@@ -181,7 +181,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
         string next_offsets_y;
         bool first_frame = true;
 
-        const auto append_value = [&first_frame](string& target, int32_t value) {
+        auto append_value = [&first_frame](string& target, int32_t value) {
             if (!first_frame) {
                 target += ' ';
             }
@@ -212,8 +212,8 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
             }
         }
 
-        const int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
-        const int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
+        int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
+        int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
         result += strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
     }
 
@@ -234,7 +234,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
         return {};
     }
 
-    const File info_file = resources.ReadFile(MODEL_ANIMATION_INFO_FILE_NAME);
+    File info_file = resources.ReadFile(MODEL_ANIMATION_INFO_FILE_NAME);
     FO_VERIFY_AND_THROW(info_file, "Model animation info resource is not readable", MODEL_ANIMATION_INFO_FILE_NAME);
 
     auto config = ConfigFile(info_file.GetStr());
@@ -277,56 +277,56 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
 
         FO_VERIFY_AND_THROW(key_values.count("BoundsVersion") != 0, "Model animation info section is missing its version", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
 
-        for (const string_view key : model_bounds_keys) {
+        for (string_view key : model_bounds_keys) {
             FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation info section is missing a required bounds key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
         }
 
-        const auto get_value = [&key_values, section_name](string_view key) -> string_view {
-            const auto it = key_values.find(key);
+        auto get_value = [&key_values, section_name](string_view key) -> string_view {
+            auto it = key_values.find(key);
             FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             return it->second;
         };
-        const auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
-            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
+        auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
+            vector<string_view> tokens = strvex(get_value(key)).split(' ');
             vector<int32_t> values;
             values.reserve(tokens.size());
 
-            for (const string_view token : tokens) {
+            for (string_view token : tokens) {
                 int32_t value {};
                 auto token_begin = make_nptr(token.data());
                 ptr<const char> token_end = token_begin.offset(token.size());
-                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
+                auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
                 FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Model animation info integer contains invalid text", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, token);
                 values.emplace_back(value);
             }
 
             return values;
         };
-        const auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
-            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
+        auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
+            vector<string_view> tokens = strvex(get_value(key)).split(' ');
             vector<float32_t> values;
             values.reserve(tokens.size());
 
-            for (const string_view token : tokens) {
+            for (string_view token : tokens) {
                 float32_t value {};
                 auto token_begin = make_nptr(token.data());
                 ptr<const char> token_end = token_begin.offset(token.size());
-                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
+                auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
                 FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get() && std::isfinite(value), "Model animation info scalar contains invalid text", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, token);
                 values.emplace_back(value);
             }
 
             return values;
         };
-        const auto has_any_key = [&key_values](const auto& keys) -> bool { return std::ranges::any_of(keys, [&key_values](string_view key) { return key_values.count(key) != 0; }); };
-        const bool has_animation_durations = has_any_key(animation_duration_keys);
-        const bool has_animation_bounds = has_any_key(animation_bounds_keys);
+        auto has_any_key = [&key_values](const auto& keys) -> bool { return std::ranges::any_of(keys, [&key_values](string_view key) { return key_values.count(key) != 0; }); };
+        bool has_animation_durations = has_any_key(animation_duration_keys);
+        bool has_animation_bounds = has_any_key(animation_bounds_keys);
 
-        const vector<int32_t> versions = parse_int_values("BoundsVersion");
+        vector<int32_t> versions = parse_int_values("BoundsVersion");
         FO_VERIFY_AND_THROW(versions.size() == 1 && versions.front() == numeric_cast<int32_t>(MODEL_BOUNDS_VERSION), "Model animation info version is unsupported", MODEL_ANIMATION_INFO_FILE_NAME, section_name, versions.size(), versions.empty() ? 0 : versions.front());
 
-        const auto parse_scalar = [&parse_float_values, section_name](string_view key) -> float32_t {
-            const vector<float32_t> values = parse_float_values(key);
+        auto parse_scalar = [&parse_float_values, section_name](string_view key) -> float32_t {
+            vector<float32_t> values = parse_float_values(key);
             FO_VERIFY_AND_THROW(values.size() == 1, "Model animation info bounds scalar must contain exactly one value", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key, values.size());
             return values.front();
         };
@@ -349,63 +349,63 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
         FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ViewBounds), "Model view bounds record is degenerate", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
 
         if (has_animation_durations) {
-            for (const string_view key : animation_duration_keys) {
+            for (string_view key : animation_duration_keys) {
                 FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation duration section is missing a required key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             }
 
-            const vector<int32_t> state_anims = parse_int_values("StateAnimations");
-            const vector<int32_t> action_anims = parse_int_values("ActionAnimations");
-            const vector<int32_t> durations_ms = parse_int_values("DurationsMs");
-            const size_t duration_count = state_anims.size();
+            vector<int32_t> state_anims = parse_int_values("StateAnimations");
+            vector<int32_t> action_anims = parse_int_values("ActionAnimations");
+            vector<int32_t> durations_ms = parse_int_values("DurationsMs");
+            size_t duration_count = state_anims.size();
             FO_VERIFY_AND_THROW(duration_count != 0, "Model animation duration section contains no records", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
             FO_VERIFY_AND_THROW(action_anims.size() == duration_count && durations_ms.size() == duration_count, "Model animation duration arrays have different sizes", MODEL_ANIMATION_INFO_FILE_NAME, section_name, duration_count, action_anims.size(), durations_ms.size());
             section_info.AnimationDurations.reserve(duration_count);
 
             for (size_t i = 0; i < duration_count; i++) {
-                const CritterStateAnim state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
-                const CritterActionAnim action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
+                CritterStateAnim state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
+                CritterActionAnim action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
                 FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], durations_ms[i]);
 
-                const bool inserted = section_info.AnimationDurations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]}).second;
+                bool inserted = section_info.AnimationDurations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]}).second;
                 FO_VERIFY_AND_THROW(inserted, "Model animation duration section contains a duplicate animation pair", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
             }
         }
 
         if (has_animation_bounds) {
-            for (const string_view key : animation_bounds_keys) {
+            for (string_view key : animation_bounds_keys) {
                 FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation bounds section is missing a required key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             }
 
-            const vector<int32_t> state_anims = parse_int_values("BoundsStateAnimations");
-            const vector<int32_t> action_anims = parse_int_values("BoundsActionAnimations");
-            const vector<float32_t> min_x = parse_float_values("BoundsMinX");
-            const vector<float32_t> min_y = parse_float_values("BoundsMinY");
-            const vector<float32_t> min_z = parse_float_values("BoundsMinZ");
-            const vector<float32_t> max_x = parse_float_values("BoundsMaxX");
-            const vector<float32_t> max_y = parse_float_values("BoundsMaxY");
-            const vector<float32_t> max_z = parse_float_values("BoundsMaxZ");
-            const size_t bounds_count = state_anims.size();
+            vector<int32_t> state_anims = parse_int_values("BoundsStateAnimations");
+            vector<int32_t> action_anims = parse_int_values("BoundsActionAnimations");
+            vector<float32_t> min_x = parse_float_values("BoundsMinX");
+            vector<float32_t> min_y = parse_float_values("BoundsMinY");
+            vector<float32_t> min_z = parse_float_values("BoundsMinZ");
+            vector<float32_t> max_x = parse_float_values("BoundsMaxX");
+            vector<float32_t> max_y = parse_float_values("BoundsMaxY");
+            vector<float32_t> max_z = parse_float_values("BoundsMaxZ");
+            size_t bounds_count = state_anims.size();
             FO_VERIFY_AND_THROW(bounds_count != 0, "Model animation bounds section contains no records", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
             FO_VERIFY_AND_THROW(action_anims.size() == bounds_count && min_x.size() == bounds_count && min_y.size() == bounds_count && min_z.size() == bounds_count && max_x.size() == bounds_count && max_y.size() == bounds_count && max_z.size() == bounds_count, "Model animation bounds arrays have different sizes", MODEL_ANIMATION_INFO_FILE_NAME, section_name, bounds_count, action_anims.size(), min_x.size(), min_y.size(), min_z.size(), max_x.size(), max_y.size(), max_z.size());
             section_info.AnimationBounds.reserve(bounds_count);
 
             for (size_t i = 0; i < bounds_count; i++) {
-                const CritterStateAnim state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
-                const CritterActionAnim action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
-                const ModelBounds3D bounds {
+                CritterStateAnim state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
+                CritterActionAnim action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
+                ModelBounds3D bounds {
                     .Min = {min_x[i], min_y[i], min_z[i]},
                     .Max = {max_x[i], max_y[i], max_z[i]},
                 };
                 FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model animation bounds minimum exceeds maximum or contains a non-finite coordinate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i], bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
                 FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model animation bounds record is degenerate", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
 
-                const bool inserted = section_info.AnimationBounds.emplace(pair {state_anim, action_anim}, bounds).second;
+                bool inserted = section_info.AnimationBounds.emplace(pair {state_anim, action_anim}, bounds).second;
                 FO_VERIFY_AND_THROW(inserted, "Model animation bounds section contains a duplicate animation pair", MODEL_ANIMATION_INFO_FILE_NAME, section_name, state_anims[i], action_anims[i]);
             }
         }
 
-        const hstring resource_name = hash_resolver.ToHashedString(section_name);
-        const bool inserted = model_anim_infos.emplace(resource_name, std::move(section_info)).second;
+        hstring resource_name = hash_resolver.ToHashedString(section_name);
+        bool inserted = model_anim_infos.emplace(resource_name, std::move(section_info)).second;
         FO_VERIFY_AND_THROW(inserted, "Model animation info resource contains a duplicate section", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
     }
 
@@ -423,13 +423,13 @@ auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver)
     unordered_map<hstring, AnimationInfo> anim_infos;
 
     for (const FileHeader& file_header : resources.FilterFiles("foinfo", SPRITE_INFO_DIRECTORY)) {
-        const File info_file = File::Load(file_header);
+        File info_file = File::Load(file_header);
         FO_VERIFY_AND_THROW(info_file, "Sprite info resource is not readable", file_header.GetPath());
 
         vector<SpriteInfoFileEntry> sprite_entries = ReadSpriteInfoFile(info_file.GetPath(), info_file.GetStr());
 
         for (SpriteInfoFileEntry& sprite_entry : sprite_entries) {
-            const hstring resource_name = hash_resolver.ToHashedString(sprite_entry.ResourcePath);
+            hstring resource_name = hash_resolver.ToHashedString(sprite_entry.ResourcePath);
             AnimationInfo& anim_info = anim_infos[resource_name];
 
             if (!anim_info.Sprite.has_value()) {

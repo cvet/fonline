@@ -92,11 +92,11 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     // Collect files
     vector<File> filtered_files;
 
-    const auto check_file = [&](const File& file) -> bool {
-        const string_view path = file.GetPath();
-        const auto fofx = ConfigFile(file.GetStr());
-        const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-        const auto write_time = file.GetWriteTime();
+    auto check_file = [&](const File& file) -> bool {
+        string_view path = file.GetPath();
+        auto fofx = ConfigFile(file.GetStr());
+        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+        uint64_t write_time = file.GetWriteTime();
 
         for (int32_t pass = 1; pass <= passes; pass++) {
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
@@ -125,7 +125,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).get_file_extension();
+            string ext = strex(file_header.GetPath()).get_file_extension();
 
             if (ext != "fofx") {
                 continue;
@@ -151,7 +151,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
             return;
         }
 
-        const string base_name = strex(target_path).change_file_extension("fofx");
+        string base_name = strex(target_path).change_file_extension("fofx");
         auto file = files.FindFileByPath(base_name);
 
         if (!file) {
@@ -171,10 +171,10 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     vector<std::future<void>> file_bakings;
 
     for (auto& file_ : filtered_files) {
-        auto task_name = strex("BakeEffect-{}", file_.GetPath()).str();
+        string task_name = strex("BakeEffect-{}", file_.GetPath()).str();
         file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
-            const string_view path = file.GetPath();
-            const auto content = file.GetStr();
+            string_view path = file.GetPath();
+            string content = file.GetStr();
             BakeShaderProgram(path, content);
         }));
     }
@@ -208,19 +208,19 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 
     constexpr bool old_code_profile = false;
 
-    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-    const string shader_common_content = string(fofx.GetSectionContent("ShaderCommon"));
-    const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
-    const auto shader_version_str = strex("#version {} es\n", shader_version).str();
+    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+    string shader_common_content = string(fofx.GetSectionContent("ShaderCommon"));
+    int32_t shader_version = fofx.GetAsInt("Effect", "Version", 310);
+    string shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
-    const auto shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
+    string shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
     const auto shader_defines = strex("precision highp float;\n").str();
 #endif
-    const string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
-    const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
+    string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    string shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
-    for (auto pass = 1; pass <= passes; pass++) {
+    for (int32_t pass = 1; pass <= passes; pass++) {
         string vertex_pass_content = string(fofx.GetSectionContent(strex("VertexShader Pass{}", pass)));
         if (vertex_pass_content.empty()) {
             vertex_pass_content = string(fofx.GetSectionContent("VertexShader"));
@@ -338,8 +338,8 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         // Per-stage SDL_GPU descriptor slots for the SDL_GPU backend (see the flavor note at the top of this file).
-        const SdlStageSlots vert_sdl_slots = AssignSdlStageSlots(program, EShLangVertex, fname);
-        const SdlStageSlots frag_sdl_slots = AssignSdlStageSlots(program, EShLangFragment, fname);
+        SdlStageSlots vert_sdl_slots = AssignSdlStageSlots(program, EShLangVertex, fname);
+        SdlStageSlots frag_sdl_slots = AssignSdlStageSlots(program, EShLangFragment, fname);
 
         program_info += "\n[EffectInfoSdl]\n";
         program_info += strex("VertexSamplers = {}\n", vert_sdl_slots.Samplers.size());
@@ -360,9 +360,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             program_info += strex("Frag{} = {}\n", frag_sdl_slots.UniformBufs[i].first, i);
         }
 
-        const string_view fname_wo_ext = strvex(fname).erase_file_extension();
-        const nptr<const glslang::TIntermediate> vertex_intermediate = program.getIntermediate(EShLangVertex);
-        const nptr<const glslang::TIntermediate> fragment_intermediate = program.getIntermediate(EShLangFragment);
+        string_view fname_wo_ext = strvex(fname).erase_file_extension();
+        nptr<const glslang::TIntermediate> vertex_intermediate = program.getIntermediate(EShLangVertex);
+        nptr<const glslang::TIntermediate> fragment_intermediate = program.getIntermediate(EShLangFragment);
         FO_VERIFY_AND_THROW(vertex_intermediate, "Linked program has no vertex shader intermediate");
         FO_VERIFY_AND_THROW(fragment_intermediate, "Linked program has no fragment shader intermediate");
 
@@ -528,7 +528,7 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
         slots.UniformBufs.emplace_back(uniform_block.name, uniform_block.getBinding());
     }
 
-    const auto sort_and_check = [&fname](vector<pair<string, int32_t>>& resources, string_view resource_class, int32_t limit) {
+    auto sort_and_check = [&fname](vector<pair<string, int32_t>>& resources, string_view resource_class, int32_t limit) {
         std::sort(resources.begin(), resources.end(), [](const pair<string, int32_t>& res1, const pair<string, int32_t>& res2) { return res1.second < res2.second; });
 
         for (size_t i = 1; i < resources.size(); i++) {
@@ -568,12 +568,12 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
     unordered_map<uint32_t, uint32_t> var_storage_class;
 
     for (size_t pos = header_size; pos < spirv.size();) {
-        const uint32_t word_count = spirv[pos] >> 16;
-        const uint32_t opcode = spirv[pos] & 0xFFFF;
+        uint32_t word_count = spirv[pos] >> 16;
+        uint32_t opcode = spirv[pos] & 0xFFFF;
         FO_VERIFY_AND_THROW(word_count != 0 && pos + word_count <= spirv.size(), "Malformed SPIR-V instruction", fname);
 
         if (opcode == op_variable && word_count >= 4) {
-            const uint32_t storage_class = spirv[pos + 3];
+            uint32_t storage_class = spirv[pos + 3];
 
             if (storage_class == storage_class_uniform_constant || storage_class == storage_class_uniform) {
                 var_storage_class.emplace(spirv[pos + 2], storage_class);
@@ -593,27 +593,27 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
         uniform_buf_slots.emplace(numeric_cast<uint32_t>(sdl_slots.UniformBufs[i].second), numeric_cast<uint32_t>(i));
     }
 
-    const uint32_t sampler_set = is_vertex ? 0 : 2;
-    const uint32_t uniform_buf_set = is_vertex ? 1 : 3;
+    uint32_t sampler_set = is_vertex ? 0 : 2;
+    uint32_t uniform_buf_set = is_vertex ? 1 : 3;
 
     // Second pass: rewrite DescriptorSet / Binding decoration literals to the SDL_GPU convention
     size_t patched_bindings = 0;
     size_t patched_sets = 0;
 
     for (size_t pos = header_size; pos < spirv.size();) {
-        const uint32_t word_count = spirv[pos] >> 16;
-        const uint32_t opcode = spirv[pos] & 0xFFFF;
+        uint32_t word_count = spirv[pos] >> 16;
+        uint32_t opcode = spirv[pos] & 0xFFFF;
 
         if (opcode == op_decorate && word_count == 4) {
-            const auto var_it = var_storage_class.find(spirv[pos + 1]);
+            auto var_it = var_storage_class.find(spirv[pos + 1]);
 
             if (var_it != var_storage_class.end()) {
-                const bool is_sampler = var_it->second == storage_class_uniform_constant;
-                const uint32_t decoration = spirv[pos + 2];
+                bool is_sampler = var_it->second == storage_class_uniform_constant;
+                uint32_t decoration = spirv[pos + 2];
 
                 if (decoration == decoration_binding) {
                     const auto& slot_map = is_sampler ? sampler_slots : uniform_buf_slots;
-                    const auto slot_it = slot_map.find(spirv[pos + 3]);
+                    auto slot_it = slot_map.find(spirv[pos + 3]);
 
                     if (slot_it == slot_map.end()) {
                         throw EffectBakerException("Shader declares an unused resource, remove the dead declaration from the effect source", fname, is_sampler ? "sampler" : "uniform buffer", spirv[pos + 3]);
@@ -632,7 +632,7 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
         pos += word_count;
     }
 
-    const size_t expected_patches = sdl_slots.Samplers.size() + sdl_slots.UniformBufs.size();
+    size_t expected_patches = sdl_slots.Samplers.size() + sdl_slots.UniformBufs.size();
 
     if (patched_bindings != expected_patches || patched_sets != expected_patches) {
         throw EffectBakerException("SPIR-V descriptor decoration patching mismatch", fname, patched_bindings, patched_sets, expected_patches);
@@ -645,7 +645,7 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
 
     // Match the SDL_GPU Metal convention: uniform buffers at [[buffer(slot)]], sampled textures at [[texture(slot)]] + [[sampler(slot)]]
     // (vertex buffers are bound by SDL starting at [[buffer(14)]] and flow through [[stage_in]], so they never collide with uniform slots)
-    const auto stage = is_vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
+    auto stage = is_vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
 
     for (size_t i = 0; i < sdl_slots.Samplers.size(); i++) {
         spirv_cross::MSLResourceBinding binding;

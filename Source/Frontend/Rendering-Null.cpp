@@ -106,8 +106,8 @@ public:
 
         for (int32_t y = 0; y < size.height; y++) {
             for (int32_t x = 0; x < size.width; x++) {
-                const ipos32 src_pos {pos.x + x, pos.y + y};
-                const size_t dst_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x);
+                ipos32 src_pos {pos.x + x, pos.y + y};
+                size_t dst_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x);
                 result[dst_index] = _pixels[CalcTextureIndex(*this, src_pos)];
             }
         }
@@ -125,14 +125,14 @@ public:
             return;
         }
 
-        const int32_t pitch = use_dest_pitch ? Size.width : size.width;
-        const size_t required_size = (numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width);
+        int32_t pitch = use_dest_pitch ? Size.width : size.width;
+        size_t required_size = (numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width);
         FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
         for (int32_t y = 0; y < size.height; y++) {
             for (int32_t x = 0; x < size.width; x++) {
-                const ipos32 dst_pos {pos.x + x, pos.y + y};
-                const size_t src_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x);
+                ipos32 dst_pos {pos.x + x, pos.y + y};
+                size_t src_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x);
                 _pixels[CalcTextureIndex(*this, dst_pos)] = data[src_index];
             }
         }
@@ -166,8 +166,8 @@ public:
             return;
         }
 
-        const size_t upload_vertices = custom_vertices_size.value_or(VertCount);
-        const size_t upload_indices = custom_indices_size.value_or(IndCount);
+        size_t upload_vertices = custom_vertices_size.value_or(VertCount);
+        size_t upload_indices = custom_indices_size.value_or(IndCount);
 
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
@@ -213,7 +213,7 @@ static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& load
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fofx_content = loader(name);
+    auto fofx_content = loader(name);
 
     if (!fofx_content.empty()) {
         return fofx_content;
@@ -239,7 +239,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
+        size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
         FO_VERIFY_AND_THROW(draw_indices <= dbuf->IndCount - start_index, "Draw buffer index range is outside index buffer bounds", start_index, draw_indices, dbuf->IndCount);
 
@@ -307,12 +307,12 @@ auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float32_t r_l = right - left;
-    const float32_t t_b = top - bottom;
-    const float32_t f_n = farp - nearp;
-    const float32_t tx = -(right + left) / r_l;
-    const float32_t ty = -(top + bottom) / t_b;
-    const float32_t tz = -(farp + nearp) / f_n;
+    float32_t r_l = right - left;
+    float32_t t_b = top - bottom;
+    float32_t f_n = farp - nearp;
+    float32_t tx = -(right + left) / r_l;
+    float32_t ty = -(top + bottom) / t_b;
+    float32_t tz = -(farp + nearp) / f_n;
 
     mat44 result {1.0f};
 

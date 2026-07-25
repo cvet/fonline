@@ -199,7 +199,7 @@ namespace ClientEngineTest
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -209,7 +209,7 @@ namespace ClientEngineTest
 
     static auto MakeClientTestResources(vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
@@ -218,9 +218,9 @@ namespace ClientEngineTest
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestClientCritter");
-        const auto script_blob = MakeClientScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestClientCritter");
+        auto script_blob = MakeClientScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
@@ -274,7 +274,7 @@ namespace ClientEngineTest
 
         return MakeRuntimeModelMesh([&](DataWriter& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
-            const array<Vertex3D, 1> vertices {vertex};
+            array<Vertex3D, 1> vertices {vertex};
             writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
             writer.WriteObjectArray(const_span<Vertex3D> {vertices});
             writer.Write<uint32_t>(uint32_t {0});
@@ -359,7 +359,7 @@ f 1 2 3
     ModelMeshBaker baker(rig.MakeContext());
     baker.BakeFiles(rig.GetAllSourceFiles(), model_path);
 
-    const auto output_it = rig.Outputs.find(string(model_path));
+    auto output_it = rig.Outputs.find(string(model_path));
     REQUIRE(output_it != rig.Outputs.end());
 
     auto resources = MakeClientTestResources({{string {model_path}, output_it->second}});
@@ -391,10 +391,10 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 
     malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        const array<Vertex3D, 1> vertices {};
+        array<Vertex3D, 1> vertices {};
         writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
         writer.WriteObjectArray(const_span<Vertex3D> {vertices});
-        const array<vindex_t, 1> indices {vindex_t {1}};
+        array<vindex_t, 1> indices {vindex_t {1}};
         writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
         writer.WriteObjectArray(const_span<vindex_t> {indices});
         writer.WriteString({});
@@ -490,7 +490,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         malformed_resources.emplace_back("Models/DescriptionNestedCountBomb.fo3d", std::move(data));
     }
 
-    const array<pair<string_view, string_view>, 16> expected_failures {{
+    array<pair<string_view, string_view>, 16> expected_failures {{
         {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
         {"Models/IndexCountBomb.fbx", "mesh indices"},
         {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
@@ -537,7 +537,7 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
-    const auto critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
+    hstring critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
     auto critter_proto = client->GetProtoCritter(critter_pid);
     REQUIRE(static_cast<bool>(critter_proto));
 
@@ -563,7 +563,7 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
     int start_calls = 0;
     int loop_calls = 0;
@@ -617,7 +617,7 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
@@ -631,17 +631,17 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    const frect32 atlas_rect = {0.25f, 0.5f, 0.5f, 0.25f};
-    const frect32 draw_rect = {100.0f, 200.0f, 20.0f, 40.0f};
-    const ucolor color_left = {10, 20, 30, 40};
-    const ucolor color_right = {110, 120, 130, 140};
+    frect32 atlas_rect = {0.25f, 0.5f, 0.5f, 0.25f};
+    frect32 draw_rect = {100.0f, 200.0f, 20.0f, 40.0f};
+    ucolor color_left = {10, 20, 30, 40};
+    ucolor color_right = {110, 120, 130, 140};
 
     SECTION("Absent mesh keeps the legacy quad")
     {
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
-        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
 
         REQUIRE(index_count == 6);
         REQUIRE(draw_buf->VertCount == 4);
@@ -663,7 +663,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
-        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
 
         CHECK(index_count == 0);
         CHECK_FALSE(sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect).has_value());
@@ -686,7 +686,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         draw_buf->Indices[0] = 0;
         draw_buf->IndCount = 1;
 
-        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
 
         REQUIRE(index_count == 3);
         REQUIRE(draw_buf->VertCount == 5);
@@ -751,7 +751,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
-        const optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(104.0f));
@@ -788,7 +788,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
-        const optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(100.0f));
@@ -820,7 +820,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Indices = {0, 1, 2};
 
         auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        const optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
+        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(105.0f));
@@ -838,7 +838,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         TextureAtlasLayout layout {{12, 12}};
         auto atlas_allocation = layout.Allocate({12, 12});
         REQUIRE(atlas_allocation);
-        const nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
+        nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
         SpriteMeshData mesh;
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
@@ -862,7 +862,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         TextureAtlasLayout layout {{12, 12}};
         auto atlas_allocation = layout.Allocate({12, 12});
         REQUIRE(atlas_allocation);
-        const nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
+        nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
         SpriteMeshData mesh;
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
@@ -870,7 +870,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
         {
             AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
-            const nptr<const SpriteMeshData> source_mesh = allocation_observer->GetSpriteMesh();
+            nptr<const SpriteMeshData> source_mesh = allocation_observer->GetSpriteMesh();
             AtlasSprite moved {std::move(source)};
 
             REQUIRE(allocation_observer->GetSpriteMesh());
@@ -896,7 +896,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
     mesh.Indices = {0, 1, 2};
 
-    const vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
+    vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
     SpriteMeshData cropped_mesh;
     cropped_mesh.SourceSize = {4, 3};
     cropped_mesh.SourceOffset = {1, -1};
@@ -910,11 +910,11 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     constexpr size_t mesh_vertices_offset = mesh_source_offset_offset + sizeof(int32_t) * 2;
     constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
 
-    const auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
+    auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>(value >> 8);
     };
-    const auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
+    auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>((value >> 8) & 0xFF);
         data[offset + 2] = numeric_cast<uint8_t>((value >> 16) & 0xFF);
@@ -983,7 +983,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
 
     client->SprMngr.GetResources()->AddCustomSource(std::move(source));
     DefaultSpriteFactory factory {&client->SprMngr};
-    const auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.ToHashedString(path), AtlasType::MapSprites); };
+    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.ToHashedString(path), AtlasType::MapSprites); };
 
     auto valid_sprite = load("ValidMesh.png");
     REQUIRE(static_cast<bool>(valid_sprite));
@@ -1013,7 +1013,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
     CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
     CHECK(restored_image->GetAtlasRect().height * restored_image->GetAtlas()->GetTexture()->SizeData[1] == Catch::Approx(3.0f));
-    const optional<AtlasSpriteRegion> restored_region = restored_image->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 4.0f, 3.0f});
+    optional<AtlasSpriteRegion> restored_region = restored_image->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 4.0f, 3.0f});
     REQUIRE(restored_region.has_value());
     CHECK(restored_region->DrawRect == frect32 {0.0f, 0.0f, 4.0f, 3.0f});
     CHECK(restored_region->TextureRect == restored_image->GetAtlasRect());
@@ -1076,8 +1076,8 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     CHECK(*pattern_draw.IndicesToDraw == 24);
     CHECK(pattern_draw.CustomTexture == atlas_sprite->GetBatchTexture());
 
-    const frect32 atlas_rect = atlas_sprite->GetAtlasRect();
-    const auto check_quad = [](const RecordedQuadDraw& draw, size_t vertex, frect32 draw_rect, frect32 texture_rect) {
+    frect32 atlas_rect = atlas_sprite->GetAtlasRect();
+    auto check_quad = [](const RecordedQuadDraw& draw, size_t vertex, frect32 draw_rect, frect32 texture_rect) {
         REQUIRE(vertex + 3 < draw.Vertices.size());
         CHECK(draw.Vertices[vertex + 0].PosX == Catch::Approx(draw_rect.x));
         CHECK(draw.Vertices[vertex + 0].PosY == Catch::Approx(draw_rect.y + draw_rect.height));
@@ -1124,10 +1124,10 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     CHECK_FALSE(effect_draw.IndicesToDraw.has_value());
     CHECK(effect_draw.CustomTexture == atlas_sprite->GetBatchTexture());
 
-    const float32_t texture_padding_x = atlas_sprite->GetAtlas()->GetTexture()->SizeData[2] * numeric_cast<float32_t>(padding);
-    const float32_t texture_padding_y = atlas_sprite->GetAtlas()->GetTexture()->SizeData[3] * numeric_cast<float32_t>(padding);
-    const frect32 effect_draw_rect {99.0f, 198.0f, 7.0f, 7.0f};
-    const frect32 effect_texture_rect {atlas_rect.x - texture_padding_x, atlas_rect.y - texture_padding_y, atlas_rect.width + texture_padding_x * 2.0f, atlas_rect.height + texture_padding_y * 2.0f};
+    float32_t texture_padding_x = atlas_sprite->GetAtlas()->GetTexture()->SizeData[2] * numeric_cast<float32_t>(padding);
+    float32_t texture_padding_y = atlas_sprite->GetAtlas()->GetTexture()->SizeData[3] * numeric_cast<float32_t>(padding);
+    frect32 effect_draw_rect {99.0f, 198.0f, 7.0f, 7.0f};
+    frect32 effect_texture_rect {atlas_rect.x - texture_padding_x, atlas_rect.y - texture_padding_y, atlas_rect.width + texture_padding_x * 2.0f, atlas_rect.height + texture_padding_y * 2.0f};
 
     CHECK(effect_draw.Vertices[0].PosX == Catch::Approx(effect_draw_rect.x));
     CHECK(effect_draw.Vertices[0].PosY == Catch::Approx(effect_draw_rect.y + effect_draw_rect.height));
@@ -1172,7 +1172,7 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
     CHECK(atlas_pos == ipos32 {1, 1});
     CHECK(atlas_allocation->GetPosition() == ipos32 {0, 0});
     CHECK(atlas_allocation->GetSize() == isize32 {12, 12});
-    const frect32 sprite_atlas_rect {
+    frect32 sprite_atlas_rect {
         numeric_cast<float32_t>(atlas_pos.x) / numeric_cast<float32_t>(atlas->GetSize().width),
         numeric_cast<float32_t>(atlas_pos.y) / numeric_cast<float32_t>(atlas->GetSize().height),
         10.0f / numeric_cast<float32_t>(atlas->GetSize().width),

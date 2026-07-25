@@ -169,9 +169,9 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto st = MakeErrorStackTrace(ex);
+        auto st = MakeErrorStackTrace(ex);
 
-        if (const auto callback = GetExceptionCallback()) {
+        if (auto callback = GetExceptionCallback()) {
             callback(ex.what(), st, true);
         }
         else {
@@ -203,9 +203,9 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto st = MakeErrorStackTrace(ex);
+        auto st = MakeErrorStackTrace(ex);
 
-        if (const auto callback = GetExceptionCallback()) {
+        if (auto callback = GetExceptionCallback()) {
             callback(ex.what(), st, false);
         }
         else {
@@ -386,7 +386,7 @@ static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
     FO_NO_STACK_TRACE_ENTRY();
 
     string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : string_view {"unknown"}).str();
-    const std::exception_ptr current_exception = std::current_exception();
+    std::exception_ptr current_exception = std::current_exception();
 
     if (current_exception) {
         try {

@@ -256,7 +256,7 @@ TEST_CASE("EngineMetadata")
         AddTestMigrationRule(meta, "OldField", "MiddleField");
         AddTestMigrationRule(meta, "MiddleField", "NewField");
 
-        const optional<hstring> resolved = ResolveTestMigrationRule(meta, "OldField");
+        optional<hstring> resolved = ResolveTestMigrationRule(meta, "OldField");
         REQUIRE(resolved.has_value());
         CHECK(resolved.value() == HashTestMigrationToken(meta, "NewField"));
     }
@@ -289,8 +289,8 @@ TEST_CASE("EngineMetadata")
     {
         EngineMetadata meta {[] { }};
         MigrationRulesMap migration_rules {};
-        const hstring rule_name = HashTestMigrationToken(meta, "Property");
-        const hstring extra_info = HashTestMigrationToken(meta, "Item");
+        hstring rule_name = HashTestMigrationToken(meta, "Property");
+        hstring extra_info = HashTestMigrationToken(meta, "Item");
 
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "OldField"), HashTestMigrationToken(meta, "MiddleField"));
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "MiddleField"), HashTestMigrationToken(meta, "OldField"));
@@ -307,7 +307,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources = MakeSpriteAnimationInfoResources();
         meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Test.png"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Test.png"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
@@ -324,7 +324,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
     SECTION("RejectsUnsupportedSpriteInfoVersion")
     {
         FileSystem resources = MakeSpriteAnimationInfoResources();
-        const File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
+        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
         string invalid_info = info_file.GetStr();
         invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
 
@@ -348,8 +348,8 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        const hstring model_name = meta.Hashes.ToHashedString("Critters/Test.fo3d");
-        const auto info = meta.GetAnimationInfo(model_name);
+        hstring model_name = meta.Hashes.ToHashedString("Critters/Test.fo3d");
+        auto info = meta.GetAnimationInfo(model_name);
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;
@@ -367,11 +367,11 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK(model_info.ViewBounds.Max.y == 0.5f);
         CHECK(model_info.ViewBounds.Max.z == 3.0f);
 
-        const auto walk_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Walk);
-        const auto run_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Run);
-        const auto idle_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Idle);
-        const auto walk_duration = model_info.AnimationDurations.find(walk_key);
-        const auto run_duration = model_info.AnimationDurations.find(run_key);
+        auto walk_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        auto run_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Run);
+        auto idle_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Idle);
+        auto walk_duration = model_info.AnimationDurations.find(walk_key);
+        auto run_duration = model_info.AnimationDurations.find(run_key);
         REQUIRE(walk_duration != model_info.AnimationDurations.end());
         REQUIRE(run_duration != model_info.AnimationDurations.end());
         CHECK(walk_duration->second.milliseconds() == 500);
@@ -381,7 +381,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK_FALSE(model_info.AnimationBounds.contains(run_key));
         CHECK_FALSE(model_info.AnimationDurations.contains(idle_key));
 
-        const auto idle_bounds = model_info.AnimationBounds.find(idle_key);
+        auto idle_bounds = model_info.AnimationBounds.find(idle_key);
         REQUIRE(idle_bounds != model_info.AnimationBounds.end());
         CHECK(idle_bounds->second.Min.x == -1.5f);
         CHECK(idle_bounds->second.Min.y == -0.75f);
@@ -397,7 +397,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        const auto static_info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
+        auto static_info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
         REQUIRE(static_cast<bool>(static_info));
         REQUIRE(static_info->Model.has_value());
         const ModelAnimationInfo& static_model_info = *static_info->Model;
@@ -486,7 +486,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS));
         meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;
@@ -501,7 +501,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS));
         meta.RegisterAnimationInfo(resources);
 
-        const auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;

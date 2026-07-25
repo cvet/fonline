@@ -130,7 +130,7 @@ static auto ReadInstructionPointer(ptr<const AngelScript::asDWORD> instruction, 
 
     static_assert(sizeof(AngelScript::asPWORD) == sizeof(void*));
 
-    const AngelScript::asPWORD address = ReadInstructionValue<AngelScript::asPWORD>(instruction, word_offset);
+    AngelScript::asPWORD address = ReadInstructionValue<AngelScript::asPWORD>(instruction, word_offset);
     return std::bit_cast<void*>(address);
 }
 
@@ -293,7 +293,7 @@ static auto GetAttributeBaseName(string_view attribute) noexcept -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto paren_pos = attribute.find('('); paren_pos != string_view::npos) {
+    if (auto paren_pos = attribute.find('('); paren_pos != string_view::npos) {
         return attribute.substr(0, paren_pos);
     }
 
@@ -332,8 +332,8 @@ static auto FormatAttributeError(nptr<const Preprocessor::LineNumberTranslator> 
         return strex("({},1): error : {}", line, message).str();
     }
 
-    const string_view orig_file = Preprocessor::ResolveOriginalFile(line, lnt.get());
-    const auto orig_line = Preprocessor::ResolveOriginalLine(line, lnt.get());
+    string_view orig_file = Preprocessor::ResolveOriginalFile(line, lnt.get());
+    auto orig_line = Preprocessor::ResolveOriginalLine(line, lnt.get());
     return strex("{}({},1): error : {}", orig_file, orig_line, message).str();
 }
 
@@ -341,19 +341,19 @@ static auto TryParseNamespaceDecl(LexemIt start, const Preprocessor::LexemList& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = NextSignificantLexem(start, lexems);
+    auto it = NextSignificantLexem(start, lexems);
 
     if (it == lexems.end() || !IsLexem(*it, Preprocessor::IDENTIFIER, "namespace")) {
         return std::nullopt;
     }
 
-    const auto name_it = NextSignificantLexem(std::next(it), lexems);
+    auto name_it = NextSignificantLexem(std::next(it), lexems);
 
     if (name_it == lexems.end() || name_it->Type != Preprocessor::IDENTIFIER) {
         return std::nullopt;
     }
 
-    const auto brace_it = NextSignificantLexem(std::next(name_it), lexems);
+    auto brace_it = NextSignificantLexem(std::next(name_it), lexems);
 
     if (brace_it == lexems.end() || !IsLexem(*brace_it, Preprocessor::OPEN, "{")) {
         return std::nullopt;
@@ -369,19 +369,19 @@ static auto TryParseTypeDecl(LexemIt start, const Preprocessor::LexemList& lexem
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = NextSignificantLexem(start, lexems);
+    auto it = NextSignificantLexem(start, lexems);
 
     if (it == lexems.end() || it->Type != Preprocessor::IDENTIFIER) {
         return std::nullopt;
     }
 
-    const auto keyword = string_view(it->Value);
+    string_view keyword = string_view(it->Value);
 
     if (keyword != "class" && keyword != "interface" && keyword != "mixin") {
         return std::nullopt;
     }
 
-    const auto name_it = NextSignificantLexem(std::next(it), lexems);
+    auto name_it = NextSignificantLexem(std::next(it), lexems);
 
     if (name_it == lexems.end() || name_it->Type != Preprocessor::IDENTIFIER) {
         return std::nullopt;
@@ -502,7 +502,7 @@ static auto TryParseFunctionDecl(LexemIt start, const Preprocessor::LexemList& l
     }
 
     if (it->Type == Preprocessor::IDENTIFIER) {
-        const auto keyword = string_view(it->Value);
+        string_view keyword = string_view(it->Value);
 
         if (keyword == "namespace" || keyword == "class" || keyword == "interface" || keyword == "enum" || keyword == "mixin" || keyword == "funcdef" || keyword == "typedef") {
             return std::nullopt;
@@ -531,7 +531,7 @@ static auto TryParseFunctionDecl(LexemIt start, const Preprocessor::LexemList& l
                     return std::nullopt;
                 }
 
-                const auto name = string_view(last_sig->Value);
+                string_view name = string_view(last_sig->Value);
 
                 if (name == "if" || name == "for" || name == "while" || name == "switch" || name == "catch") {
                     return std::nullopt;
@@ -698,10 +698,10 @@ static auto FindModuleObjectType(ptr<AngelScript::asIScriptModule> mod, string_v
     for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
         auto ti = make_ptr(mod->GetObjectTypeByIndex(i));
 
-        const nptr<const char> current_name_ptr = ti->GetName();
-        const nptr<const char> current_ns_ptr = ti->GetNamespace();
-        const auto current_name = current_name_ptr ? string_view {current_name_ptr.get()} : string_view {};
-        const auto current_ns = current_ns_ptr ? string_view {current_ns_ptr.get()} : string_view {};
+        nptr<const char> current_name_ptr = ti->GetName();
+        nptr<const char> current_ns_ptr = ti->GetNamespace();
+        string_view current_name = current_name_ptr ? string_view {current_name_ptr.get()} : string_view {};
+        string_view current_ns = current_ns_ptr ? string_view {current_ns_ptr.get()} : string_view {};
 
         if (current_name == object_type_name && current_ns == ns) {
             return ti;
@@ -728,7 +728,7 @@ static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScr
     }
 
     if (lnt) {
-        const auto line = numeric_cast<uint32_t>(row);
+        auto line = numeric_cast<uint32_t>(row);
         return pair {string {Preprocessor::ResolveOriginalFile(line, lnt.get())}, Preprocessor::ResolveOriginalLine(line, lnt.get())};
     }
 
@@ -777,7 +777,7 @@ static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFuncti
         return "<unknown>";
     }
 
-    const nptr<const char> declaration = func->GetDeclaration(true, true, false);
+    nptr<const char> declaration = func->GetDeclaration(true, true, false);
     return declaration ? declaration.get() : "<unknown>";
 }
 
@@ -787,7 +787,7 @@ static auto ResolveInstructionLocation(ptr<const AngelScript::asIScriptFunction>
 
     nptr<const AngelScript::asDWORD> best_instruction {};
     ScriptBytecodeLocation best_location;
-    const auto line_entry_count = numeric_cast<AngelScript::asUINT>(std::max(func->GetLineEntryCount(), 0));
+    auto line_entry_count = numeric_cast<AngelScript::asUINT>(std::max(func->GetLineEntryCount(), 0));
 
     for (AngelScript::asUINT i = 0; i < line_entry_count; i++) {
         int row = 0;
@@ -832,7 +832,7 @@ static auto FormatUsageErrorLocation(const ScriptBytecodeLocation& location, npt
     FO_STACK_TRACE_ENTRY();
 
     if (lnt) {
-        const auto line = numeric_cast<uint32_t>(location.Row);
+        auto line = numeric_cast<uint32_t>(location.Row);
         return strex("{}({},1)", Preprocessor::ResolveOriginalFile(line, lnt.get()), Preprocessor::ResolveOriginalLine(line, lnt.get())).str();
     }
 
@@ -847,7 +847,7 @@ static auto ShouldSkipAttributedUsageValidation(ptr<const AngelScript::asIScript
         return false;
     }
 
-    const nptr<const char> caller_ns = caller->GetNamespace();
+    nptr<const char> caller_ns = caller->GetNamespace();
     return IsScriptNamespaceAllowed(caller_ns ? caller_ns.get() : "", *allowed_namespaces);
 }
 
@@ -855,11 +855,11 @@ static auto MakeAttributedUsageError(ptr<const AngelScript::asIScriptFunction> c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto caller_decl = GetFunctionDeclarationString(caller);
-    const auto callee_decl = GetFunctionDeclarationString(callee);
-    auto message = strex("Attributed function '{}' cannot be called from function '{}'", callee_decl, caller_decl).str();
+    string caller_decl = GetFunctionDeclarationString(caller);
+    string callee_decl = GetFunctionDeclarationString(callee);
+    string message = strex("Attributed function '{}' cannot be called from function '{}'", callee_decl, caller_decl).str();
 
-    if (const auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
+    if (auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
         return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
     }
 
@@ -870,11 +870,11 @@ static auto MakeMarkerPropagationError(ptr<const AngelScript::asIScriptFunction>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto caller_decl = GetFunctionDeclarationString(caller);
-    const auto callee_decl = GetFunctionDeclarationString(callee);
-    auto message = strex("Function '{}' is marked [[{}]] but is called from '{}' which does not carry the same marker; add [[{}]] to the caller to propagate it", callee_decl, marker_name, caller_decl, marker_name).str();
+    string caller_decl = GetFunctionDeclarationString(caller);
+    string callee_decl = GetFunctionDeclarationString(callee);
+    string message = strex("Function '{}' is marked [[{}]] but is called from '{}' which does not carry the same marker; add [[{}]] to the caller to propagate it", callee_decl, marker_name, caller_decl, marker_name).str();
 
-    if (const auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
+    if (auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
         return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
     }
 
@@ -885,7 +885,7 @@ static auto ResolveInstructionFunction(ptr<const AngelScript::asDWORD> instructi
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
+    auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
 
     switch (opcode) {
     case AngelScript::asBC_CALL:
@@ -973,16 +973,16 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
             continue;
         }
 
-        const bool inside_other_scope = std::ranges::find(scope_stack, ScriptSourceScopeKind::Other) != scope_stack.end();
+        bool inside_other_scope = std::ranges::find(scope_stack, ScriptSourceScopeKind::Other) != scope_stack.end();
 
         if (!inside_other_scope) {
             if (auto attrs = TryParseAttributeSequence(it, lexems); attrs.has_value()) {
-                const auto attr_line = line;
+                uint32_t attr_line = line;
 
                 if (auto func = TryParseFunctionDecl(attrs->AfterAttributes, lexems); func.has_value()) {
-                    const auto ns = MakeNamespaceName(namespace_stack);
-                    const auto ti = MakeCurrentTypeName(type_stack);
-                    const auto ordinal = overload_indexes[{ns, ti, func->Name}]++;
+                    string ns = MakeNamespaceName(namespace_stack);
+                    string ti = MakeCurrentTypeName(type_stack);
+                    auto ordinal = overload_indexes[{ns, ti, func->Name}]++;
 
                     records.emplace_back(ParsedFunctionAttributeRecord {
                         .Namespace = ns,
@@ -995,7 +995,7 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
                     });
 
                     tokens_to_strip.insert(tokens_to_strip.end(), attrs->TokensToStrip.begin(), attrs->TokensToStrip.end());
-                    const auto next_it = std::next(func->Terminator);
+                    auto next_it = std::next(func->Terminator);
                     line += CountNewlines(it, next_it);
 
                     if (func->HasBody) {
@@ -1012,14 +1012,14 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
 
                 errors.append(FormatAttributeError(lnt, attr_line, "Function attribute must be placed directly before a function declaration"));
 
-                const auto next_it = attrs->AfterAttributes;
+                auto next_it = attrs->AfterAttributes;
                 line += CountNewlines(it, next_it);
                 it = next_it;
                 continue;
             }
 
             if (auto ns = TryParseNamespaceDecl(it, lexems); ns.has_value()) {
-                const auto next_it = std::next(ns->OpenBrace);
+                auto next_it = std::next(ns->OpenBrace);
                 line += CountNewlines(it, next_it);
                 scope_stack.emplace_back(ScriptSourceScopeKind::Namespace);
                 namespace_stack.emplace_back(ns->Name);
@@ -1028,7 +1028,7 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
             }
 
             if (auto type = TryParseTypeDecl(it, lexems); type.has_value()) {
-                const auto next_it = std::next(type->OpenBrace);
+                auto next_it = std::next(type->OpenBrace);
                 line += CountNewlines(it, next_it);
                 scope_stack.emplace_back(ScriptSourceScopeKind::Type);
                 type_stack.emplace_back(type->Name);
@@ -1037,11 +1037,11 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
             }
 
             if (auto func = TryParseFunctionDecl(it, lexems); func.has_value()) {
-                const auto ns = MakeNamespaceName(namespace_stack);
-                const auto ti = MakeCurrentTypeName(type_stack);
+                string ns = MakeNamespaceName(namespace_stack);
+                string ti = MakeCurrentTypeName(type_stack);
                 overload_indexes[{ns, ti, func->Name}]++;
 
-                const auto next_it = std::next(func->Terminator);
+                auto next_it = std::next(func->Terminator);
                 line += CountNewlines(it, next_it);
 
                 if (func->HasBody) {
@@ -1058,7 +1058,7 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
         }
         else if (IsLexem(*it, Preprocessor::CLOSE, "}")) {
             if (!scope_stack.empty()) {
-                const auto kind = scope_stack.back();
+                auto kind = scope_stack.back();
                 scope_stack.pop_back();
 
                 if (kind == ScriptSourceScopeKind::Namespace && !namespace_stack.empty()) {
@@ -1107,7 +1107,7 @@ auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFun
     FO_STACK_TRACE_ENTRY();
 
     vector<ParsedFunctionAttributeRecord> records;
-    const auto count = reader.Read<uint32_t>();
+    auto count = reader.Read<uint32_t>();
     records.reserve(count);
 
     for (uint32_t i = 0; i < count; i++) {
@@ -1117,7 +1117,7 @@ auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFun
         record.Name = reader.ReadString();
         record.OverloadIndex = reader.Read<uint32_t>();
 
-        const auto attrs_count = reader.Read<uint32_t>();
+        auto attrs_count = reader.Read<uint32_t>();
         record.Attributes.reserve(attrs_count);
 
         for (uint32_t j = 0; j < attrs_count; j++) {
@@ -1175,15 +1175,15 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                     continue;
                 }
 
-                const nptr<const char> func_name = func->GetName();
-                const nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
+                nptr<const char> func_name = func->GetName();
+                nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
 
                 if (object_type || !func_name || string_view {func_name.get()} != record.Name) {
                     continue;
                 }
 
-                const nptr<const char> func_ns = func->GetNamespace();
-                const auto ns = func_ns ? string_view {func_ns.get()} : string_view {};
+                nptr<const char> func_ns = func->GetNamespace();
+                string_view ns = func_ns ? string_view {func_ns.get()} : string_view {};
 
                 if (ns != record.Namespace) {
                     continue;
@@ -1205,7 +1205,7 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                     continue;
                 }
 
-                const nptr<const char> func_name = func->GetName();
+                nptr<const char> func_name = func->GetName();
 
                 if (!func_name || string_view {func_name.get()} != record.Name) {
                     continue;
@@ -1222,13 +1222,13 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
             nptr<AngelScript::asIScriptFunction> fallback_func {};
 
             for (ptr<AngelScript::asIScriptFunction> func : CollectModuleScriptFunctions(mod)) {
-                const nptr<const char> func_name = func->GetName();
+                nptr<const char> func_name = func->GetName();
 
                 if (!func_name || string_view {func_name.get()} != record.Name) {
                     continue;
                 }
 
-                const auto location = ResolveDeclaredFunctionSourceLocation(func, lnt);
+                auto location = ResolveDeclaredFunctionSourceLocation(func, lnt);
 
                 if (!location.has_value() || location->first != record.SourceFile || location->second != record.SourceLine) {
                     continue;
@@ -1268,7 +1268,7 @@ static auto ClassifyFunctionAttributes(ptr<const AngelScript::asIScriptFunction>
 
     if (auto user_data = GetFunctionAttributesUserData(func)) {
         for (const auto& attr : user_data->Attributes) {
-            const auto base = GetAttributeBaseName(attr);
+            string_view base = GetAttributeBaseName(attr);
 
             if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
                 has_blocking = true;
@@ -1284,7 +1284,7 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto funcs = CollectModuleScriptFunctions(mod);
+    auto funcs = CollectModuleScriptFunctions(mod);
     ptr<AngelScript::asIScriptEngine> engine = mod->GetEngine();
 
     string errors;
@@ -1306,8 +1306,8 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
             auto instruction = ByteCodeInstructionAt(bytecode, pos);
-            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
-            const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
+            auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
+            int32_t instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
 
             if (opcode == AngelScript::asBC_CALL || opcode == AngelScript::asBC_CALLSYS || opcode == AngelScript::asBC_CALLINTF || opcode == AngelScript::asBC_Thiscall1) {
                 nptr<const AngelScript::asIScriptFunction> target = engine->GetFunctionById(ReadInstructionFunctionId(instruction, 1));
@@ -1329,7 +1329,7 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
                 // Rule 2: marker attribute (any non-blocking attribute, e.g. [[Async]]) →
                 // caller must carry the same marker.
                 for (const auto& marker : target_markers) {
-                    const bool caller_has_marker = std::find(caller_markers.begin(), caller_markers.end(), marker) != caller_markers.end();
+                    bool caller_has_marker = std::find(caller_markers.begin(), caller_markers.end(), marker) != caller_markers.end();
 
                     if (!caller_has_marker) {
                         if (!errors.empty()) {
@@ -1365,15 +1365,15 @@ static auto TryParseAttributePriority(string_view raw_attribute, string_view att
         return false;
     }
 
-    const auto args = raw_attribute.substr(attribute_name.length() + 1, raw_attribute.length() - attribute_name.length() - 2);
+    auto args = raw_attribute.substr(attribute_name.length() + 1, raw_attribute.length() - attribute_name.length() - 2);
 
     if (args.empty() || args.find(',') != string_view::npos) {
         return false;
     }
 
-    auto parsed_priority = int32_t {};
-    const char* const begin = args.data();
-    const char* const end = begin + args.size();
+    int32_t parsed_priority = int32_t {};
+    const char* begin = args.data();
+    const char* end = begin + args.size();
     const auto [parsed_end, ec] = std::from_chars(begin, end, parsed_priority);
 
     if (ec != std::errc {} || parsed_end != end) {
@@ -1388,10 +1388,10 @@ static auto MakeSpecialAttributeError(ptr<const AngelScript::asIScriptFunction> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto func_decl = GetFunctionDeclarationString(func);
-    auto message = strex("Invalid attribute '[[{}]]' on function '{}': {}", raw_attribute, func_decl, details).str();
+    string func_decl = GetFunctionDeclarationString(func);
+    string message = strex("Invalid attribute '[[{}]]' on function '{}': {}", raw_attribute, func_decl, details).str();
 
-    if (const auto location = ResolveDeclaredFunctionSourceLocation(func, lnt); location.has_value()) {
+    if (auto location = ResolveDeclaredFunctionSourceLocation(func, lnt); location.has_value()) {
         return strex("{}({},1): error : {}", location->first, location->second, message).str();
     }
 
@@ -1424,7 +1424,7 @@ static void ValidateSpecialAttribute(string& errors, ptr<const AngelScript::asIS
         return;
     }
 
-    const nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
+    nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
 
     if (object_type) {
         AppendSpecialAttributeError(errors, func, raw_attribute, "only global functions can use this attribute", lnt);
@@ -1468,13 +1468,13 @@ static auto IsSupportedAdminRemoteCallSignature(ptr<const AngelScript::asIScript
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asIScriptEngine> engine = func->GetEngine();
-    const nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
+    nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
 
     if (object_type || func->GetReturnTypeId() != AngelScript::asTYPEID_VOID) {
         return false;
     }
 
-    const auto param_count = func->GetParamCount();
+    auto param_count = func->GetParamCount();
     AngelScript::asUINT first_payload_index = 0;
 
     if (param_count > 0) {
@@ -1494,7 +1494,7 @@ static auto IsSupportedAdminRemoteCallSignature(ptr<const AngelScript::asIScript
         }
     }
 
-    const auto payload_count = param_count - first_payload_index;
+    auto payload_count = param_count - first_payload_index;
 
     if (payload_count > 3) {
         return false;
@@ -1514,7 +1514,7 @@ static auto IsSupportedAdminRemoteCallSignature(ptr<const AngelScript::asIScript
     ignore_unused(first_payload_flags);
     ignore_unused(first_payload_name);
 
-    const bool expect_any = IsScriptTypeNamed(engine, first_payload_type_id, "any");
+    bool expect_any = IsScriptTypeNamed(engine, first_payload_type_id, "any");
 
     if (!expect_any && first_payload_type_id != AngelScript::asTYPEID_INT32) {
         return false;
@@ -1547,7 +1547,7 @@ auto ValidateAdminRemoteCallAttributes(ptr<AngelScript::asIScriptModule> mod, np
     string errors;
 
     for (ptr<AngelScript::asIScriptFunction> func : CollectModuleScriptFunctions(mod)) {
-        const auto raw_attribute = FindFunctionAttribute(func, "AdminRemoteCall");
+        string_view raw_attribute = FindFunctionAttribute(func, "AdminRemoteCall");
 
         if (raw_attribute.empty()) {
             continue;
@@ -1576,7 +1576,7 @@ static auto MatchesCallbackAttributeRule(nptr<const AngelScript::asIScriptFuncti
         return false;
     }
 
-    const nptr<const char> func_name = func->GetName();
+    nptr<const char> func_name = func->GetName();
 
     if ((func->GetFuncType() != AngelScript::asFUNC_SYSTEM && func->GetFuncType() != AngelScript::asFUNC_IMPORTED) || !func_name || string_view {func_name.get()} != rule.MethodName) {
         return false;
@@ -1586,8 +1586,8 @@ static auto MatchesCallbackAttributeRule(nptr<const AngelScript::asIScriptFuncti
         return true;
     }
 
-    const nptr<const char> object_name = func->GetObjectName();
-    const nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
+    nptr<const char> object_name = func->GetObjectName();
+    nptr<const AngelScript::asITypeInfo> object_type = func->GetObjectType();
     return object_type && object_name && string_view {object_name.get()}.ends_with(rule.ObjectTypeSuffix);
 }
 
@@ -1595,7 +1595,7 @@ static auto FindCallbackAttributeRuleByUsage(nptr<const AngelScript::asIScriptFu
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find_if(CALLBACK_ATTRIBUTE_RULES, [func](const auto& rule) { return MatchesCallbackAttributeRule(func, rule); });
+    auto it = std::ranges::find_if(CALLBACK_ATTRIBUTE_RULES, [func](const auto& rule) { return MatchesCallbackAttributeRule(func, rule); });
     return it != CALLBACK_ATTRIBUTE_RULES.end() ? &*it : nullptr;
 }
 
@@ -1603,7 +1603,7 @@ static auto FindCallbackAttributeRuleByAttribute(ptr<const AngelScript::asIScrip
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find_if(CALLBACK_ATTRIBUTE_RULES, [func](const auto& rule) { return HasFunctionAttribute(func, rule.AttributeName); });
+    auto it = std::ranges::find_if(CALLBACK_ATTRIBUTE_RULES, [func](const auto& rule) { return HasFunctionAttribute(func, rule.AttributeName); });
     return it != CALLBACK_ATTRIBUTE_RULES.end() ? &*it : nullptr;
 }
 
@@ -1636,7 +1636,7 @@ static auto IsDelegateFactoryFunction(nptr<const AngelScript::asIScriptFunction>
         return false;
     }
 
-    const nptr<const char> name = func->GetName();
+    nptr<const char> name = func->GetName();
     return name && string_view {name.get()} == "$dlgte";
 }
 
@@ -1644,9 +1644,9 @@ static auto MakeRestrictedCallbackUsageError(ptr<const AngelScript::asIScriptFun
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto callback_decl = GetFunctionDeclarationString(callback);
-    const auto caller_decl = GetFunctionDeclarationString(caller);
-    auto message = strex("Functions marked [[{}]] can only be passed to {}, '{}' is used outside of {} in script function '{}'", rule.AttributeName, rule.UsageName, callback_decl, rule.UsageName, caller_decl).str();
+    string callback_decl = GetFunctionDeclarationString(callback);
+    string caller_decl = GetFunctionDeclarationString(caller);
+    string message = strex("Functions marked [[{}]] can only be passed to {}, '{}' is used outside of {} in script function '{}'", rule.AttributeName, rule.UsageName, callback_decl, rule.UsageName, caller_decl).str();
 
     if (location.has_value()) {
         return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
@@ -1659,9 +1659,9 @@ static auto MakeMissingCallbackAttributeError(ptr<const AngelScript::asIScriptFu
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto callback_decl = GetFunctionDeclarationString(callback);
-    const auto caller_decl = GetFunctionDeclarationString(caller);
-    auto message = strex("Functions passed to {} must be marked [[{}]], '{}' is used without [[{}]] in script function '{}'", rule.UsageName, rule.AttributeName, callback_decl, rule.AttributeName, caller_decl).str();
+    string callback_decl = GetFunctionDeclarationString(callback);
+    string caller_decl = GetFunctionDeclarationString(caller);
+    string message = strex("Functions passed to {} must be marked [[{}]], '{}' is used without [[{}]] in script function '{}'", rule.UsageName, rule.AttributeName, callback_decl, rule.AttributeName, caller_decl).str();
 
     if (location.has_value()) {
         return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
@@ -1675,7 +1675,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
     FO_STACK_TRACE_ENTRY();
 
     string errors;
-    const auto funcs = CollectModuleScriptFunctions(mod);
+    auto funcs = CollectModuleScriptFunctions(mod);
     ptr<AngelScript::asIScriptEngine> engine = mod->GetEngine();
 
     for (ptr<AngelScript::asIScriptFunction> caller : funcs) {
@@ -1695,7 +1695,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
 
         auto pending = PendingCallbackTarget {};
 
-        const auto append_error = [&](string error) {
+        auto append_error = [&](string error) {
             if (!errors.empty()) {
                 errors.append("\n");
             }
@@ -1703,7 +1703,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
             errors.append(error);
         };
 
-        const auto report_restricted_usage = [&]() {
+        auto report_restricted_usage = [&]() {
             if (!pending.Target) {
                 return;
             }
@@ -1713,17 +1713,17 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
             }
         };
 
-        const auto clear_pending = [&]() { pending = {}; };
+        auto clear_pending = [&]() { pending = {}; };
 
         const_span<AngelScript::asDWORD> bytecode = ByteCodeSpan(bc, bc_length);
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
             auto instruction = ByteCodeInstructionAt(bytecode, pos);
-            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
-            const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
+            auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
+            int32_t instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
 
             if (pending.Target) {
-                const auto current_location = ResolveInstructionLocation(caller, instruction);
+                auto current_location = ResolveInstructionLocation(caller, instruction);
 
                 if (pending.Location.has_value() && current_location.has_value() && !IsSameSourceLine(pending.Location, current_location)) {
                     report_restricted_usage();
@@ -1745,8 +1745,8 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
                 }
 
                 if (pending.Target) {
-                    const auto call_location = ResolveInstructionLocation(caller, instruction);
-                    const auto same_line = pending.WrappedInDelegate || (!pending.Location.has_value() || !call_location.has_value()) ? true : IsSameSourceLine(pending.Location, call_location);
+                    auto call_location = ResolveInstructionLocation(caller, instruction);
+                    bool same_line = pending.WrappedInDelegate || (!pending.Location.has_value() || !call_location.has_value()) ? true : IsSameSourceLine(pending.Location, call_location);
                     auto usage_rule = FindCallbackAttributeRuleByUsage(target);
 
                     if (usage_rule && same_line) {

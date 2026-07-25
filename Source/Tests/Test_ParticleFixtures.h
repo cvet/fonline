@@ -207,7 +207,7 @@ namespace ParticleTests
     {
         FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex fixture must contain complete bytes", hex.size());
 
-        const auto decode_nibble = [](char ch) -> uint8_t {
+        auto decode_nibble = [](char ch) -> uint8_t {
             if (ch >= '0' && ch <= '9') {
                 return numeric_cast<uint8_t>(ch - '0');
             }
@@ -269,7 +269,7 @@ namespace ParticleTests
         FO_VERIFY_AND_THROW(result.size() == fixture_size && result[max_generation_offset] == 0xa0 && result[max_generation_offset + 1] == 0x0f && result[max_generation_offset + 2] == 0 && result[max_generation_offset + 3] == 0, "Effekseer Ring fixture layout changed");
         FO_VERIFY_AND_THROW(result[z_sort_offset - 8] == 0 && result[z_sort_offset - 7] == 0 && result[z_sort_offset - 6] == 0x80 && result[z_sort_offset - 5] == 0x3f && result[z_sort_offset - 4] == 0xff && result[z_sort_offset - 3] == 0xff && result[z_sort_offset - 2] == 0x7f && result[z_sort_offset - 1] == 0x7f && result[z_sort_offset] == 0 && result[z_sort_offset + 1] == 0 && result[z_sort_offset + 2] == 0 && result[z_sort_offset + 3] == 0, "Effekseer Ring fixture depth layout changed");
 
-        const uint32_t encoded_generation = numeric_cast<uint32_t>(max_generation);
+        uint32_t encoded_generation = numeric_cast<uint32_t>(max_generation);
         result[max_generation_offset] = numeric_cast<uint8_t>(encoded_generation & 0xff);
         result[max_generation_offset + 1] = numeric_cast<uint8_t>((encoded_generation >> 8) & 0xff);
         result[max_generation_offset + 2] = numeric_cast<uint8_t>((encoded_generation >> 16) & 0xff);

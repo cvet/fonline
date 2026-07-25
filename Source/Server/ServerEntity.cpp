@@ -252,7 +252,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     bool had_exception = false;
 
     // Iterate a copy — callbacks vector may be changed/invalidated during cycle work.
-    const small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
 
     for (const auto& cb : callbacks_snapshot) {
         EventResult result = EventResult::ContinueChain;

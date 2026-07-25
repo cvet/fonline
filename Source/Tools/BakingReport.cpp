@@ -87,7 +87,7 @@ void BakingReport::RecordBakerInvocation(string_view pack_name, string_view bake
     FO_STACK_TRACE_ENTRY();
 
     scoped_lock lock {_locker};
-    const auto update = [&](BakingReportBakerStats& stats, string_view stored_failure_message) {
+    auto update = [&](BakingReportBakerStats& stats, string_view stored_failure_message) {
         stats.Order = order;
         stats.Invocations++;
         stats.SuccessfulInvocations += success ? 1 : 0;
@@ -108,8 +108,8 @@ void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_na
     FO_STACK_TRACE_ENTRY();
 
     scoped_lock lock {_locker};
-    const string aggregate_path = strex(pack_name).combine_path(path).str();
-    const auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
+    string aggregate_path = strex(pack_name).combine_path(path).str();
+    auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
         stats.Outputs.CheckCalls++;
         stats.Outputs.ScheduledCheckCalls += scheduled ? 1 : 0;
         stats.Outputs.UpToDateCheckCalls += scheduled ? 0 : 1;
@@ -125,9 +125,9 @@ void BakingReport::RecordOutputSubmission(string_view pack_name, string_view bak
     FO_STACK_TRACE_ENTRY();
 
     scoped_lock lock {_locker};
-    const uint64_t output_size = numeric_cast<uint64_t>(size);
-    const string aggregate_path = strex(pack_name).combine_path(path).str();
-    const auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
+    uint64_t output_size = numeric_cast<uint64_t>(size);
+    string aggregate_path = strex(pack_name).combine_path(path).str();
+    auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
         stats.Outputs.SubmitCalls++;
         stats.Outputs.SubmittedBytes += output_size;
         stats.Outputs.SubmittedPathSizes[string(stored_path)] = output_size;
@@ -167,9 +167,9 @@ void BakingReport::RecordOutdatedFile(string_view path)
     scoped_lock lock {_locker};
     _outdatedFilesDeleted++;
 
-    const string normalized_path = strex(path).normalize_path_slashes().str();
-    const string_view pack_name = strvex(normalized_path).substring_until('/');
-    if (const auto it = _packs.find(pack_name); it != _packs.end()) {
+    string normalized_path = strex(path).normalize_path_slashes().str();
+    string_view pack_name = strvex(normalized_path).substring_until('/');
+    if (auto it = _packs.find(pack_name); it != _packs.end()) {
         it->second.OutdatedFilesDeleted++;
     }
 }
@@ -217,7 +217,7 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
 
     scoped_lock lock {_locker};
 
-    const auto update = [&](BakingReportSpriteMeshStats& stats, const SpriteMeshBakingFrameReport& stored_frame) {
+    auto update = [&](BakingReportSpriteMeshStats& stats, const SpriteMeshBakingFrameReport& stored_frame) {
         stats.Forms[stored_frame.Form]++;
         stats.PaddingHistogram[stored_frame.Padding]++;
         stats.SourceFramePixels += stored_frame.SourceFramePixels;
@@ -335,7 +335,7 @@ auto GetBakingReportPath(string_view bake_output) -> string
         return {};
     }
 
-    const string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
+    string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
     return strex(normalized_output).combine_path("Baking.report.json").str();
 }
 
@@ -347,7 +347,7 @@ auto GetFullBakingReportPath(string_view bake_output) -> string
         return {};
     }
 
-    const string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
+    string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
     return strex(normalized_output).combine_path("Baking.full.report.json").str();
 }
 
@@ -384,8 +384,8 @@ static void KeepLargestMissedSpriteFrames(vector<SpriteMeshBakingFrameReport>& f
 
     frames.emplace_back(frame);
     std::ranges::sort(frames, [](const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) {
-        const uint64_t left_savings = left.SourceFramePixels - left.VisiblePixels;
-        const uint64_t right_savings = right.SourceFramePixels - right.VisiblePixels;
+        uint64_t left_savings = left.SourceFramePixels - left.VisiblePixels;
+        uint64_t right_savings = right.SourceFramePixels - right.VisiblePixels;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
@@ -403,8 +403,8 @@ static void KeepLargestRejectedSpriteFrames(vector<SpriteMeshBakingFrameReport>&
 
     frames.emplace_back(frame);
     std::ranges::sort(frames, [](const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) {
-        const uint64_t left_savings = left.SourceFramePixels * 2 - left.BestRejectedCandidate->SubmittedGeometryDoubleArea;
-        const uint64_t right_savings = right.SourceFramePixels * 2 - right.BestRejectedCandidate->SubmittedGeometryDoubleArea;
+        uint64_t left_savings = left.SourceFramePixels * 2 - left.BestRejectedCandidate->SubmittedGeometryDoubleArea;
+        uint64_t right_savings = right.SourceFramePixels * 2 - right.BestRejectedCandidate->SubmittedGeometryDoubleArea;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
@@ -445,8 +445,8 @@ static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
 
     frames.emplace_back(frame);
     std::ranges::sort(frames, [](const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) {
-        const uint64_t left_overhead = left.BakedCanvasPixels - left.SourceFramePixels;
-        const uint64_t right_overhead = right.BakedCanvasPixels - right.SourceFramePixels;
+        uint64_t left_overhead = left.BakedCanvasPixels - left.SourceFramePixels;
+        uint64_t right_overhead = right.BakedCanvasPixels - right.SourceFramePixels;
         return left_overhead != right_overhead ? left_overhead > right_overhead : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
@@ -464,8 +464,8 @@ static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
 
     frames.emplace_back(frame);
     std::ranges::sort(frames, [](const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) {
-        const uint64_t left_savings = left.SourceFramePixels - left.BakedCanvasPixels;
-        const uint64_t right_savings = right.SourceFramePixels - right.BakedCanvasPixels;
+        uint64_t left_savings = left.SourceFramePixels - left.BakedCanvasPixels;
+        uint64_t right_savings = right.SourceFramePixels - right.BakedCanvasPixels;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
@@ -519,7 +519,7 @@ static auto MakeBakingReportPathSizeJson(const map<string, uint64_t>& path_sizes
     map<string, ExtensionStats> extensions;
     vector<pair<string, uint64_t>> largest;
     largest.reserve(path_sizes.size());
-    const uint64_t total_bytes = SumBakingReportPathSizes(path_sizes);
+    uint64_t total_bytes = SumBakingReportPathSizes(path_sizes);
 
     for (const auto& [path, size] : path_sizes) {
         string extension = strex(path).get_file_extension();
@@ -608,9 +608,9 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
     }
     if (frame.BestRejectedCandidate.has_value()) {
         const SpriteMeshBakingCandidateReport& candidate = *frame.BestRejectedCandidate;
-        const uint64_t reference_double_area = frame.SourceFramePixels * 2;
-        const uint64_t saved_double_area = reference_double_area >= candidate.SubmittedGeometryDoubleArea ? reference_double_area - candidate.SubmittedGeometryDoubleArea : 0;
-        const int64_t additional_triangles = numeric_cast<int64_t>(candidate.TriangleCount) - 2;
+        uint64_t reference_double_area = frame.SourceFramePixels * 2;
+        uint64_t saved_double_area = reference_double_area >= candidate.SubmittedGeometryDoubleArea ? reference_double_area - candidate.SubmittedGeometryDoubleArea : 0;
+        int64_t additional_triangles = numeric_cast<int64_t>(candidate.TriangleCount) - 2;
         result["bestRejectedCandidate"] = {
             {"selectionOrigin", candidate.SelectionOrigin},
             {"triangles", candidate.TriangleCount},
@@ -626,7 +626,7 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
         };
         result["bestRejectedCandidate"]["breakEvenAreaSavingsWeight"] = nullptr;
         if (saved_double_area != 0) {
-            const float64_t saved_area_ratio = numeric_cast<float64_t>(saved_double_area) / numeric_cast<float64_t>(reference_double_area);
+            float64_t saved_area_ratio = numeric_cast<float64_t>(saved_double_area) / numeric_cast<float64_t>(reference_double_area);
             result["bestRejectedCandidate"]["breakEvenAreaSavingsWeight"] = std::max(0.0, numeric_cast<float64_t>(additional_triangles) / saved_area_ratio);
         }
     }
@@ -659,7 +659,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint64_t unique_frames = [&] {
+    uint64_t unique_frames = [&] {
         uint64_t total = 0;
         for (const auto& [form, count] : stats.Forms) {
             ignore_unused(form);
@@ -667,9 +667,9 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         }
         return total;
     }();
-    const uint64_t mesh_frames = stats.Forms.contains("mesh") ? stats.Forms.at("mesh") : 0;
-    const uint64_t quad_frames = stats.Forms.contains("quad") ? stats.Forms.at("quad") : 0;
-    const uint64_t empty_frames = stats.Forms.contains("empty") ? stats.Forms.at("empty") : 0;
+    uint64_t mesh_frames = stats.Forms.contains("mesh") ? stats.Forms.at("mesh") : 0;
+    uint64_t quad_frames = stats.Forms.contains("quad") ? stats.Forms.at("quad") : 0;
+    uint64_t empty_frames = stats.Forms.contains("empty") ? stats.Forms.at("empty") : 0;
 
     BakingReportJson result;
     result["measurementScope"] = {
@@ -713,9 +713,9 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     result["selectionOrigins"] = MakeBakingReportStringDistribution(stats.SelectionOrigins, mesh_frames, "origin");
     result["quadReasons"] = MakeBakingReportStringDistribution(stats.QuadReasons, quad_frames, "reason");
 
-    const uint64_t rejected_candidates = stats.RejectedScores.Count;
-    const uint64_t rejected_saved_double_area = stats.RejectedCandidateReferenceDoubleArea >= stats.RejectedCandidateDoubleArea ? stats.RejectedCandidateReferenceDoubleArea - stats.RejectedCandidateDoubleArea : 0;
-    const int64_t rejected_additional_triangles = numeric_cast<int64_t>(stats.RejectedCandidateTriangles) - numeric_cast<int64_t>(rejected_candidates * 2);
+    uint64_t rejected_candidates = stats.RejectedScores.Count;
+    uint64_t rejected_saved_double_area = stats.RejectedCandidateReferenceDoubleArea >= stats.RejectedCandidateDoubleArea ? stats.RejectedCandidateReferenceDoubleArea - stats.RejectedCandidateDoubleArea : 0;
+    int64_t rejected_additional_triangles = numeric_cast<int64_t>(stats.RejectedCandidateTriangles) - numeric_cast<int64_t>(rejected_candidates * 2);
     result["bestRejectedCandidates"] = {
         {"count", rejected_candidates},
         {"selectionOrigins", MakeBakingReportStringDistribution(stats.RejectedSelectionOrigins, rejected_candidates, "origin")},
@@ -739,9 +739,9 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
             }},
     };
 
-    const uint64_t baseline_triangles = unique_frames * 2;
-    const uint64_t submitted_triangles = stats.Triangles + quad_frames * 2;
-    const uint64_t submitted_vertices = stats.Vertices + quad_frames * 4;
+    uint64_t baseline_triangles = unique_frames * 2;
+    uint64_t submitted_triangles = stats.Triangles + quad_frames * 2;
+    uint64_t submitted_vertices = stats.Vertices + quad_frames * 4;
     result["geometry"] = {
         {"submittedVertices", submitted_vertices},
         {"meshVertices", stats.Vertices},
@@ -754,11 +754,11 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         {"averageTrianglesPerMesh", mesh_frames != 0 ? numeric_cast<float64_t>(stats.Triangles) / numeric_cast<float64_t>(mesh_frames) : 0.0},
     };
 
-    const uint64_t baseline_double_area = stats.SourceFramePixels * 2;
-    const uint64_t visible_double_area = stats.VisiblePixels * 2;
-    const int64_t saved_double_area = numeric_cast<int64_t>(baseline_double_area) - numeric_cast<int64_t>(stats.SubmittedGeometryDoubleArea);
-    const int64_t baseline_transparent_double_area = numeric_cast<int64_t>(baseline_double_area) - numeric_cast<int64_t>(visible_double_area);
-    const int64_t remaining_transparent_double_area = numeric_cast<int64_t>(stats.SubmittedGeometryDoubleArea) - numeric_cast<int64_t>(visible_double_area);
+    uint64_t baseline_double_area = stats.SourceFramePixels * 2;
+    uint64_t visible_double_area = stats.VisiblePixels * 2;
+    int64_t saved_double_area = numeric_cast<int64_t>(baseline_double_area) - numeric_cast<int64_t>(stats.SubmittedGeometryDoubleArea);
+    int64_t baseline_transparent_double_area = numeric_cast<int64_t>(baseline_double_area) - numeric_cast<int64_t>(visible_double_area);
+    int64_t remaining_transparent_double_area = numeric_cast<int64_t>(stats.SubmittedGeometryDoubleArea) - numeric_cast<int64_t>(visible_double_area);
     result["area"] = {
         {"baselineQuadDoubleArea", baseline_double_area},
         {"submittedGeometryDoubleArea", stats.SubmittedGeometryDoubleArea},
@@ -774,7 +774,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         {"savedTransparentPercent", baseline_transparent_double_area > 0 ? numeric_cast<float64_t>(baseline_transparent_double_area - remaining_transparent_double_area) * 100.0 / numeric_cast<float64_t>(baseline_transparent_double_area) : 0.0},
     };
 
-    const uint64_t zero_padding_frames = stats.PaddingHistogram.contains(0) ? stats.PaddingHistogram.at(0) : 0;
+    uint64_t zero_padding_frames = stats.PaddingHistogram.contains(0) ? stats.PaddingHistogram.at(0) : 0;
     int32_t maximum_padding = 0;
     if (!stats.PaddingHistogram.empty()) {
         maximum_padding = stats.PaddingHistogram.rbegin()->first;
@@ -801,7 +801,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     map<string, uint64_t> resource_forms;
     for (const auto& [path, resource] : stats.Resources) {
         ignore_unused(path);
-        const uint32_t populated_forms = (resource.MeshFrames != 0 ? 1 : 0) + (resource.QuadFrames != 0 ? 1 : 0) + (resource.EmptyFrames != 0 ? 1 : 0);
+        uint32_t populated_forms = (resource.MeshFrames != 0 ? 1 : 0) + (resource.QuadFrames != 0 ? 1 : 0) + (resource.EmptyFrames != 0 ? 1 : 0);
         if (populated_forms > 1) {
             resource_forms["mixed"]++;
         }
@@ -1008,7 +1008,7 @@ auto BakingReport::Serialize() const -> string
         report["packs"].push_back(std::move(pack_json));
     }
 
-    const std::string serialized_report = report.dump(2);
+    std::string serialized_report = report.dump(2);
     string result {serialized_report.begin(), serialized_report.end()};
     result += '\n';
     return result;
