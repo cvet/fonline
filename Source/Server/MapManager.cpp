@@ -56,7 +56,7 @@ void MapManager::LoadFromResources()
     FO_STACK_TRACE_ENTRY();
 
     auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
-    std::vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
+    vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     for (const auto& map_file_header : map_files) {
         hstring map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());

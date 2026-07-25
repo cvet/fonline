@@ -72,6 +72,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <deque>
 #include <filesystem>
@@ -80,6 +81,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <list>
 #include <map>

@@ -69,6 +69,7 @@ auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> v
     backends.emplace_back(SafeAlloc::MakeUnique<SparkParticleRuntimeBackend>(services));
 #endif
 #if FO_EFFEKSEER_PARTICLES
+    InitializeEffekseerMemory();
     backends.emplace_back(SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(services));
 #endif
 

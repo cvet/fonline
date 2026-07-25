@@ -41,6 +41,11 @@
 
 FO_BEGIN_NAMESPACE
 
+// Points the Effekseer allocation callbacks at the engine memory system. Idempotent; call before the
+// first Effekseer object is created. The baker keeps its own copy of this because the two Effekseer
+// owners live in different build roles.
+void InitializeEffekseerMemory() noexcept;
+
 class EffekseerParticleRuntimeBackend;
 
 class EffekseerParticleRuntimeSystem final : public ParticleRuntimeSystem

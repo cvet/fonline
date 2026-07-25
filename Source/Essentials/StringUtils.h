@@ -142,11 +142,14 @@ public:
         _sv = _s;
     }
 
+    // Formatting writes straight into the engine-allocated buffer. Do not switch these to std::format /
+    // std::vformat: those return a std::string built with std::allocator, which both bypasses the
+    // SafeAllocator out-of-memory contract and costs an extra copy into _s on every formatted call.
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
-        strvex(),
-        _s {std::format(std::move(format), std::forward<Args>(args)...)}
+        strvex()
     {
+        (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         _sv = _s;
     }
 
@@ -155,12 +158,14 @@ public:
         strvex()
     {
         try {
-            _s = std::format(std::move(format), std::forward<Args>(args)...);
+            (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
             BreakIntoDebugger();
 
             try {
+                // Formatting appends incrementally, so drop whatever partial output was produced
+                _s.clear();
                 _s.append("Format error: ");
                 _s.append(ex.what());
             }
@@ -168,17 +173,20 @@ public:
                 // Bad alloc
             }
         }
-        catch (...) { // NOLINT(bugprone-empty-catch)
+        catch (...) {
+            _s.clear();
         }
 
         _sv = _s;
     }
 
+    // std::make_format_args binds its arguments as non-const lvalue references, so the pack is passed by
+    // name rather than forwarded; forwarding turns a caller's temporary into an xvalue that cannot bind
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        strvex(),
-        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))}
+        strvex()
     {
+        (void)std::vformat_to(std::back_inserter(_s), format, std::make_format_args(args...));
         _sv = _s;
     }
 

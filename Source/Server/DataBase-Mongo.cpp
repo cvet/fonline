@@ -13,6 +13,71 @@ FO_BEGIN_NAMESPACE
 #if FO_HAVE_MONGO
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
 
+// The bson allocator vtable below supplies aligned_alloc, but bson releases those blocks through the
+// plain free member — it never records the alignment. That pairing is only sound while every
+// allocation, aligned or not, ends up in the same release path, which holds exactly when rpmalloc is
+// enabled: both SafeAlloc::FreeRaw and SafeAlloc::FreeAlignedRaw reach rpfree. Without rpmalloc the
+// aligned path is _aligned_malloc/_aligned_free on Windows and posix_memalign/free elsewhere, so
+// freeing an aligned block through the unaligned callback would be silent heap corruption rather
+// than a build error. Leaving aligned_alloc out is not an escape either: bson then substitutes
+// _aligned_alloc_as_malloc and drops the requested alignment, which mongoc-array and mongoc-ts-pool
+// rely on. rpmalloc is enabled on every platform this backend builds for (it is disabled only for
+// Web, which has no Mongo backend), so pin the assumption instead of leaving it implicit.
+static_assert(FO_HAVE_RPMALLOC, "Mongo backend requires rpmalloc: bson releases aligned blocks through its unaligned free callback");
+
+static auto BsonMalloc(size_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static auto BsonCalloc(size_t num, size_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::CallocRaw(num, size).get();
+}
+
+static auto BsonRealloc(void* mem, size_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::ReallocRaw(mem, size).get();
+}
+
+static void BsonFree(void* mem)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SafeAlloc::FreeRaw(mem);
+}
+
+static auto BsonAlignedAlloc(size_t alignment, size_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+}
+
+// bson copies the vtable rather than retaining the pointer, so a local is enough here. It must be
+// installed before the first bson allocation, which is why it runs ahead of mongoc_init().
+static void InitializeBsonMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        bson_mem_vtable_t vtable {};
+        vtable.malloc = &BsonMalloc;
+        vtable.calloc = &BsonCalloc;
+        vtable.realloc = &BsonRealloc;
+        vtable.free = &BsonFree;
+        vtable.aligned_alloc = &BsonAlignedAlloc;
+        bson_mem_set_vtable(&vtable);
+    });
+}
+
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -33,6 +98,8 @@ public:
         if (_escapeDot == '.') {
             throw DataBaseException("DbMongo escape char can't be '.'", db_settings->MongoEscapeChar);
         }
+
+        InitializeBsonMemory();
 
         mongoc_init();
         auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });

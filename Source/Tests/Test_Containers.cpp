@@ -74,6 +74,14 @@ TEST_CASE("Containers")
         CHECK(text == "True False True");
     }
 
+    SECTION("VectorFormatterFloat")
+    {
+        // Pins the printf("%f") output the formatter produced while it went through std::to_string
+        vector<float32_t> values = {1.5f, -2.0f, 0.0f};
+        auto text = std::format("{}", values);
+        CHECK(text == "1.500000 -2.000000 0.000000");
+    }
+
     SECTION("VectorFormatterEmpty")
     {
         vector<int32_t> values;

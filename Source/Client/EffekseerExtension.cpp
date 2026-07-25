@@ -53,6 +53,51 @@ constexpr float32_t EFFEKSEER_PREWARM_SECONDS = 1.0f;
 
 struct EffekseerRuntimeState;
 
+static auto EffekseerMalloc(uint32_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static void EffekseerFree(void* mem, uint32_t size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(size);
+    SafeAlloc::FreeRaw(mem);
+}
+
+static auto EffekseerAlignedMalloc(uint32_t size, uint32_t alignment) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+}
+
+static void EffekseerAlignedFree(void* mem, uint32_t size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Effekseer hands back the size but not the alignment, which is why the aligned tier releases a block
+    // without needing it
+    ignore_unused(size);
+    SafeAlloc::FreeAlignedRaw(mem);
+}
+
+void InitializeEffekseerMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        Effekseer::SetMallocFunc(&EffekseerMalloc);
+        Effekseer::SetFreeFunc(&EffekseerFree);
+        Effekseer::SetAlignedMallocFunc(&EffekseerAlignedMalloc);
+        Effekseer::SetAlignedFreeFunc(&EffekseerAlignedFree);
+    });
+}
+
 static void LogEffekseerRejection(string_view path, string_view reason)
 {
     FO_STACK_TRACE_ENTRY();
