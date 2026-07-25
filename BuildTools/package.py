@@ -24,8 +24,22 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
-PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
+PACKAGE_INTERFACE_PATH = Path(__file__).with_name('PackageInterface.json')
+
+
+def load_package_interface() -> dict[str, object]:
+	with PACKAGE_INTERFACE_PATH.open('r', encoding='utf-8') as interface_file:
+		interface = json.load(interface_file)
+	assert isinstance(interface, dict) and interface.get('schema_version') == 1, 'Unsupported package interface schema'
+	return interface
+
+
+PACKAGE_INTERFACE = load_package_interface()
+TARGET_CHOICES = [entry['name'] for entry in PACKAGE_INTERFACE['targets']]
+PLATFORM_CHOICES = [entry['name'] for entry in PACKAGE_INTERFACE['platforms']]
+PACKAGE_TARGETS = {entry['name']: entry for entry in PACKAGE_INTERFACE['targets']}
+PACKAGE_PLATFORMS = {entry['name']: entry for entry in PACKAGE_INTERFACE['platforms']}
+PACKAGE_PACKS = {entry['name']: entry for entry in PACKAGE_INTERFACE['packs']}
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
@@ -79,8 +93,9 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Web', 'wasm'): 'wasm',
 }
 
-def parse_args() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description='FOnline packager')
+
+def create_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(prog='package.py', description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 	parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 	parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
@@ -94,19 +109,17 @@ def parse_args() -> argparse.Namespace:
 	# macOS: x64
 	# iOS: arm64
 	# Web: wasm
-	parser.add_argument('-pack', dest='pack', required=True, help='package type')
-	# Windows: Raw Zip Wix Headless Service
-	# Linux: Raw Tar TarGz Zip AppImage
-	# Android: Raw Apk
-	# macOS: Raw Bundle Zip
-	# iOS: Raw Bundle
-	# Web: Raw Zip
+	parser.add_argument('-pack', dest='pack', required=True, help='plus-separated pack tokens from PackageInterface.json')
 	parser.add_argument('-config', dest='config', required=True, help='config name')
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
-	return parser.parse_args()
+	return parser
+
+
+def parse_args() -> argparse.Namespace:
+	return create_parser().parse_args()
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
@@ -328,8 +341,9 @@ def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Lite
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
 		existing_entries = {entry.filename: entry for entry in archive.infolist()}
 
-		for root, _, files in os.walk(path):
-			for file_name in files:
+		for root, dirs, files in os.walk(path):
+			dirs.sort()
+			for file_name in sorted(files):
 				file_path = os.path.join(root, file_name)
 				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
 				existing_entry = existing_entries.get(archive_name)
@@ -516,7 +530,13 @@ class Packager:
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
-		self.pack_args = set(self.args.pack.split('+'))
+		pack_args = self.args.pack.split('+')
+		assert pack_args and all(pack_args), 'Package pack list must contain non-empty plus-separated tokens'
+		assert len(pack_args) == len(set(pack_args)), 'Package pack list contains duplicate tokens'
+		unknown_packs = sorted(set(pack_args) - PACKAGE_PACKS.keys())
+		assert not unknown_packs, 'Unknown package pack token(s): ' + ', '.join(unknown_packs)
+		self.pack_args = set(pack_args)
+		self.validate_package_contract()
 		self.output_path = os.path.realpath(self.args.output if self.args.output else os.getcwd()).rstrip('\\/')
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
@@ -524,6 +544,29 @@ class Packager:
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
+
+	def validate_package_contract(self) -> None:
+		target = PACKAGE_TARGETS[self.args.target]
+		platform = PACKAGE_PLATFORMS[self.args.platform]
+		assert platform['status'] == 'implemented', f'{self.args.platform} packaging is not supported in this repository state'
+		assert self.args.target in platform['targets'], f'{self.args.platform} packaging does not support target {self.args.target}'
+
+		arches = self.args.arch.split('+')
+		assert arches and all(arches), 'Package architecture list must contain non-empty plus-separated keys'
+		assert len(arches) == len(set(arches)), 'Package architecture list contains duplicate keys'
+		canonical_arches = [normalize_android_arch(arch) for arch in arches] if self.args.platform == 'Android' else arches
+		unknown_arches = sorted(set(canonical_arches) - set(platform['architectures']))
+		assert not unknown_arches, f'Unsupported {self.args.platform} package architecture(s): ' + ', '.join(unknown_arches)
+
+		for pack_name in sorted(self.pack_args):
+			pack = PACKAGE_PACKS[pack_name]
+			assert pack['status'] == 'implemented', f'Package pack {pack_name} is not implemented'
+			assert self.args.platform in pack['platforms'], f'Package pack {pack_name} is not valid for {self.args.platform}'
+			assert self.args.target in pack['targets'], f'Package pack {pack_name} is not valid for target {self.args.target}'
+
+		missing_required = sorted(set(target['required_packs']) - self.pack_args)
+		assert not missing_required, f'Package target {self.args.target} requires pack token(s): ' + ', '.join(missing_required)
+		assert any(PACKAGE_PACKS[name]['artifact'] for name in self.pack_args), 'Package pack list must select at least one output artifact'
 
 	def has_pack(self, name: str) -> bool:
 		return name in self.pack_args

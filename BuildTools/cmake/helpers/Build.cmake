@@ -287,6 +287,10 @@ macro(ResolveContributedFiles)
 endmacro()
 
 macro(AddEngineSource target)
+	if(NOT "${target}" IN_LIST FO_NATIVE_EXTENSION_ROLES)
+		AbortMessage("AddEngineSource: unknown native extension role '${target}'. Allowed: ${FO_NATIVE_EXTENSION_ROLES}")
+	endif()
+
 	ResolveContributedFiles(${ARGN})
 
 	foreach(resolvedFile ${resolvedFiles})
@@ -419,6 +423,9 @@ macro(DefinePackage package)
 
 	if("${Package_${package}_Config}" STREQUAL "")
 		AbortMessage("DefinePackage ${package} requires CONFIG")
+	endif()
+	if(NOT Package_${package}_Parts)
+		AbortMessage("DefinePackage ${package} requires at least one BINARY")
 	endif()
 endmacro()
 
