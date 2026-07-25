@@ -126,7 +126,7 @@ Known and accepted limits: `std::function`, `std::future`/`std::promise`/`std::p
 | meshoptimizer | `SafeAllocator` | `Tools/ModelMeshBaker.cpp` |
 | ufbx | `SafeAllocator` | compile-time `UFBX_EXTERNAL_MALLOC` plus `extern "C" ufbx_malloc/realloc/free` in `Tools/ModelMeshBaker.cpp` |
 | SDL | `SafeAlloc::*Raw` | `Frontend/Application.cpp` |
-| Effekseer | `SafeAlloc::*Raw` + aligned | `Client/EffekseerExtension.cpp` and `Tools/ParticleBaker.cpp` — deliberately duplicated, because the two owners are in different build roles and a shared definition would pull Effekseer symbols into every target |
+| Effekseer | `SafeAlloc::*Raw` + aligned | `Client/EffekseerExtension.cpp`, declared in its header; both owners (client runtime and `Tools/ParticleBaker.cpp`) install through that one definition |
 | libpng | `SafeAlloc::*Raw` | `Tools/ImageBaker.cpp`, via `png_create_read_struct_2` |
 | mongo-c / bson | `SafeAlloc::*Raw` + aligned | `Server/DataBase-Mongo.cpp`, via `bson_mem_set_vtable` before `mongoc_init()` |
 | SQLite | `SafeAlloc::*Raw` | `Server/DataBase-SQLite.cpp`, via `sqlite3_config(SQLITE_CONFIG_MALLOC)` before `sqlite3_initialize()` |

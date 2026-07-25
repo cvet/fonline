@@ -294,51 +294,6 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
     return dependency_write_time;
 }
 
-// Deliberate duplicate of the client-side hook in Client/EffekseerExtension.cpp: the two Effekseer owners
-// sit in different build roles, so a shared definition would pull Effekseer symbols into every target.
-static auto EffekseerMalloc(uint32_t size) -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MallocRaw(size).get();
-}
-
-static void EffekseerFree(void* mem, uint32_t size)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ignore_unused(size);
-    SafeAlloc::FreeRaw(mem);
-}
-
-static auto EffekseerAlignedMalloc(uint32_t size, uint32_t alignment) -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
-}
-
-static void EffekseerAlignedFree(void* mem, uint32_t size)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ignore_unused(size);
-    SafeAlloc::FreeAlignedRaw(mem);
-}
-
-static void InitializeEffekseerMemory() noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static std::once_flag once;
-    std::call_once(once, [] {
-        Effekseer::SetMallocFunc(&EffekseerMalloc);
-        Effekseer::SetFreeFunc(&EffekseerFree);
-        Effekseer::SetAlignedMallocFunc(&EffekseerAlignedMalloc);
-        Effekseer::SetAlignedFreeFunc(&EffekseerAlignedFree);
-    });
-}
-
 static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t> file_data)
 {
     FO_STACK_TRACE_ENTRY();
