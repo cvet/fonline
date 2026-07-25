@@ -32,6 +32,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
         SetValue(compileMonoScripts
             ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/compile-mono-scripts.py"
+            -scripts "${FO_OUTPUT_PATH}"
             ${monoCompileCommands})
 
         AddCommandTarget(CompileMonoScripts
