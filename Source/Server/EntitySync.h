@@ -42,6 +42,7 @@ FO_DECLARE_EXCEPTION_EXT(EntityLockWaitAbortedException, EntitySyncException);
 
 class ServerEngine;
 class ServerEntity;
+class EntityManager;
 
 [[nodiscard]] auto NextSyncTicket() noexcept -> uint64_t;
 
@@ -241,10 +242,6 @@ public:
     void SyncEntities(span<const nptr<ServerEntity>> entities);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
-    // Trusted creation/registration boundary. Unlike ordinary EnsureEntitySynced, this may capture
-    // an unpublished parentless entity that has no existing caller cover; the native sync boundary
-    // audit pins its exact allowed callers.
-    void EnsureFreshEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;
 
     // Singleton-lock acquisition (e.g. `Game.Lock()`). Acquires the supplied EntityLock and
@@ -257,6 +254,13 @@ public:
     void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
+    friend class EntityManager;
+    friend class ServerEngine;
+
+    // Trusted creation/registration boundary. Unlike ordinary EnsureEntitySynced, this may capture
+    // an unpublished parentless entity that has no existing caller cover. Keep the C++ surface
+    // restricted to the two owners whose exact call sites are also pinned by the native audit.
+    void EnsureFreshEntitySynced(nptr<ServerEntity> entity);
     void EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
 
     // EnsureEntitySynced's one-shot transaction over the sorted-unique op batch: every state mutex
