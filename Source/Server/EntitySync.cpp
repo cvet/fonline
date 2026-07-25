@@ -1228,7 +1228,6 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
     }
 }
 
-
 auto FO_TSA_NO_ANALYSIS SyncContext::TryAcquireEnsureOpsAtomically(span<const pair<ptr<EntityLock>, bool>> ops) -> bool
 {
     FO_STACK_TRACE_ENTRY();

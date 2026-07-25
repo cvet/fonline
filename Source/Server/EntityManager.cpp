@@ -383,7 +383,14 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
     bool is_error = false;
 
-    LoadInnerEntities(_engine, is_error);
+    {
+        auto engine_lock = _engine->GetEntityLock();
+        auto ctx = _engine->RequireCurrentSyncContext();
+        ctx->LockSingleton(engine_lock);
+        auto unlock_engine = scope_exit([&]() noexcept { safe_call([&] { ctx->UnlockSingleton(engine_lock); }); });
+
+        LoadInnerEntities(_engine, is_error);
+    }
 
     const auto loc_ids = _engine->DbStorage.GetAllIntIds(_locationCollectionName);
 
@@ -1238,17 +1245,9 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 
     RegisterEntity(custom_entity);
 
-    try {
-        auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
-        const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
-        FO_STRONG_ASSERT(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
-    }
-    catch (...) {
-        const auto entity_it = _allEntities.find(custom_entity->GetId());
-        FO_STRONG_ASSERT(entity_it != _allEntities.end() && entity_it->second == custom_entity, "Custom entity global registration cannot be rolled back", custom_entity->GetTypeName(), custom_entity->GetId());
-        _allEntities.erase(entity_it);
-        throw;
-    }
+    auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
+    const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
+    FO_STRONG_ASSERT(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
 }
 
 void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool delete_from_db)
