@@ -1379,9 +1379,9 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         if (options.front() == "JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
         }
-#if FO_HAVE_UNQLITE
-        if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return finish_connect(CreateUnQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#if FO_HAVE_SQLITE
+        if (options.front() == "DbSQLite" && options.size() == 2) {
+            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #endif
 #if FO_HAVE_MONGO

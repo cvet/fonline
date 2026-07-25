@@ -24,7 +24,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 - Authoritative server runtime with entity managers, client validation, and hardened parsing of untrusted client input.
 - Shared entity/property/prototype model with generated type-safe property wrappers and automatic property replication to clients.
 - Pluggable network transports: TCP sockets (including an Asio-based server), WebSockets for browser play, an ordered-UDP channel, and an in-process transport for tests and embedded clients.
-- Pluggable persistence backends — JSON files, UnQLite, MongoDB, or in-memory — behind one database facade with an async commit queue and recovery logs.
+- Pluggable persistence backends — JSON files, SQLite, MongoDB, or in-memory — behind one database facade with an async commit queue and recovery logs.
 - Built-in client auto-updater: a thin client host plus a replaceable runtime, resumable file transfer, and a server-side update backend.
 
 ### Scripting

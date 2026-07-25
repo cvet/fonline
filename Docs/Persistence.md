@@ -61,14 +61,14 @@ Backends can override:
 Factory functions declared in `DataBase.h`:
 
 - `CreateJsonDataBase()`;
-- `CreateUnQLiteDataBase()` when `FO_HAVE_UNQLITE` is enabled;
+- `CreateSQLiteDataBase()` when `FO_HAVE_SQLITE` is enabled;
 - `CreateMongoDataBase()` when `FO_HAVE_MONGO` is enabled;
 - `CreateMemoryDataBase()`.
 
 Implementation files:
 
 - `Source/Server/DataBase-Json.cpp`
-- `Source/Server/DataBase-UnQLite.cpp`
+- `Source/Server/DataBase-SQLite.cpp`
 - `Source/Server/DataBase-Mongo.cpp`
 - `Source/Server/DataBase-Memory.cpp`
 - shared logic in `Source/Server/DataBase.cpp`
@@ -126,7 +126,7 @@ When changing commit durability, validate failed-write recovery and pending-log 
 ## Backend-specific notes
 
 - JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
-- UnQLite backend: enabled only when the build has `FO_HAVE_UNQLITE`.
+- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, and SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`.
 - Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; BSON conversion helpers live in the shared header/source.
 - Memory backend: useful for tests and non-durable runtime paths.
 
@@ -165,7 +165,7 @@ Relevant tests include:
 
 - Public facade and shared commit/recovery logic: `Source/Server/DataBase.h` and `Source/Server/DataBase.cpp`.
 - JSON backend: `Source/Server/DataBase-Json.cpp`.
-- UnQLite backend: `Source/Server/DataBase-UnQLite.cpp`.
+- SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
 - Mongo backend and BSON conversion: `Source/Server/DataBase-Mongo.cpp`, `DocumentToBson()`, `BsonToDocument()`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
 - Entity/property serialization: [EntityModel.md](EntityModel.md) and `PropertiesSerializator.*`.

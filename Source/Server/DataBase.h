@@ -251,8 +251,12 @@ private:
 };
 
 auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
-#if FO_HAVE_UNQLITE
-auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
+#if FO_HAVE_SQLITE
+// Installs the engine allocator into SQLite and initializes it. Must run before any other SQLite
+// call: sqlite3_config only takes effect before initialization, and the library is built with
+// SQLITE_OMIT_AUTOINIT so nothing initializes it behind our back. Idempotent.
+void InitializeSQLiteRuntime();
+auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #endif
 #if FO_HAVE_MONGO
 auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
