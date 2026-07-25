@@ -326,7 +326,7 @@ static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverit
 
     ignore_unused(type, user_data);
 
-    const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
+    const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? "ERROR" : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? "WARN" : "INFO";
     const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
     const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
     WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
@@ -1469,7 +1469,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
             const size_t alignment = numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment);
 
-            const auto upload_uniform_buffer = [&](int32_t binding, const_span<uint8_t> src_data) {
+            const auto upload_uniform_buffer = [&](int32_t binding, const_span<byte> src_data) {
                 if (binding < 0 || src_data.empty()) {
                     return;
                 }
@@ -1484,7 +1484,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
                 // Copy data
                 FO_VERIFY_AND_THROW(_ctx->FrameUniformBufferMapped, "Mapped memory data pointer is null");
-                auto mapped_bytes = _ctx->FrameUniformBufferMapped.reinterpret_as<uint8_t>();
+                auto mapped_bytes = _ctx->FrameUniformBufferMapped.reinterpret_as<byte>();
                 MemCopy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
 
                 auto& buffer_info = buffer_infos[write_count];
@@ -1773,14 +1773,14 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Load vertex shader SPIR-V
         {
             const string vert_fname = strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1);
-            string vert_content = loader(vert_fname);
+            const vector<byte> vert_content = loader(vert_fname);
             FO_VERIFY_AND_THROW(!vert_content.empty(), "Vertex shader SPIR-V is empty");
-            FO_VERIFY_AND_THROW(vert_content.length() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
+            FO_VERIFY_AND_THROW(vert_content.size() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
 
             VkShaderModuleCreateInfo module_ci {};
             module_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            module_ci.codeSize = vert_content.length();
-            module_ci.pCode = reinterpret_cast<const uint32_t*>(vert_content.data());
+            module_ci.codeSize = vert_content.size();
+            module_ci.pCode = make_ptr(vert_content.data()).reinterpret_as<const uint32_t>().get();
 
             if (vkCreateShaderModule(_ctx->Device, &module_ci, nullptr, &vk_effect->VertexShaderModule[pass]) != VK_SUCCESS) {
                 throw EffectLoadException("Failed to create vertex shader module", vert_fname);
@@ -1790,14 +1790,14 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Load fragment shader SPIR-V
         {
             const string frag_fname = strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1);
-            string frag_content = loader(frag_fname);
+            const vector<byte> frag_content = loader(frag_fname);
             FO_VERIFY_AND_THROW(!frag_content.empty(), "Fragment shader SPIR-V is empty");
-            FO_VERIFY_AND_THROW(frag_content.length() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");
+            FO_VERIFY_AND_THROW(frag_content.size() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");
 
             VkShaderModuleCreateInfo module_ci {};
             module_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            module_ci.codeSize = frag_content.length();
-            module_ci.pCode = reinterpret_cast<const uint32_t*>(frag_content.data());
+            module_ci.codeSize = frag_content.size();
+            module_ci.pCode = make_ptr(frag_content.data()).reinterpret_as<const uint32_t>().get();
 
             if (vkCreateShaderModule(_ctx->Device, &module_ci, nullptr, &vk_effect->FragmentShaderModule[pass]) != VK_SUCCESS) {
                 throw EffectLoadException("Failed to create fragment shader module", frag_fname);
@@ -2217,7 +2217,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             }
         }
         else {
-            WriteLog("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
+            WriteLog("[VkLayer] VK_EXT_debug_utils not available; layer messages will be silenced");
         }
     }
 

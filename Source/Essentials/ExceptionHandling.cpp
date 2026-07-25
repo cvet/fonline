@@ -34,6 +34,7 @@
 #include "ExceptionHandling.h"
 #include "BaseLogging.h"
 #include "GlobalData.h"
+#include "SafeArithmetics.h"
 #include "StringUtils.h"
 
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER
@@ -99,6 +100,7 @@ private:
 };
 
 static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData;
+static void WriteAscii(string_view message) noexcept;
 static void SetCrashInfo(string info) noexcept;
 static auto SafeWriteCrashInfo() noexcept -> bool;
 static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, nptr<const void> address) -> string;
@@ -172,11 +174,14 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
         const auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
-            callback(ex.what(), st, true);
+            const u8string message = exception_message_utf8(ex);
+            callback(message.view(), st, true);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
-            WriteBaseLog("Shutdown!\n\n");
+            const strex message {"{}\n", ex.what()};
+            const string_view message_chars = message.strv();
+            WriteBaseLogBytes(std::as_bytes(const_span<char> {message_chars.data(), message_chars.size()}), &st);
+            WriteAscii("Shutdown!\n\n");
         }
     }
     catch (...) {
@@ -206,17 +211,37 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
         const auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
-            callback(ex.what(), st, false);
+            const u8string message = exception_message_utf8(ex);
+            callback(message.view(), st, false);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
-            WriteBaseLog("\n\n");
+            const strex message {"{}\n", ex.what()};
+            const string_view message_chars = message.strv();
+            WriteBaseLogBytes(std::as_bytes(const_span<char> {message_chars.data(), message_chars.size()}), &st);
+            WriteAscii("\n\n");
         }
     }
     catch (...) {
     }
 
     BreakIntoDebugger();
+}
+
+auto exception_message_utf8(const std::exception& ex) -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto engine_ex = dynamic_cast<const BaseEngineException*>(&ex)) {
+        return u8string {engine_ex->what_utf8()};
+    }
+
+    try {
+        const char* const message = ex.what();
+        return utf8_from_char_span(const_span<char> {message, std::strlen(message)});
+    }
+    catch (const TextValidationException&) {
+        return u8string {u8"Native exception message is not valid UTF-8"};
+    }
 }
 
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept
@@ -254,13 +279,13 @@ extern void InstallCrashHandlerStackForThisThread() noexcept
     // and the registration is torn down automatically when the thread exits. std::unique_ptr (not the
     // engine alias) is used because it supports array storage; new[] leaves the bytes uninitialized so
     // the reservation stays lazily committed.
-    static thread_local std::unique_ptr<uint8_t[]> alt_stack_buffer;
+    static thread_local std::unique_ptr<byte[]> alt_stack_buffer;
 
     if (alt_stack_buffer) {
         return; // already installed on this thread
     }
 
-    alt_stack_buffer = std::unique_ptr<uint8_t[]> {new (std::nothrow) uint8_t[stack_size]};
+    alt_stack_buffer = std::unique_ptr<byte[]> {new (std::nothrow) byte[stack_size]};
 
     if (!alt_stack_buffer) {
         return;
@@ -291,6 +316,13 @@ static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedSta
     }
 }
 
+static void WriteAscii(string_view message) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {message.data(), message.size()}));
+}
+
 auto BackwardOStreamBuffer::underflow() -> int_type
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -303,7 +335,7 @@ auto BackwardOStreamBuffer::overflow(int_type ch) -> int_type
     FO_NO_STACK_TRACE_ENTRY();
 
     const char s[] = {static_cast<char>(ch)};
-    WriteBaseLog(string_view {s, 1});
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {s, 1}));
     return ch;
 }
 
@@ -316,7 +348,7 @@ auto BackwardOStreamBuffer::xsputn(const char_type* s, std::streamsize count) ->
         _firstCall = false;
     }
 
-    WriteBaseLog(string_view {s, static_cast<string_view::size_type>(count)});
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {s, numeric_cast<size_t>(count)}));
     return count;
 }
 
@@ -326,13 +358,13 @@ void BackwardOStreamBuffer::WriteHeader() const noexcept
 
     SuspendAsyncLogWriting();
 
-    WriteBaseLog("\nFATAL ERROR!\n");
+    WriteAscii("\nFATAL ERROR!\n");
 
     if (!SafeWriteCrashInfo()) {
-        WriteBaseLog("Crash reason: unavailable\n");
+        WriteAscii("Crash reason: unavailable\n");
     }
 
-    WriteBaseLog("\n");
+    WriteAscii("\n");
 
     if (ExceptionHandling->CrashStackTrace.has_value()) {
         SafeWriteStackTrace(*ExceptionHandling->CrashStackTrace);
@@ -357,7 +389,10 @@ static auto SafeWriteCrashInfo() noexcept -> bool
 
     try {
         if (ExceptionHandling->CrashInfo.has_value()) {
-            WriteBaseLog(strex("Crash reason: {}\n", *ExceptionHandling->CrashInfo));
+            WriteAscii("Crash reason: ");
+            const string& crash_info = *ExceptionHandling->CrashInfo;
+            WriteBaseLogBytes(std::as_bytes(const_span<char> {crash_info.data(), crash_info.size()}));
+            WriteAscii("\n");
             return true;
         }
     }
@@ -385,7 +420,7 @@ static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : string_view {"unknown"}).str();
+    string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : "unknown").str();
     const std::exception_ptr current_exception = std::current_exception();
 
     if (current_exception) {

@@ -62,7 +62,7 @@ using vindex_t = uint32_t;
 using vindex_t = uint16_t;
 #endif
 
-using RenderEffectLoader = function<string(string_view)>;
+using RenderEffectLoader = function<vector<byte>(string_view)>;
 
 enum class RenderType : uint8_t
 {

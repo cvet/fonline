@@ -95,7 +95,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
     return AddRawInnerItem(item);
 }
 
-auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
+auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<byte>>& props_data) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 

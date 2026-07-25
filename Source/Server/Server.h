@@ -260,7 +260,7 @@ private:
     void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
     void ProcessPlayer(ptr<Player> player);
     void ProcessConnection(ptr<Player> player);
-    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
+    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data) override;
 
     void LoadReportedHashes();
     void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);
@@ -335,7 +335,7 @@ private:
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
-    string _healthFileName {};
+    u8string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
 

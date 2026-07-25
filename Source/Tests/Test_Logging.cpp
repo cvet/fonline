@@ -32,9 +32,22 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "Logging.h"
+#include "Common.h"
 
 FO_BEGIN_NAMESPACE
+
+template<typename T>
+concept CanWriteLogMessage = requires(T&& message) { WriteLogMessage(LogType::Info, std::forward<T>(message)); };
+
+template<typename T>
+concept CanSetLogCallback = requires(T&& key) { SetLogCallback(std::forward<T>(key), LogFunc {}); };
+
+static_assert(CanWriteLogMessage<u8string_view>);
+static_assert(!CanWriteLogMessage<string_view>);
+static_assert(!CanWriteLogMessage<string&>);
+static_assert(CanSetLogCallback<string_view>);
+static_assert(CanSetLogCallback<string&>);
+static_assert(!CanSetLogCallback<u8string_view>);
 
 TEST_CASE("Logging")
 {
@@ -44,7 +57,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("capture", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+        SetLogCallback("capture", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
         WriteLog("Hello {}", 42);
 
         REQUIRE(captured.size() == 1);
@@ -59,8 +72,8 @@ TEST_CASE("Logging")
         int32_t first_count = 0;
         int32_t second_count = 0;
 
-        SetLogCallback("replace", [&](LogType, string_view, nptr<const CatchedStackTraceData>) { first_count++; });
-        SetLogCallback("replace", [&](LogType, string_view, nptr<const CatchedStackTraceData>) { second_count++; });
+        SetLogCallback("replace", [&](LogType, u8string_view, nptr<const CatchedStackTraceData>) { first_count++; });
+        SetLogCallback("replace", [&](LogType, u8string_view, nptr<const CatchedStackTraceData>) { second_count++; });
         WriteLog(LogType::Warning, "Replacement {}", 1);
 
         CHECK(first_count == 0);
@@ -73,9 +86,9 @@ TEST_CASE("Logging")
     {
         int32_t callback_count = 0;
 
-        SetLogCallback("clear-me", [&](LogType, string_view, nptr<const CatchedStackTraceData>) { callback_count++; });
+        SetLogCallback("clear-me", [&](LogType, u8string_view, nptr<const CatchedStackTraceData>) { callback_count++; });
         SetLogCallback("", {});
-        WriteLogMessage(LogType::Error, "should not hit callback");
+        WriteLogMessage(LogType::Error, u8"should not hit callback");
 
         CHECK(callback_count == 0);
     }
@@ -84,15 +97,15 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("reentrant", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) {
-            captured.emplace_back(message);
+        SetLogCallback("reentrant", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) {
+            captured.emplace_back(utf8_to_char_string(message));
 
             if (captured.size() == 1) {
-                WriteLogMessage(LogType::Info, "nested callback log");
+                WriteLogMessage(LogType::Info, u8"nested callback log");
             }
         });
 
-        WriteLogMessage(LogType::Info, "outer callback log");
+        WriteLogMessage(LogType::Info, u8"outer callback log");
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("outer callback log") != string::npos);
@@ -100,14 +113,14 @@ TEST_CASE("Logging")
         SetLogCallback("reentrant", {});
     }
 
-    SECTION("StringViewOverloadDeliversRawText")
+    SECTION("StrictUtf8ViewDeliversRawText")
     {
         vector<string> captured;
 
-        SetLogCallback("sv", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+        SetLogCallback("sv", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
 
-        const string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
-        WriteLog(string_view {raw});
+        const u8string raw {u8"raw {} payload"}; // Curly braces should NOT be interpreted as format placeholders.
+        WriteLog(raw.view());
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("raw {} payload") != string::npos);
@@ -119,7 +132,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("type", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+        SetLogCallback("type", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
 
         WriteLog(LogType::Info, "info-line");
         WriteLog(LogType::InfoSection, "section-line");
@@ -139,16 +152,16 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("repeat", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+        SetLogCallback("repeat", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
 
-        WriteLogMessage(LogType::Warning, "repeat-collapse");
-        WriteLogMessage(LogType::Warning, "repeat-collapse");
-        WriteLogMessage(LogType::Warning, "repeat-collapse");
+        WriteLogMessage(LogType::Warning, u8"repeat-collapse");
+        WriteLogMessage(LogType::Warning, u8"repeat-collapse");
+        WriteLogMessage(LogType::Warning, u8"repeat-collapse");
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("repeat-collapse") != string::npos);
 
-        WriteLogMessage(LogType::Warning, "repeat-collapse-next");
+        WriteLogMessage(LogType::Warning, u8"repeat-collapse-next");
 
         REQUIRE(captured.size() == 3);
         CHECK(captured[1].find("...and 2 more same messages") != string::npos);
@@ -164,13 +177,13 @@ TEST_CASE("Logging")
         string last_first;
         string last_second;
 
-        SetLogCallback("first", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) {
+        SetLogCallback("first", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) {
             first_count++;
-            last_first = string(message);
+            last_first = utf8_to_char_string(message);
         });
-        SetLogCallback("second", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) {
+        SetLogCallback("second", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) {
             second_count++;
-            last_second = string(message);
+            last_second = utf8_to_char_string(message);
         });
 
         WriteLog("broadcast {}", 7);
@@ -195,7 +208,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("tag", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+        SetLogCallback("tag", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
         WriteLog("tagged");
 
         REQUIRE(captured.size() == 1);
@@ -205,6 +218,64 @@ TEST_CASE("Logging")
         CHECK(captured.front().find("tagged") != string::npos);
 
         SetLogCallback("tag", {});
+    }
+
+    SECTION("StrictUtf8MessagePreservesUnicode")
+    {
+        u8string captured;
+
+        SetLogCallback("unicode", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.assign(message); });
+        WriteLogMessage(LogType::Info, u8"Привет, é, 🌍");
+
+        CHECK(captured.view().native_view().find(u8"Привет, é, 🌍") != std::u8string_view::npos);
+
+        SetLogCallback("unicode", {});
+    }
+
+    SECTION("StrictUtf8FormattingNeedsNoCharacterAdapter")
+    {
+        u8string captured;
+        const u8string path {u8"Ресурсы/заставка-🌍.png"};
+
+        SetLogCallback("unicode-format", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.assign(message); });
+        WriteLog("Loading {}", path);
+
+        CHECK(captured.view().native_view().find(u8"Loading Ресурсы/заставка-🌍.png") != std::u8string_view::npos);
+
+        WriteLog(u8"Загрузка {}", path);
+
+        CHECK(captured.view().native_view().find(u8"Загрузка Ресурсы/заставка-🌍.png") != std::u8string_view::npos);
+
+        SetLogCallback("unicode-format", {});
+    }
+
+    SECTION("NativeExceptionMessagePromotesDirectlyToUtf8")
+    {
+        u8string captured;
+        const string error_chars = utf8_to_char_string(u8"соединение разорвано 🌍");
+        const std::runtime_error ex {error_chars.c_str()};
+
+        SetLogCallback("exception-what", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.assign(message); });
+        WriteLog("Connection error: {}", ex.what());
+
+        CHECK(captured.view().native_view().find(u8"Connection error: соединение разорвано 🌍") != std::u8string_view::npos);
+
+        SetLogCallback("exception-what", {});
+    }
+
+    SECTION("PublicNarrowCharacterArgumentRejectsMalformedUtf8WithoutEscapingNoexcept")
+    {
+        vector<string> captured;
+
+        SetLogCallback("malformed", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
+
+        const string malformed(1, std::bit_cast<char>(uint8_t {0xFF}));
+        WriteLog("{}", malformed.c_str());
+
+        REQUIRE(captured.size() == 1);
+        CHECK(captured.front().find("Log message rejected: invalid UTF-8") != string::npos);
+
+        SetLogCallback("malformed", {});
     }
 
     SetLogCallback("", {});

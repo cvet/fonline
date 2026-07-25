@@ -287,7 +287,7 @@ public:
     auto JumpHistoryToIndex(int32_t target_index) -> bool;
     void ParseCommand(string_view command);
     auto LoadMap(string_view map_name) -> nptr<MapView>;
-    auto LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>;
+    auto LoadMapFromText(string_view map_name, const u8string& map_text) -> nptr<MapView>;
     void ShowMap(ptr<MapView> map);
     auto IsMapDirty(nptr<MapView> map) const -> bool;
     void SetMapDirty(nptr<MapView> map, bool dirty = true);
@@ -310,8 +310,8 @@ public:
     void ClearUndoContext(nptr<MapView> map);
     void RemapUndoContext(nptr<MapView> old_map, nptr<MapView> new_map);
     void PushUndoOp(nptr<MapView> map, UndoOp op);
-    auto CaptureMapSnapshot(nptr<const MapView> map) const -> string;
-    auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
+    auto CaptureMapSnapshot(nptr<const MapView> map) const -> u8string;
+    auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const u8string& map_text) -> bool;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);

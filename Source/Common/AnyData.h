@@ -73,8 +73,21 @@ public:
             _value(value)
         {
         }
-        Value(string value) :
+        Value(u8string value) :
             _value(std::move(value))
+        {
+        }
+        Value(string_view value) :
+            _value(u8string {value})
+        {
+        }
+        template<typename Traits, typename Allocator>
+        Value(const std::basic_string<char, Traits, Allocator>& value) :
+            Value(string_view {value.data(), value.size()})
+        {
+        }
+        Value(hstring value) :
+            Value(value.as_str())
         {
         }
         Value(Array&& value) :
@@ -99,13 +112,13 @@ public:
         [[nodiscard]] auto AsInt64() const -> int64_t { return std::get<int64_t>(_value); }
         [[nodiscard]] auto AsDouble() const -> float64_t { return std::get<float64_t>(_value); }
         [[nodiscard]] auto AsBool() const -> bool { return std::get<bool>(_value); }
-        [[nodiscard]] auto AsString() const -> string_view { return std::get<string>(_value); }
+        [[nodiscard]] auto AsString() const -> u8string_view { return std::get<u8string>(_value).view(); }
         [[nodiscard]] auto AsArray() const -> const Array& { return *std::get<unique_ptr<Array>>(_value); }
         [[nodiscard]] auto AsDict() const -> const Dict& { return *std::get<unique_ptr<Dict>>(_value); }
         [[nodiscard]] auto Copy() const -> Value;
 
     private:
-        std::variant<int64_t, float64_t, bool, string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
+        std::variant<int64_t, float64_t, bool, u8string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
     };
 
     class Array
@@ -145,20 +158,47 @@ public:
         ~Dict() = default;
 
         [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
-        [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
+        [[nodiscard]] auto operator[](u8string_view key) const -> const Value& { return _value.at(u8string {key}); }
+        [[nodiscard]] auto operator[](const u8string& key) const -> const Value& { return _value.at(key); }
+        [[nodiscard]] auto operator[](string_view key) const -> const Value& { return _value.at(u8string {key}); }
+        template<typename Traits, typename Allocator>
+        [[nodiscard]] auto operator[](const std::basic_string<char, Traits, Allocator>& key) const -> const Value&
+        {
+            return operator[](string_view {key.data(), key.size()});
+        }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
-        [[nodiscard]] auto Contains(string_view key) const noexcept -> bool { return _value.count(key) != 0; }
+        [[nodiscard]] auto Contains(u8string_view key) const -> bool { return _value.count(u8string {key}) != 0; }
+        [[nodiscard]] auto Contains(const u8string& key) const noexcept -> bool { return _value.count(key) != 0; }
+        [[nodiscard]] auto Contains(string_view key) const -> bool { return _value.count(u8string {key}) != 0; }
+        template<typename Traits, typename Allocator>
+        [[nodiscard]] auto Contains(const std::basic_string<char, Traits, Allocator>& key) const -> bool
+        {
+            return Contains(string_view {key.data(), key.size()});
+        }
         [[nodiscard]] auto Copy() const -> Dict;
 
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
         [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
-        void Emplace(string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
-        void Assign(const string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
+        void Emplace(u8string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
+        void Emplace(string_view key, Value value) noexcept { _value.emplace(u8string {key}, std::move(value)); }
+        template<typename Traits, typename Allocator>
+        void Emplace(const std::basic_string<char, Traits, Allocator>& key, Value value) noexcept
+        {
+            Emplace(string_view {key.data(), key.size()}, std::move(value));
+        }
+        void Assign(u8string_view key, Value value) noexcept { _value.insert_or_assign(u8string {key}, std::move(value)); }
+        void Assign(const u8string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
+        void Assign(string_view key, Value value) noexcept { _value.insert_or_assign(u8string {key}, std::move(value)); }
+        template<typename Traits, typename Allocator>
+        void Assign(const std::basic_string<char, Traits, Allocator>& key, Value value) noexcept
+        {
+            Assign(string_view {key.data(), key.size()}, std::move(value));
+        }
 
     private:
-        map<string, Value> _value {};
+        map<u8string, Value> _value {};
     };
 
     class Document : public Dict
@@ -174,18 +214,23 @@ public:
         [[nodiscard]] auto Copy() const -> Document;
     };
 
-    [[nodiscard]] static auto ValueToString(const Value& value) -> string;
-    [[nodiscard]] static auto ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value;
+    [[nodiscard]] static auto ValueToString(const Value& value) -> u8string;
+    [[nodiscard]] static auto ParseValue(u8string_view str, bool as_dict, bool as_array, ValueType value_type) -> Value;
+    [[nodiscard]] static auto ParseValue(const u8string& str, bool as_dict, bool as_array, ValueType value_type) -> Value;
 
 private:
-    [[nodiscard]] static auto ValueToCodedString(const Value& value) -> string;
-    [[nodiscard]] static auto ReadToken(nptr<const char> str, string& result) -> nptr<const char>;
+    [[nodiscard]] static auto ValueToCodedString(const Value& value) -> u8string;
+    [[nodiscard]] static auto ReadToken(u8string_view str, size_t& pos, u8string& result) -> bool;
 };
 
 class StringEscaping final
 {
 public:
     StringEscaping() = delete;
+
+    static void AppendCodeString(u8string& result, u8string_view str);
+    [[nodiscard]] static auto CodeString(u8string_view str) -> u8string;
+    [[nodiscard]] static auto DecodeString(u8string_view str) -> u8string;
 
     static void AppendCodeString(string& result, string_view str);
     [[nodiscard]] static auto CodeString(string_view str) -> string;

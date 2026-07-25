@@ -1528,7 +1528,7 @@ public:
 private:
     void destroy_object() noexcept override { std::destroy_at(stored_object()); }
 
-    alignas(T) uint8_t _storage[sizeof(T)];
+    alignas(T) byte _storage[sizeof(T)];
 };
 
 class SafeAlloc;
@@ -1919,7 +1919,7 @@ class unique_arr_ptr
 {
 public:
     using element_type = T;
-    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
+    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T> || std::is_enum_v<T>);
 
     FO_FORCE_INLINE constexpr unique_arr_ptr() noexcept = default;
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -1975,7 +1975,7 @@ class unique_del_nptr
 {
 public:
     using element_type = T;
-    static_assert(std::is_void_v<T> || std::is_class_v<T> || std::is_arithmetic_v<T>);
+    static_assert(std::is_void_v<T> || std::is_class_v<T> || std::is_arithmetic_v<T> || std::is_enum_v<T>);
 
     FO_FORCE_INLINE unique_del_nptr() noexcept = default;
     // ReSharper disable once CppNonExplicitConvertingConstructor

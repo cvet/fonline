@@ -243,7 +243,8 @@ void ParticleEditor::OnDraw()
                 auto saver = make_nptr(SPK::IO::IOManager::get().getSaver("xml"));
                 FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
-                const auto path = std::string(file.GetDiskPath());
+                const u8string disk_path = file.GetDiskPath();
+                const std::string path {utf8_as_char_view(disk_path.view())};
 
                 auto base_system = _impl->Particle.GetBaseSystem();
                 FO_VERIFY_AND_THROW(base_system, "Particle has no base system to save");

@@ -57,14 +57,14 @@ struct ClientAppData
     refcount_nptr<ClientEngine> Client {};
     bool ResourcesSynced {};
     bool ReloadRequested {};
-    string StagedRuntimePath;
+    u8string StagedRuntimePath;
     optional<Updater> ResourceUpdater {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
 
 struct RequestedClientRuntime
 {
-    string Path {};
+    u8string Path {};
     string CompatibilityVersion {};
     bool CheckCompatibilityVersion {};
     bool ExplicitPath {};
@@ -73,18 +73,18 @@ struct RequestedClientRuntime
 
 static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool;
 static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<ClientRuntimeHostResult>;
-static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool;
+static auto PromoteStagedReloadForRestart(u8string_view runtime_path) -> bool;
 static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult;
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult;
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, ClientRuntimeExports& exports) -> nptr<void>;
-static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
+static auto ApplyStagedBinaryUpdate(u8string_view runtime_live_path) -> bool;
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime;
-static auto ResolveBundledRuntimePath() -> string;
+static auto ResolveBundledRuntimePath() -> u8string;
 static auto IsInstalledClientLayout() -> bool;
-static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>;
-static auto GetCurrentClientRuntimeFileName() -> string;
+static auto GetInstalledClientRuntimeBootstrapPath() -> optional<u8string>;
+static auto GetCurrentClientRuntimeFileName() -> u8string;
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result);
 
 #if !FO_TESTING_APP
@@ -113,7 +113,11 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     const auto requested_runtime = ResolveRequestedClientRuntime(args);
     const bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
 
-    WriteLog("Client runtime host: bundled DLL {}, compatibility check {}, explicit path {}, force embedded {}, native self-update {} for {}, embedded build {}, embedded compatibility {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled", requested_runtime.ExplicitPath ? "yes" : "no", requested_runtime.ForceEmbedded ? "yes" : "no", can_self_update ? "enabled" : "disabled", GetCurrentBinaryUpdateTargetName(), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+    const string_view compatibility_check = requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled";
+    const string_view explicit_path = requested_runtime.ExplicitPath ? "yes" : "no";
+    const string_view force_embedded = requested_runtime.ForceEmbedded ? "yes" : "no";
+    const string_view self_update = can_self_update ? "enabled" : "disabled";
+    WriteLog("Client runtime host: bundled DLL {}, compatibility check {}, explicit path {}, force embedded {}, native self-update {} for {}, embedded build {}, embedded compatibility {}", requested_runtime.Path, compatibility_check, explicit_path, force_embedded, self_update, GetCurrentBinaryUpdateTargetName(), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     // Try the bundled runtime DLL first on self-update platforms (the DLL is the authoritative
     // runtime); if it is absent or fails to load, RunClientFromLibrary falls back to the embedded
@@ -150,7 +154,8 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client runtime host: preparing DLL {}, compatibility check {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled");
+    const string_view compatibility_check = requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled";
+    WriteLog("Client runtime host: preparing DLL {}, compatibility check {}", requested_runtime.Path, compatibility_check);
 
     if (!ApplyStagedBinaryUpdate(requested_runtime.Path)) {
         WriteLog("Client runtime host: failed to apply staged binary update before loading {}", requested_runtime.Path);
@@ -170,9 +175,9 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
         return std::nullopt;
     }
 
-    string loaded_runtime_name = exports.Metadata.RuntimeName != nullptr ? string(exports.Metadata.RuntimeName) : string();
-    string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
-    string loaded_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
+    const string loaded_runtime_name = exports.Metadata.RuntimeName != nullptr ? string(string_view {exports.Metadata.RuntimeName}) : string {};
+    const string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(string_view {exports.Metadata.BuildHash}) : string {};
+    const string loaded_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(string_view {exports.Metadata.CompatibilityVersion}) : string {};
 
     WriteLog("Client runtime host: loaded DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat, exports.Metadata.HostAbiVersion);
 
@@ -185,26 +190,34 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     ClientRuntimeHostResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
+    vector<string> runtime_arg_storage(args.size());
     vector<char*> runtime_args(args.size());
 
     for (size_t index = 0; index < args.size(); ++index) {
-        runtime_args[index] = args[index].get();
+        if (!args[index].empty()) {
+            runtime_arg_storage[index] = utf8_to_char_string(args[index]);
+        }
+    }
+
+    for (size_t index = 0; index < args.size(); ++index) {
+        runtime_args[index] = runtime_arg_storage[index].data();
     }
 
     WriteLog("Client runtime host: entering DLL {}, runtime {}, build {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash);
     exports.Run(numeric_cast<int32_t>(args.size()), runtime_args.data(), &runtime_result.Result);
     CaptureRuntimeResultStrings(runtime_result);
-    WriteLog("Client runtime host: DLL {} returned {}, success {}, requested path {}, requested compatibility {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
+    const string_view runtime_status = runtime_result.Result.Success ? "yes" : "no";
+    WriteLog("Client runtime host: DLL {} returned {}, success {}, requested path {}, requested compatibility {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_status, runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
 
     if (!IsValidClientRuntimeResult(runtime_result.Result)) {
-        WriteLog("Client runtime host: DLL {} returned invalid result {}, success {}, requested path {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath);
+        WriteLog("Client runtime host: DLL {} returned invalid result {}, success {}, requested path {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_status, runtime_result.RequestedRuntimePath);
         return std::nullopt;
     }
 
     return runtime_result;
 }
 
-static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
+static auto PromoteStagedReloadForRestart(u8string_view runtime_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -223,14 +236,14 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
             return false;
         }
 
-        const string runtime_file_name = GetCurrentClientRuntimeFileName();
+        const u8string runtime_file_name = GetCurrentClientRuntimeFileName();
 
-        if (!WriteClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_path, runtime_file_name)) {
-            WriteLog("Client runtime host: failed to persist installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+        if (!WriteClientRuntimeBootstrapTarget(*bootstrap_path, runtime_path, runtime_file_name)) {
+            WriteLog("Client runtime host: failed to persist installed runtime bootstrap {} -> {}", *bootstrap_path, runtime_path);
             return false;
         }
 
-        WriteLog("Client runtime host: persisted installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+        WriteLog("Client runtime host: persisted installed runtime bootstrap {} -> {}", *bootstrap_path, runtime_path);
     }
 
     WriteLog("Client runtime host: staged self-update promoted at {}, exiting for user restart", runtime_path);
@@ -244,10 +257,11 @@ static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult
     WriteLog("Client runtime host: entering embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     ClientRuntimeHostResult runtime_result {};
-    runtime_result.LoadedBuildHash = FO_BUILD_HASH;
+    runtime_result.LoadedBuildHash = string {FO_BUILD_HASH};
     runtime_result.Result = RunClientRuntime(args);
     CaptureRuntimeResultStrings(runtime_result);
-    WriteLog("Client runtime host: embedded client returned {}, success {}, requested path {}, requested compatibility {}", ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
+    const string_view runtime_status = runtime_result.Result.Success ? "yes" : "no";
+    WriteLog("Client runtime host: embedded client returned {}, success {}, requested path {}, requested compatibility {}", ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_status, runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
     return runtime_result;
 }
 
@@ -297,11 +311,12 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         if (Data->ReloadRequested) {
             WriteLog("Client runtime embedded: requesting reload from {}", Data->StagedRuntimePath);
             runtime_result.ResultKind = ClientRuntimeResultKind::ReloadRequested;
-            runtime_result.RequestedRuntimePath = Data->StagedRuntimePath.c_str();
+            runtime_result.RequestedRuntimePath = utf8_to_c_str(Data->StagedRuntimePath.view_nt()).get();
             runtime_result.Success = true;
         }
         else {
-            WriteLog("Client runtime embedded: returning shutdown, success {}", quit_success ? "yes" : "no");
+            const string_view quit_status = quit_success ? "yes" : "no";
+            WriteLog("Client runtime embedded: returning shutdown, success {}", quit_status);
             runtime_result.Success = quit_success;
         }
 
@@ -323,7 +338,8 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
 
     WriteLog("Client runtime embedded: calling application shutdown hook");
     safe_call([] { ApplicationShutdownHook(); });
-    WriteLog("Client runtime embedded: finished with {}, success {}", ClientRuntimeResultKindToString(runtime_result.ResultKind), runtime_result.Success ? "yes" : "no");
+    const string_view runtime_status = runtime_result.Success ? "yes" : "no";
+    WriteLog("Client runtime embedded: finished with {}, success {}", ClientRuntimeResultKindToString(runtime_result.ResultKind), runtime_status);
 
     return runtime_result;
 }
@@ -468,14 +484,14 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Client runtime host: loading DLL {}", requested_runtime.Path);
-    auto runtime_module = Platform::LoadModule(requested_runtime.Path);
+    auto runtime_module = Platform::LoadModule(requested_runtime.Path.view_nt());
 
     if (!runtime_module) {
         WriteLog("Client runtime host: LoadModule failed for {}", requested_runtime.Path);
         return nullptr;
     }
 
-    const auto query_exports = Platform::GetFuncAddr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports");
+    const auto query_exports = Platform::GetFuncAddr<QueryClientRuntimeExportsFunc>(runtime_module, string_view_nt {"FO_QueryClientRuntimeExports"});
 
     if (query_exports == nullptr) {
         WriteLog("Client runtime host: DLL {} does not export FO_QueryClientRuntimeExports", requested_runtime.Path);
@@ -491,14 +507,17 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     const bool abi_supported = exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion);
 
     if (!query_ok || !exports_valid || !abi_supported) {
-        WriteLog("Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_ok ? "ok" : "failed", exports_valid ? "valid" : "invalid", abi_supported ? "supported" : "unsupported", exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
+        const string_view query_status = query_ok ? "ok" : "failed";
+        const string_view metadata_status = exports_valid ? "valid" : "invalid";
+        const string_view abi_status = abi_supported ? "supported" : "unsupported";
+        WriteLog("Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_status, metadata_status, abi_status, exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
         Platform::UnloadModule(runtime_module);
         return nullptr;
     }
 
     if (requested_runtime.CheckCompatibilityVersion && !IsClientRuntimeCompatibilityMatch(exports.Metadata, requested_runtime.CompatibilityVersion)) {
-        const string metadata_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
-        const string metadata_build = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
+        const string metadata_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(string_view {exports.Metadata.CompatibilityVersion}) : string {};
+        const string metadata_build = exports.Metadata.BuildHash != nullptr ? string(string_view {exports.Metadata.BuildHash}) : string {};
         WriteLog("Client runtime host: DLL {} rejected by compatibility check, requested {}, DLL compatibility {}, DLL build {}", requested_runtime.Path, requested_runtime.CompatibilityVersion, metadata_compat, metadata_build);
         Platform::UnloadModule(runtime_module);
         return nullptr;
@@ -508,15 +527,15 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     return runtime_module;
 }
 
-static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
+static auto ApplyStagedBinaryUpdate(u8string_view runtime_live_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     // The runtime being loaded decides where staging lives: the install-dir base DLL on the initial
     // load, or the writable-root DLL on an installed client's reload. Portable clients use the exe dir
     // in both passes, so this is identical to the previous exe-dir-only behavior for them.
-    const auto staged_path = MakeClientRuntimeStagingPath(runtime_live_path);
-    const auto binary_dir = strex(runtime_live_path).extract_dir().str();
+    const u8string staged_path = MakeClientRuntimeStagingPath(runtime_live_path);
+    const u8string binary_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(runtime_live_path)}.parent_path());
 
     if (!fs_exists(staged_path)) {
         WriteLog("Client runtime host: no staged DLL at {}", staged_path);
@@ -524,12 +543,13 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
         return true;
     }
 
-    const auto final_path = string(runtime_live_path);
-    const auto backup_path = strex("{}.bak", final_path).str();
+    const u8string final_path {runtime_live_path};
+    const u8string backup_path = FormatUtf8("{}.bak", final_path);
     const auto final_exists = fs_exists(final_path);
 
-    WriteLog("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");
-    fs_remove_file(backup_path);
+    const string_view live_dll_status = final_exists ? "yes" : "no";
+    WriteLog("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, live_dll_status);
+    (void)fs_remove_file(backup_path);
 
     if (final_exists && !fs_rename(final_path, backup_path)) {
         WriteLog("Client runtime host: failed to move live DLL {} to backup {}", final_path, backup_path);
@@ -540,14 +560,14 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
         WriteLog("Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
 
         if (final_exists) {
-            fs_rename(backup_path, final_path);
+            (void)fs_rename(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs_remove_file(backup_path);
+        (void)fs_remove_file(backup_path);
     }
 
     PromoteStagedRuntimeCompanions(binary_dir);
@@ -573,49 +593,49 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
         const bool has_next_arg = index + 1 < args.size();
         auto next_arg = args.Get(index + 1);
 
-        if (arg == "--ClientLibPath" && has_next_arg) {
+        if (arg == u8"--ClientLibPath" && has_next_arg) {
             requested_runtime.ExplicitPath = true;
-            requested_runtime.Path = next_arg;
+            requested_runtime.Path = u8string {next_arg};
         }
 
-        if (arg == "--ClientLibCompatibilityVersion" && has_next_arg) {
-            requested_runtime.CompatibilityVersion = next_arg;
+        if (arg == u8"--ClientLibCompatibilityVersion" && has_next_arg) {
+            requested_runtime.CompatibilityVersion = utf8_to_string(next_arg);
             requested_runtime.CheckCompatibilityVersion = true;
         }
 
-        if (arg == "--ForceEmbeddedRuntime" || arg == "-ForceEmbeddedRuntime") {
-            const string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
-            requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
+        if (arg == u8"--ForceEmbeddedRuntime" || arg == u8"-ForceEmbeddedRuntime") {
+            const u8string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : u8"1";
+            requested_runtime.ForceEmbedded = value != u8"0" && value != u8"false" && value != u8"False";
         }
     }
 
     return requested_runtime;
 }
 
-static auto ResolveBundledRuntimePath() -> string
+static auto ResolveBundledRuntimePath() -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string install_runtime_path = GetClientRuntimeLivePath();
+    const u8string install_runtime_path = GetClientRuntimeLivePath();
     const auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
 
     if (!bootstrap_path.has_value()) {
         return install_runtime_path;
     }
 
-    const string runtime_file_name = GetCurrentClientRuntimeFileName();
-    const string bootstrap_target = ResolveClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_file_name, install_runtime_path);
+    const u8string runtime_file_name = GetCurrentClientRuntimeFileName();
+    const u8string bootstrap_target = ResolveClientRuntimeBootstrapTarget(*bootstrap_path, runtime_file_name, install_runtime_path);
 
     if (bootstrap_target == install_runtime_path) {
-        WriteLog("Client runtime host: installed runtime bootstrap {} selected no alternate runtime, using base runtime {}", bootstrap_path.value(), install_runtime_path);
+        WriteLog("Client runtime host: installed runtime bootstrap {} selected no alternate runtime, using base runtime {}", *bootstrap_path, install_runtime_path);
         return install_runtime_path;
     }
 
-    WriteLog("Client runtime host: selected installed runtime {} from bootstrap {}", bootstrap_target, bootstrap_path.value());
+    WriteLog("Client runtime host: selected installed runtime {} from bootstrap {}", bootstrap_target, *bootstrap_path);
     return bootstrap_target;
 }
 
-static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>
+static auto GetInstalledClientRuntimeBootstrapPath() -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -623,30 +643,43 @@ static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>
         return std::nullopt;
     }
 
-    const string user_data_base = Platform::GetUserDataBase();
+    const u8string user_data_base = Platform::GetUserDataBase();
 
     if (user_data_base.empty()) {
         WriteLog(LogType::Warning, "Client runtime host: installed layout detected but no user data dir is available");
         return std::nullopt;
     }
 
-    const string selector_file_name = strex("{}.path", GetCurrentClientRuntimeFileName()).str();
-    return fs_resolve_path(strex(user_data_base).combine_path(FO_NICE_NAME).combine_path("ClientRuntimeHost").combine_path(selector_file_name).str());
+    const u8string runtime_file_name = GetCurrentClientRuntimeFileName();
+    const u8string selector_file_name = FormatUtf8("{}.path", runtime_file_name);
+    const u8string nice_name {FO_NICE_NAME};
+    const u8string runtime_host_dir {"ClientRuntimeHost"};
+    const u8string selector_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(user_data_base)} / std::filesystem::path {fs_make_path(nice_name)} / std::filesystem::path {fs_make_path(runtime_host_dir)} / std::filesystem::path {fs_make_path(selector_file_name)});
+    return fs_resolve_path(selector_path);
 }
 
 static auto IsInstalledClientLayout() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<string> exe_path = Platform::GetExePath();
-    return exe_path.has_value() && fs_exists(strex(exe_path.value()).extract_dir().combine_path("INSTALLED").str());
+    const optional<u8string> exe_path = Platform::GetExePath();
+
+    if (!exe_path.has_value()) {
+        return false;
+    }
+
+    const u8string installed_marker {"INSTALLED"};
+    const u8string installed_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(*exe_path)}.parent_path() / std::filesystem::path {fs_make_path(installed_marker)});
+    return fs_exists(installed_path);
 }
 
-static auto GetCurrentClientRuntimeFileName() -> string
+static auto GetCurrentClientRuntimeFileName() -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
+    u8string runtime_file_name = GetCurrentClientRuntimeLibraryName();
+    runtime_file_name.append(GetClientRuntimeLibraryExtension());
+    return runtime_file_name;
 }
 
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
@@ -654,15 +687,16 @@ static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
     FO_STACK_TRACE_ENTRY();
 
     if (runtime_result.Result.RequestedRuntimePath != nullptr) {
-        runtime_result.RequestedRuntimePath = runtime_result.Result.RequestedRuntimePath;
-        runtime_result.Result.RequestedRuntimePath = runtime_result.RequestedRuntimePath.c_str();
+        const char* const requested_runtime_path = runtime_result.Result.RequestedRuntimePath;
+        runtime_result.RequestedRuntimePath = utf8_from_char_span(const_span<char> {requested_runtime_path, std::strlen(requested_runtime_path)});
+        runtime_result.Result.RequestedRuntimePath = utf8_as_char_view(runtime_result.RequestedRuntimePath).data();
     }
     else {
         runtime_result.RequestedRuntimePath.clear();
     }
 
     if (runtime_result.Result.RequestedCompatibilityVersion != nullptr) {
-        runtime_result.RequestedCompatibilityVersion = runtime_result.Result.RequestedCompatibilityVersion;
+        runtime_result.RequestedCompatibilityVersion = string(string_view {runtime_result.Result.RequestedCompatibilityVersion});
         runtime_result.Result.RequestedCompatibilityVersion = runtime_result.RequestedCompatibilityVersion.c_str();
     }
     else {

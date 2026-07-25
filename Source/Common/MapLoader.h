@@ -52,7 +52,7 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
+    static void Load(string_view name, const u8string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
 };
 
 FO_END_NAMESPACE

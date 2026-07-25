@@ -40,14 +40,14 @@ FO_BEGIN_NAMESPACE
 
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
-static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta);
-static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta);
-static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta);
-static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
-static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
+static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, const_span<byte> raw_data, const EngineMetadata& meta);
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<byte> data, const EngineMetadata& meta);
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<byte> data, size_t& offset, const EngineMetadata& meta);
+static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<byte> data, const EngineMetadata& meta);
+static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<byte> data, const EngineMetadata& meta);
 
 template<typename T>
-static auto ReadTrivialValue(const_span<uint8_t> data) -> T
+static auto ReadTrivialValue(const_span<byte> data) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -58,14 +58,14 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
     T value {};
 
     if (!data.empty()) {
-        auto target = make_ptr(&value).template reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).template reinterpret_as<byte>();
         MemCopy(target, data.data(), sizeof(T));
     }
 
     return value;
 }
 
-static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
+static auto ReadPaddedInt32(const_span<byte> data) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -74,7 +74,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     int32_t value = 0;
 
     if (!data.empty()) {
-        auto target = make_ptr(&value).reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).reinterpret_as<byte>();
         MemCopy(target, data.data(), data.size());
     }
 
@@ -83,7 +83,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
 
 // Property raw data places every fixed-size item at its natural alignment with zeroed padding bytes;
 // the payload is untrusted network input, so skipped padding is verified to actually be zero
-static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> data, size_t& offset, size_t alignment)
+static void SkipAlignmentPadding(string_view owner_name, const_span<byte> data, size_t& offset, size_t alignment)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -94,7 +94,7 @@ static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> dat
     }
 
     for (size_t i = offset; i < aligned_offset; i++) {
-        if (data[i] != 0) {
+        if (data[i] != byte {0}) {
             throw ClientDataValidationException("Non-zero alignment padding byte in property data", owner_name, i);
         }
     }
@@ -102,7 +102,7 @@ static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> dat
     offset = aligned_offset;
 }
 
-void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
+void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<byte> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -126,7 +126,7 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
     }
 }
 
-void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
+void ValidateInboundPropertyData(ptr<const Property> prop, const_span<byte> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -149,7 +149,7 @@ void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> d
     if (prop->IsString()) {
         const string_view str = span_to_string(data);
 
-        if (!strvex(str).is_valid_utf8()) {
+        if (validate_utf8_text(str)) {
             throw ClientDataValidationException("Property string is not valid UTF-8", prop->GetName());
         }
         if (str.find('\0') != string_view::npos) {
@@ -305,10 +305,10 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
 
         const size_t str_size = numeric_cast<size_t>(str_len);
-        const_span<uint8_t> str_data = reader.ReadBytes(str_size);
+        const_span<byte> str_data = reader.ReadBytes(str_size);
         const string_view str = span_to_string(str_data);
 
-        if (!strvex(str).is_valid_utf8()) {
+        if (validate_utf8_text(str)) {
             throw ClientDataValidationException("String is not valid UTF-8", type.Name);
         }
         if (str.find('\0') != string_view::npos) {
@@ -327,7 +327,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     }
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
-        const_span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
+        const_span<byte> ref_raw_data = reader.ReadBytes(raw_size);
         ValidateInboundRefTypeRawData(type.Name, type, ref_raw_data, meta);
     }
     else if (type.IsStruct) {
@@ -340,7 +340,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     }
 }
 
-static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta)
+static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, const_span<byte> raw_data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -390,7 +390,7 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
     }
 }
 
-static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta)
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<byte> data, size_t& offset, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -410,10 +410,10 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
             throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
 
-        const_span<uint8_t> str_data = data.subspan(offset, str_len);
+        const_span<byte> str_data = data.subspan(offset, str_len);
         const string_view str = span_to_string(str_data);
 
-        if (!strvex(str).is_valid_utf8()) {
+        if (validate_utf8_text(str)) {
             throw ClientDataValidationException("String in packed property data is not valid UTF-8", owner_name);
         }
         if (str.find('\0') != string_view::npos) {
@@ -460,7 +460,7 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
     }
 }
 
-static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<byte> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -493,7 +493,7 @@ static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_spa
     }
 }
 
-static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<byte> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -526,7 +526,7 @@ static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span
     }
 }
 
-static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<byte> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -535,7 +535,7 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_
     }
 
     if (type.IsBool) {
-        const uint8_t value = data[0];
+        const uint8_t value = std::to_integer<uint8_t>(data[0]);
 
         if (value > 1) {
             throw ClientDataValidationException("Invalid bool value", type.Name, value);

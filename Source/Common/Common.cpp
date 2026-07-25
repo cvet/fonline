@@ -34,6 +34,13 @@
 #include "Common.h"
 #include "Application.h"
 
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <shellapi.h>
+#endif
+#include "WinApiUndef.inc"
+
 FO_BEGIN_NAMESPACE
 
 mutex InterthreadListenersLocker;
@@ -44,6 +51,71 @@ FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
 static auto ReadPackagedBuildName() -> string;
 static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
+
+CommandLineArgs::CommandLineArgs(int32_t argc, nptr<char*> argv)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    ignore_unused(argc, argv);
+
+    int wide_argc = 0;
+    const nptr<wchar_t*> wide_argv {::CommandLineToArgvW(::GetCommandLineW(), &wide_argc)};
+    FO_VERIFY_AND_THROW(wide_argv, "Failed to parse the Windows process command line");
+    const auto release_wide_argv = scope_exit([wide_argv]() noexcept { (void)::LocalFree(wide_argv.reinterpret_as<void>().get()); });
+    CommandLineArgs wide_args {numeric_cast<int32_t>(wide_argc), wide_argv};
+    _args = std::move(wide_args._args);
+#else
+    const size_t arg_count = numeric_cast<size_t>(argc);
+    FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+
+    _args.reserve(arg_count);
+
+    for (size_t i = 0; i < arg_count; ++i) {
+        const nptr<const char> arg {argv[i]};
+        FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
+
+        const size_t arg_size = std::char_traits<char>::length(arg.get());
+        _args.emplace_back(utf8_from_terminated_char_span(const_span<char> {arg.get(), arg_size + 1}));
+    }
+#endif
+}
+
+#if FO_WINDOWS
+CommandLineArgs::CommandLineArgs(int32_t argc, nptr<wchar_t*> argv)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const size_t arg_count = numeric_cast<size_t>(argc);
+    FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Wide command line argument vector is null while argument count is non-zero");
+
+    _args.reserve(arg_count);
+
+    for (size_t i = 0; i < arg_count; ++i) {
+        const nptr<const wchar_t> arg {argv[i]};
+        FO_VERIFY_AND_THROW(arg, "Wide command line argument string is null");
+
+        const size_t arg_size = std::char_traits<wchar_t>::length(arg.get());
+        const utf16_string arg_utf16 = wide_to_utf16(std::wstring_view {arg.get(), arg_size});
+        u8string arg_utf8 = utf16_to_utf8(std::u16string_view {arg_utf16.data(), arg_utf16.size()});
+        (void)arg_utf8.view_nt();
+        _args.emplace_back(std::move(arg_utf8));
+    }
+}
+#endif
+
+CommandLineArgs::CommandLineArgs(const_span<CommandLineArg> args)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _args.reserve(args.size());
+
+    for (const CommandLineArg arg : args) {
+        u8string owned_arg {arg};
+        (void)owned_arg.view_nt();
+        _args.emplace_back(std::move(owned_arg));
+    }
+}
 
 auto IsPackaged() -> bool
 {
@@ -173,19 +245,21 @@ auto MakeSeededRandomGenerator() -> std::mt19937
     return std::mt19937 {random_device()};
 }
 
-void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
+void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir = strex(fname).extract_dir().str();
+    const string_view fname_text = utf8_as_char_view(fname);
+    const auto dir = std::filesystem::path {fs_make_path(fname)}.parent_path();
 
     if (!dir.empty()) {
-        const auto dir_ok = fs_create_directories(dir);
-        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
+        const u8string dir_path = fs_path_to_u8string(dir);
+        const auto dir_ok = fs_create_directories(dir_path.view());
+        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir_path.view(), fname_text);
     }
 
     std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
+    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname_text, size, data.size());
 
     // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
     // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
@@ -193,10 +267,10 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
         std::swap(pixel.comp.r, pixel.comp.b);
     }
 
-    const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
-        numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
-    ptr<const uint8_t> header_bytes = header;
+    const array<byte, 18> header = {byte {0}, byte {0}, byte {2}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, //
+        byte {numeric_cast<uint8_t>(size.width % 256)}, byte {numeric_cast<uint8_t>(size.width / 256)}, //
+        byte {numeric_cast<uint8_t>(size.height % 256)}, byte {numeric_cast<uint8_t>(size.height / 256)}, byte {4 * 8}, byte {0x20}};
+    ptr<const byte> header_bytes = header.data();
     file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
 
     if (!data.empty()) {
@@ -204,7 +278,7 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
         file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
     }
 
-    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
+    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname_text, size, data.size());
 }
 
 // Dummy symbols for web build to avoid linker errors

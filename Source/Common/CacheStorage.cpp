@@ -49,73 +49,67 @@ public:
     auto operator=(CacheStorageImpl&&) noexcept = delete;
     virtual ~CacheStorageImpl() = default;
 
-    [[nodiscard]] virtual auto HasEntry(string_view entry_name) const -> bool = 0;
-    [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
-    [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8_t> = 0;
+    [[nodiscard]] virtual auto HasEntry(u8string_view entry_name) const -> bool = 0;
+    [[nodiscard]] virtual auto GetBytes(u8string_view entry_name) const -> vector<byte> = 0;
 
-    virtual void SetString(string_view entry_name, string_view str) = 0;
-    virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
-    virtual void RemoveEntry(string_view entry_name) = 0;
+    virtual void SetBytes(u8string_view entry_name, const_span<byte> bytes) = 0;
+    virtual void RemoveEntry(u8string_view entry_name) = 0;
 };
 
 class FileCacheStorage final : public CacheStorageImpl
 {
 public:
-    explicit FileCacheStorage(string_view real_path);
+    explicit FileCacheStorage(u8string_view real_path);
     FileCacheStorage(const FileCacheStorage&) = delete;
     FileCacheStorage(FileCacheStorage&&) noexcept = delete;
     auto operator=(const FileCacheStorage&) = delete;
     auto operator=(FileCacheStorage&&) noexcept = delete;
     ~FileCacheStorage() override = default;
 
-    [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
-    [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t> override;
+    [[nodiscard]] auto HasEntry(u8string_view entry_name) const -> bool override;
+    [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte> override;
 
     auto CreateCacheStorage() const -> bool;
-    void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uint8_t> data) override;
-    void RemoveEntry(string_view entry_name) override;
+    void SetBytes(u8string_view entry_name, const_span<byte> bytes) override;
+    void RemoveEntry(u8string_view entry_name) override;
 
 private:
-    [[nodiscard]] auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
+    [[nodiscard]] auto MakeCacheEntryPath(u8string_view work_path, u8string_view data_name) const -> u8string;
 
-    string _workPath {};
+    u8string _workPath {};
 };
 
 #if FO_HAVE_UNQLITE
 class UnqliteCacheStorage final : public CacheStorageImpl
 {
 public:
-    explicit UnqliteCacheStorage(string_view real_path);
+    explicit UnqliteCacheStorage(u8string_view real_path);
     UnqliteCacheStorage(const UnqliteCacheStorage&) = delete;
     UnqliteCacheStorage(UnqliteCacheStorage&&) noexcept = delete;
     auto operator=(const UnqliteCacheStorage&) = delete;
     auto operator=(UnqliteCacheStorage&&) noexcept = delete;
     ~UnqliteCacheStorage() override = default;
 
-    [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
-    [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t> override;
+    [[nodiscard]] auto HasEntry(u8string_view entry_name) const -> bool override;
+    [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte> override;
 
     auto InitCacheStorage() -> bool;
-    void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uint8_t> data) override;
-    void RemoveEntry(string_view entry_name) override;
+    void SetBytes(u8string_view entry_name, const_span<byte> bytes) override;
+    void RemoveEntry(u8string_view entry_name) override;
 
 private:
     mutable unique_del_nptr<unqlite> _db {};
-    string _workPath {};
+    u8string _workPath {};
 };
 
 #endif
 
-static auto CreateCacheStorageBackend(string_view path) -> unique_ptr<CacheStorageImpl>
+static auto CreateCacheStorageBackend(u8string_view path) -> unique_ptr<CacheStorageImpl>
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_UNQLITE
-    if (string_view(path).find("unqlite") != string::npos) {
+    if (path.native_view().find(u8"unqlite") != std::u8string_view::npos) {
         return SafeAlloc::MakeUnique<UnqliteCacheStorage>(path);
     }
 #endif
@@ -123,8 +117,14 @@ static auto CreateCacheStorageBackend(string_view path) -> unique_ptr<CacheStora
     return SafeAlloc::MakeUnique<FileCacheStorage>(path);
 }
 
-CacheStorage::CacheStorage(string_view path) :
+CacheStorage::CacheStorage(u8string_view path) :
     _impl {CreateCacheStorageBackend(path)}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+CacheStorage::CacheStorage(u8string path) :
+    CacheStorage {path.view()}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -136,67 +136,120 @@ auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    const u8string utf8_entry_name = entry_name;
+    return HasEntry(utf8_entry_name);
+}
+
+auto CacheStorage::HasEntry(u8string_view entry_name) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     return _impl->HasEntry(entry_name);
 }
 
-auto CacheStorage::GetString(string_view entry_name) const -> string
+auto CacheStorage::GetText(string_view entry_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->GetString(entry_name);
+    const u8string utf8_entry_name = entry_name;
+    return GetText(utf8_entry_name);
 }
 
-auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
+auto CacheStorage::GetText(u8string_view entry_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->GetData(entry_name);
+    const vector<byte> bytes = _impl->GetBytes(entry_name);
+    return utf8_from_byte_span(bytes);
 }
 
-void CacheStorage::SetString(string_view entry_name, string_view str)
+auto CacheStorage::GetBytes(string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->SetString(entry_name, str);
+    const u8string utf8_entry_name = entry_name;
+    return GetBytes(utf8_entry_name);
 }
 
-void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
+auto CacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->SetData(entry_name, data);
+    return _impl->GetBytes(entry_name);
+}
+
+void CacheStorage::SetText(string_view entry_name, u8string_view text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_entry_name = entry_name;
+    SetText(utf8_entry_name, text);
+}
+
+void CacheStorage::SetText(u8string_view entry_name, u8string_view text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto issue = validate_utf8_text(text.native_view())) {
+        throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
+    }
+
+    _impl->SetBytes(entry_name, utf8_to_byte_span(text));
+}
+
+void CacheStorage::SetBytes(string_view entry_name, const_span<byte> bytes)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_entry_name = entry_name;
+    SetBytes(utf8_entry_name, bytes);
+}
+
+void CacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _impl->SetBytes(entry_name, bytes);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 
+    const u8string utf8_entry_name = entry_name;
+    RemoveEntry(utf8_entry_name);
+}
+
+void CacheStorage::RemoveEntry(u8string_view entry_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
     _impl->RemoveEntry(entry_name);
 }
 
-auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
+auto FileCacheStorage::MakeCacheEntryPath(u8string_view work_path, u8string_view data_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(work_path).combine_path(strex(data_name).replace('/', '_').replace('\\', '_'));
+    const u8string safe_name = u8strex(data_name).replace(u8'/', u8'_').replace(u8'\\', u8'_');
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(work_path)} / std::filesystem::path {fs_make_path(safe_name.view())});
 }
 
-FileCacheStorage::FileCacheStorage(string_view real_path)
+FileCacheStorage::FileCacheStorage(u8string_view real_path) :
+    _workPath {fs_resolve_path(real_path)}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _workPath = fs_resolve_path(real_path);
 }
 
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!fs_is_dir(_workPath)) {
-        fs_create_directories(_workPath);
+    if (!fs_is_dir(_workPath.view())) {
+        (void)fs_create_directories(_workPath.view());
 
-        if (!fs_is_dir(_workPath)) {
-            WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
+        if (!fs_is_dir(_workPath.view())) {
+            WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath.view());
             return false;
         }
     }
@@ -204,43 +257,29 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
     return true;
 }
 
-auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
+auto FileCacheStorage::HasEntry(u8string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    return fs_exists(path);
+    const u8string path = MakeCacheEntryPath(_workPath.view(), entry_name);
+    return fs_exists(path.view());
 }
 
-auto FileCacheStorage::GetString(string_view entry_name) const -> string
+auto FileCacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto str = fs_read_file(path);
+    const u8string path = MakeCacheEntryPath(_workPath.view(), entry_name);
+    auto bytes = fs_read_file_bytes(path.view());
 
-    if (!str) {
+    if (!bytes) {
         return {};
     }
 
-    return *str;
+    return *bytes;
 }
 
-auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto data = fs_read_file(path);
-
-    if (!data) {
-        return {};
-    }
-
-    return vector<uint8_t>(data->begin(), data->end());
-}
-
-void FileCacheStorage::SetString(string_view entry_name, string_view str)
+void FileCacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -248,46 +287,31 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    if (!fs_write_file(path, str)) {
-        fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+    const u8string path = MakeCacheEntryPath(_workPath.view(), entry_name);
+    if (!fs_write_file_bytes(path.view(), bytes)) {
+        (void)fs_remove_file(path.view());
+        WriteLog(LogType::Warning, "Can't write cache at '{}'", path.view());
     }
 }
 
-void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
+void FileCacheStorage::RemoveEntry(u8string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!CreateCacheStorage()) {
-        return;
-    }
-
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    if (!fs_write_file(path, data)) {
-        fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
-    }
-}
-
-void FileCacheStorage::RemoveEntry(string_view entry_name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    fs_remove_file(path);
+    const u8string path = MakeCacheEntryPath(_workPath.view(), entry_name);
+    (void)fs_remove_file(path.view());
 }
 
 #if FO_HAVE_UNQLITE
-UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
+UnqliteCacheStorage::UnqliteCacheStorage(u8string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
     _workPath = fs_resolve_path(real_path);
-    _workPath = strex(_workPath).combine_path("Cache.db");
+    _workPath = fs_path_to_u8string(std::filesystem::path {fs_make_path(_workPath.view())} / std::filesystem::path {u8"Cache.db"});
 
-    if (fs_exists(_workPath)) {
-        InitCacheStorage();
+    if (fs_exists(_workPath.view())) {
+        (void)InitCacheStorage();
     }
 }
 
@@ -296,13 +320,14 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
-        fs_create_directories(strex(_workPath).extract_dir().str());
+        const u8string work_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(_workPath.view())}.parent_path());
+        (void)fs_create_directories(work_dir.view());
 
         nptr<unqlite> db;
-        auto work_path = make_ptr(_workPath.c_str());
+        const ptr<const char> work_path = utf8_to_c_str(_workPath.view_nt());
 
         if (unqlite_open(db.get_pp(), work_path.get(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
-            WriteLog(LogType::Warning, "Can't open unqlite db '{}'", _workPath);
+            WriteLog(LogType::Warning, "Can't open unqlite db '{}'", _workPath.view());
             return false;
         }
 
@@ -315,7 +340,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
     return true;
 }
 
-auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
+auto UnqliteCacheStorage::HasEntry(u8string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -323,10 +348,9 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
         return false;
     }
 
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-    const auto r = unqlite_kv_fetch_callback(_db.get(), entry_name_data.get(), entry_name_len, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
+    const const_span<char> entry_name_chars = utf8_to_char_span(entry_name);
+    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_chars.size());
+    const auto r = unqlite_kv_fetch_callback(_db.get(), entry_name_chars.data(), entry_name_len, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -336,7 +360,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
     return r == UNQLITE_OK;
 }
 
-void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
+void UnqliteCacheStorage::RemoveEntry(u8string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -344,10 +368,9 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
         return;
     }
 
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-    auto r = unqlite_kv_delete(_db.get(), entry_name_data.get(), entry_name_len);
+    const const_span<char> entry_name_chars = utf8_to_char_span(entry_name);
+    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_chars.size());
+    auto r = unqlite_kv_delete(_db.get(), entry_name_chars.data(), entry_name_len);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't delete cache entry '{}'", entry_name);
@@ -363,7 +386,7 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
     }
 }
 
-auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
+auto UnqliteCacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -371,12 +394,11 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
         return {};
     }
 
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
+    const const_span<char> entry_name_chars = utf8_to_char_span(entry_name);
+    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_chars.size());
 
     unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(_db.get(), entry_name_data.get(), entry_name_len, nullptr, &size);
+    auto r = unqlite_kv_fetch(_db.get(), entry_name_chars.data(), entry_name_len, nullptr, &size);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -386,56 +408,20 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
         return {};
     }
 
-    string str;
-    str.resize(numeric_cast<size_t>(size));
+    vector<byte> bytes;
+    bytes.resize(numeric_cast<size_t>(size));
 
-    r = unqlite_kv_fetch(_db.get(), entry_name_data.get(), entry_name_len, str.data(), &size);
-
-    if (r != UNQLITE_OK) {
-        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
-        return {};
-    }
-
-    return str;
-}
-
-auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_db) {
-        return {};
-    }
-
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-
-    unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(_db.get(), entry_name_data.get(), entry_name_len, nullptr, &size);
-
-    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
-        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
-        return {};
-    }
-    if (r == UNQLITE_NOTFOUND) {
-        return {};
-    }
-
-    vector<uint8_t> data;
-    data.resize(numeric_cast<size_t>(size));
-
-    r = unqlite_kv_fetch(_db.get(), entry_name_data.get(), entry_name_len, data.data(), &size);
+    r = unqlite_kv_fetch(_db.get(), entry_name_chars.data(), entry_name_len, bytes.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
         return {};
     }
 
-    return data;
+    return bytes;
 }
 
-void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
+void UnqliteCacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -443,37 +429,9 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-    const string value_text = string(str);
-    auto value_data = make_ptr(value_text.c_str());
-    auto r = unqlite_kv_store(_db.get(), entry_name_data.get(), entry_name_len, value_data.get(), numeric_cast<unqlite_int64>(value_text.length()));
-
-    if (r != UNQLITE_OK) {
-        WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);
-        return;
-    }
-
-    r = unqlite_commit(_db.get());
-
-    if (r != UNQLITE_OK) {
-        WriteLog(LogType::Warning, "Can't commit stored cache entry '{}'", entry_name);
-    }
-}
-
-void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!InitCacheStorage()) {
-        return;
-    }
-
-    const string entry_name_text = string(entry_name);
-    auto entry_name_data = make_ptr(entry_name_text.c_str());
-    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-    auto r = unqlite_kv_store(_db.get(), entry_name_data.get(), entry_name_len, data.data(), numeric_cast<unqlite_int64>(data.size()));
+    const const_span<char> entry_name_chars = utf8_to_char_span(entry_name);
+    const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_chars.size());
+    auto r = unqlite_kv_store(_db.get(), entry_name_chars.data(), entry_name_len, bytes.data(), numeric_cast<unqlite_int64>(bytes.size()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);

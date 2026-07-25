@@ -37,34 +37,86 @@
 
 FO_BEGIN_NAMESPACE
 
-static const auto NullLogPath =
+template<typename T>
+concept CanLogToFile = requires(T&& path) { LogToFile(std::forward<T>(path)); };
+
+template<typename T>
+concept CanWriteBaseLog = requires(T&& message) { WriteBaseLog(std::forward<T>(message)); };
+
+template<typename T>
+concept CanWriteBaseLogBytes = requires(T&& message) { WriteBaseLogBytes(std::forward<T>(message)); };
+
+static_assert(CanLogToFile<u8string_view>);
+static_assert(CanLogToFile<const u8string&>);
+static_assert(CanLogToFile<string_view>);
+static_assert(CanLogToFile<string&>);
+static_assert(CanLogToFile<strex>);
+static_assert(CanWriteBaseLog<u8string_view>);
+static_assert(CanWriteBaseLog<const u8string&>);
+static_assert(CanWriteBaseLog<string_view>);
+static_assert(CanWriteBaseLog<string&>);
+static_assert(CanWriteBaseLog<strex>);
+static_assert(!CanWriteBaseLog<const_span<byte>>);
+static_assert(CanWriteBaseLogBytes<const_span<byte>>);
+static_assert(!CanWriteBaseLogBytes<string_view>);
+static_assert(!CanWriteBaseLogBytes<u8string_view>);
+
+static constexpr u8string_view NullLogPath =
 #if FO_WINDOWS
-    string_view {"NUL"};
+    u8"NUL";
 #else
-    string_view {"/dev/null"};
+    u8"/dev/null";
 #endif
+
+static void OpenLogFile(const std::filesystem::path& path, bool append = false)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string path_utf8 = fs_path_to_u8string(path);
+    LogToFile(path_utf8.view(), append);
+}
+
+static auto ReadLogFile(const std::filesystem::path& path) -> vector<byte>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string path_utf8 = fs_path_to_u8string(path);
+    optional<vector<byte>> content = fs_read_file_bytes(path_utf8.view());
+    REQUIRE(content.has_value());
+    return std::move(*content);
+}
+
+static auto Utf8Bytes(u8string_view text) -> vector<byte>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const const_span<byte> bytes = utf8_to_byte_span(text);
+    return vector<byte> {bytes.begin(), bytes.end()};
+}
+
+static auto ContainsBytes(const vector<byte>& content, const_span<byte> needle) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return std::search(content.begin(), content.end(), needle.begin(), needle.end()) != content.end();
+}
 
 TEST_CASE("BaseLogging")
 {
     SECTION("LogToFileWritesMessages")
     {
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}()) / std::filesystem::path {fs_make_path(u8"журнал-🌍")};
         const auto log_path = temp_root / "logs" / "base.log";
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        LogToFile(string(log_path.string()));
-        WriteBaseLog("alpha\n");
-        WriteBaseLog("beta");
-
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        CHECK(content == "alpha\nbeta");
-
-        input.close();
+        OpenLogFile(log_path);
+        WriteBaseLog(u8"Привет 🌍\n");
+        WriteBaseLog(u8"beta");
         LogToFile(NullLogPath);
+
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(content == Utf8Bytes(u8"Привет 🌍\nbeta"));
 
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
@@ -77,22 +129,18 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        LogToFile(string(log_path.string()));
-        WriteBaseLog("first round content\n");
+        OpenLogFile(log_path);
+        WriteBaseLog(u8"first round content\n");
 
         // Reopen the same file. Truncation should drop the previous payload.
-        LogToFile(string(log_path.string()));
-        WriteBaseLog("second\n");
+        OpenLogFile(log_path);
+        WriteBaseLog(u8"second\n");
 
         LogToFile(NullLogPath);
 
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(content == Utf8Bytes(u8"second\n"));
 
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        CHECK(content == "second\n");
-
-        input.close();
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
@@ -104,24 +152,17 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        {
-            std::ofstream existing_log(log_path, std::ios::binary | std::ios::trunc);
-            REQUIRE(existing_log);
-            existing_log << "existing\n";
-        }
+        const u8string log_path_utf8 = fs_path_to_u8string(log_path);
+        REQUIRE(fs_write_file_text(log_path_utf8.view(), u8"existing\n"));
 
-        LogToFile(string(log_path.string()), true);
-        WriteBaseLog("engine\n");
+        OpenLogFile(log_path, true);
+        WriteBaseLog(u8"engine\n");
 
         LogToFile(NullLogPath);
 
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(content == Utf8Bytes(u8"existing\nengine\n"));
 
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        CHECK(content == "existing\nengine\n");
-
-        input.close();
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
@@ -133,7 +174,7 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        LogToFile(string(log_path.string()));
+        OpenLogFile(log_path);
         SetAsyncLogWriting(true);
 
         constexpr int32_t message_count = 256;
@@ -146,17 +187,13 @@ TEST_CASE("BaseLogging")
         SetAsyncLogWriting(false);
         LogToFile(NullLogPath);
 
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        const vector<byte> content = ReadLogFile(log_path);
         for (int32_t i = 0; i < message_count; i++) {
-            const auto needle = strex("async-line-{}\n", i);
-            CHECK(content.find(string_view {needle}) != std::string::npos);
+            const u8string needle = strex("async-line-{}\n", i);
+            CHECK(ContainsBytes(content, utf8_to_byte_span(needle.view())));
         }
-        CHECK(content.find("Dropped") == std::string::npos);
+        CHECK_FALSE(ContainsBytes(content, string_to_byte_span("Dropped")));
 
-        input.close();
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
@@ -168,35 +205,31 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        LogToFile(string(log_path.string()));
+        OpenLogFile(log_path);
 
         // Sync path
-        WriteBaseLog("sync-before\n");
+        WriteBaseLog(u8"sync-before\n");
 
         SetAsyncLogWriting(true);
-        WriteBaseLog("async-payload\n");
+        WriteBaseLog(u8"async-payload\n");
         SetAsyncLogWriting(false);
 
         // Re-enable to make sure the worker can be restarted cleanly.
         SetAsyncLogWriting(true);
-        WriteBaseLog("async-second-round\n");
+        WriteBaseLog(u8"async-second-round\n");
         SetAsyncLogWriting(false);
 
         // Sync path again
-        WriteBaseLog("sync-after\n");
+        WriteBaseLog(u8"sync-after\n");
 
         LogToFile(NullLogPath);
 
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(ContainsBytes(content, string_to_byte_span("sync-before\n")));
+        CHECK(ContainsBytes(content, string_to_byte_span("async-payload\n")));
+        CHECK(ContainsBytes(content, string_to_byte_span("async-second-round\n")));
+        CHECK(ContainsBytes(content, string_to_byte_span("sync-after\n")));
 
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        CHECK(content.find("sync-before\n") != std::string::npos);
-        CHECK(content.find("async-payload\n") != std::string::npos);
-        CHECK(content.find("async-second-round\n") != std::string::npos);
-        CHECK(content.find("sync-after\n") != std::string::npos);
-
-        input.close();
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
@@ -208,24 +241,60 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        LogToFile(string(log_path.string()));
+        OpenLogFile(log_path);
         SetAsyncLogWriting(true);
 
         // Simulate the crash path: route to the synchronous writer without stopping/joining the worker.
         SuspendAsyncLogWriting();
-        WriteBaseLog("crash-trace-line\n");
+        WriteBaseLog(u8"crash-trace-line\n");
 
         // The line must already be on disk while the async worker is still running (no join happened).
-        {
-            std::ifstream input(log_path, std::ios::binary);
-            REQUIRE(input);
-
-            std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-            CHECK(content.find("crash-trace-line\n") != std::string::npos);
-        }
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(ContainsBytes(content, string_to_byte_span("crash-trace-line\n")));
 
         SetAsyncLogWriting(false);
         LogToFile(NullLogPath);
+
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("RawDiagnosticBytesRemainExact")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "raw.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        OpenLogFile(log_path);
+        const array<byte, 5> payload = {byte {0x41}, byte {0x80}, byte {0xFF}, byte {0x00}, byte {0x0A}};
+        WriteBaseLogBytes(payload);
+        LogToFile(NullLogPath);
+
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(content == vector<byte> {payload.begin(), payload.end()});
+
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("StaleUtf8ViewIsRejectedAtTheTextBoundary")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "stale.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        std::u8string storage = u8"valid";
+        const u8string_view branded = u8string_view::FromChecked(storage);
+        storage[0] = char8_t {0xFF};
+
+        OpenLogFile(log_path);
+        WriteBaseLog(branded);
+        LogToFile(NullLogPath);
+
+        const vector<byte> content = ReadLogFile(log_path);
+        CHECK(content == Utf8Bytes(u8"Base log message rejected: invalid UTF-8\n"));
 
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);

@@ -38,7 +38,7 @@ TEST_CASE("MetadataBaker")
 
     TestRig rig;
     const auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    const auto read_baked_tags = [](const vector<uint8_t>& output) {
+    const auto read_baked_tags = [](const vector<byte>& output) {
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
         const auto tag_count = reader.Read<uint16_t>();
@@ -162,6 +162,26 @@ Value = 5 // trailing comment
         CHECK(std::ranges::count(enum_it->second, vector<string> {"ContinuedCoverage", "uint8", "Value", "5"}) == 1);
     }
 
+    SECTION("ignores inline metadata marker documentation")
+    {
+        rig.AddSourceFile("Scripts/InlineMetadataDocs.fos", u8R"(
+// Обычный комментарий упоминает `///@ FixedType` и не объявляет metadata.
+namespace InlineMetadataDocs
+{
+    ///@ FixedType Common RealMetadataType
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        const auto fixed_type_it = tags.find("FixedType");
+        REQUIRE(fixed_type_it != tags.end());
+        CHECK(std::ranges::count(fixed_type_it->second, vector<string> {"RealMetadataType"}) == 1);
+    }
+
     SECTION("serializes enum value edges")
     {
         rig.AddSourceFile("Scripts/TestEnumEdges.fos", R"(
@@ -273,7 +293,7 @@ namespace TestValueType
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, rig.Outputs.at("TestPack.fometa-client")));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(rig.Outputs.at("TestPack.fometa-client"))));
         CHECK(meta.GetBaseType("CoverageValue").IsComplexStruct);
     }
 
@@ -650,7 +670,7 @@ namespace TestMigration
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(output)));
 
         const auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"), meta.Hashes.ToHashedString("Item"), meta.Hashes.ToHashedString("Weapon.AmmoPid"));
         REQUIRE(property_rule.has_value());
@@ -659,6 +679,28 @@ namespace TestMigration
         const auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
         REQUIRE(proto_rule.has_value());
         CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
+    }
+
+    SECTION("preserves utf8 migration rule names")
+    {
+        rig.AddSourceFile("Scripts/TestUtf8Migration.fos", u8R"(
+namespace TestUtf8Migration
+{
+///@ MigrationRule Proto Modifier СomfortableСarrying ComfortableCarrying
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(rig.Outputs.at("TestPack.fometa-client"))));
+
+        const auto rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString(u8"СomfortableСarrying"));
+        REQUIRE(rule.has_value());
+        CHECK(rule.value() == meta.Hashes.ToHashedString("ComfortableCarrying"));
     }
 
     SECTION("serializes ref type fields declared via property tags")
@@ -691,7 +733,7 @@ namespace TestRefTypeProps
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(output)));
 
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
         REQUIRE(route_snapshot_type.IsRefType);
@@ -737,7 +779,7 @@ namespace TestRefTypeEntityProps
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterEnumGroup("CritterProperty", "uint16", {{"None", 0}});
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(output)));
 
         auto critter_registrator = meta.GetPropertyRegistrator("Critter");
         REQUIRE(static_cast<bool>(critter_registrator));
@@ -839,7 +881,7 @@ namespace TestNestedRefTypeProps
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(output)));
 
         const auto& alpha_type = meta.GetBaseType("Alpha");
         const auto& beta_type = meta.GetBaseType("Beta");

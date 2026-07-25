@@ -88,7 +88,7 @@ namespace
                 if (key_type == DataBaseKeyType::String) {
                     const auto& value = std::get<string>(id);
 
-                    if (!strvex(value).is_valid_utf8()) {
+                    if (validate_utf8_text(value)) {
                         throw DataBaseException("Invalid database string key utf8", value);
                     }
                 }
@@ -366,7 +366,8 @@ namespace
         AnyData::Document doc;
 
         for (const auto& [key, value] : values) {
-            doc.Assign(string(key), value);
+            const auto ascii_key = string(key);
+            doc.Assign(string_view {ascii_key}, value);
         }
 
         return doc;
@@ -378,18 +379,18 @@ namespace
         values.EmplaceBack(numeric_cast<int64_t>(7));
         values.EmplaceBack(2.5);
         values.EmplaceBack(false);
-        values.EmplaceBack(string {"array"});
+        values.EmplaceBack(u8string {u8"array"});
 
         AnyData::Dict nested;
         nested.Emplace("flag", true);
-        nested.Emplace("label", string {"nested"});
+        nested.Emplace("label", u8string {u8"nested"});
         nested.Emplace("score", numeric_cast<int64_t>(9));
 
         AnyData::Document doc;
         doc.Assign("int", numeric_cast<int64_t>(42));
         doc.Assign("float", 3.25);
         doc.Assign("bool", true);
-        doc.Assign("string", string {"text"});
+        doc.Assign("string", u8string {u8"text"});
         doc.Assign("array", AnyData::Value {std::move(values)});
         doc.Assign("dict", AnyData::Value {std::move(nested)});
         return doc;
@@ -401,19 +402,19 @@ namespace
         CHECK(doc["int"].AsInt64() == 42);
         CHECK(doc["float"].AsDouble() == 3.25);
         CHECK(doc["bool"].AsBool());
-        CHECK(doc["string"].AsString() == "text");
+        CHECK(doc["string"].AsString() == u8"text");
 
         const auto& values = doc["array"].AsArray();
         REQUIRE(values.Size() == 4);
         CHECK(values[0].AsInt64() == 7);
         CHECK(values[1].AsDouble() == 2.5);
         CHECK_FALSE(values[2].AsBool());
-        CHECK(values[3].AsString() == "array");
+        CHECK(values[3].AsString() == u8"array");
 
         const auto& nested = doc["dict"].AsDict();
         REQUIRE(nested.Size() == 3);
         CHECK(nested["flag"].AsBool());
-        CHECK(nested["label"].AsString() == "nested");
+        CHECK(nested["label"].AsString() == u8"nested");
         CHECK(nested["score"].AsInt64() == 9);
     }
 
@@ -423,12 +424,12 @@ namespace
         explicit ScopedRecoveryLogs(string_view test_name)
         {
             const auto unique_suffix = std::chrono::steady_clock::now().time_since_epoch().count();
-            const auto dir_name = strex("lf-db-tests-{}-{}", test_name, unique_suffix).str();
+            const u8string dir_name = strex("lf-db-tests-{}-{}", test_name, unique_suffix);
 
-            _dir = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
+            _dir = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name.view())};
             std::filesystem::create_directories(_dir);
-            _pendingPath = fs_path_to_string(_dir / "DbPendingChanges.oplog");
-            _committedPath = fs_path_to_string(_dir / "DbPendingChanges-committed.oplog");
+            _pendingPath = fs_path_to_u8string(_dir / "DbPendingChanges.oplog");
+            _committedPath = fs_path_to_u8string(_dir / "DbPendingChanges-committed.oplog");
         }
 
         ~ScopedRecoveryLogs()
@@ -438,13 +439,13 @@ namespace
         }
 
         [[nodiscard]] auto Dir() const -> ptr<const std::filesystem::path> { return &_dir; }
-        [[nodiscard]] auto PendingPath() const -> string_view { return _pendingPath; }
-        [[nodiscard]] auto CommittedPath() const -> string_view { return _committedPath; }
+        [[nodiscard]] auto PendingPath() const -> u8string_view { return _pendingPath.view(); }
+        [[nodiscard]] auto CommittedPath() const -> u8string_view { return _committedPath.view(); }
 
     private:
         std::filesystem::path _dir {};
-        string _pendingPath {};
-        string _committedPath {};
+        u8string _pendingPath {};
+        u8string _committedPath {};
     };
 
     class ScopedCurrentPath final
@@ -466,25 +467,31 @@ namespace
         std::filesystem::path _prevPath {};
     };
 
-    void ConfigureRecoverySettings(GlobalSettings& settings, string_view oplog_path)
+    void ConfigureRecoverySettings(GlobalSettings& settings, u8string_view oplog_path)
     {
         *FixedSettingForOverride(settings.OpLogEnabled) = true;
-        *FixedSettingForOverride(settings.OpLogPath) = string(oplog_path);
+        *FixedSettingForOverride(settings.OpLogPath) = u8string {oplog_path};
         *FixedSettingForOverride(settings.ReconnectRetryPeriod) = 20;
         *FixedSettingForOverride(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
         *FixedSettingForOverride(settings.PanicShutdownTimeout) = 1;
     }
 
+    auto WriteUtf8Fixture(u8string_view path, string_view content) -> bool
+    {
+        const u8string utf8_content = content;
+        return fs_write_file_text(path, utf8_content.view());
+    }
+
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
     {
-        REQUIRE(fs_write_file(recovery_logs.PendingPath(), pending_content));
-        REQUIRE(fs_write_file(recovery_logs.CommittedPath(), committed_content));
+        REQUIRE(fs_write_file_bytes(recovery_logs.PendingPath(), make_byte_span(pending_content)));
+        REQUIRE(fs_write_file_bytes(recovery_logs.CommittedPath(), make_byte_span(committed_content)));
     }
 
     void CheckRecoveryLogsCleared(const ScopedRecoveryLogs& recovery_logs)
     {
-        const auto pending_content = fs_read_file(recovery_logs.PendingPath());
-        const auto committed_content = fs_read_file(recovery_logs.CommittedPath());
+        const auto pending_content = fs_read_file_text(recovery_logs.PendingPath());
+        const auto committed_content = fs_read_file_text(recovery_logs.CommittedPath());
 
         REQUIRE(pending_content.has_value());
         REQUIRE(committed_content.has_value());
@@ -493,14 +500,18 @@ namespace
     }
 
 #if FO_HAVE_UNQLITE
-    void StoreRawUnQLiteRecord(const std::filesystem::path& db_path, const vector<uint8_t>& key_data, string_view value)
+    void StoreRawUnQLiteRecord(const std::filesystem::path& db_path, const vector<byte>& key_data, string_view value)
     {
         FO_STACK_TRACE_ENTRY();
 
-        REQUIRE(fs_create_directories(fs_path_to_string(db_path.parent_path())));
+        const u8string parent_path = fs_path_to_u8string(db_path.parent_path());
+        const u8string db_path_utf8 = fs_path_to_u8string(db_path);
+        const ptr<const char> db_path_cstr = utf8_to_c_str(db_path_utf8.view_nt());
+
+        REQUIRE(fs_create_directories(parent_path.view()));
 
         unqlite* db = nullptr;
-        REQUIRE(unqlite_open(&db, fs_path_to_string(db_path).c_str(), UNQLITE_OPEN_CREATE) == UNQLITE_OK);
+        REQUIRE(unqlite_open(&db, db_path_cstr.get(), UNQLITE_OPEN_CREATE) == UNQLITE_OK);
 
         auto close_db = scope_exit([&]() noexcept { unqlite_close(db); });
 
@@ -1115,7 +1126,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
         CHECK(elapsed < std::chrono::milliseconds {250});
     }
 
-    const auto pending_content = fs_read_file(recovery_logs.PendingPath());
+    const auto pending_content = fs_read_file_text(recovery_logs.PendingPath());
     REQUIRE(pending_content.has_value());
     CHECK(!pending_content->empty());
 }
@@ -1156,10 +1167,11 @@ TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
     ScopedRecoveryLogs recovery_logs {"json-string-ids"};
     const auto collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    const auto connection_info = strex("JSON {}", fs_path_to_string(*recovery_logs.Dir())).str();
-    const DataBaseKey record_id {string("steam% user/Привет")};
+    const u8string storage_root = fs_path_to_u8string(*recovery_logs.Dir());
+    const u8string connection_info = FormatUtf8("JSON {}", storage_root.view());
+    const DataBaseKey record_id {utf8_to_char_string(u8"steam% user/Привет")};
 
-    auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.StartCommitChanges();
@@ -1182,7 +1194,7 @@ TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
         {string_collection, DataBaseKeyType::String},
     };
 
-    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, u8"Memory", collection_schemas, {});
 
     REQUIRE_THROWS_AS(db.GetAllIntIds(string_collection), DataBaseException);
     REQUIRE_THROWS_AS(db.GetAllStringIds(int_collection), DataBaseException);
@@ -1223,15 +1235,16 @@ TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
     ScopedRecoveryLogs recovery_logs {"json-invalid-escaped-string-id"};
     const auto collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    const auto storage_root = fs_path_to_string(*recovery_logs.Dir());
-    const auto collection_dir = strex("{}/{}", storage_root, collection).str();
-    const auto bad_doc_path = strex("{}/bad%zz.json", collection_dir).str();
-    const auto connection_info = strex("JSON {}", storage_root).str();
+    const auto storage_root = fs_path_to_u8string(*recovery_logs.Dir());
+    const string collection_name = string(collection.as_str());
+    const u8string collection_dir = FormatUtf8("{}/{}", storage_root.view(), collection_name);
+    const u8string bad_doc_path = FormatUtf8("{}/bad%zz.json", collection_dir);
+    const u8string connection_info = FormatUtf8("JSON {}", storage_root.view());
 
-    REQUIRE(fs_create_directories(collection_dir));
-    REQUIRE(fs_write_file(bad_doc_path, "{\"value\":1}"));
+    REQUIRE(fs_create_directories(collection_dir.view()));
+    REQUIRE(WriteUtf8Fixture(bad_doc_path.view(), "{\"value\":1}"));
 
-    auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
     REQUIRE_THROWS_AS(db.GetAllStringIds(collection), DataBaseException);
 }
@@ -1521,14 +1534,16 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-roundtrip"};
-    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
+    const u8string storage_root = fs_path_to_u8string(*storage_dir_scope.Dir());
+    const u8string storage_dir = FormatUtf8(u8"{}/хранилище-🌍", storage_root.view());
     const auto collection = hashes.ToHashedString("test_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
     const auto complex_id = ident_t {1003};
     *FixedSettingForOverride(settings.JsonIndent) = 2;
-    auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
+    const u8string connection_info = FormatUtf8("JSON {}", storage_dir.view());
+    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
@@ -1550,9 +1565,10 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(first_doc["other"].AsInt64() == 7);
     CheckComplexDoc(db.Get(collection, complex_id));
 
-    const auto json_content = fs_read_file(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
+    const u8string json_path = FormatUtf8("{}/test_collection/1001.json", storage_dir.view());
+    const auto json_content = fs_read_file_text(json_path.view());
     REQUIRE(json_content.has_value());
-    CHECK(json_content->find("\n  \"value\"") != string::npos);
+    CHECK(utf8_as_char_view(json_content->view()).find("\n  \"value\"") != string_view::npos);
 
     db.Update(collection, first_id, "value", numeric_cast<int64_t>(3));
     db.Delete(collection, second_id);
@@ -1568,7 +1584,8 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     REQUIRE(ids.size() == 2);
     CHECK(std::ranges::find(ids, first_id) != ids.end());
     CHECK(std::ranges::find(ids, complex_id) != ids.end());
-    CHECK_FALSE(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
+    const u8string deleted_json_path = FormatUtf8("{}/test_collection/1002.json", storage_dir.view());
+    CHECK_FALSE(fs_exists(deleted_json_path.view()));
 }
 
 TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
@@ -1582,13 +1599,17 @@ TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     std::filesystem::create_directories(collection_dir);
 
-    auto db = ConnectToDataBase(&settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), collection_schemas, {});
+    const u8string storage_dir_utf8 = fs_path_to_u8string(storage_dir);
+    const u8string connection_info = FormatUtf8("JSON {}", storage_dir_utf8.view());
+    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
-    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "0.json"), "{}"));
+    const u8string invalid_id_path = fs_path_to_u8string(collection_dir / "0.json");
+    REQUIRE(WriteUtf8Fixture(invalid_id_path.view(), "{}"));
     REQUIRE_THROWS_AS(db.GetAllIds(collection), DataBaseException);
 
     REQUIRE(std::filesystem::remove(collection_dir / "0.json"));
-    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "1001.json"), "{"));
+    const u8string broken_json_path = fs_path_to_u8string(collection_dir / "1001.json");
+    REQUIRE(WriteUtf8Fixture(broken_json_path.view(), "{"));
     REQUIRE_THROWS_AS(db.Get(collection, ident_t {1001}), DataBaseException);
 }
 
@@ -1600,7 +1621,7 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, u8"Memory", collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1648,11 +1669,11 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto record_id = ident_t {1001};
 
-    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "Unknown", collection_schemas, {}), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "JSON", collection_schemas, {}), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "Memory extra", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, u8"Unknown", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, u8"JSON", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, u8"Memory extra", collection_schemas, {}), DataBaseException);
 
-    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, u8"Memory", collection_schemas, {});
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
@@ -1669,12 +1690,14 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
-    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
+    const u8string storage_root = fs_path_to_u8string(*storage_dir_scope.Dir());
+    const u8string storage_dir = FormatUtf8(u8"{}/хранилище-🌍", storage_root.view());
     const auto collection = hashes.ToHashedString("test_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+    const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
+    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1712,7 +1735,8 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    CHECK(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
+    const u8string collection_path = FormatUtf8("{}/test_collection.unqlite", storage_dir.view());
+    CHECK(fs_exists(collection_path.view()));
 }
 
 TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
@@ -1720,7 +1744,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-reconnect"};
-    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
     const auto int_collection = hashes.ToHashedString("test_collection");
     const auto string_collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {
@@ -1728,11 +1752,11 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
         {string_collection, DataBaseKeyType::String},
     };
     const auto int_id = ident_t {1001};
-    const DataBaseKey string_id {string("steam:user/Привет")};
-    const auto connection_info = strex("DbUnQLite {}", storage_dir).str();
+    const DataBaseKey string_id {utf8_to_char_string(u8"steam:user/Привет")};
+    const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         db.StartCommitChanges();
         db.Insert(int_collection, int_id, MakeDoc({{"value", 1}}));
@@ -1744,7 +1768,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         auto int_ids = db.GetAllIntIds(int_collection);
         REQUIRE(int_ids.size() == 1);
@@ -1769,7 +1793,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         CHECK_FALSE(db.Valid(int_collection, int_id));
         CHECK(db.GetAllIntIds(int_collection).empty());
@@ -1785,7 +1809,7 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-corrupted-keys"};
-    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
     const auto int_collection = hashes.ToHashedString("test_collection");
     const auto string_collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {
@@ -1795,28 +1819,31 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
 
     SECTION("Invalid numeric key size")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<uint8_t> {1, 2, 3}, "payload");
+        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<byte> {byte {1}, byte {2}, byte {3}}, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
 
     SECTION("Invalid numeric key value")
     {
-        vector<uint8_t> zero_key(sizeof(int64_t));
+        vector<byte> zero_key(sizeof(int64_t));
         StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
 
     SECTION("Invalid encoded string key")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<uint8_t> {'b', 'a', 'd'}, "payload");
+        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<byte> {byte {'b'}, byte {'a'}, byte {'d'}}, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
+        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
     }

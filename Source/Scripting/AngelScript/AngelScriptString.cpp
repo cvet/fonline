@@ -354,21 +354,38 @@ static auto StringFastCompare(ptr<const void> a, ptr<const void> b) -> int32_t
     return StringCmp(*cast_from_void<const string*>(a.get()), *cast_from_void<const string*>(b.get()));
 }
 
+static auto DecodeUtf8LayoutLength(ptr<const char> str, size_t available_length) noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(available_length > 0, "UTF-8 layout decode requires at least one byte");
+
+    size_t decode_length = available_length;
+    const auto decoded = utf8::Decode(str, decode_length);
+
+    // Raw script strings remain byte-tolerant for indexing/layout. On failure the
+    // codec-provided length is the recovery width and always guarantees progress.
+    (void)decoded;
+    FO_STRONG_ASSERT(decode_length > 0, "UTF-8 layout decode did not make progress");
+
+    return decode_length;
+}
+
 static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> length = nullptr, int32_t offset = 0) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (index < 0) {
-        index = numeric_cast<int32_t>(strex(str).length_utf8()) + index;
+        const u8string utf8_str = NativeScriptText::FromScriptString<u8string>(str);
+        index = numeric_cast<int32_t>(u8strvex(utf8_str).length_utf8()) + index;
 
         if (index < 0) {
             index = 0;
 
             if (length) {
                 if (!str.empty()) {
-                    size_t decode_length = str.length();
                     const auto str_begin = ScriptStringCStrAt(str, 0);
-                    utf8::Decode(str_begin.get(), decode_length);
+                    const size_t decode_length = DecodeUtf8LayoutLength(str_begin, str.length());
                     *length = numeric_cast<int32_t>(decode_length);
                 }
                 else {
@@ -385,9 +402,8 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
     size_t raw_offset = numeric_cast<size_t>(offset);
 
     while (raw_offset < str.length()) {
-        auto char_begin = ScriptStringCStrAt(str, raw_offset);
-        size_t decode_length = str.length() - raw_offset;
-        utf8::Decode(char_begin.get(), decode_length);
+        const auto char_begin = ScriptStringCStrAt(str, raw_offset);
+        const size_t decode_length = DecodeUtf8LayoutLength(char_begin, str.length() - raw_offset);
 
         if (index > 0) {
             raw_offset += decode_length;
@@ -420,9 +436,8 @@ static auto IndexRawToUtf8(const string& str, int32_t index) -> int32_t
     int32_t result = 0;
 
     for (size_t i = 0; i < str.length() && index > 0;) {
-        auto char_begin = ScriptStringCStrAt(str, i);
-        size_t decode_length = str.length() - i;
-        utf8::Decode(char_begin.get(), decode_length);
+        const auto char_begin = ScriptStringCStrAt(str, i);
+        const size_t decode_length = DecodeUtf8LayoutLength(char_begin, str.length() - i);
         i += decode_length;
         index -= numeric_cast<int32_t>(decode_length);
         result++;
@@ -568,7 +583,8 @@ static auto ScriptString_Length(const string& str) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<int32_t>(strex(str).length_utf8());
+    const u8string utf8_str = NativeScriptText::FromScriptString<u8string>(str);
+    return numeric_cast<int32_t>(u8strvex(utf8_str).length_utf8());
 }
 
 static auto ScriptString_RawLength(const string& str) -> int32_t
@@ -762,14 +778,16 @@ static auto ScriptString_Lower(const string& str) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex(str).lower_utf8();
+    const u8string utf8_str = NativeScriptText::FromScriptString<u8string>(str);
+    return NativeScriptText::ToScriptString(u8strex(utf8_str).lower());
 }
 
 static auto ScriptString_Upper(const string& str) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex(str).upper_utf8();
+    const u8string utf8_str = NativeScriptText::FromScriptString<u8string>(str);
+    return NativeScriptText::ToScriptString(u8strex(utf8_str).upper());
 }
 
 static auto ScriptString_Trim(const string& str, const string& chars) -> string

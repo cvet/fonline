@@ -126,7 +126,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files) const -> vector<uint8_t>
+auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -138,7 +138,8 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     for (const auto& file : files) {
         const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
+        const u8string config_name = file.GetPath();
+        auto fopro = ConfigFile(config_name.view(), file.GetText(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -173,7 +174,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
             map<string, string> section_kv;
 
             for (const auto& [key, value] : section_kv_view) {
-                section_kv.emplace(string(key), string(value));
+                section_kv.emplace(string(key), utf8_to_char_string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
@@ -280,7 +281,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
     for (auto&& [type_name, protos] : all_protos) {
         for (auto& proto : protos | std::views::values) {
-            errors += ValidateProperties(*proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys);
+            errors += ValidateProperties(*proto->GetProperties(), u8strex("proto {} {}", type_name, proto->GetName()), script_sys);
         }
     }
 
@@ -289,13 +290,13 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     }
 
     // Binary representation
-    vector<uint8_t> protos_data;
+    vector<byte> protos_data;
     set<hstring> str_hashes;
 
     {
         auto writer = DataWriter(protos_data);
 
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(all_protos.size()));
 
@@ -318,7 +319,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
         }
     }
 
-    vector<uint8_t> final_data;
+    vector<byte> final_data;
 
     {
         auto final_writer = DataWriter(final_data);

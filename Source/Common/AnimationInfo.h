@@ -64,7 +64,7 @@ struct SpriteInfo
 
 struct SpriteInfoFileEntry
 {
-    string SourcePath {};
+    u8string SourcePath {};
     string ResourcePath {};
     SpriteInfo Info {};
 };
@@ -92,7 +92,7 @@ struct AnimationInfo
 };
 
 auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimationInfo>;
-auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>;
-auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string;
+auto ReadSpriteInfoFile(string_view file_name, u8string content) -> vector<SpriteInfoFileEntry>;
+auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> u8string;
 
 FO_END_NAMESPACE

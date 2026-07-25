@@ -886,7 +886,7 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
         element_size = engine->GetSizeOfPrimitiveType(sub_type_id);
     }
 
-    ptr<void> obj = SafeAlloc::MakeRawArr<uint8_t>(element_size);
+    ptr<void> obj = SafeAlloc::MakeRawArr<byte>(element_size);
     MemFill(obj, 0, element_size);
     return obj;
 }
@@ -915,7 +915,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
         element_size = engine->GetSizeOfPrimitiveType(sub_type_id);
     }
 
-    ptr<void> copied = SafeAlloc::MakeRawArr<uint8_t>(element_size);
+    ptr<void> copied = SafeAlloc::MakeRawArr<byte>(element_size);
     MemFill(copied, 0, element_size);
 
     if ((sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -946,11 +946,11 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
     return copied;
 }
 
-static void CleanupScriptDictValueBytes(ptr<uint8_t> value_bytes) noexcept
+static void CleanupScriptDictValueBytes(ptr<byte> value_bytes) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    unique_arr_ptr<uint8_t> owned_value_bytes {value_bytes.get()};
+    unique_arr_ptr<byte> owned_value_bytes {value_bytes.get()};
     ignore_unused(owned_value_bytes);
 }
 
@@ -975,7 +975,7 @@ static void DestroyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_ty
             engine->ReleaseScriptObject(obj.get_no_const(), sub_type.get());
         }
 
-        auto value_bytes = value.reinterpret_as<uint8_t>();
+        auto value_bytes = value.reinterpret_as<byte>();
         CleanupScriptDictValueBytes(value_bytes);
     }
 }

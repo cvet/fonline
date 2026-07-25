@@ -52,7 +52,7 @@ namespace WebRelated
     extern auto IsPersistentDataReady() noexcept -> bool;
     extern void StartMainLoop(void (*entry)(void*), void* data) noexcept;
     extern void SetWebSocketScheme(bool secure) noexcept;
-    extern void ShowError(string_view title, string_view text);
+    extern void ShowError(u8string_view title, u8string_view text);
 }
 
 FO_END_NAMESPACE

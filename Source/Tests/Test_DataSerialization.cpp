@@ -43,55 +43,71 @@ consteval auto IsZeroCopyReadPtrAvailable() -> bool
     return requires(DataReader& reader) { reader.template ReadPtr<T>(0); };
 }
 
-static_assert(IsZeroCopyReadPtrAvailable<uint8_t>());
+template<typename T>
+consteval auto IsMutableZeroCopyReadPtrAvailable() -> bool
+{
+    return requires(MutableDataReader& reader) { reader.template ReadPtr<T>(0); };
+}
+
+static_assert(IsZeroCopyReadPtrAvailable<byte>());
 static_assert(IsZeroCopyReadPtrAvailable<char>());
 static_assert(IsZeroCopyReadPtrAvailable<void>());
+static_assert(!IsZeroCopyReadPtrAvailable<uint8_t>());
 static_assert(!IsZeroCopyReadPtrAvailable<uint32_t>());
 static_assert(!IsZeroCopyReadPtrAvailable<float32_t>());
+static_assert(IsMutableZeroCopyReadPtrAvailable<byte>());
+static_assert(IsMutableZeroCopyReadPtrAvailable<char>());
+static_assert(IsMutableZeroCopyReadPtrAvailable<void>());
+static_assert(!IsMutableZeroCopyReadPtrAvailable<uint8_t>());
+static_assert(!IsMutableZeroCopyReadPtrAvailable<uint32_t>());
+static_assert(std::constructible_from<DataReader, const_span<byte>>);
+static_assert(!std::constructible_from<DataReader, const_span<uint8_t>>);
+static_assert(std::constructible_from<DataWriter, vector<byte>&>);
+static_assert(!std::constructible_from<DataWriter, vector<uint8_t>&>);
 
 TEST_CASE("DataSerialization")
 {
     SECTION("SpanHelpers")
     {
-        array<uint8_t, 16> buf {};
-        auto writable = make_span(buf);
+        array<byte, 16> buf {};
+        auto writable = make_byte_span(buf);
 
         size_t write_pos = 1;
         span_write_object<uint16_t>(writable, write_pos, static_cast<uint16_t>(0xABCD));
 
-        const array<uint8_t, 3> raw = {1, 2, 3};
+        const array<byte, 3> raw = {byte {1}, byte {2}, byte {3}};
         span_write_bytes(writable, write_pos, {raw.data(), raw.size()});
 
         const size_t zero_size_pos = write_pos;
-        span_write_bytes(writable, write_pos, const_span<uint8_t> {});
+        span_write_bytes(writable, write_pos, const_span<byte> {});
         CHECK(write_pos == zero_size_pos);
 
         size_t read_pos = 1;
-        CHECK(span_read_object<uint16_t>(const_span<uint8_t> {buf}, read_pos) == static_cast<uint16_t>(0xABCD));
+        CHECK(span_read_object<uint16_t>(const_span<byte> {buf}, read_pos) == static_cast<uint16_t>(0xABCD));
         CHECK(read_pos == 1 + sizeof(uint16_t));
 
-        const_span<uint8_t> raw_read = span_read_bytes(const_span<uint8_t> {buf}, read_pos, raw.size());
+        const_span<byte> raw_read = span_read_bytes(const_span<byte> {buf}, read_pos, raw.size());
         CHECK(raw_read[0] == raw[0]);
         CHECK(raw_read[1] == raw[1]);
         CHECK(raw_read[2] == raw[2]);
 
         const size_t after_raw_pos = read_pos;
-        CHECK(span_read_bytes(const_span<uint8_t> {buf}, read_pos, 0).empty());
+        CHECK(span_read_bytes(const_span<byte> {buf}, read_pos, 0).empty());
         CHECK(read_pos == after_raw_pos);
 
         size_t mutable_read_pos = 1 + sizeof(uint16_t);
-        span<uint8_t> mutable_raw = span_read_bytes(writable, mutable_read_pos, raw.size());
-        mutable_raw[0] = 9;
-        CHECK(buf[1 + sizeof(uint16_t)] == 9);
+        span<byte> mutable_raw = span_read_bytes(writable, mutable_read_pos, raw.size());
+        mutable_raw[0] = byte {9};
+        CHECK(buf[1 + sizeof(uint16_t)] == byte {9});
 
         size_t overflow_read_pos = buf.size();
-        CHECK_THROWS_AS(span_read_bytes(const_span<uint8_t> {buf}, overflow_read_pos, 1), DataReadingException);
+        CHECK_THROWS_AS(span_read_bytes(const_span<byte> {buf}, overflow_read_pos, 1), DataReadingException);
 
         size_t overflow_write_pos = buf.size();
         CHECK_THROWS_AS(span_write_bytes(writable, overflow_write_pos, static_cast<size_t>(1)), VerificationException);
 
-        array<uint8_t, 32> aligned_buf {};
-        auto aligned_writable = make_span(aligned_buf);
+        array<byte, 32> aligned_buf {};
+        auto aligned_writable = make_byte_span(aligned_buf);
 
         CHECK(alignment_for_size(0) == 1);
         CHECK(alignment_for_size(12) == 4);
@@ -101,58 +117,85 @@ TEST_CASE("DataSerialization")
         span_write_aligned_object<uint32_t>(aligned_writable, aligned_write_pos, 0x11223344u);
         CHECK(aligned_write_pos == 8);
 
-        const array<uint8_t, 3> aligned_raw = {4, 5, 6};
+        const array<byte, 3> aligned_raw = {byte {4}, byte {5}, byte {6}};
         aligned_write_pos = 5;
         span_write_aligned_bytes(aligned_writable, aligned_write_pos, {aligned_raw.data(), aligned_raw.size()}, 8);
         CHECK(aligned_write_pos == 11);
 
         const size_t zero_aligned_write_pos = aligned_write_pos;
-        span_write_aligned_bytes(aligned_writable, aligned_write_pos, const_span<uint8_t> {}, 8);
+        span_write_aligned_bytes(aligned_writable, aligned_write_pos, const_span<byte> {}, 8);
         CHECK(aligned_write_pos == zero_aligned_write_pos);
 
         size_t aligned_read_pos = 3;
-        CHECK(span_read_aligned_object<uint32_t>(const_span<uint8_t> {aligned_buf}, aligned_read_pos) == 0x11223344u);
+        CHECK(span_read_aligned_object<uint32_t>(const_span<byte> {aligned_buf}, aligned_read_pos) == 0x11223344u);
         CHECK(aligned_read_pos == 8);
 
         aligned_read_pos = 5;
-        const_span<uint8_t> aligned_raw_read = span_read_aligned_bytes(const_span<uint8_t> {aligned_buf}, aligned_read_pos, aligned_raw.size(), 8);
+        const_span<byte> aligned_raw_read = span_read_aligned_bytes(const_span<byte> {aligned_buf}, aligned_read_pos, aligned_raw.size(), 8);
         CHECK(aligned_read_pos == 11);
         CHECK(aligned_raw_read[0] == aligned_raw[0]);
         CHECK(aligned_raw_read[1] == aligned_raw[1]);
         CHECK(aligned_raw_read[2] == aligned_raw[2]);
 
         const size_t zero_aligned_read_pos = aligned_read_pos;
-        CHECK(span_read_aligned_bytes(const_span<uint8_t> {aligned_buf}, aligned_read_pos, 0, 8).empty());
+        CHECK(span_read_aligned_bytes(const_span<byte> {aligned_buf}, aligned_read_pos, 0, 8).empty());
         CHECK(aligned_read_pos == zero_aligned_read_pos);
     }
 
     SECTION("ReadWriteRoundtrip")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
 
         writer.Write<uint32_t>(0xAABBCCDDu);
         writer.Write<int16_t>(static_cast<int16_t>(-1234));
 
-        const array<uint8_t, 3> raw = {1, 2, 3};
+        const array<byte, 3> raw = {byte {1}, byte {2}, byte {3}};
         writer.WriteBytes({raw.data(), raw.size()});
 
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 0xAABBCCDDu);
         CHECK(reader.Read<int16_t>() == static_cast<int16_t>(-1234));
 
-        const auto raw_read = reader.ReadPtr<uint8_t>(raw.size());
+        const auto raw_read = reader.ReadPtr<byte>(raw.size());
         CHECK(static_cast<bool>(raw_read));
-        CHECK(raw_read[0] == 1);
-        CHECK(raw_read[1] == 2);
-        CHECK(raw_read[2] == 3);
+        CHECK(raw_read[0] == byte {1});
+        CHECK(raw_read[1] == byte {2});
+        CHECK(raw_read[2] == byte {3});
 
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("NumericUint8AndRawBytesHaveStableLayout")
+    {
+        const uint8_t numeric_value = uint8_t {0x5A};
+        const array<byte, 3> raw = {byte {0x00}, byte {0x80}, byte {0xFF}};
+        const array<byte, 4> golden = {byte {0x5A}, byte {0x00}, byte {0x80}, byte {0xFF}};
+
+        vector<byte> written;
+        DataWriter writer {written};
+        writer.Write<uint8_t>(numeric_value);
+        writer.WriteBytes(make_byte_span(raw));
+
+        REQUIRE(written.size() == golden.size());
+        for (size_t index = 0; index < golden.size(); index++) {
+            CHECK(written[index] == golden[index]);
+        }
+
+        DataReader reader {make_byte_span(golden)};
+        CHECK(reader.Read<uint8_t>() == numeric_value);
+
+        const_span<byte> read_raw = reader.ReadBytes(raw.size());
+        REQUIRE(read_raw.size() == raw.size());
+        for (size_t index = 0; index < raw.size(); index++) {
+            CHECK(read_raw[index] == raw[index]);
+        }
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
     SECTION("DataReaderBounds")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint8_t>(static_cast<uint8_t>(10));
 
@@ -163,9 +206,25 @@ TEST_CASE("DataSerialization")
         CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
     }
 
+    SECTION("Utf8StringBytesRoundtrip")
+    {
+        vector<byte> buf;
+        DataWriter writer {buf};
+        writer.WriteStringBytes(u8"Привет 🌍");
+
+        DataReader reader {buf};
+        CHECK(reader.ReadUtf8StringView(buf.size()) == u8"Привет 🌍");
+        CHECK_NOTHROW(reader.VerifyEnd());
+
+        vector<byte> invalid = buf;
+        invalid.back() = byte {0xFF};
+        DataReader invalid_reader {invalid};
+        CHECK_THROWS_AS(invalid_reader.ReadUtf8StringView(invalid.size()), TextValidationException);
+    }
+
     SECTION("ReaderRejectsLengthAndCountBombsBeforeAllocation")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
 
@@ -186,13 +245,13 @@ TEST_CASE("DataSerialization")
         DataReader object_vector_reader {span {buf}};
         CHECK_THROWS_AS(object_vector_reader.ReadSizedObjectVector<uint32_t>(), DataReadingException);
 
-        DataReader empty_reader {const_span<uint8_t> {}};
+        DataReader empty_reader {const_span<byte> {}};
         CHECK_THROWS_AS(empty_reader.VerifyPayloadCount(0, 0), VerificationException);
     }
 
     SECTION("VerifyEnd")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(55));
         writer.Write<uint16_t>(static_cast<uint16_t>(66));
@@ -204,16 +263,39 @@ TEST_CASE("DataSerialization")
 
     SECTION("EmptyReadersAcceptVerifyEndAndZeroSizePointers")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
 
         DataReader reader {span {buf}};
-        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<byte>(0)));
+        CHECK_NOTHROW(reader.VerifyEnd());
+
+        MutableDataReader mutable_reader {span {buf}};
+        CHECK_FALSE(static_cast<bool>(mutable_reader.ReadPtr<byte>(0)));
+        CHECK_NOTHROW(mutable_reader.VerifyEnd());
+    }
+
+    SECTION("MutableDataReader")
+    {
+        vector<byte> buf;
+        DataWriter writer {buf};
+        writer.Write<uint32_t>(static_cast<uint32_t>(123));
+        writer.Write<uint8_t>(static_cast<uint8_t>(9));
+
+        MutableDataReader reader {span {buf}};
+        CHECK(reader.Read<uint32_t>() == 123);
+
+        auto value = reader.ReadPtr<byte>(1);
+        REQUIRE(static_cast<bool>(value));
+        CHECK(*value == byte {9});
+        *value = byte {11};
+
+        CHECK(buf.back() == byte {11});
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
     SECTION("ZeroSizePointers")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
 
         writer.Write<uint8_t>(static_cast<uint8_t>(77));
@@ -221,20 +303,20 @@ TEST_CASE("DataSerialization")
 
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == 77);
-        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<byte>(0)));
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
     SECTION("ReadPtrToBuffer")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
 
-        const array<uint8_t, 4> source = {9, 8, 7, 6};
+        const array<byte, 4> source = {byte {9}, byte {8}, byte {7}, byte {6}};
         writer.WriteBytes({source.data(), source.size()});
 
         DataReader reader {span {buf}};
-        array<uint8_t, 4> target = {0, 0, 0, 0};
+        array<byte, 4> target = {byte {0}, byte {0}, byte {0}, byte {0}};
         reader.ReadPtr(target.data(), target.size());
 
         CHECK(target == source);
@@ -243,40 +325,80 @@ TEST_CASE("DataSerialization")
 
     SECTION("ZeroSizeBufferedReadDoesNotModifyTargetOrAdvance")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(0xABCD));
 
         DataReader reader {span {buf}};
-        array<uint8_t, 3> target = {7, 8, 9};
+        array<byte, 3> target = {byte {7}, byte {8}, byte {9}};
 
         reader.ReadPtr(target.data(), 0);
-        CHECK(target == array<uint8_t, 3> {7, 8, 9});
+        CHECK(target == array<byte, 3> {byte {7}, byte {8}, byte {9}});
         CHECK(reader.Read<uint16_t>() == static_cast<uint16_t>(0xABCD));
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
     SECTION("ReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(0xCAFE));
 
         DataReader reader {span {buf}};
-        array<uint8_t, 4> target = {1, 2, 3, 4};
+        array<byte, 4> target = {byte {1}, byte {2}, byte {3}, byte {4}};
 
         CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
-        CHECK(target == array<uint8_t, 4> {1, 2, 3, 4});
+        CHECK(target == array<byte, 4> {byte {1}, byte {2}, byte {3}, byte {4}});
+    }
+
+    SECTION("MutableDataReaderBounds")
+    {
+        vector<byte> buf;
+        DataWriter writer {buf};
+        writer.Write<uint8_t>(static_cast<uint8_t>(5));
+
+        MutableDataReader reader {span {buf}};
+        CHECK(reader.Read<uint8_t>() == 5);
+        CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
+    }
+
+    SECTION("MutableZeroSizePointers")
+    {
+        vector<byte> buf;
+        DataWriter writer {buf};
+        writer.Write<uint16_t>(static_cast<uint16_t>(0x1234));
+
+        MutableDataReader reader {span {buf}};
+        CHECK(reader.Read<uint16_t>() == static_cast<uint16_t>(0x1234));
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<byte>(0)));
+
+        array<byte, 2> temp = {byte {1}, byte {2}};
+        reader.ReadPtr(temp.data(), 0);
+        CHECK(temp == array<byte, 2> {byte {1}, byte {2}});
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("MutableReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
+    {
+        vector<byte> buf;
+        DataWriter writer {buf};
+        writer.Write<uint8_t>(static_cast<uint8_t>(42));
+
+        MutableDataReader reader {span {buf}};
+        array<byte, 3> target = {byte {9}, byte {8}, byte {7}};
+
+        CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
+        CHECK(target == array<byte, 3> {byte {9}, byte {8}, byte {7}});
     }
 
     SECTION("ZeroSizeWritePtrDoesNotGrowBuffer")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
         writer.Write<uint32_t>(0x11223344u);
 
         const size_t initial_size = buf.size();
-        const array<uint8_t, 3> source = {5, 6, 7};
+        const array<byte, 3> source = {byte {5}, byte {6}, byte {7}};
 
         writer.WritePtr(source.data(), 0);
 
@@ -289,12 +411,12 @@ TEST_CASE("DataSerialization")
 
     SECTION("LargeWriteBytesGrowsBufferAndPreservesData")
     {
-        vector<uint8_t> buf;
+        vector<byte> buf;
         DataWriter writer {buf};
 
-        vector<uint8_t> source(DataWriter::BUF_RESERVE_SIZE + 17, static_cast<uint8_t>(0x5A));
-        source.front() = 1;
-        source.back() = 2;
+        vector<byte> source(DataWriter::BUF_RESERVE_SIZE + 17, byte {0x5A});
+        source.front() = byte {1};
+        source.back() = byte {2};
 
         writer.Write<uint8_t>(static_cast<uint8_t>(0x11));
         writer.WriteBytes({source.data(), source.size()});
@@ -304,11 +426,11 @@ TEST_CASE("DataSerialization")
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == static_cast<uint8_t>(0x11));
 
-        const auto raw = reader.ReadPtr<uint8_t>(source.size());
+        const auto raw = reader.ReadPtr<byte>(source.size());
         REQUIRE(static_cast<bool>(raw));
-        CHECK(raw[0] == 1);
-        CHECK(raw[source.size() - 1] == 2);
-        CHECK(raw[source.size() / 2] == static_cast<uint8_t>(0x5A));
+        CHECK(raw[0] == byte {1});
+        CHECK(raw[source.size() - 1] == byte {2});
+        CHECK(raw[source.size() / 2] == byte {0x5A});
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 }

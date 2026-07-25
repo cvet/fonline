@@ -128,7 +128,8 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     for (const auto& proto_file_header : proto_files) {
         const auto proto_file = File::Load(proto_file_header);
-        auto reader = DataReader(proto_file.GetDataSpan());
+        const const_span<byte> proto_data = proto_file.GetDataSpan();
+        auto reader = DataReader(proto_data);
 
         // Hashes
         {
@@ -147,7 +148,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
         // Protos
         {
             const auto types_count = reader.Read<uint32_t>();
-            vector<uint8_t> props_data;
+            vector<byte> props_data;
 
             for (uint32_t i = 0; i < types_count; i++) {
                 const auto protos_count = reader.Read<uint32_t>();
@@ -171,8 +172,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
                     const auto data_size = reader.Read<uint32_t>();
                     props_data.resize(data_size);
-                    span<uint8_t> props_data_span = props_data;
-                    reader.ReadBytes(props_data_span);
+                    reader.ReadBytes(props_data);
                     proto->GetPropertiesForEdit()->RestoreAllData(props_data);
                 }
             }

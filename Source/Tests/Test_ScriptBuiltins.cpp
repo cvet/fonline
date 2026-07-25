@@ -373,7 +373,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -1547,9 +1547,9 @@ namespace ScriptBuiltins
             });
     }
 
-    static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
+    static auto MakeMetadataWithGenderEnum() -> vector<byte>
     {
-        vector<uint8_t> metadata;
+        vector<byte> metadata;
         auto writer = DataWriter(metadata);
 
         writer.Write<uint16_t>(uint16_t {1}); // 1 section
@@ -1841,19 +1841,19 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         REQUIRE(func);
 
         const auto prev_callback = GetExceptionCallback();
-        string message;
+        u8string message;
         string traceback;
         bool fatal = true;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
-            message = string(msg);
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+            message.assign(msg);
             traceback = FormatStackTrace(st);
             fatal = is_fatal;
         });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
-        CHECK(message.find("Invalid int value for any conversion") != string::npos);
-        CHECK(message.find("DefinitelyNotANumber") != string::npos);
+        CHECK(message.view().native_view().find(u8"Invalid int value for any conversion") != std::u8string_view::npos);
+        CHECK(message.view().native_view().find(u8"DefinitelyNotANumber") != std::u8string_view::npos);
         CHECK_FALSE(traceback.empty());
         CHECK_FALSE(fatal);
     }
@@ -2091,14 +2091,15 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         REQUIRE(func);
 
         const auto prev_callback = GetExceptionCallback();
-        string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
+        u8string message;
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
+        const u8string expected_message_utf8 {expected_message};
         INFO(func_name);
-        INFO(message);
-        CHECK(message.find(expected_message) != string::npos);
+        INFO(utf8_to_char_string(message));
+        CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos);
     };
 
     // ArrayLength with FindFunc<int, vector<int>>

@@ -488,8 +488,6 @@ enum class ImGui_StyleVar : int32_t
 
 inline void ImGuiTextUnformatted(string_view text)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (text.empty()) {
         ImGui::TextUnformatted("");
         return;
@@ -497,6 +495,19 @@ inline void ImGuiTextUnformatted(string_view text)
 
     auto text_begin = make_nptr(text.data());
     auto text_end = text_begin.offset(text.size());
+    ImGui::TextUnformatted(text_begin.get(), text_end.get());
+}
+
+inline void ImGuiTextUnformatted(u8string_view text)
+{
+    if (text.empty()) {
+        ImGui::TextUnformatted("");
+        return;
+    }
+
+    const const_span<char> text_chars = utf8_to_char_span(text);
+    auto text_begin = make_nptr(text_chars.data());
+    auto text_end = text_begin.offset(text_chars.size());
     ImGui::TextUnformatted(text_begin.get(), text_end.get());
 }
 

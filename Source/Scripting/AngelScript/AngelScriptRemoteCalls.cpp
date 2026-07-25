@@ -116,22 +116,25 @@ static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScr
 
 static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> string
 {
+    FO_STACK_TRACE_ENTRY();
+
     const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
+    const string call_name = utf8_to_string(u8strex("{}", inbound_call.Name));
 
     if (meta.GetSide() == EngineSideKind::ServerSide) {
         const auto args = MakeScriptArgsName(inbound_call.Args);
-        return strex("void {}::{}(Player@+ player{}{})", ns, inbound_call.Name, !args.empty() ? ", " : "", args);
+        return strex("void {}::{}(Player@+ player{}{})", ns, call_name, !args.empty() ? ", " : "", args);
     }
 
-    return strex("void {}::{}({})", ns, inbound_call.Name, MakeScriptArgsName(inbound_call.Args));
+    return strex("void {}::{}({})", ns, call_name, MakeScriptArgsName(inbound_call.Args));
 }
 
-static auto RemoteCallConstObjectBytes(nptr<const void> obj) noexcept -> ptr<const uint8_t>
+static auto RemoteCallConstObjectBytes(nptr<const void> obj) noexcept -> ptr<const byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(obj, "Remote call object is null");
-    return cast_from_void<const uint8_t*>(obj.get());
+    return cast_from_void<const byte*>(obj.get());
 }
 
 template<typename T>
@@ -143,7 +146,7 @@ static auto RemoteCallConstObjectAs(nptr<const void> obj) noexcept -> ptr<const 
     return cast_from_void<const T*>(obj.get());
 }
 
-static auto GetConstStructFieldStorage(nptr<const void> obj, size_t offset) noexcept -> ptr<const uint8_t>
+static auto GetConstStructFieldStorage(nptr<const void> obj, size_t offset) noexcept -> ptr<const byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -178,7 +181,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     auto caller = GetGenericObjectAs<Entity>(generic);
     auto outbound_call = GetGenericAuxiliaryAs<const RemoteCallDesc>(generic);
 
-    vector<uint8_t> data;
+    vector<byte> data;
     DataWriter writer(data);
 
     const function<void(nptr<const void>, const BaseTypeDesc&)> write_simple = [&](nptr<const void> value, const BaseTypeDesc& type) {
@@ -193,7 +196,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum underlying type is null");
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
             auto enum_data_bytes = RemoteCallConstObjectBytes(value);
-            writer.WriteBytes({enum_data_bytes.get(), type.Size});
+            writer.WriteBytes(make_byte_span(enum_data_bytes, type.Size));
         }
         else if (type.IsString) {
             auto str = RemoteCallConstObjectAs<string>(value);
@@ -210,7 +213,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
             if (!raw_data.empty()) {
-                writer.WriteBytes({raw_data.data(), raw_data.size()});
+                writer.WriteBytes(make_byte_span(raw_data));
             }
         }
         else if (type.IsStruct) {
@@ -287,7 +290,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     engine->SendRemoteCall(outbound_call->Name, caller, data);
 }
 
-static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
+static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<byte> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -298,17 +301,17 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
     struct RemoteCallPlainArgData
     {
-        alignas(uint64_t) uint8_t Bytes[sizeof(uint64_t)] {};
+        alignas(uint64_t) byte Bytes[sizeof(uint64_t)] {};
     };
 
-    using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<byte>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
     const auto read_plain_data = [&](size_t size) -> nptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
-        ptr<uint8_t> storage_bytes = storage.Bytes;
-        reader.ReadBytes({storage_bytes.get(), size});
+        ptr<byte> storage_bytes = storage.Bytes;
+        reader.ReadBytes(make_byte_span(storage_bytes, size));
         return storage_bytes.void_cast();
     };
 
@@ -339,7 +342,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         }
         else if (type.IsRefType) {
             const uint32_t raw_size = reader.Read<uint32_t>();
-            const_span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
+            const_span<byte> ref_raw_data = reader.ReadBytes(raw_size);
 
             auto ref_obj = CreateRefTypeScriptObjectFromRawData(type, ref_raw_data);
             ptr<refcount_ptr<DynamicRefTypeInstance>> ref_obj_ptr = &std::get<refcount_ptr<DynamicRefTypeInstance>>(temp_data.emplace_back(std::move(ref_obj)));
@@ -347,17 +350,17 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             return ref_obj_handle;
         }
         else if (type.IsStruct) {
-            ptr<vector<uint8_t>> buf = &std::get<vector<uint8_t>>(temp_data.emplace_back(vector<uint8_t>(type.Size, 0)));
+            ptr<vector<byte>> buf = &std::get<vector<byte>>(temp_data.emplace_back(vector<byte>(type.Size, byte {0})));
             for (const auto& field : type.StructLayout->Fields) {
                 auto field_data = read_simple(field.Type);
 
                 if (field.Type.Size != 0) {
                     FO_VERIFY_AND_THROW(field_data, "Decoded struct field data is null");
                     size_t field_pos = field.Offset;
-                    span_write_bytes(make_span(*buf), field_pos, make_span(field_data.get(), field.Type.Size));
+                    span_write_bytes(make_byte_span(*buf), field_pos, make_byte_span(field_data, field.Type.Size));
                 }
             }
-            nptr<uint8_t> buf_data = buf->data();
+            nptr<byte> buf_data = buf->data();
             if (!buf_data) {
                 return nullptr;
             }
@@ -496,7 +499,8 @@ void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     for (const auto& outbound_call : (*meta->GetOutboundRemoteCalls()) | std::views::values) {
-        const string method_decl = strex("void {}({})", outbound_call.Name, MakeScriptArgsName(outbound_call.Args));
+        const string call_name = utf8_to_string(u8strex("{}", outbound_call.Name));
+        const string method_decl = strex("void {}({})", call_name, MakeScriptArgsName(outbound_call.Args));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("RemoteCaller", method_decl.c_str(), FO_SCRIPT_GENERIC(OutboundRemoteCallFunc), FO_SCRIPT_GENERIC_CONV, make_nptr(&outbound_call).void_cast()));
 
         if (meta->GetSide() == EngineSideKind::ServerSide) {
@@ -532,7 +536,7 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
         if (auto func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call)) {
             if (backend->HasGameEngine()) {
                 auto engine = backend->GetGameEngine();
-                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<byte> data) FO_DEFERRED {
                     FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
                     InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
                 });

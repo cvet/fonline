@@ -63,7 +63,7 @@ namespace
         return settings;
     }
 
-    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerClientEngine compiler_engine {metadata_resources};
 
@@ -156,7 +156,7 @@ namespace ClientEngineTest
             });
     }
 
-    static auto MakeClientTestResources(vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> FileSystem
+    static auto MakeClientTestResources(vector<pair<string, vector<byte>>> extra_resources = {}) -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -206,18 +206,18 @@ namespace ClientEngineTest
         writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
     }
 
-    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
+    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<byte>
     {
         FO_STACK_TRACE_ENTRY();
 
-        vector<uint8_t> data;
+        vector<byte> data;
         DataWriter writer {data};
         WriteModelMeshHeader(writer);
         write_root(writer);
         return data;
     }
 
-    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<byte>
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -325,7 +325,7 @@ f 1 2 3
 
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
-    vector<pair<string, vector<uint8_t>>> malformed_resources;
+    vector<pair<string, vector<byte>>> malformed_resources;
 
     malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
@@ -412,7 +412,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }));
 
     {
-        vector<uint8_t> data;
+        vector<byte> data;
         DataWriter writer {data};
         writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
         writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
@@ -422,7 +422,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<byte> data;
         DataWriter writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLink(writer);
@@ -431,7 +431,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<byte> data;
         DataWriter writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
@@ -744,7 +744,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
     mesh.Indices = {0, 1, 2};
 
-    const vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
+    const vector<byte> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
     constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
     constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
     constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
@@ -753,15 +753,15 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     constexpr size_t mesh_vertices_offset = mesh_source_offset_offset + sizeof(int32_t) * 2;
     constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
 
-    const auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
-        data[offset] = numeric_cast<uint8_t>(value & 0xFF);
-        data[offset + 1] = numeric_cast<uint8_t>(value >> 8);
+    const auto write_u16 = [](vector<byte>& data, size_t offset, uint16_t value) {
+        data[offset] = byte {numeric_cast<uint8_t>(value & 0xFF)};
+        data[offset + 1] = byte {numeric_cast<uint8_t>(value >> 8)};
     };
-    const auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
-        data[offset] = numeric_cast<uint8_t>(value & 0xFF);
-        data[offset + 1] = numeric_cast<uint8_t>((value >> 8) & 0xFF);
-        data[offset + 2] = numeric_cast<uint8_t>((value >> 16) & 0xFF);
-        data[offset + 3] = numeric_cast<uint8_t>(value >> 24);
+    const auto write_u32 = [](vector<byte>& data, size_t offset, uint32_t value) {
+        data[offset] = byte {numeric_cast<uint8_t>(value & 0xFF)};
+        data[offset + 1] = byte {numeric_cast<uint8_t>((value >> 8) & 0xFF)};
+        data[offset + 2] = byte {numeric_cast<uint8_t>((value >> 16) & 0xFF)};
+        data[offset + 3] = byte {numeric_cast<uint8_t>(value >> 24)};
     };
 
     auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
@@ -769,43 +769,43 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
     source->AddFile("ValidMesh.png", valid_blob);
 
-    vector<uint8_t> bad_version = valid_blob;
-    bad_version[1]++;
+    vector<byte> bad_version = valid_blob;
+    bad_version[1] = byte {0xFF};
     source->AddFile("BadVersion.png", std::move(bad_version));
 
-    vector<uint8_t> bad_kind = valid_blob;
-    bad_kind[mesh_kind_offset] = 0xFF;
+    vector<byte> bad_kind = valid_blob;
+    bad_kind[mesh_kind_offset] = byte {0xFF};
     source->AddFile("BadKind.png", std::move(bad_kind));
 
-    vector<uint8_t> bad_vertex_count = valid_blob;
+    vector<byte> bad_vertex_count = valid_blob;
     write_u16(bad_vertex_count, mesh_vertex_count_offset, uint16_t {2});
     source->AddFile("BadVertexCount.png", std::move(bad_vertex_count));
 
-    vector<uint8_t> bad_index_count = valid_blob;
+    vector<byte> bad_index_count = valid_blob;
     write_u32(bad_index_count, mesh_index_count_offset, uint32_t {4});
     source->AddFile("BadIndexCount.png", std::move(bad_index_count));
 
-    vector<uint8_t> implausible_index_count = valid_blob;
+    vector<byte> implausible_index_count = valid_blob;
     write_u32(implausible_index_count, mesh_index_count_offset, uint32_t {21});
     source->AddFile("ImplausibleIndexCount.png", std::move(implausible_index_count));
 
-    vector<uint8_t> bad_source_size = valid_blob;
+    vector<byte> bad_source_size = valid_blob;
     write_u16(bad_source_size, mesh_source_size_offset, uint16_t {0});
     source->AddFile("BadSourceSize.png", std::move(bad_source_size));
 
-    vector<uint8_t> bad_source_offset = valid_blob;
+    vector<byte> bad_source_offset = valid_blob;
     write_u32(bad_source_offset, mesh_source_offset_offset, uint32_t {2});
     source->AddFile("BadSourceOffset.png", std::move(bad_source_offset));
 
-    vector<uint8_t> bad_coordinate = valid_blob;
+    vector<byte> bad_coordinate = valid_blob;
     write_u16(bad_coordinate, mesh_vertices_offset, uint16_t {3});
     source->AddFile("BadCoordinate.png", std::move(bad_coordinate));
 
-    vector<uint8_t> bad_index = valid_blob;
+    vector<byte> bad_index = valid_blob;
     write_u16(bad_index, mesh_indices_offset, uint16_t {3});
     source->AddFile("BadIndex.png", std::move(bad_index));
 
-    vector<uint8_t> degenerate_triangle = valid_blob;
+    vector<byte> degenerate_triangle = valid_blob;
     write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2, uint16_t {1});
     write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2 + sizeof(uint16_t), uint16_t {0});
     source->AddFile("DegenerateTriangle.png", std::move(degenerate_triangle));
@@ -815,11 +815,11 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     inconsistent_winding_mesh.Indices = {0, 1, 2, 1, 2, 3};
     source->AddFile("InconsistentWinding.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, inconsistent_winding_mesh));
 
-    vector<uint8_t> trailing_data = valid_blob;
-    trailing_data.emplace_back(uint8_t {0});
+    vector<byte> trailing_data = valid_blob;
+    trailing_data.emplace_back(byte {0});
     source->AddFile("TrailingData.png", std::move(trailing_data));
 
-    vector<uint8_t> truncated_payload = valid_blob;
+    vector<byte> truncated_payload = valid_blob;
     truncated_payload.resize(mesh_indices_offset);
     source->AddFile("TruncatedPayload.png", std::move(truncated_payload));
 

@@ -118,7 +118,19 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
 
-Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializator` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
+Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Their tokens remain validated UTF-8 from source scanning through the baked metadata section and dynamic registration, because old and replacement resource identifiers may contain Unicode. Other metadata grammars remain technical ASCII and narrow through the checked ASCII boundary before their existing parsers consume them. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializator` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
+
+The metadata scanner recognizes `///@` only as a line-leading directive: spaces, tabs, and carriage returns may precede it, but source text may not. Consequently, documentation that merely mentions a tag such as `` `///@ FixedType` `` does not become metadata accidentally.
+
+## Strict native text bindings
+
+AngelScript retains one script-visible UTF-8 `string` type. Code generation maps native `string`, `string_view`, `u8string`, `u8string_view`, and their terminated views to that script metadata type while retaining the exact native C++ type in the generated call. The same mapping applies when an owning text type is an array element or dictionary key/value.
+
+`NativeDataCaller` is the script-to-native validation boundary. It validates every script string before constructing a native owner, gives native view parameters call-scoped backing ownership, rejects non-ASCII input for a `string` parameter, and converts native return values and mutable references back to the unchanged script `string` representation. Arrays and dictionaries with owning text elements, keys, or values use the same checked conversion and write-back rules.
+
+`NativeDataProvider` performs the reverse conversion for `ScriptFunc` calls made by native code. Text arguments are exposed to the backend as its existing script-string storage; UTF-8 return values and UTF-8-to-ASCII narrowing are validated before entering native owners. Temporary character views are bounded by the synchronous call and must not be retained by either side.
+
+Native `string` is the technical ASCII domain. A declaration must use `u8string` / `u8string_view` whenever localized, user-entered, path-like, or otherwise non-ASCII text is valid. Script-to-native conversion checks this boundary even though ordinary C++ `string` code relies on the ASCII contract.
 
 ## Properties and generated contracts
 

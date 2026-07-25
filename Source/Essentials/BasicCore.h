@@ -74,6 +74,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <deque>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -244,6 +245,7 @@ extern "C" void __tsan_release(void* addr);
 FO_BEGIN_NAMESPACE
 
 // Base types
+using std::byte;
 using float32_t = float;
 using float64_t = double;
 
@@ -251,6 +253,7 @@ inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform se
 
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
+static_assert(sizeof(byte) == 1);
 static_assert(sizeof(size_t) >= 4);
 static_assert(sizeof(int) >= 4);
 static_assert(sizeof(float32_t) == 4);
@@ -282,14 +285,38 @@ namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 class string_view_nt : public string_view
 {
 public:
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    constexpr string_view_nt(const char* str) noexcept :
-        string_view(str)
+    template<size_t N>
+    consteval string_view_nt(const char (&literal)[N]) : // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
+        string_view(literal, N - 1)
     {
+        static_assert(N > 0);
+
+        if (literal[N - 1] != char {}) {
+            throw "String literal is not terminated";
+        }
+
+        for (size_t i = 0; i + 1 < N; i++) {
+            if (literal[i] == char {}) {
+                throw "NT string literal contains an embedded null";
+            }
+        }
     }
 
     // ReSharper disable once CppInconsistentNaming
-    [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
+    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return data(); }
+
+private:
+    struct ValidatedTag
+    {
+    };
+
+    constexpr string_view_nt(const char* data, size_t size, ValidatedTag) noexcept :
+        string_view(data, size)
+    {
+    }
+
+    friend auto try_string_view_nt_from_span(const_span<char> storage) noexcept -> optional<string_view_nt>;
+    friend auto string_view_nt_from_span(const_span<char> storage) -> string_view_nt;
 };
 
 FO_END_NAMESPACE

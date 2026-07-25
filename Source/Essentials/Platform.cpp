@@ -35,6 +35,7 @@
 #include "ExceptionHandling.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
+#include "TextConversions.h"
 
 #if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -71,14 +72,55 @@
 
 FO_BEGIN_NAMESPACE
 
+static void AppendModuleExtension(u8string& path, u8string_view extension)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!path.view().native_view().ends_with(extension.native_view())) {
+        path.append(extension);
+    }
+}
+
 #if FO_WINDOWS
+static auto WinApi_GetEnvironmentUtf8(string_view_nt variable_name) -> optional<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const wide_string variable_name_wide = string_to_wide_string(variable_name);
+    const ptr<const wchar_t> variable_name_cstr {variable_name_wide.c_str()};
+    const DWORD required_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), nullptr, 0);
+
+    if (required_size == 0) {
+        return std::nullopt;
+    }
+
+    vector<wchar_t> value(static_cast<size_t>(required_size));
+
+    while (true) {
+        ptr<wchar_t> value_data {value.data()};
+        const DWORD value_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), value_data.get(), static_cast<DWORD>(value.size()));
+
+        if (value_size == 0) {
+            return std::nullopt;
+        }
+
+        if (static_cast<size_t>(value_size) < value.size()) {
+            const utf16_string value_utf16 = wide_to_utf16(std::wstring_view {value_data.get(), static_cast<size_t>(value_size)});
+            u8string result = utf16_to_utf8(std::u16string_view {value_utf16.data(), value_utf16.size()});
+            return result.empty() ? optional<u8string> {} : optional<u8string> {std::move(result)};
+        }
+
+        value.resize(static_cast<size_t>(value_size));
+    }
+}
+
 template<typename T>
 static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto module_name = make_ptr(mod.c_str());
-    auto proc_name = make_ptr(name.c_str());
+    const ptr<const char> module_name {mod.c_str()};
+    const ptr<const char> proc_name {name.c_str()};
 
     const auto hmod = ::GetModuleHandleA(module_name.get());
 
@@ -101,12 +143,11 @@ static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
     return module_handle.reinterpret_as<std::remove_pointer_t<HMODULE>>().get();
 }
 
-static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
+static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, ptr<const char> func_name_cstr) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
     HMODULE hmodule = WinApiModuleHandle(module_handle);
-    auto func_name_cstr = make_ptr(func_name.c_str());
     FARPROC proc = ::GetProcAddress(hmodule, func_name_cstr.get());
 
     if (proc == nullptr) {
@@ -117,116 +158,179 @@ static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& fun
 }
 #endif
 
-void Platform::InfoLog(const string& str) noexcept
+#if !FO_WINDOWS
+static auto Posix_GetEnvironmentUtf8(string_view_nt variable_name) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    const wstring message = strex(str).to_wide_char();
-    auto message_cstr = make_ptr(message.c_str());
-    ::OutputDebugStringW(message_cstr.get());
-#elif FO_ANDROID
-    auto message_cstr = make_ptr(str.c_str());
-    __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
-#endif
-}
+    const ptr<const char> variable_name_cstr {variable_name.c_str()};
+    const nptr<const char> value {std::getenv(variable_name_cstr.get())};
 
-void Platform::SetThreadName(const string& str) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
-    const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
-
-    if (set_thread_description != nullptr) {
-        const wstring thread_name = strex(str).to_wide_char();
-        auto thread_name_cstr = make_ptr(thread_name.c_str());
-        set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
-    }
-#endif
-}
-
-auto Platform::GetExePath() noexcept -> optional<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    vector<wchar_t> path;
-    path.resize(FILENAME_MAX);
-    auto path_data = make_nptr(path.data());
-    auto size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
-
-    if (size == 0) {
+    if (!value || value[0] == char {}) {
         return std::nullopt;
     }
 
-    while (size == path.size()) {
+    const size_t value_size = std::char_traits<char>::length(value.get());
+    return utf8_from_char_span(const_span<char> {value.get(), value_size});
+}
+
+static void AppendPosixPathComponent(u8string& path, u8string_view component)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!path.view().native_view().ends_with(u8'/')) {
+        path.append(u8"/");
+    }
+
+    path.append(component);
+}
+#endif
+
+void Platform::InfoLog(u8string_view_nt str)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const const_span<char8_t> storage {str.c_str(), str.size() + 1};
+    const u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
+
+#if FO_WINDOWS
+    const utf16_string message_utf16 = utf8_to_utf16(checked_str.view());
+    const wstring message = utf16_to_wide(std::u16string_view {message_utf16.data(), message_utf16.size()});
+    auto message_cstr = make_ptr(message.c_str());
+    ::OutputDebugStringW(message_cstr.get());
+#elif FO_ANDROID
+    const ptr<const char> message_cstr = utf8_to_c_str(checked_str);
+    __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
+#else
+    ignore_unused(checked_str);
+#endif
+}
+
+void Platform::SetThreadName(u8string_view_nt str)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const const_span<char8_t> storage {str.c_str(), str.size() + 1};
+    const u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
+
+#if FO_WINDOWS
+    using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>(string_view_nt {"kernel32.dll"}, string_view_nt {"SetThreadDescription"});
+
+    if (set_thread_description != nullptr) {
+        const utf16_string thread_name_utf16 = utf8_to_utf16(checked_str.view());
+        const wstring thread_name = utf16_to_wide(std::u16string_view {thread_name_utf16.data(), thread_name_utf16.size()});
+        auto thread_name_cstr = make_ptr(thread_name.c_str());
+        set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
+    }
+#else
+    ignore_unused(checked_str);
+#endif
+}
+
+auto Platform::GetExePath() -> optional<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    vector<wchar_t> path(static_cast<size_t>(FILENAME_MAX));
+    ptr<wchar_t> path_data {path.data()};
+    DWORD path_size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
+
+    if (path_size == 0) {
+        return std::nullopt;
+    }
+
+    while (static_cast<size_t>(path_size) == path.size()) {
         path.resize(path.size() * 2);
         path_data = path.data();
-        size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
+        path_size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
 
-        if (size == 0) {
+        if (path_size == 0) {
             return std::nullopt;
         }
     }
 
-    return strex().parse_wide_char(path_data.get());
+    const utf16_string path_utf16 = wide_to_utf16(std::wstring_view {path_data.get(), static_cast<size_t>(path_size)});
+    return utf16_to_utf8(std::u16string_view {path_utf16.data(), path_utf16.size()});
 
 #elif FO_LINUX
-    char path[FILENAME_MAX];
-    auto path_data = make_ptr(path);
-    const auto size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
+    vector<char> path(static_cast<size_t>(FILENAME_MAX));
 
-    if (size == -1) {
-        return std::nullopt;
+    while (true) {
+        ptr<char> path_data {path.data()};
+        const ssize_t path_size_raw = ::readlink("/proc/self/exe", path_data.get(), path.size());
+
+        if (path_size_raw < 0) {
+            return std::nullopt;
+        }
+
+        const size_t path_size = static_cast<size_t>(path_size_raw);
+
+        if (path_size < path.size()) {
+            return utf8_from_char_span(const_span<char> {path_data.get(), path_size});
+        }
+
+        path.resize(path.size() * 2);
     }
-
-    path_data[static_cast<size_t>(size)] = '\0';
-    return string {path_data.get()};
 
 #elif FO_MAC
-    char path[PROC_PIDPATHINFO_MAXSIZE];
-    auto path_data = make_ptr(path);
+    array<char, PROC_PIDPATHINFO_MAXSIZE> path {};
+    ptr<char> path_data {path.data()};
+    const pid_t pid = ::getpid();
+    const int32_t path_size = ::proc_pidpath(pid, path_data.get(), static_cast<uint32_t>(path.size()));
 
-    const auto pid = ::getpid();
-
-    if (::proc_pidpath(pid, path_data.get(), sizeof(path)) <= 0) {
+    if (path_size <= 0) {
         return std::nullopt;
     }
 
-    return string {path_data.get()};
+    return utf8_from_char_span(const_span<char> {path_data.get(), static_cast<size_t>(path_size)});
 
 #else
     return std::nullopt;
 #endif
 }
 
-auto Platform::GetUserDataBase() noexcept -> string
+auto Platform::GetEnvironmentUtf8(string_view_nt variable_name) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != '\0') {
-        return local;
-    }
-    if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != '\0') {
-        return roaming;
-    }
-    return "";
-#elif FO_MAC || FO_IOS
-    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
-        return strex(home).combine_path("Library/Application Support").str();
-    }
-    return "";
+    return WinApi_GetEnvironmentUtf8(variable_name);
 #else
-    if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != '\0') {
-        return xdg;
+    return Posix_GetEnvironmentUtf8(variable_name);
+#endif
+}
+
+auto Platform::GetUserDataBase() -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    if (optional<u8string> local = GetEnvironmentUtf8(string_view_nt {"LOCALAPPDATA"})) {
+        return std::move(*local);
     }
-    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
-        return strex(home).combine_path(".local/share").str();
+    if (optional<u8string> roaming = GetEnvironmentUtf8(string_view_nt {"APPDATA"})) {
+        return std::move(*roaming);
     }
-    return "";
+    return {};
+#elif FO_MAC || FO_IOS
+    if (optional<u8string> home = GetEnvironmentUtf8(string_view_nt {"HOME"})) {
+        u8string result = std::move(*home);
+        AppendPosixPathComponent(result, u8"Library/Application Support");
+        return result;
+    }
+    return {};
+#else
+    if (optional<u8string> xdg = GetEnvironmentUtf8(string_view_nt {"XDG_DATA_HOME"})) {
+        return std::move(*xdg);
+    }
+    if (optional<u8string> home = GetEnvironmentUtf8(string_view_nt {"HOME"})) {
+        u8string result = std::move(*home);
+        AppendPosixPathComponent(result, u8".local/share");
+        return result;
+    }
+    return {};
 #endif
 }
 
@@ -557,29 +661,31 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     return result;
 }
 
-auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
+auto Platform::LoadModule(u8string_view_nt module_name) -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
     nptr<void> module_handle = nullptr;
-
-    const auto add_extension = [](const string& path, string_view extension) -> string { //
-        return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
-    };
+    const const_span<char8_t> storage {module_name.c_str(), module_name.size() + 1};
+    const u8string_view_nt checked_module_name = u8string_view_nt::FromChecked(storage);
+    u8string module_path {checked_module_name.view()};
 
 #if FO_WINDOWS
-    const string module_path = add_extension(module_name, ".dll");
-    const wstring module_path_wide = strex(module_path).to_wide_char();
-    auto module_path_cstr = make_ptr(module_path_wide.c_str());
+    AppendModuleExtension(module_path, u8".dll");
+    const utf16_string module_path_utf16 = utf8_to_utf16(module_path.view());
+    const wstring module_path_wide = utf16_to_wide(std::u16string_view {module_path_utf16.data(), module_path_utf16.size()});
+    const ptr<const wchar_t> module_path_cstr {module_path_wide.c_str()};
     module_handle = ::LoadLibraryW(module_path_cstr.get());
 #elif FO_LINUX
-    const string module_path = add_extension(module_name, ".so");
-    auto module_path_cstr = make_ptr(module_path.c_str());
+    AppendModuleExtension(module_path, u8".so");
+    const ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC
-    const string module_path = add_extension(module_name, ".dylib");
-    auto module_path_cstr = make_ptr(module_path.c_str());
+    AppendModuleExtension(module_path, u8".dylib");
+    const ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
+#else
+    ignore_unused(module_path);
 #endif
 
     return module_handle;
@@ -600,17 +706,19 @@ void Platform::UnloadModule(nptr<void> module_handle) noexcept
 #endif
 }
 
-auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*
+auto Platform::GetFuncAddr(nptr<void> module_handle, string_view_nt func_name) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
     nptr<void> func = nullptr;
+    const ptr<const char> func_name_cstr {func_name.c_str()};
 
 #if FO_WINDOWS
-    func = WinApi_GetProcAddressRaw(module_handle, func_name);
+    func = WinApi_GetProcAddressRaw(module_handle, func_name_cstr);
 #elif FO_LINUX || FO_MAC
-    auto func_name_cstr = make_ptr(func_name.c_str());
     func = ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, func_name_cstr.get());
+#else
+    ignore_unused(func_name_cstr);
 #endif
 
     return func.get();

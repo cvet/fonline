@@ -74,8 +74,10 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fofx_content = loader(name);
-    const auto fofx = ConfigFile(name, fofx_content, ConfigFileOption::CollectContent);
+    const vector<byte> fofx_data = loader(name);
+    const u8string fofx_content = utf8_from_byte_span(fofx_data);
+    const u8string fofx_name = name;
+    const auto fofx = ConfigFile(fofx_name.view(), fofx_content, ConfigFileOption::CollectContent);
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
@@ -185,27 +187,28 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         throw GenericException("Unknown depth func type", s);
     };
 
-    const auto blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
-    const auto blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
-    const auto depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
-    const auto depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
+    const auto blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", u8"SrcAlpha InvSrcAlpha");
+    const auto blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", u8"FuncAdd");
+    const auto depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", u8"True");
+    const auto depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", u8"Always");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
 
-        const string blend_func_value {fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)};
+        const string blend_func_value {utf8_as_char_view(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default))};
         auto blend_func = strvex(blend_func_value).split(' ');
         FO_VERIFY_AND_THROW(blend_func.size() == 2, "FOFX blend function must contain source and destination factors", name, pass + 1, blend_func.size(), blend_func_value);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
-        _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
+        _blendEquation[pass] = get_blend_equation(utf8_as_char_view(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default)));
 
-        _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
-        _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
+        _depthWrite[pass] = u8strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        _depthFunc[pass] = get_depth_func(utf8_as_char_view(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default)));
 
-        const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
-        const auto pass_info = ConfigFile(name, pass_info_content);
+        const vector<byte> pass_info_data = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
+        const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
+        const auto pass_info = ConfigFile(fofx_name.view(), pass_info_content);
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);

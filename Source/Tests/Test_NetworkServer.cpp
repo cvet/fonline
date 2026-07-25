@@ -64,6 +64,18 @@ namespace
     // WinRM HTTP listener on effectively every machine (bind fails with WSAEACCES there).
     static std::atomic_uint16_t TestServerPort {47100};
 
+    [[nodiscard]] auto Bytes(std::initializer_list<uint8_t> values) -> vector<byte>
+    {
+        vector<byte> result;
+        result.reserve(values.size());
+
+        for (const uint8_t value : values) {
+            result.emplace_back(byte {value});
+        }
+
+        return result;
+    }
+
     template<typename Predicate>
     auto WaitForCondition(Predicate&& predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
     {
@@ -133,9 +145,9 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     shared_ptr<NetworkServerConnection> accepted_conn;
-    vector<uint8_t> received_data;
-    vector<uint8_t> sent_data;
-    const vector<uint8_t> response_data {4, 5, 6};
+    vector<byte> received_data;
+    vector<byte> sent_data;
+    const vector<byte> response_data = Bytes({4, 5, 6});
     size_t client_disconnect_count = 0;
     size_t server_disconnect_count = 0;
 
@@ -150,7 +162,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     REQUIRE(InterthreadListeners.count(port) == 1);
     CHECK_THROWS(NetworkServer::StartInterthreadServer(&settings, [](shared_ptr<NetworkServerConnection>) { }));
 
-    auto client_send = InterthreadListeners[port]([&](const_span<uint8_t> buf) {
+    auto client_send = InterthreadListeners[port]([&](const_span<byte> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
@@ -162,14 +174,14 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     REQUIRE(accepted_conn);
     REQUIRE(client_send);
 
-    client_send(vector<uint8_t> {1, 2, 3});
+    client_send(Bytes({1, 2, 3}));
 
-    accepted_conn->SetAsyncCallbacks([&]() -> const_span<uint8_t> { return response_data; }, [&](const_span<uint8_t> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
+    accepted_conn->SetAsyncCallbacks([&]() -> const_span<byte> { return response_data; }, [&](const_span<byte> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
 
-    CHECK(received_data == vector<uint8_t>({1, 2, 3}));
+    CHECK(received_data == Bytes({1, 2, 3}));
 
     accepted_conn->Dispatch();
-    CHECK(sent_data == vector<uint8_t>({4, 5, 6}));
+    CHECK(sent_data == Bytes({4, 5, 6}));
 
     accepted_conn->Disconnect();
     CHECK(accepted_conn->IsDisconnected());
@@ -213,7 +225,7 @@ TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
     }
     REQUIRE(copied_listener);
 
-    auto client_send = copied_listener([&](const_span<uint8_t> buf) {
+    auto client_send = copied_listener([&](const_span<byte> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
@@ -309,7 +321,7 @@ TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
     REQUIRE(accepted_connection);
 
     std::atomic_int disconnect_count {};
-    accepted_connection->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; }, [](const_span<uint8_t>) {}, [&disconnect_count] { disconnect_count.fetch_add(1); });
+    accepted_connection->SetAsyncCallbacks([]() -> const_span<byte> { return {}; }, [](const_span<byte>) {}, [&disconnect_count] { disconnect_count.fetch_add(1); });
     CHECK_FALSE(accepted_connection->IsDisconnected());
 
     server->Shutdown();
@@ -340,11 +352,11 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 
     mutex state_mutex;
     shared_ptr<NetworkServerConnection> accepted_conn;
-    vector<uint8_t> received;
+    vector<byte> received;
 
     auto server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
-        conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
-            [&](const_span<uint8_t> buf) {
+        conn->SetAsyncCallbacks([]() -> const_span<byte> { return {}; },
+            [&](const_span<byte> buf) {
                 const scoped_lock lock {state_mutex};
                 received.insert(received.end(), buf.begin(), buf.end());
             },
@@ -361,7 +373,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     client.clear_error_channels(websocketpp::log::elevel::all);
     client.init_asio();
 
-    const vector<uint8_t> payload {1, 2, 3};
+    const vector<byte> payload = Bytes({1, 2, 3});
 
     client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
         std::error_code send_error;

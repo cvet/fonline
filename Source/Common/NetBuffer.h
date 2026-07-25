@@ -53,7 +53,7 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
+    [[nodiscard]] auto GetData() noexcept -> const_span<byte>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     void SetEncryptKey(uint32_t seed);
@@ -64,7 +64,7 @@ protected:
     auto EncryptKey(int32_t move) noexcept -> uint8_t;
     void CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, size_t len) const noexcept;
 
-    vector<uint8_t> _bufData {};
+    vector<byte> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
@@ -88,7 +88,7 @@ public:
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
     [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
-    void Push(const_span<uint8_t> buf);
+    void Push(const_span<byte> buf);
     void Push(nptr<const void> buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
@@ -116,7 +116,7 @@ public:
         WriteHashedString(value);
     }
 
-    void WritePropsData(const vector<nptr<const uint8_t>>& props_data, const vector<uint32_t>& props_data_sizes);
+    void WritePropsData(const vector<nptr<const byte>>& props_data, const vector<uint32_t>& props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -146,7 +146,7 @@ public:
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
-    void AddData(const_span<uint8_t> buf);
+    void AddData(const_span<byte> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
     void Pop(nptr<void> buf, size_t len);
@@ -189,7 +189,7 @@ public:
         return ReadHashedString(hash_resolver);
     }
 
-    void ReadPropsData(vector<vector<uint8_t>>& props_data);
+    void ReadPropsData(vector<vector<byte>>& props_data);
 
     auto ReadMsg() -> NetMessage;
 

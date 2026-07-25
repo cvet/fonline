@@ -122,6 +122,7 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void RegisterMigrationRule(u8string_view rule_name, u8string_view extra_info, u8string_view target, u8string_view replacement);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
@@ -160,7 +161,7 @@ private:
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<byte>)>;
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -178,7 +179,7 @@ public:
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
     virtual void RunScriptContext(const function<void()>& callback);
 
-    void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
+    void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
     void VerifyBindedRemoteCalls() const noexcept(false);
 
@@ -186,14 +187,14 @@ public:
     FileSystem Resources;
     GameTimer GameTime;
     TimeEventManager TimeEventMngr;
-    unique_del_nptr<uint8_t> UserData {};
+    unique_del_nptr<byte> UserData {};
 
 protected:
     explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator);
     ~BaseEngine() override = default;
 
-    virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data); // Called by derived class
+    virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data) { ignore_unused(name, caller, data); } // Managed by derived class
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<byte> data); // Called by derived class
 
 private:
     refcount_ptr<ScriptImGui> _imgui;

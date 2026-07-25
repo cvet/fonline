@@ -39,22 +39,28 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTestEffectLoader() -> RenderEffectLoader
 {
-    return [](string_view name) -> string {
+    return [](string_view name) -> vector<byte> {
+        string_view content;
+
         if (name == "Effects/Test_Default.fofx") {
-            return R"([Effect]
+            content = R"([Effect]
 Passes = 1
 )";
         }
-
-        if (name == "Effects/Test_Default.fofx-1-info") {
-            return R"([EffectInfo]
+        else if (name == "Effects/Test_Default.fofx-1-info") {
+            content = R"([EffectInfo]
 MainTex = 0
 MainTexBuf = 1
 ProjBuf = 2
 )";
         }
+        else {
+            throw GenericException("Unexpected test effect request", name);
+        }
 
-        throw GenericException("Unexpected test effect request", name);
+        vector<byte> data(content.size());
+        MemCopy(data.data(), content.data(), content.size());
+        return data;
     };
 }
 

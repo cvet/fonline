@@ -42,6 +42,9 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
+    static_assert(std::is_invocable_r_v<int32_t, decltype(&tcp_socket::send), tcp_socket&, const_span<byte>>);
+    static_assert(!std::is_invocable_v<decltype(&tcp_socket::send), tcp_socket&, const_span<uint8_t>>);
+
     const timespan ShortTimeout {std::chrono::milliseconds {1}};
     const timespan WriteTimeout {std::chrono::milliseconds {50}};
     const timespan ReadTimeout {std::chrono::milliseconds {200}};
@@ -89,7 +92,7 @@ TEST_CASE("NetSockets")
         tcp_socket tcp;
         udp_socket udp;
         tcp_server server;
-        uint8_t data[8] {};
+        byte data[8] {};
         string host;
         uint16_t port = 123;
 
@@ -122,11 +125,11 @@ TEST_CASE("NetSockets")
         REQUIRE(sender.bind("127.0.0.1", 0));
         REQUIRE(sender.can_write(WriteTimeout));
 
-        const array<uint8_t, 4> payload = {'p', 'i', 'n', 'g'};
+        const array<byte, 4> payload = {byte {'p'}, byte {'i'}, byte {'n'}, byte {'g'}};
         REQUIRE(sender.send_to("127.0.0.1", receiver_port, payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(receiver.can_read(ReadTimeout));
 
-        array<uint8_t, 16> buffer {};
+        array<byte, 16> buffer {};
         string host;
         uint16_t port = 0;
         const int32_t received = receiver.receive_from(buffer, host, port);
@@ -150,11 +153,11 @@ TEST_CASE("NetSockets")
         tcp_socket accepted = server.accept();
         REQUIRE(accepted.is_valid());
 
-        const array<uint8_t, 5> payload = {'h', 'e', 'l', 'l', 'o'};
+        const array<byte, 5> payload = {byte {'h'}, byte {'e'}, byte {'l'}, byte {'l'}, byte {'o'}};
         REQUIRE(client.send(payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(accepted.can_read(ReadTimeout));
 
-        array<uint8_t, 16> buffer {};
+        array<byte, 16> buffer {};
         const int32_t received = accepted.receive(buffer);
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));

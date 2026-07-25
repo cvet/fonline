@@ -141,7 +141,7 @@ FOEditor::FOEditor(ptr<GlobalSettings> settings) :
 
     for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            RawResources.AddDirSource(dir, true, true);
+            RawResources.AddDirSource(dir.view(), true, true);
         }
     }
 

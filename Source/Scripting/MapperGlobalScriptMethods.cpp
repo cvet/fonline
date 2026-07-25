@@ -309,24 +309,25 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
     const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
-    const string map_text = strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
+    const u8string map_text = strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
-                                .str();
+                                  .str();
 
     return mapper->LoadMapFromText(name, map_text);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, string_view text)
+FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, u8string_view text)
 {
     if (name.empty()) {
         throw ScriptException("Map name is empty");
     }
-    if (text.find("[ProtoMap]") == string_view::npos) {
+    if (text.native_view().find(u8"[ProtoMap]") == std::u8string_view::npos) {
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return mapper->LoadMapFromText(name, string(text));
+    const u8string map_text {text};
+    return mapper->LoadMapFromText(name, map_text);
 }
 
 ///@ ExportMethod
@@ -854,7 +855,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, string_view filePath)
+FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, u8string_view filePath)
 {
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");

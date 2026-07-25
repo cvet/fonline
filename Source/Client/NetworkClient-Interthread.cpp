@@ -40,7 +40,7 @@ struct NetworkClientInterthreadState
     std::atomic_bool Alive {true};
     std::atomic_bool RequestDisconnect {};
     mutex ReceivedLocker {};
-    vector<uint8_t> Received FO_TSA_GUARDED_BY(ReceivedLocker) {};
+    vector<byte> Received FO_TSA_GUARDED_BY(ReceivedLocker) {};
 };
 
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
@@ -54,8 +54,8 @@ public:
     ~NetworkClientConnection_Interthread() override;
 
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
-    auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override;
+    auto SendDataImpl(const_span<byte> buf) -> size_t override;
+    auto ReceiveDataImpl(vector<byte>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
 private:
@@ -94,7 +94,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
     _interthreadState = SafeAlloc::MakeShared<NetworkClientInterthreadState>();
     auto state = _interthreadState;
 
-    _interthreadSend = listener([state](const_span<uint8_t> buf) mutable FO_DEFERRED {
+    _interthreadSend = listener([state](const_span<byte> buf) mutable FO_DEFERRED {
         if (!state->Alive.load()) {
             return;
         }
@@ -138,7 +138,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
     return for_write ? true : !state->Received.empty();
 }
 
-auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) -> size_t
+auto NetworkClientConnection_Interthread::SendDataImpl(const_span<byte> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -147,7 +147,7 @@ auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) 
     return buf.size();
 }
 
-auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
+auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<byte>& buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 

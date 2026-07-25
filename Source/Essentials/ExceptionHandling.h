@@ -41,10 +41,49 @@
 FO_BEGIN_NAMESPACE
 
 // Engine exception handling
-using ExceptionCallback = function<void(string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
+using ExceptionCallback = function<void(u8string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
+
+namespace exception_detail
+{
+    template<typename T>
+    using plain_exception_arg_t = std::remove_cvref_t<T>;
+
+    template<typename T>
+    [[nodiscard]] auto format_exception_arg(T&& value) -> u8string
+    {
+        using value_type = plain_exception_arg_t<T>;
+
+        if constexpr (std::same_as<value_type, string>) {
+            return u8string {value};
+        }
+        else if constexpr (std::same_as<value_type, string_view>) {
+            return u8string {value};
+        }
+        else if constexpr (std::same_as<value_type, string_view_nt>) {
+            return u8string {string_view {value}};
+        }
+        else if constexpr (std::same_as<value_type, u8string>) {
+            return std::forward<T>(value);
+        }
+        else if constexpr (std::same_as<value_type, u8string_view>) {
+            return u8string {value};
+        }
+        else if constexpr (std::same_as<value_type, u8string_view_nt>) {
+            return u8string {value.view()};
+        }
+        else if constexpr (std::convertible_to<T, u8string_view>) {
+            return u8string {static_cast<u8string_view>(value)};
+        }
+        else {
+            const std::string formatted = std::format("{}", std::forward<T>(value));
+            return utf8_from_char_span(formatted);
+        }
+    }
+}
 
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
+[[nodiscard]] extern auto exception_message_utf8(const std::exception& ex) -> u8string;
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
 extern void InstallCrashHandlerStackForThisThread() noexcept;
@@ -99,17 +138,19 @@ public:
         _name {name}
     {
         try {
-            _extendedMessage.assign(_name);
-            _extendedMessage.append(": ");
-            _extendedMessage.append(message);
             _message = message;
+            _params = {exception_detail::format_exception_arg(std::forward<Args>(args))...};
 
-            _params = {string(std::format("{}", std::forward<Args>(args)))...};
+            _utf8Message.assign(_name);
+            _utf8Message.append(": ");
+            _utf8Message.append(message);
 
             for (const auto& param : _params) {
-                _extendedMessage.append("\n- ");
-                _extendedMessage.append(param);
+                _utf8Message.append(u8"\n- ");
+                _utf8Message.append(param);
             }
+
+            _whatMessage = utf8_to_char_string(_utf8Message);
         }
         catch (...) {
             // Do nothing
@@ -129,7 +170,8 @@ public:
     {
         try {
             _message = other._message;
-            _extendedMessage = other._extendedMessage;
+            _whatMessage = other._whatMessage;
+            _utf8Message = other._utf8Message;
             _params = other._params;
         }
         catch (...) {
@@ -141,17 +183,19 @@ public:
 
     BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.c_str(); }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_whatMessage.empty() ? _whatMessage.c_str() : _name.c_str(); }
+    [[nodiscard]] auto what_utf8() const noexcept -> u8string_view { return !_utf8Message.empty() ? _utf8Message.view() : u8"Engine exception text is unavailable"; }
     [[nodiscard]] auto name() const noexcept -> const char* { return _name.c_str(); }
     [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
-    [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
+    [[nodiscard]] auto params() const noexcept -> const_span<u8string> { return _params; }
     [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
     string _name;
     string _message {};
-    string _extendedMessage {};
-    vector<string> _params {};
+    string _whatMessage {};
+    u8string _utf8Message {};
+    vector<u8string> _params {};
     StackTraceData _stackTrace {};
 };
 

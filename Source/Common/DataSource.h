@@ -49,14 +49,14 @@ public:
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
 
-    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
-    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
+    static auto MountDir(u8string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
+    static auto MountPack(u8string_view dir, u8string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
 
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
-    [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
+    [[nodiscard]] virtual auto GetPackName() const -> u8string_view = 0;
     [[nodiscard]] virtual auto IsFileExists(string_view path) const -> bool = 0;
     [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool = 0;
-    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
+    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
 };
 
@@ -75,10 +75,10 @@ public:
     ~DataSourceRef() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return _dataSource->IsDiskDir(); }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return _dataSource->GetPackName(); }
+    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _dataSource->GetPackName(); }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _dataSource->IsFileExists(path); }
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override { return _dataSource->GetFileInfo(path, size, write_time); }
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override { return _dataSource->OpenFile(path, size, write_time); }
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override { return _dataSource->OpenFile(path, size, write_time); }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _dataSource->GetFileNames(dir, recursive, ext); }
 
 private:

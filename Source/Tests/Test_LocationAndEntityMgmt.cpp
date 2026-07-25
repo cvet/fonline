@@ -56,7 +56,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -736,9 +736,9 @@ namespace LocEntity
         });
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
+    static auto MakeEmptyMapBlob() -> vector<byte>
     {
-        vector<uint8_t> map_data;
+        vector<byte> map_data;
         auto writer = DataWriter(map_data);
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
@@ -746,9 +746,9 @@ namespace LocEntity
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -758,7 +758,7 @@ namespace LocEntity
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -777,7 +777,7 @@ namespace LocEntity
         return protos_data;
     }
 
-    static auto MakeLocEntityMetadataBlob() -> vector<uint8_t>
+    static auto MakeLocEntityMetadataBlob() -> vector<byte>
     {
         return BakerTests::MakeMetadataBlob({
             {"Entity", {{"CoverageTarget"}}},
@@ -1356,8 +1356,8 @@ TEST_CASE("LoadUnloadCritter")
         REQUIRE_FALSE(cr_doc.Empty());
         REQUIRE_FALSE(item_doc.Empty());
 
-        cr_doc.Assign("Hex", AnyData::Value {string {"-5 300"}});
-        item_doc.Assign("Hex", AnyData::Value {string {"300 -5"}});
+        cr_doc.Assign("Hex", AnyData::Value {u8string {u8"-5 300"}});
+        item_doc.Assign("Hex", AnyData::Value {u8string {u8"300 -5"}});
 
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();

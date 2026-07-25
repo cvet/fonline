@@ -39,11 +39,11 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual BaseSettings);
-FIXED_SETTING(string, Common, CommandLine); // Command line used to start the game (read only)
-FIXED_SETTING(vector<string>, Common, CommandLineArgs); // Command line arguments used to start the game (read only)
-FIXED_SETTING(string, Common, GameName, "FOnline"); // Game name, used in logs and window title
+FIXED_SETTING(u8string, Common, CommandLine); // Command line used to start the game (read only)
+FIXED_SETTING(vector<u8string>, Common, CommandLineArgs); // Command line arguments used to start the game (read only)
+FIXED_SETTING(u8string, Common, GameName, u8"FOnline"); // Game name, used in logs and window title
 FIXED_SETTING(string, Common, GameVersion, "0.0.0"); // Game version, used in logs and window title
-FIXED_SETTING(string, Common, GitBranch); // Git branch name (if present)
+FIXED_SETTING(u8string, Common, GitBranch); // Git branch name (if present)
 FIXED_SETTING(string, Common, GitCommit); // Git commit hash (if present)
 FIXED_SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherwise release build (read only)
@@ -113,8 +113,8 @@ VARIABLE_SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native tra
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 VARIABLE_SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
-VARIABLE_SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
-VARIABLE_SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
+VARIABLE_SETTING(u8string, ClientNetwork, ProxyUser, u8""); // Proxy username
+VARIABLE_SETTING(u8string, ClientNetwork, ProxyPass, u8""); // Proxy password
 VARIABLE_SETTING(int32_t, ClientNetwork, Ping); // Network ping (read only)
 VARIABLE_SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
 SETTING_GROUP_END();
@@ -156,7 +156,7 @@ FIXED_SETTING(int32_t, Geometry, MapRoofElevation, 98); // Roof tile 3D elevatio
 FIXED_SETTING(float32_t, Geometry, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
 FIXED_SETTING(bool, Geometry, MapFreeMovement, false); // If true, free movement on the map is enabled
 FIXED_SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothing
-FIXED_SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
+FIXED_SETTING(u8string, Geometry, MapDataPrefix, u8"Geometry"); // Path and prefix for names used for geometry sprites
 FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
@@ -213,17 +213,17 @@ FIXED_SETTING(int32_t, Render, DefaultParticleDrawWidth, 128); // Default partic
 FIXED_SETTING(int32_t, Render, DefaultParticleDrawHeight, 128); // Default particle draw height
 FIXED_SETTING(bool, Render, RecreateClientOnError, false); // If true, client is recreated on error
 FIXED_SETTING(string, Render, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
-FIXED_SETTING(string, Render, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect for ImGui
+FIXED_SETTING(u8string, Render, ImGuiDefaultEffect, u8"Effects/ImGui_Default.fofx"); // Shader effect for ImGui
 FIXED_SETTING(int32_t, Render, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
 FIXED_SETTING(int32_t, Render, SpriteHitValue, 127); // If alpha is greather then hit test is passed
-FIXED_SETTING(string, Render, CritterStubSpriteName, ""); // Fallback critter sprite, empty value uses built-in runtime dummy sprite
-FIXED_SETTING(string, Render, ItemStubSpriteName, ""); // Fallback item sprite, empty value uses built-in runtime dummy sprite
+FIXED_SETTING(u8string, Render, CritterStubSpriteName, u8""); // Fallback critter sprite, empty value uses built-in runtime dummy sprite
+FIXED_SETTING(u8string, Render, ItemStubSpriteName, u8""); // Fallback item sprite, empty value uses built-in runtime dummy sprite
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(WebSettings, virtual RenderSettings);
 FIXED_SETTING(bool, Web, AutoResize, true); // If true, web screen resolution is recalculated on browser window resize
-FIXED_SETTING(string, Web, LoadingImage, ""); // Loading image path for web page, relative to main fomain file
+FIXED_SETTING(u8string, Web, LoadingImage, u8""); // Loading image path for web page, relative to main fomain file
 FIXED_SETTING(string, Web, BackgroundColor, "rgb(0, 0, 0)"); // Background color for the web page around the game screen
 FIXED_SETTING(int32_t, Web, ScreenHeightPercent, 75); // Web canvas height as a percentage of page height
 FIXED_SETTING(float32_t, Web, AspectFactor, 0.75f); // Web canvas height-to-width factor, width = height / factor
@@ -243,17 +243,17 @@ FIXED_SETTING(int32_t, Android, MinSdk, 23); // Android minimum supported SDK le
 FIXED_SETTING(int32_t, Android, TargetSdk, 35); // Android target SDK level for packaging tools
 FIXED_SETTING(int32_t, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
 FIXED_SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
-FIXED_SETTING(string, Android, Icon, "Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
-FIXED_SETTING(string, Android, Keystore, ""); // Android release signing keystore path for packaging tools
-FIXED_SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
-FIXED_SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
-FIXED_SETTING(string, Android, KeyPassword, ""); // Android release signing key password for packaging tools
+FIXED_SETTING(u8string, Android, Icon, u8"Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
+FIXED_SETTING(u8string, Android, Keystore, u8""); // Android release signing keystore path for packaging tools
+FIXED_SETTING(u8string, Android, KeystorePassword, u8""); // Android release signing keystore password for packaging tools
+FIXED_SETTING(u8string, Android, KeyAlias, u8""); // Android release signing key alias for packaging tools
+FIXED_SETTING(u8string, Android, KeyPassword, u8""); // Android release signing key password for packaging tools
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(PackagingSettings, virtual AndroidSettings, virtual WebSettings);
-FIXED_SETTING(string, Packaging, CodeSigningHook, ""); // Windows code signing hook executable path for packaging tools
-FIXED_SETTING(string, Packaging, AppIcon, ""); // Windows application ICO source path for packaging tools
+FIXED_SETTING(u8string, Packaging, CodeSigningHook, u8""); // Windows code signing hook executable path for packaging tools
+FIXED_SETTING(u8string, Packaging, AppIcon, u8""); // Windows application ICO source path for packaging tools
 FIXED_SETTING(string, Packaging, MsiUpgradeCode, ""); // Windows MSI installer upgrade GUID for packaging tools, must never change once an MSI has shipped
 SETTING_GROUP_END();
 
@@ -270,11 +270,11 @@ FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missi
 FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
-FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
-FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
-FIXED_SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
-FIXED_SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
-FIXED_SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
+FIXED_SETTING(u8string, Baking, BakeOutput, u8"Baking"); // Bake output directory
+FIXED_SETTING(u8string, Baking, ServerResources, u8"ServerResources"); // Server resources directory
+FIXED_SETTING(u8string, Baking, ClientResources, u8"Resources"); // Client resources directory
+FIXED_SETTING(u8string, Baking, PlatformBinaries, u8"PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
+FIXED_SETTING(u8string, Baking, CacheResources, u8"Cache"); // Cache resources directory
 FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, MapperResourceEntries); // Mapper resource entries (read only)
@@ -335,7 +335,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(DataBaseSettings, virtual BaseSettings);
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
-FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
+FIXED_SETTING(u8string, DataBase, OpLogPath, u8"DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
 FIXED_SETTING(int32_t, DataBase, PanicOpLogSizeThreshold, 10000000); // Pending database changes file size threshold in bytes after which panic is triggered
 FIXED_SETTING(int32_t, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdown timeout in milliseconds after database panic callback before forced termination
@@ -364,11 +364,11 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
 FIXED_SETTING(int32_t, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
-FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
-FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
+FIXED_SETTING(u8string, Client, DefaultSplash); // Default splash screen
+FIXED_SETTING(u8string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
-VARIABLE_SETTING(string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md
+VARIABLE_SETTING(u8string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled
@@ -377,7 +377,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings);
-FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
+FIXED_SETTING(u8string, Server, DbStorage, u8"Memory"); // Database storage type and connection parameters; filesystem paths and Mongo text are UTF-8
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(int32_t, Server, AutoStartClientOnServer, 0); // Number of embedded clients to auto-spawn on server startup; 0 disables the feature

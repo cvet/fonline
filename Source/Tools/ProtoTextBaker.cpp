@@ -117,7 +117,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     for (const auto& file : filtered_files) {
         const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
+        const u8string config_name = file.GetPath();
+        auto fopro = ConfigFile(config_name.view(), file.GetText(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -157,7 +158,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             map<string, string> section_kv;
 
             for (const auto& [key, value] : section_kv_view) {
-                section_kv.emplace(string(key), string(value));
+                section_kv.emplace(string(key), utf8_to_char_string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
@@ -256,7 +257,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
                 auto& lang_packs_map = all_proto_texts[type_name][pid];
                 lang_packs_map.try_emplace(lang, &engine.Hashes);
-                lang_packs_map.at(lang).AddStr(text_key, StringEscaping::DecodeString(value));
+                const string decoded_text = StringEscaping::DecodeString(value);
+                u8string strict_text = decoded_text;
+                lang_packs_map.at(lang).AddText(text_key, std::move(strict_text));
             }
         }
     }

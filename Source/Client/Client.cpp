@@ -47,7 +47,8 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    const u8string& resources_dir = IsPackaged() ? settings.ClientResources : settings.BakeOutput;
+    resources.AddPacksSource(resources_dir, settings.ClientResourceEntries);
     return resources;
 }
 
@@ -599,7 +600,7 @@ void ClientEngine::Net_OnDisconnect()
     OnDisconnected.Fire();
 }
 
-void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
+void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -735,7 +736,7 @@ void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, 
     }
 
     _conn.OutBuf->Write(prop->GetRegIndex());
-    _conn.OutBuf->Push(prop_raw_data);
+    _conn.OutBuf->Push(make_byte_span(prop_raw_data));
     _conn.OutBuf->EndMsg();
 }
 
@@ -745,7 +746,7 @@ void ClientEngine::Net_OnInitData()
 
     const auto data_size = _conn.InBuf->Read<uint32_t>();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     data.resize(data_size);
 
     _conn.InBuf->Pop(data.data(), data_size);
@@ -759,12 +760,14 @@ void ClientEngine::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        resources.AddDirSource(Settings->ClientResources, false, true, true);
+        const u8string client_resources = Settings->ClientResources;
+        resources.AddDirSource(client_resources, false, true, true);
 
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below.
-            resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
+            const u8string writable_resources = fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources);
+            resources.AddDirSource(writable_resources, false, true, true);
         }
 
         auto reader = DataReader(data);
@@ -1969,7 +1972,7 @@ void ClientEngine::ReceiveCustomEntities(nptr<Entity> holder)
     }
 }
 
-auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>
+auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<byte>>& data) -> ptr<CustomEntityView>
 {
     FO_STACK_TRACE_ENTRY();
 

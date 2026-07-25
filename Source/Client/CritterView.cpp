@@ -117,7 +117,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
     return AddRawInvItem(item);
 }
 
-auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
+auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<byte>>& props_data) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 

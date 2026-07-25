@@ -80,15 +80,17 @@ auto FileHeader::GetPath() const -> string_view
     return _filePath;
 }
 
-auto FileHeader::GetDiskPath() const -> string
+auto FileHeader::GetDiskPath() const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
-    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
-    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
+    const string_view pack_name = utf8_as_char_view(_dataSource->GetPackName());
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", pack_name, _fileSize, _writeTime);
+    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, pack_name);
 
-    return strex(_dataSource->GetPackName()).combine_path(_filePath);
+    const u8string file_path = _filePath;
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(_dataSource->GetPackName())} / std::filesystem::path {fs_make_path(file_path.view())});
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -127,7 +129,7 @@ auto FileHeader::Copy() const -> FileHeader
     return FileHeader(_filePath, _fileSize, _writeTime, _dataSource);
 }
 
-File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
+File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const byte>&& buf) :
     FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
 {
@@ -148,14 +150,23 @@ auto File::Load(const FileHeader& fh) -> File
     return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
 
-auto File::GetStr() const -> string
+auto File::GetText() const -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
+    return utf8_from_byte_span(GetDataSpan());
+}
+
+auto File::GetData() const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    string result;
+    vector<byte> result;
     result.resize(_fileSize);
 
     if (!result.empty()) {
@@ -165,31 +176,14 @@ auto File::GetStr() const -> string
     return result;
 }
 
-auto File::GetData() const -> vector<uint8_t>
+auto File::GetDataSpan() const -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    vector<uint8_t> result;
-    result.resize(_fileSize);
-
-    if (!result.empty()) {
-        MemCopy(result.data(), _fileBuf, result.size());
-    }
-
-    return result;
-}
-
-auto File::GetDataSpan() const -> const_span<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
-    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
-
-    return const_span<uint8_t> {_fileBuf.get(), _fileSize};
+    return const_span<byte> {_fileBuf.get(), _fileSize};
 }
 
 auto File::GetReader() const -> FileReader
@@ -199,21 +193,28 @@ auto File::GetReader() const -> FileReader
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    const_span<uint8_t> file_span = {_fileBuf.get(), _fileSize};
+    const_span<byte> file_span = {_fileBuf.get(), _fileSize};
     return FileReader(file_span);
 }
 
-FileReader::FileReader(const_span<uint8_t> buf) :
+FileReader::FileReader(const_span<byte> buf) :
     _buf {buf}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto FileReader::GetStr() const -> string
+auto FileReader::GetText() const -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return utf8_from_byte_span(_buf);
+}
+
+auto FileReader::GetData() const -> vector<byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    string result;
+    vector<byte> result;
     result.resize(_buf.size());
 
     if (!result.empty()) {
@@ -224,22 +225,7 @@ auto FileReader::GetStr() const -> string
     return result;
 }
 
-auto FileReader::GetData() const -> vector<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<uint8_t> result;
-    result.resize(_buf.size());
-
-    if (!result.empty()) {
-        auto source = make_ptr(_buf.data());
-        MemCopy(result.data(), source, result.size());
-    }
-
-    return result;
-}
-
-auto FileReader::GetDataSpan() const -> const_span<uint8_t>
+auto FileReader::GetDataSpan() const -> const_span<byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -253,7 +239,7 @@ auto FileReader::GetSize() const -> size_t
     return _buf.size();
 }
 
-auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
+auto FileReader::GetCurDataSpan(size_t size) const -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -266,7 +252,7 @@ auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
     }
 
     auto data = make_ptr(_buf.data()).offset(_curPos);
-    return const_span<uint8_t> {data.get(), size};
+    return const_span<byte> {data.get(), size};
 }
 
 auto FileReader::GetCurPos() const -> size_t
@@ -314,11 +300,11 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     }
 
     for (size_t i = _curPos; i <= _buf.size() - fragment.size(); i++) {
-        if (_buf[i] == std::bit_cast<uint8_t>(fragment[0])) {
+        if (_buf[i] == byte {std::bit_cast<uint8_t>(fragment[0])}) {
             bool not_match = false;
 
             for (size_t j = 1; j < fragment.size(); j++) {
-                if (_buf[numeric_cast<size_t>(i) + j] != std::bit_cast<uint8_t>(fragment[j])) {
+                if (_buf[numeric_cast<size_t>(i) + j] != byte {std::bit_cast<uint8_t>(fragment[j])}) {
                     not_match = true;
                     break;
                 }
@@ -334,7 +320,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     return false;
 }
 
-void FileReader::CopyData(span<uint8_t> buf)
+void FileReader::CopyData(span<byte> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -350,7 +336,7 @@ void FileReader::CopyData(span<uint8_t> buf)
     _curPos += buf.size();
 }
 
-void FileReader::ReadBytes(span<uint8_t> out)
+void FileReader::ReadBytes(span<byte> out)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -379,7 +365,7 @@ auto FileReader::GetStrNT() -> string
 
         auto cur_byte = make_ptr(_buf.data()).offset(_curPos + len);
 
-        if (*cur_byte == 0) {
+        if (*cur_byte == byte {0}) {
             break;
         }
 
@@ -406,7 +392,7 @@ auto FileReader::GetUInt8() -> uint8_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    return _buf[_curPos++];
+    return std::to_integer<uint8_t>(_buf[_curPos++]);
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -418,8 +404,8 @@ auto FileReader::GetBEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t high_byte = _buf[_curPos++];
-    const uint32_t low_byte = _buf[_curPos++];
+    const uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    const uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
     return numeric_cast<uint16_t>((high_byte << 8) | low_byte);
 }
 
@@ -432,8 +418,8 @@ auto FileReader::GetLEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t low_byte = _buf[_curPos++];
-    const uint32_t high_byte = _buf[_curPos++];
+    const uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    const uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
     return numeric_cast<uint16_t>(low_byte | (high_byte << 8));
 }
 
@@ -449,7 +435,7 @@ auto FileReader::GetBEUInt32() -> uint32_t
     uint32_t res = 0;
 
     for (size_t i = 0; i != sizeof(uint32_t); i++) {
-        res = (res << 8) | _buf[_curPos++];
+        res = (res << 8) | std::to_integer<uint8_t>(_buf[_curPos++]);
     }
 
     return res;
@@ -467,7 +453,7 @@ auto FileReader::GetLEUInt32() -> uint32_t
     uint32_t res = 0;
 
     for (size_t i = 0; i != sizeof(uint32_t); i++) {
-        res |= numeric_cast<uint32_t>(_buf[_curPos++]) << (i * 8);
+        res |= numeric_cast<uint32_t>(std::to_integer<uint8_t>(_buf[_curPos++])) << (i * 8);
     }
 
     return res;
@@ -544,7 +530,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
     return {};
 }
 
-void FileSystem::AddDirSource(string_view dir, bool recursive, bool non_cached, bool maybe_not_available)
+void FileSystem::AddDirSource(u8string_view dir, bool recursive, bool non_cached, bool maybe_not_available)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -552,7 +538,7 @@ void FileSystem::AddDirSource(string_view dir, bool recursive, bool non_cached, 
     _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
-void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not_available)
+void FileSystem::AddPackSource(u8string_view dir, u8string_view pack, bool maybe_not_available)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -561,17 +547,19 @@ void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
     else {
-        auto ds = DataSource::MountDir(strex(dir).combine_path(pack), true, false, maybe_not_available);
+        const u8string pack_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(pack)});
+        auto ds = DataSource::MountDir(pack_dir.view(), true, false, maybe_not_available);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
 }
 
-void FileSystem::AddPacksSource(string_view dir, const vector<string>& packs)
+void FileSystem::AddPacksSource(u8string_view dir, const vector<string>& packs)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& pack : packs) {
-        AddPackSource(dir, pack);
+        const u8string pack_name = pack;
+        AddPackSource(dir, pack_name.view());
     }
 }
 
@@ -757,12 +745,20 @@ auto FileSystem::ReadFile(string_view path) const -> File
     return {};
 }
 
-auto FileSystem::ReadFileText(string_view path) const -> string
+auto FileSystem::ReadFile(u8string_view path) const -> File
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string path_chars = utf8_to_char_string(path);
+    return ReadFile(path_chars);
+}
+
+auto FileSystem::ReadFileText(string_view path) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto file = ReadFile(path);
-    return file ? file.GetStr() : string();
+    return file ? file.GetText() : u8string();
 }
 
 auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader

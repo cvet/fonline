@@ -75,7 +75,7 @@ FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
     if (strvex(name).trim() != name) {
         throw ScriptException("Wrong player name (trimmed space)");
     }
-    if (!strvex(name).is_valid_utf8()) {
+    if (validate_utf8_text(name)) {
         throw ScriptException("Wrong player name encoding");
     }
 

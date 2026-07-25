@@ -588,6 +588,17 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 {
     FO_STACK_TRACE_ENTRY();
 
+    const u8string rule_name_utf8 = rule_name;
+    const u8string extra_info_utf8 = extra_info;
+    const u8string target_utf8 = target;
+    const u8string replacement_utf8 = replacement;
+    RegisterMigrationRule(rule_name_utf8, extra_info_utf8, target_utf8, replacement_utf8);
+}
+
+void EngineMetadata::RegisterMigrationRule(u8string_view rule_name, u8string_view extra_info, u8string_view target, u8string_view replacement)
+{
+    FO_STACK_TRACE_ENTRY();
+
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     const auto hrule_name = Hashes.ToHashedString(rule_name);
@@ -809,7 +820,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
+    const auto prop_name = Hashes.ToHashedString(u8strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
@@ -1236,7 +1247,7 @@ void BaseEngine::RunScriptContext(const function<void()>& callback)
     callback();
 }
 
-void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
+void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1261,7 +1272,7 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_VERIFY_AND_THROW(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls()->size(), "Inbound remote call handler table does not cover every registered remote call", _inboundRemoteCallHandlers.size(), GetInboundRemoteCalls()->size());
 }
 
-void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data)
+void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<byte> data)
 {
     FO_STACK_TRACE_ENTRY();
 

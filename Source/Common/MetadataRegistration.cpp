@@ -45,14 +45,15 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
 static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<u8string_view>>& engine_data);
 
-void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
+void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<byte> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Read data
-    map<string_view, vector<vector<string_view>>> engine_data;
+    map<string, vector<vector<string>>> owned_engine_data;
+    vector<vector<u8string_view>> migration_rules;
     auto reader = DataReader(metadata_bin);
     const auto sections_count = reader.Read<uint16_t>();
 
@@ -60,32 +61,68 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
         ignore_unused(i);
 
         const auto section_name_size = reader.Read<uint16_t>();
-        const string_view section_name = reader.ReadStringView(section_name_size);
+        const string section_name = utf8_to_string(reader.ReadUtf8StringView(section_name_size));
 
         const auto entries_count = reader.Read<uint32_t>();
+
+        if (section_name == "MigrationRule") {
+            migration_rules.reserve(entries_count);
+
+            for (const auto j : iterate_range(entries_count)) {
+                ignore_unused(j);
+
+                auto& cur_entry = migration_rules.emplace_back();
+                const auto tokens_count = reader.Read<uint32_t>();
+
+                for (const auto k : iterate_range(tokens_count)) {
+                    ignore_unused(k);
+
+                    const auto token_size = reader.Read<uint16_t>();
+                    cur_entry.emplace_back(reader.ReadUtf8StringView(token_size));
+                }
+            }
+        }
+        else {
+            vector<vector<string>> entries;
+            entries.reserve(entries_count);
+
+            for (const auto j : iterate_range(entries_count)) {
+                ignore_unused(j);
+
+                auto& cur_entry = entries.emplace_back();
+                const auto tokens_count = reader.Read<uint32_t>();
+
+                for (const auto k : iterate_range(tokens_count)) {
+                    ignore_unused(k);
+
+                    const auto token_size = reader.Read<uint16_t>();
+                    cur_entry.emplace_back(utf8_to_string(reader.ReadUtf8StringView(token_size)));
+                }
+            }
+
+            owned_engine_data.emplace(section_name, std::move(entries));
+        }
+    }
+
+    reader.VerifyEnd();
+
+    map<string, vector<vector<string_view>>> engine_data;
+
+    for (const auto& [section_name, owned_entries] : owned_engine_data) {
         vector<vector<string_view>> entries;
-        entries.reserve(entries_count);
+        entries.reserve(owned_entries.size());
 
-        for (const auto j : iterate_range(entries_count)) {
-            ignore_unused(j);
+        for (const auto& owned_entry : owned_entries) {
+            auto& entry = entries.emplace_back();
+            entry.reserve(owned_entry.size());
 
-            auto& cur_entry = entries.emplace_back();
-            const auto tokens_count = reader.Read<uint32_t>();
-
-            for (const auto k : iterate_range(tokens_count)) {
-                ignore_unused(k);
-
-                const auto token_size = reader.Read<uint16_t>();
-                const string_view token = reader.ReadStringView(token_size);
-
-                cur_entry.emplace_back(token);
+            for (const auto& token : owned_entry) {
+                entry.emplace_back(token);
             }
         }
 
         engine_data.emplace(section_name, std::move(entries));
     }
-
-    reader.VerifyEnd();
 
     RegisterDynamicMetadataEnums(meta, engine_data["Enum"]);
     RegisterDynamicMetadataEntities(meta, engine_data["Entity"]);
@@ -97,7 +134,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
     RegisterDynamicMetadataEvents(meta, engine_data["Event"]);
     RegisterDynamicMetadataRemoteCalls(meta, engine_data["RemoteCall"]);
     RegisterDynamicMetadataSettings(meta, engine_data["Setting"]);
-    RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
+    RegisterDynamicMetadataMigrationRules(meta, migration_rules);
 }
 
 static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
@@ -340,7 +377,7 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
     }
 }
 
-static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<u8string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -351,7 +388,7 @@ static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, cons
     }
 }
 
-auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>
+auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 

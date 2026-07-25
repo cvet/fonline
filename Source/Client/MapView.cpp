@@ -220,7 +220,7 @@ void MapView::EnableMapperMode()
     RefreshMinZoom();
 }
 
-void MapView::LoadFromFile(string_view map_name, const string& str)
+void MapView::LoadFromFile(string_view map_name, const u8string& str)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -302,13 +302,14 @@ void MapView::LoadStaticData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(u8strex("{}.fomap-bin-client", GetProtoId()));
 
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    auto reader = DataReader(file.GetDataSpan());
+    const const_span<byte> file_data = file.GetDataSpan();
+    auto reader = DataReader(file_data);
 
     // Hashes
     {
@@ -336,7 +337,7 @@ void MapView::LoadStaticData()
         _staticItems.reserve(items_count);
         _processingItems.reserve(256);
 
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
 
         for (uint32_t i = 0; i < items_count; i++) {
             const auto static_id = ident_t {reader.Read<ident_t::underlying_type>()};
@@ -348,8 +349,7 @@ void MapView::LoadStaticData()
             auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
             const auto props_data_size = reader.Read<uint32_t>();
             props_data.resize(props_data_size);
-            span<uint8_t> props_data_span = props_data;
-            reader.ReadBytes(props_data_span);
+            reader.ReadBytes(props_data);
             item_props.RestoreAllData(props_data);
 
             auto item_props_ptr = make_nptr(&item_props);
@@ -671,7 +671,7 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
     }
 }
 
-auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<ItemHexView>
+auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<byte>>& data, bool fade_in) -> ptr<ItemHexView>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3342,7 +3342,7 @@ auto MapView::GetNonDeadCritter(mpos hex) -> nptr<CritterHexView>
     return nullptr;
 }
 
-auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<CritterHexView>
+auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<byte>>& data, bool fade_in) -> ptr<CritterHexView>
 {
     FO_STACK_TRACE_ENTRY();
 

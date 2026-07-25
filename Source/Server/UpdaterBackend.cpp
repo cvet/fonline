@@ -53,11 +53,11 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     // and leaves all five members untouched instead of half-cleared/half-rebuilt.
     vector<UpdateFileData> update_files;
     vector<UpdateFileInfo> common_update_files;
-    vector<uint8_t> common_update_files_desc;
+    vector<byte> common_update_files_desc;
     map<string, vector<UpdateFileInfo>> binary_target_update_files;
-    map<string, vector<uint8_t>> binary_target_update_files_desc;
+    map<string, vector<byte>> binary_target_update_files_desc;
 
-    const auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
+    const auto add_sync_file = [&settings, &update_files](u8string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
         auto file = fs_open_ifstream(disk_path);
@@ -72,15 +72,15 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
-            if (!stream_read_exact(file, data.MemoryData)) {
+            if (!stream_read_exact(file, make_byte_span(data.MemoryData))) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData);
+            data.Hash = fs_hash_bytes(make_byte_span(data.MemoryData));
         }
         else {
-            data.DiskPath = string(disk_path);
+            data.DiskPath = u8string {disk_path};
             data.Size = numeric_cast<uint64_t>(file_size);
             const auto file_hash = fs_hash_file(disk_path);
 
@@ -100,42 +100,46 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         return info;
     };
 
-    const auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
+    const u8string client_resources = settings.ClientResources;
+    const auto client_resources_dir = std::filesystem::path {fs_make_path(client_resources)};
 
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
             const auto pack_name = strex("{}.zip", resource_entry).str();
-            const auto pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
-            auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
+            const auto pack_disk_path = fs_path_to_u8string(client_resources_dir / pack_name);
+            auto info = add_sync_file(pack_disk_path.view(), pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));
         }
     }
 
-    const auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
-    const auto platform_binaries_path = fs_path_to_string(platform_binaries_dir);
+    const u8string platform_binaries = settings.PlatformBinaries;
+    const auto platform_binaries_dir = std::filesystem::path {fs_make_path(platform_binaries)};
+    const auto platform_binaries_path = fs_path_to_u8string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
-        FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
+        FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path.view());
 
         for (const auto& platform_entry : std::filesystem::directory_iterator {platform_binaries_dir}) {
             if (!platform_entry.is_directory()) {
                 continue;
             }
 
-            const auto binary_target_name = fs_path_to_string(platform_entry.path().filename());
-            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs_path_to_string(platform_entry.path()));
+            const auto binary_target_name = fs_path_to_u8string(platform_entry.path().filename());
+            const u8string platform_entry_path = fs_path_to_u8string(platform_entry.path());
+            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path.view(), platform_entry_path.view());
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
-                const auto disk_path = fs_path_to_string(binary_entry.path());
-                const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
-                auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
-                binary_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
+                const u8string binary_entry_path = fs_path_to_u8string(binary_entry.path());
+                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name.view(), binary_entry_path.view());
+                const auto disk_path = fs_path_to_u8string(binary_entry.path());
+                const auto client_file_name = fs_path_to_u8string(binary_entry.path().filename());
+                auto info = add_sync_file(disk_path.view(), utf8_as_char_view(client_file_name.view()), UpdateFileTarget::ClientBinaries);
+                binary_target_update_files[utf8_to_string(binary_target_name.view())].emplace_back(std::move(info));
             }
         }
     }
 
-    const auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
+    const auto build_update_desc = [&update_files, &common_update_files](vector<byte>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
         const auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
@@ -178,7 +182,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     _binaryTargetUpdateFilesDesc.swap(binary_target_update_files_desc);
 }
 
-auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
+auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -224,12 +228,12 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     const uint64_t update_portion = std::min(update_portion_limit, remaining_size);
     const size_t update_portion_size = numeric_cast<size_t>(update_portion);
 
-    vector<uint8_t> disk_update_data {};
+    vector<byte> disk_update_data {};
 
     if (update_portion_size != 0 && !update_file.InMemory) {
         disk_update_data.resize(update_portion_size);
 
-        const auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
+        const auto read_update_file_portion = [](u8string_view disk_path, uint64_t start_offset, vector<byte>& data) {
             FO_STACK_TRACE_ENTRY();
 
             auto file = fs_open_ifstream(disk_path);
@@ -244,17 +248,17 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
                 return false;
             }
 
-            return stream_read_exact(file, data);
+            return stream_read_exact(file, make_byte_span(data));
         };
 
-        if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
-            WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
+        if (!read_update_file_portion(update_file.DiskPath.view(), start_offset, disk_update_data)) {
+            WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath.view(), file_index, connection->GetHost());
             connection->HardDisconnect();
             return;
         }
     }
 
-    const_span<uint8_t> update_data {};
+    const_span<byte> update_data {};
 
     if (update_portion_size != 0) {
         if (update_file.InMemory) {

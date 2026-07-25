@@ -36,6 +36,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "SmartPointers.h"
+#include "TextTypes.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -59,24 +60,29 @@ struct Platform
     // Windows: OutputDebugStringW
     // Android: __android_log_write ANDROID_LOG_INFO
     // Other: none
-    static void InfoLog(const string& str) noexcept;
+    static void InfoLog(u8string_view_nt str);
 
     // Windows (>= 10): SetThreadDescription
     // Other: none
-    static void SetThreadName(const string& str) noexcept;
+    static void SetThreadName(u8string_view_nt str);
 
     // Windows: GetModuleFileNameW
     // Linux: readlink /proc/self/exe
     // Mac: proc_pidpath
     // Other: nullopt
-    static auto GetExePath() noexcept -> optional<string>;
+    static auto GetExePath() -> optional<u8string>;
+
+    // Windows: GetEnvironmentVariableW + checked UTF-16 conversion
+    // Other: exact environment bytes validated as UTF-8
+    // Missing or empty: nullopt
+    static auto GetEnvironmentUtf8(string_view_nt variable_name) -> optional<u8string>;
 
     // Base directory for per-user writable application data, from environment only (no SDL/shell32).
     // Windows: %LOCALAPPDATA% (else %APPDATA%)
     // Mac & iOS: $HOME/Library/Application Support
     // Linux, Android & other: $XDG_DATA_HOME (else $HOME/.local/share)
     // Not found: empty string
-    static auto GetUserDataBase() noexcept -> string;
+    static auto GetUserDataBase() -> u8string;
 
     // Linux & Mac: fork
     // Other: warning log message
@@ -112,11 +118,11 @@ struct Platform
     // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
     // Linux & Mac: dlopen/dlclose/dlsym
     // Other: nullptr
-    static auto LoadModule(const string& module_name) noexcept -> nptr<void>;
+    static auto LoadModule(u8string_view_nt module_name) -> nptr<void>;
     static void UnloadModule(nptr<void> module_handle) noexcept;
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
+    static auto GetFuncAddr(nptr<void> module_handle, string_view_nt func_name) -> void*;
     template<typename T>
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> T
+    static auto GetFuncAddr(nptr<void> module_handle, string_view_nt func_name) -> T
     {
         return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
     }

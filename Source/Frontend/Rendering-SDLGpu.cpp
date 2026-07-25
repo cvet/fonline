@@ -822,9 +822,11 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
     for (size_t pass = 0; pass < sdl_effect->_passCount; pass++) {
         // Per-stage SDL binding slots and resource counts from the baked [EffectInfoSdl] section
-        const string pass_info_fname = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
-        const string pass_info_content = loader(pass_info_fname);
-        const auto pass_info = ConfigFile(pass_info_fname, pass_info_content);
+        const u8string pass_info_name = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
+        const string_view pass_info_fname = utf8_as_char_view(pass_info_name.view());
+        const vector<byte> pass_info_data = loader(pass_info_fname);
+        const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
+        const auto pass_info = ConfigFile(pass_info_name.view(), pass_info_content);
 
         if (!pass_info.HasSection("EffectInfoSdl")) {
             throw EffectLoadException("Effect info has no EffectInfoSdl section, rebake resources", name, pass_info_fname);
@@ -864,13 +866,13 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Shaders
         const auto create_shader = [&](bool is_vertex) {
             const string shader_fname = strex("{}.fofx-{}-{}-{}", strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
-            const string shader_content = loader(shader_fname);
+            const vector<byte> shader_content = loader(shader_fname);
             FO_VERIFY_AND_THROW(!shader_content.empty(), "SDL_GPU effect shader content is empty after loading", name, pass + 1, shader_fname);
 
             SDL_GPUShaderCreateInfo shader_info = {};
             shader_info.code_size = shader_content.size();
             auto shader_content_data = make_ptr(shader_content.data());
-            shader_info.code = shader_content_data.reinterpret_as<uint8_t>().get();
+            shader_info.code = shader_content_data.reinterpret_as<const uint8_t>().get();
             shader_info.entrypoint = entry_point.data();
             shader_info.format = _ctx->ShaderFormat;
             shader_info.stage = is_vertex ? SDL_GPU_SHADERSTAGE_VERTEX : SDL_GPU_SHADERSTAGE_FRAGMENT;
@@ -1317,7 +1319,7 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     auto transfer_buf = EnsureTransferBuffer(_ctx, TransferBuf, TransferBufSize, total_data_size, false);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
-    auto mapped_bytes = mapped.reinterpret_as<uint8_t>();
+    auto mapped_bytes = mapped.reinterpret_as<byte>();
 
     if (vertices_data_size != 0) {
 #if FO_ENABLE_3D

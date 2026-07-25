@@ -415,15 +415,15 @@ public:
 class IAppAudio
 {
 public:
-    using AudioStreamCallback = function<void(uint8_t, span<uint8_t>)>;
+    using AudioStreamCallback = function<void(uint8_t, span<byte>)>;
 
     virtual ~IAppAudio() = default;
 
     [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
 
-    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
+    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool = 0;
     virtual void SetSource(AudioStreamCallback stream_callback) = 0;
-    virtual void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) = 0;
+    virtual void MixAudio(span<byte> output, const_span<byte> buf, int32_t volume) = 0;
     virtual void LockDevice() = 0;
     virtual void UnlockDevice() = 0;
 };
@@ -487,7 +487,7 @@ public:
     [[nodiscard]] auto GetOnLowMemory() noexcept -> ptr<EventObserver<>> override;
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override;
     [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return _isVirtual; }
-    [[nodiscard]] auto GetTitle() const noexcept -> string_view { return _title; }
+    [[nodiscard]] auto GetTitle() const noexcept -> u8string_view { return _title.view(); }
     [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture> { return _virtualRenderTex; }
     [[nodiscard]] auto GetDisplayRect() const noexcept -> irect32 { return _displayRect; }
 
@@ -500,7 +500,7 @@ public:
     void Blink() override;
     void AlwaysOnTop(bool enable) override;
     void Destroy() override;
-    void SetTitle(string_view title);
+    void SetTitle(u8string_view title);
     void SetDisplayRect(irect32 rect) noexcept { _displayRect = rect; }
 
     EventObserver<> OnWindowSizeChanged {};
@@ -519,7 +519,7 @@ private:
     nptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};
     bool _isVirtual {};
-    string _title {};
+    u8string _title {};
     isize32 _virtualSize {};
     isize32 _virtualScreenSize {};
     ipos32 _virtualPosition {};
@@ -612,9 +612,9 @@ public:
 
     [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
+    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool override;
     void SetSource(AudioStreamCallback stream_callback) override;
-    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override;
+    void MixAudio(span<byte> output, const_span<byte> buf, int32_t volume) override;
     void LockDevice() override;
     void UnlockDevice() override;
 
@@ -674,7 +674,7 @@ public:
     [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
 
-    auto CreateChildWindow(isize32 size, string_view title = {}) -> ptr<AppWindow>;
+    auto CreateChildWindow(isize32 size, u8string_view title = {}) -> ptr<AppWindow>;
     void DestroyChildWindow(nptr<AppWindow> window);
     void SetActiveWindow(nptr<AppWindow> window);
     void BeginWindowRender(ptr<AppWindow> window);
@@ -691,7 +691,7 @@ public:
     void SetMainLoopCallback(void (*callback)(void*));
 #endif
 
-    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
+    static void ShowErrorMessage(u8string_view message, u8string_view traceback, bool fatal_error);
     static void ShowProgressWindow(string_view text, const ProgressWindowCallback& callback);
     static void ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32_t>& selected);
 
@@ -839,7 +839,7 @@ extern void ResetApp() noexcept;
 extern auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
 extern void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
-extern auto GetExeLogFileName() -> string;
+extern auto GetExeLogFileName() -> u8string;
 extern void ResolveUserWritablePath(GlobalSettings& settings);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 extern auto IsQuitSignalReceived() noexcept -> bool;

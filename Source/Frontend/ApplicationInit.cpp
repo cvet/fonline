@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
 // zip has no marker and keeps writing next to the exe.
-static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
+static constexpr u8string_view INSTALLED_MARKER_NAME {u8"INSTALLED"};
 
 static unique_nptr<Application> App {};
 
@@ -102,7 +102,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     FO_STRONG_ASSERT(first_call, "Application can be initialized only once");
 
     // Fork the process if requested
-    if (std::ranges::any_of(args, [](nptr<const char> arg) { return arg && string_view(arg.get()) == "--fork"; })) {
+    if (std::ranges::any_of(args, [](const u8string& arg) { return arg.view() == u8"--fork"; })) {
         Platform::ForkProcess();
     }
 
@@ -132,7 +132,9 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Installed client: the install dir is read-only, so move the log file into the per-user writable
     // data dir now that settings (and the resolved writable path) are known.
     if (!settings.UserWritablePath.empty()) {
-        const auto log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
+        const u8string user_writable_path = settings.UserWritablePath;
+        const u8string log_file_name = GetExeLogFileName();
+        const u8string log_path = fs_make_writable_path(user_writable_path.view(), log_file_name.view());
         WriteLog("Switch log to path '{}'", log_path);
         LogToFile(log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile));
         WriteLog("Starting {}", FO_NICE_NAME);
@@ -180,11 +182,11 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetExceptionCallback([show_message_on_exception](string_view message, const CatchedStackTraceData& st, bool fatal_error) FO_DEFERRED {
+    SetExceptionCallback([show_message_on_exception](u8string_view message, const CatchedStackTraceData& st, bool fatal_error) FO_DEFERRED {
         WriteLogMessage(LogType::Error, message, &st);
 
         if (fatal_error) {
-            WriteLogMessage(LogType::Error, "Shutdown!");
+            WriteLogMessage(LogType::Error, u8"Shutdown!");
 
 #if FO_WEB
             if (IsAppInitialized()) {
@@ -194,7 +196,8 @@ static void SetupExceptionCallback(bool show_message_on_exception)
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !IsAppInitialized()))) {
-            Application::ShowErrorMessage(message, FormatStackTrace(st), fatal_error);
+            const u8string traceback = FormatStackTrace(st);
+            Application::ShowErrorMessage(message, traceback, fatal_error);
         }
     });
 }
@@ -217,8 +220,8 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
     if (!IsPackaged()) {
         // Apply config
-        string config_to_apply;
-        string config_to_apply_dir;
+        u8string config_to_apply;
+        u8string config_to_apply_dir;
         bool auto_find_config = false;
 
         for (size_t i = 0; i < args.size(); i++) {
@@ -228,17 +231,19 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
                 continue;
             }
 
-            const string_view arg_view = strex(arg).trim().strv();
+            const u8string arg_value = u8strex(arg).trim();
 
-            if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
+            if (arg_value == u8"-ApplyConfig" || arg_value == u8"--ApplyConfig") {
                 auto next_arg = args.Get(i + 1);
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
-                config_to_apply = strex(next_arg).trim().extract_file_name();
-                config_to_apply_dir = strex(next_arg).trim().extract_dir();
+                const u8string config_path = u8strex(next_arg).trim();
+                const std::filesystem::path native_config_path {fs_make_path(config_path.view())};
+                config_to_apply = fs_path_to_u8string(native_config_path.filename());
+                config_to_apply_dir = fs_path_to_u8string(native_config_path.parent_path());
             }
         }
 
@@ -247,11 +252,11 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                const auto config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+                const auto config_path = fs_path_to_u8string(dir / FO_MAIN_CONFIG);
 
-                if (fs_exists(config_path) && !fs_is_dir(config_path)) {
+                if (fs_exists(config_path.view()) && !fs_is_dir(config_path.view())) {
                     config_to_apply = FO_MAIN_CONFIG;
-                    config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
+                    config_to_apply_dir = fs_path_to_u8string(dir);
                     break;
                 }
                 else {
@@ -265,8 +270,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             }
         }
 
-        WriteLog("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
-        settings.ApplyConfigAtPath(config_to_apply, config_to_apply_dir);
+        const u8string applied_config_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_to_apply_dir.view())} / std::filesystem::path {fs_make_path(config_to_apply.view())});
+        WriteLog("Apply config {}", applied_config_path.view());
+        settings.ApplyConfigAtPath(config_to_apply.view(), config_to_apply_dir.view());
 
         // Apply sub config
         vector<string> sub_configs_to_apply;
@@ -278,16 +284,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
                 continue;
             }
 
-            const string_view arg_view = strex(arg).trim().strv();
+            const u8string arg_value = u8strex(arg).trim();
 
-            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
+            if (arg_value == u8"-ApplySubConfig" || arg_value == u8"--ApplySubConfig") {
                 auto next_arg = args.Get(i + 1);
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 
-                sub_configs_to_apply.emplace_back(strex(next_arg).trim());
+                sub_configs_to_apply.emplace_back(utf8_to_string(u8strvex(next_arg).trim()));
             }
         }
 
@@ -310,14 +316,18 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.
     ResolveUserWritablePath(settings);
 
-    const auto cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
+    const u8string user_writable_path = settings.UserWritablePath;
+    const u8string cache_resources = settings.CacheResources;
+    const u8string cache_dir = fs_make_writable_path(user_writable_path.view(), cache_resources.view());
 
-    if (fs_is_dir(cache_dir)) {
-        const auto cache = CacheStorage(cache_dir);
+    if (fs_is_dir(cache_dir.view())) {
+        const auto cache = CacheStorage(cache_dir.view());
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-            auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
-            settings.ApplyConfigFile(config, "");
+            const u8string cache_text = cache.GetText(LOCAL_CONFIG_NAME);
+            const u8string config_name = LOCAL_CONFIG_NAME;
+            auto config = ConfigFile(config_name.view(), cache_text);
+            settings.ApplyConfigFile(config, u8string_view {});
         }
     }
 
@@ -331,38 +341,41 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     FO_STACK_TRACE_ENTRY();
 
     // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable.
-    string root = string(settings.UserWritablePath);
+    u8string root = settings.UserWritablePath;
 
     if (root.empty()) {
         // No explicit path: switch to the per-user writable layout only when the installer marker is
         // present next to the exe; otherwise stay portable.
         const auto exe_path = Platform::GetExePath();
 
-        if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
-            settings.UserWritablePath = "";
+        const u8string marker_path = exe_path.has_value() ? fs_path_to_u8string(std::filesystem::path {fs_make_path(exe_path->view())}.parent_path() / std::filesystem::path {fs_make_path(INSTALLED_MARKER_NAME)}) : u8string {};
+
+        if (!exe_path.has_value() || !fs_exists(marker_path.view())) {
+            settings.UserWritablePath = u8string {};
             return;
         }
 
-        root = "*";
+        root = u8string {u8"*"};
     }
 
-    if (root == "*") {
-        const string base = Platform::GetUserDataBase();
+    if (root.view() == u8"*") {
+        const u8string base = Platform::GetUserDataBase();
 
         if (base.empty()) {
             WriteLog(LogType::Warning, "Client user-writable path requested but no user data dir found; using portable layout");
-            settings.UserWritablePath = "";
+            settings.UserWritablePath = u8string {};
             return;
         }
 
-        root = strex(base).combine_path(settings.GameName).str();
+        const u8string game_name = settings.GameName;
+        root = fs_path_to_u8string(std::filesystem::path {fs_make_path(base.view())} / std::filesystem::path {fs_make_path(game_name.view())});
     }
 
-    root = fs_resolve_path(root);
+    root = fs_resolve_path(root.view());
 
-    if (!fs_create_directories(root)) {
-        WriteLog(LogType::Warning, "Can't create client user-writable path '{}'; using portable layout", root);
-        settings.UserWritablePath = "";
+    if (!fs_create_directories(root.view())) {
+        WriteLog(LogType::Warning, "Can't create client user-writable path '{}'; using portable layout", root.view());
+        settings.UserWritablePath = u8string {};
         return;
     }
 
@@ -370,10 +383,14 @@ void ResolveUserWritablePath(GlobalSettings& settings)
 
     // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
     // resource writer never fail on a missing parent directory.
-    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
-    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+    const u8string cache_resources = settings.CacheResources;
+    const u8string client_resources = settings.ClientResources;
+    const u8string cache_path = fs_make_writable_path(root.view(), cache_resources.view());
+    const u8string client_path = fs_make_writable_path(root.view(), client_resources.view());
+    (void)fs_create_directories(cache_path.view());
+    (void)fs_create_directories(client_path.view());
 
-    WriteLog("Client user-writable data path: {}", root);
+    WriteLog("Client user-writable data path: {}", root.view());
 }
 
 static void PrebakeResources(BakingSettings& settings)
@@ -381,20 +398,20 @@ static void PrebakeResources(BakingSettings& settings)
     FO_STACK_TRACE_ENTRY();
 
     using BakeResourcesFunc = bool (*)(void*);
-    auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
+    auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, string_view_nt {"FO_BakeResources"});
 
     nptr<void> baker_dll = nullptr;
     auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
 
-    const auto lib_name = strex("{}_BakerLib", FO_DEV_NAME);
+    const u8string lib_name = u8strex("{}_BakerLib", FO_DEV_NAME);
 
     if (bake_resources == nullptr) {
         const auto exe_path = Platform::GetExePath();
-        const auto lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
-        baker_dll = Platform::LoadModule(lib_path);
+        const u8string lib_path = u8strex(exe_path ? exe_path->view() : u8string_view {}).extract_dir().combine_path(lib_name);
+        baker_dll = Platform::LoadModule(lib_path.view_nt());
 
         if (baker_dll) {
-            bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");
+            bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(baker_dll, string_view_nt {"FO_BakeResources"});
         }
     }
 
@@ -407,9 +424,11 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
+        const u8string bake_output = settings.BakeOutput;
+
+        if (fs_exists(bake_output.view()) && fs_is_dir(bake_output.view())) {
             if (!settings.IgnoreMissingBakerWarning) {
-                Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
+                Application::ShowErrorMessage(u8strex("Warning! {} not found. Resources may be out of date", lib_name), u8"", false);
             }
         }
         else {
@@ -418,15 +437,17 @@ static void PrebakeResources(BakingSettings& settings)
     }
 }
 
-auto GetExeLogFileName() -> string
+auto GetExeLogFileName() -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     if (const auto exe_path = Platform::GetExePath()) {
-        return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
+        const std::filesystem::path native_exe_path {fs_make_path(exe_path->view())};
+        const u8string executable_stem = fs_path_to_u8string(native_exe_path.stem());
+        return u8strex("{}.log", executable_stem);
     }
 
-    return strex("{}.log", FO_DEV_NAME);
+    return u8strex("{}.log", FO_DEV_NAME);
 }
 
 #if FO_LINUX || FO_MAC

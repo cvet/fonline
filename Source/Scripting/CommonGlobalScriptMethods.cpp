@@ -53,7 +53,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
+FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, u8string_view text)
 {
     ignore_unused(engine);
 
@@ -75,25 +75,25 @@ FO_SCRIPT_API bool Common_Game_IsResourcePresent(ptr<BaseEngine> engine, string_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_ReadResource(ptr<BaseEngine> engine, string_view resourcePath)
+FO_SCRIPT_API u8string Common_Game_ReadResource(ptr<BaseEngine> engine, string_view resourcePath)
 {
     return engine->Resources.ReadFileText(resourcePath);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> engine, string_view resourcePath, string_view sectionName)
+FO_SCRIPT_API map<string, u8string> Common_Game_ReadConfigSection(ptr<BaseEngine> engine, string_view resourcePath, string_view sectionName)
 {
-    string content = engine->Resources.ReadFileText(resourcePath);
-    ConfigFile config(resourcePath, std::move(content));
+    const u8string config_name = resourcePath;
+    ConfigFile config(config_name.view(), engine->Resources.ReadFileText(resourcePath));
 
-    map<string, string> result;
+    map<string, u8string> result;
 
     if (!config.HasSection(sectionName)) {
         return result;
     }
 
     for (const auto& [key, value] : config.GetSection(sectionName)) {
-        result.emplace(string(key), string(value));
+        result.emplace(string(key), u8string {value});
     }
 
     return result;
@@ -129,25 +129,28 @@ FO_SCRIPT_API int32_t Common_Game_Random(ptr<BaseEngine> engine, int32_t minValu
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_view text, int32_t& length)
+FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, u8string_view text, int32_t& length)
 {
     ignore_unused(engine);
 
-    size_t decode_length = text.length();
+    size_t decode_length = text.size();
     const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    FO_VERIFY_AND_THROW(ch.has_value(), "Invalid UTF-8 sequence");
 
     length = numeric_cast<int32_t>(decode_length);
-    return ch;
+    return *ch;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs)
+FO_SCRIPT_API u8string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs)
 {
     ignore_unused(engine);
 
-    char buf[4];
+    char8_t buf[4];
     const auto len = utf8::Encode(ucs, buf);
-    return {buf, len};
+    FO_VERIFY_AND_THROW(len.has_value(), "Invalid Unicode scalar value");
+
+    return u8string::FromChecked(std::u8string_view {buf, *len});
 }
 
 ///@ ExportMethod

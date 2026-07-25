@@ -47,10 +47,10 @@ TEST_CASE("Compressor")
 
     SECTION("CompressDecompressRoundtrip")
     {
-        vector<uint8_t> src;
+        vector<byte> src;
         src.reserve(4096);
         for (auto i = 0; i < 4096; i++) {
-            src.emplace_back(static_cast<uint8_t>(i % 251));
+            src.emplace_back(byte {numeric_cast<uint8_t>(i % 251)});
         }
 
         const auto compressed = Compressor::Compress(src);
@@ -62,13 +62,21 @@ TEST_CASE("Compressor")
 
     SECTION("DecompressInvalidData")
     {
-        const vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
+        const vector<byte> invalid = {byte {0x01}, byte {0x02}, byte {0x03}, byte {0x04}, byte {0x05}};
         CHECK_THROWS_AS((Compressor::Decompress(invalid, 2)), DecompressException);
+    }
+
+    SECTION("DecompressCanonicalZlibFixture")
+    {
+        const vector<byte> compressed = {byte {0x78}, byte {0x01}, byte {0x63}, byte {0xA8}, byte {0x6F}, byte {0xF8}, byte {0x0F}, byte {0x00}, byte {0x03}, byte {0x80}, byte {0x01}, byte {0xFF}};
+        const vector<byte> expected = {byte {0x00}, byte {0x7F}, byte {0x80}, byte {0xFF}};
+
+        CHECK(Compressor::Decompress(compressed, 1) == expected);
     }
 
     SECTION("DecompressExpandsBufferWhenApproximationIsTooSmall")
     {
-        vector<uint8_t> src(4096, 0x2A);
+        vector<byte> src(4096, byte {0x2A});
 
         const auto compressed = Compressor::Compress(src);
         REQUIRE(compressed.size() < src.size());
@@ -79,22 +87,22 @@ TEST_CASE("Compressor")
 
     SECTION("StreamRoundtrip")
     {
-        vector<uint8_t> part1;
-        vector<uint8_t> part2;
+        vector<byte> part1;
+        vector<byte> part2;
         for (auto i = 0; i < 128; i++) {
-            part1.emplace_back(static_cast<uint8_t>(i));
-            part2.emplace_back(static_cast<uint8_t>(255 - i));
+            part1.emplace_back(byte {numeric_cast<uint8_t>(i)});
+            part2.emplace_back(byte {numeric_cast<uint8_t>(255 - i)});
         }
 
         StreamCompressor compressor;
-        vector<uint8_t> comp1;
-        vector<uint8_t> comp2;
+        vector<byte> comp1;
+        vector<byte> comp2;
         compressor.Compress(part1, comp1);
         compressor.Compress(part2, comp2);
 
         StreamDecompressor decompressor;
-        vector<uint8_t> dec1;
-        vector<uint8_t> dec2;
+        vector<byte> dec1;
+        vector<byte> dec2;
         decompressor.Decompress(comp1, dec1);
         decompressor.Decompress(comp2, dec2);
 
@@ -108,25 +116,42 @@ TEST_CASE("Compressor")
     SECTION("StreamRejectsMalformedInitialInputWithTypedException")
     {
         StreamDecompressor decompressor;
-        vector<uint8_t> result;
-        const vector<uint8_t> invalid = {0x00, 0x00};
+        vector<byte> result;
+        const vector<byte> invalid = {byte {0x00}, byte {0x00}};
 
         CHECK_THROWS_AS(decompressor.Decompress(invalid, result), DecompressException);
     }
 
     SECTION("StreamRejectsMalformedContinuationInputWithTypedException")
     {
-        const vector<uint8_t> source(4096, 0x2A);
+        const vector<byte> source(4096, byte {0x2A});
         StreamCompressor compressor;
-        vector<uint8_t> compressed;
+        vector<byte> compressed;
         compressor.Compress(source, compressed);
         REQUIRE(compressed.size() * 2 < source.size());
 
-        compressed.emplace_back(0x06);
+        compressed.emplace_back(byte {0x06});
 
         StreamDecompressor decompressor;
-        vector<uint8_t> result;
+        vector<byte> result;
         CHECK_THROWS_AS(decompressor.Decompress(compressed, result), DecompressException);
+    }
+
+    SECTION("StreamDecompressCanonicalChunks")
+    {
+        const vector<byte> first_chunk = {byte {0x78}, byte {0x01}, byte {0x62}, byte {0xA8}, byte {0x6F}, byte {0xF8}, byte {0x0F}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0xFF}, byte {0xFF}};
+        const vector<byte> second_chunk = {byte {0x62}, byte {0x64}, byte {0x62}, byte {0x66}, byte {0x01}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0xFF}, byte {0xFF}};
+        const vector<byte> expected_first = {byte {0x00}, byte {0x7F}, byte {0x80}, byte {0xFF}};
+        const vector<byte> expected_second = {byte {0x01}, byte {0x02}, byte {0x03}, byte {0x04}};
+
+        StreamDecompressor decompressor;
+        vector<byte> first;
+        vector<byte> second;
+        decompressor.Decompress(first_chunk, first);
+        decompressor.Decompress(second_chunk, second);
+
+        CHECK(first == expected_first);
+        CHECK(second == expected_second);
     }
 }
 

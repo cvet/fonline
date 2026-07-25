@@ -32,6 +32,7 @@
 
 #include "BakingReport.h"
 
+#include "DiskFileSystem.h"
 #include "Settings.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -327,7 +328,7 @@ auto BakingReport::GetAggregateBaker(string_view baker_name) -> BakingReportBake
     return _aggregateBakers[string(baker_name)];
 }
 
-auto GetBakingReportPath(string_view bake_output) -> string
+auto GetBakingReportPath(u8string_view bake_output) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -335,11 +336,10 @@ auto GetBakingReportPath(string_view bake_output) -> string
         return {};
     }
 
-    const string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
-    return strex(normalized_output).combine_path("Baking.report.json").str();
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_output)} / std::filesystem::path {u8"Baking.report.json"});
 }
 
-auto GetFullBakingReportPath(string_view bake_output) -> string
+auto GetFullBakingReportPath(u8string_view bake_output) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -347,8 +347,7 @@ auto GetFullBakingReportPath(string_view bake_output) -> string
         return {};
     }
 
-    const string normalized_output = strex(bake_output).normalize_path_slashes().rtrim("/").str();
-    return strex(normalized_output).combine_path("Baking.full.report.json").str();
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_output)} / std::filesystem::path {u8"Baking.full.report.json"});
 }
 
 static auto BakingReportPercent(uint64_t part, uint64_t total) noexcept -> float64_t
@@ -904,7 +903,7 @@ static auto MakeBakingReportBakerJson(string_view name, const BakingReportBakerS
     return result;
 }
 
-auto BakingReport::Serialize() const -> string
+auto BakingReport::Serialize() const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -951,7 +950,7 @@ auto BakingReport::Serialize() const -> string
         {"status", _status},
         {"failureMessage", _failureMessage},
         {"buildHash", FO_BUILD_HASH},
-        {"bakeOutput", _bakeOutput},
+        {"bakeOutput", utf8_to_char_string(_bakeOutput.view())},
         {"durationMs", _status == "running" ? _duration.GetDuration().milliseconds() : _completedDurationMs},
         {"mode", {{"forceRequested", _forceRequested}, {"fullRebuild", _fullRebuild}, {"rebuildReason", _rebuildReason}, {"singleThread", _singleThread}}},
         {"measurementScope",
@@ -1008,10 +1007,9 @@ auto BakingReport::Serialize() const -> string
         report["packs"].push_back(std::move(pack_json));
     }
 
-    const std::string serialized_report = report.dump(2);
-    string result {serialized_report.begin(), serialized_report.end()};
-    result += '\n';
-    return result;
+    std::string serialized_report = report.dump(2);
+    serialized_report += '\n';
+    return utf8_from_char_span(const_span<char> {serialized_report.data(), serialized_report.size()});
 }
 
 FO_END_NAMESPACE

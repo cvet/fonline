@@ -47,7 +47,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     SpriteInfoFileEntry entry {
-        .SourcePath = "Art/Test.png",
+        .SourcePath = u8string {u8"Art/Test.png"},
         .ResourcePath = "Art/Test.png",
         .Info =
             {
@@ -67,7 +67,8 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
     };
 
     auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
-    source->AddFile("SpriteInfo/TestPack.foinfo", WriteSpriteInfoFile({entry}));
+    const u8string sprite_info = WriteSpriteInfoFile({entry});
+    source->AddFile("SpriteInfo/TestPack.foinfo", sprite_info.view());
 
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
@@ -325,11 +326,12 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
     {
         FileSystem resources = MakeSpriteAnimationInfoResources();
         const File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
-        string invalid_info = info_file.GetStr();
-        invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
+        const u8string info_text = info_file.GetText();
+        const string info_ascii = utf8_to_string(info_text.view());
+        const u8string invalid_info = strex(info_ascii).replace("InfoVersion = 1", "InfoVersion = 2");
 
         auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
-        source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);
+        source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info.view());
         FileSystem invalid_resources;
         invalid_resources.AddCustomSource(std::move(source));
 

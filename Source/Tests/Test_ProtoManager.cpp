@@ -183,7 +183,7 @@ TEST_CASE("ProtoManager")
         const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
 
         REQUIRE(static_cast<bool>(meta.GetProtoItem(loaded_pid)));
-        CHECK(meta.GetProtoItem(loaded_pid)->GetName() == string_view {"LoadedKnife"});
+        CHECK(meta.GetProtoItem(loaded_pid)->GetName() == "LoadedKnife");
         CHECK(meta.GetProtoItem(loaded_pid)->GetTypeName() == item_type);
         CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, loaded_pid), meta.GetProtoItem(loaded_pid)));
         CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, loaded_pid), meta.GetProtoItem(loaded_pid)));

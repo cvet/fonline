@@ -201,7 +201,7 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 
     constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
-    const int32_t pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
+    const int32_t pid_num = strex(Platform::GetCurrentProcessIdStr()).to_int32();
     const uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % span) : uint16_t {0};
 
     bool listen_ok = false;
@@ -685,7 +685,7 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
         return false;
     }
 
-    return _activeClientSock.send(make_const_span(message)) > 0;
+    return _activeClientSock.send(make_byte_span(message)) > 0;
 }
 
 auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> RequestResult
@@ -981,7 +981,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
     FO_STACK_TRACE_ENTRY();
 
     constexpr size_t buffer_size = 2048;
-    array<uint8_t, buffer_size> read_buf {};
+    array<byte, buffer_size> read_buf {};
     string pending;
     bool handshake_sent = false;
 
@@ -1017,14 +1017,14 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
                 continue;
             }
 
-            read_size = _activeClientSock.receive(span<uint8_t>(read_buf.data(), buffer_size - 1));
+            read_size = _activeClientSock.receive(span<byte>(read_buf.data(), buffer_size - 1));
         }
 
         if (read_size <= 0) {
             break;
         }
 
-        pending.append(span_to_string({read_buf.data(), numeric_cast<size_t>(read_size)}));
+        pending.append(span_to_string(const_span<byte> {read_buf.data(), numeric_cast<size_t>(read_size)}));
 
         for (;;) {
             const size_t line_end = pending.find('\n');
@@ -1082,7 +1082,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
     FO_STACK_TRACE_ENTRY();
 
     constexpr size_t buffer_size = 1024;
-    array<uint8_t, buffer_size> read_buf {};
+    array<byte, buffer_size> read_buf {};
 
     WriteLog("AngelScript debugger UDP discovery port: {}", _discoveryPort);
 
@@ -1098,20 +1098,20 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 
         string remote_host;
         uint16_t remote_port = 0;
-        const int32_t read_size = _discoverySocket.receive_from(span<uint8_t>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
+        const int32_t read_size = _discoverySocket.receive_from(span<byte>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
 
         if (read_size <= 0) {
             continue;
         }
 
-        const string_view request = span_to_string({read_buf.data(), numeric_cast<size_t>(read_size)});
+        const string_view request = span_to_string(const_span<byte> {read_buf.data(), numeric_cast<size_t>(read_size)});
 
         if (!strvex(request).starts_with(ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE)) {
             continue;
         }
 
         const string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
-        _discoverySocket.send_to(remote_host, remote_port, make_const_span(response));
+        _discoverySocket.send_to(remote_host, remote_port, make_byte_span(response));
     }
 }
 

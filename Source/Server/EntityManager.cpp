@@ -926,7 +926,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        const string_view proto_name = proto_value.AsString();
+        const string_view proto_name = utf8_as_char_view(proto_value.AsString());
 
         if (proto_name.empty()) {
             WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
@@ -1381,7 +1381,7 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
     if (auto entity_with_proto = entity.dyn_cast<EntityWithProto>()) {
         auto proto = entity_with_proto->GetProto();
         auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), proto->GetProperties(), _engine->Hashes, *_engine);
-        doc.Emplace("_Proto", string(proto->GetName()));
+        doc.Emplace("_Proto", proto->GetName());
         return doc;
     }
     else {
@@ -1463,7 +1463,8 @@ void EntityManager::DestroyEntity(ptr<Entity> entity)
     }
     else {
         auto proto_entity = entity.dyn_cast<ProtoEntity>();
-        WriteLog(LogType::Warning, "Trying to destroy entity: {}{}", proto_entity ? "Proto" : "", entity->GetTypeName());
+        const string_view proto_prefix = proto_entity ? "Proto" : string_view {};
+        WriteLog(LogType::Warning, "Trying to destroy entity: {}{}", proto_prefix, entity->GetTypeName());
     }
 }
 
@@ -1633,7 +1634,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
+        const auto collection_name = _engine->Hashes.ToHashedString(u8strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {

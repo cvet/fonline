@@ -74,7 +74,7 @@ namespace
             return settings;
         }
 
-        static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+        static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
         {
             BakerServerEngine compiler_engine {metadata_resources};
 

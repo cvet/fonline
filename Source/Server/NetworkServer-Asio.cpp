@@ -66,7 +66,7 @@ private:
 
     asio::ip::tcp::socket _socket;
     std::atomic_bool _writePending {};
-    std::vector<uint8_t> _inBufData {};
+    std::vector<byte> _inBufData {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -112,11 +112,11 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
     const auto endpoint = _socket.remote_endpoint(endpoint_error);
 
     if (!endpoint_error) {
-        _host = endpoint.address().to_string();
+        _host = string(endpoint.address().to_string());
         _port = endpoint.port();
     }
     else {
-        _host = "Unknown";
+        _host = string {"Unknown"};
         _port = 0;
     }
 
@@ -131,6 +131,8 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
 
 void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation, const std::error_code& error)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (!error || error == asio::error::not_connected || error == asio::error::bad_descriptor || error == asio::error::operation_aborted) {
         return;
     }
@@ -170,7 +172,7 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
     if (!error) {
         FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
-        const auto received_data = make_const_span(_inBufData.data(), bytes);
+        const const_span<byte> received_data {_inBufData.data(), bytes};
         ReceiveCallback(received_data);
         NextAsyncRead();
     }

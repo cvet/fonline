@@ -71,6 +71,24 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
+static auto SplitDataBaseConnectionInfo(u8string_view connection_info) -> vector<u8string_view>;
+
+static auto MakeCommittedOpLogPath(u8string_view path) -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::u8string result {path.native_view()};
+    constexpr std::u8string_view suffix {u8".oplog"};
+    constexpr std::u8string_view replacement {u8"-committed.oplog"};
+    size_t pos = 0;
+
+    while ((pos = result.find(suffix, pos)) != std::u8string::npos) {
+        result.replace(pos, suffix.size(), replacement);
+        pos += replacement.size();
+    }
+
+    return u8string::FromChecked(result);
+}
 
 DataBase::DataBase() = default;
 
@@ -310,18 +328,19 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    const auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
+    const auto open_log_file = [&](optional<RecoveryLogHandle>& handle, u8string_view file_path, string_view file_desc) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
 
-        const auto dir = strex(file_path).extract_dir().str();
+        const std::filesystem::path native_path {fs_make_path(file_path)};
+        const u8string dir = fs_path_to_u8string(native_path.parent_path());
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
-            throw DataBaseException("Oplog directory can't be created", file_desc, dir);
+        if (!dir.empty() && !fs_create_directories(dir.view())) {
+            throw DataBaseException("Oplog directory can't be created", file_desc, dir.view());
         }
 
-        handle.emplace(string(file_path));
+        handle.emplace(u8string {file_path});
 
         // Validate oplog line format
         const_span<string> content = handle->GetContent();
@@ -387,8 +406,9 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     };
 
-    open_log_file(_pendingChangesLog, _settings->OpLogPath, "pending database changes file");
-    open_log_file(_committedChangesLog, strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    open_log_file(_pendingChangesLog, _settings->OpLogPath.view(), "pending database changes file");
+    const u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
+    open_log_file(_committedChangesLog, committed_oplog_path.view(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
@@ -405,6 +425,7 @@ void DataBaseImpl::RestorePendingChanges()
 
     FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
     FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
+    const string_view op_log_path = utf8_as_char_view(_settings->OpLogPath.view());
 
     const_span<string> pending_changes_content = _pendingChangesLog->GetContent();
     const_span<string> committed_changes_content = _committedChangesLog->GetContent();
@@ -414,11 +435,11 @@ void DataBaseImpl::RestorePendingChanges()
     }
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
-        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->OpLogPath);
+        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), op_log_path);
         const size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->OpLogPath);
+            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, op_log_path);
         }
     }
 
@@ -431,8 +452,8 @@ void DataBaseImpl::RestorePendingChanges()
             const auto line_view = string_view {line};
             const auto first_space = line_view.find(' ');
             const auto second_space = line_view.find(' ', first_space + 1);
-            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->OpLogPath, line_view.size(), first_space);
-            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->OpLogPath, line_view.size(), first_space, second_space);
+            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, op_log_path, line_view.size(), first_space);
+            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, op_log_path, line_view.size(), first_space, second_space);
 
             const auto command = line_view.substr(0, first_space);
             const auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
@@ -470,7 +491,7 @@ void DataBaseImpl::RestorePendingChanges()
                         InsertRecord(collection_name, storage_record_id, doc);
                     }
                     else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->OpLogPath);
+                        throw DataBaseException("Pending database insert replay conflict", record_id, op_log_path);
                     }
                 }
                 else if (!DoesDocumentContain(current_doc, doc)) {
@@ -491,7 +512,7 @@ void DataBaseImpl::RestorePendingChanges()
         throw;
     }
     catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->OpLogPath);
+        throw DataBaseException("Pending database command parsing failed", ex.what(), op_log_path);
     }
 
     FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
@@ -499,10 +520,11 @@ void DataBaseImpl::RestorePendingChanges()
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_committedChangesLog->Truncate()) {
-        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
+        const u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
+        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", committed_oplog_path.view());
     }
     if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath.view());
     }
 
     _backendFailed = false;
@@ -636,7 +658,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
-        op->Doc.Assign(string(key), value.Copy());
+        op->Doc.Assign(key, value.Copy());
         _pendingCommitOperations.emplace_back(std::move(op));
     }
 
@@ -743,13 +765,13 @@ void DataBaseImpl::DrawGui()
         info_row("Collections", strex("{}", _collectionKeyTypes.size()).str());
 
         if (_pendingChangesLog) {
-            info_row("Pending changes log path", _pendingChangesLog->GetPath());
+            info_row("Pending changes log path", utf8_as_char_view(_pendingChangesLog->GetPath()));
             info_row("Pending changes log lines", strex("{}", _pendingChangesLog->GetLinesCount()).str());
             info_row("Pending changes log size", strex("{}", _pendingChangesLog->GetTextSize()).str());
         }
 
         if (_committedChangesLog) {
-            info_row("Committed changes log path", _committedChangesLog->GetPath());
+            info_row("Committed changes log path", utf8_as_char_view(_committedChangesLog->GetPath()));
             info_row("Committed changes log lines", strex("{}", _committedChangesLog->GetLinesCount()).str());
             info_row("Committed changes log size", strex("{}", _committedChangesLog->GetTextSize()).str());
         }
@@ -1069,20 +1091,20 @@ void DataBaseImpl::StartPanic(string_view message)
         return;
     }
 
+    run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
+        std::this_thread::sleep_for(timeout);
+        ExitApp(false);
+    }).detach();
+
     WriteLog("Critical database failure: {}", message);
     _panicStarted = true;
 
     if (_panicCallback) {
         safe_call([this] { _panicCallback(); });
     }
-
-    run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
-        std::this_thread::sleep_for(timeout);
-        ExitApp(false);
-    }).detach();
 }
 
-DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
+DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(u8string path) :
     _path {std::move(path)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -1091,23 +1113,24 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Empty recovery log file path");
     }
 
-    auto path_cstr = make_ptr(_path.c_str());
-
 #if FO_WINDOWS
-    if (_sopen_s(&_fd, path_cstr.get(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
+    const utf16_string path_utf16 = utf8_to_utf16(_path.view());
+    const wide_string path_wide = utf16_to_wide(path_utf16);
+    if (_wsopen_s(&_fd, path_wide.c_str(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
+        throw DataBaseException("Failed to open recovery oplog file", _path.view());
     }
 
 #else
+    const ptr<const char> path_cstr = utf8_to_c_str(_path.view_nt());
     _fd = open(path_cstr.get(), O_RDWR | O_CREAT, 0666);
 
     if (_fd < 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
+        throw DataBaseException("Failed to open recovery oplog file", _path.view());
     }
 
     if (flock(_fd, LOCK_EX | LOCK_NB) != 0) {
         close(_fd);
-        throw DataBaseException("Failed to lock recovery oplog file, it may be used by another process", _path);
+        throw DataBaseException("Failed to lock recovery oplog file, it may be used by another process", _path.view());
     }
 #endif
 
@@ -1123,13 +1146,13 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
     const auto read_content = Read();
 
     if (!read_content.has_value()) {
-        throw DataBaseException("Oplog file can't be read", _path);
+        throw DataBaseException("Oplog file can't be read", _path.view());
     }
 
     const auto normalized_content = strex(read_content.value()).normalize_line_endings().str();
 
     if (!normalized_content.empty() && !normalized_content.ends_with('\n')) {
-        throw DataBaseException("Oplog file has invalid line ending", _path);
+        throw DataBaseException("Oplog file has invalid line ending", _path.view());
     }
 
     _content = strex(normalized_content).split('\n');
@@ -1362,7 +1385,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     return true;
 }
 
-auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
+auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, u8string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1373,28 +1396,54 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         return DataBase(std::move(impl));
     };
 
-    if (const auto options = strvex(connection_info).split(' '); !options.empty()) {
+    if (const vector<u8string_view> options = SplitDataBaseConnectionInfo(connection_info); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
-        if (options.front() == "JSON" && options.size() == 2) {
+        if (options.front().native_view() == u8"JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #if FO_HAVE_UNQLITE
-        if (options.front() == "DbUnQLite" && options.size() == 2) {
+        if (options.front().native_view() == u8"DbUnQLite" && options.size() == 2) {
             return finish_connect(CreateUnQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #endif
 #if FO_HAVE_MONGO
-        if (options.front() == "Mongo" && options.size() == 3) {
+        if (options.front().native_view() == u8"Mongo" && options.size() == 3) {
             return finish_connect(CreateMongoDataBase(db_settings, options[1], options[2], std::move(panic_callback)));
         }
 #endif
-        if (options.front() == "Memory" && options.size() == 1) {
+        if (options.front().native_view() == u8"Memory" && options.size() == 1) {
             return finish_connect(CreateMemoryDataBase(db_settings, std::move(panic_callback)));
         }
     }
 
     throw DataBaseException("Wrong storage options", connection_info);
+}
+
+static auto SplitDataBaseConnectionInfo(u8string_view connection_info) -> vector<u8string_view>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<u8string_view> options;
+    const std::u8string_view text = connection_info.native_view();
+    size_t pos = 0;
+
+    while (pos < text.size()) {
+        while (pos < text.size() && text[pos] == u8' ') {
+            pos++;
+        }
+
+        if (pos == text.size()) {
+            break;
+        }
+
+        const size_t separator = text.find(u8' ', pos);
+        const size_t end = separator != std::u8string_view::npos ? separator : text.size();
+        options.emplace_back(u8string_view::FromChecked(text.substr(pos, end - pos)));
+        pos = end;
+    }
+
+    return options;
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
@@ -1429,7 +1478,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        const string_view value_str = value.AsString();
+        const string_view value_str = utf8_as_char_view(value.AsString());
 
         if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
@@ -1464,7 +1513,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         const auto& dict = value.AsDict();
 
         for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
+            ValueToBson(utf8_as_char_view(dict_key.view()), dict_value, &bson_doc, escape_dot);
         }
 
         if (!bson_append_document_end(aligned_bson, &bson_doc)) {
@@ -1481,7 +1530,7 @@ void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        ValueToBson(doc_key, doc_value, bson, escape_dot);
+        ValueToBson(utf8_as_char_view(doc_key.view()), doc_value, bson, escape_dot);
     }
 }
 
@@ -1510,7 +1559,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
         return value->value.v_bool;
     }
     else if (value->value_type == BSON_TYPE_UTF8) {
-        return string(value->value.v_utf8.str, value->value.v_utf8.len);
+        return utf8_from_char_span(const_span<char> {value->value.v_utf8.str, value->value.v_utf8.len});
     }
     else if (value->value_type == BSON_TYPE_ARRAY) {
         bson_iter_t arr_iter;
@@ -1541,7 +1590,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
             auto key = make_ptr(bson_iter_key(&doc_iter));
             auto unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
             auto dict_value = BsonToValue(&doc_iter, escape_dot);
-            dict.Emplace(std::move(unescaped_key), std::move(dict_value));
+            dict.Emplace(utf8_from_char_span(const_span<char> {unescaped_key.data(), unescaped_key.size()}), std::move(dict_value));
         }
 
         return std::move(dict);
@@ -1572,7 +1621,7 @@ void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_
 
         auto value = BsonToValue(&iter, escape_dot);
         auto unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
-        doc.Emplace(std::move(unescaped_key), std::move(value));
+        doc.Emplace(utf8_from_char_span(const_span<char> {unescaped_key.data(), unescaped_key.size()}), std::move(value));
     }
 }
 
@@ -1595,7 +1644,7 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
     case AnyData::ValueType::Bool:
         return value.AsBool();
     case AnyData::ValueType::String:
-        return string(value.AsString());
+        return utf8_to_char_string(value.AsString());
     case AnyData::ValueType::Array: {
         auto arr_json = nlohmann::json::array();
 
@@ -1609,8 +1658,8 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
         auto dict_json = nlohmann::json::object();
 
         for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            auto dict_key_cstr = make_ptr(dict_key.c_str());
-            dict_json[dict_key_cstr.get()] = AnyValueToJson(dict_value);
+            const auto dict_key_chars = utf8_to_char_string(dict_key.view());
+            dict_json[dict_key_chars.c_str()] = AnyValueToJson(dict_value);
         }
 
         return dict_json;
@@ -1678,7 +1727,8 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
         return value.get<bool>();
     }
     if (value.is_string()) {
-        return value.get<string>();
+        const string text = value.get<string>();
+        return utf8_from_char_span(const_span<char> {text.data(), text.size()});
     }
     if (value.is_array()) {
         AnyData::Array arr;
@@ -1693,7 +1743,7 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
         AnyData::Dict dict;
 
         for (auto&& [dict_key, dict_value] : value.items()) {
-            dict.Emplace(string(dict_key), JsonToAnyValue(dict_value));
+            dict.Emplace(utf8_from_char_span(const_span<char> {dict_key.data(), dict_key.size()}), JsonToAnyValue(dict_value));
         }
 
         return std::move(dict);
@@ -1709,8 +1759,8 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
     auto doc_json = nlohmann::json::object();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        auto doc_key_cstr = make_ptr(doc_key.c_str());
-        doc_json[doc_key_cstr.get()] = AnyValueToJson(doc_value);
+        const auto doc_key_chars = utf8_to_char_string(doc_key.view());
+        doc_json[doc_key_chars.c_str()] = AnyValueToJson(doc_value);
     }
 
     return doc_json;
@@ -1727,7 +1777,7 @@ static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Docume
     AnyData::Document doc;
 
     for (auto&& [doc_key, doc_value] : doc_json.items()) {
-        doc.Emplace(string(doc_key), JsonToAnyValue(doc_value));
+        doc.Emplace(utf8_from_char_span(const_span<char> {doc_key.data(), doc_key.size()}), JsonToAnyValue(doc_value));
     }
 
     return doc;
@@ -1768,7 +1818,7 @@ static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool
                 return value != ident_t {};
             }
             else {
-                return !value.empty() && strvex(value).is_valid_utf8();
+                return !value.empty() && !validate_utf8_text(value);
             }
         },
         key);
@@ -1848,7 +1898,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
     if (decoded_value.empty()) {
         throw DataBaseException("Invalid database string key value", key_str);
     }
-    if (!strvex(decoded_value).is_valid_utf8()) {
+    if (validate_utf8_text(decoded_value)) {
         throw DataBaseException("Invalid database string key utf8", key_str);
     }
 
@@ -1870,7 +1920,7 @@ static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
     const auto& value = std::get<string>(key);
     FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot encode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
-    if (!strvex(value).is_valid_utf8()) {
+    if (validate_utf8_text(value)) {
         throw DataBaseException("Invalid database string key utf8", value);
     }
 
@@ -1897,7 +1947,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
     FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot decode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
     if (escaping == DataBaseStringKeyEscaping::Raw) {
-        if (!strvex(value).is_valid_utf8()) {
+        if (validate_utf8_text(value)) {
             throw DataBaseException("Invalid database string key utf8", value);
         }
 
@@ -1906,7 +1956,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 
     auto decoded_value = DecodeDbStringKey(value, escaping);
 
-    if (!strvex(decoded_value).is_valid_utf8()) {
+    if (validate_utf8_text(decoded_value)) {
         throw DataBaseException("Invalid database string key utf8", value);
     }
 
@@ -1925,9 +1975,9 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         result += "s_";
 
         for (const auto ch : value) {
-            const auto byte = static_cast<uint8_t>(ch);
-            result.push_back(hex_digits[byte >> 4]);
-            result.push_back(hex_digits[byte & 0x0F]);
+            const uint8_t encoded_byte = static_cast<uint8_t>(ch);
+            result.push_back(hex_digits[encoded_byte >> 4]);
+            result.push_back(hex_digits[encoded_byte & 0x0F]);
         }
 
         return result;
@@ -1937,16 +1987,16 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     result.reserve(value.size());
 
     for (const auto ch : value) {
-        const auto byte = static_cast<uint8_t>(ch);
+        const uint8_t encoded_byte = static_cast<uint8_t>(ch);
 
-        if (!ShouldEscapeDbStringByte(byte, escaping)) {
+        if (!ShouldEscapeDbStringByte(encoded_byte, escaping)) {
             result.push_back(ch);
             continue;
         }
 
         result.push_back('%');
-        result.push_back(hex_digits[byte >> 4]);
-        result.push_back(hex_digits[byte & 0x0F]);
+        result.push_back(hex_digits[encoded_byte >> 4]);
+        result.push_back(hex_digits[encoded_byte & 0x0F]);
     }
 
     return result;
@@ -2001,19 +2051,19 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     return decoded_value;
 }
 
-static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
+static auto ShouldEscapeDbStringByte(uint8_t encoded_byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (byte == '%') {
+    if (encoded_byte == '%') {
         return true;
     }
 
     switch (escaping) {
     case DataBaseStringKeyEscaping::Raw:
-        return byte == ' ' || byte == '\t' || byte == '\r' || byte == '\n';
+        return encoded_byte == ' ' || encoded_byte == '\t' || encoded_byte == '\r' || encoded_byte == '\n';
     case DataBaseStringKeyEscaping::File:
-        return byte < 32 || byte == ' ' || byte == '\\' || byte == '/' || byte == ':' || byte == '*' || byte == '?' || byte == '"' || byte == '<' || byte == '>' || byte == '|';
+        return encoded_byte < 32 || encoded_byte == ' ' || encoded_byte == '\\' || encoded_byte == '/' || encoded_byte == ':' || encoded_byte == '*' || encoded_byte == '?' || encoded_byte == '"' || encoded_byte == '<' || encoded_byte == '>' || encoded_byte == '|';
     case DataBaseStringKeyEscaping::Hex:
         return true;
     }

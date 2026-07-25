@@ -395,7 +395,7 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
     return error;
 }
 
-auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
+auto tcp_socket::send(const_span<byte> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -406,7 +406,7 @@ auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
     return ::send(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0);
 }
 
-auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
+auto tcp_socket::receive(span<byte> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -488,12 +488,12 @@ auto tcp_server::accept() noexcept -> tcp_socket
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
-    auto addr_len_ptr = make_ptr(&addr_len);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), &addr_len);
+    auto addr_len_ptr = make_ptr(&addr_len);
+    const socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), addr_len_ptr.get());
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -599,7 +599,7 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
 #endif
 }
 
-auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t
+auto udp_socket::send_to(string_view host, uint16_t port, const_span<byte> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -623,7 +623,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
     return ::sendto(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr));
 }
 
-auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
+auto udp_socket::receive_from(span<byte> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -637,12 +637,12 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
-    auto addr_len_ptr = make_ptr(&addr_len);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
+    auto addr_len_ptr = make_ptr(&addr_len);
+    const int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
 
     if (result <= 0) {
         return result;

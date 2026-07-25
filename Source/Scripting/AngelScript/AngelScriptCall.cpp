@@ -371,8 +371,8 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
             const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
             const bool is_value_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_VALUE) != 0;
-            const bool is_array = is_ref_type && as_ret_type->GetName() == string_view("array");
-            const bool is_dict = is_ref_type && as_ret_type->GetName() == string_view("dict");
+            const bool is_array = is_ref_type && string_view {as_ret_type->GetName()} == "array";
+            const bool is_dict = is_ref_type && string_view {as_ret_type->GetName()} == "dict";
 
             if (is_array || is_dict) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
@@ -407,19 +407,19 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
             const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
-            nptr<void> ret_obj = call.RetData;
 
             if (is_ref_type) {
-                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
-            }
+                nptr<void> ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
 
-            if (ret_obj) {
-                as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
-
-                if (is_ref_type) {
+                if (ret_obj) {
+                    as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
                     NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
                 }
             }
+
+            // Value-type return storage is inline memory owned by the AngelScript VM. It remains a valid
+            // constructed object when the native callback throws, and the VM destroys it while unwinding.
+            // Releasing it here would treat the inline slot as an owned script object and corrupt the heap.
         }
 
         throw;

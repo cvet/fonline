@@ -92,7 +92,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
 
     if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources->ReadFile(name)) {
-            const_span<uint8_t> file_data = file.GetDataSpan();
+            const_span<byte> file_data = file.GetDataSpan();
             base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", make_ptr(file_data.data()).reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
         }
 

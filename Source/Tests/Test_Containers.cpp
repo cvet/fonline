@@ -50,7 +50,58 @@ TEST_CASE("Containers")
     SECTION("StringHash")
     {
         hashing::hash<string> hasher;
-        CHECK(hasher(string {"hash-me"}) == hasher(string_view {"hash-me"}));
+        CHECK(hasher(string {"hash-me"}) == hasher("hash-me"));
+    }
+
+    SECTION("Utf8InputStream")
+    {
+        u8istringstream input {u8"42 ASCII Привет 🌍\nвторая строка"};
+        int32_t number {};
+        string ascii;
+        u8string greeting;
+        u8string world;
+        u8string second_line;
+
+        input >> number >> ascii >> greeting >> world;
+        REQUIRE(getline(input, second_line));
+
+        CHECK(number == 42);
+        CHECK(ascii == "ASCII");
+        CHECK(greeting == u8"Привет");
+        CHECK(world == u8"🌍");
+        CHECK(second_line == u8"");
+        REQUIRE(getline(input, second_line));
+        CHECK(second_line == u8"вторая строка");
+        CHECK(input.eof());
+    }
+
+    SECTION("Utf8InputStreamRejectsNonAsciiNumber")
+    {
+        u8istringstream input {u8"число"};
+        int32_t number {};
+
+        input >> number;
+
+        CHECK(input.fail());
+        CHECK_FALSE(input);
+    }
+
+    SECTION("Utf8InputStreamChecksAsciiExtraction")
+    {
+        u8istringstream input {u8"Привет"};
+        string ascii;
+
+        CHECK_THROWS_AS(input >> ascii, TextValidationException);
+    }
+
+    SECTION("Utf8InputStreamPromotesAsciiInput")
+    {
+        u8istringstream input {"ASCII"};
+        u8string utf8;
+
+        input >> utf8;
+
+        CHECK(utf8 == u8"ASCII");
     }
 
     SECTION("VectorFormatterInt")

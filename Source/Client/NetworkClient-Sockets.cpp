@@ -55,8 +55,8 @@ public:
 
 protected:
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
-    auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override;
+    auto SendDataImpl(const_span<byte> buf) -> size_t override;
+    auto ReceiveDataImpl(vector<byte>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
 private:
@@ -143,7 +143,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     _isConnecting = false;
     _isConnected = true;
 
-    auto send_recv = [this](const_span<uint8_t> buf) -> vector<uint8_t> FO_DEFERRED {
+    auto send_recv = [this](const_span<byte> buf) -> vector<byte> FO_DEFERRED {
         if (!SendData(buf)) {
             throw NetworkClientException("Net output error");
         }
@@ -153,7 +153,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         while (true) {
             if (CheckStatus(false)) {
                 const auto result_buf = ReceiveData();
-                return vector<uint8_t>(result_buf.begin(), result_buf.end());
+                vector<byte> result(result_buf.size());
+                if (!result.empty()) {
+                    MemCopy(result.data(), result_buf.data(), result_buf.size());
+                }
+                return result;
             }
 
             if (nanotime::now() - time >= std::chrono::milliseconds {10000}) {
@@ -164,8 +168,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         }
     };
 
-    vector<uint8_t> send_buf;
-    vector<uint8_t> recv_buf;
+    vector<byte> send_buf;
+    vector<byte> recv_buf;
     uint8_t b1 = 0;
     uint8_t b2 = 0;
     ignore_unused(b1);
@@ -217,10 +221,10 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             {
                 auto auth_writer = DataWriter(send_buf);
                 auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
-                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
-                auth_writer.WriteStringBytes(_settings->ProxyUser); // Name
-                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
-                auth_writer.WriteStringBytes(_settings->ProxyPass); // Pass
+                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.size())); // Name length
+                auth_writer.WriteBytes(utf8_to_byte_span(_settings->ProxyUser.view())); // Name
+                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.size())); // Pass length
+                auth_writer.WriteBytes(utf8_to_byte_span(_settings->ProxyPass.view())); // Pass
             }
 
             recv_buf = send_recv(send_buf);
@@ -281,7 +285,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     }
     else if (_settings->ProxyType == PROXY_HTTP) {
         const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
-        const vector<uint8_t> result = send_recv(make_const_span(request));
+        const vector<byte> result = send_recv(make_byte_span(request));
         const string result_str {span_to_string(result)};
 
         if (result_str.find(" 200 ") == string::npos) {
@@ -333,7 +337,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     return false;
 }
 
-auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
+auto NetworkClientConnection_Sockets::SendDataImpl(const_span<byte> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -346,7 +350,7 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> s
     return numeric_cast<size_t>(sent);
 }
 
-auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
+auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<byte>& buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -368,7 +372,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
 
-        auto tail = make_span(buf.data() + whole_len, buf.size() - whole_len);
+        auto tail = make_byte_span(buf.data() + whole_len, buf.size() - whole_len);
         len = _sock.receive(tail);
 
         if (len < 0) {

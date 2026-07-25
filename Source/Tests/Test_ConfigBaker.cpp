@@ -20,7 +20,15 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static auto MakeConfigBakerTempDir() -> string
 {
-    return fs_path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+    const u8string path = fs_path_to_u8string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+    return utf8_to_char_string(path.view());
+}
+
+static auto WriteConfigBakerTextFile(string_view path, string_view content) -> bool
+{
+    const u8string path_utf8 = path;
+    const u8string utf8_content = content;
+    return fs_write_file_text(path_utf8.view(), utf8_content.view());
 }
 
 static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
@@ -30,9 +38,9 @@ static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 }
 
-static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
+static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<byte>
 {
-    vector<uint8_t> metadata;
+    vector<byte> metadata;
     auto writer = DataWriter(metadata);
 
     writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
@@ -58,7 +66,12 @@ static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<ve
 template<typename T>
 static auto FormatConfigBakerScalarValue(const T& value) -> string
 {
-    return strex("{}", value);
+    if constexpr (std::same_as<T, u8string>) {
+        return utf8_to_char_string(value.view());
+    }
+    else {
+        return strex("{}", value);
+    }
 }
 
 template<typename T>
@@ -124,11 +137,11 @@ TEST_CASE("ConfigBaker")
     SECTION("BakeCheckerCanSkipAllConfigs")
     {
         TestRig rig;
-        ConfigFile config {"Skip.fomain",
-            "[SubConfig]\n"
-            "Name = Child\n"
-            "Common.GameName = ChildGame\n"};
-        rig.Settings.ApplyConfigFile(config, "");
+        ConfigFile config {u8"Skip.fomain",
+            u8string {u8"[SubConfig]\n"
+                      "Name = Child\n"
+                      "Common.GameName = ChildGame\n"}};
+        rig.Settings.ApplyConfigFile(config, u8string_view {});
 
         vector<pair<string, uint64_t>> checks;
         ConfigBaker baker(rig.MakeContext("ConfigPack", [&checks](string_view path, uint64_t write_time) {
@@ -151,25 +164,26 @@ TEST_CASE("ConfigBaker")
         const string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path, MakeCompleteConfigBakerConfig()));
+        REQUIRE(WriteConfigBakerTextFile(config_path, MakeCompleteConfigBakerConfig()));
 
         TestRig rig;
         AddConfigBakerMetadata(rig);
-        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        const u8string temp_dir_utf8 = temp_dir;
+        rig.Settings.ApplyConfigAtPath(u8"Test.fomain", temp_dir_utf8.view());
 
         ConfigBaker baker(rig.MakeContext("ConfigPack"));
         REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
         REQUIRE(rig.Outputs.contains("(Root).fomain-server"));
         REQUIRE(rig.Outputs.contains("(Root).fomain-client"));
-        const string server_config = rig.GetOutputText("(Root).fomain-server");
-        const string client_config = rig.GetOutputText("(Root).fomain-client");
-        CHECK(server_config.find("Common.GameName=FOnline\n") != string::npos);
-        CHECK(client_config.find("Common.GameName=FOnline\n") != string::npos);
-        CHECK(server_config.find("ServerNetwork.ClientPingTime=10000\n") != string::npos);
-        CHECK(client_config.find("ServerNetwork.ClientPingTime=") == string::npos);
-        CHECK(client_config.find("ClientNetwork.ServerHost=127.0.0.1\n") != string::npos);
-        CHECK(server_config.find("Common.AsyncLogWrite=") == string::npos);
+        const u8string server_config = rig.GetOutputText("(Root).fomain-server");
+        const u8string client_config = rig.GetOutputText("(Root).fomain-client");
+        CHECK(server_config.view().native_view().find(u8"Common.GameName=FOnline\n") != std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"Common.GameName=FOnline\n") != std::u8string_view::npos);
+        CHECK(server_config.view().native_view().find(u8"ServerNetwork.ClientPingTime=10000\n") != std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"ServerNetwork.ClientPingTime=") == std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"ClientNetwork.ServerHost=127.0.0.1\n") != std::u8string_view::npos);
+        CHECK(server_config.view().native_view().find(u8"Common.AsyncLogWrite=") == std::u8string_view::npos);
 
         std::error_code ec;
         std::filesystem::remove_all(temp_dir, ec);
@@ -180,7 +194,7 @@ TEST_CASE("ConfigBaker")
         const string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(WriteConfigBakerTextFile(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Server.CustomEnabled = true\n"
                 "Client.CustomTitle = Frontend\n"
@@ -189,19 +203,20 @@ TEST_CASE("ConfigBaker")
         TestRig rig;
         rig.AddBakedFile("Metadata.fometa-server", MakeConfigBakerMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool"}}}}));
         rig.AddBakedFile("Metadata.fometa-client", MakeConfigBakerMetadataBlob({{"Setting", {{"Client.CustomTitle", "string"}}}}));
-        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        const u8string temp_dir_utf8 = temp_dir;
+        rig.Settings.ApplyConfigAtPath(u8"Test.fomain", temp_dir_utf8.view());
 
         ConfigBaker baker(rig.MakeContext("ConfigPack"));
         REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
-        const string server_config = rig.GetOutputText("(Root).fomain-server");
-        const string client_config = rig.GetOutputText("(Root).fomain-client");
-        CHECK(server_config.find("Server.CustomEnabled=1\n") != string::npos);
-        CHECK(server_config.find("Client.CustomTitle=Frontend\n") != string::npos);
-        CHECK(server_config.find("Unknown.CustomSetting=Visible\n") != string::npos);
-        CHECK(client_config.find("Client.CustomTitle=Frontend\n") != string::npos);
-        CHECK(client_config.find("Server.CustomEnabled=") == string::npos);
-        CHECK(client_config.find("Unknown.CustomSetting=") == string::npos);
+        const u8string server_config = rig.GetOutputText("(Root).fomain-server");
+        const u8string client_config = rig.GetOutputText("(Root).fomain-client");
+        CHECK(server_config.view().native_view().find(u8"Server.CustomEnabled=1\n") != std::u8string_view::npos);
+        CHECK(server_config.view().native_view().find(u8"Client.CustomTitle=Frontend\n") != std::u8string_view::npos);
+        CHECK(server_config.view().native_view().find(u8"Unknown.CustomSetting=Visible\n") != std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"Client.CustomTitle=Frontend\n") != std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"Server.CustomEnabled=") == std::u8string_view::npos);
+        CHECK(client_config.view().native_view().find(u8"Unknown.CustomSetting=") == std::u8string_view::npos);
 
         std::error_code ec;
         std::filesystem::remove_all(temp_dir, ec);
@@ -221,10 +236,13 @@ TEST_CASE("ConfigBaker")
         const auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
         std::filesystem::create_directories(temp_dir);
         const auto fomain_path = temp_dir / "Test.fomain";
-        fs_write_file(fs_path_to_string(fomain_path), "GameName = Test\n");
+        const u8string fomain_path_utf8 = fs_path_to_u8string(fomain_path);
+        (void)WriteConfigBakerTextFile(utf8_as_char_view(fomain_path_utf8.view()), "GameName = Test\n");
 
         TestRig rig;
-        rig.Settings.ApplyConfigAtPath("Test.fomain", fs_path_to_string(temp_dir));
+        const u8string config_dir_utf8 = fs_path_to_u8string(temp_dir);
+        const string config_dir = utf8_to_char_string(config_dir_utf8.view());
+        rig.Settings.ApplyConfigAtPath(u8"Test.fomain", config_dir_utf8.view());
 
         ConfigBaker baker(rig.MakeContext());
 
@@ -239,7 +257,7 @@ TEST_CASE("ConfigBaker")
         const string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(WriteConfigBakerTextFile(config_path,
             "Common.GameName = RootGame\n"
             "[SubConfig]\n"
             "Name = Child\n"
@@ -247,7 +265,8 @@ TEST_CASE("ConfigBaker")
 
         TestRig rig;
         AddConfigBakerMetadata(rig);
-        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        const u8string temp_dir_utf8 = temp_dir;
+        rig.Settings.ApplyConfigAtPath(u8"Test.fomain", temp_dir_utf8.view());
 
         ConfigBaker baker(rig.MakeContext("ConfigPack", [](string_view path, uint64_t) { return path == "Child.fomain-server"; }));
         CHECK_THROWS_AS(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""), ConfigBakerException);

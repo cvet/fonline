@@ -1713,7 +1713,7 @@ void NamespacedCall()
         auto stream = BytecodeStream {bytecode};
         REQUIRE(mod->SaveByteCode(&stream) >= 0);
 
-        vector<uint8_t> payload;
+        vector<byte> payload;
         auto writer = DataWriter {payload};
         SerializeFunctionAttributeRecords(writer, parsed.Records);
 

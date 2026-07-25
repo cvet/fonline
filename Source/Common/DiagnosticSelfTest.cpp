@@ -32,6 +32,7 @@
 //
 
 #include "DiagnosticSelfTest.h"
+#include "Platform.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -52,13 +53,14 @@ void DiagnosticSelfTest::RunIfRequested()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const char* env = std::getenv("FO_SELFTEST_CRASH");
+    const optional<u8string> env = Platform::GetEnvironmentUtf8(string_view_nt {"FO_SELFTEST_CRASH"});
 
-    if (env == nullptr || env[0] == '\0') {
+    if (!env) {
         return;
     }
 
-    RunSelfTestCrash(string_view {env});
+    const string mode = utf8_to_string(env->view());
+    RunSelfTestCrash(mode);
 }
 
 static void RunSelfTestCrash(string_view mode)

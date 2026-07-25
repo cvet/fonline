@@ -153,11 +153,11 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     const auto endpoint = raw_socket.remote_endpoint(endpoint_error);
 
     if (!endpoint_error) {
-        _host = endpoint.address().to_string();
+        _host = string(endpoint.address().to_string());
         _port = endpoint.port();
     }
     else {
-        _host = "Unknown";
+        _host = string {"Unknown"};
         _port = 0;
     }
 
@@ -219,6 +219,8 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string_view operation, const std::error_code& error)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (!error || error == asio::error::not_connected || error == asio::error::bad_descriptor || error == asio::error::operation_aborted) {
         return;
     }
@@ -260,7 +262,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback(make_const_span(payload));
+        ReceiveCallback(make_byte_span(payload));
     }
 }
 
@@ -430,10 +432,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
 
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
-    const auto remote_endpoint = connection->get_remote_endpoint();
-    const auto error_message = ec.message();
-
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
+    WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", connection->get_remote_endpoint(), ec.message(), ec.value());
 }
 
 template<bool Secured>

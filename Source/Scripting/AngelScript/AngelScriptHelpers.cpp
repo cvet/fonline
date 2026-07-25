@@ -582,13 +582,13 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto resolve_hash = [prop](const_span<uint8_t> hash_data) -> hstring {
+    const auto resolve_hash = [prop](const_span<byte> hash_data) -> hstring {
         FO_VERIFY_AND_THROW(hash_data.size() == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size");
         const hstring::hash_t hash = MemReadUnaligned<hstring::hash_t>(hash_data.data());
         return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
 
-    const auto resolve_fixed_type = [prop, as_engine, &resolve_hash](const_span<uint8_t> hash_data) -> nptr<Entity> {
+    const auto resolve_fixed_type = [prop, as_engine, &resolve_hash](const_span<byte> hash_data) -> nptr<Entity> {
         const hstring pid = resolve_hash(hash_data);
 
         if (!pid) {
@@ -606,18 +606,18 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         return make_ptr(const_cast<ProtoEntity*>(std::addressof(*proto)));
     };
 
-    const auto resolve_enum = [](const_span<uint8_t> enum_data) -> int32_t {
+    const auto resolve_enum = [](const_span<byte> enum_data) -> int32_t {
         int32_t result = 0;
         MemCopy(&result, enum_data.data(), enum_data.size());
         return result;
     };
-    const auto create_ref_obj = [prop](const_span<uint8_t> ref_data) -> refcount_ptr<DynamicRefTypeInstance> { return CreateRefTypeScriptObjectFromProperty(prop, ref_data); };
+    const auto create_ref_obj = [prop](const_span<byte> ref_data) -> refcount_ptr<DynamicRefTypeInstance> { return CreateRefTypeScriptObjectFromProperty(prop, ref_data); };
 
-    ptr<const uint8_t> data = prop_data.GetPtrAs<uint8_t>();
+    ptr<const byte> data = prop_data.GetPtrAs<byte>();
     const auto data_size = prop_data.GetSize();
 
     if (prop->IsPlainData()) {
-        const auto data_span = make_const_span(data, data_size);
+        const auto data_span = make_byte_span(data, data_size);
         size_t data_pos = 0;
 
         if (prop->IsBaseTypeProtoReference()) {
@@ -652,12 +652,12 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
     }
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
-        auto ref_obj = create_ref_obj(make_const_span(data, data_size));
+        auto ref_obj = create_ref_obj(make_byte_span(data, data_size));
         auto released_ref_obj = ref_obj.release_ownership();
         NativeDataProvider::WriteTypedHandleSlot<DynamicRefTypeInstance>(construct_addr, released_ref_obj);
     }
     else if (prop->IsString()) {
-        const auto data_span = make_const_span(data, data_size);
+        const auto data_span = make_byte_span(data, data_size);
         size_t data_pos = 0;
         new (construct_addr.get()) string(span_read_string(data_span, data_pos, data_size));
     }
@@ -667,7 +667,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
@@ -682,7 +682,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypeRefType()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
@@ -700,7 +700,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypeProtoReference()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
@@ -714,7 +714,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypeHash()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
@@ -728,7 +728,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypeEnum()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
@@ -747,7 +747,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypePrimitive()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
@@ -757,7 +757,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
         else if (prop->IsBaseTypeStruct()) {
             if (data_size != 0) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
@@ -781,7 +781,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
                 const auto inner_array_type_name = strex("array<{}{}>", prop->GetBaseTypeName(), prop->IsBaseTypeRefType() ? "@" : "").str();
                 auto inner_array_type_info = LookupCachedTypeInfo(as_engine, inner_array_type_name.c_str());
@@ -895,7 +895,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 }
             }
             else if (prop->IsDictOfString()) {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
 
                 while (data_pos < data_span.size()) {
@@ -926,7 +926,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 }
             }
             else {
-                const auto data_span = make_const_span(data, data_size);
+                const auto data_span = make_byte_span(data, data_size);
                 size_t data_pos = 0;
 
                 const auto read_ref_obj = [&]() -> refcount_ptr<DynamicRefTypeInstance> {
@@ -943,7 +943,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                     auto value_data = span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize()));
                     return resolve_hash(value_data);
                 };
-                const auto read_raw_value = [&]() -> const_span<uint8_t> { return span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize())); };
+                const auto read_raw_value = [&]() -> const_span<byte> { return span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize())); };
 
                 while (data_pos < data_span.size()) {
                     if (prop->IsDictKeyString()) {
@@ -963,7 +963,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             dict->Set(make_nptr(&key_str).void_cast(), make_nptr(&hvalue).void_cast());
                         }
                         else {
-                            const_span<uint8_t> value_data = read_raw_value();
+                            const_span<byte> value_data = read_raw_value();
                             dict->Set(make_nptr(&key_str).void_cast(), make_nptr(value_data.data()).void_cast());
                         }
                     }
@@ -986,7 +986,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(make_nptr(&hkey).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
-                                const_span<uint8_t> value_data = read_raw_value();
+                                const_span<byte> value_data = read_raw_value();
                                 dict->Set(make_nptr(&hkey).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
@@ -1006,7 +1006,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(make_nptr(&ekey).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
-                                const_span<uint8_t> value_data = read_raw_value();
+                                const_span<byte> value_data = read_raw_value();
                                 dict->Set(make_nptr(&ekey).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
@@ -1024,7 +1024,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(make_nptr(key.data()).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
-                                const_span<uint8_t> value_data = read_raw_value();
+                                const_span<byte> value_data = read_raw_value();
                                 dict->Set(make_nptr(key.data()).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
@@ -1108,7 +1108,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
-                auto buf_span = make_span(buf, data_size);
+                auto buf_span = make_byte_span(buf, data_size);
                 size_t data_pos = 0;
 
                 span_write_aligned_object(buf_span, data_pos, arr_size);
@@ -1160,7 +1160,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 if (prop->IsBaseTypeRefType()) {
                     auto buf = prop_data.Alloc(data_size);
                     MemFill(buf, 0, data_size);
-                    auto buf_span = make_span(buf, data_size);
+                    auto buf_span = make_byte_span(buf, data_size);
                     size_t data_pos = 0;
 
                     span_write_aligned_object(buf_span, data_pos, arr_size);
@@ -1177,7 +1177,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
                 else if (prop->IsBaseTypeProtoReference()) {
                     auto buf = prop_data.Alloc(data_size);
-                    auto buf_span = make_span(buf, data_size);
+                    auto buf_span = make_byte_span(buf, data_size);
                     size_t data_pos = 0;
 
                     for (uint32_t i = 0; i < arr_size; i++) {
@@ -1191,7 +1191,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
                 else if (prop->IsBaseTypeHash()) {
                     auto buf = prop_data.Alloc(data_size);
-                    auto buf_span = make_span(buf, data_size);
+                    auto buf_span = make_byte_span(buf, data_size);
                     size_t data_pos = 0;
 
                     for (uint32_t i = 0; i < arr_size; i++) {
@@ -1208,7 +1208,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                     }
                     else {
                         auto buf = prop_data.Alloc(data_size);
-                        auto buf_span = make_span(buf, data_size);
+                        auto buf_span = make_byte_span(buf, data_size);
                         size_t data_pos = 0;
 
                         for (uint32_t i = 0; i < arr_size; i++) {
@@ -1223,7 +1223,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
                 else if (prop->IsBaseTypeStruct()) {
                     auto buf = prop_data.Alloc(data_size);
-                    auto buf_span = make_span(buf, data_size);
+                    auto buf_span = make_byte_span(buf, data_size);
                     size_t data_pos = 0;
 
                     for (uint32_t i = 0; i < arr_size; i++) {
@@ -1306,7 +1306,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
-                auto buf_span = make_span(buf, data_size);
+                auto buf_span = make_byte_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
@@ -1422,7 +1422,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
-                auto buf_span = make_span(buf, data_size);
+                auto buf_span = make_byte_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
@@ -1480,7 +1480,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
-                auto buf_span = make_span(buf, data_size);
+                auto buf_span = make_byte_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
@@ -1550,7 +1550,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             if (data_size != 0) {
                 auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
-                auto buf_span = make_span(buf, data_size);
+                auto buf_span = make_byte_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
@@ -1637,14 +1637,16 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
 
     if (type_name == "string") {
         auto value = script_obj.reinterpret_as<const string>();
-        return strex("string: {}", *value);
+        const u8string utf8_value = NativeScriptText::FromScriptString<u8string>(*value);
+        return NativeScriptText::ToScriptString(u8strex("string: {}", utf8_value));
     }
     if (type_name == "hstring") {
         auto value = script_obj.reinterpret_as<const hstring>();
-        return strex("hstring: {}", *value);
+        return NativeScriptText::ToScriptString(u8strex("hstring: {}", *value));
     }
     if (type_name == "any") {
-        return strex("any: {}", *script_obj.reinterpret_as<any_t>());
+        const u8string utf8_value = NativeScriptText::FromScriptString<u8string>(*script_obj.reinterpret_as<any_t>());
+        return NativeScriptText::ToScriptString(u8strex("any: {}", utf8_value));
     }
     if (type_name == "ident") {
         return strex("ident: {}", *script_obj.reinterpret_as<ident_t>());
@@ -1814,7 +1816,7 @@ void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32
     throw GenericException("Unsupported enum underlying size", enum_type.Name, enum_type.Size);
 }
 
-auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
+auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, const_span<byte> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1828,7 +1830,7 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
     return ref_instance;
 }
 
-auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1841,12 +1843,12 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<voi
     }
 
     auto ref_instance = as_obj.reinterpret_as<DynamicRefTypeInstance>();
-    const_span<uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
+    const_span<byte> raw_data = ref_instance->GetSerializedRawData(base_type);
 
     return {raw_data.begin(), raw_data.end()};
 }
 
-auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
+auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, const_span<byte> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
 {
     FO_STACK_TRACE_ENTRY();
 

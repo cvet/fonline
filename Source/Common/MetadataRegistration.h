@@ -47,7 +47,7 @@ void RegisterMapperMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> res
 void RegisterServerStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
 void RegisterClientStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
 void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
-void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin);
-auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>;
+void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<byte> metadata_bin);
+auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<byte>;
 
 FO_END_NAMESPACE

@@ -68,7 +68,7 @@ public:
     [[nodiscard]] auto IsAttachedCritter(ident_t cr_id) const noexcept -> bool;
 
     auto AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, nptr<const Properties> props) -> ptr<ItemView>;
-    auto AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>;
+    auto AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<byte>>& props_data) -> ptr<ItemView>;
     auto AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>;
     void DeleteInvItem(ptr<ItemView> item);
     void DeleteAllInvItems();

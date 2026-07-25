@@ -37,29 +37,26 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr string_view StrCheckUpdates = "Check updates";
-static constexpr string_view StrConnectToServer = "Connect to the server";
-static constexpr string_view StrCantConnectToServer = "Can't connect to the server!";
-static constexpr string_view StrConnectionEstablished = "Connection established";
-static constexpr string_view StrConnectionFailure = "Connection failure!";
-static constexpr string_view StrFilesystemError = "File system error!";
-static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
-static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
-static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
-static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
-static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
-static constexpr string_view StrErrorMessageCaption = "";
+static constexpr u8string_view StrCheckUpdates = u8"Check updates";
+static constexpr u8string_view StrConnectToServer = u8"Connect to the server";
+static constexpr u8string_view StrCantConnectToServer = u8"Can't connect to the server!";
+static constexpr u8string_view StrConnectionEstablished = u8"Connection established";
+static constexpr u8string_view StrConnectionFailure = u8"Connection failure!";
+static constexpr u8string_view StrFilesystemError = u8"File system error!";
+static constexpr u8string_view StrUpdaterOutdated = u8"Client updater is incompatible with this server. Please install the latest full client package.";
+static constexpr u8string_view StrPlatformUnsupported = u8"Client outdated, please update via your app store";
+static constexpr u8string_view StrRestartRequired = u8"Update downloaded. Please restart the client to apply the update.";
 
-static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr string_view ClientBinaryStagingSuffix {"-staging"};
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
-static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+static auto NormalizeClientRuntimeBootstrapTarget(u8string_view runtime_path, u8string_view expected_runtime_file_name) -> optional<u8string>;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
     _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
-    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
+    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : settings->UserWritablePath},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
     _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
@@ -71,14 +68,16 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(IsPackaged() ? settings->ClientResources : settings->BakeOutput, "Embedded");
+    const u8string& resources_dir = IsPackaged() ? settings->ClientResources : settings->BakeOutput;
+    _resources.AddPackSource(resources_dir, u8"Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {
-        _resources.AddDirSource(fs_make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
+        const u8string writable_resources = fs_make_writable_path(settings->UserWritablePath, settings->ClientResources);
+        _resources.AddDirSource(writable_resources, false, true, true);
     }
     if (!_settings->DefaultSplashPack.empty()) {
-        _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
+        _resources.AddPackSource(resources_dir, _settings->DefaultSplashPack, true);
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -139,15 +138,15 @@ auto Updater::Process() -> bool
     }
 
     // Update indication
-    string update_text;
+    u8string update_text;
 
     for (const auto& message : _messages) {
-        update_text += message;
-        update_text += "\n";
+        update_text.append(message);
+        update_text.append("\n");
     }
 
     if (!_filesToUpdate.empty()) {
-        update_text += "\n";
+        update_text.append("\n");
 
         for (const auto& update_file : _filesToUpdate) {
             auto cur_bytes = update_file.Size - update_file.RemaningSize;
@@ -158,19 +157,19 @@ auto Updater::Process() -> bool
 
             const auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
             const auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = strex(update_file.Name).format_path();
+            const u8string name = u8strex(update_file.Name).format_path();
 
-            update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
+            update_text.append(u8strex("{} {:.2f} / {:.2f} MB\n", name, cur, max));
         }
 
-        update_text += "\n";
+        update_text.append("\n");
     }
 
     const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
     const auto dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : iterate_range(dots)) {
-        update_text += ".";
+        update_text.append(".");
     }
 
     _effectMngr.UpdateEffects(_gameTime);
@@ -205,14 +204,14 @@ auto Updater::Process() -> bool
     return _result.has_value() || IsFinished();
 }
 
-void Updater::AddText(string_view text)
+void Updater::AddText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     _messages.emplace_back(text);
 }
 
-void Updater::Abort(string_view text)
+void Updater::Abort(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -235,16 +234,29 @@ void Updater::GetNextFile()
     FO_STACK_TRACE_ENTRY();
 
     const auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
-    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
-    const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
-    const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
-    const auto make_final_path = [&](const UpdateFile& f) -> string {
-        const auto live_path = make_live_path(f);
-        return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+    const auto file_output_dir = [&](const UpdateFile& f) -> u8string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
+    const auto make_temp_path = [&](const UpdateFile& f) -> u8string {
+        const u8string output_dir = file_output_dir(f);
+        const u8string temp_name = FormatUtf8(u8"~{}", f.Name);
+        return fs_combine_path(output_dir.view(), temp_name.view());
     };
-    const auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
+    const auto make_live_path = [&](const UpdateFile& f) -> u8string {
+        const u8string output_dir = file_output_dir(f);
+        return fs_combine_path(output_dir.view(), f.Name.view());
+    };
+    const auto make_final_path = [&](const UpdateFile& f) -> u8string {
+        u8string live_path = make_live_path(f);
+
         if (file_uses_binary_dir(f)) {
-            ReplaceFileSafely(staged_path, make_live_path(f));
+            live_path.append(ClientBinaryStagingSuffix);
+        }
+
+        return live_path;
+    };
+    const auto try_promote_staged_binary = [&](const UpdateFile& f, u8string_view staged_path) {
+        if (file_uses_binary_dir(f)) {
+            const u8string live_path = make_live_path(f);
+            (void)ReplaceFileSafely(staged_path, live_path.view());
         }
     };
 
@@ -257,53 +269,55 @@ void Updater::GetNextFile()
         }
 
         const auto& prev_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(prev_update_file);
-        const auto temp_path_str = make_temp_path(prev_update_file);
+        const u8string prev_path = make_final_path(prev_update_file);
+        const u8string temp_path = make_temp_path(prev_update_file);
 
-        if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
-            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
+        if (!IsDiskFileHashMatch(temp_path.view(), prev_update_file.Size, prev_update_file.Hash)) {
+            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path.view(), prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
         }
 
-        if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
+        if (!ReplaceFileSafely(temp_path.view(), prev_path.view())) {
+            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path.view(), prev_path.view());
             Abort(StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
-        try_promote_staged_binary(prev_update_file, prev_path_str);
+        const string_view binary_status = prev_update_file.IsClientBinary ? "yes" : "no";
+        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path.view(), binary_status);
+        try_promote_staged_binary(prev_update_file, prev_path.view());
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
     if (!_filesToUpdate.empty()) {
         auto& next_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(next_update_file);
-        const auto temp_path = make_temp_path(next_update_file);
-        const auto temp_file_size = GetDiskFileSize(temp_path);
+        const u8string final_path = make_final_path(next_update_file);
+        const u8string temp_path = make_temp_path(next_update_file);
+        const auto temp_file_size = GetDiskFileSize(temp_path.view());
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
-                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-                fs_remove_file(temp_path);
+                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path.view(), *temp_file_size, next_update_file.Size);
+                (void)fs_remove_file(temp_path.view());
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
-                if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
-                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-                    fs_remove_file(temp_path);
+                if (!IsDiskFileHashMatch(temp_path.view(), next_update_file.Size, next_update_file.Hash)) {
+                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path.view());
+                    (void)fs_remove_file(temp_path.view());
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
-                    if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
+                    if (!ReplaceFileSafely(temp_path.view(), final_path.view())) {
+                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path.view(), final_path.view());
                         Abort(StrFilesystemError);
                         return;
                     }
 
-                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
-                    try_promote_staged_binary(next_update_file, prev_path_str);
+                    const string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
+                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", final_path.view(), binary_status);
+                    try_promote_staged_binary(next_update_file, final_path.view());
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
@@ -311,29 +325,30 @@ void Updater::GetNextFile()
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
-                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
+                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path.view(), *temp_file_size, next_update_file.RemaningSize);
             }
         }
 
-        const auto dir = strex(temp_path).extract_dir().str();
+        const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_path.view())}.parent_path());
 
         if (!dir.empty()) {
-            if (!fs_create_directories(dir)) {
+            if (!fs_create_directories(dir.view())) {
                 Abort(StrFilesystemError);
                 return;
             }
         }
 
         const auto open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
-        _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
+        _tempFile.open(std::filesystem::path {fs_make_path(temp_path.view())}, open_mode);
 
         if (!_tempFile) {
-            WriteLog("Client updater: failed to open temp file {}", temp_path);
+            WriteLog("Client updater: failed to open temp file {}", temp_path.view());
             Abort(StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
+        const string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
+        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, binary_status, next_update_file.Size, next_update_file.RemaningSize, temp_path.view(), final_path.view());
         RequestUpdateFile(next_update_file);
     }
     else {
@@ -405,7 +420,8 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         AddText(StrCheckUpdates);
 
         const bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
+        const string_view self_update_status = can_self_update_binaries ? "supported" : "unsupported";
+        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", self_update_status, GetCurrentBinaryUpdateTargetName());
 
         if (!can_self_update_binaries) {
             _result = UpdaterResult::PlatformUnsupported;
@@ -443,12 +459,12 @@ void Updater::Net_OnInitData()
 
     const auto data_size = _conn.InBuf->Read<uint32_t>();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     data.resize(data_size);
 
     _conn.InBuf->Pop(data.data(), data_size);
 
-    vector<vector<uint8_t>> globals_properties_data;
+    vector<vector<byte>> globals_properties_data;
     _conn.InBuf->ReadPropsData(globals_properties_data);
     const auto time = _conn.InBuf->Read<synctime>();
     ignore_unused(globals_properties_data);
@@ -459,7 +475,9 @@ void Updater::Net_OnInitData()
     _fileListReceived = true;
 
     const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
-    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
+    const string_view update_mode = _binariesMode ? "binaries" : "resources";
+    const string_view update_target = _binariesMode ? "ClientBinaries" : "ClientResources";
+    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, update_mode, update_target);
 
     if (data.empty()) {
         if (_binariesMode) {
@@ -477,7 +495,8 @@ void Updater::Net_OnInitData()
     FileSystem resources;
 
     if (!_binariesMode) {
-        resources.AddDirSource(_settings->ClientResources, false, true, true);
+        const u8string client_resources = _settings->ClientResources;
+        resources.AddDirSource(client_resources, false, true, true);
     }
 
     auto reader = DataReader(data);
@@ -546,10 +565,10 @@ void Updater::Net_OnInitData()
             const auto fname_dir = strex(fname).extract_dir().str();
             local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
 
-            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
+            const u8string file_path = fs_combine_path(_binaryDir.view(), local_name);
 
             if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
-                if (fs_exists(file_path)) {
+                if (fs_exists(file_path.view())) {
                     continue;
                 }
             }
@@ -564,8 +583,8 @@ void Updater::Net_OnInitData()
 
             is_client_binary = true;
 
-            if (IsDiskFileHashMatch(file_path, size, hash)) {
-                WriteLog("Client updater: binary already matches {}", file_path);
+            if (IsDiskFileHashMatch(file_path.view(), size, hash)) {
+                WriteLog("Client updater: binary already matches {}", file_path.view());
                 continue;
             }
         }
@@ -574,13 +593,17 @@ void Updater::Net_OnInitData()
 
             if (file_header) {
                 if (file_header.GetSize() == size) {
-                    if (file_header.GetDataSource()->IsDiskDir() && IsDiskFileHashMatch(file_header.GetDiskPath(), size, hash)) {
-                        continue;
+                    if (file_header.GetDataSource()->IsDiskDir()) {
+                        const u8string disk_path = file_header.GetDiskPath();
+
+                        if (IsDiskFileHashMatch(disk_path.view(), size, hash)) {
+                            continue;
+                        }
                     }
 
                     const auto file = resources.ReadFile(fname);
 
-                    if (file && IsDataHashMatch(file.GetData(), size, hash)) {
+                    if (file && IsDataHashMatch(file.GetDataSpan(), size, hash)) {
                         continue;
                     }
                 }
@@ -603,7 +626,8 @@ void Updater::Net_OnInitData()
     reader.VerifyEnd();
 
     if (!_filesToUpdate.empty()) {
-        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
+        const string_view update_mode = _binariesMode ? "binaries" : "resources";
+        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), update_mode);
         GetNextFile();
     }
     else if (_binariesMode) {
@@ -704,7 +728,7 @@ void Updater::Net_OnUpdateFileData()
     }
 }
 
-auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool
+auto Updater::IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -723,14 +747,15 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
     const auto local_mtime = fs_last_write_time(file_path);
-    const auto cache_key = strex("{}.hash", strex(file_path).extract_file_name()).str();
+    const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(file_path)}.filename());
+    const u8string cache_key = u8strex("{}.hash", file_name);
 
     if (_cache.HasEntry(cache_key)) {
-        const auto data = _cache.GetData(cache_key);
+        const auto data = _cache.GetBytes(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
-            auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
+            auto target = make_ptr(&cached).reinterpret_as<byte>();
             MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
@@ -746,19 +771,19 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
+    _cache.SetBytes(cache_key, make_byte_span(&entry, sizeof(entry)));
 
     return *local_hash == expected_hash;
 }
 
-auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool
+auto Updater::IsDataHashMatch(const_span<byte> data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data) == expected_hash;
+    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_bytes(data) == expected_hash;
 }
 
-auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>
+auto Updater::GetDiskFileSize(u8string_view file_path) -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -772,54 +797,58 @@ auto Updater::GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) 
     return remaining_size < numeric_cast<uint64_t>(received_size) ? numeric_cast<size_t>(remaining_size) : received_size;
 }
 
-auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool
+auto Updater::ReplaceFileSafely(u8string_view temp_path, u8string_view final_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto backup_path = strex("{}.bak", final_path).str();
+    u8string backup_path {final_path};
+    backup_path.append(u8".bak");
     const auto final_exists = fs_exists(final_path);
 
-    fs_remove_file(backup_path);
+    (void)fs_remove_file(backup_path.view());
 
-    if (final_exists && !fs_rename(final_path, backup_path)) {
+    if (final_exists && !fs_rename(final_path, backup_path.view())) {
         return false;
     }
 
     if (!fs_rename(temp_path, final_path)) {
         if (final_exists) {
-            fs_rename(backup_path, final_path);
+            (void)fs_rename(backup_path.view(), final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs_remove_file(backup_path);
+        (void)fs_remove_file(backup_path.view());
     }
 
     return true;
 }
 
-auto Updater::GetClientBinaryDir() -> string
+auto Updater::GetClientBinaryDir() -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (FO_WEB) {
         // The web client runs from the virtual filesystem root and has no on-disk exe path.
-        return "/";
+        return u8string {u8"/"};
     }
     else {
         const auto exe_path = Platform::GetExePath();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        return strex(exe_path.value()).extract_dir().str();
+        return fs_path_to_u8string(std::filesystem::path {fs_make_path(exe_path->view())}.parent_path());
     }
 }
 
-auto Updater::GetRuntimeLivePath() const -> string
+auto Updater::GetRuntimeLivePath() const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}{}", strex(_binaryDir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    const u8string runtime_name = GetCurrentClientRuntimeLibraryName();
+    u8string runtime_path = fs_combine_path(_binaryDir.view(), runtime_name.view());
+    runtime_path.append(GetClientRuntimeLibraryExtension());
+    return runtime_path;
 }
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
@@ -953,11 +982,11 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
-auto GetClientRuntimeLivePath() -> string
+auto GetClientRuntimeLivePath() -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    string binary_dir;
+    u8string binary_dir;
 
     if constexpr (FO_WEB) {
         // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root.
@@ -966,36 +995,40 @@ auto GetClientRuntimeLivePath() -> string
     else {
         const auto exe_path = Platform::GetExePath();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        binary_dir = strex(exe_path.value()).extract_dir().str();
+        binary_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(exe_path->view())}.parent_path());
     }
 
-    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    u8string runtime_file_name = GetCurrentClientRuntimeLibraryName();
+    runtime_file_name.append(GetClientRuntimeLibraryExtension());
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(binary_dir.view())} / std::filesystem::path {fs_make_path(runtime_file_name.view())});
 }
 
-auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
+auto MakeClientRuntimeStagingPath(u8string_view runtime_live_path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
+    u8string staging_path {runtime_live_path};
+    staging_path.append(ClientBinaryStagingSuffix);
+    return staging_path;
 }
 
-auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string
+auto ResolveClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view expected_runtime_file_name, u8string_view fallback_runtime_path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+    const optional<u8string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
 
     if (!target.has_value()) {
-        return string(fallback_runtime_path);
+        return u8string {fallback_runtime_path};
     }
 
-    const string staging_path = MakeClientRuntimeStagingPath(target.value());
-    const bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
-    const bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
-    return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
+    const u8string staging_path = MakeClientRuntimeStagingPath(target->view());
+    const bool live_exists = fs_exists(target->view()) && !fs_is_dir(target->view());
+    const bool staging_exists = fs_exists(staging_path.view()) && !fs_is_dir(staging_path.view());
+    return live_exists || staging_exists ? target.value() : u8string {fallback_runtime_path};
 }
 
-auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>
+auto ReadClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view expected_runtime_file_name) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1009,16 +1042,16 @@ auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_vi
         return std::nullopt;
     }
 
-    const optional<string> content = fs_read_file(bootstrap_file_path);
+    const optional<u8string> content = fs_read_file_text(bootstrap_file_path);
 
     if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
     }
 
-    return NormalizeClientRuntimeBootstrapTarget(content.value(), expected_runtime_file_name);
+    return NormalizeClientRuntimeBootstrapTarget(content->view(), expected_runtime_file_name);
 }
 
-auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool
+auto WriteClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view runtime_path, u8string_view expected_runtime_file_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1026,62 +1059,69 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
         return false;
     }
 
-    const optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+    const optional<u8string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
 
     if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
         return false;
     }
 
     // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
-    const string temp_path = strex("{}.tmp", bootstrap_file_path).str();
+    const u8string temp_path = FormatUtf8("{}.tmp", bootstrap_file_path);
+    const u8string selector_content = FormatUtf8("{}\n", normalized_path->view());
 
-    if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
+    if (!fs_write_file_text(temp_path.view(), selector_content.view())) {
         return false;
     }
 
-    if (!fs_rename(temp_path, bootstrap_file_path)) {
-        fs_remove_file(temp_path);
+    if (!fs_rename(temp_path.view(), bootstrap_file_path)) {
+        fs_remove_file(temp_path.view());
         return false;
     }
 
     return true;
 }
 
-void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
+void PromoteStagedRuntimeCompanions(u8string_view binary_dir) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto runtime_name = GetCurrentClientRuntimeLibraryName();
-        const auto runtime_primary_name = strex("{}{}", runtime_name, GetClientRuntimeLibraryExtension()).str();
+        const u8string runtime_name = GetCurrentClientRuntimeLibraryName();
+        u8string runtime_primary_name = runtime_name;
+        runtime_primary_name.append(GetClientRuntimeLibraryExtension());
+        const u8string staging_suffix {ClientBinaryStagingSuffix};
 
-        vector<pair<string, string>> renames;
+        vector<pair<u8string, u8string>> renames;
 
-        fs_iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
-            const auto file_name = strex(path).extract_file_name().str();
+        fs_iterate_dir(binary_dir, false, [&](u8string_view path, size_t, uint64_t) {
+            const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.filename());
+            const std::u8string_view file_name_view = file_name.view().native_view();
+            const std::u8string_view staging_suffix_view = staging_suffix.view().native_view();
 
-            if (!file_name.ends_with(ClientBinaryStagingSuffix)) {
+            if (!file_name_view.ends_with(staging_suffix_view)) {
                 return;
             }
 
-            const auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
+            const u8string_view unstaged_name = u8string_view::FromChecked(file_name_view.substr(0, file_name_view.size() - staging_suffix_view.size()));
 
-            if (unstaged_name == runtime_primary_name) {
+            if (unstaged_name == runtime_primary_name.view()) {
                 return;
             }
 
-            const bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
+            const std::u8string_view unstaged_name_view = unstaged_name.native_view();
+            const std::u8string_view runtime_name_view = runtime_name.view().native_view();
+            const bool matches_runtime = unstaged_name == runtime_name.view() || (unstaged_name_view.size() > runtime_name_view.size() && unstaged_name_view.starts_with(runtime_name_view) && unstaged_name_view[runtime_name_view.size()] == u8'.');
 
             if (!matches_runtime) {
                 return;
             }
 
-            renames.emplace_back(string(path), strex(binary_dir).combine_path(unstaged_name).str());
+            renames.emplace_back(path, fs_path_to_u8string(std::filesystem::path {fs_make_path(binary_dir)} / std::filesystem::path {fs_make_path(unstaged_name)}));
         });
 
         for (const auto& [staged, final_path] : renames) {
-            fs_remove_file(final_path);
-            fs_rename(staged, final_path);
+            (void)fs_remove_file(final_path.view());
+            (void)fs_rename(staged.view(), final_path.view());
         }
     }
     catch (const std::exception& ex) {
@@ -1094,14 +1134,14 @@ auto GetCurrentClientRuntimeLibraryName() -> string
     FO_STACK_TRACE_ENTRY();
 
     if (const auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
-        const auto name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
+        const u8string name = u8strex(*exe_path).extract_file_name().erase_file_extension();
 
         if (!name.empty()) {
-            return name;
+            return utf8_to_string(name.view());
         }
     }
 
-    return string(FO_DEV_NAME);
+    return string {FO_DEV_NAME};
 }
 
 void ShowUpdaterFailure(UpdaterResult result)
@@ -1112,16 +1152,16 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
-        Application::ShowErrorMessage(strex(strex::dynamic_format, StrServerMissingNativeUpdate, target_name).str(), StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(u8strex("Server doesn't provide a native client update for binary target {}. Please update the client manually", target_name), u8"", true);
         break;
     case UpdaterResult::UpdaterOutdated:
-        Application::ShowErrorMessage(StrUpdaterOutdated, StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(StrUpdaterOutdated, u8"", true);
         break;
     case UpdaterResult::PlatformUnsupported:
-        Application::ShowErrorMessage(StrPlatformUnsupported, StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(StrPlatformUnsupported, u8"", true);
         break;
     case UpdaterResult::Failed:
-        Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(u8strex("Failed to update native client modules for binary target {}. Please update the client manually", target_name), u8"", true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
@@ -1141,25 +1181,36 @@ auto GetClientRuntimeLibraryExtension() noexcept -> string_view
 #elif FO_MAC
     return ".dylib";
 #else
-    return {};
+    return string_view {};
 #endif
 }
 
-static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>
+static auto NormalizeClientRuntimeBootstrapTarget(u8string_view runtime_path, u8string_view expected_runtime_file_name) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string trimmed_path = strex(runtime_path).trim().str();
+    std::u8string_view trimmed_path_view = runtime_path.native_view();
 
-    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
+    while (!trimmed_path_view.empty() && (trimmed_path_view.front() == u8' ' || trimmed_path_view.front() == u8'\t' || trimmed_path_view.front() == u8'\r' || trimmed_path_view.front() == u8'\n')) {
+        trimmed_path_view.remove_prefix(1);
+    }
+    while (!trimmed_path_view.empty() && (trimmed_path_view.back() == u8' ' || trimmed_path_view.back() == u8'\t' || trimmed_path_view.back() == u8'\r' || trimmed_path_view.back() == u8'\n')) {
+        trimmed_path_view.remove_suffix(1);
+    }
+
+    const u8string trimmed_path = u8string::FromChecked(trimmed_path_view);
+
+    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path.view()) || trimmed_path_view.find(u8'\0') != std::u8string_view::npos || trimmed_path_view.find(u8'\r') != std::u8string_view::npos || trimmed_path_view.find(u8'\n') != std::u8string_view::npos) {
         return std::nullopt;
     }
 
-    if (strex(trimmed_path).extract_file_name().str() != expected_runtime_file_name) {
+    const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(trimmed_path.view())}.filename());
+
+    if (file_name.view() != expected_runtime_file_name) {
         return std::nullopt;
     }
 
-    return fs_resolve_path(trimmed_path);
+    return fs_resolve_path(trimmed_path.view());
 }
 
 FO_END_NAMESPACE

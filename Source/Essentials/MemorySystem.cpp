@@ -48,8 +48,9 @@ FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
-static unique_arr_ptr<unique_arr_ptr<uint8_t>> BackupMemoryChunks;
+static unique_arr_ptr<unique_arr_ptr<byte>> BackupMemoryChunks;
 static std::atomic_size_t BackupMemoryChunksCount;
+static void WriteAscii(string_view message) noexcept;
 
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
@@ -405,10 +406,10 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
+    unique_arr_ptr<unique_arr_ptr<byte>> new_chunks {new unique_arr_ptr<byte>[BACKUP_MEMORY_CHUNKS]()};
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
+        new_chunks[i] = unique_arr_ptr<byte> {new byte[BACKUP_MEMORY_CHUNK_SIZE]()};
     }
 
     BackupMemoryChunks = std::move(new_chunks);
@@ -448,18 +449,20 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
 
     char itoa_buf[64] = {};
 
-    WriteBaseLog("\nBAD ALLOC!\n\n");
-    WriteBaseLog(message);
-    WriteBaseLog("\n");
-    WriteBaseLog("Type: ");
-    WriteBaseLog(type_str);
-    WriteBaseLog("\n");
-    WriteBaseLog("Count: ");
-    WriteBaseLog(ItoA(static_cast<int64_t>(count), itoa_buf, 10));
-    WriteBaseLog("\n");
-    WriteBaseLog("Size: ");
-    WriteBaseLog(ItoA(static_cast<int64_t>(size), itoa_buf, 10));
-    WriteBaseLog("\n\n");
+    WriteAscii("\nBAD ALLOC!\n\n");
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {message.data(), message.size()}));
+    WriteAscii("\n");
+    WriteAscii("Type: ");
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {type_str.data(), type_str.size()}));
+    WriteAscii("\n");
+    WriteAscii("Count: ");
+    const string_view count_text = ItoA(static_cast<int64_t>(count), itoa_buf, 10);
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {count_text.data(), count_text.size()}));
+    WriteAscii("\n");
+    WriteAscii("Size: ");
+    const string_view size_text = ItoA(static_cast<int64_t>(size), itoa_buf, 10);
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {size_text.data(), size_text.size()}));
+    WriteAscii("\n\n");
     SafeWriteStackTrace(GetStackTrace());
 
     if (MemorySystem->Callback) {
@@ -471,9 +474,16 @@ extern void ReportAndExit(string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    WriteBaseLog(message);
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {message.data(), message.size()}));
 
     ExitApp(false);
+}
+
+static void WriteAscii(string_view message) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {message.data(), message.size()}));
 }
 
 FO_END_NAMESPACE

@@ -79,7 +79,7 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     const uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
     const string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
     const nptr<const char> message_chars = message->message;
-    const string_view message_text = message_chars ? string_view {message_chars.get()} : string_view {"<no message>"};
+    const string_view message_text = message_chars ? string_view {message_chars.get()} : "<no message>";
     const string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, message->col, type, message_text).str();
 
     backend->SendMessage(formatted_message);
@@ -107,7 +107,7 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* raw_func)
 }
 
 template<typename Allocator>
-static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const string& text)
+static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -266,7 +266,7 @@ void AngelScriptBackend::SendMessage(string_view message) const
         _messageCallback(message);
     }
     else {
-        WriteLog(message);
+        WriteLog("{}", message);
     }
 }
 
@@ -342,12 +342,12 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     FO_VERIFY_AND_THROW(script_bin_files.GetFilesCount() == 1, "Resource pack must contain exactly one script bytecode file for this engine side", _meta->GetSide(), script_bin_files.GetFilesCount());
     const auto script_bin_file = File::Load(*script_bin_files.begin());
-    const_span<uint8_t> script_bin = script_bin_file.GetDataSpan();
+    const const_span<byte> script_bin = script_bin_file.GetDataSpan();
 
     FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before loading bytecode", _asEngine->GetModuleCount());
     FO_VERIFY_AND_THROW(!script_bin.empty(), "AngelScript bytecode resource is empty", script_bin_file.GetPath(), _meta->GetSide());
 
-    auto reader = DataReader({script_bin.data(), script_bin.size()});
+    auto reader = DataReader(script_bin);
 
     const auto container_magic = reader.Read<uint32_t>();
 
@@ -372,7 +372,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     std::vector<uint8_t> lnt_data(reader.Read<uint32_t>());
     FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode container has an empty script bytecode payload", script_bin_file.GetPath(), script_bin.size());
     FO_VERIFY_AND_THROW(!lnt_data.empty(), "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath(), script_bin.size(), buf.size());
-    reader.ReadBytes({lnt_data.data(), lnt_data.size()});
+    reader.ReadBytes(make_byte_span(lnt_data));
 
     nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
@@ -447,7 +447,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }
 }
 
-auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<uint8_t>
+auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -457,7 +457,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        ScriptLoader(nptr<const string> root, ptr<const map<string, string>> files) :
+        ScriptLoader(nptr<const u8string> root, ptr<const map<u8string, u8string>> files) :
             _rootScript {root},
             _scriptFiles {files}
         {
@@ -469,7 +469,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
             FO_STACK_TRACE_ENTRY();
 
             if (_rootScript) {
-                CopyScriptTextToBuffer(data, *_rootScript);
+                CopyScriptTextToBuffer(data, _rootScript->view());
                 _rootScript = nullptr;
                 file_path = "(Root)";
                 return true;
@@ -479,27 +479,30 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
             data.resize(0);
 
-            const auto load_from_memory = [&](string_view path) -> bool {
-                const auto it = _scriptFiles->find(string(path));
+            const auto load_from_memory = [&](const u8string& path) -> bool {
+                const auto it = _scriptFiles->find(path);
 
                 if (it == _scriptFiles->end()) {
                     return false;
                 }
 
-                CopyScriptTextToBuffer(data, it->second);
-                file_path = string(path);
+                CopyScriptTextToBuffer(data, it->second.view());
+                file_path = utf8_to_char_string(path.view());
                 return true;
             };
 
             if (!dir.empty()) {
-                const auto combined_path = strex(dir).combine_path(file_name).str();
+                const u8string utf8_dir = utf8_from_char_span(const_span<char> {dir.data(), dir.size()});
+                const u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
+                const u8string combined_path = u8strex(utf8_dir).combine_path(utf8_file_name);
 
                 if (load_from_memory(combined_path)) {
                     return true;
                 }
             }
 
-            if (load_from_memory(file_name)) {
+            const u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
+            if (load_from_memory(utf8_file_name)) {
                 return true;
             }
 
@@ -514,27 +517,29 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         }
 
     private:
-        nptr<const string> _rootScript {};
-        ptr<const map<string, string>> _scriptFiles;
+        nptr<const u8string> _rootScript {};
+        ptr<const map<u8string, u8string>> _scriptFiles;
         int32_t _includeDeep {};
     };
 
-    map<string, string> final_script_files;
-    vector<tuple<int32_t, string, string>> final_script_files_order;
+    map<u8string, u8string> final_script_files;
+    vector<tuple<int32_t, u8string, u8string>> final_script_files_order;
 
     for (const auto& script_file : files) {
-        string script_name = string(script_file.GetNameNoExt());
-        string script_path = script_file.GetDataSource()->IsDiskDir() ? string(script_file.GetDiskPath()) : string(script_file.GetPath());
-        string script_content = script_file.GetStr();
+        u8string script_name = script_file.GetNameNoExt();
+        u8string script_path = script_file.GetDataSource()->IsDiskDir() ? script_file.GetDiskPath() : u8string {script_file.GetPath()};
+        u8string script_content = script_file.GetText();
 
-        const auto line_sep = script_content.find('\n');
-        const auto first_line = script_content.substr(0, line_sep);
+        const std::u8string_view script_content_view = script_content.view().native_view();
+        const size_t line_sep = script_content_view.find(u8'\n');
+        const std::u8string_view first_line = script_content_view.substr(0, line_sep);
 
         int32_t sort = 0;
-        const auto sort_pos = first_line.find("Sort ");
+        const size_t sort_pos = first_line.find(u8"Sort ");
 
-        if (sort_pos != string::npos) {
-            sort = strvex(first_line.substr(sort_pos + "Sort "_len)).substring_until(' ').to_int32();
+        if (sort_pos != std::u8string_view::npos) {
+            const u8string_view sort_text = u8string_view::FromChecked(first_line.substr(sort_pos + 5));
+            sort = u8strvex(sort_text).substring_until(u8' ').to_int32();
         }
 
         final_script_files_order.emplace_back(std::make_tuple(sort, std::move(script_name), script_path));
@@ -550,12 +555,12 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         }
     });
 
-    string root_script;
+    u8string root_script;
     root_script.reserve(final_script_files.size() * 128);
 
     for (auto&& [script_order, script_name, script_path] : final_script_files_order) {
         root_script.append("#include \"");
-        root_script.append(script_path);
+        root_script.append(script_path.view());
         root_script.append("\"\n");
     }
 
@@ -659,7 +664,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     std::vector<uint8_t> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt.get(), lnt_data);
 
-    vector<uint8_t> data;
+    vector<byte> data;
     auto writer = DataWriter(data);
     writer.Write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
     writer.Write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
@@ -670,7 +675,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
     if (!lnt_data.empty()) {
-        writer.WriteBytes({lnt_data.data(), lnt_data.size()});
+        writer.WriteBytes(make_byte_span(lnt_data));
     }
     SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;

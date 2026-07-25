@@ -32,10 +32,18 @@
 //
 
 #include "HashedString.h"
+#include "TextConversions.h"
 
 FO_BEGIN_NAMESPACE
 
 hstring::entry hstring::_zeroEntry;
+
+auto hstring::as_utf8() const -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _entry->Str;
+}
 
 HashStorage::HashStorage(HashFunc hash_func) :
     _hashFunc {hash_func}
@@ -45,7 +53,7 @@ HashStorage::HashStorage(HashFunc hash_func) :
     FO_VERIFY_AND_THROW(_hashFunc, "Hash function is null");
 }
 
-auto HashStorage::DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t
+auto HashStorage::DefaultHash(const_span<byte> data) noexcept -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -60,7 +68,24 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    const const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
+    const auto hash_value = _hashFunc(bytes);
+
+    shared_lock locker {_hashStorageLocker};
+
+    return _hashStorage.find(hash_value) != _hashStorage.end();
+}
+
+auto HashStorage::CheckHashedString(u8string_view s) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (s.empty()) {
+        return false;
+    }
+
+    const auto bytes = utf8_to_byte_span(s);
+    const auto hash_value = _hashFunc(bytes);
 
     shared_lock locker {_hashStorageLocker};
 
@@ -77,7 +102,8 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         return {};
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    const const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
+    const auto hash_value = _hashFunc(bytes);
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
@@ -111,6 +137,14 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
         return hstring(it->second.get());
     }
+}
+
+auto HashStorage::ToHashedString(u8string_view s) -> hstring
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string chars = utf8_to_char_string(s);
+    return ToHashedString(chars);
 }
 
 auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring

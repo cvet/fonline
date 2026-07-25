@@ -66,6 +66,37 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
     return true;
 }
 
+static auto ExtractBraceToken(u8string& line, size_t& offset, u8string& token, bool allow_multiline, nptr<u8istringstream> sstr) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto first = line.view().native_view().find(u8'{', offset);
+
+    if (first == std::u8string_view::npos) {
+        return false;
+    }
+
+    auto last = line.view().native_view().find(u8'}', first);
+
+    if (last == std::u8string_view::npos && allow_multiline && sstr) {
+        u8string additional_line;
+
+        while (last == std::u8string_view::npos && getline(*sstr, additional_line)) {
+            line.append(u8"\n");
+            line.append(additional_line);
+            last = line.view().native_view().find(u8'}', first);
+        }
+    }
+
+    if (last == std::u8string_view::npos) {
+        return false;
+    }
+
+    token.assign(u8string_view::FromChecked(line.view().native_view().substr(first + 1, last - first - 1)));
+    offset = last + 1;
+    return true;
+}
+
 auto TextPackKey::FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
     FO_STACK_TRACE_ENTRY();
@@ -108,25 +139,36 @@ TextPack::TextPack(ptr<HashResolver> hash_resolver) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TextPack::GetText(TextPackKey key) const -> string_view
+auto TextPack::GetText(TextPackKey key) const -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
     return GetText(key, 0);
 }
 
-auto TextPack::GetText(TextPackKey key, size_t skip) const -> string_view
+auto TextPack::GetText(TextPackKey key, size_t skip) const -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetStr(key, skip);
+    const size_t text_count = _textData.count(key);
+    auto it = _textData.find(key);
+
+    if (skip >= text_count) {
+        return _emptyText.view();
+    }
+
+    for (size_t i = 0; i < skip; i++) {
+        ++it;
+    }
+
+    return it->second.view();
 }
 
 auto TextPack::GetTextCount(TextPackKey key) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetStrCount(key);
+    return _textData.count(key);
 }
 
 auto TextPack::IsTextPresent(TextPackKey key) const -> bool
@@ -136,63 +178,11 @@ auto TextPack::IsTextPresent(TextPackKey key) const -> bool
     return GetTextCount(key) != 0;
 }
 
-auto TextPack::GetStr(TextPackKey key) const -> string_view
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const size_t str_count = _strData.count(key);
-    auto it = _strData.find(key);
-
-    switch (str_count) {
-    case 0:
-        return _emptyStr;
-
-    case 1:
-        break;
-
-    default:
-        const int32_t random_skip = std::uniform_int_distribution<int32_t> {0, numeric_cast<int32_t>(str_count)}(_randomGenerator)-1;
-
-        for (int32_t i = 0; i < random_skip; i++) {
-            ++it;
-        }
-
-        break;
-    }
-
-    return it->second;
-}
-
-auto TextPack::GetStr(TextPackKey key, size_t skip) const -> string_view
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const size_t str_count = _strData.count(key);
-    auto it = _strData.find(key);
-
-    if (skip >= str_count) {
-        return _emptyStr;
-    }
-
-    for (size_t i = 0; i < skip; i++) {
-        ++it;
-    }
-
-    return it->second;
-}
-
-auto TextPack::GetStrCount(TextPackKey key) const -> size_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return _strData.count(key);
-}
-
 auto TextPack::GetSize() const noexcept -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _strData.size();
+    return _textData.size();
 }
 
 auto TextPack::CheckIntersections(const TextPack& other) const -> bool
@@ -201,9 +191,9 @@ auto TextPack::CheckIntersections(const TextPack& other) const -> bool
 
     bool result = false;
 
-    for (auto&& [key, value] : _strData) {
-        if (other._strData.count(key) != 0) {
-            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other._strData.count(key), value, other._strData.find(key)->second);
+    for (auto&& [key, value] : _textData) {
+        if (other._textData.count(key) != 0) {
+            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other._textData.count(key), value.view(), other._textData.find(key)->second.view());
             result = true;
         }
     }
@@ -211,28 +201,28 @@ auto TextPack::CheckIntersections(const TextPack& other) const -> bool
     return result;
 }
 
-auto TextPack::GetBinaryData() const -> vector<uint8_t>
+auto TextPack::GetBinaryData() const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
-    auto writer = DataWriter {data};
+    vector<byte> serialized_data;
+    auto writer = DataWriter {serialized_data};
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(_strData.size()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(_textData.size()));
 
-    for (auto&& [key, str] : _strData) {
+    for (auto&& [key, text] : _textData) {
         WriteKeyPart(writer, key.Collection.underlying_value());
         WriteKeyPart(writer, key.Key1);
         WriteKeyPart(writer, key.Key2);
         WriteKeyPart(writer, key.Key3);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-        writer.WriteStringBytes(str);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(text.size()));
+        writer.WriteBytes(utf8_to_byte_span(text.view()));
     }
 
-    return data;
+    return serialized_data;
 }
 
-auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view collection) -> bool
+auto TextPack::LoadFromBinaryData(const_span<byte> data, string_view collection) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -255,37 +245,28 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
         const auto str_len = reader.Read<uint32_t>();
 
-        string str;
-
-        if (str_len != 0) {
-            str.resize(str_len);
-            reader.ReadStringBytes(str);
-        }
-        else {
-            str.resize(0);
-        }
-
-        AddStr(key, std::move(str));
+        u8string text = utf8_from_byte_span(reader.ReadBytes(str_len));
+        AddText(key, std::move(text));
     }
 
     return true;
 }
 
-auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
+auto TextPack::LoadFromText(u8string_view text, string_view collection) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto failed = false;
+    bool failed = false;
 
-    istringstream sstr(str);
-    string line;
+    u8istringstream sstr {text};
+    u8string line;
 
-    while (std::getline(sstr, line, '\n')) {
+    while (getline(sstr, line)) {
         size_t offset = 0;
 
-        string token1;
-        string token2;
-        string token3;
+        u8string token1;
+        u8string token2;
+        u8string token3;
 
         if (!ExtractBraceToken(line, offset, token1, false, nullptr)) {
             continue;
@@ -304,13 +285,13 @@ auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
             continue;
         }
 
-        AddStr(TextPackKey::FromParts(*_hashResolver, collection, token1, token2), std::move(token3));
+        AddText(TextPackKey::FromParts(*_hashResolver, collection, utf8_to_string(token1), utf8_to_string(token2)), std::move(token3));
     }
 
     return !failed;
 }
 
-void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection)
+void TextPack::LoadFromTextMap(const map<string, u8string>& kv, string_view collection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -319,12 +300,12 @@ void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection
 
         if (strvex(key).starts_with('{')) {
             if (TextPackKey::Parse(*_hashResolver, key, text_key)) {
-                AddStr(text_key, value);
+                AddText(text_key, value.view());
             }
         }
         else {
             if (!collection.empty() && !key.empty()) {
-                AddStr(TextPackKey::FromParts(*_hashResolver, collection, key), value);
+                AddText(TextPackKey::FromParts(*_hashResolver, collection, key), value.view());
             }
         }
     }
@@ -357,53 +338,53 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
     }
 }
 
-void TextPack::AddStr(TextPackKey key, string_view str)
+void TextPack::AddText(TextPackKey key, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(key, string(str));
+    _textData.emplace(key, u8string {text});
 }
 
-void TextPack::AddStr(TextPackKey key, string&& str)
+void TextPack::AddText(TextPackKey key, u8string&& text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(key, std::move(str));
+    _textData.emplace(key, std::move(text));
 }
 
-void TextPack::EraseStr(TextPackKey key)
+void TextPack::EraseText(TextPackKey key)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.erase(key);
+    _textData.erase(key);
 }
 
 void TextPack::Merge(const TextPack& other)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto&& [key, value] : other._strData) {
-        AddStr(key, value);
+    for (auto&& [key, value] : other._textData) {
+        AddText(key, value.view());
     }
 }
 
-void TextPack::FixStr(const TextPack& base_pack)
+void TextPack::FixText(const TextPack& base_pack)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Add keys that are in the base pack but not in this pack
-    for (auto&& [key, value] : base_pack._strData) {
-        const auto has_same_entry = _strData.count(key) != 0;
+    for (auto&& [key, value] : base_pack._textData) {
+        const auto has_same_entry = _textData.count(key) != 0;
 
         if (!has_same_entry) {
-            AddStr(key, value);
+            AddText(key, value.view());
         }
     }
 
     // Remove keys that are not in the base pack
-    for (auto it = _strData.begin(); it != _strData.end();) {
-        if (base_pack._strData.count(it->first) == 0) {
-            it = _strData.erase(it);
+    for (auto it = _textData.begin(); it != _textData.end();) {
+        if (base_pack._textData.count(it->first) == 0) {
+            it = _textData.erase(it);
         }
         else {
             ++it;
@@ -415,7 +396,7 @@ void TextPack::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.clear();
+    _textData.clear();
 }
 
 void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
@@ -475,7 +456,7 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
         for (auto&& [pack_name, text_pack] : lang_pack) {
             const auto it = base_lang_pack.find(pack_name);
             FO_VERIFY_AND_THROW(it != base_lang_pack.end(), "Lookup failed in base lang pack");
-            text_pack.FixStr(it->second);
+            text_pack.FixText(it->second);
         }
     }
 }

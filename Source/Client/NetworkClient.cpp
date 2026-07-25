@@ -61,7 +61,7 @@ auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
     }
 }
 
-auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
+auto NetworkClientConnection::SendData(const_span<byte> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,7 +80,7 @@ auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
     }
 }
 
-auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
+auto NetworkClientConnection::ReceiveData() -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 

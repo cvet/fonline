@@ -50,14 +50,14 @@ public:
 
 protected:
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
-    auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override;
+    auto SendDataImpl(const_span<byte> buf) -> size_t override;
+    auto ReceiveDataImpl(vector<byte>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
 private:
     [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
     void PumpInput();
-    void SendPackets(const vector<vector<uint8_t>>& packets);
+    void SendPackets(const vector<vector<byte>>& packets);
     void ServiceConnect(nanotime now);
 
     udp_socket _socket {};
@@ -68,8 +68,8 @@ private:
     uint32_t _clientSalt {};
     nanotime _connectStartTime {};
     nanotime _lastConnectSend {};
-    vector<uint8_t> _packetBuf {};
-    vector<uint8_t> _readyBuf {};
+    vector<byte> _packetBuf {};
+    vector<byte> _readyBuf {};
 };
 
 auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
@@ -89,7 +89,7 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
         throw NetworkClientException("Socket startup failed for UDP transport");
     }
 
-    _requestHost = _settings->ServerHost;
+    _requestHost = string(_settings->ServerHost);
     _remoteHost = _requestHost;
     _remotePort = numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset);
 
@@ -144,7 +144,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (_channel.NeedSend(now) && _socket.can_write()) {
-        vector<vector<uint8_t>> packets;
+        vector<vector<byte>> packets;
         _channel.PrepareOutput({}, packets, now);
         SendPackets(packets);
     }
@@ -156,7 +156,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
     return _channel.HasReadyData();
 }
 
-auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
+auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<byte> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -166,13 +166,13 @@ auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -
         return 0;
     }
 
-    vector<vector<uint8_t>> packets;
+    vector<vector<byte>> packets;
     const auto consumed = _channel.PrepareOutput(buf, packets, nanotime::now());
     SendPackets(packets);
     return consumed;
 }
 
-auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
+auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<byte>& buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -229,7 +229,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        auto packet_buf = make_span(_packetBuf);
+        auto packet_buf = make_byte_span(_packetBuf);
         const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
@@ -237,7 +237,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
         }
 
         UdpPacketInfo packet;
-        const auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
+        const const_span<byte> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
@@ -246,7 +246,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
         if (_isConnecting) {
             if (packet.Type == UdpPacketType::Accept && packet.Value == _clientSalt && packet.SessionId != 0) {
                 _channel.SetSessionId(packet.SessionId);
-                _remoteHost = host;
+                _remoteHost = string(host);
                 _remotePort = port;
                 _isConnecting = false;
                 _isConnected = true;
@@ -269,7 +269,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
     }
 }
 
-void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t>>& packets)
+void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<byte>>& packets)
 {
     FO_STACK_TRACE_ENTRY();
 

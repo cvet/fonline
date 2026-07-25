@@ -5,87 +5,159 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeTempCacheDir(string_view name) -> string
+static auto MakeTempCacheDir(string_view name) -> u8string
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs_path_to_u8string(base);
+}
+
+static void CheckCacheStorageContract(string_view temp_dir_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string temp_dir = MakeTempCacheDir(temp_dir_name);
+    const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+    ignore_unused(removed_before);
+
+    {
+        CacheStorage cache {temp_dir};
+        const u8string unicode_text {u8"A\u042Fe\u0301\U0001F642\uFFFD\0B"};
+        const vector<byte> unicode_bytes {
+            byte {0x41},
+            byte {0xD0},
+            byte {0xAF},
+            byte {0x65},
+            byte {0xCC},
+            byte {0x81},
+            byte {0xF0},
+            byte {0x9F},
+            byte {0x99},
+            byte {0x82},
+            byte {0xEF},
+            byte {0xBF},
+            byte {0xBD},
+            byte {0x00},
+            byte {0x42},
+        };
+        const vector<byte> binary_payload {byte {0x00}, byte {0x80}, byte {0xFF}};
+
+        cache.SetText("text-to-bytes", unicode_text.view());
+        CHECK(cache.HasEntry("text-to-bytes"));
+        CHECK(cache.GetText("text-to-bytes") == unicode_text);
+        CHECK(cache.GetBytes("text-to-bytes") == unicode_bytes);
+
+        cache.SetBytes("bytes-to-text", unicode_bytes);
+        CHECK(cache.GetBytes("bytes-to-text") == unicode_bytes);
+        CHECK(cache.GetText("bytes-to-text") == unicode_text);
+
+        cache.SetText("empty-text", u8"");
+        cache.SetBytes("empty-bytes", {});
+        CHECK(cache.HasEntry("empty-text"));
+        CHECK(cache.HasEntry("empty-bytes"));
+        CHECK(cache.GetText("empty-text").empty());
+        CHECK(cache.GetBytes("empty-text").empty());
+        CHECK(cache.GetText("empty-bytes").empty());
+        CHECK(cache.GetBytes("empty-bytes").empty());
+
+        cache.SetBytes("binary", binary_payload);
+        CHECK(cache.GetBytes("binary") == binary_payload);
+        CHECK_THROWS_AS((void)cache.GetText("binary"), TextValidationException);
+
+        const vector<byte> malformed_utf8 {byte {0xF0}, byte {0x28}, byte {0x8C}, byte {0x28}};
+        cache.SetBytes("malformed", malformed_utf8);
+        CHECK(cache.GetBytes("malformed") == malformed_utf8);
+
+        try {
+            (void)cache.GetText("malformed");
+            FAIL("Malformed cache text was accepted");
+        }
+        catch (const TextValidationException& ex) {
+            CHECK(ex.encoding() == TextEncoding::Utf8);
+            CHECK(ex.error() == TextValidationError::InvalidContinuationByte);
+            CHECK(ex.offset() == 1);
+        }
+
+        std::u8string mutable_backing = u8"valid";
+        const optional<u8string_view> checked_view = u8string_view::TryFrom(mutable_backing);
+        REQUIRE(checked_view.has_value());
+        const u8string_view stale_view = *checked_view;
+        mutable_backing[0] = char8_t {0xFF};
+
+        CHECK_THROWS_AS(cache.SetText("stale-new", stale_view), TextValidationException);
+        CHECK_FALSE(cache.HasEntry("stale-new"));
+
+        const u8string original_text {u8"original"};
+        cache.SetText("stale-existing", original_text.view());
+        CHECK_THROWS_AS(cache.SetText("stale-existing", stale_view), TextValidationException);
+        CHECK(cache.GetText("stale-existing") == original_text);
+
+        CHECK_FALSE(cache.HasEntry("missing"));
+        CHECK(cache.GetText("missing").empty());
+        CHECK(cache.GetBytes("missing").empty());
+        cache.RemoveEntry("missing");
+        CHECK_FALSE(cache.HasEntry("missing"));
+
+        cache.SetText("to-remove", u8"value");
+        REQUIRE(cache.HasEntry("to-remove"));
+        cache.RemoveEntry("to-remove");
+        CHECK_FALSE(cache.HasEntry("to-remove"));
+        CHECK(cache.GetText("to-remove").empty());
+        CHECK(cache.GetBytes("to-remove").empty());
+    }
+
+    CHECK(fs_remove_dir_tree(temp_dir.view()));
 }
 
 TEST_CASE("CacheStorage")
 {
-    SECTION("StringAndBinaryEntriesRoundtrip")
+    SECTION("StrictTextAndBytesContractWithFileBackend")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_before);
-
-        CacheStorage cache {temp_dir};
-        const vector<uint8_t> payload {{0x10, 0x20, 0x30, 0x40}};
-
-        cache.SetString("greeting", "hello cache");
-        cache.SetData("folder/item.bin", payload);
-
-        CHECK(cache.HasEntry("greeting"));
-        CHECK(cache.HasEntry("folder/item.bin"));
-        CHECK(cache.GetString("greeting") == "hello cache");
-        CHECK(cache.GetData("folder/item.bin") == payload);
-
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CheckCacheStorageContract("cache_storage_file_contract");
     }
+
+#if FO_HAVE_UNQLITE
+    SECTION("StrictTextAndBytesContractWithUnqliteBackend")
+    {
+        CheckCacheStorageContract("cache_storage_unqlite_contract");
+    }
+#endif
 
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const u8string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
+        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        cache.SetString("dir\\nested/file.txt", "payload");
+        const u8string payload {u8"payload"};
+        cache.SetText("dir\\nested/file.txt", payload.view());
 
         CHECK(cache.HasEntry("dir\\nested/file.txt"));
-        CHECK(cache.GetString("dir\\nested/file.txt") == "payload");
-        CHECK(fs_exists(strex(temp_dir).combine_path("dir_nested_file.txt").str()));
+        CHECK(cache.GetText("dir\\nested/file.txt") == payload);
+        const u8string nested_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_dir.view())} / std::filesystem::path {u8"dir_nested_file.txt"});
+        CHECK(fs_exists(nested_file.view()));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
-    }
-
-    SECTION("RemoveEntryAndMissingEntriesBehaveGracefully")
-    {
-        const string temp_dir = MakeTempCacheDir("cache_storage_remove");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_before);
-
-        CacheStorage cache {temp_dir};
-        cache.SetString("value", "to-remove");
-
-        REQUIRE(cache.HasEntry("value"));
-        cache.RemoveEntry("value");
-
-        CHECK_FALSE(cache.HasEntry("value"));
-        CHECK(cache.GetString("value").empty());
-        CHECK(cache.GetData("value").empty());
-
-        cache.RemoveEntry("missing");
-        CHECK_FALSE(cache.HasEntry("missing"));
-
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs_remove_dir_tree(temp_dir.view()));
     }
 
     SECTION("MoveConstructionPreservesAccess")
     {
-        const string temp_dir = MakeTempCacheDir("cache_storage_move");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const u8string temp_dir = MakeTempCacheDir("cache_storage_move");
+        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};
-        original.SetString("name", "value");
+        const u8string value {u8"value"};
+        original.SetText("name", value.view());
 
         CacheStorage moved {std::move(original)};
 
         CHECK(moved.HasEntry("name"));
-        CHECK(moved.GetString("name") == "value");
+        CHECK(moved.GetText("name") == value);
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs_remove_dir_tree(temp_dir.view()));
     }
 }
 

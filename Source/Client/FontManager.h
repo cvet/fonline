@@ -109,6 +109,7 @@ public:
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
+    void DrawText(irect32 rect, u8string_view str, ucolor color, TextFormat format);
     auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
     void ClearFonts();
     void FrameUpdate();

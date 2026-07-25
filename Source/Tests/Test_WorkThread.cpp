@@ -150,7 +150,7 @@ TEST_CASE("WorkThread")
         std::atomic_bool report_called = false;
         std::atomic_bool report_saw_handler = false;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData&, bool) {
+        SetExceptionCallback([&](u8string_view, const CatchedStackTraceData&, bool) {
             report_saw_handler = handler_called.load();
             report_called = true;
         });

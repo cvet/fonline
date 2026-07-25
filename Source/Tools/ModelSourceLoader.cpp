@@ -90,7 +90,7 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
     opts.normalize_tangents = true;
 
     ufbx_error fbx_error = {};
-    const_span<uint8_t> file_data = file.GetDataSpan();
+    const_span<byte> file_data = file.GetDataSpan();
     auto file_data_bytes = make_nptr(file_data.data());
     FO_VERIFY_AND_THROW(file_data.empty() || file_data_bytes, "Non-empty model source data has a null buffer pointer", path);
     auto scene = make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error));
@@ -487,7 +487,7 @@ static void ValidateModelSourceName(string_view value, string_view context, bool
     if (value.find('\0') != string_view::npos) {
         throw ModelSourceLoaderException("Embedded NUL in name", context);
     }
-    if (!strvex(value).is_valid_utf8()) {
+    if (validate_utf8_text(value)) {
         throw ModelSourceLoaderException("Invalid UTF-8 in name", context);
     }
 }

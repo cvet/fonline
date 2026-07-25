@@ -171,7 +171,8 @@ protected:
                 doc_entry.fields.reserve(doc.Size());
 
                 for (auto&& [doc_key, doc_value] : doc) {
-                    doc_entry.fields.emplace_back(FieldRow {doc_key, AnyData::ValueToString(doc_value)});
+                    const auto value = AnyData::ValueToString(doc_value);
+                    doc_entry.fields.emplace_back(FieldRow {utf8_to_char_string(doc_key.view()), utf8_to_char_string(value.view())});
                 }
 
                 coll_entry.docs.emplace_back(std::move(doc_entry));

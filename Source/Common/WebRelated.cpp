@@ -516,13 +516,13 @@ namespace WebRelated
 #endif
     }
 
-    void ShowError(string_view title, string_view text)
+    void ShowError(u8string_view title, u8string_view text)
     {
         FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
-        const auto title_str = string(title);
-        const auto text_str = string(text);
+        const auto title_str = utf8_to_char_string(title);
+        const auto text_str = utf8_to_char_string(text);
         auto title_ptr = make_ptr(title_str.c_str());
         auto text_ptr = make_ptr(text_str.c_str());
         WebShowErrorImpl(title_ptr.get(), text_ptr.get());

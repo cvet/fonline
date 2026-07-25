@@ -37,6 +37,37 @@
 
 FO_BEGIN_NAMESPACE
 
+namespace
+{
+    auto RawBytes(std::initializer_list<uint8_t> values) -> vector<byte>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<byte> bytes;
+        bytes.reserve(values.size());
+
+        for (const uint8_t value : values) {
+            bytes.emplace_back(static_cast<byte>(value));
+        }
+
+        return bytes;
+    }
+}
+
+static_assert(std::constructible_from<strvex, string_view>);
+static_assert(std::constructible_from<strvex, string&>);
+static_assert(!std::constructible_from<strvex, string&&>);
+static_assert(!std::constructible_from<strvex, u8string_view>);
+static_assert(std::constructible_from<u8strvex, u8string_view>);
+static_assert(std::constructible_from<u8strvex, u8string&>);
+static_assert(!std::constructible_from<u8strvex, u8string&&>);
+static_assert(!std::constructible_from<u8strvex, string_view>);
+static_assert(std::convertible_to<strex, string>);
+static_assert(std::convertible_to<strex, u8string>);
+static_assert(std::convertible_to<u8strex, u8string_view>);
+static_assert(!std::convertible_to<u8strex, string_view>);
+static_assert(!std::convertible_to<u8strex, string>);
+
 TEST_CASE("StringUtils")
 {
     SECTION("Storage")
@@ -60,6 +91,36 @@ TEST_CASE("StringUtils")
     {
         CHECK(strex("  {} World {}", "Hello", "!").str() == "  Hello World !");
         CHECK(strex("{}{}{}", 1, 2, 3).str() == "123");
+
+        const u8string strict_value {u8"Привет"};
+        const u8string ascii_format_result = u8strex("{} {}", strict_value, 42);
+        const u8string utf8_format_result = u8strex(u8"{} мир", strict_value);
+        CHECK(ascii_format_result == u8"Привет 42");
+        CHECK(utf8_format_result == u8"Привет мир");
+    }
+
+    SECTION("UriScheme")
+    {
+        CHECK(is_uri_scheme_letter('A'));
+        CHECK(is_uri_scheme_letter('z'));
+        CHECK_FALSE(is_uri_scheme_letter('0'));
+        CHECK_FALSE(is_uri_scheme_letter('-'));
+
+        CHECK(is_uri_scheme_tail_character('A'));
+        CHECK(is_uri_scheme_tail_character('0'));
+        CHECK(is_uri_scheme_tail_character('+'));
+        CHECK(is_uri_scheme_tail_character('-'));
+        CHECK(is_uri_scheme_tail_character('.'));
+        CHECK_FALSE(is_uri_scheme_tail_character('_'));
+        CHECK_FALSE(is_uri_scheme_tail_character(':'));
+
+        CHECK(parse_uri_scheme("a") == optional<string_view> {"a"});
+        CHECK(parse_uri_scheme("LastFrontier+login-1.0") == optional<string_view> {"LastFrontier+login-1.0"});
+        CHECK_FALSE(parse_uri_scheme("").has_value());
+        CHECK_FALSE(parse_uri_scheme("1scheme").has_value());
+        CHECK_FALSE(parse_uri_scheme("scheme_name").has_value());
+        CHECK_FALSE(parse_uri_scheme("scheme:").has_value());
+        CHECK_FALSE(parse_uri_scheme("scheme://host").has_value());
     }
 
     SECTION("Trim")
@@ -78,10 +139,17 @@ TEST_CASE("StringUtils")
 
     SECTION("GetResult")
     {
+        const string direct_ascii_result = strex("Dump_{}", 17);
+        const u8string direct_utf8_result = strex("Dump_{}", 17);
+
         CHECK(static_cast<string_view>(strex(" Hello   ").trim()) == "Hello");
         CHECK(static_cast<string>(strex(" \tHello   ").trim()) == "Hello");
+        CHECK(direct_ascii_result == "Dump_17");
+        CHECK(direct_utf8_result == u8"Dump_17");
+        CHECK(utf8_to_string(u8strex("{}", "Dump_17")) == "Dump_17");
+        CHECK_THROWS_AS(utf8_to_string(u8strex(u8"Дамп_17")), TextValidationException);
         CHECK(strex("Hello   ").trim().str() == "Hello");
-        CHECK(string_view("Hello") == strex("  Hello").trim().c_str());
+        CHECK(string_view {strex("  Hello").trim().c_str()} == "Hello");
         CHECK(strex("\t\nHel lo\t \r\t").trim().str() == "Hel lo");
     }
 
@@ -96,27 +164,171 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
-        constexpr string_view hello_lower = " \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_upper = " \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view other_word = " \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   ";
-        constexpr string_view three_e = "\xD0\xB5\xD0\xB5\xD0\xB5";
-        constexpr string_view upper_source = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view upper_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   ";
+        const u8string strict_hello {u8" Привет   "};
+        const u8string hello_lower {u8" привет   "};
+        const u8string hello_mixed {u8" Привет   "};
+        const u8string hello_upper {u8" ПРИВЕТ   "};
+        const u8string other_word {u8" тттввв   "};
+        const u8string three_e {u8"еее"};
+        const u8string upper_source {u8" ПриВЕТ   "};
+        const u8string upper_mixed {u8" ПриВет   "};
+        const u8string replacement_character {u8"�"};
+        const vector<byte> encoded_surrogate_bytes = RawBytes({0xED, 0xA0, 0x80});
+        const string_view encoded_surrogate = span_to_string(encoded_surrogate_bytes);
+        const vector<byte> invalid_lead_bytes = RawBytes({200});
 
-        CHECK(strex("").is_valid_utf8());
-        CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
-        CHECK(strex(hello_lower).is_valid_utf8());
-        CHECK(strex(hello_lower).is_valid_utf8());
-        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_lower));
-        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(other_word));
-        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(three_e));
-        CHECK(strex(hello_mixed).length_utf8() == 10);
-        CHECK(strex(three_e).length_utf8() == 3);
-        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_upper));
-        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(" \xD0\x9F\xD0\xA0\xD0\x95\xD0\xA2\xD0\xA2\xD0\xA2   "));
-        CHECK(strex(upper_source).lower_utf8() == hello_lower);
-        CHECK(strex(upper_mixed).upper_utf8() == hello_upper);
+        CHECK_FALSE(validate_utf8_text(string_view {}));
+        CHECK(validate_utf8_text(span_to_string(invalid_lead_bytes)));
+        CHECK_FALSE(validate_utf8_text(hello_lower.view().native_view()));
+        CHECK_FALSE(validate_utf8_text(replacement_character.view().native_view()));
+        CHECK(validate_utf8_text(encoded_surrogate));
+        CHECK(u8strvex(hello_mixed).compare_ignore_case(hello_lower));
+        CHECK(u8strvex(replacement_character).compare_ignore_case(replacement_character));
+        CHECK_FALSE(u8strvex(hello_mixed).compare_ignore_case(other_word));
+        CHECK_FALSE(u8strvex(hello_mixed).compare_ignore_case(three_e));
+        CHECK(u8strvex(strict_hello).length_utf8() == 10);
+
+        const u8string strict_hello_copy = u8strex(strict_hello);
+        CHECK(strict_hello_copy == strict_hello);
+
+        CHECK_THROWS_AS(u8string(span_to_string(invalid_lead_bytes)), TextValidationException);
+
+        CHECK(u8strvex(hello_mixed).length_utf8() == 10);
+        CHECK(u8strvex(three_e).length_utf8() == 3);
+        CHECK(u8strvex(hello_mixed).compare_ignore_case(hello_upper));
+        CHECK_FALSE(u8strvex(hello_mixed).compare_ignore_case(u8" ПРЕТТТ   "));
+        CHECK(u8strex(upper_source).lower() == hello_lower);
+        CHECK(u8strex(upper_mixed).upper() == hello_upper);
+        CHECK(u8strvex(u8"\t Привет 🌍 \r\n").trim() == u8"Привет 🌍");
+        CHECK(u8strvex(u8" \n\r\t").trim().empty());
+        CHECK(u8strvex(u8"жПриветж").trim(u8"ж") == u8"Привет");
+        CHECK(u8strvex(u8"жтж").rtrim(u8"ж") == u8"жт");
+
+        const u8string metadata_line {u8"Proto Modifier Сomfortable.Сarrying ComfortableCarrying"};
+        const auto metadata_tokens = u8strvex(metadata_line).tokenize();
+        REQUIRE(metadata_tokens.size() == 6);
+        CHECK(metadata_tokens[0] == u8"Proto");
+        CHECK(metadata_tokens[1] == u8"Modifier");
+        CHECK(metadata_tokens[2] == u8"Сomfortable");
+        CHECK(metadata_tokens[3] == u8".");
+        CHECK(metadata_tokens[4] == u8"Сarrying");
+        CHECK(metadata_tokens[5] == u8"ComfortableCarrying");
+    }
+
+    SECTION("Utf8ScalarValidity")
+    {
+        CHECK(utf8::IsValid(0x000000u));
+        CHECK(utf8::IsValid(0x00D7FFu));
+        CHECK(utf8::IsValid(0x00E000u));
+        CHECK(utf8::IsValid(0x00FFFDu));
+        CHECK(utf8::IsValid(0x10FFFFu));
+
+        CHECK_FALSE(utf8::IsValid(0x00D800u));
+        CHECK_FALSE(utf8::IsValid(0x00DFFFu));
+        CHECK_FALSE(utf8::IsValid(0x110000u));
+        CHECK_FALSE(utf8::IsValid(0xFFFFFFFFu));
+    }
+
+    SECTION("Utf8CodecRoundTrip")
+    {
+        struct ValidCase
+        {
+            vector<byte> Encoded;
+            uint32_t CodePoint;
+        };
+
+        const array<ValidCase, 11> valid_cases = {
+            ValidCase {RawBytes({0x00}), 0x000000u},
+            ValidCase {RawBytes({0x7F}), 0x00007Fu},
+            ValidCase {RawBytes({0xC2, 0x80}), 0x000080u},
+            ValidCase {RawBytes({0xDF, 0xBF}), 0x0007FFu},
+            ValidCase {RawBytes({0xE0, 0xA0, 0x80}), 0x000800u},
+            ValidCase {RawBytes({0xED, 0x9F, 0xBF}), 0x00D7FFu},
+            ValidCase {RawBytes({0xEE, 0x80, 0x80}), 0x00E000u},
+            ValidCase {RawBytes({0xEF, 0xBF, 0xBD}), 0x00FFFDu},
+            ValidCase {RawBytes({0xEF, 0xBF, 0xBF}), 0x00FFFFu},
+            ValidCase {RawBytes({0xF0, 0x90, 0x80, 0x80}), 0x010000u},
+            ValidCase {RawBytes({0xF4, 0x8F, 0xBF, 0xBF}), 0x10FFFFu},
+        };
+
+        for (const auto& test : valid_cases) {
+            const string_view encoded = span_to_string(test.Encoded);
+            size_t decode_length = encoded.size();
+            const auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
+            REQUIRE(decoded.has_value());
+            CHECK(*decoded == test.CodePoint);
+            CHECK(decode_length == encoded.size());
+
+            char encoded_buf[4] {};
+            const auto encoded_length = utf8::Encode(test.CodePoint, encoded_buf);
+            REQUIRE(encoded_length.has_value());
+            CHECK(*encoded_length == encoded.size());
+            CHECK(std::ranges::equal(make_byte_span(encoded_buf, *encoded_length), test.Encoded));
+
+            size_t round_trip_length = *encoded_length;
+            const auto round_trip = utf8::Decode(make_ptr(encoded_buf), round_trip_length);
+            REQUIRE(round_trip.has_value());
+            CHECK(*round_trip == test.CodePoint);
+            CHECK(round_trip_length == *encoded_length);
+        }
+    }
+
+    SECTION("Utf8MalformedSequences")
+    {
+        struct InvalidCase
+        {
+            vector<byte> Encoded;
+            size_t ConsumedLength;
+        };
+
+        const array<InvalidCase, 22> invalid_cases = {
+            InvalidCase {RawBytes({0x80}), 1},
+            InvalidCase {RawBytes({0xC0, 0x80}), 1},
+            InvalidCase {RawBytes({0xC1, 0xBF}), 1},
+            InvalidCase {RawBytes({0xC2}), 1},
+            InvalidCase {RawBytes({0xC2, 0x20}), 1},
+            InvalidCase {RawBytes({0xE0, 0x80, 0x80}), 1},
+            InvalidCase {RawBytes({0xE0, 0x9F, 0xBF}), 1},
+            InvalidCase {RawBytes({0xE1, 0x80}), 1},
+            InvalidCase {RawBytes({0xE1, 0x41, 0x80}), 1},
+            InvalidCase {RawBytes({0xE1, 0x80, 0x41}), 1},
+            InvalidCase {RawBytes({0xED, 0xA0, 0x80}), 3},
+            InvalidCase {RawBytes({0xED, 0xBF, 0xBF}), 3},
+            InvalidCase {RawBytes({0xF0, 0x80, 0x80, 0x80}), 1},
+            InvalidCase {RawBytes({0xF0, 0x8F, 0xBF, 0xBF}), 1},
+            InvalidCase {RawBytes({0xF0, 0x90, 0x41, 0x80}), 1},
+            InvalidCase {RawBytes({0xF0, 0x90, 0x80, 0x41}), 1},
+            InvalidCase {RawBytes({0xF1, 0x80, 0x80}), 1},
+            InvalidCase {RawBytes({0xF1, 0x80, 0x41, 0x80}), 1},
+            InvalidCase {RawBytes({0xF1, 0x80, 0x80, 0x41}), 1},
+            InvalidCase {RawBytes({0xF4, 0x90, 0x80, 0x80}), 1},
+            InvalidCase {RawBytes({0xF5, 0x80, 0x80, 0x80}), 1},
+            InvalidCase {RawBytes({0xFF}), 1},
+        };
+
+        for (const auto& test : invalid_cases) {
+            const string_view encoded = span_to_string(test.Encoded);
+            size_t decode_length = encoded.size();
+            const auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
+            CHECK_FALSE(decoded.has_value());
+            CHECK(decode_length == test.ConsumedLength);
+        }
+
+        size_t empty_length = 0;
+        CHECK_FALSE(utf8::Decode(make_ptr(""), empty_length).has_value());
+        CHECK(empty_length == 0);
+    }
+
+    SECTION("Utf8EncodeRejectsInvalidScalars")
+    {
+        constexpr array<uint32_t, 4> invalid_scalars = {0x00D800u, 0x00DFFFu, 0x110000u, 0xFFFFFFFFu};
+
+        for (const uint32_t code_point : invalid_scalars) {
+            char encoded_buf[4] = {'k', 'e', 'e', 'p'};
+            const auto encoded_length = utf8::Encode(code_point, encoded_buf);
+            CHECK_FALSE(encoded_length.has_value());
+            CHECK(string_view(encoded_buf, sizeof(encoded_buf)) == "keep");
+        }
     }
 
     SECTION("StartsWith")
@@ -246,6 +458,16 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
         CHECK(strex(",One,Two").split(',') == vector<string>({"One", "Two"}));
         CHECK(strex("One,Two,").split(',') == vector<string>({"One", "Two"}));
+
+        const auto utf8_parts = u8strex(u8" Привет мир  Земля ").split(u8' ');
+        constexpr u8string_view hello {u8"Привет"};
+        constexpr u8string_view world {u8"мир"};
+        constexpr u8string_view earth {u8"Земля"};
+        REQUIRE(utf8_parts.size() == 3);
+        CHECK(utf8_parts[0] == hello);
+        CHECK(utf8_parts[1] == world);
+        CHECK(utf8_parts[2] == earth);
+
         CHECK(strex(" 111 222  33Three g66 7").split_to_int32(' ') == vector<int32_t>({111, 222, 0, 0, 7}));
         CHECK(strex("").split_to_int32(' ') == vector<int32_t>({}));
         CHECK(strex("             ").split_to_int32(' ') == vector<int32_t>({}));
@@ -275,6 +497,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("aaaBBBcccDBEFaGh HelBlo Ba!").replace('a', 'X').str() == "XXXBBBcccDBEFXGh HelBlo BX!");
         CHECK(strex("aaBDdDBaBBBDBcccDBEFaGh HelDBBlo Ba!").replace('D', 'B', 'X').str() == "aaBDdXaBBBXcccXEFaGh HelXBlo Ba!");
         CHECK(strex("aaBDdDBaHelDBBlocccDBEFaGh HelDBBlo Ba!").replace("HelDBBlo", "X").str() == "aaBDdDBaXcccDBEFaGh X Ba!");
+        const u8string replaced_utf8 = u8strex(u8"Привет, мир! Привет!").replace(u8"Привет", u8"Здравствуй");
+        CHECK(replaced_utf8 == u8"Здравствуй, мир! Здравствуй!");
         CHECK(strex("aaaBBBcccDBEFGh Hello !").lower().str() == "aaabbbcccdbefgh hello !");
         CHECK(strex("aaaBBBcccDBEFGh Hello !").upper().str() == "AAABBBCCCDBEFGH HELLO !");
     }
@@ -296,6 +520,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("cur/next/../../last/a/").combine_path("x/y/z").str() == "last/a/x/y/z");
         CHECK(strex("../cur/next/../../last/a/").combine_path("x/y/z").str() == "../last/a/x/y/z");
         CHECK(strex("../../cur/next/../../last/a/").combine_path("x/y/z").str() == "../../last/a/x/y/z");
+        const u8string combined_utf8_path = u8strex(u8"каталог/").combine_path(u8"файл.txt");
+        CHECK(combined_utf8_path == u8"каталог/файл.txt");
         CHECK(strex("D:\\MyDir\\X\\..\\Y\\.\\.\\Z\\").normalize_path_slashes().str() == "D:/MyDir/X/../Y/././Z/");
     }
 
@@ -307,10 +533,13 @@ TEST_CASE("StringUtils")
 #if FO_WINDOWS
     SECTION("WinParseWideChar")
     {
+        const u8string utf8_world {u8"Мир"};
+        const string char_utf8_world = utf8_to_char_string(utf8_world);
+
         CHECK(strex().parse_wide_char(L"Hello").str() == "Hello");
         CHECK(strex("Hello").parse_wide_char(L"World").str() == "HelloWorld");
-        CHECK(strex().parse_wide_char(L"HelloÐœÐ¸Ñ€").to_wide_char() == L"HelloÐœÐ¸Ñ€");
-        CHECK(strex("ÐœÐ¸Ñ€").parse_wide_char(L"ÐœÐ¸Ñ€").to_wide_char() == L"ÐœÐ¸Ñ€ÐœÐ¸Ñ€");
+        CHECK(strex().parse_wide_char(L"HelloМир").to_wide_char() == L"HelloМир");
+        CHECK(strex(char_utf8_world).parse_wide_char(L"Мир").to_wide_char() == L"МирМир");
     }
 #endif
 }

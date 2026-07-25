@@ -401,7 +401,7 @@ void ModelAnimationController::AdvanceTimeline(float32_t time)
 static_assert(MODEL_ANIMATION_MAX_JOINTS == MODEL_ANIMATION_RIG_MAX_JOINTS);
 
 template<typename T>
-static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, string_view context) -> T;
+static auto DeserializeModelAnimationRuntimeObject(const_span<byte> payload, string_view context) -> T;
 static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton& skeleton, string_view context);
 static void ValidateModelAnimationRuntimeTransform(const ozz::math::Transform& transform, size_t joint_index, string_view context);
 static void ValidateModelAnimationRuntimeJointList(const_span<ModelAnimationRuntimeJoint> joints, string_view context);
@@ -922,7 +922,7 @@ void ModelAnimationRuntimePose::OverrideWorldMatrix(size_t joint_index, const ma
     _impl->_worldMatrices[joint_index] = world_matrix;
 }
 
-auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>
+auto LoadModelAnimationRuntimeRig(const_span<byte> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1091,7 +1091,7 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
 }
 
 template<typename T>
-static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, string_view context) -> T
+static auto DeserializeModelAnimationRuntimeObject(const_span<byte> payload, string_view context) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1151,7 +1151,7 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
 
         const string_view name {names[numeric_cast<size_t>(joint)]};
 
-        if ((joint != 0 && name.empty()) || !strvex(name).is_valid_utf8()) {
+        if ((joint != 0 && name.empty()) || validate_utf8_text(name)) {
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
@@ -1184,7 +1184,7 @@ static void ValidateModelAnimationRuntimeJointList(const_span<ModelAnimationRunt
     for (size_t i = 0; i < joints.size(); i++) {
         const ModelAnimationRuntimeJoint& joint = joints[i];
 
-        if (!strvex(joint.Name).is_valid_utf8() || joint.Name.find('\0') != string_view::npos || (i != 0 && joint.Name.empty())) {
+        if (validate_utf8_text(joint.Name) || joint.Name.find('\0') != string_view::npos || (i != 0 && joint.Name.empty())) {
             throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid joint name", context, i);
         }
         if ((i == 0 && joint.ParentIndex != -1) || (i != 0 && (joint.ParentIndex < 0 || numeric_cast<size_t>(joint.ParentIndex) >= i))) {

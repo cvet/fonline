@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ModelMeshDataException);
 
-inline constexpr array<uint8_t, 8> MODEL_MESH_MAGIC {'L', 'F', 'M', 'O', 'D', 'M', 'S', 'H'};
+inline constexpr array<byte, 8> MODEL_MESH_MAGIC {byte {'L'}, byte {'F'}, byte {'M'}, byte {'O'}, byte {'D'}, byte {'M'}, byte {'S'}, byte {'H'}};
 inline constexpr uint16_t MODEL_MESH_SCHEMA_VERSION = 1;
 inline constexpr uint16_t MODEL_MESH_SUPPORTED_FLAGS = 0;
 inline constexpr size_t MODEL_MESH_HEADER_SIZE = MODEL_MESH_MAGIC.size() + sizeof(uint16_t) + sizeof(uint16_t);

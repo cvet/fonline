@@ -61,7 +61,7 @@ void ReadModelMeshHeader(DataReader& reader, string_view context)
     FO_STACK_TRACE_ENTRY();
 
     DataReader source_reader = reader;
-    const_span<uint8_t> header_data;
+    const_span<byte> header_data;
 
     try {
         header_data = source_reader.ReadBytes(MODEL_MESH_HEADER_SIZE);
@@ -71,7 +71,7 @@ void ReadModelMeshHeader(DataReader& reader, string_view context)
     }
 
     DataReader header_reader {header_data};
-    const const_span<uint8_t> magic = header_reader.ReadBytes(MODEL_MESH_MAGIC.size());
+    const const_span<byte> magic = header_reader.ReadBytes(MODEL_MESH_MAGIC.size());
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_MESH_MAGIC.begin())) {
         throw ModelMeshDataException("Invalid baked model mesh magic; expected 'LFMODMSH'", context);

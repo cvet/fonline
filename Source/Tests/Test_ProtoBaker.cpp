@@ -35,7 +35,7 @@ TEST_CASE("ProtoBaker")
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
     const auto make_dynamic_metadata_blob = [](const vector<pair<string_view, vector<vector<string_view>>>>& sections) {
-        vector<uint8_t> metadata;
+        vector<byte> metadata;
         auto writer = DataWriter(metadata);
 
         writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
@@ -57,7 +57,7 @@ TEST_CASE("ProtoBaker")
 
         return metadata;
     };
-    const auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
+    const auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<byte>& metadata_blob) {
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };

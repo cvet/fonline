@@ -27,7 +27,7 @@ TEST_CASE("RawCopyBaker")
 
         REQUIRE(rig.Outputs.size() == 1);
         CHECK(rig.Outputs.contains("Data/config.json"));
-        CHECK(rig.GetOutputText("Data/config.json") == "{\"enabled\":true}\n");
+        CHECK(rig.GetOutputText("Data/config.json") == u8string {u8"{\"enabled\":true}\n"});
     }
 
     SECTION("SetupBakersReturnsRequestedBaker")

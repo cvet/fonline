@@ -37,7 +37,7 @@ FO_BEGIN_NAMESPACE
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>;
 
-auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
+auto ReadSpriteResource(const_span<byte> data) -> SpriteResourceData
 {
     FO_STACK_TRACE_ENTRY();
 

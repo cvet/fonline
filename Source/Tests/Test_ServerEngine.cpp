@@ -70,28 +70,32 @@ namespace
         return settings;
     }
 
-    static auto MakeServerHealthFileName() -> string
+    static auto MakeServerHealthFileName() -> u8string
     {
         const auto exe_path = Platform::GetExePath();
 
-        return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+        if (!exe_path) {
+            return strex("{}_Health.txt", FO_DEV_NAME);
+        }
+
+        return u8strex("{}_Health.txt", u8strvex(*exe_path).extract_file_name().erase_file_extension());
     }
 
-    static auto MakeTempServerResourceDir(string_view name) -> string
+    static auto MakeTempServerResourceDir(string_view name) -> u8string
     {
         const auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs_path_to_u8string(base);
     }
 
-    static void RemoveServerHealthFile(string_view name) noexcept
+    static void RemoveServerHealthFile(u8string_view name) noexcept
     {
         std::error_code ec;
         (void)std::filesystem::remove(std::filesystem::path {fs_make_path(name)}, ec);
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
+    static auto MakeEmptyMapBlob() -> vector<byte>
     {
-        vector<uint8_t> map_data;
+        vector<byte> map_data;
         auto writer = DataWriter(map_data);
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
@@ -99,9 +103,9 @@ namespace
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -111,7 +115,7 @@ namespace
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -130,7 +134,7 @@ namespace
         return protos_data;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -151,7 +155,7 @@ namespace ServerEngineTest
 
     // Deterministic seam for the item-move conservation regression: when armed, the next OnItemInit
     // (which fires from inside CreateItem) mutates the SOURCE stack's count. CreateItem runs between
-    // SplitItem's count read and its write, so this reproduces — single-threaded and deterministically —
+    // SplitItem's count read and its write, so this reproduces -- single-threaded and deterministically --
     // the exact effect of a concurrent split/merge landing during CreateItem's sync-cover yield.
     ident SplitInjectSourceId;
     int SplitInjectAmount = 0;
@@ -336,11 +340,11 @@ namespace ServerEngineTest
             });
     }
 
-    static auto MakeInitGateScriptBinary(const FileSystem& metadata_resources, ServerTestScriptMode mode) -> vector<uint8_t>
+    static auto MakeInitGateScriptBinary(const FileSystem& metadata_resources, ServerTestScriptMode mode) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const string_view body = mode == ServerTestScriptMode::StopOnInit ? string_view {"return EventResult::StopChain;"} : string_view {R"(throw("Unit test OnInit failure");
+        const string_view body = mode == ServerTestScriptMode::StopOnInit ? "return EventResult::StopChain;" : string_view {R"(throw("Unit test OnInit failure");
         return EventResult::ContinueChain;)"};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineInitGateScripts",
@@ -378,9 +382,9 @@ namespace ServerEngineInitGateTest
     // false. The conservation stress (ServerEngineConcurrentItemTransferConservesTotal) needs a
     // stackable item so `MoveItem` exercises the split/merge `count` read-modify-write. Mirror of the
     // helper in Test_ServerMapOperations.cpp.
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -388,7 +392,7 @@ namespace ServerEngineInitGateTest
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -486,7 +490,7 @@ namespace ServerEngineInitGateTest
     static auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
     {
         AnyData::Document doc;
-        doc.Assign(string {"value"}, value);
+        doc.Assign("value", value);
         return doc;
     }
 
@@ -571,18 +575,21 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
         SKIP("Baked directory mounting is only used by unpackaged test binaries");
     }
 
-    const string temp_dir = MakeTempServerResourceDir("baked_entries");
-    const bool removed_before = fs_remove_dir_tree(temp_dir);
+    const u8string temp_dir = MakeTempServerResourceDir("baked_entries");
+    const bool removed_before = fs_remove_dir_tree(temp_dir.view());
     ignore_unused(removed_before);
 
-    auto cleanup = scope_exit([&temp_dir]() noexcept { fs_remove_dir_tree(temp_dir); });
+    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir.view()); });
 
-    const string baked_dir = strex(temp_dir).combine_path("Baked").str();
-    const string packaged_dir = strex(temp_dir).combine_path("Packaged").str();
+    const u8string baked_dir = fs_combine_path(temp_dir.view(), "Baked");
+    const u8string packaged_dir = fs_combine_path(temp_dir.view(), "Packaged");
+    const u8string baked_server_payload = fs_combine_path(baked_dir.view(), "ServerPack/payload.txt");
+    const u8string baked_client_payload = fs_combine_path(baked_dir.view(), "ClientPack/client-only.txt");
+    const u8string packaged_server_payload = fs_combine_path(packaged_dir.view(), "ServerPack/payload.txt");
 
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
-    REQUIRE(fs_write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+    REQUIRE(fs_write_file_text(baked_server_payload.view(), u8"baked-server"));
+    REQUIRE(fs_write_file_text(baked_client_payload.view(), u8"client"));
+    REQUIRE(fs_write_file_text(packaged_server_payload.view(), u8"packaged-server"));
 
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
@@ -591,7 +598,7 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
 
     auto resources = GetServerResources(settings);
 
-    CHECK(resources.ReadFileText("payload.txt") == "baked-server");
+    CHECK(resources.ReadFileText("payload.txt") == u8string {u8"baked-server"});
     CHECK(resources.IsFileExists("payload.txt"));
     CHECK_FALSE(resources.IsFileExists("client-only.txt"));
 }
@@ -735,10 +742,10 @@ TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 
 TEST_CASE("ServerEngineWritesHealthFile")
 {
-    const string health_file_name = MakeServerHealthFileName();
-    RemoveServerHealthFile(health_file_name);
+    const u8string health_file_name = MakeServerHealthFileName();
+    RemoveServerHealthFile(health_file_name.view());
 
-    auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name); });
+    auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name.view()); });
 
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.WriteHealthFile, true);
@@ -769,13 +776,13 @@ TEST_CASE("ServerEngineWritesHealthFile")
         });
     });
 
-    string health_content;
+    u8string health_content;
     REQUIRE(WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
-            const auto content = fs_read_file(health_file_name);
+            const auto content = fs_read_file_text(health_file_name.view());
 
-            if (!content.has_value() || content->find("Server uptime:") == string::npos || content->find("Connections:") == string::npos) {
+            if (!content.has_value() || content->view().native_view().find(u8"Server uptime:") == std::u8string_view::npos || content->view().native_view().find(u8"Connections:") == std::u8string_view::npos) {
                 return false;
             }
 
@@ -784,11 +791,11 @@ TEST_CASE("ServerEngineWritesHealthFile")
         },
         std::chrono::milliseconds {2000}));
 
-    CHECK(health_content.find("FOnline v0.0.0") != string::npos);
-    CHECK(health_content.find("Version: 0.0.0") != string::npos);
-    CHECK(health_content.find("Starting...") == string::npos);
-    CHECK(health_content.find("Server uptime:") != string::npos);
-    CHECK(health_content.find("Connections:") != string::npos);
+    CHECK(health_content.view().native_view().find(u8"FOnline v0.0.0") != std::u8string_view::npos);
+    CHECK(health_content.view().native_view().find(u8"Version: 0.0.0") != std::u8string_view::npos);
+    CHECK(health_content.view().native_view().find(u8"Starting...") == std::u8string_view::npos);
+    CHECK(health_content.view().native_view().find(u8"Server uptime:") != std::u8string_view::npos);
+    CHECK(health_content.view().native_view().find(u8"Connections:") != std::u8string_view::npos);
 }
 
 TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
@@ -800,7 +807,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     // call on such a partially-initialized engine. An unrecognized DbStorage makes ConnectToDataBase
     // throw "Wrong storage options", reproducing the same aborted-startup state deterministically.
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
+    BakerTests::OverrideSetting(settings.DbStorage, u8string {u8"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
 }
@@ -1404,8 +1411,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         {
             bool sync_diag_seen = false;
-            SetLogCallback("entity_access_valid_diagnose_test", [&sync_diag_seen](LogType, string_view message, nptr<const CatchedStackTraceData>) {
-                if (message.find("SyncDiag access-without-sync") != string_view::npos) {
+            SetLogCallback("entity_access_valid_diagnose_test", [&sync_diag_seen](LogType, u8string_view message, nptr<const CatchedStackTraceData>) {
+                if (message.native_view().find(u8"SyncDiag access-without-sync") != std::u8string_view::npos) {
                     sync_diag_seen = true;
                 }
             });

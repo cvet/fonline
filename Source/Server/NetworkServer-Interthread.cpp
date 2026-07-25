@@ -45,7 +45,7 @@ public:
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
 
-    void Receive(const_span<uint8_t> buf);
+    void Receive(const_span<byte> buf);
 
 private:
     void DispatchImpl() override;
@@ -86,7 +86,7 @@ NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<Ser
     FO_STACK_TRACE_ENTRY();
 }
 
-void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
+void NetworkServerConnection_Interthread::Receive(const_span<byte> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -145,12 +145,11 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
     auto connection_registry = GetConnectionRegistry();
     InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
         auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
-
         if (connection_registry_->TrackConnection(conn)) {
             callback_(conn);
         }
 
-        return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
+        return [conn_ = conn](const_span<byte> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });
 }
 

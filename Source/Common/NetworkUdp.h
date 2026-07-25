@@ -66,7 +66,7 @@ struct UdpPacketInfo
     uint32_t AckSequence {};
     uint32_t AckBits {};
     uint32_t Value {};
-    const_span<uint8_t> Payload {};
+    const_span<byte> Payload {};
 };
 
 class UdpOrderedChannel final
@@ -87,28 +87,28 @@ public:
 
     void Reset() noexcept;
     void SetSessionId(uint32_t session_id) noexcept;
-    auto PrepareOutput(const_span<uint8_t> new_data, vector<vector<uint8_t>>& packets, nanotime now) -> size_t;
+    auto PrepareOutput(const_span<byte> new_data, vector<vector<byte>>& packets, nanotime now) -> size_t;
     void HandleIncomingPayload(const UdpPacketInfo& packet);
-    auto ExtractReadyData(vector<uint8_t>& data) -> size_t;
-    auto MakeDisconnectPacket() const -> vector<uint8_t>;
+    auto ExtractReadyData(vector<byte>& data) -> size_t;
+    auto MakeDisconnectPacket() const -> vector<byte>;
 
 private:
     struct PendingPacket final
     {
         uint32_t Sequence {};
-        vector<uint8_t> Payload {};
+        vector<byte> Payload {};
         nanotime LastSend {};
         uint32_t SendCount {};
     };
 
     [[nodiscard]] auto IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool;
-    [[nodiscard]] auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value = 0) const -> vector<uint8_t>;
+    [[nodiscard]] auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<byte> payload, uint32_t value = 0) const -> vector<byte>;
 
     void ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits);
-    void EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const;
-    void EmitAckPacket(vector<vector<uint8_t>>& packets) const;
+    void EmitPendingPacket(const PendingPacket& packet, vector<vector<byte>>& packets) const;
+    void EmitAckPacket(vector<vector<byte>>& packets) const;
     void RebuildAckBits() noexcept;
-    void QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const;
+    void QueueTailRedundancy(vector<vector<byte>>& packets, uint32_t first_new_sequence) const;
 
     UdpTransportOptions _options {};
     uint32_t _sessionId {};
@@ -118,12 +118,12 @@ private:
     bool _ackPending {};
     size_t _pendingBytes {};
     deque<PendingPacket> _pendingPackets {};
-    map<uint32_t, vector<uint8_t>> _receivedPackets {};
-    vector<uint8_t> _readyData {};
+    map<uint32_t, vector<byte>> _receivedPackets {};
+    vector<byte> _readyData {};
 };
 
-[[nodiscard]] auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>;
-[[nodiscard]] auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>;
-[[nodiscard]] auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool;
+[[nodiscard]] auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<byte>;
+[[nodiscard]] auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<byte>;
+[[nodiscard]] auto TryParseUdpPacket(const_span<byte> data, UdpPacketInfo& packet) -> bool;
 
 FO_END_NAMESPACE

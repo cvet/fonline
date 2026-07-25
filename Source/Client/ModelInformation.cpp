@@ -117,7 +117,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+    const const_span<byte> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
     FO_VERIFY_AND_THROW(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()), "Invalid baked model description magic", name);
     const uint16_t schema = reader.Read<uint16_t>();
     const uint16_t flags = reader.Read<uint16_t>();

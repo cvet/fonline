@@ -83,6 +83,8 @@ The generated wrapper classes are thin over `Properties`; the real storage, type
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
+Property backing storage is an explicit binary domain. `PropertyRawData`, `Properties::GetRawData()` / `SetRawData()`, snapshot chunks passed to `RestoreData()`, overlay/POD/complex owners, and `PropertiesSerializator` cursors use `byte`, `vector<byte>`, and byte spans. Numeric property leaves—including scalar `uint8_t`, enum storage, array elements, and serialized size/index fields—remain numeric values and cross the backing byte storage through typed reads/writes. A numeric `uint8_t` container cannot bind directly to a raw property API.
+
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
@@ -178,6 +180,8 @@ Entity state is serialized through property data, not by hand-copying entity fie
 - raw binary property snapshots: `Entity::StoreData()` / `RestoreData()` and `Properties::StoreData()` / `RestoreData()`;
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
 - text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
+
+The raw snapshot chunks are `vector<vector<byte>>` end to end through `Entity`, client staging, network property blocks, and restore validation. This is a native type separation only: the byte layout, alignment, size prefixes, property indices, persistence data, and wire representation are unchanged.
 
 When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
 

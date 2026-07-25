@@ -67,7 +67,7 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    void BakeShaderProgram(string_view fname, string_view content) const;
+    void BakeShaderProgram(string_view fname, u8string_view content) const;
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const;
 };
 

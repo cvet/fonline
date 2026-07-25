@@ -313,7 +313,7 @@ protected:
     auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> nptr<RenderEffect>;
     auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> ptr<RenderEffect>;
 
-    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
+    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data) override;
     void HandleUnresolvedHash(hstring::hash_t hash);
 
     void Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
@@ -353,7 +353,7 @@ protected:
     void Net_OnRemoveCustomEntity();
 
     void ReceiveCustomEntities(nptr<Entity> holder);
-    auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
+    auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<byte>>& data) -> ptr<CustomEntityView>;
     void ReceiveCritterMoving(nptr<CritterHexView> cr);
 
     void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
@@ -395,12 +395,12 @@ protected:
     nptr<const Entity> _sendIgnoreEntity {};
     nptr<const Property> _sendIgnoreProperty {};
 
-    vector<vector<uint8_t>> _globalsPropertiesData {};
-    vector<vector<uint8_t>> _playerPropertiesData {};
-    vector<vector<uint8_t>> _tempPropertiesData {};
-    vector<vector<uint8_t>> _tempPropertiesDataExt {};
-    vector<vector<uint8_t>> _tempPropertiesDataCustomEntity {};
-    vector<uint8_t> _remoteCallData {};
+    vector<vector<byte>> _globalsPropertiesData {};
+    vector<vector<byte>> _playerPropertiesData {};
+    vector<vector<byte>> _tempPropertiesData {};
+    vector<vector<byte>> _tempPropertiesDataExt {};
+    vector<vector<byte>> _tempPropertiesDataCustomEntity {};
+    vector<byte> _remoteCallData {};
 
     uint32_t _ifaceAnimCounter {};
     unordered_map<uint32_t, unique_ptr<IfaceAnim>> _ifaceAnimations {};

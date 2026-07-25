@@ -27,7 +27,7 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", u8string {u8"[Header]\n[Tiles]\n[Objects]\n"}, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("RejectsMapsWithoutProtoMapSection")
@@ -35,7 +35,7 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "[Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", u8string {u8"[Critter]\n$Proto = CritterOne\n"}, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("MissingProtosAccumulateErrorsAndSkipCallbacks")

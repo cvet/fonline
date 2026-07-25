@@ -475,10 +475,10 @@ static auto NormalizeModelAnimationHierarchy(const vector<string>& hierarchy, st
 static auto FormatModelAnimationHierarchy(const vector<string>& hierarchy) -> string;
 static void ValidateModelAnimationJointName(string_view name, string_view context, bool root);
 template<typename T>
-static auto SerializeModelAnimationObject(const T& object, string_view context) -> vector<uint8_t>;
+static auto SerializeModelAnimationObject(const T& object, string_view context) -> vector<byte>;
 template<typename T>
-static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_view context) -> T;
-static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>;
+static auto DeserializeModelAnimationObject(const_span<byte> payload, string_view context) -> T;
+static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<byte> payload) -> vector<byte>;
 static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skeleton& skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig, string_view context);
 static void ValidateModelAnimationRoundTrip(const ozz::animation::Animation& animation, const ModelAnimationSource& source, size_t canonical_joint_count, string_view context);
 static auto HashModelAnimationRig(const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig) -> uint64_t;
@@ -502,7 +502,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
     if (model_description.empty()) {
         throw ModelAnimationConverterException("Can't build canonical animation artifacts for an empty model-description path");
     }
-    if (!strvex(model_description).is_valid_utf8() || model_description.find('\0') != string_view::npos) {
+    if (validate_utf8_text(model_description) || model_description.find('\0') != string_view::npos) {
         throw ModelAnimationConverterException("Model-description path is not a valid animation archive identity", model_description);
     }
     if (compatibility_report.BaseFile != base_skeleton.FileName) {
@@ -540,7 +540,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         "CanonicalSkeleton",
     };
 
-    const vector<uint8_t> skeleton_payload = SerializeModelAnimationObject(*skeleton, strex("canonical skeleton for '{}'", model_description));
+    const vector<byte> skeleton_payload = SerializeModelAnimationObject(*skeleton, strex("canonical skeleton for '{}'", model_description));
     result.SkeletonArchive = WrapAndValidateModelAnimationArchive(result.SkeletonMetadata, skeleton_payload);
     const ModelAnimationArchive loaded_skeleton_archive = ReadModelAnimationArchive(result.SkeletonArchive, result.SkeletonMetadata);
     const ozz::animation::Skeleton loaded_skeleton = DeserializeModelAnimationObject<ozz::animation::Skeleton>(loaded_skeleton_archive.Payload, strex("canonical skeleton for '{}'", model_description));
@@ -556,7 +556,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         "BaseJointRemap",
     };
 
-    const vector<uint8_t> base_remap_payload = WriteModelAnimationJointRemapPayload(result.BaseJointRemap, strex("base remap for '{}'", model_description));
+    const vector<byte> base_remap_payload = WriteModelAnimationJointRemapPayload(result.BaseJointRemap, strex("base remap for '{}'", model_description));
     result.BaseJointRemapArchive = WrapAndValidateModelAnimationArchive(result.BaseJointRemapMetadata, base_remap_payload);
     const ModelAnimationArchive loaded_base_remap_archive = ReadModelAnimationArchive(result.BaseJointRemapArchive, result.BaseJointRemapMetadata);
     const ModelAnimationJointRemap loaded_base_remap = ReadModelAnimationJointRemapPayload(loaded_base_remap_archive.Payload, strex("base remap for '{}'", model_description));
@@ -586,7 +586,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto take_archive_payload = [](ModelAnimationArchiveMetadata& metadata, vector<uint8_t>& archive_data) -> ModelAnimationRigArchiveData {
+    const auto take_archive_payload = [](ModelAnimationArchiveMetadata& metadata, vector<byte>& archive_data) -> ModelAnimationRigArchiveData {
         ModelAnimationArchive archive = ReadModelAnimationArchive(archive_data, metadata);
         return ModelAnimationRigArchiveData {std::move(metadata), std::move(archive.Payload)};
     };
@@ -887,7 +887,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
     };
 
     const string animation_context = strex("animation '{}#{}'", animation.FileName, animation.Name);
-    const vector<uint8_t> animation_payload = SerializeModelAnimationObject(*runtime_animation, animation_context);
+    const vector<byte> animation_payload = SerializeModelAnimationObject(*runtime_animation, animation_context);
     result.AnimationArchive = WrapAndValidateModelAnimationArchive(result.AnimationMetadata, animation_payload);
     const ModelAnimationArchive loaded_animation_archive = ReadModelAnimationArchive(result.AnimationArchive, result.AnimationMetadata);
     const ozz::animation::Animation loaded_animation = DeserializeModelAnimationObject<ozz::animation::Animation>(loaded_animation_archive.Payload, animation_context);
@@ -903,7 +903,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
         strex("{}:JointRemap", animation.Name),
     };
 
-    const vector<uint8_t> remap_payload = WriteModelAnimationJointRemapPayload(result.JointRemap, animation_context);
+    const vector<byte> remap_payload = WriteModelAnimationJointRemapPayload(result.JointRemap, animation_context);
     result.JointRemapArchive = WrapAndValidateModelAnimationArchive(result.JointRemapMetadata, remap_payload);
     const ModelAnimationArchive loaded_remap_archive = ReadModelAnimationArchive(result.JointRemapArchive, result.JointRemapMetadata);
     const ModelAnimationJointRemap loaded_remap = ReadModelAnimationJointRemapPayload(loaded_remap_archive.Payload, animation_context);
@@ -1368,13 +1368,13 @@ static void ValidateModelAnimationJointName(string_view name, string_view contex
     if (name.find('\0') != string_view::npos) {
         throw ModelAnimationConverterException("Embedded NUL in ozz joint name", context);
     }
-    if (!strvex(name).is_valid_utf8()) {
+    if (validate_utf8_text(name)) {
         throw ModelAnimationConverterException("Invalid UTF-8 ozz joint name", context);
     }
 }
 
 template<typename T>
-static auto SerializeModelAnimationObject(const T& object, string_view context) -> vector<uint8_t>
+static auto SerializeModelAnimationObject(const T& object, string_view context) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1392,7 +1392,7 @@ static auto SerializeModelAnimationObject(const T& object, string_view context) 
         throw ModelAnimationConverterException("Can't rewind serialized ozz object", context);
     }
 
-    vector<uint8_t> result(stream.Size());
+    vector<byte> result(stream.Size());
 
     if (stream.Read(result.data(), result.size()) != result.size()) {
         throw ModelAnimationConverterException("Can't read complete serialized ozz object", context);
@@ -1402,7 +1402,7 @@ static auto SerializeModelAnimationObject(const T& object, string_view context) 
 }
 
 template<typename T>
-static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_view context) -> T
+static auto DeserializeModelAnimationObject(const_span<byte> payload, string_view context) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1435,12 +1435,12 @@ static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_
     return result;
 }
 
-static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>
+static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<byte> payload) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        vector<uint8_t> result = WriteModelAnimationArchive(metadata, payload);
+        vector<byte> result = WriteModelAnimationArchive(metadata, payload);
         (void)ReadModelAnimationArchive(result, metadata);
         return result;
     }

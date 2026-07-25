@@ -37,19 +37,21 @@
 
 FO_BEGIN_NAMESPACE
 
-void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Load from file
-    const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
+    const std::u8string_view native_buf = buf.view().native_view();
+    const bool is_old_format = native_buf.find(u8"[Header]") != std::u8string_view::npos && native_buf.find(u8"[Tiles]") != std::u8string_view::npos && native_buf.find(u8"[Objects]") != std::u8string_view::npos;
 
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
     }
 
     // Header
-    ConfigFile map_data(strex("{}.fomap", name), buf);
+    const u8string config_name = u8strex("{}.fomap", name);
+    ConfigFile map_data(config_name.view(), buf);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
@@ -79,17 +81,17 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
 
     // Critters
     for (const auto& pkv : map_data.GetSections("Critter")) {
-        auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        const auto proto_it = pkv->find("$Proto");
 
-        if (proto_it == kv->end()) {
+        if (proto_it == pkv->end()) {
             WriteLog(LogType::Warning, "Proto critter invalid data");
             errors++;
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        const map<string_view, string_view> kv = utf8_map_as_char_views(*pkv);
+        const auto id_it = kv.find("$Id");
+        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoCritter(hashed_proto_name);
@@ -100,7 +102,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         }
         else {
             try {
-                cr_load(id, proto, kv);
+                cr_load(id, proto, make_ptr(&kv));
             }
             catch (const std::exception& ex) {
                 WriteLog(LogType::Warning, "Unable to load critter '{}'", proto_name);
@@ -112,17 +114,17 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
 
     // Items
     for (const auto& pkv : map_data.GetSections("Item")) {
-        auto kv = pkv;
-        const auto proto_it = kv->find("$Proto");
+        const auto proto_it = pkv->find("$Proto");
 
-        if (proto_it == kv->end()) {
+        if (proto_it == pkv->end()) {
             WriteLog(LogType::Warning, "Proto item invalid data");
             errors++;
             continue;
         }
 
-        const auto id_it = kv->find("$Id");
-        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
+        const map<string_view, string_view> kv = utf8_map_as_char_views(*pkv);
+        const auto id_it = kv.find("$Id");
+        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoItem(hashed_proto_name);
@@ -133,7 +135,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         }
         else {
             try {
-                item_load(id, proto, kv);
+                item_load(id, proto, make_ptr(&kv));
             }
             catch (const std::exception& ex) {
                 WriteLog(LogType::Warning, "Unable to load item '{}'", proto_name);

@@ -125,8 +125,8 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto send = [this]() FO_DEFERRED -> const_span<uint8_t> { return AsyncSendData(); };
-    auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
+    auto send = [this]() FO_DEFERRED -> const_span<byte> { return AsyncSendData(); };
+    auto receive = [this](const_span<byte> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
         AsyncReceiveData({});
@@ -330,7 +330,7 @@ void ServerConnection::StartAsyncSend()
     _netConnection->Dispatch();
 }
 
-auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
+auto ServerConnection::AsyncSendData() -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -346,7 +346,8 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
         _compressor.Compress(raw_buf, _sendBuf);
     }
     else {
-        _sendBuf.assign(raw_buf.begin(), raw_buf.end());
+        _sendBuf.resize(raw_buf.size());
+        MemCopy(_sendBuf.data(), raw_buf.data(), raw_buf.size());
     }
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
@@ -355,7 +356,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
     return _sendBuf;
 }
 
-void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
+void ServerConnection::AsyncReceiveData(const_span<byte> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

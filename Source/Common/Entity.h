@@ -211,7 +211,7 @@ public:
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     auto StoreData(bool with_protected) const -> Properties::StoredData;
-    void RestoreData(const vector<vector<uint8_t>>& props_data);
+    void RestoreData(const vector<vector<byte>>& props_data);
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetValueAsInt(ptr<const Property> prop, int32_t value);
     void SetValueAsInt(int32_t prop_index, int32_t value);

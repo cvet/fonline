@@ -98,42 +98,28 @@ using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag,
 static_assert(some_strong_type<ident_t>);
 
 // Command line arguments
-using CommandLineArg = nptr<char>;
+using CommandLineArg = u8string_view;
 
 class CommandLineArgs
 {
 public:
     CommandLineArgs() = default;
-    explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
-    {
-        const size_t arg_count = numeric_cast<size_t>(argc);
-        FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+    explicit CommandLineArgs(int32_t argc, nptr<char*> argv);
+#if FO_WINDOWS
+    explicit CommandLineArgs(int32_t argc, nptr<wchar_t*> argv);
+#endif
+    explicit CommandLineArgs(const_span<CommandLineArg> args);
 
-        _args.resize(arg_count);
-
-        for (size_t i = 0; i < arg_count; ++i) {
-            FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
-            _args[i] = argv[i];
-        }
-    }
-    explicit CommandLineArgs(const_span<CommandLineArg> args) :
-        _args(args.begin(), args.end())
-    {
-        for (const CommandLineArg arg : _args) {
-            FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
-        }
-    }
-
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
-    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
+    [[nodiscard]] static auto IsOption(u8string_view arg) noexcept -> bool { return arg.native_view().starts_with(u8'-'); }
+    [[nodiscard]] auto Get(size_t index) const noexcept -> u8string_view { return index < _args.size() ? _args[index].view() : u8string_view {}; }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
-    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
+    [[nodiscard]] auto operator[](size_t index) const noexcept -> u8string_view { return _args[index].view(); }
     [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
 private:
-    vector<CommandLineArg> _args {};
+    vector<u8string> _args {};
 };
 
 // Custom any as string
@@ -143,6 +129,10 @@ public:
     any_t() = default;
     explicit any_t(string other) :
         string(std::move(other))
+    {
+    }
+    explicit any_t(u8string_view other) :
+        string(utf8_to_char_string(other))
     {
     }
 };
@@ -886,10 +876,10 @@ private:
 };
 
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
-extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
+extern void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
-using InterthreadDataCallback = function<void(span<const uint8_t>)>;
+using InterthreadDataCallback = function<void(const_span<byte>)>;
 extern mutex InterthreadListenersLocker;
 extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 

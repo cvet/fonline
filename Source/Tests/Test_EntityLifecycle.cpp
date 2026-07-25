@@ -51,7 +51,7 @@ namespace
         {
             FO_STACK_TRACE_ENTRY();
 
-            _host = "Test";
+            _host = string {"Test"};
         }
         TestNetworkConnection(const TestNetworkConnection&) = delete;
         TestNetworkConnection(TestNetworkConnection&&) noexcept = delete;
@@ -59,7 +59,7 @@ namespace
         auto operator=(TestNetworkConnection&&) noexcept = delete;
         ~TestNetworkConnection() override = default;
 
-        void Receive(const_span<uint8_t> buf)
+        void Receive(const_span<byte> buf)
         {
             FO_STACK_TRACE_ENTRY();
 
@@ -117,12 +117,12 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const const_span<uint8_t> encoded_data = SendCallback();
+            const const_span<byte> encoded_data = SendCallback();
 
             if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
-                const_span<uint8_t> data = encoded_data;
+                const_span<byte> data = encoded_data;
                 if (!_settings->DisableZlibCompression) {
                     _decompressor.Decompress(encoded_data, _unpackedData);
                     data = _unpackedData;
@@ -173,7 +173,7 @@ namespace
         std::atomic<size_t> _sentAddCritterCount {};
         std::atomic<size_t> _sentRemoveCritterCount {};
         StreamDecompressor _decompressor {};
-        vector<uint8_t> _unpackedData {};
+        vector<byte> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
         std::atomic<NetMessage> _firstSentTrackedMessage {};
         std::atomic<NetMessage> _secondSentTrackedMessage {};
@@ -190,7 +190,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -509,9 +509,9 @@ namespace EntityLifecycle
             });
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
+    static auto MakeEmptyMapBlob() -> vector<byte>
     {
-        vector<uint8_t> map_data;
+        vector<byte> map_data;
         auto writer = DataWriter(map_data);
         writer.Write<uint32_t>(uint32_t {0}); // hashes_count
         writer.Write<uint32_t>(uint32_t {0}); // cr_count
@@ -519,9 +519,9 @@ namespace EntityLifecycle
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -531,7 +531,7 @@ namespace EntityLifecycle
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});

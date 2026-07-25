@@ -78,7 +78,7 @@ namespace
             return settings;
         }
 
-        static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+        static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
         {
             BakerServerEngine compiler_engine {metadata_resources};
 
@@ -388,7 +388,7 @@ TEST_CASE("AngelScriptValueAlignment")
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
         REQUIRE(script_module != nullptr);
 
-        for (const string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
+        for (const string_view class_decl : {"AlignTest::MixedMembers", "AlignTest::DerivedMembers", "AlignTest::DerivedTwice", "AlignTest::WithMixin"}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
             REQUIRE(class_type != nullptr);

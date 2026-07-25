@@ -13,6 +13,14 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto MakeEffectInfoConfig(string_view path, u8string text) -> ConfigFile
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string strict_path = path;
+    return ConfigFile {strict_path.view(), std::move(text)};
+}
+
 static constexpr string_view VALID_EFFECT = R"(
 [Effect]
 
@@ -261,21 +269,21 @@ TEST_CASE("EffectBaker")
         TestRig local_rig;
         local_rig.AddSourceFile("Effects/BadVertex.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = ; }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = vec4(1.0); }\n");
 
-        vector<string> captured_messages;
-        SetLogCallback("effect-baker-diagnostic-line-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
+        vector<u8string> captured_messages;
+        SetLogCallback("effect-baker-diagnostic-line-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
         const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("effect-baker-diagnostic-line-test", {}); });
 
         EffectBaker baker {local_rig.MakeContext()};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
 
-        const auto diagnostic_it = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Failed to parse vertex shader") != string::npos; });
+        const auto diagnostic_it = std::ranges::find_if(captured_messages, [](const u8string& message) { return message.view().native_view().find(u8"Failed to parse vertex shader") != std::u8string_view::npos; });
         REQUIRE(diagnostic_it != captured_messages.end());
-        CHECK(diagnostic_it->find("\n- error") == string::npos);
-        CHECK(diagnostic_it->find("\n- ERROR") == string::npos);
-        CHECK(diagnostic_it->find("error :") == string::npos);
-        CHECK(diagnostic_it->find("ERROR:") == string::npos);
-        CHECK(diagnostic_it->find("Shader compiler diagnostic:") != string::npos);
-        CHECK(diagnostic_it->find("syntax error") != string::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"\n- error") == std::u8string_view::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"\n- ERROR") == std::u8string_view::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"error :") == std::u8string_view::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"ERROR:") == std::u8string_view::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"Shader compiler diagnostic:") != std::u8string_view::npos);
+        CHECK(diagnostic_it->view().native_view().find(u8"syntax error") != std::u8string_view::npos);
     }
 
     SECTION("RejectsMismatchedKnownUniformBuffer")
@@ -299,7 +307,7 @@ TEST_CASE("EffectBakerBakesAuxiliaryBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    const auto info = ConfigFile("Effects/Aux.fofx-1-info", rig.GetOutputText("Effects/Aux.fofx-1-info"));
+    const auto info = MakeEffectInfoConfig("Effects/Aux.fofx-1-info", rig.GetOutputText("Effects/Aux.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "IndoorMaskTex", -1) == 2);
@@ -319,7 +327,7 @@ TEST_CASE("EffectBakerBakesExplicitBindings")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    const auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+    const auto info = MakeEffectInfoConfig("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "MainTex", -1) == 0);
@@ -345,7 +353,7 @@ TEST_CASE("EffectBakerBakesSdlGpuFlavors")
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv_sdl"));
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv_sdl"));
 
-    const auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+    const auto info = MakeEffectInfoConfig("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfoSdl"));
     // VALID_EFFECT: vertex has ProjBuf (1 UBO, no samplers); fragment has MainTex (1 sampler) + TimeBuf (1 UBO)

@@ -209,21 +209,34 @@ private:
     size_t _lastUploadedIndices {};
 };
 
-static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
+static auto CopyEffectConfigBytes(string_view text) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fofx_content = loader(name);
+    vector<byte> data(text.size());
+
+    if (!data.empty()) {
+        MemCopy(data.data(), text.data(), data.size());
+    }
+
+    return data;
+}
+
+static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> vector<byte>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<byte> fofx_content = loader(name);
 
     if (!fofx_content.empty()) {
         return fofx_content;
     }
 
     if (name.ends_with("-info")) {
-        return "[EffectInfo]\n";
+        return CopyEffectConfigBytes("[EffectInfo]\n");
     }
 
-    return "[Effect]\nPasses = 1\n";
+    return CopyEffectConfigBytes("[Effect]\nPasses = 1\n");
 }
 
 class Null_Effect final : public RenderEffect

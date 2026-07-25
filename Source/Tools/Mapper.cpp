@@ -146,10 +146,12 @@ static auto ContainsCaseInsensitive(string_view text, string_view filter) -> boo
         return true;
     }
 
-    const string lower_text = strex(text).lower_utf8();
-    const string lower_filter = strex(filter).lower_utf8();
+    auto lower_text = u8strex(u8string {text});
+    auto lower_filter = u8strex(u8string {filter});
+    lower_text.lower();
+    lower_filter.lower();
 
-    return lower_text.find(lower_filter) != string::npos;
+    return lower_text.strv().native_view().find(lower_filter.strv().native_view()) != std::u8string_view::npos;
 }
 
 static auto ResolveAtlasSprite(nptr<const Sprite> sprite) -> nptr<const AtlasSprite>
@@ -190,7 +192,8 @@ static auto ParseInspectorValue(ptr<const Property> prop, string_view text) -> o
     FO_STACK_TRACE_ENTRY();
 
     try {
-        return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
+        const u8string utf8_text = text;
+        return AnyData::ParseValue(utf8_text.view(), false, prop->IsArray(), GetInspectorValueType(prop));
     }
     catch (const std::exception&) {
         return std::nullopt;
@@ -209,7 +212,7 @@ static auto MakeDefaultInspectorArrayElement(ptr<const Property> prop) -> AnyDat
     case AnyData::ValueType::Bool:
         return AnyData::Value {false};
     case AnyData::ValueType::String:
-        return AnyData::Value {string {}};
+        return AnyData::Value {u8string {}};
     default:
         FO_UNREACHABLE_PLACE();
     }
@@ -226,7 +229,8 @@ static auto SerializeInspectorArray(vector<AnyData::Value> entries) -> string
         value_arr.EmplaceBack(std::move(entry));
     }
 
-    return AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
+    const auto utf8_result = AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
+    return utf8_to_char_string(utf8_result.view());
 }
 
 static auto SerializeInspectorStringArray(const vector<string>& entries) -> string
@@ -237,7 +241,7 @@ static auto SerializeInspectorStringArray(const vector<string>& entries) -> stri
     values.reserve(entries.size());
 
     for (const auto& entry : entries) {
-        values.emplace_back(string {entry});
+        values.emplace_back(entry);
     }
 
     return SerializeInspectorArray(std::move(values));
@@ -265,7 +269,10 @@ static auto ReadInspectorToken(nptr<const char> str, string& result) -> nptr<con
 
     const auto decode_char = [str](size_t char_pos, size_t& char_len) {
         char_len = utf8::DecodeStrNtLen(&str[char_pos]);
-        utf8::Decode(&str[char_pos], char_len);
+
+        if (char_len != 0) {
+            (void)utf8::Decode(&str[char_pos], char_len);
+        }
     };
 
     size_t pos = 0;
@@ -364,7 +371,8 @@ static auto ParseInspectorStringEntries(string_view text) -> optional<vector<str
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
+        const u8string utf8_text = text;
+        const auto parsed = AnyData::ParseValue(utf8_text.view(), false, true, AnyData::ValueType::String);
         if (parsed.Type() != AnyData::ValueType::Array) {
             return std::nullopt;
         }
@@ -373,7 +381,7 @@ static auto ParseInspectorStringEntries(string_view text) -> optional<vector<str
         entries.reserve(parsed.AsArray().Size());
 
         for (const auto& entry : parsed.AsArray()) {
-            entries.emplace_back(entry.AsString());
+            entries.emplace_back(utf8_to_char_string(entry.AsString()));
         }
 
         return entries;
@@ -472,17 +480,20 @@ static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_
 {
     FO_STACK_TRACE_ENTRY();
 
-    string cfg_user;
+    u8string cfg_user;
+    const auto append_config = [&cfg_user](u8string_view text) { cfg_user.append(text); };
 
     if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+        const u8string cached_config = cache.GetText(LOCAL_CONFIG_NAME);
+        const u8string config_name = LOCAL_CONFIG_NAME;
+        auto config = ConfigFile(config_name.view(), cached_config);
         const auto& sections = config.GetSections();
         auto wrote_root_key = false;
         auto has_root_section = false;
 
         for (const auto& [section_name, key_values] : *sections) {
             if (!section_name.empty()) {
-                cfg_user += strex("[{}]\n", section_name);
+                append_config(u8strex("[{}]\n", section_name));
             }
             else {
                 has_root_section = true;
@@ -490,33 +501,35 @@ static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_
 
             for (const auto& [entry_key, entry_value] : key_values) {
                 if (section_name.empty() && entry_key == key) {
-                    cfg_user += strex("{} = {}\n", key, value);
+                    append_config(u8strex("{} = {}\n", key, value));
                     wrote_root_key = true;
                 }
                 else {
-                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                    append_config(u8strex("{} = {}\n", entry_key, entry_value));
                 }
             }
 
             if (section_name.empty() && !wrote_root_key) {
-                cfg_user += strex("{} = {}\n", key, value);
+                append_config(u8strex("{} = {}\n", key, value));
                 wrote_root_key = true;
             }
 
             if (!section_name.empty()) {
-                cfg_user += "\n";
+                cfg_user.append("\n");
             }
         }
 
         if (!has_root_section) {
-            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
+            u8string root_entry = u8strex("{} = {}\n", key, value);
+            root_entry.append(cfg_user);
+            cfg_user = std::move(root_entry);
         }
     }
     else {
-        cfg_user = strex("{} = {}\n", key, value);
+        cfg_user = u8strex("{} = {}\n", key, value);
     }
 
-    cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    cache.SetText(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
@@ -526,11 +539,11 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     GetApp()->LoadImGuiEffect(Resources);
 
-    MapsFileSys.AddDirSource("", false, true, true);
+    MapsFileSys.AddDirSource(u8"", false, true, true);
 
     for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir, true, true, true);
+            MapsFileSys.AddDirSource(dir.view(), true, true, true);
         }
     }
 
@@ -631,16 +644,18 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
     // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
     if (!Settings->NullRenderer) {
-        const auto imgui_ini = Cache.GetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY);
+        const u8string imgui_ini = Cache.GetText(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY);
 
         if (!imgui_ini.empty()) {
-            ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
+            const const_span<char> imgui_ini_chars = utf8_to_char_span(imgui_ini.view());
+            ImGui::LoadIniSettingsFromMemory(imgui_ini_chars.data(), imgui_ini_chars.size());
             ImGui::GetIO().WantSaveIniSettings = false;
         }
     }
 
     // Load console history
-    const auto history_str = Cache.GetString("mapper_console.txt");
+    const u8string history_text = Cache.GetText("mapper_console.txt");
+    const string history_str = utf8_to_char_string(history_text.view());
     ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
     while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->ConsoleHistorySize) {
@@ -708,7 +723,7 @@ void MapperEngine::ResetImGuiSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, "");
+    Cache.SetText(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, u8"");
     ImGui::LoadIniSettingsFromMemory("", 0);
     ImGui::GetIO().WantSaveIniSettings = false;
 
@@ -780,7 +795,8 @@ void MapperEngine::MapperMainLoop()
         size_t ini_size = 0;
 
         if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size)); ini_data) {
-            Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, string_view(ini_data.get(), ini_size));
+            const u8string imgui_ini = utf8_from_char_span(const_span<char> {ini_data.get(), ini_size});
+            Cache.SetText(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, imgui_ini.view());
         }
 
         io.WantSaveIniSettings = false;
@@ -1638,7 +1654,7 @@ auto MapperEngine::ExecuteRedo() -> bool
     return true;
 }
 
-auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
+auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1646,7 +1662,7 @@ auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
         return {};
     }
 
-    return map->SaveToText();
+    return u8string {map->SaveToText()};
 }
 
 void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> entity) const
@@ -1800,7 +1816,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
     return nullptr;
 }
 
-auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool
+auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const u8string& map_text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3268,13 +3284,15 @@ void MapperEngine::DrawInspectorImGui()
                                 auto current_value = false;
 
                                 try {
-                                    current_value = AnyData::ParseValue(field_values[field_index], false, false, AnyData::ValueType::Bool).AsBool();
+                                    const u8string utf8_value = field_values[field_index];
+                                    current_value = AnyData::ParseValue(utf8_value.view(), false, false, AnyData::ValueType::Bool).AsBool();
                                 }
                                 catch (const std::exception&) {
                                 }
 
                                 if (ImGui::Checkbox("##field", &current_value)) {
-                                    field_values[field_index] = AnyData::ValueToString(AnyData::Value {current_value});
+                                    const auto utf8_value = AnyData::ValueToString(AnyData::Value {current_value});
+                                    field_values[field_index] = utf8_to_string(utf8_value.view());
                                     struct_changed = true;
                                     commit_requested = true;
                                 }
@@ -3390,7 +3408,8 @@ void MapperEngine::DrawInspectorImGui()
 
                                 switch (GetInspectorValueType(prop)) {
                                 case AnyData::ValueType::Int64: {
-                                    auto value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    const auto utf8_value = AnyData::ValueToString(entries[entry_index]);
+                                    auto value_buf = utf8_to_string(utf8_value.view());
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
@@ -3399,7 +3418,8 @@ void MapperEngine::DrawInspectorImGui()
                                     const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
                                         try {
-                                            auto entry_value = AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Int64).AsInt64();
+                                            const u8string utf8_value_buf = value_buf;
+                                            auto entry_value = AnyData::ParseValue(utf8_value_buf.view(), false, false, AnyData::ValueType::Int64).AsInt64();
                                             if (!prop->IsBaseTypeSignedInt() && entry_value < 0) {
                                                 entry_value = 0;
                                             }
@@ -3415,7 +3435,8 @@ void MapperEngine::DrawInspectorImGui()
                                     break;
                                 }
                                 case AnyData::ValueType::Float64: {
-                                    auto value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    const auto utf8_value = AnyData::ValueToString(entries[entry_index]);
+                                    auto value_buf = utf8_to_string(utf8_value.view());
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
@@ -3424,7 +3445,8 @@ void MapperEngine::DrawInspectorImGui()
                                     const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
                                         try {
-                                            entries[entry_index] = AnyData::Value {AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Float64).AsDouble()};
+                                            const u8string utf8_value_buf = value_buf;
+                                            entries[entry_index] = AnyData::Value {AnyData::ParseValue(utf8_value_buf.view(), false, false, AnyData::ValueType::Float64).AsDouble()};
                                             array_changed = true;
                                         }
                                         catch (const std::exception&) {
@@ -3445,7 +3467,7 @@ void MapperEngine::DrawInspectorImGui()
                                     break;
                                 }
                                 case AnyData::ValueType::String: {
-                                    auto string_buf = string(entries[entry_index].AsString());
+                                    auto string_buf = utf8_to_char_string(entries[entry_index].AsString());
                                     if (string_buf.capacity() < 512) {
                                         string_buf.reserve(512);
                                     }
@@ -3453,7 +3475,7 @@ void MapperEngine::DrawInspectorImGui()
                                     const auto value_submitted = ImGuiInputTextString("##ArrayValue", string_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                     const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
-                                        entries[entry_index] = AnyData::Value {std::move(string_buf)};
+                                        entries[entry_index] = AnyData::Value {utf8_from_char_span(const_span<char> {string_buf.data(), string_buf.size()})};
                                         array_changed = true;
                                     }
                                     commit_requested |= value_submitted || value_deactivated;
@@ -3514,7 +3536,8 @@ void MapperEngine::DrawInspectorImGui()
                             focus_consumed = true;
                         }
                         if (ImGui::Checkbox("##value", &current_value)) {
-                            InspectorSelectedLineValue = AnyData::ValueToString(AnyData::Value {current_value});
+                            const auto utf8_value = AnyData::ValueToString(AnyData::Value {current_value});
+                            InspectorSelectedLineValue = utf8_to_string(utf8_value.view());
                             commit_requested = true;
                         }
                     }
@@ -6328,7 +6351,8 @@ void MapperEngine::ConsoleSubmitCommand()
     for (const auto& str : ConsoleHistory) {
         history_str += str + "\n";
     }
-    Cache.SetString("mapper_console.txt", history_str);
+    const u8string history_text = history_str;
+    Cache.SetText("mapper_console.txt", history_text.view());
 
     const auto process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
     AddMess(ConsoleStr);
@@ -6388,7 +6412,7 @@ void MapperEngine::ParseCommand(string_view command)
     }
     // Run script
     else if (command[0] == '#') {
-        const auto before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+        const auto before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
         const auto command_str = string(command.substr(1));
         istringstream icmd(command_str);
         string func_name;
@@ -6538,7 +6562,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "reverse-light" && _curMap) {
-            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
 
@@ -6563,7 +6587,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "merge-items" && _curMap) {
-            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
             MergeItemsToMultihexMeshes(cur_map);
@@ -6580,7 +6604,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "break-items" && _curMap) {
-            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
             BreakItemsMultihexMeshes(cur_map);
@@ -6602,22 +6626,27 @@ void MapperEngine::ParseCommand(string_view command)
     }
 }
 
-auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>
+auto MapperEngine::LoadMapFromText(string_view map_name, const u8string& map_text) -> nptr<MapView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_text, ConfigFileOption::ReadFirstSection);
+    const u8string config_name = u8strex("{}.fomap", map_name);
+    const auto map_data = ConfigFile(config_name, map_text, ConfigFileOption::ReadFirstSection);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
     }
 
     const auto& proto_map_section = map_data.GetSection("ProtoMap");
+    map<string_view, string_view> char_proto_map_section;
     map<string, string> proto_map_header_extra_fields;
 
     for (const auto& [key, value] : proto_map_section) {
+        const string_view value_chars = utf8_as_char_view(value);
+        char_proto_map_section.emplace(key, value_chars);
+
         if (key.starts_with("$Text")) {
-            proto_map_header_extra_fields.emplace(string {key}, string {value});
+            proto_map_header_extra_fields.emplace(string {key}, string {value_chars});
         }
     }
 
@@ -6625,7 +6654,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
 
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
-    pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
+    pmap->GetPropertiesForEdit()->ApplyFromText(char_proto_map_section);
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
     new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
@@ -6680,7 +6709,8 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
         return nullptr;
     }
 
-    return LoadMapFromText(map_name, map_file.GetStr());
+    const u8string map_text = map_file.GetText();
+    return LoadMapFromText(map_name, map_text);
 }
 
 void MapperEngine::ShowMap(ptr<MapView> map)
@@ -6796,32 +6826,35 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     const auto fomap_content = map->SaveToText();
 
     const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
+    const u8string fomap_name_utf8 = fomap_name;
     FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a .fomap file name for saving", map->GetName(), custom_name, map->GetProto()->GetName());
 
-    string fomap_path;
+    u8string fomap_path;
     const auto fomap_files = MapsFileSys.FilterFiles("fomap");
 
     if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
         fomap_path = fomap_file.GetDiskPath();
     }
     else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-        fomap_path = strex(fomap_file2.GetDiskPath()).change_file_name(fomap_name);
+        const u8string disk_path = fomap_file2.GetDiskPath();
+        fomap_path = u8strex(disk_path).change_file_name(fomap_name_utf8);
     }
     else if (fomap_files.GetFilesCount() != 0) {
-        fomap_path = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).change_file_name(fomap_name);
+        const u8string disk_path = fomap_files.GetFileByIndex(0).GetDiskPath();
+        fomap_path = u8strex(disk_path).change_file_name(fomap_name_utf8);
     }
     else {
-        fomap_path = strex("{}.fomap", fomap_path).format_path();
+        fomap_path = u8strex("{}.fomap", fomap_name).format_path();
     }
 
-    const auto dir = strex(fomap_path).extract_dir().str();
+    const u8string dir = u8strex(fomap_path).extract_dir();
 
     if (!dir.empty()) {
-        const auto dir_ok = fs_create_directories(dir);
+        const auto dir_ok = fs_create_directories(dir.view());
         FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create .fomap output directory", dir, fomap_path, fomap_name);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path.view())}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
     if (!fomap_content.empty()) {
         fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
@@ -6861,18 +6894,19 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     const auto fomap_files = MapsFileSys.FilterFiles("fomap");
     FO_VERIFY_AND_THROW(fomap_files.GetFilesCount() != 0, "No fomap file found to resolve the Maps root directory");
 
-    string maps_root = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).extract_dir().str();
-    std::ranges::replace(maps_root, '\\', '/');
+    const u8string reference_disk_path = fomap_files.GetFileByIndex(0).GetDiskPath();
+    u8string maps_root = u8strex(reference_disk_path).extract_dir().normalize_path_slashes();
+    const std::u8string_view maps_root_view = maps_root.view().native_view();
 
-    if (const auto pos = maps_root.rfind("/Maps/"); pos != string::npos) {
-        maps_root = maps_root.substr(0, pos + 5); // keep ".../Maps"
+    if (const size_t pos = maps_root_view.rfind(u8"/Maps/"); pos != std::u8string_view::npos) {
+        maps_root.assign(u8string_view::FromChecked(maps_root_view.substr(0, pos + 5))); // keep ".../Maps"
     }
     // else: best-effort fallback keeps the reference file's directory (incl. a path already ending in /Maps)
 
-    const string target_dir = !sub_dir.empty() ? strex("{}/{}", maps_root, sub_dir).str() : maps_root;
-    const string fomap_path = strex("{}/{}.fomap", target_dir, name).format_path().str();
+    const u8string target_dir = !sub_dir.empty() ? u8strex("{}/{}", maps_root, sub_dir) : maps_root;
+    const u8string fomap_path = u8strex("{}/{}.fomap", target_dir, name).format_path();
 
-    const auto dir = strex(fomap_path).extract_dir().str();
+    const u8string dir = u8strex(fomap_path).extract_dir();
 
     if (!dir.empty()) {
         const auto dir_ok = fs_create_directories(dir);
@@ -6932,7 +6966,7 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
-    const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : string {};
+    const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : u8string {};
 
     const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);

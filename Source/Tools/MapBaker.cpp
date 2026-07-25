@@ -168,16 +168,16 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     // Bake maps
     const auto bake_map = [&](const MapBakeEntry& entry) {
         const File& file = entry.SourceFile;
-        const string file_content = file.GetStr();
+        const u8string file_content = file.GetText();
         const string& map_name = entry.MapName;
 
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         uint32_t map_cr_count = 0;
         uint32_t map_item_count = 0;
         uint32_t map_client_item_count = 0;
-        vector<uint8_t> map_cr_data;
-        vector<uint8_t> map_item_data;
-        vector<uint8_t> map_client_item_data;
+        vector<byte> map_cr_data;
+        vector<byte> map_item_data;
+        vector<byte> map_client_item_data;
         auto map_cr_data_writer = DataWriter(map_cr_data);
         auto map_item_data_writer = DataWriter(map_item_data);
         auto map_client_item_data_writer = DataWriter(map_client_item_data);
@@ -192,7 +192,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties()->Copy();
                 props.ApplyFromText(*kv);
 
-                errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_engine);
+                errors += ValidateProperties(props, u8strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_cr_count++;
                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -206,7 +206,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties()->Copy();
                 props.ApplyFromText(*kv);
 
-                errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
+                errors += ValidateProperties(props, u8strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_item_count++;
                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -246,7 +246,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         // Server side
         {
-            vector<uint8_t> map_data;
+            vector<byte> map_data;
             auto final_writer = DataWriter(map_data);
 
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
@@ -268,7 +268,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         // Client side
         {
-            vector<uint8_t> map_data;
+            vector<byte> map_data;
             auto final_writer = DataWriter(map_data);
 
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(client_str_hashes.size()));
@@ -316,8 +316,10 @@ auto MapBaker::ResolveMapName(const File& file) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fomap = ConfigFile(file.GetPath(), file.GetStr(), ConfigFileOption::ReadFirstSection);
-    return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
+    const u8string config_name = file.GetPath();
+    const auto fomap = ConfigFile(config_name.view(), file.GetText(), ConfigFileOption::ReadFirstSection);
+    const u8string default_name = file.GetNameNoExt();
+    return utf8_to_string(fomap.GetAsStr("Header", "$Name", default_name.view()));
 }
 
 FO_END_NAMESPACE

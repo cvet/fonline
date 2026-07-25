@@ -42,7 +42,8 @@ class CacheStorageImpl;
 class CacheStorage
 {
 public:
-    explicit CacheStorage(string_view path);
+    explicit CacheStorage(u8string_view path);
+    explicit CacheStorage(u8string path);
     CacheStorage(const CacheStorage&) = delete;
     CacheStorage(CacheStorage&&) noexcept;
     auto operator=(const CacheStorage&) = delete;
@@ -50,12 +51,18 @@ public:
     ~CacheStorage();
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool;
-    [[nodiscard]] auto GetString(string_view entry_name) const -> string;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t>;
+    [[nodiscard]] auto HasEntry(u8string_view entry_name) const -> bool;
+    [[nodiscard]] auto GetText(string_view entry_name) const -> u8string;
+    [[nodiscard]] auto GetText(u8string_view entry_name) const -> u8string;
+    [[nodiscard]] auto GetBytes(string_view entry_name) const -> vector<byte>;
+    [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte>;
 
-    void SetString(string_view entry_name, string_view str);
-    void SetData(string_view entry_name, const_span<uint8_t> data);
+    void SetText(string_view entry_name, u8string_view text);
+    void SetText(u8string_view entry_name, u8string_view text);
+    void SetBytes(string_view entry_name, const_span<byte> bytes);
+    void SetBytes(u8string_view entry_name, const_span<byte> bytes);
     void RemoveEntry(string_view entry_name);
+    void RemoveEntry(u8string_view entry_name);
 
 private:
     unique_ptr<CacheStorageImpl> _impl;
