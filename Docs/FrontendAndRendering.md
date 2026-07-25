@@ -567,7 +567,13 @@ calls cannot append more instances than that declaration. Ring packets copy
 the evaluated outer/center/inner shape and color values, reproduce the upstream
 eight-vertex/twelve-index segment topology and angular fades, and preserve
 Z-sort order while splitting large geometry at 64,000 vertices for 16-bit index
-builds.
+builds. Both collectors Z-sort a lightweight index permutation and then
+materialize the reordered instances, rather than sorting the instance-snapshot
+vectors in place: the snapshots embed `alignas(16)` Effekseer SIMD members, and
+`std::stable_sort` on an over-aligned element type instantiates
+`std::aligned_storage` with an extended alignment that the standard library
+rejects. The stable order over the permutation keeps the draw order
+deterministic.
 
 `Source/Tests/Test_EffekseerParticleRuntime.cpp` carries self-contained cooked
 fixtures that exercise the real Effekseer callback-to-FOnline-draw-buffer path

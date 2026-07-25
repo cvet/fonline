@@ -348,6 +348,36 @@ struct EffekseerRingInstanceSnapshot
     float32_t CameraDepth {};
 };
 
+// std::stable_sort over these snapshot vectors would instantiate std::aligned_storage with the
+// snapshot's extended alignment (their Effekseer SIMD members are alignas(16)) for its temporary
+// buffer, which MSVC's <type_traits> rejects. Sort a lightweight index permutation by camera depth
+// and materialize the reordered instances instead; the stable order keeps the particle draw order
+// deterministic.
+template<typename T>
+static void StableSortSnapshotsByCameraDepth(vector<T>& instances, bool reverse_order)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<size_t> draw_order(instances.size());
+
+    for (size_t index = 0; index < draw_order.size(); index++) {
+        draw_order[index] = index;
+    }
+
+    std::stable_sort(draw_order.begin(), draw_order.end(), [&instances, reverse_order](size_t left, size_t right) {
+        return reverse_order ? instances[left].CameraDepth > instances[right].CameraDepth : instances[left].CameraDepth < instances[right].CameraDepth;
+    });
+
+    vector<T> sorted_instances;
+    sorted_instances.reserve(instances.size());
+
+    for (size_t index : draw_order) {
+        sorted_instances.emplace_back(instances[index]);
+    }
+
+    instances = std::move(sorted_instances);
+}
+
 static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodeParameter& parameter) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
@@ -707,10 +737,10 @@ public:
         }
 
         if (_node->ZSort == Effekseer::ZSortType::NormalOrder) {
-            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerSpriteInstanceSnapshot& left, const EffekseerSpriteInstanceSnapshot& right) { return left.CameraDepth < right.CameraDepth; });
+            StableSortSnapshotsByCameraDepth(_instances, false);
         }
         else if (_node->ZSort == Effekseer::ZSortType::ReverseOrder) {
-            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerSpriteInstanceSnapshot& left, const EffekseerSpriteInstanceSnapshot& right) { return left.CameraDepth > right.CameraDepth; });
+            StableSortSnapshotsByCameraDepth(_instances, true);
         }
 
         Render(_binding->CurrentSystem.as_ptr());
@@ -981,10 +1011,10 @@ public:
         }
 
         if (_node->ZSort == Effekseer::ZSortType::NormalOrder) {
-            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerRingInstanceSnapshot& left, const EffekseerRingInstanceSnapshot& right) { return left.CameraDepth < right.CameraDepth; });
+            StableSortSnapshotsByCameraDepth(_instances, false);
         }
         else if (_node->ZSort == Effekseer::ZSortType::ReverseOrder) {
-            std::stable_sort(_instances.begin(), _instances.end(), [](const EffekseerRingInstanceSnapshot& left, const EffekseerRingInstanceSnapshot& right) { return left.CameraDepth > right.CameraDepth; });
+            StableSortSnapshotsByCameraDepth(_instances, true);
         }
 
         Render(_binding->CurrentSystem.as_ptr());
