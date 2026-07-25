@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -22,6 +23,38 @@ TagContext: TypeAlias = bool | int | str | list[str] | None
 EXPORT_TARGETS = ('Server', 'Client', 'Mapper', 'Common')
 REGISTRATION_TARGETS = ('Server', 'Client', 'Mapper')
 CLIENT_ENTITY_TARGETS = ('Client', 'Mapper')
+MIGRATION_RULE_KINDS = ('Version', 'Property', 'Proto', 'Component', 'Remove')
+API_STABILITY_LABELS = ('stable', 'experimental', 'internal', 'deprecated')
+NATIVE_EXTENSION_INTERFACE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NativeExtensionInterface.json')
+
+
+def load_native_extension_interface() -> dict[str, Any]:
+    with open(NATIVE_EXTENSION_INTERFACE_PATH, encoding='utf-8') as interface_file:
+        interface = json.load(interface_file)
+
+    assert isinstance(interface, dict) and interface.get('schema_version') == 1, 'Unsupported native extension interface schema'
+    scope = interface.get('scope')
+    assert isinstance(scope, dict) and scope.get('surface') == 'native-extension-interface', 'Invalid native extension interface scope'
+    roles = interface.get('roles')
+    hooks = interface.get('hooks')
+    assert isinstance(roles, list) and roles, 'Native extension interface roles are missing'
+    assert isinstance(hooks, list) and hooks, 'Native extension interface hooks are missing'
+
+    role_names = [role.get('name') for role in roles if isinstance(role, dict)]
+    hook_names = [hook.get('name') for hook in hooks if isinstance(hook, dict)]
+    assert len(role_names) == len(roles) and len(role_names) == len(set(role_names)), 'Invalid or duplicate native extension roles'
+    assert len(hook_names) == len(hooks) and len(hook_names) == len(set(hook_names)), 'Invalid or duplicate engine hooks'
+    for hook in hooks:
+        assert hook.get('role') in role_names, 'Engine hook has an unknown native extension role: ' + str(hook.get('name'))
+        assert isinstance(hook.get('stub_declarations'), list), 'Engine hook stub_declarations must be an array: ' + str(hook.get('name'))
+        assert isinstance(hook.get('stub_definition'), str) and hook['stub_definition'], 'Engine hook stub_definition is missing: ' + str(hook.get('name'))
+        assert isinstance(hook.get('compatibility_hashed'), bool), 'Engine hook compatibility_hashed must be boolean: ' + str(hook.get('name'))
+    return interface
+
+
+NATIVE_EXTENSION_INTERFACE = load_native_extension_interface()
+ENGINE_HOOK_DEFINITIONS = tuple(NATIVE_EXTENSION_INTERFACE['hooks'])
+ENGINE_HOOK_NAMES = tuple(hook['name'] for hook in ENGINE_HOOK_DEFINITIONS)
 
 
 @dataclass(slots=True)
@@ -31,6 +64,12 @@ class TagMetaRecord:
     tag_info: str | None
     tag_context: TagContext
     comment: CommentLines
+
+
+@dataclass(frozen=True, slots=True)
+class SourceLocation:
+    abs_path: str
+    line: int
 
 
 @dataclass(slots=True)
@@ -193,6 +232,18 @@ class MigrationRuleTag:
 
 
 @dataclass(slots=True)
+class ApiContractTag:
+    selector: str
+    stability: str
+    since: str | None
+    deprecated_since: str | None
+    replacement: str | None
+    removal: str | None
+    examples: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
 class CodeGenTag:
     template_type: str
     abs_path: str
@@ -214,6 +265,7 @@ class CodeGenTagStore(TypedDict):
     ExportSettings: list[ExportSettingsTag]
     EngineHook: list[EngineHookTag]
     MigrationRule: list[MigrationRuleTag]
+    ApiContract: list[ApiContractTag]
     CodeGen: list[CodeGenTag]
 
 
@@ -228,7 +280,11 @@ class TagMetaStore(TypedDict):
     ExportSettings: list[TagMetaRecord]
     EngineHook: list[TagMetaRecord]
     MigrationRule: list[TagMetaRecord]
+    ApiContract: list[TagMetaRecord]
     CodeGen: list[TagMetaRecord]
+
+
+CodeGenTagSourceStore: TypeAlias = dict[str, list[SourceLocation | None]]
 
 
 def create_codegen_tag_store() -> CodeGenTagStore:
@@ -243,8 +299,13 @@ def create_codegen_tag_store() -> CodeGenTagStore:
         'ExportSettings': [],
         'EngineHook': [],
         'MigrationRule': [],
+        'ApiContract': [],
         'CodeGen': [],
     }
+
+
+def create_codegen_tag_source_store() -> CodeGenTagSourceStore:
+    return {tag_name: [] for tag_name in create_codegen_tag_store()}
 
 
 def create_tag_meta_store() -> TagMetaStore:
@@ -259,12 +320,13 @@ def create_tag_meta_store() -> TagMetaStore:
         'ExportSettings': [],
         'EngineHook': [],
         'MigrationRule': [],
+        'ApiContract': [],
         'CodeGen': [],
     }
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
+    parser = argparse.ArgumentParser(prog='codegen.py', description='FOnline code generator', fromfile_prefix_chars='@')
     parser.add_argument('-maincfg', dest='maincfg', required=True, help='main config file')
     parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
     parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
@@ -362,6 +424,17 @@ generated_file_list = ['EmbeddedResources.gen.inc',
 
 # Parse meta information
 codegen_tags: CodeGenTagStore = create_codegen_tag_store()
+codegen_tag_sources: CodeGenTagSourceStore = create_codegen_tag_source_store()
+
+
+def add_codegen_tag(tag_name: str, tag: object, source: SourceLocation | None) -> None:
+    cast(Any, codegen_tags)[tag_name].append(tag)
+    codegen_tag_sources[tag_name].append(source)
+
+
+def get_tag_source(tag_meta: TagMetaRecord) -> SourceLocation:
+    return SourceLocation(tag_meta.abs_path, tag_meta.line_index + 1)
+
 
 def verbose_print(*parts: object) -> None:
     if args.verbose:
@@ -671,6 +744,36 @@ def hash_recursive(hasher: Any, data: Any) -> None:
         hasher.update(normalize_hash_text(str(data)).encode('utf-8'))
 
 compatibility_hasher = hashlib.new('sha256')
+
+
+def reset_metadata_parse_state() -> None:
+    global codegen_tags
+    global codegen_tag_sources
+    global tag_metas
+    global ref_types
+    global engine_enums
+    global custom_types
+    global custom_types_native_map
+    global game_entities
+    global game_entities_info
+    global entity_relatives
+    global generic_funcdefs
+    global compatibility_hasher
+    global errors
+
+    codegen_tags = create_codegen_tag_store()
+    codegen_tag_sources = create_codegen_tag_source_store()
+    tag_metas = create_tag_meta_store()
+    ref_types = set()
+    engine_enums = set()
+    custom_types = set()
+    custom_types_native_map = {}
+    game_entities = []
+    game_entities_info = {}
+    entity_relatives = set()
+    generic_funcdefs = set()
+    compatibility_hasher = hashlib.new('sha256')
+    errors = []
 
 
 def iter_cpp_top_level(text: str) -> Iterable[tuple[int, str, bool]]:
@@ -1098,8 +1201,8 @@ def create_valid_types() -> set[str]:
     return valid_types
 
 
-def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str]) -> None:
-    codegen_tags['ExportEnum'].append(ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment))
+def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str], source: SourceLocation | None = None) -> None:
+    add_codegen_tag('ExportEnum', ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment), source)
     hash_recursive(compatibility_hasher, (group_name, underlying_type, key_values, export_flags))
 
     assert group_name not in valid_types, 'Enum already in valid types'
@@ -1242,7 +1345,7 @@ def postprocess_tags() -> None:
             if prop_tag.entity == entity:
                 key_values.append(EnumKeyValue(prop_tag.name.replace('.', '_'), str(index), []))
                 index += 1
-        codegen_tags['ExportEnum'].append(ExportEnumTag(entity + 'Property', 'uint16', key_values, [], []))
+        add_codegen_tag('ExportEnum', ExportEnumTag(entity + 'Property', 'uint16', key_values, [], []), None)
         hash_recursive(compatibility_hasher, (entity + 'Property', 'uint16', key_values))
 
     for enum_tag in codegen_tags['ExportEnum']:
@@ -1282,7 +1385,7 @@ def parse_enum_tags(valid_types: set[str]) -> None:
             underlying_type = engine_type_to_meta_type('int32' if separator == -1 else first_line[separator + 1:].strip(), valid_types)
 
             key_values = parse_enum_key_values(enum_lines)
-            register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types)
+            register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types, get_tag_source(tag_meta))
 
         except Exception as ex:
             show_error('Invalid tag ExportEnum', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
@@ -1320,7 +1423,7 @@ def parse_export_value_type_tags(valid_types: set[str]) -> None:
             assert 'Layout' in export_flags, 'No Layout specified in ExportValueType'
             assert export_flags[export_flags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
 
-            codegen_tags['ExportValueType'].append(ExportValueTypeTag(type_name, native_type, export_flags, comment))
+            add_codegen_tag('ExportValueType', ExportValueTypeTag(type_name, native_type, export_flags, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (type_name, native_type, export_flags))
 
             assert type_name not in valid_types, 'Type already in valid types'
@@ -1350,7 +1453,7 @@ def parse_export_entity_tags(valid_types: set[str]) -> None:
             client_class_name = export_flags[2]
             export_flags = export_flags[3:]
 
-            codegen_tags['ExportEntity'].append(ExportEntityTag(entity_name, server_class_name, client_class_name, export_flags, comment))
+            add_codegen_tag('ExportEntity', ExportEntityTag(entity_name, server_class_name, client_class_name, export_flags, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (entity_name, server_class_name, client_class_name, export_flags))
 
             assert entity_name not in valid_types
@@ -1417,7 +1520,7 @@ def parse_ref_type_tags(valid_types: set[str]) -> None:
 
             fields, methods = parse_exported_ref_type_members(ref_type_lines, export_flags, valid_types)
 
-            codegen_tags['ExportRefType'].append(ExportRefTypeTag(target, ref_type_name, fields, methods, export_flags, comment))
+            add_codegen_tag('ExportRefType', ExportRefTypeTag(target, ref_type_name, fields, methods, export_flags, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (target, ref_type_name, fields, methods, export_flags))
 
             valid_types.add(ref_type_name)
@@ -1439,7 +1542,7 @@ def parse_export_property_tags(valid_types: set[str]) -> None:
             property_context = require_str_context(tag_context, 'ExportProperty')
             entity, access, property_type, property_name, property_flags = parse_export_property_definition(property_context, tokenize(tag_info), valid_types)
             for target_entity in resolve_property_targets(entity, property_flags, game_entities):
-                codegen_tags['ExportProperty'].append(ExportPropertyTag(target_entity, access, property_type, property_name, property_flags, comment))
+                add_codegen_tag('ExportProperty', ExportPropertyTag(target_entity, access, property_type, property_name, property_flags, comment), get_tag_source(tag_meta))
                 hash_recursive(compatibility_hasher, (target_entity, access, property_type, property_name, property_flags))
 
         except Exception as ex:
@@ -1460,7 +1563,7 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
 
             target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
+            add_codegen_tag('ExportMethod', ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper), get_tag_source(tag_meta))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper.
@@ -1488,7 +1591,7 @@ def parse_export_event_tags(valid_types: set[str]) -> None:
 
             event_name, event_args = parse_export_event_signature(event_context, valid_types)
 
-            codegen_tags['ExportEvent'].append(ExportEventTag(target, entity, event_name, event_args, export_flags, comment))
+            add_codegen_tag('ExportEvent', ExportEventTag(target, entity, event_name, event_args, export_flags, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (target, entity, event_name, event_args, export_flags))
 
         except Exception as ex:
@@ -1517,7 +1620,7 @@ def parse_export_settings_tags(valid_types: set[str]) -> None:
                 expected_prefix = group_name + '.'
                 assert setting.name.startswith(expected_prefix), 'Invalid setting subgroup ' + setting.name + ', expected prefix ' + expected_prefix
 
-            codegen_tags['ExportSettings'].append(ExportSettingsTag(group_name, target, settings, export_flags, comment))
+            add_codegen_tag('ExportSettings', ExportSettingsTag(group_name, target, settings, export_flags, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (group_name, target, export_flags))
 
         except Exception as ex:
@@ -1535,11 +1638,11 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
-                            'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
+            assert name in ENGINE_HOOK_NAMES, 'Invalid engine hook ' + name
 
-            codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
-            if name != 'ApplicationShutdownHook':
+            add_codegen_tag('EngineHook', EngineHookTag(name, [], comment), get_tag_source(tag_meta))
+            hook_definition = next(hook for hook in ENGINE_HOOK_DEFINITIONS if hook['name'] == name)
+            if hook_definition['compatibility_hashed']:
                 hash_recursive(compatibility_hasher, name)
 
         except Exception as ex:
@@ -1556,16 +1659,80 @@ def parse_migration_rule_tags() -> None:
 
         try:
             rule_args = tokenize(tag_info, anySymbols=[2, 3])
-            assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
+            assert len(rule_args) and rule_args[0] in MIGRATION_RULE_KINDS, 'Invalid migration rule'
             assert len(rule_args) == 4, 'Invalid migration rule args'
             assert not len([rule_tag for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0:3] == rule_args[0:3]]), 'Migration rule already added'
             assert rule_args[2] != rule_args[3], 'Migration rule same last args'
 
-            codegen_tags['MigrationRule'].append(MigrationRuleTag(rule_args, comment))
+            add_codegen_tag('MigrationRule', MigrationRuleTag(rule_args, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, rule_args)
 
         except Exception as ex:
             show_error('Invalid tag MigrationRule', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
+
+
+def parse_api_contract_definition(tag_info: str | None, comment: CommentLines) -> ApiContractTag:
+    parts = (tag_info or '').split()
+    assert len(parts) >= 2, 'Expected selector and stability label'
+
+    selector = parts[0]
+    stability = parts[1]
+    assert stability in API_STABILITY_LABELS, 'Invalid API stability label ' + stability
+
+    values: dict[str, str] = {}
+    examples: list[str] = []
+    allowed_options = {'Since', 'DeprecatedSince', 'Replacement', 'Removal', 'Example'}
+    for option in parts[2:]:
+        option_name, separator, option_value = option.partition('=')
+        assert separator and option_name in allowed_options and option_value, 'Invalid API contract option ' + option
+        if option_name == 'Example':
+            assert option_value not in examples, 'Duplicate API contract example ' + option_value
+            examples.append(option_value)
+        else:
+            assert option_name not in values, 'Duplicate API contract option ' + option_name
+            values[option_name] = option_value
+
+    since = values.get('Since')
+    deprecated_since = values.get('DeprecatedSince')
+    replacement = values.get('Replacement')
+    removal = values.get('Removal')
+
+    if stability in ('stable', 'experimental'):
+        assert since is not None, stability + ' API contract requires Since'
+        assert deprecated_since is None and replacement is None and removal is None, \
+            stability + ' API contract cannot declare deprecation fields'
+    elif stability == 'internal':
+        assert since is None and deprecated_since is None and replacement is None and removal is None, \
+            'internal API contract cannot declare lifecycle fields'
+    else:
+        assert deprecated_since is not None, 'deprecated API contract requires DeprecatedSince'
+        assert replacement is not None, 'deprecated API contract requires Replacement'
+        assert removal is not None, 'deprecated API contract requires Removal'
+
+    return ApiContractTag(
+        selector=selector,
+        stability=stability,
+        since=since,
+        deprecated_since=deprecated_since,
+        replacement=replacement,
+        removal=removal,
+        examples=examples,
+        comment=comment,
+    )
+
+
+def parse_api_contract_tags() -> None:
+    for tag_meta in tag_metas['ApiContract']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+
+        try:
+            contract = parse_api_contract_definition(tag_info, tag_meta.comment)
+            add_codegen_tag('ApiContract', contract, get_tag_source(tag_meta))
+
+        except Exception as ex:
+            show_error('Invalid tag ApiContract', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
 
 
 def parse_codegen_tags() -> None:
@@ -1588,7 +1755,7 @@ def parse_codegen_tags() -> None:
             flags = tokenize(tag_info)
             assert len(flags) >= 1, 'Invalid CodeGen entry'
 
-            codegen_tags['CodeGen'].append(CodeGenTag(template_type, abs_path, flags[0], line_index, tag_context, flags[1:], comment))
+            add_codegen_tag('CodeGen', CodeGenTag(template_type, abs_path, flags[0], line_index, tag_context, flags[1:], comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (template_type, flags[0], line_index, flags[1:]))
 
         except Exception as ex:
@@ -1602,6 +1769,7 @@ def parse_runtime_tags(valid_types: set[str]) -> None:
     parse_export_settings_tags(valid_types)
     parse_engine_hook_tags()
     parse_migration_rule_tags()
+    parse_api_contract_tags()
     parse_codegen_tags()
 
 def parse_tags() -> None:
@@ -1904,36 +2072,10 @@ def generate_generic_code() -> None:
     global_lines = []
     
     global_lines.append('// Engine hooks')
-    if not is_engine_hook_enabled('ApplicationInitHook'):
-        global_lines.append('enum class AppInitFlags : uint8_t;')
-        global_lines.append('struct GlobalSettings;')
-        global_lines.append('void ApplicationInitHook(AppInitFlags, GlobalSettings&) { /* Stub */ }')
-    if not is_engine_hook_enabled('ApplicationShutdownHook'):
-        global_lines.append('void ApplicationShutdownHook() { /* Stub */ }')
-    if not is_engine_hook_enabled('ServerInitHook'):
-        global_lines.append('class ServerEngine;')
-        global_lines.append('void ServerInitHook(ptr<ServerEngine>) { /* Stub */ }')
-    if not is_engine_hook_enabled('ClientInitHook'):
-        global_lines.append('class ClientEngine;')
-        global_lines.append('void ClientInitHook(ptr<ClientEngine>) { /* Stub */ }')
-    if not is_engine_hook_enabled('ClientStartupSettingsHook'):
-        global_lines.append('struct GlobalSettings;')
-        global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
-    if not is_engine_hook_enabled('SetupBakersHook'):
-        global_lines.append('class BaseBaker;')
-        global_lines.append('struct BakingContext;')
-        global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
-    if not is_engine_hook_enabled('CheckCritterVisibilityHook'):
-        global_lines.append('class ServerEngine;')
-        global_lines.append('class Map;')
-        global_lines.append('class Critter;')
-        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
-    if not is_engine_hook_enabled('CheckItemVisibilityHook'):
-        global_lines.append('class ServerEngine;')
-        global_lines.append('class Map;')
-        global_lines.append('class Critter;')
-        global_lines.append('class Item;')
-        global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
+    for hook_definition in ENGINE_HOOK_DEFINITIONS:
+        if not is_engine_hook_enabled(hook_definition['name']):
+            global_lines.extend(hook_definition['stub_declarations'])
+            global_lines.append(hook_definition['stub_definition'])
     global_lines.append('')
     
     # Engine properties
@@ -2073,6 +2215,15 @@ def append_enum_registration(helper_lines: list[str], register_lines: list[str])
         register_lines.append('')
 
 
+def get_value_type_layout(tag: ExportValueTypeTag) -> list[tuple[str, str]]:
+    layout_text = ''.join(tag.flags[tag.flags.index('Layout') + 2:])
+    result: list[tuple[str, str]] = []
+    for layout_entry in layout_text.split('+'):
+        field_type, field_name = layout_entry.split('-', 1)
+        result.append((field_type, field_name))
+    return result
+
+
 def append_value_type_registration(helper_lines: list[str], register_lines: list[str]) -> None:
     if not codegen_tags['ExportValueType']:
         return
@@ -2093,20 +2244,13 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     value_type_tags = list(codegen_tags['ExportValueType'])
     value_type_names = {tag.name for tag in value_type_tags}
 
-    def layout_field_types(tag: ExportValueTypeTag) -> list[str]:
-        result: list[str] = []
-        for layout_entry in ''.join(tag.flags[tag.flags.index('Layout') + 2:]).split('+'):
-            field_type, _ = layout_entry.split('-')
-            result.append(field_type)
-        return result
-
     sorted_tags: list[ExportValueTypeTag] = []
     remaining = value_type_tags[:]
     while remaining:
         emitted_names = {tag.name for tag in sorted_tags}
         progressed = False
         for i, tag in enumerate(remaining):
-            deps = [t for t in layout_field_types(tag) if t in value_type_names and t != tag.name]
+            deps = [field_type for field_type, _ in get_value_type_layout(tag) if field_type in value_type_names and field_type != tag.name]
             if all(dep in emitted_names for dep in deps):
                 sorted_tags.append(tag)
                 remaining.pop(i)
@@ -2116,8 +2260,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     for value_type_tag in sorted_tags:
         body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
-        for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
-            field_type, field_name = layout_entry.split('-')
+        for field_type, field_name in get_value_type_layout(value_type_tag):
             body_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
         body_lines.append('} });')
         body_lines.append('')

@@ -44,6 +44,8 @@
 
 FO_BEGIN_NAMESPACE
 
+// Development-only debugger trap; intentionally not an embedding-project compatibility contract.
+///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {

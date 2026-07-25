@@ -95,6 +95,7 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
     )
 
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
+    assert not ret_wrapper
     assert ret_container_element_wrapper == ""
     assert receiver_wrapper
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
