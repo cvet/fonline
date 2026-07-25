@@ -26,6 +26,8 @@ Read this together with:
 - `Source/Common/FileSystem.cpp`
 - `Source/Common/CacheStorage.h`
 - `Source/Common/CacheStorage.cpp`
+- `Source/Common/SettingsStorage.h`
+- `Source/Common/SettingsStorage.cpp`
 - `Source/Essentials/DiskFileSystem.h`
 - `Source/Essentials/DiskFileSystem.cpp`
 - `Source/Essentials/Platform.h`
@@ -51,14 +53,25 @@ Read this together with:
 3. **Data-source abstraction** — `DataSource` mounts disk directories and pack files behind a uniform file-list/open interface.
 4. **File-system view** — `FileSystem` combines mounted data sources, exposes `FileHeader`, `File`, `FileReader`, and `FileCollection`, and resolves file reads by path/name.
 5. **Cache storage** — `CacheStorage` persists named string/data entries for reusable cache consumers.
-6. **Low-level disk access** — `DiskFileSystem` performs direct disk operations below mounted engine resources.
+6. **Settings store** — `SettingsStorage` persists per-user tool/editor preferences (registry on Windows, file store elsewhere), scoped by application name.
+7. **Low-level disk access** — `DiskFileSystem` performs direct disk operations below mounted engine resources.
 
 ## Config parsing
 
 `Source/Common/ConfigFile.*` owns syntax-level parsing. `ConfigFileOption` controls optional behavior:
 
 - `CollectContent` preserves section content for consumers that need raw block text.
-- `ReadFirstSection` supports workflows that only need the first section.
+- `SkipNestedSections` parses only anchor sections and skips nested (`/`-addressed) section bodies —
+  cheap header enumeration on files with large nested payloads (map files).
+- Nested sections: a section name containing `/` is nested. `ConfigFile` recognizes only the
+  syntax - names are stored **verbatim** and no prefix is ever resolved, so what a prefix means
+  belongs to the consuming format. `GetOrderedSections()` exposes sections in file order, which is
+  what a consumer needs to bind a nested section to the section it follows (the by-name multimap
+  cannot express that, since repeated names collapse). `SkipNestedSections` parses only non-nested
+  sections and skips nested bodies.
+- `ConfigFile` takes only the content: no file identity, no parse callbacks, no format tokens. For
+  map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
+  or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
 
 The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
 
@@ -110,6 +123,8 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 - `ReadFile()`, `ReadFileText()`, and `ReadFileHeader()`;
 - `FileReader` helpers for endian-aware binary reads.
 
+Cached directory mounts snapshot their file index when mounted. Long-running tools can call `FileSystem::ReindexDataSources()` to ask every mounted source to refresh that snapshot; the method returns `true` when indexed paths, sizes, or write times changed. Sources that do not cache disk state keep the default no-op behavior. Custom sources can override `DataSource::Reindex()`; `BakerDataSource` uses it to rebuild input mounts and bake newly added or changed resources on demand.
+
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
@@ -117,6 +132,12 @@ Installed clients keep the read-only base resources mounted from `ClientResource
 ## Cache storage
 
 `Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
+
+## Settings store
+
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `Platform::GetUserDataBase()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+
+Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
 
 ## Build and package routing
 
@@ -130,6 +151,7 @@ Installed clients keep the read-only base resources mounted from `ClientResource
 Focused tests for this area:
 
 - `Source/Tests/Test_CacheStorage.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_ConfigFile.cpp`
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`

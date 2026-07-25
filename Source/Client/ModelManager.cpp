@@ -63,14 +63,13 @@ static_assert(offsetof(ModelMeshVertexData, BlendWeights) == offsetof(Vertex3D, 
 static_assert(offsetof(ModelMeshVertexData, BlendIndices) == offsetof(Vertex3D, BlendIndices));
 static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color));
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
     _resources {resources},
+    _engineMetadata {engine_metadata},
     _effectMngr {effect_mngr},
     _render {render},
     _gameTime {game_time},
-    _hashResolver {hash_resolver},
-    _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
@@ -97,7 +96,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _hashResolver->ToHashedString(name);
+    return _engineMetadata->Hashes.ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
@@ -105,7 +104,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _hashResolver->ToHashedString(fname);
+    hstring name_hashed = _engineMetadata->Hashes.ToHashedString(fname);
 
     for (size_t i = 0; i != _loadedModels.size(); ++i) {
         auto root_bone = _loadedModels[i].as_ptr();
@@ -128,7 +127,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     }
 
     // Load file data
-    const auto file = _resources->ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
@@ -137,7 +136,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
         try {
             ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
             FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", fname);
-            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), *_hashResolver);
+            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), _engineMetadata->Hashes);
             FixModelBoneAfterLoad(loaded_root_bone, loaded_root_bone);
             return loaded_root_bone;
         }
@@ -173,7 +172,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
         auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
-        const string_view tex_name = mesh->DiffuseTexture;
+        string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
@@ -284,7 +283,7 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_
     FO_STACK_TRACE_ENTRY();
 
     auto bone = SafeAlloc::MakeUnique<ModelBone>();
-    const hstring source_name = hash_resolver.ToHashedString(source.Name);
+    hstring source_name = hash_resolver.ToHashedString(source.Name);
     bone->Name = source_name;
     bone->SourceName = source_name;
     bone->RestLocalTransform = source.TransformationMatrix;

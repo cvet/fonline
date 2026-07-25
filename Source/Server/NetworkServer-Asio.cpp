@@ -31,6 +31,7 @@
 // SOFTWARE.
 //
 
+#include "NetSockets.h"
 #include "NetworkServer.h"
 
 #if FO_HAVE_ASIO
@@ -99,7 +100,12 @@ auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConn
 
     WriteLog("Listen TCP connections on port {}", settings->ServerPort);
 
-    return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
+    try {
+        return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
+    }
+    catch (const std::system_error& ex) {
+        throw NetworkServerException("Can't listen for TCP connections", settings->ServerPort, net_sockets::error_text(ex.code()));
+    }
 }
 
 NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSettings> settings, unique_ptr<asio::ip::tcp::socket> socket) :
@@ -109,7 +115,7 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
     FO_STACK_TRACE_ENTRY();
 
     std::error_code endpoint_error;
-    const auto endpoint = _socket.remote_endpoint(endpoint_error);
+    auto endpoint = _socket.remote_endpoint(endpoint_error);
 
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
@@ -136,10 +142,10 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, net_sockets::error_text(error));
     }
     else {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, net_sockets::error_text(error));
     }
 }
 
@@ -170,7 +176,7 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
     if (!error) {
         FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
-        const auto received_data = make_const_span(_inBufData.data(), bytes);
+        auto received_data = make_const_span(_inBufData.data(), bytes);
         ReceiveCallback(received_data);
         NextAsyncRead();
     }
@@ -183,7 +189,7 @@ void NetworkServerConnection_Asio::NextAsyncRead()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto read_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+    auto read_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
         ignore_unused(lifetime);
         AsyncReadComplete(error, bytes);
     };
@@ -223,10 +229,10 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 
     auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
 
-    const auto buf = SendCallback();
+    auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+        auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
             ignore_unused(lifetime);
             AsyncWriteComplete(error, bytes);
         };
@@ -305,7 +311,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto rearm_accept = [this] {
+    auto rearm_accept = [this] {
         if (!_context.stopped()) {
             AcceptNext();
         }
@@ -321,7 +327,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
             }
         }
         catch (const std::exception&) {
-            const auto exception = std::current_exception();
+            auto exception = std::current_exception();
             safe_call(rearm_accept);
 
             run_thread("Network-Asio-Reporter", [exception = std::move(exception)] {
@@ -343,7 +349,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     }
     else {
         if (error != asio::error::operation_aborted) {
-            WriteLog(LogType::Warning, "Accept error: {}", error.message());
+            WriteLog(LogType::Warning, "Accept error: {}", net_sockets::error_text(error));
         }
     }
 }

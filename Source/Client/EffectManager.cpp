@@ -48,13 +48,13 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
+    if (auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
         return it->second;
     }
 
     // Load new
     unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
-        if (const auto file = _resources->ReadFile(path2)) {
+        if (auto file = _resources->ReadFile(path2)) {
             return file.GetStr();
         }
 
@@ -111,7 +111,7 @@ void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valu
     }
 
     auto script_value_buf = GetOrCreateScriptValueBuf(effect);
-    const size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
+    size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
 
     for (size_t i = 0; i < values.size(); i++) {
         script_value_buf->ScriptValue[value_start_index + i] = values[i];
@@ -163,8 +163,8 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
         }
 
         constexpr float64_t shader_time_period = 8192.0;
-        const float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
-        const float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
+        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
+        float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
 
         time_buf->FrameTime[0] = shader_time;
         time_buf->GameTime[0] = shader_time;
@@ -190,7 +190,7 @@ void EffectManager::LoadMinimalEffects()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect_errors = 0;
+    int32_t effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

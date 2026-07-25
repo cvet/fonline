@@ -382,8 +382,8 @@ extern auto AllocatorGetInUseBytes() noexcept -> size_t
     tracy::rpmalloc_global_statistics_t stats {};
     tracy::rpmalloc_global_statistics(&stats);
 
-    const size_t mapped = stats.mapped;
-    const size_t cached = stats.cached;
+    size_t mapped = stats.mapped;
+    size_t cached = stats.cached;
 
     if (mapped >= cached) {
         return mapped - cached;

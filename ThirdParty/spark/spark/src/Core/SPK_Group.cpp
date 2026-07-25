@@ -304,6 +304,9 @@ namespace SPK
 
 	void Group::setColorInterpolator(const Ref<ColorInterpolator>& interpolator)
 	{
+		if (interpolator && hasContext())
+			interpolator->setContext(getContext());
+
 		if (colorInterpolator.obj != interpolator)
 		{
 			detachDataSet(colorInterpolator.dataSet);
@@ -314,6 +317,9 @@ namespace SPK
 
 	void Group::setParamInterpolator(Param param,const Ref<FloatInterpolator>& interpolator)
 	{
+		if (interpolator && hasContext())
+			interpolator->setContext(getContext());
+
 		if (paramInterpolators[param].obj != interpolator)
 		{
 			if (!paramInterpolators[param].obj && interpolator)
@@ -361,6 +367,9 @@ namespace SPK
 			return;
 		}
 
+		if (hasContext())
+			emitter->setContext(getContext());
+
 		emitters.push_back(emitter);
 	}
 
@@ -396,6 +405,9 @@ namespace SPK
 				SPK_LOG_WARNING("Group::addModifier(const Ref<Modifier>&) - The modifier is already in the group and cannot be added");
 				return;
 			}
+
+		if (hasContext())
+			modifier->setContext(getContext());
 
 		ModifierDef modifierDef(modifier,attachDataSet(modifier.get()));
 		modifiers.push_back(modifierDef);
@@ -444,6 +456,9 @@ namespace SPK
 
 	void Group::setRenderer(const Ref<Renderer>& renderer)
 	{
+		if (renderer && hasContext())
+			renderer->setContext(getContext());
+
 		if (this->renderer.obj != renderer)
 		{
 			destroyRenderBuffer();
@@ -468,7 +483,7 @@ namespace SPK
 
 		particleData.ages[index] = 0.0f;
 		particleData.energies[index] = 1.0f;
-		particleData.lifeTimes[index] = SPK_RANDOM(minLifeTime,maxLifeTime);
+		particleData.lifeTimes[index] = SPK_RANDOM(getContext(),minLifeTime,maxLifeTime);
 
 		if (colorInterpolator.obj)
 			colorInterpolator.obj->init(particleData.colors[index],particle,colorInterpolator.dataSet);
@@ -498,7 +513,7 @@ namespace SPK
 
 			if (creationData.emitter)
 			{
-				float speed = SPK_RANDOM(creationData.emitter->getForceMin(),creationData.emitter->getForceMax()) / particle.getParam(PARAM_MASS);
+				float speed = SPK_RANDOM(getContext(),creationData.emitter->getForceMin(),creationData.emitter->getForceMax()) / particle.getParam(PARAM_MASS);
 				creationData.emitter->generateVelocity(particle,speed);
 			}
 			else
@@ -851,12 +866,41 @@ namespace SPK
 
 	void Group::setBirthAction(const Ref<Action>& action)
 	{
+		if (action && hasContext())
+			action->setContext(getContext());
+
 		birthAction = action;
 	}
 
 	void Group::setDeathAction(const Ref<Action>& action)
 	{
+		if (action && hasContext())
+			action->setContext(getContext());
+
 		deathAction = action;
+	}
+
+	void Group::onContextSet()
+	{
+		setColorInterpolator(colorInterpolator.obj);
+
+		for (size_t i = 0; i < NB_PARAMETERS; ++i)
+			setParamInterpolator(static_cast<Param>(i),paramInterpolators[i].obj);
+
+		for (std::vector<Ref<Emitter> >::const_iterator it = emitters.begin(); it != emitters.end(); ++it)
+			(*it)->setContext(getContext());
+
+		for (std::vector<ModifierDef>::const_iterator it = modifiers.begin(); it != modifiers.end(); ++it)
+			it->obj->setContext(getContext());
+
+		if (renderer.obj)
+			renderer.obj->setContext(getContext());
+
+		if (birthAction)
+			birthAction->setContext(getContext());
+
+		if (deathAction)
+			deathAction->setContext(getContext());
 	}
 
 	DataSet* Group::getModifierDataSet(const Ref<Modifier>& modifier)

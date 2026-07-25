@@ -64,16 +64,16 @@ struct msize : isize<int16_t>
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        const auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
-        const auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
+        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
+        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto clamp_pos(pos_type auto pos) const -> mpos
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        const auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
-        const auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
+        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
+        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto from_raw_pos(std::integral auto x, std::integral auto y) const -> mpos
@@ -194,6 +194,7 @@ public:
     [[nodiscard]] static auto GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
     [[nodiscard]] static auto GetHexPos(mpos hex) -> ipos32;
     [[nodiscard]] static auto GetHexPos(ipos32 raw_hex) -> ipos32;
+    [[nodiscard]] static auto GetHexScreenRow(mpos hex) noexcept -> int32_t;
     [[nodiscard]] static auto GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
     [[nodiscard]] static auto GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
     [[nodiscard]] static auto ProjectWorldToMap(vec3 world_pos) -> vec3;

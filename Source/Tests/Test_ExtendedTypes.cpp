@@ -41,14 +41,14 @@ TEST_CASE("ExtendedTypes")
 {
     SECTION("UColor")
     {
-        const ucolor c1 {1, 2, 3, 4};
+        ucolor c1 {1, 2, 3, 4};
         CHECK(c1.comp.r == 1);
         CHECK(c1.comp.g == 2);
         CHECK(c1.comp.b == 3);
         CHECK(c1.comp.a == 4);
 
-        const ucolor c2 {1, 2, 3, 4};
-        const ucolor c3 {2, 2, 3, 4};
+        ucolor c2 {1, 2, 3, 4};
+        ucolor c3 {2, 2, 3, 4};
         CHECK(c1 == c2);
         CHECK((c1 < c3 || c3 < c1));
     }
@@ -62,7 +62,7 @@ TEST_CASE("ExtendedTypes")
         CHECK((p - ipos32 {1, 2}) == ipos32 {10, 20});
         CHECK((p + 3) == ipos32 {14, 25});
 
-        const isize32 sz {5, 6};
+        isize32 sz {5, 6};
         CHECK(sz.square() == 30);
         CHECK(sz.is_valid_pos(0, 0));
         CHECK(sz.is_valid_pos(4, 5));
@@ -72,14 +72,14 @@ TEST_CASE("ExtendedTypes")
 
     SECTION("IRect")
     {
-        const irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
+        irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
         CHECK(r.pos() == ipos32 {3, 4});
         CHECK(r.size() == isize32 {10, 20});
         CHECK_FALSE(r.is_zero());
         CHECK(irect32 {}.is_zero());
 
-        const irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        const irect32 expanded = r.expanded(other);
+        irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
+        irect32 expanded = r.expanded(other);
         CHECK(expanded == irect32(3, 2, 12, 22));
 
         irect32 expanded_in_place {r};
@@ -89,14 +89,14 @@ TEST_CASE("ExtendedTypes")
 
     SECTION("FPosFSizeFRect")
     {
-        const fpos32 p1 {3.0f, 4.0f};
+        fpos32 p1 {3.0f, 4.0f};
         CHECK(is_float_equal(p1.dist(), 5.0f));
         CHECK(p1.round<int32_t>() == ipos32 {3, 4});
 
-        const fsize32 s1 {2.5f, 4.0f};
+        fsize32 s1 {2.5f, 4.0f};
         CHECK(is_float_equal(s1.square(), 10.0f));
 
-        const frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
+        frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
         CHECK(fr.pos() == fpos32 {1.0f, 2.0f});
         CHECK(fr.size() == fsize32 {3.0f, 4.0f});
     }

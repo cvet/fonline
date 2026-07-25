@@ -32,11 +32,550 @@
 //
 
 #include "SparkExtension.h"
+
+#if FO_SPARK_PARTICLES
+
 #include "Application.h"
-#include "VisualParticles.h"
+#include "EffectManager.h"
+#include "FileSystem.h"
+#include "Rendering.h"
+
+FO_DISABLE_WARNINGS_PUSH()
+#include "SPARK.h"
+FO_DISABLE_WARNINGS_POP()
 
 namespace SPK::FO
 {
+    FO_USING_NAMESPACE();
+
+    class SparkRenderBuffer final : public RenderBuffer
+    {
+    public:
+        SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render);
+
+        [[nodiscard]] auto GetDrawBuffer() const -> const RenderDrawBuffer& { return *_renderBuf; }
+
+        void PositionAtStart();
+        void SetNextVertex(const Vector3D& pos, const Color& color);
+        void SetNextTexCoord(float32_t tu, float32_t tv);
+        void Render(size_t vertices, ptr<RenderEffect> effect);
+
+    private:
+        unique_ptr<RenderDrawBuffer> _renderBuf;
+        nptr<FO_NAMESPACE IAppRender> _render {};
+        size_t _curVertexIndex {};
+        size_t _curTexCoordIndex {};
+    };
+
+    class SparkQuadRenderer final : public Renderer, public QuadRenderBehavior, public Oriented3DRenderBehavior
+    {
+        SPK_IMPLEMENT_OBJECT(SparkQuadRenderer)
+
+        SPK_START_DESCRIPTION
+        SPK_PARENT_ATTRIBUTES(Renderer)
+        SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
+        SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("scale", ATTRIBUTE_TYPE_FLOATS)
+        SPK_ATTRIBUTE("atlas dimensions", ATTRIBUTE_TYPE_UINT32S)
+        SPK_ATTRIBUTE("look orientation", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("up orientation", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("locked axis", ATTRIBUTE_TYPE_STRING)
+        SPK_ATTRIBUTE("locked look vector", ATTRIBUTE_TYPE_VECTOR)
+        SPK_ATTRIBUTE("locked up vector", ATTRIBUTE_TYPE_VECTOR)
+        SPK_END_DESCRIPTION
+
+    public:
+        static auto Create() -> Ref<SparkQuadRenderer>;
+        ~SparkQuadRenderer() override = default;
+
+        [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
+
+        auto GetDrawInScene() const -> bool;
+        void SetDrawInScene(bool draw_in_scene);
+
+        auto GetEffectName() const -> string_view;
+        void SetEffectName(string_view effect_name);
+
+        auto GetTextureName() const -> string_view;
+        void SetTextureName(string_view tex_name);
+
+    private:
+        SparkQuadRenderer() :
+            Renderer(false)
+        {
+        }
+        explicit SparkQuadRenderer(bool needs_dataset);
+        SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
+
+        string _path {};
+        nptr<FO_NAMESPACE SparkParticleRuntimeBackend> _runtime {};
+
+        bool _drawInScene {};
+
+        string _effectName {};
+        string _textureName {};
+
+        void AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+
+        void Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+        void Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer);
+
+        nptr<RenderEffect> _effect {};
+        nptr<RenderTexture> _texture {};
+        frect32 _textureAtlasOffset {};
+
+        mat44 _modelView {};
+        mat44 _invModelView {};
+
+        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, nptr<SparkRenderBuffer> render_buffer);
+        RenderParticleFunc _renderParticle {};
+
+    private:
+        void innerImport(const IO::Descriptor& descriptor) override;
+        void innerExport(IO::Descriptor& descriptor) const override;
+        RenderBuffer* attachRenderBuffer(const Group& group) const override;
+        void render(const Group& group, const DataSet* data_set, RenderBuffer* render_buffer) override;
+        void computeAABB(Vector3D& aabb_min, Vector3D& aabb_max, const Group& group, const DataSet* data_set) const override;
+    };
+}
+
+FO_BEGIN_NAMESPACE
+
+static constexpr float32_t SPARK_PREWARM_STEP = 0.5f;
+
+struct SparkParticleRuntimeBackend::Impl
+{
+    ParticleRuntimeServices Services;
+    unique_nptr<RenderDrawBuffer> WireframeBuf {};
+    SPK::SPKContext Context {};
+    unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
+    mat44 ViewProjectionMatrix {};
+    mat44 ViewMatrix {};
+};
+
+struct SparkParticleRuntimeSystem::Impl
+{
+    ptr<SparkParticleRuntimeBackend> Runtime;
+    string Path;
+    SPK::Ref<SPK::System> RuntimeSystem {};
+    SPK::Ref<SPK::System> BaseSystem {};
+    mat44 ViewProjectionMatrix {};
+    mat44 ViewMatrix {};
+    mat44 BoundsMatrix {};
+    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
+    bool BaseSystemDetached {};
+};
+
+static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool render_dependencies_loaded = true;
+
+    for (size_t i = 0; i < system->getNbGroups(); i++) {
+        auto&& group = system->getGroup(i);
+
+        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
+            render_dependencies_loaded &= renderer->Setup(path, runtime);
+        }
+    }
+
+    return render_dependencies_loaded;
+}
+
+SparkParticleRuntimeBackend::SparkParticleRuntimeBackend(const ParticleRuntimeServices& services) :
+    _impl {SafeAlloc::MakeUnique<Impl>(services)}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SPK::FO::EnsureSparkParticleObjectsRegistered(_impl->Context);
+}
+
+SparkParticleRuntimeBackend::~SparkParticleRuntimeBackend()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto SparkParticleRuntimeBackend::GetExtensions() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {"spk"};
+}
+
+void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strex(path).get_file_extension() == "spk") {
+        _impl->BaseSystems.erase(string {path});
+    }
+    else {
+        _impl->BaseSystems.clear();
+    }
+}
+
+auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<ParticleRuntimeSystem>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strex(path).get_file_extension() != "spk") {
+        return nullptr;
+    }
+
+    SPK::Ref<SPK::System> base_system;
+
+    if (auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
+        if (auto file = _impl->Services.Resources->ReadFile(path)) {
+            const_span<uint8_t> file_data = file.GetDataSpan();
+            base_system = _impl->Context.getIOManager().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+        }
+
+        if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
+            WriteLog("SPARK particle '{}' has a missing render effect or texture", path);
+            base_system = SPK::Ref<SPK::System>();
+        }
+
+        if (base_system) {
+            _impl->BaseSystems.emplace(path, base_system);
+        }
+    }
+    else {
+        base_system = it->second;
+    }
+
+    if (!base_system) {
+        return nullptr;
+    }
+
+    return SafeAlloc::MakeUnique<SparkParticleRuntimeSystem>(this, path, std::move(base_system));
+}
+
+SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
+    _impl {SafeAlloc::MakeUnique<Impl>(Impl {.Runtime = runtime, .Path = string {path}, .BaseSystem = std::move(base_system)})}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RecreateRuntimeSystem(std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
+}
+
+SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto SparkParticleRuntimeSystem::IsActive() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _impl->RuntimeSystem->isActive();
+}
+
+auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(i);
+        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
+
+        if (renderer && renderer->GetDrawInScene()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const SPK::Vector3D& position_min = _impl->RuntimeSystem->getBakedBoundsMin();
+    const SPK::Vector3D& position_max = _impl->RuntimeSystem->getBakedBoundsMax();
+
+    return MakeParticleBounds(vec3 {position_min.x, position_min.y, position_min.z}, vec3 {position_max.x, position_max.y, position_max.z}, _impl->RuntimeSystem->getBakedBillboardRadius());
+}
+
+auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Frame the effect from its bake-time extent (measured by simulating the effect during baking, and mandatory for
+    // every baked system), and only while it is actually emitting - a cheap particle-count check, no per-frame AABB
+    // computation. A dormant system (no live particles) reserves nothing.
+    if (_impl->RuntimeSystem->getNbParticles() == 0) {
+        return std::nullopt;
+    }
+
+    optional<ParticleBounds3D> baked = GetBakedBounds();
+
+    if (!baked) {
+        return std::nullopt;
+    }
+
+    return TransformParticleBounds(*baked, _impl->BoundsMatrix);
+}
+
+void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
+
+    if (delta == vec3 {}) {
+        return;
+    }
+
+    SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
+
+    for (size_t group_index = 0; group_index < _impl->RuntimeSystem->getNbGroups(); group_index++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(group_index);
+
+        for (SPK::GroupIterator particle_it(*group); !particle_it.end(); ++particle_it) {
+            particle_it->position() += spark_delta;
+            particle_it->oldPosition() += spark_delta;
+        }
+    }
+}
+
+void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    mat44 result_position_matrix;
+
+    if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
+        vec3 result_position {};
+        vec3 result_position_scale {};
+        vec3 skew {};
+        glm::vec<4, float32_t, glm::defaultp> perspective {};
+        quaternion rotation {};
+        glm::decompose(view_offset_matrix * setup.World * position_offset_matrix, result_position_scale, rotation, result_position, skew, perspective);
+        mat44 result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
+        mat44 look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+
+        // The authored look direction replaces the placement's *rotation* only. Its scale must survive, or an effect
+        // whose system carries a local transform would ignore the scale of the matrix that places it - the model sprite
+        // frame renders at ModelInstance::FRAME_SCALE - and end up drawn at a different size than an otherwise
+        // identical effect whose system transform happens to be identity (the branch below).
+        result_position_matrix = result_position_translation_matrix * look_direction_matrix * glm::scale(mat44 {1.0f}, result_position_scale);
+    }
+    else {
+        result_position_matrix = view_offset_matrix * setup.World * position_offset_matrix;
+    }
+
+    result_position_matrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
+
+    float32_t system_scale = std::max({glm::length(vec3 {result_position_matrix[0]}), glm::length(vec3 {result_position_matrix[1]}), glm::length(vec3 {result_position_matrix[2]})});
+    FO_VERIFY_AND_THROW(std::isfinite(system_scale) && system_scale > 0.0f, "SPARK particle system placement has a degenerate scale", _impl->Path, system_scale);
+    FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() == _impl->BaseSystem->getNbGroups(), "SPARK runtime system lost groups of its base system", _impl->Path, _impl->RuntimeSystem->getNbGroups(), _impl->BaseSystem->getNbGroups());
+
+    for (size_t group_index = 0; group_index < _impl->RuntimeSystem->getNbGroups(); group_index++) {
+        _impl->RuntimeSystem->getGroup(group_index)->setGraphicalRadius(_impl->BaseSystem->getGroup(group_index)->getGraphicalRadius() * system_scale);
+    }
+
+    ptr<const float32_t> result_position_matrix_values = glm::value_ptr(result_position_matrix);
+    _impl->RuntimeSystem->getTransform().set(result_position_matrix_values.get());
+
+    if (auto local_position = _impl->BaseSystem->getTransform().getLocalPos(); local_position != SPK::Vector3D()) {
+        _impl->RuntimeSystem->getTransform().setPosition(_impl->RuntimeSystem->getTransform().getLocalPos() + local_position);
+    }
+
+    _impl->RuntimeSystem->updateTransform();
+
+    mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
+    _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
+
+    ptr<const float32_t> system_world_matrix_values = _impl->RuntimeSystem->getTransform().getWorld();
+    _impl->BoundsMatrix = _impl->ViewMatrix * glm::make_mat4(system_world_matrix_values.get());
+}
+
+auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!IsActive()) {
+        return 0.0f;
+    }
+
+    FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() != 0, "Cannot prewarm a SPARK particle system without groups", _impl->Path);
+    float32_t max_lifetime = _impl->RuntimeSystem->getGroup(0)->getMaxLifeTime();
+    int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
+    FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
+
+    uint32_t init_time_range = numeric_cast<uint32_t>(max_lifetime_ms) + 1U;
+    int32_t init_time_ms = numeric_cast<int32_t>(_impl->RuntimeSystem->generateRandom(0U, init_time_range));
+    float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
+
+    for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
+        _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));
+    }
+
+    return init_time;
+}
+
+void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RecreateRuntimeSystem(seed ? std::bit_cast<uint32_t>(*seed) : std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
+}
+
+void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_impl->RuntimeSystem->isActive()) {
+        return;
+    }
+
+    if (delta_seconds > 0.0f) {
+        _impl->RuntimeSystem->updateParticles(delta_seconds);
+    }
+}
+
+void SparkParticleRuntimeSystem::RefreshRenderTransform()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void SparkParticleRuntimeSystem::Draw()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_impl->RuntimeSystem->isActive()) {
+        return;
+    }
+
+    _impl->Runtime->_impl->ViewProjectionMatrix = _impl->ViewProjectionMatrix;
+    _impl->Runtime->_impl->ViewMatrix = _impl->ViewMatrix;
+    _impl->RuntimeSystem->renderParticles();
+}
+
+auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_impl->BaseSystemDetached) {
+        _impl->BaseSystem = SPK::SPKObject::copy(_impl->BaseSystem);
+        _impl->BaseSystemDetached = true;
+        RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
+    }
+
+    return _impl->BaseSystem;
+}
+
+void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(system, "Cannot replace a SPARK base system with a null system", _impl->Path);
+    _impl->BaseSystem = std::move(system);
+    _impl->BaseSystemDetached = true;
+    RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
+}
+
+void SparkParticleRuntimeSystem::RecreateRuntimeSystem(uint32_t random_seed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetupSparkSystemRenderers(_impl->Path, _impl->BaseSystem, _impl->Runtime);
+    _impl->RuntimeSystem = SPK::SPKObject::copy(_impl->BaseSystem);
+    _impl->RuntimeSystem->setRandomSeed(random_seed);
+    _impl->RuntimeSystem->initialize();
+}
+
+FO_END_NAMESPACE
+
+namespace SPK::FO
+{
+    void EnsureSparkParticleObjectsRegistered(SPKContext& context)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto& io_mngr = context.getIOManager();
+        io_mngr.ensureObjectRegistered<SparkQuadRenderer>();
+    }
+
+    auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return context.getIOManager().isObjectRegistered<SparkQuadRenderer>();
+    }
+
+    auto IsSparkQuadRenderer(const Renderer& renderer) -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return dynamic_cast<const SparkQuadRenderer*>(&renderer) != nullptr;
+    }
+
+    auto CreateSparkQuadRenderer() -> Ref<Renderer>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return SparkQuadRenderer::Create();
+    }
+
+    auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<const SparkQuadRenderer> spark_renderer {dynamic_cast<const SparkQuadRenderer*>(&renderer)};
+        FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
+
+        SparkQuadRendererData data;
+        data.Active = spark_renderer->isActive();
+        data.AlphaTest = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_ALPHA_TEST);
+        data.DepthWrite = spark_renderer->isRenderingOptionEnabled(RENDERING_OPTION_DEPTH_WRITE);
+        data.AlphaTestThreshold = spark_renderer->getAlphaTestThreshold();
+        data.DrawInScene = spark_renderer->GetDrawInScene();
+        data.EffectName = spark_renderer->GetEffectName();
+        data.TextureName = spark_renderer->GetTextureName();
+        data.ScaleX = spark_renderer->getScaleX();
+        data.ScaleY = spark_renderer->getScaleY();
+        data.AtlasDimensionX = numeric_cast<int32_t>(spark_renderer->getAtlasDimensionX());
+        data.AtlasDimensionY = numeric_cast<int32_t>(spark_renderer->getAtlasDimensionY());
+        data.LookOrientation = static_cast<int32_t>(spark_renderer->getLookOrientation());
+        data.UpOrientation = static_cast<int32_t>(spark_renderer->getUpOrientation());
+        data.LockedAxis = static_cast<int32_t>(spark_renderer->getLockedAxis());
+        data.LookVector = {spark_renderer->lookVector.x, spark_renderer->lookVector.y, spark_renderer->lookVector.z};
+        data.UpVector = {spark_renderer->upVector.x, spark_renderer->upVector.y, spark_renderer->upVector.z};
+        return data;
+    }
+
+    void SetSparkQuadRendererData(Renderer& renderer, const SparkQuadRendererData& data)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<SparkQuadRenderer> spark_renderer {dynamic_cast<SparkQuadRenderer*>(&renderer)};
+        FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
+
+        spark_renderer->setActive(data.Active);
+        spark_renderer->enableRenderingOption(RENDERING_OPTION_ALPHA_TEST, data.AlphaTest);
+        spark_renderer->enableRenderingOption(RENDERING_OPTION_DEPTH_WRITE, data.DepthWrite);
+        spark_renderer->setAlphaTestThreshold(data.AlphaTestThreshold);
+        spark_renderer->SetDrawInScene(data.DrawInScene);
+        spark_renderer->SetEffectName(data.EffectName);
+        spark_renderer->SetTextureName(data.TextureName);
+        spark_renderer->setScale(data.ScaleX, data.ScaleY);
+        spark_renderer->setAtlasDimensions(numeric_cast<size_t>(data.AtlasDimensionX), numeric_cast<size_t>(data.AtlasDimensionY));
+        spark_renderer->setOrientation(static_cast<LookOrientation>(data.LookOrientation), static_cast<UpOrientation>(data.UpOrientation), static_cast<LockedAxis>(data.LockedAxis));
+        spark_renderer->lookVector = Vector3D(data.LookVector[0], data.LookVector[1], data.LookVector[2]);
+        spark_renderer->upVector = Vector3D(data.UpVector[0], data.UpVector[1], data.UpVector[2]);
+    }
+
     SparkRenderBuffer::SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render) :
         _renderBuf {render->CreateDrawBuffer(false)},
         _render {render}
@@ -47,9 +586,9 @@ namespace SPK::FO
         FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
 
         auto& vbuf = _renderBuf->Vertices;
-        auto& vpos = _renderBuf->VertCount;
+        size_t& vpos = _renderBuf->VertCount;
         auto& ibuf = _renderBuf->Indices;
-        auto& ipos = _renderBuf->IndCount;
+        size_t& ipos = _renderBuf->IndCount;
 
         vpos = vertices;
         ipos = vertices / 4 * 6;
@@ -103,7 +642,7 @@ namespace SPK::FO
         v.EggFlags[1] = 0.0f;
     }
 
-    void SparkRenderBuffer::Render(size_t vertices, ptr<RenderEffect> effect) const
+    void SparkRenderBuffer::Render(size_t vertices, ptr<RenderEffect> effect)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -128,14 +667,17 @@ namespace SPK::FO
         return SPK_NEW(SparkQuadRenderer);
     }
 
-    void SparkQuadRenderer::Setup(string_view path, ptr<ParticleManager> particle_mngr)
+    auto SparkQuadRenderer::Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_VERIFY_AND_THROW(!_particleMngr, "Particle mngr is already set");
+        if (_runtime) {
+            FO_VERIFY_AND_THROW(_runtime == runtime && _path == path, "SPARK particle renderer is already bound to another runtime", _path, path);
+            return _effect && _texture;
+        }
 
         _path = path;
-        _particleMngr = particle_mngr;
+        _runtime = runtime;
 
         if (!_effectName.empty()) {
             SetEffectName(_effectName);
@@ -143,9 +685,11 @@ namespace SPK::FO
         if (!_textureName.empty()) {
             SetTextureName(_textureName);
         }
+
+        return _effect && _texture;
     }
 
-    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -155,7 +699,7 @@ namespace SPK::FO
         render_buffer->SetNextVertex(particle.position() + quadSide() - quadUp(), particle.getColor()); // bottom right vertex
     }
 
-    void SparkQuadRenderer::AddTexture2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -167,7 +711,7 @@ namespace SPK::FO
         render_buffer->SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 1.0f * _textureAtlasOffset.height);
     }
 
-    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -183,26 +727,30 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _particleMngr->_render);
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _runtime->_impl->Services.Render);
     }
 
-    void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
+    void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer)
     {
         FO_STACK_TRACE_ENTRY();
 
         ignore_unused(dataSet);
 
-        FO_VERIFY_AND_THROW(_particleMngr, "Particle manager is null");
+        FO_VERIFY_AND_THROW(_runtime, "SPARK particle runtime is null");
+
+        if (!_effect || !_texture) {
+            return;
+        }
 
         FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         ptr<RenderBuffer> render_buffer = renderBuffer;
-        auto spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
+        nptr<SparkRenderBuffer> spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
         FO_VERIFY_AND_THROW(spark_render_buffer, "Render buffer is not a spark render buffer");
 
         spark_render_buffer->PositionAtStart();
 
-        if (_modelView != _particleMngr->_viewMatrix) {
-            _modelView = _particleMngr->_viewMatrix;
+        if (_modelView != _runtime->_impl->ViewMatrix) {
+            _modelView = _runtime->_impl->ViewMatrix;
             _invModelView = glm::inverse(_modelView);
         }
 
@@ -223,7 +771,7 @@ namespace SPK::FO
             }
         }
 
-        const bool globalOrientation = precomputeOrientation3D(group, //
+        bool globalOrientation = precomputeOrientation3D(group, //
             Vector3D(-_invModelView[0][2], -_invModelView[1][2], -_invModelView[2][2]), //
             Vector3D(_invModelView[0][1], _invModelView[1][1], _invModelView[2][1]), //
             Vector3D(_invModelView[0][3], _invModelView[1][3], _invModelView[2][3]));
@@ -244,13 +792,18 @@ namespace SPK::FO
 
         FO_VERIFY_AND_THROW(_effect, "Missing required effect");
         FO_VERIFY_AND_THROW(_texture, "Missing required texture");
+
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
-        auto projection_matrix_values = make_ptr(glm::value_ptr(_particleMngr->_viewProjMatrix));
+        ptr<const float32_t> projection_matrix_values = glm::value_ptr(_runtime->_impl->ViewProjectionMatrix);
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->MainTex = _texture;
 
         spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
+
+        if (_runtime->_impl->Services.Settings->DrawWireframe) {
+            DrawParticleBufferWireframe(_runtime->_impl->Services.EffectMngr, _runtime->_impl->Services.Render, _runtime->_impl->WireframeBuf, spark_render_buffer->GetDrawBuffer(), numeric_cast<size_t>(group.getNbParticles()) * 6, _runtime->_impl->ViewProjectionMatrix);
+        }
     }
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
@@ -259,8 +812,8 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
-        const Vector3D diag_v(diagonal, diagonal, diagonal);
+        float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
             for (ConstGroupIterator it(group); !it.end(); ++it) {
@@ -279,7 +832,7 @@ namespace SPK::FO
         }
     }
 
-    void SparkQuadRenderer::Render2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -288,7 +841,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -297,7 +850,7 @@ namespace SPK::FO
         AddTexture2D(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -306,35 +859,13 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
+    void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
         FO_STACK_TRACE_ENTRY();
 
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2DAtlas(particle, render_buffer);
-    }
-
-    auto SparkQuadRenderer::GetDrawWidth() const -> int32_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _drawWidth;
-    }
-
-    auto SparkQuadRenderer::GetDrawHeight() const -> int32_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _drawHeight;
-    }
-
-    void SparkQuadRenderer::SetDrawSize(int32_t width, int32_t height)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _drawWidth = width;
-        _drawHeight = height;
     }
 
     auto SparkQuadRenderer::GetDrawInScene() const -> bool
@@ -364,8 +895,8 @@ namespace SPK::FO
 
         _effectName = string(effect_name);
 
-        if (!_effectName.empty() && _particleMngr) {
-            _effect = _particleMngr->_effectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
+        if (!_effectName.empty() && _runtime) {
+            _effect = _runtime->_impl->Services.EffectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
         }
         else {
             _effect = nullptr;
@@ -385,9 +916,9 @@ namespace SPK::FO
 
         _textureName = string(tex_name);
 
-        if (!_textureName.empty() && _particleMngr) {
-            const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
-            auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
+        if (!_textureName.empty() && _runtime) {
+            string tex_path = strex(_path).extract_dir().combine_path(_textureName);
+            auto&& [tex, tex_data] = _runtime->_impl->Services.TextureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffset = tex_data;
         }
@@ -402,8 +933,6 @@ namespace SPK::FO
 
         Renderer::innerImport(descriptor);
 
-        _drawWidth = 0;
-        _drawHeight = 0;
         _drawInScene = false;
 
         _effectName = "";
@@ -422,22 +951,6 @@ namespace SPK::FO
         lookVector.set(0.0f, 0.0f, 1.0f);
         upVector.set(0.0f, 1.0f, 0.0f);
 
-        if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
-            const auto tmpSize = attrib->getValues<int32_t>();
-
-            switch (tmpSize.size()) {
-            case 1:
-                _drawWidth = tmpSize[0];
-                break;
-            case 2:
-                _drawWidth = tmpSize[0];
-                _drawHeight = tmpSize[1];
-                break;
-            default:
-                break;
-            }
-        }
-
         if (auto attrib = descriptor.getAttributeWithValue("draw in scene"); attrib) {
             _drawInScene = attrib->getValue<bool>();
         }
@@ -451,7 +964,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("scale"); attrib) {
-            const auto tmpScale = attrib->getValues<float32_t>();
+            auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
             case 1:
@@ -466,7 +979,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib) {
-            const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
+            auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
 
             switch (tmpAtlasDimensions.size()) {
             case 1:
@@ -481,7 +994,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("look orientation"); attrib) {
-            const auto lookOrient = attrib->getValue<std::string>();
+            auto lookOrient = attrib->getValue<std::string>();
 
             if (lookOrient == "LOOK_CAMERA_PLANE") {
                 lookOrientation = LOOK_CAMERA_PLANE;
@@ -498,7 +1011,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("up orientation"); attrib) {
-            const auto upOrient = attrib->getValue<std::string>();
+            auto upOrient = attrib->getValue<std::string>();
 
             if (upOrient == "UP_CAMERA") {
                 upOrientation = UP_CAMERA;
@@ -515,7 +1028,7 @@ namespace SPK::FO
         }
 
         if (auto attrib = descriptor.getAttributeWithValue("locked axis"); attrib) {
-            const auto lockAx = attrib->getValue<std::string>();
+            auto lockAx = attrib->getValue<std::string>();
 
             if (lockAx == "LOCK_LOOK") {
                 lockedAxis = LOCK_LOOK;
@@ -540,11 +1053,6 @@ namespace SPK::FO
 
         Renderer::innerExport(descriptor);
 
-        if (_drawWidth != 0 || _drawHeight != 0) {
-            const std::vector tmpSize = {_drawWidth, _drawHeight};
-            descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
-        }
-
         if (_drawInScene) {
             descriptor.getAttribute("draw in scene")->setValue(_drawInScene);
         }
@@ -553,10 +1061,10 @@ namespace SPK::FO
 
         descriptor.getAttribute("texture")->setValue(std::string(_textureName));
 
-        const std::vector tmpScale = {scaleX, scaleY};
+        std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
-        const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
+        std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {
@@ -596,4 +1104,7 @@ namespace SPK::FO
 
         descriptor.getAttribute("locked up vector")->setValue(upVector);
     }
+
 }
+
+#endif

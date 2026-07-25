@@ -90,7 +90,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace EntityOps
 {
@@ -1863,7 +1863,7 @@ namespace EntityOps
                 {"Scripts/EntityOps.fos", script_source},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1873,7 +1873,7 @@ namespace EntityOps
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = MakeEntityOpsMetadataBlob();
+        auto metadata_blob = MakeEntityOpsMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1882,16 +1882,16 @@ namespace EntityOps
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto coverage_proto_type = proto_engine.Hashes.ToHashedString("CoverageProtoTarget");
-        const auto coverage_fixed_type = proto_engine.Hashes.ToHashedString("CoverageFixed");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        const auto coverage_proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_proto_type, "CoverageProtoOne");
-        const auto coverage_fixed_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring coverage_proto_type = proto_engine.Hashes.ToHashedString("CoverageProtoTarget");
+        hstring coverage_fixed_type = proto_engine.Hashes.ToHashedString("CoverageFixed");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
+        auto coverage_proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_proto_type, "CoverageProtoOne");
+        auto coverage_fixed_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1929,7 +1929,7 @@ namespace EntityOps
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1939,7 +1939,7 @@ namespace EntityOps
 
     static auto MakeConstGlobalMismatchResources() -> FileSystem
     {
-        const auto metadata_blob = MakeEntityOpsMetadataBlob();
+        auto metadata_blob = MakeEntityOpsMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1947,7 +1947,7 @@ namespace EntityOps
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-        const auto script_blob = MakeConstGlobalMismatchScriptBinary(compiler_resources);
+        auto script_blob = MakeConstGlobalMismatchScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1991,12 +1991,12 @@ namespace EntityOps
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("EntityOps::" func_name)); \
@@ -2007,7 +2007,7 @@ namespace EntityOps
 #define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
     REQUIRE(func); \
-    const auto prev_callback = GetExceptionCallback(); \
+    auto prev_callback = GetExceptionCallback(); \
     string message; \
     SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
@@ -2021,9 +2021,9 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
     string message;
     std::mutex message_locker;
 
-    const auto prev_callback = GetExceptionCallback();
+    auto prev_callback = GetExceptionCallback();
     SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) {
-        const std::scoped_lock locker(message_locker);
+        std::scoped_lock locker(message_locker);
 
         message += msg;
         message += '\n';
@@ -2043,7 +2043,7 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     CHECK_FALSE(startup_error.empty());
     CHECK(server->IsStartingError());
@@ -2054,7 +2054,7 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
 
     string message_snapshot;
     {
-        const std::scoped_lock locker(message_locker);
+        std::scoped_lock locker(message_locker);
         message_snapshot = message;
     }
 

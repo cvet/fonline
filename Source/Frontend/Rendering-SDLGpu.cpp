@@ -402,7 +402,7 @@ static auto EnsureRenderPass(ptr<SDLGpu_Renderer::Context> ctx) -> ptr<SDL_GPURe
     }
 
     SDL_GPUDepthStencilTargetInfo depth_target = {};
-    const bool with_depth = IsTargetWithDepth(ctx);
+    bool with_depth = IsTargetWithDepth(ctx);
 
     if (with_depth) {
         FO_VERIFY_AND_THROW(ctx->CurRenderTarget->DepthTexHandle, "SDL_GPU render target depth texture handle is null");
@@ -483,7 +483,7 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
     FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
 
     SDL_GPUFence* fence_handles[] = {fence.get()};
-    const bool wait_ok = SDL_WaitForGPUFences(ctx->Device.get(), true, fence_handles, 1);
+    bool wait_ok = SDL_WaitForGPUFences(ctx->Device.get(), true, fence_handles, 1);
     SDL_ReleaseGPUFence(ctx->Device.get(), fence.get());
     FO_VERIFY_AND_THROW(wait_ok, "SDL_WaitForGPUFences failed", SDL_GetError());
 }
@@ -592,7 +592,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     WriteLog("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
 
     // Shader format: prefer the SPIR-V flavor (Vulkan), fall back to MSL (Metal)
-    const SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
+    SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
 
     if ((device_formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0) {
         _ctx->ShaderFormat = SDL_GPU_SHADERFORMAT_SPIRV;
@@ -605,7 +605,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     }
 
     // Swapchain
-    const bool claim_ok = SDL_ClaimWindowForGPUDevice(_ctx->Device.get(), _ctx->SdlWindow.get());
+    bool claim_ok = SDL_ClaimWindowForGPUDevice(_ctx->Device.get(), _ctx->SdlWindow.get());
 
     if (!claim_ok) {
         throw AppInitException("SDL_ClaimWindowForGPUDevice failed", SDL_GetError());
@@ -613,7 +613,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     if (!_ctx->VSync) {
         if (SDL_WindowSupportsGPUPresentMode(_ctx->Device.get(), _ctx->SdlWindow.get(), SDL_GPU_PRESENTMODE_IMMEDIATE)) {
-            const bool swapchain_params_ok = SDL_SetGPUSwapchainParameters(_ctx->Device.get(), _ctx->SdlWindow.get(), SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_IMMEDIATE);
+            bool swapchain_params_ok = SDL_SetGPUSwapchainParameters(_ctx->Device.get(), _ctx->SdlWindow.get(), SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_IMMEDIATE);
             FO_VERIFY_AND_THROW(swapchain_params_ok, "SDL_SetGPUSwapchainParameters failed", SDL_GetError());
         }
         else {
@@ -630,7 +630,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     }
 
     // Samplers
-    const auto create_sampler = [&](SDL_GPUFilter filter) {
+    auto create_sampler = [&](SDL_GPUFilter filter) {
         SDL_GPUSamplerCreateInfo sampler_info = {};
         sampler_info.min_filter = filter;
         sampler_info.mag_filter = filter;
@@ -639,7 +639,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         sampler_info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
         sampler_info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
 
-        const auto sampler = make_nptr(SDL_CreateGPUSampler(_ctx->Device.get(), &sampler_info));
+        auto sampler = make_nptr(SDL_CreateGPUSampler(_ctx->Device.get(), &sampler_info));
         FO_VERIFY_AND_THROW(sampler, "SDL_CreateGPUSampler failed", SDL_GetError());
         return sampler;
     };
@@ -731,7 +731,7 @@ void SDLGpu_Renderer::Present()
     nptr<SDL_GPUTexture> swapchain_tex {};
     uint32_t swapchain_width = 0;
     uint32_t swapchain_height = 0;
-    const bool acquire_ok = SDL_WaitAndAcquireGPUSwapchainTexture(_ctx->CmdBuf.get(), _ctx->SdlWindow.get(), swapchain_tex.get_pp(), &swapchain_width, &swapchain_height);
+    bool acquire_ok = SDL_WaitAndAcquireGPUSwapchainTexture(_ctx->CmdBuf.get(), _ctx->SdlWindow.get(), swapchain_tex.get_pp(), &swapchain_width, &swapchain_height);
     FO_VERIFY_AND_THROW(acquire_ok, "SDL_WaitAndAcquireGPUSwapchainTexture failed", SDL_GetError(), _ctx->BackBufSize);
 
     // A null swapchain texture is not an error (window is minimized or otherwise unavailable); skip the blit
@@ -749,7 +749,7 @@ void SDLGpu_Renderer::Present()
         SDL_BlitGPUTexture(_ctx->CmdBuf.get(), &blit_info);
     }
 
-    const bool submit_ok = SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get());
+    bool submit_ok = SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get());
     _ctx->CmdBuf = nullptr;
     FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
 }
@@ -811,20 +811,20 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
     // The SDL_GPU backend consumes the SDL-convention baked flavors (per-stage descriptor sets), not the native
     // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver.
-    const bool spirv = _ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV;
+    bool spirv = _ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV;
 #if FO_IOS
     const string_view shader_flavor = spirv ? "spv_sdl" : "msl_ios";
 #else
-    const string_view shader_flavor = spirv ? "spv_sdl" : "msl_mac";
+    string_view shader_flavor = spirv ? "spv_sdl" : "msl_mac";
 #endif
     // SPIR-V keeps the default entry point, SPIRV-Cross renames it for MSL (matches the SDL Metal driver default)
-    const string_view entry_point = spirv ? "main" : "main0";
+    string_view entry_point = spirv ? "main" : "main0";
 
     for (size_t pass = 0; pass < sdl_effect->_passCount; pass++) {
         // Per-stage SDL binding slots and resource counts from the baked [EffectInfoSdl] section
-        const string pass_info_fname = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
-        const string pass_info_content = loader(pass_info_fname);
-        const auto pass_info = ConfigFile(pass_info_fname, pass_info_content);
+        string pass_info_fname = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
+        string pass_info_content = loader(pass_info_fname);
+        auto pass_info = ConfigFile(pass_info_content);
 
         if (!pass_info.HasSection("EffectInfoSdl")) {
             throw EffectLoadException("Effect info has no EffectInfoSdl section, rebake resources", name, pass_info_fname);
@@ -836,7 +836,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         slots.FragSamplers = numeric_cast<uint32_t>(pass_info.GetAsInt("EffectInfoSdl", "FragmentSamplers", 0));
         slots.FragUniformBufs = numeric_cast<uint32_t>(pass_info.GetAsInt("EffectInfoSdl", "FragmentUniformBuffers", 0));
 
-        const auto read_slot_pair = [&pass_info](string_view res_name, int32_t& vert_slot, int32_t& frag_slot) {
+        auto read_slot_pair = [&pass_info](string_view res_name, int32_t& vert_slot, int32_t& frag_slot) {
             vert_slot = pass_info.GetAsInt("EffectInfoSdl", strex("Vert{}", res_name), -1);
             frag_slot = pass_info.GetAsInt("EffectInfoSdl", strex("Frag{}", res_name), -1);
         };
@@ -862,9 +862,9 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 #endif
 
         // Shaders
-        const auto create_shader = [&](bool is_vertex) {
-            const string shader_fname = strex("{}.fofx-{}-{}-{}", strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
-            const string shader_content = loader(shader_fname);
+        auto create_shader = [&](bool is_vertex) {
+            string shader_fname = strex("{}.fofx-{}-{}-{}", strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
+            string shader_content = loader(shader_fname);
             FO_VERIFY_AND_THROW(!shader_content.empty(), "SDL_GPU effect shader content is empty after loading", name, pass + 1, shader_fname);
 
             SDL_GPUShaderCreateInfo shader_info = {};
@@ -879,7 +879,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             shader_info.num_storage_buffers = 0;
             shader_info.num_uniform_buffers = is_vertex ? slots.VertUniformBufs : slots.FragUniformBufs;
 
-            const auto shader = make_nptr(SDL_CreateGPUShader(_ctx->Device.get(), &shader_info));
+            auto shader = make_nptr(SDL_CreateGPUShader(_ctx->Device.get(), &shader_info));
 
             if (!shader) {
                 throw EffectLoadException("SDL_CreateGPUShader failed", SDL_GetError(), shader_fname);
@@ -900,12 +900,12 @@ auto SDLGpu_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
     FO_STACK_TRACE_ENTRY();
 
     // SDL_GPU normalizes clip-space depth to [0,1] across all drivers, same as Direct3D
-    const auto& l = left;
-    const auto& t = top;
-    const auto& r = right;
-    const auto& b = bottom;
-    const auto& zn = nearp;
-    const auto& zf = farp;
+    const float32_t& l = left;
+    const float32_t& t = top;
+    const float32_t& r = right;
+    const float32_t& b = bottom;
+    const float32_t& zn = nearp;
+    const float32_t& zf = farp;
 
     mat44 result {1.0f};
 
@@ -971,10 +971,10 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         screen_height = vp_height;
     }
     else {
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
+        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
+        int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
         vp_ox = (_ctx->BackBufSize.width - fit_width) / 2;
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
@@ -1053,8 +1053,8 @@ void SDLGpu_Renderer::EnableScissor(irect32 rect)
     int32_t bottom;
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
-        const float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
-        const float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
+        float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
+        float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
 
         left = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
         top = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
@@ -1098,11 +1098,11 @@ void SDLGpu_Renderer::OnResizeWindow(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    const auto is_backbuffer_target = !_ctx->CurRenderTarget;
+    bool is_backbuffer_target = !_ctx->CurRenderTarget;
 
     // The proxy may be referenced by recorded work, so finish everything before recreating it
     SubmitAndWait(_ctx);
-    const bool wait_idle_ok = SDL_WaitForGPUIdle(_ctx->Device.get());
+    bool wait_idle_ok = SDL_WaitForGPUIdle(_ctx->Device.get());
     FO_VERIFY_AND_THROW(wait_idle_ok, "SDL_WaitForGPUIdle failed during window resize", SDL_GetError(), size);
 
     SDL_ReleaseGPUTexture(_ctx->Device.get(), _ctx->BackbufferProxyTex.get());
@@ -1135,7 +1135,7 @@ auto SDLGpu_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 
     FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested SDL_GPU texture pixel is outside texture bounds", pos, Size);
 
-    const auto region = GetTextureRegion(pos, {1, 1});
+    auto region = GetTextureRegion(pos, {1, 1});
     return region.front();
 }
 
@@ -1153,7 +1153,7 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     // Reads must observe everything drawn so far, so flush the recorded work first
     FlushPendingClears(_ctx);
 
-    const size_t read_size = numeric_cast<size_t>(size.width) * size.height * sizeof(ucolor);
+    size_t read_size = numeric_cast<size_t>(size.width) * size.height * sizeof(ucolor);
     auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->DownloadTransferBuf, _ctx->DownloadTransferBufSize, read_size, true);
 
     auto copy_pass = EnsureCopyPass(_ctx);
@@ -1191,15 +1191,15 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture update rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture update rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
-    const size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
-    const size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
+    size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
+    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size", data.size(), required_size, size, use_dest_pitch);
 
     if (required_size == 0) {
         return;
     }
 
-    const size_t upload_size = required_size * sizeof(ucolor);
+    size_t upload_size = required_size * sizeof(ucolor);
     auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->UploadTransferBuf, _ctx->UploadTransferBufSize, upload_size, false);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
@@ -1270,9 +1270,9 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     vert_size = sizeof(Vertex2D);
 #endif
 
-    const size_t upload_indices = custom_indices_size.value_or(IndCount);
-    const size_t vertices_data_size = upload_vertices * vert_size;
-    const size_t indices_data_size = upload_indices * sizeof(vindex_t);
+    size_t upload_indices = custom_indices_size.value_or(IndCount);
+    size_t vertices_data_size = upload_vertices * vert_size;
+    size_t indices_data_size = upload_indices * sizeof(vindex_t);
 
     if (vertices_data_size == 0 && indices_data_size == 0) {
         StaticDataChanged = false;
@@ -1313,7 +1313,7 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     }
 
     // Stage vertices and indices through the per-buffer transfer buffer
-    const size_t total_data_size = vertices_data_size + indices_data_size;
+    size_t total_data_size = vertices_data_size + indices_data_size;
     auto transfer_buf = EnsureTransferBuffer(_ctx, TransferBuf, TransferBufSize, total_data_size, false);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
@@ -1399,16 +1399,16 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool disable_culling =
+    bool disable_culling =
 #if FO_ENABLE_3D
         DisableCulling;
 #else
         false;
 #endif
 
-    const uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (disable_culling ? 1u << 8 : 0u);
+    uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (disable_culling ? 1u << 8 : 0u);
 
-    const auto pipeline_it = _pipelines.find(key);
+    auto pipeline_it = _pipelines.find(key);
 
     if (pipeline_it != _pipelines.end()) {
         FO_VERIFY_AND_THROW(pipeline_it->second, "SDL_GPU cached pipeline is null");
@@ -1430,7 +1430,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     constexpr size_t max_attributes = 9;
     SDL_GPUVertexAttribute vertex_attributes[max_attributes] = {};
 
-    const auto set_attribute = [&vertex_attributes](uint32_t location, SDL_GPUVertexElementFormat format, size_t offset) {
+    auto set_attribute = [&vertex_attributes](uint32_t location, SDL_GPUVertexElementFormat format, size_t offset) {
         vertex_attributes[location].location = location;
         vertex_attributes[location].buffer_slot = 0;
         vertex_attributes[location].format = format;
@@ -1554,7 +1554,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         topology = ConvertPrimitiveType(sdl_dbuf->PrimType);
     }
 
-    const auto draw_count = numeric_cast<uint32_t>(indices_to_draw.value_or(sdl_dbuf->IndCount));
+    auto draw_count = numeric_cast<uint32_t>(indices_to_draw.value_or(sdl_dbuf->IndCount));
 
     if (draw_count == 0) {
         return;
@@ -1582,12 +1582,12 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so
     // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw.
-    const auto reset_derived_on_fail = scope_fail([this]() noexcept {
+    auto reset_derived_on_fail = scope_fail([this]() noexcept {
         ProjBuf.reset();
         MainTexBuf.reset();
     });
 
-    const bool with_depth = IsTargetWithDepth(_ctx);
+    bool with_depth = IsTargetWithDepth(_ctx);
 
     auto render_pass = EnsureRenderPass(_ctx);
     auto cmd_buf = _ctx->CmdBuf;
@@ -1621,7 +1621,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         // Samplers
-        const auto bind_sampler = [&](int32_t vert_slot, int32_t frag_slot, ptr<const SDLGpu_Texture> tex) {
+        auto bind_sampler = [&](int32_t vert_slot, int32_t frag_slot, ptr<const SDLGpu_Texture> tex) {
             SDL_GPUTextureSamplerBinding sampler_binding = {};
             sampler_binding.texture = tex->TexHandle.get_no_const();
             sampler_binding.sampler = tex->LinearFiltered ? _ctx->LinearSampler.get() : _ctx->PointSampler.get();
@@ -1661,12 +1661,12 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 #endif
 
         // Uniform buffers (push-style, re-recorded on every draw)
-        const auto push_uniform = [&](bool need_buf, const auto& opt_buf, int32_t vert_slot, int32_t frag_slot, optional<size_t> custom_size = std::nullopt) {
+        auto push_uniform = [&](bool need_buf, const auto& opt_buf, int32_t vert_slot, int32_t frag_slot, optional<size_t> custom_size = std::nullopt) {
             if (!need_buf || !opt_buf.has_value()) {
                 return;
             }
 
-            const auto data_size = numeric_cast<uint32_t>(custom_size.value_or(sizeof(*opt_buf)));
+            auto data_size = numeric_cast<uint32_t>(custom_size.value_or(sizeof(*opt_buf)));
 
             if (vert_slot != -1) {
                 SDL_PushGPUVertexUniformData(cmd_buf.get(), numeric_cast<uint32_t>(vert_slot), &opt_buf.value(), data_size);

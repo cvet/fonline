@@ -38,7 +38,7 @@ public:
         auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });
 
         bson_error_t error;
-        const string uri_text = string(uri);
+        string uri_text = string(uri);
         auto uri_ptr = make_ptr(uri_text.c_str());
         auto mongo_uri = make_nptr(mongoc_uri_new_with_error(uri_ptr.get(), &error));
 
@@ -58,7 +58,7 @@ public:
         mongoc_uri_destroy(mongo_uri.get());
         mongoc_client_set_appname(client.get(), FO_DEV_NAME);
 
-        const string db_name_text = string(db_name);
+        string db_name_text = string(db_name);
         auto db_name_ptr = make_ptr(db_name_text.c_str());
         auto database = make_nptr(mongoc_client_get_database(client.get(), db_name_ptr.get()));
 
@@ -163,7 +163,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto it = _collections.find(collection_name.as_str());
+        auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             bson_error_t error;
@@ -188,7 +188,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type = GetCollectionKeyType(collection_name);
 
         ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
@@ -411,7 +411,7 @@ protected:
         bson_t reply;
         bson_error_t error;
         auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
-        const auto ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
+        bool ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
 
         if (ok) {
             bson_destroy(&reply);
@@ -428,7 +428,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto it = _collections.find(collection_name.as_str());
+        auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             throw DataBaseException("DbMongo Collection not found", collection_name);

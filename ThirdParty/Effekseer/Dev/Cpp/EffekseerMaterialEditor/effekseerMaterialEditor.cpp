@@ -1,0 +1,809 @@
+#define _CRT_SECURE_NO_WARNINGS
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "gdiplus.lib")
+
+#define IMGUI_DEFINE_MATH_OPERATORS 1
+
+#include "efkMat.Editor.h"
+
+#include "Config.h"
+#include "Dialog/Dialog.h"
+#include "Graphics/efkMat.Graphics.h"
+
+#include "../IPC/IPC.h"
+
+#include <GLFW/glfw3.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#include <efkMat.Base.h>
+#include <efkMat.Models.h>
+#include <efkMat.Parameters.h>
+#include <efkMat.TextExporter.h>
+
+#include <efkMat.CommandManager.h>
+#include <efkMat.StringContainer.h>
+
+#include <Common/StringHelper.h>
+#include <GUI/MainWindow.h>
+#include <IO/IO.h>
+#include <algorithm>
+
+#include <GUI/Misc.h>
+#include <IO/CSVReader.h>
+
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
+#include <fstream>
+#include <filesystem>
+#include <iostream>
+#include <sstream>
+
+#ifdef WIN32
+#include <direct.h>
+#include <windows.h>
+#else
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
+namespace ed = ax::NodeEditor;
+
+GLFWwindow* glfwMainWindow = nullptr;
+std::shared_ptr<EffekseerMaterial::Editor> g_editor;
+std::shared_ptr<EffekseerMaterial::Node> g_selectedNode;
+
+bool g_showDebugWindow = false;
+
+class IOCallback : public Effekseer::IOCallback
+{
+public:
+	void OnFileChanged(Effekseer::StaticFileType fileType, const char16_t* path)
+	{
+		auto pathu8 = Effekseer::Tool::StringHelper::ConvertUtf16ToUtf8(path);
+		EffekseerMaterial::TextureCache::NotifyFileChanged(pathu8.c_str());
+	}
+};
+
+std::string GetDirectoryName(const std::string& path)
+{
+	const std::string::size_type pos = std::max<int32_t>(path.find_last_of('/'), path.find_last_of('\\'));
+	return (pos == std::string::npos) ? std::string() : path.substr(0, pos + 1);
+}
+
+std::string GetExecutingDirectory()
+{
+	char buf[260];
+
+#ifdef _WIN32
+	int len = GetModuleFileNameA(nullptr, buf, 260);
+	if (len <= 0)
+		return "";
+#elif defined(__APPLE__)
+	uint32_t size = 260;
+	if (_NSGetExecutablePath(buf, &size) != 0)
+	{
+		buf[0] = 0;
+	}
+#else
+
+	char temp[32];
+	sprintf(temp, "/proc/%d/exe", getpid());
+	int bytes = std::min((int)readlink(temp, buf, 260), 260 - 1);
+	if (bytes >= 0)
+		buf[bytes] = '\0';
+#endif
+
+	return GetDirectoryName(buf);
+}
+
+void SetCurrentDir(const char* path)
+{
+#ifdef _WIN32
+	_chdir(path);
+#else
+	chdir(path);
+#endif
+	spdlog::info("SetCurrentDir : {}", path);
+}
+
+std::vector<std::shared_ptr<EffekseerMaterial::Dialog>> newDialogs;
+std::vector<std::shared_ptr<EffekseerMaterial::Dialog>> dialogs;
+
+void GLFLW_CloseCallback(GLFWwindow* w)
+{
+	bool isChanged = false;
+
+	for (size_t i = 0; i < g_editor->GetContents().size(); i++)
+	{
+		if (g_editor->GetContents()[i]->GetIsChanged())
+		{
+			auto closeIfCan = [w]() -> void
+			{
+				bool isChanged = false;
+
+				for (size_t i = 0; i < g_editor->GetContents().size(); i++)
+				{
+					if (g_editor->GetContents()[i]->GetIsChanged())
+					{
+						isChanged = true;
+					}
+				}
+
+				if (!isChanged)
+				{
+					glfwSetWindowShouldClose(w, GL_TRUE);
+				}
+			};
+
+			auto closeDialog =
+				std::make_shared<EffekseerMaterial::SaveOrCloseDialog>(g_editor->GetContents()[i], [closeIfCan]()
+																	   { closeIfCan(); });
+			newDialogs.push_back(closeDialog);
+			isChanged = true;
+		}
+	}
+
+	if (isChanged)
+	{
+		glfwSetWindowShouldClose(w, GL_FALSE);
+	}
+}
+
+void ChangeLanguage(const std::string&)
+{
+	auto loadLanguage = [](const std::string& k, const std::string& filename)
+	{
+		const auto languageFilePath = GetExecutingDirectory() + "resources/languages/" + k + "/" + filename;
+
+		std::ifstream f(languageFilePath);
+		if (!f.is_open())
+		{
+			return;
+		}
+
+		auto str = std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+		auto csv = Effekseer::Editor::ReadCSV(str);
+
+		for (const auto& line : csv)
+		{
+			if (line.size() < 2)
+				continue;
+
+			if (line[0] == "")
+				continue;
+
+			EffekseerMaterial::StringContainer::AddValue(line[0].c_str(), line[1].c_str());
+		}
+	};
+
+	EffekseerMaterial::StringContainer::Clear();
+	loadLanguage("en", "Base.csv");
+	loadLanguage("en", "EffekseerMaterialEditor.csv");
+}
+
+int mainLoop(int argc, char* argv[])
+{
+	bool ipcMode = false;
+	std::string languageKey;
+	std::string startupMaterialPath;
+
+	if (argc >= 2)
+	{
+		for (int i = 1; i < argc; i++)
+		{
+			const auto arg = std::string(argv[i]);
+
+			if (i == 1 && arg == "ipc")
+			{
+				ipcMode = true;
+				continue;
+			}
+
+			if (arg == "--language" || arg == "-l")
+			{
+				if (i + 1 < argc)
+				{
+					languageKey = argv[++i];
+				}
+				continue;
+			}
+
+			if (startupMaterialPath.empty() && !arg.empty() && arg[0] != '-')
+			{
+				std::error_code ec;
+				const auto path = std::filesystem::absolute(std::filesystem::u8path(arg), ec);
+				startupMaterialPath = ec ? arg : path.u8string();
+			}
+		}
+	}
+
+	SetCurrentDir(GetExecutingDirectory().c_str());
+
+	// check debug mode
+	bool isDebugMode = false;
+	{
+		auto debugfp = fopen("debug.txt", "rb");
+		if (debugfp != nullptr)
+		{
+			isDebugMode = true;
+			fclose(debugfp);
+		}
+	}
+
+#ifndef NDEBUG
+	isDebugMode = true;
+#endif
+
+	if (isDebugMode)
+	{
+		auto fileLogger = spdlog::basic_logger_mt("logger", GetExecutingDirectory() + "EffekseerMaterialEditor.log.txt");
+		spdlog::set_default_logger(fileLogger);
+		spdlog::set_level(spdlog::level::trace);
+	}
+
+	spdlog::info("Start MaterialEditor");
+
+	auto config = std::make_shared<EffekseerMaterial::Config>();
+	config->Load("config.EffekseerMaterial.json");
+
+	if (config->WindowWidth == 0)
+	{
+		config->WindowWidth = 1280;
+		config->WindowHeight = 720;
+	}
+
+#if _DEBUG
+	const char16_t* title = u"EffekseerMaterialEditor - debug";
+#else
+	const char16_t* title = u"EffekseerMaterialEditor";
+#endif
+
+	Effekseer::MainWindowState mainWindowState;
+	mainWindowState.Width = config->WindowWidth;
+	mainWindowState.Height = config->WindowHeight;
+	mainWindowState.PosX = config->WindowPosX;
+	mainWindowState.PosY = config->WindowPosY;
+	mainWindowState.IsMaximumMode = config->WindowIsMaximumMode;
+	if (!Effekseer::MainWindow::Initialize(title, mainWindowState, false, true))
+	{
+		return 0;
+	}
+
+	auto mainWindow = Effekseer::MainWindow::GetInstance();
+	Effekseer::IO::Initialize(1000);
+	Effekseer::IO::GetInstance()->AddCallback(std::make_shared<IOCallback>());
+
+	auto commandQueueToMaterialEditor_ = std::make_shared<IPC::CommandQueue>();
+	if (!commandQueueToMaterialEditor_->Start("EfkCmdToMatEdit", 1024 * 1024))
+	{
+		spdlog::warn("Failed to start EfkCmdToMatEdit");
+	}
+
+	auto commandQueueFromMaterialEditor_ = std::make_shared<IPC::CommandQueue>();
+	if (!commandQueueFromMaterialEditor_->Start("EfkCmdFromMatEdit", 1024 * 1024))
+	{
+		spdlog::warn("Failed to start EfkCmdFromMatEdit");
+	}
+
+	uint64_t previousHistoryID = 0;
+
+	glfwMainWindow = mainWindow->GetGLFWWindows();
+	bool isDpiDirtied = true;
+	bool isFontUpdated = true;
+
+	mainWindow->DpiChanged = [&](float scale) -> void
+	{ isDpiDirtied = true; isFontUpdated = true; };
+
+	glfwSetWindowCloseCallback(glfwMainWindow, GLFLW_CloseCallback);
+
+	glfwMakeContextCurrent(glfwMainWindow);
+	glfwSwapInterval(1);
+
+	auto graphics = std::make_shared<EffekseerMaterial::Graphics>();
+	graphics->Initialize(config->WindowWidth, config->WindowHeight);
+
+#if __APPLE__
+	// GL 3.2 + GLSL 150
+	const char* glsl_version = "#version 150";
+#else
+	// GL 3.0 + GLSL 130
+	const char* glsl_version = "#version 130";
+#endif
+
+	// Init imgui
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForOpenGL(glfwMainWindow, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	ImGui::StyleColorsDark();
+
+	// Specify imgui setting
+	std::string imguiConfigPath = GetExecutingDirectory() + "imgui.material.ini";
+	ImGui::GetIO().IniFilename = imguiConfigPath.c_str();
+
+	if (languageKey != "")
+	{
+		config->Language = languageKey;
+	}
+	ChangeLanguage(config->Language);
+
+	g_editor = std::make_shared<EffekseerMaterial::Editor>(graphics);
+
+	if (!startupMaterialPath.empty())
+	{
+		g_editor->LoadOrSelect(startupMaterialPath.c_str());
+	}
+
+	bool isFirstFrame = true;
+	int framecount = 0;
+	int leftWidth = 220 * mainWindow->GetDPIScale();
+
+	while (!glfwWindowShouldClose(glfwMainWindow))
+	{
+		Effekseer::IO::GetInstance()->Update();
+
+		if (isDpiDirtied)
+		{
+			ImGuiStyle& style = ImGui::GetStyle();
+
+			style = ImGuiStyle();
+			style.ChildRounding = 3.f;
+			style.GrabRounding = 3.f;
+			style.WindowRounding = 3.f;
+			style.ScrollbarRounding = 3.f;
+			style.FrameRounding = 3.f;
+			style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
+			style.ScaleAllSizes(mainWindow->GetDPIScale());
+
+			// mono tone
+			for (int32_t i = 0; i < ImGuiCol_COUNT; i++)
+			{
+				auto v = (style.Colors[i].x + style.Colors[i].y + style.Colors[i].z) / 3.0f;
+				style.Colors[i].x = v;
+				style.Colors[i].y = v;
+				style.Colors[i].z = v;
+			}
+
+			style.Colors[ImGuiCol_Text] = ImVec4(0.80f, 0.80f, 0.80f, 1.00f);
+			style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+			style.Colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.1f, 0.1f, 0.9f);
+
+			isDpiDirtied = false;
+		}
+
+		if (isFontUpdated)
+		{
+			ImGui_ImplOpenGL3_DestroyDeviceObjects();
+			io.Fonts->Clear();
+
+			// (FOnline Patch) Load the Latin-only subset instead of the upstream CJK collection.
+			const auto fontPath = GetExecutingDirectory() + "resources/fonts/FOnlineEffekseerLatin-Regular.otf";
+			Effekseer::Editor::AddFontFromFileTTF(fontPath.c_str(), "", "en", 20, mainWindow->GetDPIScale());
+
+			isFontUpdated = false;
+		}
+
+		glfwPollEvents();
+
+		// command event
+		{
+			IPC::CommandData commandDataTOMaterialEditor;
+			if (commandQueueToMaterialEditor_->Dequeue(&commandDataTOMaterialEditor))
+			{
+				if (commandDataTOMaterialEditor.Type == IPC::CommandType::Terminate)
+				{
+					spdlog::trace("ICP - Receive - Terminate");
+					break;
+				}
+				else if (commandDataTOMaterialEditor.Type == IPC::CommandType::OpenMaterial)
+				{
+					spdlog::trace("ICP - Receive - OpenMaterial : {}", (const char*)(commandDataTOMaterialEditor.str.data()));
+					g_editor->LoadOrSelect(commandDataTOMaterialEditor.str.data());
+				}
+				else if (commandDataTOMaterialEditor.Type == IPC::CommandType::OpenOrCreateMaterial)
+				{
+					spdlog::trace("ICP - Receive - OpenOrCreateMaterial : {}", (const char*)(commandDataTOMaterialEditor.str.data()));
+					if (g_editor->LoadOrSelect(commandDataTOMaterialEditor.str.data()) == EffekseerMaterial::ErrorCode::NotFound)
+					{
+						g_editor->New();
+						g_editor->SaveAs(commandDataTOMaterialEditor.str.data());
+					}
+				}
+			}
+		}
+
+		auto material = g_editor->GetSelectedMaterial();
+		if (material != nullptr && material->GetCommandManager()->GetHistoryID() != previousHistoryID)
+		{
+			auto content = g_editor->GetContents()[g_editor->GetSelectedContentIndex()];
+			spdlog::trace("ICP - Send - NotifyUpdate : {}", material->GetPath());
+			content->UpdateBinary();
+
+			previousHistoryID = material->GetCommandManager()->GetHistoryID();
+			IPC::CommandData commandDataFromMaterialEditor;
+			commandDataFromMaterialEditor.Type = IPC::CommandType::NotifyUpdate;
+			commandDataFromMaterialEditor.SetStr(content->GetPath().c_str());
+			commandQueueFromMaterialEditor_->Enqueue(&commandDataFromMaterialEditor);
+		}
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		{
+			if (material != nullptr)
+			{
+				if (!ImGui::IsAnyItemActive())
+				{
+					if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z))
+					{
+						material->GetCommandManager()->Undo();
+					}
+
+					if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
+					{
+						material->GetCommandManager()->Redo();
+					}
+				}
+			}
+
+			// Menu bar
+			if (ImGui::BeginMainMenuBar())
+			{
+				if (ImGui::BeginMenu(EffekseerMaterial::StringContainer::GetValue("File").c_str()))
+				{
+					if (!ipcMode)
+					{
+						if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("New").c_str()))
+						{
+							g_editor->New();
+						}
+
+						if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("Load").c_str()))
+						{
+							g_editor->Load();
+						}
+					}
+
+#ifdef __APPLE__
+					if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("Save").c_str(), "Command+S"))
+					{
+						g_editor->Save();
+					}
+
+					if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("SaveAs").c_str(), "Command+S"))
+					{
+						g_editor->SaveAs();
+					}
+#else
+					if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("Save").c_str(), "Ctrl+S"))
+					{
+						g_editor->Save();
+					}
+
+					if (ImGui::MenuItem(EffekseerMaterial::StringContainer::GetValue("SaveAs").c_str(), "Ctrl+S"))
+					{
+						g_editor->SaveAs();
+					}
+
+#endif
+
+					ImGui::EndMenu();
+				}
+
+#ifdef _DEBUG
+				if (ImGui::BeginMenu("Debug"))
+				{
+					if (ImGui::MenuItem("DebugWindow"))
+					{
+						g_showDebugWindow = true;
+					}
+
+					ImGui::EndMenu();
+				}
+
+#endif
+
+				ImGui::EndMainMenuBar();
+			}
+
+			// show with fullscreen
+			ImVec2 windowSize;
+			windowSize.x = ImGui::GetIO().DisplaySize.x;
+			windowSize.y = ImGui::GetIO().DisplaySize.y - 25;
+
+			ImGui::SetNextWindowSize(windowSize);
+
+			ImGuiIO& io = ImGui::GetIO();
+			ImGui::SetNextWindowPos(ImVec2(0, 25));
+
+			const ImGuiWindowFlags flags = (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize |
+											ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar);
+			const float oldWindowRounding = ImGui::GetStyle().WindowRounding;
+			ImGui::GetStyle().WindowRounding = 0;
+
+			const bool visible = ImGui::Begin("MaterialEditor", nullptr, flags);
+			ImGui::GetStyle().WindowRounding = oldWindowRounding;
+
+			if (visible)
+			{
+				if (ImGui::BeginTabBar("###MainTab"))
+				{
+					bool isSelectedNow = g_editor->GetIsSelectedDirty();
+
+					g_editor->ClearDirtiedSelectedFlags();
+
+					for (size_t i = 0; i < g_editor->GetContents().size(); i++)
+					{
+						std::string tabName = g_editor->GetContents()[i]->GetName();
+						tabName += "###tab" + std::to_string(i);
+
+						bool isSelected = g_editor->GetSelectedContentIndex() == i;
+
+						ImGuiTabItemFlags tabItemFlags = 0;
+						if (isSelected && isSelectedNow)
+						{
+							tabItemFlags |= ImGuiTabItemFlags_SetSelected;
+						}
+
+						bool isOpen = true;
+						if (ImGui::BeginTabItem(tabName.c_str(), &isOpen, tabItemFlags))
+						{
+							// avoid to select when selected contents is changed
+							if (!isSelectedNow)
+							{
+								g_editor->SelectContent(i);
+							}
+
+							if (i == g_editor->GetSelectedContentIndex())
+							{
+
+								ImGui::Columns(2);
+
+								if (g_editor->GetContents()[i]->IsLoading)
+								{
+									ImGui::SetColumnWidth(0, leftWidth);
+								}
+								else
+								{
+									leftWidth = ImGui::GetColumnWidth(0);
+								}
+
+								ImGui::BeginChild("###Left");
+
+								g_editor->UpdatePreview();
+
+								ImGui::Separator();
+
+								if (g_selectedNode != nullptr)
+								{
+									g_editor->UpdateParameterEditor(g_selectedNode);
+								}
+
+								ImGui::EndChild();
+
+								ImGui::NextColumn();
+
+								ImGui::BeginChild("###Right");
+
+								auto& io = ImGui::GetIO();
+
+								if (!ImGui::IsAnyItemActive())
+								{
+									g_editor->GetContents()[i]->GetMaterial()->GetCommandManager()->MakeMergeDisabled();
+								}
+
+								ed::SetCurrentEditor(g_editor->GetContents()[i]->GetEditorContext());
+								ed::Begin("###MainEditor", ImVec2(0.0, 0.0f));
+								// ed::Suspend();
+
+								g_editor->Update();
+
+								ed::End();
+
+								// Find selected node
+								ax::NodeEditor::NodeId nodeIDs[2];
+								g_selectedNode = nullptr;
+								if (ed::GetSelectedNodes(nodeIDs, 2) > 0)
+								{
+									for (auto node : g_editor->GetContents()[i]->GetMaterial()->GetNodes())
+									{
+										if (node->GUID == nodeIDs[0].Get())
+										{
+											g_selectedNode = node;
+										}
+									}
+								}
+
+								ed::SetCurrentEditor(nullptr);
+
+								ImGui::EndChild();
+
+								ImGui::Columns(1);
+							}
+
+							ImGui::EndTabItem();
+						}
+
+						if (!isOpen)
+						{
+							// close item
+							if (g_editor->GetContents()[i]->GetIsChanged())
+							{
+								auto closeDialog =
+									std::make_shared<EffekseerMaterial::SaveOrCloseDialog>(g_editor->GetContents()[i], []() {});
+								// ImGui::OpenPopup(closeDialog->GetID());
+								newDialogs.push_back(closeDialog);
+							}
+							else
+							{
+								g_editor->GetContents()[i]->IsClosing = true;
+							}
+						}
+					}
+
+					ImGui::EndTabBar();
+				}
+
+				ImGui::End();
+			}
+
+			// HACK because of imgui specification
+			if (framecount == 3)
+			{
+				if (!ipcMode && startupMaterialPath.empty())
+				{
+					auto creatDialog = std::make_shared<EffekseerMaterial::NewOrOpenDialog>(g_editor);
+					// ImGui::OpenPopup(creatDialog->GetID());
+					newDialogs.push_back(creatDialog);
+				}
+			}
+
+			// popup
+			if (dialogs.size() == 0 && newDialogs.size() > 0)
+			{
+				ImGui::OpenPopup(newDialogs[0]->GetID());
+				dialogs.push_back(newDialogs[0]);
+				newDialogs.erase(newDialogs.begin(), newDialogs.begin() + 1);
+			}
+
+			for (auto dialog : dialogs)
+			{
+				if (!dialog->Update())
+				{
+					dialog->IsClosing = true;
+				}
+			}
+
+			auto removed_it = std::remove_if(
+				dialogs.begin(), dialogs.end(), [](std::shared_ptr<EffekseerMaterial::Dialog> d) -> bool
+				{ return d->IsClosing; });
+
+			dialogs.erase(removed_it, dialogs.end());
+
+			framecount++;
+			isFirstFrame = false;
+		}
+
+		if (g_showDebugWindow && ImGui::Begin("Code_Debug"))
+		{
+			if (material != nullptr && g_selectedNode != nullptr)
+			{
+				auto uobj = (EffekseerMaterial::NodeUserDataObject*)g_selectedNode->UserObj.get();
+
+				if (uobj != nullptr)
+				{
+					auto writeCode = [](const std::string& code)
+					{
+						int line = 1;
+						for (size_t index = 0; index < code.size(); line++)
+						{
+							size_t offset = code.find('\n', index);
+							if (offset == code.npos)
+							{
+								offset = code.size() - index;
+							}
+							ImGui::Text("%4d|", line);
+							ImGui::SameLine();
+							ImGui::TextUnformatted(&code[index], &code[offset]);
+							index = offset + 1;
+						}
+					};
+
+					if (ImGui::TreeNode("VS"))
+					{
+						writeCode(uobj->GetPreview()->VS);
+						ImGui::TreePop();
+					}
+
+					if (ImGui::TreeNode("PS"))
+					{
+						writeCode(uobj->GetPreview()->PS);
+						ImGui::TreePop();
+					}
+				}
+			}
+
+			ImGui::End();
+		}
+
+		if (material != nullptr)
+		{
+			auto nodes = material->GetNodes();
+			for (auto node : nodes)
+			{
+				if (node->UserObj != nullptr)
+				{
+					auto preview = (EffekseerMaterial::NodeUserDataObject*)node->UserObj.get();
+					preview->GetPreview()->Render();
+				}
+			}
+
+			g_editor->preview_->Render();
+		}
+
+		g_editor->CloseContents();
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (glfwMainWindow != nullptr)
+		{
+			glfwSwapBuffers(glfwMainWindow);
+		}
+	}
+
+	g_editor.reset();
+	g_selectedNode.reset();
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+	if (glfwMainWindow != nullptr)
+	{
+		mainWindowState = mainWindow->GetState();
+
+		config->WindowWidth = mainWindowState.Width;
+		config->WindowHeight = mainWindowState.Height;
+		config->WindowPosX = mainWindowState.PosX;
+		config->WindowPosY = mainWindowState.PosY;
+		config->WindowIsMaximumMode = mainWindowState.IsMaximumMode;
+	}
+
+	commandQueueToMaterialEditor_->Stop();
+	commandQueueFromMaterialEditor_->Stop();
+
+	config->Save((GetExecutingDirectory() + "config.EffekseerMaterial.json").c_str());
+
+	Effekseer::IO::Terminate();
+
+	Effekseer::MainWindow::Terminate();
+	mainWindow = nullptr;
+
+	spdlog::info("End MaterialEditor");
+
+	return 0;
+}
+
+#if defined(NDEBUG) && defined(_WIN32)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpszCmdLine, int nShowCmd)
+{
+	return mainLoop(__argc, __argv);
+}
+#else
+int main(int argc, char* argv[])
+{
+	return mainLoop(argc, argv);
+}
+#endif

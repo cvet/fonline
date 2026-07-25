@@ -17,7 +17,7 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static void AddAngelScriptMetadataForAllSides(BakerTests::TestRig& rig)
 {
-    const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
@@ -30,7 +30,7 @@ TEST_CASE("AngelScriptBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(AngelScriptBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(AngelScriptBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == AngelScriptBaker::NAME);
@@ -130,14 +130,14 @@ TEST_CASE("AngelScriptBaker")
         local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 
         BakerServerEngine compiler_engine {local_rig.BakedFiles};
-        const vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
+        vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
         vector<string> messages;
 
         CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) { messages.emplace_back(message); }), ScriptCompilerException);
 
         REQUIRE(!messages.empty());
 
-        const auto first_error = std::ranges::find_if(messages, [](const string& message) { return message.find("error") != string::npos; });
+        auto first_error = std::ranges::find_if(messages, [](const string& message) { return message.find("error") != string::npos; });
 
         REQUIRE(first_error != messages.end());
         CHECK(first_error->starts_with("BrokenScript.fos("));

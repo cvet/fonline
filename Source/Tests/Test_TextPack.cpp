@@ -56,7 +56,7 @@ TEST_CASE("TextPack")
 {
     SECTION("TextPackKeyFormatsAndParsesStructuredTuple")
     {
-        const auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name", "Short");
+        auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name", "Short");
         CHECK(FormatKey(key) == "{Items}{LaserRifle}{Name}{Short}");
 
         TextPackKey parsed;
@@ -68,7 +68,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const string input = "{100}{}{Hello}\n{200}{3}{World}\n{300}{}{Line1\nLine2}";
+        string input = "{100}{}{Hello}\n{200}{3}{World}\n{300}{}{Line1\nLine2}";
 
         REQUIRE(pack.LoadFromString(input, "Dialogs"));
         CHECK(pack.GetSize() == 3);
@@ -83,7 +83,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const string input = "{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}";
+        string input = "{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}";
 
         REQUIRE(pack.LoadFromString(input, "Quest"));
         CHECK(pack.GetStr(MakeKey("Quest", "QuestEntry"), 0) == "Base");
@@ -94,8 +94,8 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
-        const string input = "{LaserRifle}{Name}{Scoped energy rifle}";
+        auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
+        string input = "{LaserRifle}{Name}{Scoped energy rifle}";
 
         REQUIRE(pack.LoadFromString(input, "Items"));
         CHECK(pack.GetStr(key, 0) == "Scoped energy rifle");
@@ -105,16 +105,16 @@ TEST_CASE("TextPack")
     SECTION("BinaryRoundtripPreservesEntries")
     {
         TextPack pack(&TestHashes);
-        const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
-        const auto dialogs_ten = MakeKey("Dialogs", "10");
-        const auto dialogs_twenty = MakeKey("Dialogs", "20");
+        auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
+        auto dialogs_ten = MakeKey("Dialogs", "10");
+        auto dialogs_twenty = MakeKey("Dialogs", "20");
 
         pack.AddStr(structured_key, string_view {"Laser Rifle"});
         pack.AddStr(dialogs_ten, string_view {"Alpha"});
         pack.AddStr(dialogs_twenty, string_view {"Beta"});
         pack.AddStr(dialogs_twenty, string_view {"Gamma"});
 
-        const auto data = pack.GetBinaryData();
+        auto data = pack.GetBinaryData();
 
         TextPack restored(&TestHashes);
         REQUIRE(restored.LoadFromBinaryData(data));
@@ -166,8 +166,8 @@ TEST_CASE("TextPack")
     SECTION("LoadFromMapAndClearWorkTogether")
     {
         TextPack pack(&TestHashes);
-        const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc");
-        const map<string, string> entries {{"7", "Seven"}, {"11", "Eleven"}, {FormatKey(structured_key), "Description"}};
+        auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc");
+        map<string, string> entries {{"7", "Seven"}, {"11", "Eleven"}, {FormatKey(structured_key), "Description"}};
 
         pack.LoadFromMap(entries, "Dialogs");
 
@@ -217,7 +217,7 @@ TEST_CASE("TextPack")
     SECTION("GetStrSkipOutOfRangeReturnsEmptyString")
     {
         TextPack pack(&TestHashes);
-        const auto key = MakeKey("Dialogs", "5");
+        auto key = MakeKey("Dialogs", "5");
         pack.AddStr(key, string_view {"Alpha"});
         pack.AddStr(key, string_view {"Beta"});
 
@@ -231,7 +231,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const string input = "{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}";
+        string input = "{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}";
 
         CHECK_FALSE(pack.LoadFromString(input, "Dialogs"));
         CHECK(pack.GetStr(MakeKey("Dialogs", "10"), 0) == "Valid");

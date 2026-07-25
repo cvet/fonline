@@ -110,15 +110,15 @@ namespace
         {"Source/Server/Server.cpp", "OnCritterUnload.Fire(cr);", 1, "pre-unload notification"},
         {"Source/Server/Server.cpp", "OnPlayerCritterSwitched.Fire(player, cr, prev_cr);", 1, "post-switch notification"},
         {"Source/Server/Server.cpp", "OnCritterSendInitialInfo.Fire(cr);", 1, "post-send initial info"},
-        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 1, "player login gate"},
-        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 2, "player login gate"},
-        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);", 1, "player relogin gate"},
-        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
-        {"Source/Server/Server.cpp", "const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
-        {"Source/Server/Server.cpp", "const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},
-        {"Source/Server/Server.cpp", "const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 2, "player direction gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 1, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 2, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);", 1, "player relogin gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 2, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 1, "post-move guarded"},
-        {"Source/Server/Server.cpp", "const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 1, "player direction gate"},
+        {"Source/Server/Server.cpp", "EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 1, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 2, "post-move guarded"},
         {"Source/Server/Server.cpp", "OnCritterStartMoving.Fire(cr, was_moving);", 1, "post-start-moving notification"},
         {"Source/Server/Server.cpp", "OnCritterStopMoving.Fire(cr);", 1, "post-stop-moving notification"},
@@ -151,7 +151,7 @@ namespace
                 return path;
             }
 
-            const std::filesystem::path parent_path = path.parent_path();
+            std::filesystem::path parent_path = path.parent_path();
             if (parent_path == path) {
                 break;
             }
@@ -169,7 +169,7 @@ namespace
                 return path;
             }
 
-            const std::filesystem::path parent_path = path.parent_path();
+            std::filesystem::path parent_path = path.parent_path();
             if (parent_path == path) {
                 break;
             }
@@ -191,9 +191,9 @@ namespace
 
     static void AddEventCallsFromSource(vector<EventCallSite>& calls, const std::filesystem::path& engine_root, const std::filesystem::path& source_path)
     {
-        const std::string std_source = source_path.lexically_relative(engine_root).generic_string();
-        const string source {std_source.begin(), std_source.end()};
-        const string content = ReadSourceFile(source_path);
+        std::string std_source = source_path.lexically_relative(engine_root).generic_string();
+        string source {std_source.begin(), std_source.end()};
+        string content = ReadSourceFile(source_path);
 
         size_t line_begin = 0;
 
@@ -204,8 +204,8 @@ namespace
                 line_end = content.size();
             }
 
-            const string_view line = string_view {content}.substr(line_begin, line_end - line_begin);
-            const string_view text = Trim(line);
+            string_view line = string_view {content}.substr(line_begin, line_end - line_begin);
+            string_view text = Trim(line);
 
             if (text.find(".Fire(") != string_view::npos) {
                 size_t occurrence = 1;
@@ -229,7 +229,7 @@ namespace
 
     [[nodiscard]] static auto CollectServerEventCalls() -> vector<EventCallSite>
     {
-        const std::filesystem::path engine_root = FindEngineRoot();
+        std::filesystem::path engine_root = FindEngineRoot();
         vector<std::filesystem::path> sources;
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(engine_root / "Source" / "Server")) {
@@ -270,13 +270,13 @@ namespace
 
 TEST_CASE("ServerEventCallContracts")
 {
-    const vector<EventCallSite> actual_calls = CollectServerEventCalls();
+    vector<EventCallSite> actual_calls = CollectServerEventCalls();
 
     set<string> actual_keys;
 
     for (const EventCallSite& call : actual_calls) {
-        const string key = MakeKey(call.Source, call.Text, call.Occurrence);
-        const bool inserted = actual_keys.emplace(key).second;
+        string key = MakeKey(call.Source, call.Text, call.Occurrence);
+        bool inserted = actual_keys.emplace(key).second;
         CHECK(inserted);
     }
 
@@ -287,8 +287,8 @@ TEST_CASE("ServerEventCallContracts")
         CHECK_FALSE(expected.Text.empty());
         CHECK_FALSE(expected.Contract.empty());
 
-        const string key = MakeKey(expected.Source, expected.Text, expected.Occurrence);
-        const bool inserted = expected_keys.emplace(key).second;
+        string key = MakeKey(expected.Source, expected.Text, expected.Occurrence);
+        bool inserted = expected_keys.emplace(key).second;
         CHECK(inserted);
     }
 

@@ -80,7 +80,7 @@ void EntityLock::Acquire(uint64_t ticket)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     if (_ownerThread.load(std::memory_order_acquire) == this_thread) {
         scoped_lock locker {_mutex};
@@ -110,8 +110,8 @@ void EntityLock::Acquire(uint64_t ticket)
 
     // Sorted insertion by ticket. `list` keeps the node address stable across other
     // insert/erase operations so the in-progress `wait(0)` below points at the right atomic.
-    const auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
-    const auto entry_it = _waitQueue.emplace(insert_pos);
+    auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
+    auto entry_it = _waitQueue.emplace(insert_pos);
     entry_it->Ticket = ticket;
     entry_it->Waiter = this_thread;
     entry_it->Kind = WaitKind::Exclusive;
@@ -138,7 +138,7 @@ void EntityLock::Acquire(uint64_t ticket)
     }
 
     FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
-    const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
+    auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
     TSanAcquire(this);
 }
@@ -147,7 +147,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     // The exclusive owner trivially has read access: fold the shared request into the exclusive
     // recursion (a matched ReleaseShared unwinds it). This is what lets `Game.Lock()` (exclusive)
@@ -162,7 +162,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
     unique_lock locker {_mutex};
 
     // Already a shared holder on this thread: bump recursion (nested reads).
-    if (const auto it = _sharedHolders.find(this_thread); it != _sharedHolders.end()) {
+    if (auto it = _sharedHolders.find(this_thread); it != _sharedHolders.end()) {
         it->second++;
         return;
     }
@@ -176,8 +176,8 @@ void EntityLock::AcquireShared(uint64_t ticket)
         return;
     }
 
-    const auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
-    const auto entry_it = _waitQueue.emplace(insert_pos);
+    auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
+    auto entry_it = _waitQueue.emplace(insert_pos);
     entry_it->Ticket = ticket;
     entry_it->Waiter = this_thread;
     entry_it->Kind = WaitKind::Shared;
@@ -247,7 +247,7 @@ void EntityLock::ReleaseShared() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     // Shared acquired by the exclusive owner was folded into the exclusive recursion — unwind it
     // through the exclusive Release path (which also re-grants once recursion hits zero).
@@ -258,7 +258,7 @@ void EntityLock::ReleaseShared() noexcept
 
     scoped_lock locker {_mutex};
 
-    const auto it = _sharedHolders.find(this_thread);
+    auto it = _sharedHolders.find(this_thread);
     FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
@@ -276,7 +276,7 @@ void EntityLock::RegisterDescendantHold(uint64_t ticket)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     unique_lock locker {_mutex};
 
@@ -297,8 +297,8 @@ void EntityLock::RegisterDescendantHold(uint64_t ticket)
         return;
     }
 
-    const auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
-    const auto entry_it = _waitQueue.emplace(insert_pos);
+    auto insert_pos = std::ranges::find_if(_waitQueue, [ticket](const auto& e) { return e.Ticket > ticket; });
+    auto entry_it = _waitQueue.emplace(insert_pos);
     entry_it->Ticket = ticket;
     entry_it->Waiter = this_thread;
     entry_it->Kind = WaitKind::DescendantHold;
@@ -328,7 +328,7 @@ auto EntityLock::TryRegisterDescendantHold() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     scoped_lock locker {_mutex};
 
@@ -349,11 +349,11 @@ void EntityLock::UnregisterDescendantHold() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     scoped_lock locker {_mutex};
 
-    const auto it = _descendantHolders.find(this_thread);
+    auto it = _descendantHolders.find(this_thread);
     FO_STRONG_ASSERT(it != _descendantHolders.end(), "Descendant-hold release without holder entry", _descendantHolders.size());
 
     if (--it->second == 0) {
@@ -371,7 +371,7 @@ auto EntityLock::GetDescendantHoldCountForCurrentThread() const noexcept -> int3
 
     scoped_lock locker {_mutex};
 
-    const auto it = _descendantHolders.find(std::this_thread::get_id());
+    auto it = _descendantHolders.find(std::this_thread::get_id());
     return it != _descendantHolders.end() ? it->second : 0;
 }
 
@@ -435,7 +435,7 @@ void EntityLock::GrantWaiters() noexcept
     // at the first exclusive waiter (so writers are not starved). Each granted waiter is recorded in its
     // holder map before being woken so a concurrent exclusive Acquire observes it as a live holder.
     // Shared and DescendantHold never interleave on one lock, so the homogeneous run is the whole batch.
-    const WaitKind kind = it->Kind;
+    WaitKind kind = it->Kind;
 
     for (; it != _waitQueue.end(); ++it) {
         if (it->State.load(std::memory_order_acquire) != WaitEntry::STATE_WAITING) {
@@ -464,7 +464,7 @@ auto EntityLock::TryAcquire() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
+    auto this_thread = std::this_thread::get_id();
 
     if (_ownerThread.load(std::memory_order_acquire) == this_thread) {
         scoped_lock locker {_mutex};
@@ -584,9 +584,9 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
+    auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
-    const auto lock_state = [](nptr<const EntityLock> lock) -> string_view {
+    auto lock_state = [](nptr<const EntityLock> lock) -> string_view {
         if (!lock) {
             return "none";
         }
@@ -638,11 +638,11 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
     FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
     ignore_unused(current_ctx);
 
-    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
+    auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
-    const auto chain_covers = [&try_hold_entity](nptr<const ServerEntity> start) -> bool {
+    auto chain_covers = [&try_hold_entity](nptr<const ServerEntity> start) -> bool {
         for (auto current = try_hold_entity(start); current; current = current->GetParentRaw()) {
-            const auto lock = current->GetEntityLock();
+            auto lock = current->GetEntityLock();
 
             if (lock == nullptr || lock->IsLockedByCurrentThread()) {
                 return true;
@@ -745,7 +745,7 @@ static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
         std::this_thread::yield();
     }
     else {
-        const int32_t shift = std::min(attempt - BACKOFF_YIELD_ONLY_ATTEMPTS, BACKOFF_MAX_SHIFT);
+        int32_t shift = std::min(attempt - BACKOFF_YIELD_ONLY_ATTEMPTS, BACKOFF_MAX_SHIFT);
         std::this_thread::sleep_for(std::chrono::microseconds(int64_t {50} << shift));
     }
 }
@@ -756,7 +756,7 @@ static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
 // (`TryRegisterDescendantHold`). `skip_index` marks an op the caller already holds (a kept park
 // grant); pass SIZE_MAX for none.
 
-static auto TryAcquireOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t skip_index) noexcept -> size_t
+static auto TryAcquireOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t skip_index) noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -766,7 +766,7 @@ static auto TryAcquireOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t
         }
 
         auto lock = ops[i].first;
-        const bool is_exclusive = ops[i].second;
+        bool is_exclusive = ops[i].second;
 
         if (!(is_exclusive ? lock->TryAcquire() : lock->TryRegisterDescendantHold())) {
             return i;
@@ -790,7 +790,7 @@ static void ReleaseOp(const pair<ptr<EntityLock>, bool>& op) noexcept
     }
 }
 
-static void RollbackOps(const vector<pair<ptr<EntityLock>, bool>>& ops, size_t count, size_t skip_index) noexcept
+static void RollbackOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t count, size_t skip_index) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -919,7 +919,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // BOTH cr's and the map's own lock, because `MapManager::Transfer` severs cr→map mid-call and
         // re-validates cr, which needs cr's own lock — not merely the parent map's.)
 
-        vector<ptr<EntityLock>> new_locks;
+        SyncLockList new_locks;
         vector<refcount_ptr<ServerEntity>> new_owners;
         new_locks.reserve(lock_to_entity.size());
         new_owners.reserve(lock_to_entity.size());
@@ -941,7 +941,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // CURRENT parent chains (lock-free, like the cover); the verify step below re-checks that every
         // ancestor is still marked and retries on a reparent. `AcquireLocks` drops any ancestor that is
         // itself in the cover (an exclusive hold already excludes its descendants).
-        vector<ptr<EntityLock>> new_holds;
+        SyncLockList new_holds;
         vector<refcount_ptr<ServerEntity>> new_hold_owners;
 
         for (auto& owner : new_owners) {
@@ -971,7 +971,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // a lock in our held set. If a requested entity's parent chain no longer passes
         // through any held lock, it escaped during AcquireLocks (concurrent SetParent moved
         // it out of the cover) — release everything and recompute.
-        const auto held_contains = [this](nptr<EntityLock> lock) noexcept { return lock && std::ranges::find(_heldLocks, lock) != _heldLocks.end(); };
+        auto held_contains = [this](nptr<EntityLock> lock) noexcept { return lock && std::ranges::find(_heldLocks, lock) != _heldLocks.end(); };
 
         bool all_covered = true;
 
@@ -1050,7 +1050,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // AcquireLocks (e.g. its parent link changed), a mark is now stale and the
         // ancestor/descendant exclusion would have a hole — recompute against the current layout.
         if (all_covered) {
-            const auto marked = [this](nptr<EntityLock> lock) noexcept { //
+            auto marked = [this](nptr<EntityLock> lock) noexcept { //
                 return std::ranges::find(_heldLocks, lock.get()) != _heldLocks.end() || std::ranges::find(_heldDescendantHolds, lock.get()) != _heldDescendantHolds.end();
             };
 
@@ -1157,7 +1157,7 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
     // ascending-address order, so no wait-for cycle forms even though the new lock may sit *below* locks
     // we already hold. We never release what we already hold, so a covered entity stays covered the whole
     // time and cannot be moved out from under us.
-    vector<ptr<EntityLock>> add_marks;
+    SyncLockList add_marks;
     vector<refcount_ptr<ServerEntity>> add_mark_owners;
 
     for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
@@ -1190,7 +1190,7 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
     _heldDescendantHolds.reserve(_heldDescendantHolds.size() + add_marks.size());
     _heldDescendantHoldOwners.reserve(_heldDescendantHoldOwners.size() + add_mark_owners.size());
 
-    vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive
+    small_vector<pair<ptr<EntityLock>, bool>, 8> ops; // bool = is-exclusive
     ops.reserve(add_marks.size() + 1);
     ops.emplace_back(lock, true);
 
@@ -1228,7 +1228,7 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
     }
 }
 
-auto FO_TSA_NO_ANALYSIS SyncContext::TryAcquireEnsureOpsAtomically(span<const pair<ptr<EntityLock>, bool>> ops) -> bool
+auto FO_TSA_NO_ANALYSIS SyncContext::TryAcquireEnsureOpsAtomically(const_span<pair<ptr<EntityLock>, bool>> ops) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1311,7 +1311,7 @@ void SyncContext::LockSingleton(ptr<EntityLock> lock)
     // Allocate a fresh ticket so this call participates in FIFO fairness exactly like a normal
     // Sync acquisition. EntityLock handles the recursion-on-same-thread bookkeeping internally,
     // so repeated LockSingleton calls from the same thread bump recursion without re-queuing.
-    const auto ticket = NextSyncTicket();
+    uint64_t ticket = NextSyncTicket();
     lock->Acquire(ticket);
 
     // Singleton bucket is intentionally separate from `_heldLocks` — `SyncEntities` replaces
@@ -1328,7 +1328,7 @@ void SyncContext::UnlockSingleton(ptr<EntityLock> lock)
 
     // Pop the most recent matching entry — paired LIFO with LockSingleton. If the script side
     // mismatches Lock/Unlock counts the leftover entries get drained at job exit.
-    const auto rit = std::ranges::find(std::ranges::reverse_view(_singletonLocks), lock);
+    auto rit = std::ranges::find(std::ranges::reverse_view(_singletonLocks), lock);
     FO_VERIFY_AND_THROW(rit != _singletonLocks.rend(), "Singleton entity lock release does not match any lock held by this sync context", lock.void_cast(), _singletonLocks.size());
     _singletonLocks.erase(std::next(rit).base());
 
@@ -1355,7 +1355,7 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
         return false;
     }
 
-    const auto lock = entity->GetEntityLock();
+    auto lock = entity->GetEntityLock();
 
     if (!lock) {
         return true;
@@ -1366,7 +1366,7 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
 
 // Dedup a lock list while keeping its parallel owner list aligned. A simple sort-unique on `locks`
 // alone would lose the lock↔owner correspondence, so pair them, sort+unique by lock, and rebuild both.
-static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>& owners)
+static void DedupLockOwners(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>& owners)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1392,7 +1392,7 @@ static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<
     }
 }
 
-void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>&& owners, vector<ptr<EntityLock>>& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners)
+void SyncContext::AcquireLocks(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>&& owners, SyncLockList& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1406,9 +1406,9 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     // excludes that node's descendants, so a separate descendant-mark on it would be redundant (and
     // would double-acquire the same lock in the combined pass). Cover wins.
     {
-        const auto in_cover = [&locks](ptr<EntityLock> l) { return std::ranges::find(locks, l) != locks.end(); };
+        auto in_cover = [&locks](ptr<EntityLock> l) { return std::ranges::find(locks, l) != locks.end(); };
 
-        vector<ptr<EntityLock>> filtered_holds;
+        SyncLockList filtered_holds;
         vector<refcount_ptr<ServerEntity>> filtered_hold_owners;
         filtered_holds.reserve(holds.size());
         filtered_hold_owners.reserve(holds.size());
@@ -1429,7 +1429,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     // blocks on its lowest not-yet-taken lock while holding strictly lower-addressed ones, so no
     // wait-for cycle can form regardless of which ops are exclusive vs intention. The two sets are
     // disjoint (filter above), so each lock appears once.
-    vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive
+    small_vector<pair<ptr<EntityLock>, bool>, 8> ops; // bool = is-exclusive
     ops.reserve(locks.size() + holds.size());
 
     for (auto lock : locks) {
@@ -1457,7 +1457,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     bool acquired_all = false;
 
     for (int32_t spins = 0; spins < NON_PARKING_SPIN_BUDGET; spins++) {
-        const size_t acquired = TryAcquireOps(ops, std::numeric_limits<size_t>::max());
+        size_t acquired = TryAcquireOps(ops, std::numeric_limits<size_t>::max());
 
         if (acquired == ops.size()) {
             acquired_all = true;
@@ -1479,7 +1479,7 @@ void SyncContext::AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_p
     _heldDescendantHoldOwners = std::move(hold_owners);
 }
 
-void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, const vector<ptr<EntityLock>>& holds)
+void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1492,12 +1492,12 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     unordered_map<ptr<EntityLock>, int32_t> reacquire_count;
     unordered_map<ptr<EntityLock>, int32_t> reregister_count;
 
-    const auto add_excl = [&reacquire_count](ptr<EntityLock> lock) {
+    auto add_excl = [&reacquire_count](ptr<EntityLock> lock) {
         if (!reacquire_count.contains(lock)) {
             reacquire_count.emplace(lock, lock->GetExclusiveRecursionForCurrentThread());
         }
     };
-    const auto add_hold = [&reregister_count](ptr<EntityLock> lock) {
+    auto add_hold = [&reregister_count](ptr<EntityLock> lock) {
         if (!reregister_count.contains(lock)) {
             reregister_count.emplace(lock, lock->GetDescendantHoldCountForCurrentThread());
         }
@@ -1531,7 +1531,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     // dropping the parent cover here is safe — it is fully restored (as a superset) before any script.
     for (auto& [lock, count] : reacquire_count) {
         auto lock_ref = lock;
-        const int32_t held = lock_ref->GetExclusiveRecursionForCurrentThread();
+        int32_t held = lock_ref->GetExclusiveRecursionForCurrentThread();
 
         for (int32_t i = 0; i < held; i++) {
             lock_ref->Release();
@@ -1539,7 +1539,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     }
     for (auto& [lock, count] : reregister_count) {
         auto lock_ref = lock;
-        const int32_t held = lock_ref->GetDescendantHoldCountForCurrentThread();
+        int32_t held = lock_ref->GetDescendantHoldCountForCurrentThread();
 
         for (int32_t i = 0; i < held; i++) {
             lock_ref->UnregisterDescendantHold();
@@ -1601,7 +1601,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     auto restore_on_abort = scope_fail([this, &reacquire_count, &reregister_count]() noexcept {
         for (auto& [lock, count] : reacquire_count) {
             auto lock_ref = lock;
-            const int32_t held = lock_ref->GetExclusiveRecursionForCurrentThread();
+            int32_t held = lock_ref->GetExclusiveRecursionForCurrentThread();
 
             for (int32_t i = 0; i < held; i++) {
                 lock_ref->Release();
@@ -1609,7 +1609,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
         }
         for (auto& [lock, count] : reregister_count) {
             auto lock_ref = lock;
-            const int32_t held = lock_ref->GetDescendantHoldCountForCurrentThread();
+            int32_t held = lock_ref->GetDescendantHoldCountForCurrentThread();
 
             for (int32_t i = 0; i < held; i++) {
                 lock_ref->UnregisterDescendantHold();
@@ -1630,11 +1630,11 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
     // re-try race re-enters every queue ahead of later-arriving operations, which is the progress
     // argument of this loop. The loop is unbounded by design (like the blocking acquire it replaced),
     // but a periodic diagnostic makes a pathological spin observable instead of a silent stall.
-    const uint64_t park_ticket = NextSyncTicket();
+    uint64_t park_ticket = NextSyncTicket();
     size_t parked_index = std::numeric_limits<size_t>::max(); // op held over from the last park's grant
 
     for (int64_t round = 1;; round++) {
-        const size_t acquired = TryAcquireOps(ops, parked_index);
+        size_t acquired = TryAcquireOps(ops, parked_index);
 
         if (acquired == ops.size()) {
             break; // full union held
@@ -1659,7 +1659,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks, 
 
         // Park on the contended op alone (blocking, FIFO ticket), holding nothing.
         auto contended_lock = ops[acquired].first;
-        const bool contended_exclusive = ops[acquired].second;
+        bool contended_exclusive = ops[acquired].second;
 
         if (contended_exclusive) {
             contended_lock->Acquire(park_ticket);
@@ -1761,8 +1761,8 @@ void SyncContext::RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<
     // Before publication, recursively retain both locks in every active context that already owns
     // either half so the outer cover remains continuous after the temporary context releases.
     for (auto ctx = CurrentContext; ctx; ctx = ctx->_previousContext) {
-        const bool owns_first = std::ranges::find(ctx->_heldLocks, first_lock) != ctx->_heldLocks.end();
-        const bool owns_second = std::ranges::find(ctx->_heldLocks, second_lock) != ctx->_heldLocks.end();
+        bool owns_first = std::ranges::find(ctx->_heldLocks, first_lock) != ctx->_heldLocks.end();
+        bool owns_second = std::ranges::find(ctx->_heldLocks, second_lock) != ctx->_heldLocks.end();
 
         if (owns_first || owns_second) {
             ctx->EnsureEntitySynced(first);

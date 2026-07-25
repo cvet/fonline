@@ -230,6 +230,7 @@ namespace SPK
 
         virtual void innerImport(const IO::Descriptor& descriptor) override;
         virtual void innerExport(IO::Descriptor& descriptor) const override;
+		virtual void onContextSet() override;
 
 	private :
 
@@ -298,7 +299,7 @@ namespace SPK
 
 	inline void Emitter::resetTank()
 	{
-		currentTank = SPK_RANDOM(minTank,maxTank);
+		currentTank = hasContext() ? SPK_RANDOM(getContext(),minTank,maxTank) : minTank;
 	}
 
 	inline float Emitter::getFlow() const

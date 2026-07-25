@@ -49,7 +49,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     }
 
     vector<string> result;
-    const auto len = dir_fixed.length();
+    auto len = dir_fixed.length();
 
     for (const auto& fname : fnames) {
         bool add = false;
@@ -136,6 +136,8 @@ public:
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
+    auto Reindex() -> bool override;
+
 private:
     struct FileEntry
     {
@@ -147,6 +149,7 @@ private:
     unordered_map<string, FileEntry> _filesTree {};
     vector<string> _filesTreeNames {};
     string _baseDir {};
+    bool _recursive {};
 };
 
 class FalloutDat final : public DataSource
@@ -299,9 +302,9 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
 
     FO_VERIFY_AND_THROW(!name.empty(), "Pack data source mount requested an empty pack name", dir, maybe_not_available);
 
-    const auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
+    auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
 
-    const string path = strex(dir).combine_path(name);
+    string path = strex(dir).combine_path(name);
 
     if (name == "Embedded") {
         return SafeAlloc::MakeUnique<EmbeddedFile>();
@@ -376,7 +379,7 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    const string full_path = strex(_baseDir).combine_path(path);
+    string full_path = strex(_baseDir).combine_path(path);
 
     if (!fs_exists(full_path)) {
         return false;
@@ -396,7 +399,7 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    const string full_path = strex(_baseDir).combine_path(path);
+    string full_path = strex(_baseDir).combine_path(path);
     auto file = fs_open_ifstream(full_path);
 
     if (!file) {
@@ -416,7 +419,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    const string full_path = strex(_baseDir).combine_path(path);
+    string full_path = strex(_baseDir).combine_path(path);
     auto file = fs_open_ifstream(full_path);
 
     if (!file) {
@@ -443,9 +446,15 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
         return {};
     }
 
+    string full_dir = strex(_baseDir).combine_path(dir).str();
+
+    if (!dir.empty() && !fs_is_dir(full_dir)) {
+        return {};
+    }
+
     vector<string> fnames;
 
-    fs_iterate_dir(strex(_baseDir).combine_path(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
+    fs_iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -453,7 +462,8 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
     return GetFileNamesGeneric(fnames, dir, recursive, ext);
 }
 
-CachedDir::CachedDir(string_view fname, bool recursive)
+CachedDir::CachedDir(string_view fname, bool recursive) :
+    _recursive {recursive}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -461,22 +471,41 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     _baseDir = fs_resolve_path(_baseDir);
     _baseDir += "/";
 
-    fs_iterate_dir(_baseDir, recursive, [this](string_view path, size_t size, uint64_t write_time) {
+    Reindex();
+}
+
+auto CachedDir::Reindex() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, FileEntry> files_tree;
+    vector<string> files_tree_names;
+
+    fs_iterate_dir(_baseDir, _recursive, [&](string_view path, size_t size, uint64_t write_time) {
         FileEntry fe;
         fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
-        _filesTree.emplace(path, std::move(fe));
-        _filesTreeNames.emplace_back(path);
+        files_tree.emplace(path, std::move(fe));
+        files_tree_names.emplace_back(path);
     });
+
+    bool changed = files_tree.size() != _filesTree.size() || std::ranges::any_of(files_tree, [this](const auto& entry) {
+        auto it = _filesTree.find(entry.first);
+        return it == _filesTree.end() || it->second.FileSize != entry.second.FileSize || it->second.WriteTime != entry.second.WriteTime;
+    });
+
+    _filesTree = std::move(files_tree);
+    _filesTreeNames = std::move(files_tree_names);
+    return changed;
 }
 
 auto CachedDir::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -489,7 +518,7 @@ auto CachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_time
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -505,7 +534,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return nullptr;
@@ -751,7 +780,7 @@ auto FalloutDat::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -764,7 +793,7 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -785,7 +814,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return nullptr;
@@ -851,11 +880,11 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         stream.next_out = buf_data.get();
         stream.avail_out = real_size;
 
-        auto left = packed_size;
+        uint32_t left = packed_size;
 
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
-                const auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
+                auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
                 auto read_buf = make_nptr(_readBuf.data());
                 stream.next_in = read_buf.get();
 
@@ -867,7 +896,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
                 left -= len;
             }
 
-            const auto r = inflate(&stream, Z_NO_FLUSH);
+            int32_t r = inflate(&stream, Z_NO_FLUSH);
 
             if (r != Z_OK && r != Z_STREAM_END) {
                 throw DataSourceException("Can't read file from fallout dat (5)", path);
@@ -953,7 +982,7 @@ ZipFile::ZipFile(string_view fname) :
     ffunc.opaque = _fileStream.void_cast();
 
     auto zip_handle = make_nptr(unzOpen2(string(_fileName).c_str(), &ffunc));
-    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+    auto close_on_fail = scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
             zip_handle = nullptr;
@@ -1016,7 +1045,7 @@ auto ZipFile::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1029,7 +1058,7 @@ auto ZipFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1045,7 +1074,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return nullptr;
@@ -1054,7 +1083,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     scoped_lock locker {_zipHandleLocker};
 
     const auto& info = it->second;
-    auto pos = info.Pos;
+    unz_file_pos pos = info.Pos;
 
     if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (unzGoToFilePos)", path);
@@ -1064,7 +1093,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
@@ -1170,7 +1199,7 @@ EmbeddedFile::EmbeddedFile()
     ffunc.opaque = nullptr;
 
     auto zip_handle = make_nptr(unzOpen2("", &ffunc));
-    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+    auto close_on_fail = scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
             zip_handle = nullptr;
@@ -1239,7 +1268,7 @@ auto EmbeddedFile::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1258,7 +1287,7 @@ auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1280,14 +1309,14 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return nullptr;
     }
 
     const auto& info = it->second;
-    auto pos = info.Pos;
+    unz_file_pos pos = info.Pos;
 
     if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
         throw DataSourceException("Can't read embedded file (unzGoToFilePos)", path);
@@ -1297,7 +1326,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", path);
@@ -1315,7 +1344,7 @@ FilesList::FilesList()
     _filesTree.clear();
     _filesTreeNames.clear();
 
-    const auto files_tree_content = fs_read_file("FilesTree.txt");
+    auto files_tree_content = fs_read_file("FilesTree.txt");
 
     if (!files_tree_content) {
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
@@ -1350,7 +1379,7 @@ auto FilesList::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1363,7 +1392,7 @@ auto FilesList::GetFileInfo(string_view path, size_t& size, uint64_t& write_time
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return false;
@@ -1379,7 +1408,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(path);
+    auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
         return nullptr;

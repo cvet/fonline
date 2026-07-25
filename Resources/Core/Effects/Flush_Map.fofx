@@ -1,6 +1,7 @@
 # Flush_Map — blits the map render target straight to the frame.
 # Where: engine default for the FlushMap slot (plain blit of the map render target).
-# How: passes the projected vertex position through and writes the sampled MainTex colour unchanged at the output texel.
+# How: passes the projected vertex position through, copies sampled MainTex RGB, and writes opaque alpha
+# because a completed map viewport must not expose intermediate sprite coverage.
 # Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
 
 [Effect]
@@ -31,5 +32,5 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = texture(MainTex, TexCoord);
+    FragColor = vec4(texture(MainTex, TexCoord).rgb, 1.0);
 }

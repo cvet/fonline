@@ -66,7 +66,7 @@ namespace
         // The MapperEngine ctor reads GetResourcePacks() to seed the map file system. The maps in these
         // tests are supplied directly via LoadMapFromText, so a single named pack with no input dirs is
         // enough to keep construction from throwing "No information about resource packs found".
-        auto pack_config = ConfigFile("TestPacks.fomain", "[ResourcePack]\nName = MapperMergeTestPack\n");
+        auto pack_config = ConfigFile("[ResourcePack]\nName = MapperMergeTestPack\n");
         settings.ApplyConfigFile(pack_config, "");
 
         return settings;
@@ -89,7 +89,7 @@ namespace MapperMergeTest
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -99,11 +99,11 @@ namespace MapperMergeTest
 
     static void AddMinimalFont(BakerTests::MemoryDataSource& source, string_view font_name)
     {
-        const auto fofnt_path = strex("Fonts/{}.fofnt", font_name).str();
-        const auto image_name = strex("{}.png", font_name).str();
-        const auto image_path = strex("Fonts/{}", image_name).str();
+        string fofnt_path = strex("Fonts/{}.fofnt", font_name).str();
+        string image_name = strex("{}.png", font_name).str();
+        string image_path = strex("Fonts/{}", image_name).str();
 
-        const auto fofnt_text = strex("Version 2\nImage {}\nYAdvance 1\n\nLetter ' '\n  PositionX 1\n  PositionY 1\n  XAdvance 5\n\nEnd\n", image_name).str();
+        string fofnt_text = strex("Version 2\nImage {}\nYAdvance 1\n\nLetter ' '\n  PositionX 1\n  PositionY 1\n  XAdvance 5\n\nEnd\n", image_name).str();
 
         source.AddFile(fofnt_path, fofnt_text);
         source.AddFile(image_path, BakerTests::MakeMinimalBakedSprite());
@@ -111,7 +111,7 @@ namespace MapperMergeTest
 
     static auto MakeMapperTestResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
         compiler_source->AddFile("Metadata.fometa-mapper", metadata_blob);
@@ -120,19 +120,19 @@ namespace MapperMergeTest
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerMapperEngine proto_engine {compiler_resources};
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
 
-        const auto configure_tile = [](ProtoItem& proto) { proto.SetMultihexGeneration(MultihexGenerationType::SameSibling); };
-        const auto configure_unique = [](ProtoItem& proto) { proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique); };
+        auto configure_tile = [](ProtoItem& proto) { proto.SetMultihexGeneration(MultihexGenerationType::SameSibling); };
+        auto configure_unique = [](ProtoItem& proto) { proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique); };
 
-        const vector<pair<string, function<void(ProtoItem&)>>> tile_protos {
+        vector<pair<string, function<void(ProtoItem&)>>> tile_protos {
             {string(TILE_A), configure_tile},
             {string(TILE_B), configure_tile},
             {string(TILE_U), configure_unique},
         };
 
-        const auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
-        const auto script_blob = MakeMapperScriptBinary(compiler_resources);
+        auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
+        auto script_blob = MakeMapperScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperMergeRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-mapper", metadata_blob);
@@ -155,7 +155,7 @@ namespace MapperMergeTest
 
     static auto MakeItemBlock(int32_t id, string_view proto, int32_t hx, int32_t hy, string_view extra = "") -> string
     {
-        return strex("[Item]\n$Id = {}\n$Proto = {}\nHex = {} {}\n{}\n", id, proto, hx, hy, extra).str();
+        return strex("[$Name/Item]\n$Id = {}\n$Proto = {}\nHex = {} {}\n{}\n", id, proto, hx, hy, extra).str();
     }
 
     static auto HexLess(mpos hex1, mpos hex2) -> bool
@@ -168,7 +168,7 @@ namespace MapperMergeTest
         vector<mpos> hexes;
         hexes.emplace_back(item->GetHex());
 
-        for (const auto hex : item->GetMultihexMesh()) {
+        for (auto hex : item->GetMultihexMesh()) {
             hexes.emplace_back(hex);
         }
 
@@ -225,8 +225,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
-    const auto tile_a = mapper->Hashes.ToHashedString(TILE_A);
-    const auto tile_b = mapper->Hashes.ToHashedString(TILE_B);
+    hstring tile_a = mapper->Hashes.ToHashedString(TILE_A);
+    hstring tile_b = mapper->Hashes.ToHashedString(TILE_B);
 
     REQUIRE(mapper->GetProtoItem(tile_a) != nullptr);
     REQUIRE(mapper->GetProtoItem(tile_b) != nullptr);
@@ -240,7 +240,7 @@ TEST_CASE("MapperMultihexMeshMerge")
             body += MakeItemBlock(10 + i, TILE_A, 5 + i, 5);
         }
 
-        auto map = mapper->LoadMapFromText("CoalesceMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("CoalesceMap", "CoalesceMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
@@ -254,7 +254,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(survivor != nullptr);
         CHECK(survivor->IsNonEmptyMultihexMesh());
 
-        const auto covered = CollectMeshHexes(survivor);
+        auto covered = CollectMeshHexes(survivor);
         REQUIRE(covered.size() == 4);
         CHECK(covered[0] == mpos {5, 5});
         CHECK(covered[1] == mpos {6, 5});
@@ -271,7 +271,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(32, TILE_A, 7, 5);
         body += MakeItemBlock(33, TILE_A, 5, 5);
 
-        auto map = mapper->LoadMapFromText("NormalizeMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("NormalizeMap", "NormalizeMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
@@ -283,7 +283,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
         REQUIRE(survivor != nullptr);
 
-        const auto covered = CollectMeshHexes(survivor);
+        auto covered = CollectMeshHexes(survivor);
         REQUIRE(covered.size() == 4);
 
         // Origin is the smallest covered hex.
@@ -304,7 +304,7 @@ TEST_CASE("MapperMultihexMeshMerge")
             body += MakeItemBlock(40 + i, TILE_A, 5 + i, 5);
         }
 
-        auto map = mapper->LoadMapFromText("IdempotentMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("IdempotentMap", "IdempotentMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
@@ -316,12 +316,12 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
         REQUIRE(survivor != nullptr);
 
-        const auto origin_before = survivor->GetHex();
-        const auto covered_before = CollectMeshHexes(survivor);
+        auto origin_before = survivor->GetHex();
+        auto covered_before = CollectMeshHexes(survivor);
 
         // LoadMapFromText already runs the merge twice (the second call asserts idempotency); run it once
         // more directly to lock that the public entry point is a fixed point on an already-merged map.
-        const auto extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
         CHECK(extra_merges == 0);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
@@ -335,7 +335,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(50, TILE_A, 5, 5);
         body += MakeItemBlock(51, TILE_B, 6, 5);
 
-        auto map = mapper->LoadMapFromText("CrossProtoMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("CrossProtoMap", "CrossProtoMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
         CHECK(CountItemsOfProto(map, tile_a) == 1);
@@ -355,7 +355,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(60, TILE_A, 5, 5, "Count = 7");
         body += MakeItemBlock(61, TILE_A, 6, 5, "Count = 9");
 
-        auto map = mapper->LoadMapFromText("ModifiedPairMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("ModifiedPairMap", "ModifiedPairMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
@@ -379,7 +379,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(72, TILE_A, 7, 5);
         body += MakeItemBlock(73, TILE_A, 8, 5, "Count = 7");
 
-        auto map = mapper->LoadMapFromText("CleanPlusModifiedMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("CleanPlusModifiedMap", "CleanPlusModifiedMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
@@ -405,7 +405,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(72, TILE_A, 20, 20);
         body += MakeItemBlock(73, TILE_A, 21, 20);
 
-        auto map = mapper->LoadMapFromText("DisjointMap", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("DisjointMap", "DisjointMap.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
@@ -437,10 +437,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(202, TILE_A, 7, 5);
         body += MakeItemBlock(203, TILE_A, 8, 5, "Count = 9");
 
-        auto map = mapper->LoadMapFromText("ModChainAsc", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("ModChainAsc", "ModChainAsc.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].Count == 0);
@@ -454,10 +454,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(211, TILE_A, 6, 5, "Count = 4");
         body += MakeItemBlock(212, TILE_A, 7, 5);
 
-        auto map = mapper->LoadMapFromText("CleanModClean", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("CleanModClean", "CleanModClean.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].Count == 0);
@@ -476,10 +476,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(222, TILE_A, 7, 5);
         body += MakeItemBlock(221, TILE_A, 8, 5, "Count = 9");
 
-        auto map = mapper->LoadMapFromText("ModChainModLowIds", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("ModChainModLowIds", "ModChainModLowIds.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].Count == 0);
@@ -498,10 +498,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(231, TILE_A, 6, 5, "Count = 5");
         body += MakeItemBlock(232, TILE_A, 7, 5, "Count = 8");
 
-        auto map = mapper->LoadMapFromText("ModXModXModY", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("ModXModXModY", "ModXModXModY.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 2);
 
         CHECK(survivors[0].Origin == mpos {5, 5});
@@ -527,7 +527,7 @@ TEST_CASE("MapperMultihexMeshMerge")
             }
         }
 
-        auto map = mapper->LoadMapFromText("LargeBlockMap", MakeMapText(body, 64));
+        auto map = mapper->LoadMapFromText("LargeBlockMap", "LargeBlockMap.fomap", MakeMapText(body, 64));
         REQUIRE(map != nullptr);
 
         // Current behavior: an adjacency-connected block collapses into a single multihex-mesh item.
@@ -541,7 +541,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
         REQUIRE(survivor != nullptr);
 
-        const auto covered = CollectMeshHexes(survivor);
+        auto covered = CollectMeshHexes(survivor);
         CHECK(covered.size() == numeric_cast<size_t>(block) * block);
         CHECK(survivor->GetHex() == mpos {origin, origin});
     }
@@ -559,7 +559,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
-    const auto tile_u = mapper->Hashes.ToHashedString(TILE_U);
+    hstring tile_u = mapper->Hashes.ToHashedString(TILE_U);
 
     REQUIRE(mapper->GetProtoItem(tile_u) != nullptr);
     REQUIRE(mapper->GetProtoItem(tile_u)->GetMultihexGeneration() == MultihexGenerationType::AnyUnique);
@@ -571,10 +571,10 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(301, TILE_U, 20, 20);
         body += MakeItemBlock(302, TILE_U, 5, 25);
 
-        auto map = mapper->LoadMapFromText("U_NonAdjacentClean", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("U_NonAdjacentClean", "U_NonAdjacentClean.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 300); // lowest id wins
         CHECK(survivors[0].Origin == mpos {3, 3});
@@ -592,10 +592,10 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(313, TILE_U, 25, 25, "Count = 7");
         body += MakeItemBlock(314, TILE_U, 18, 4, "Count = 9");
 
-        auto map = mapper->LoadMapFromText("U_MixedScatter", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("U_MixedScatter", "U_MixedScatter.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 3);
 
         // Clean group (310 + 312).
@@ -624,10 +624,10 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(320, TILE_U, 6, 5);
         body += MakeItemBlock(325, TILE_U, 7, 5);
 
-        auto map = mapper->LoadMapFromText("U_ShuffledIds", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("U_ShuffledIds", "U_ShuffledIds.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 320); // lowest id, even though it was authored second and sits at (6,5)
         CHECK(survivors[0].Origin == mpos {5, 5}); // origin normalized to the hex_less-smallest covered hex
@@ -637,17 +637,17 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Different protos and a SameSibling tile never merge into an AnyUnique mesh")
     {
-        const auto tile_a = mapper->Hashes.ToHashedString(TILE_A);
+        hstring tile_a = mapper->Hashes.ToHashedString(TILE_A);
 
         string body;
         body += MakeItemBlock(340, TILE_U, 3, 3);
         body += MakeItemBlock(341, TILE_A, 4, 3); // SameSibling, adjacent - must not join the AnyUnique mesh
         body += MakeItemBlock(342, TILE_U, 6, 3);
 
-        auto map = mapper->LoadMapFromText("U_CrossStrategy", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("U_CrossStrategy", "U_CrossStrategy.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto u_survivors = CollectSurvivors(map, tile_u);
+        auto u_survivors = CollectSurvivors(map, tile_u);
         REQUIRE(u_survivors.size() == 1);
         CHECK(u_survivors[0].Id == 340);
         CHECK(u_survivors[0].Covered == vector<mpos> {{3, 3}, {6, 3}});
@@ -663,11 +663,11 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(352, TILE_U, 4, 12, "Count = 4");
         body += MakeItemBlock(353, TILE_U, 20, 1, "Count = 4");
 
-        auto map = mapper->LoadMapFromText("U_Idempotent", MakeMapText(body));
+        auto map = mapper->LoadMapFromText("U_Idempotent", "U_Idempotent.fomap", MakeMapText(body));
         REQUIRE(map != nullptr);
 
-        const auto before = CollectSurvivors(map, tile_u);
-        const auto extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        auto before = CollectSurvivors(map, tile_u);
+        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
         CHECK(extra_merges == 0);
         CHECK(CollectSurvivors(map, tile_u) == before);
     }

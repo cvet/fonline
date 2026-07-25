@@ -58,7 +58,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 - Typical responsibilities:
   - logging and debugger break helpers;
   - quit/invoke helpers;
-  - resource and config reads, plus typed lookup of baker-provided model animation durations (`Game.GetModelAnimDuration`);
+  - resource and config reads, plus the typed duration facade over complete baker-provided model animation metadata (`Game.GetModelAnimDuration`);
   - random, time, UTF-8, clipboard, open-link helpers;
   - geometry helpers such as distance, direction, line angle, intervals, trace line;
   - common serialization and formatting helpers.
@@ -166,7 +166,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 104
+- Exported methods: 112
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -174,7 +174,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - fullscreen/minimize/connection status;
   - distance helpers and visible entity queries;
   - atlas/resource/debug helpers;
-  - resolution/minimap/render-facing helpers;
+  - resolution/minimap/render-facing helpers, including animation-wide `DrawRect` and stable logical `ViewRect` bounds of a `DrawCritter3d` instance;
   - effect selection and single/ranged script-value buffer writes;
   - sound, music, video, sprite, and UI-adjacent helpers where exposed.
 - Related docs: [ClientRuntime.md](ClientRuntime.md), [FrontendAndRendering.md](FrontendAndRendering.md).

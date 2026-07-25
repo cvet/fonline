@@ -116,14 +116,6 @@ public:
     static_assert(std::is_pointer_v<T> || requires { typename T::element_type; });
 
     explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
-    explicit ref_hold_vector(vector<T>&& vec) noexcept :
-        _vec {std::move(vec)}
-    {
-        for (T& ref : _vec) {
-            add_ref(ref);
-        }
-    }
-
     ref_hold_vector(const ref_hold_vector&) = delete;
     ref_hold_vector(ref_hold_vector&&) noexcept = default;
     auto operator=(const ref_hold_vector&) -> ref_hold_vector& = delete;
@@ -178,7 +170,7 @@ private:
         ref_ptr->Release();
     }
 
-    vector<T> _vec {};
+    small_vector<T, 8> _vec {};
 };
 
 template<typename T>
@@ -300,7 +292,7 @@ struct scoped_init_clear
 template<std::ranges::range T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::ranges::find(vec, value);
+    auto it = std::ranges::find(vec, value);
     FO_VERIFY_AND_THROW(it == vec.end(), "Unexpected entry found in vec");
     vec.emplace_back(std::move(value));
 }
@@ -308,7 +300,7 @@ constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T>
 constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::ranges::find(vec, value);
+    auto it = std::ranges::find(vec, value);
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -316,7 +308,7 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T, typename U>
 constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 {
-    const auto it = std::ranges::find_if(vec, predicate);
+    auto it = std::ranges::find_if(vec, predicate);
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -324,7 +316,7 @@ constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 template<std::ranges::range T>
 constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (const auto it = std::ranges::find(vec, value); it == vec.end()) {
+    if (auto it = std::ranges::find(vec, value); it == vec.end()) {
         vec.emplace_back(std::move(value));
         return true;
     }
@@ -334,7 +326,7 @@ constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) n
 template<std::ranges::range T>
 constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (const auto it = std::ranges::find(vec, value); it != vec.end()) {
+    if (auto it = std::ranges::find(vec, value); it != vec.end()) {
         vec.erase(it);
         return true;
     }
@@ -344,17 +336,38 @@ constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value
 template<std::ranges::range T, typename U>
 constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexcept -> bool
 {
-    if (const auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
+    if (auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
         vec.erase(it);
         return true;
     }
     return false;
 }
 
-template<std::ranges::range T, typename U>
-[[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+// Maps a vector-like container type to the same kind holding a different element type:
+//   vector<T>          -> vector<U>
+//   small_vector<T, N> -> small_vector<U, N>   (inline capacity preserved)
+template<std::ranges::range Cont, typename U>
+struct rebind_vector
 {
-    vector<std::ranges::range_value_t<T>> vec;
+    using type = vector<U>;
+};
+template<typename T, typename Alloc, typename U>
+struct rebind_vector<std::vector<T, Alloc>, U>
+{
+    using type = vector<U>;
+};
+template<typename T, unsigned InlineCapacity, typename Alloc, typename U>
+struct rebind_vector<gch::small_vector<T, InlineCapacity, Alloc>, U>
+{
+    using type = small_vector<U, InlineCapacity>;
+};
+template<typename Cont, typename U>
+using rebind_vector_t = typename rebind_vector<std::remove_cvref_t<Cont>, U>::type;
+
+template<std::ranges::range T, typename U>
+[[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+{
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         if (static_cast<bool>(filter(value))) {
@@ -368,7 +381,7 @@ template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
-    vector<result_type> vec;
+    rebind_vector_t<T, result_type> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));
@@ -388,9 +401,9 @@ template<std::ranges::range T, typename U>
 }
 
 template<std::ranges::range T, typename U>
-[[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+[[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    vector<std::ranges::range_value_t<T>> vec;
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
     vec.assign(cont.begin(), cont.end());
     std::ranges::stable_sort(vec, predicate);

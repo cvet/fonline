@@ -79,7 +79,7 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
         size_t min_size = 0;
 
         for (const auto& field : type.StructLayout->Fields) {
-            const size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
+            size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
             FO_VERIFY_AND_THROW(field_min_size <= std::numeric_limits<size_t>::max() - min_size, "Remote call struct minimum serialized size overflows", type.Name);
             min_size += field_min_size;
         }
@@ -92,13 +92,13 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
 
 static auto ReadPackagedBuildName() -> string
 {
-    auto raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
+    string raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
 
     if (raw.find("NotPackaged") != string::npos) {
         return {};
     }
 
-    if (const auto null_pos = raw.find('\0'); null_pos != string::npos) {
+    if (auto null_pos = raw.find('\0'); null_pos != string::npos) {
         raw.resize(null_pos);
     }
 
@@ -143,15 +143,15 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
-        const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
+        timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
+        timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
 
         if (idle_time > timespan::zero) {
-            const auto sleep_start = nanotime::now();
+            nanotime sleep_start = nanotime::now();
 
             std::this_thread::sleep_for(idle_time.value());
 
-            const auto sleep_duration = nanotime::now() - sleep_start;
+            timespan sleep_duration = nanotime::now() - sleep_start;
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }
@@ -177,10 +177,10 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir = strex(fname).extract_dir().str();
+    string dir = strex(fname).extract_dir().str();
 
     if (!dir.empty()) {
-        const auto dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs_create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
     }
 

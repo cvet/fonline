@@ -26,7 +26,9 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/cmake/helpers/State.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
+- `BuildTools/EffekseerEditor/build.ps1`
 - `BuildTools/package.py`
+- `BuildTools/tests/test_package_include.py`
 - `BuildTools/msicreator/createmsi.py`
 
 Important consequences:
@@ -49,7 +51,14 @@ Establishes baseline configuration. It declares and checks core project options 
 - `FO_GEOMETRY`
 - `FO_APP_ICON`
 - `FO_OUTPUT_PATH`
-- build feature toggles such as `FO_BUILD_CLIENT`, `FO_BUILD_SERVER`, `FO_BUILD_MAPPER`, `FO_BUILD_EDITOR`, `FO_BUILD_ASCOMPILER`, `FO_BUILD_BAKER`, `FO_UNIT_TESTS`, and scripting toggles.
+- build feature toggles such as `FO_BUILD_CLIENT`, `FO_BUILD_SERVER`, `FO_BUILD_MAPPER`, `FO_BUILD_ASCOMPILER`, `FO_BUILD_BAKER`, `FO_UNIT_TESTS`, the scripting toggles, and the independent `FO_SPARK_PARTICLES` / `FO_EFFEKSEER_PARTICLES` particle backends.
+
+Both particle backend options default to `OFF`. An embedding project explicitly
+enables either backend or both during a migration. Backend source files remain
+in the stable engine source lists and guard their implementation with the
+corresponding `FO_*_PARTICLES` macro. A disabled backend contributes no
+third-party target, compiled runtime or Mapper implementation, runtime resource
+extensions, or baker implementation.
 
 It also establishes build hash and common generation context. Start here when a build option is missing or validated too early/late.
 
@@ -83,6 +92,14 @@ Related doc: [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 
 Creates core static libraries from the source lists prepared by `EngineSources.cmake`. Current responsibilities include libraries such as Essentials, Common, frontend/headless app layers, scripting integration libraries, client/server libraries, baker libraries, and testing support depending on enabled options.
 
+`EngineSources.cmake` includes the native `EffekseerCompiler.h/.cpp` module in
+`BakerLib`. With Effekseer particles enabled, `ParticleBaker` calls it directly
+to compile fixed Editor-1.80.5 `.efkproj` XML and obtain each project's
+referenced-resource list for the per-effect path/size/write-time snapshot under
+`BakeOutput/.baker-cache`. Runtime libraries and Web clients do not depend on a
+compiler target or host process; they consume pre-baked `.efk`. A server-only
+build no longer enables BakerLib merely because `FO_BUILD_SERVER` is set.
+
 Start here when source grouping, library dependencies, or runtime layer boundaries change.
 
 ### `ScriptsAndBaking.cmake`
@@ -103,6 +120,11 @@ Creates executable and shared-library applications from `Source/Applications/*.c
 
 Examples of entry points wired here include client, client runtime library, client headless variants, server variants, mapper/editor/tool apps, baker, AngelScript compiler, and testing app depending on options.
 
+Effekseer Editor is intentionally absent from this stage and from the
+application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
+entry point configures and builds upstream sources independently of an
+embedding project's FOnline CMake configuration.
+
 See [Applications.md](Applications.md).
 
 ### `Packages.cmake`
@@ -119,6 +141,19 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 - install directory and MSI base name ← the package nice name
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
+
+When several package parts append to one `SingleZip`, byte-identical files at
+the same archive path are coalesced into one entry. Different contents at the
+same path are a packaging error; the packager never emits ambiguous duplicate
+ZIP names.
+
+The universal package schema has no `EffekseerEditor` binary role. Separately
+built tools are declared alongside `BINARY` parts with
+`INCLUDE <source-path-glob> <target-path-in-pack>`. The source glob is relative
+to `FO_OUTPUT_PATH`. After the ordinary binary parts are assembled, the generic
+packager replaces the included target tree and updates an existing `SingleZip`
+without duplicate or stale entries. This path is covered by
+`BuildTools/tests/test_package_include.py`.
 
 Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
 
@@ -158,6 +193,8 @@ Use hooks when an embedding project or a later refactor needs to extend stage be
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and [Scripting.md](Scripting.md).
 - New executable/tool entry point: `Applications.cmake` and [Applications.md](Applications.md).
+- Auxiliary-tool build recipes: `BuildTools/buildtools.py build-auxiliary`,
+  `BuildTools/EffekseerEditor/build.ps1`, and [Tools.md](Tools.md).
 - New package layout or installer metadata: `Packages.cmake`, `BuildTools/package.py`, `BuildTools/msicreator/createmsi.py`, plus platform docs.
 - Final target organization or verbose diagnostics: `Finalize.cmake`.
 
@@ -170,6 +207,10 @@ For BuildTools changes:
 3. For source-list changes, verify the affected target builds.
 4. For codegen changes, verify generated files and script API consumers.
 5. For baking changes, run normal and forced bake paths when relevant.
-6. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
-7. Run documentation link checks if docs changed.
-8. Run `git diff --check` before reporting completion.
+6. For Effekseer Editor changes, run `buildtools.py build-auxiliary
+   effekseer-editor Release` on Windows win64 and inspect the staged
+   managed/native/resources payload; exercise the package `INCLUDE` when the
+   developer-package layout changes.
+7. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
+8. Run documentation link checks if docs changed.
+9. Run `git diff --check` before reporting completion.

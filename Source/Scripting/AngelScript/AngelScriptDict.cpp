@@ -98,7 +98,7 @@ static auto GetScriptDictInitListValueLayout(ptr<AngelScript::asIScriptEngine> e
 
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         auto obj_type = GetScriptDictObjectType(engine, type_id);
-        const auto flags = obj_type->GetFlags();
+        auto flags = obj_type->GetFlags();
 
         return {(flags & AngelScript::asOBJ_VALUE) != 0 ? numeric_cast<size_t>(obj_type->GetSize()) : sizeof(void*), (flags & AngelScript::asOBJ_REF) != 0 && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0};
     }
@@ -138,9 +138,9 @@ static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, int3
     }
 
     // Align the buffer cursor to the element's natural alignment (matching the VM list-buffer layout)
-    const AngelScript::asPWORD element_align = ListElementAlignment(type_id, value_size);
-    const AngelScript::asPWORD buffer_address = std::bit_cast<AngelScript::asPWORD>(buffer.get());
-    const size_t misalignment = numeric_cast<size_t>(buffer_address & (element_align - 1));
+    AngelScript::asPWORD element_align = ListElementAlignment(type_id, value_size);
+    AngelScript::asPWORD buffer_address = std::bit_cast<AngelScript::asPWORD>(buffer.get());
+    size_t misalignment = numeric_cast<size_t>(buffer_address & (element_align - 1));
 
     if (misalignment != 0) {
         AdvanceScriptDictBuffer(buffer, numeric_cast<size_t>(element_align) - misalignment);
@@ -151,7 +151,7 @@ static auto ReadScriptDictInitListEntry(ptr<AngelScript::asIScriptEngine> engine
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ScriptDictInitListValueLayout layout = GetScriptDictInitListValueLayout(engine, type_id);
+    ScriptDictInitListValueLayout layout = GetScriptDictInitListValueLayout(engine, type_id);
 
     AlignScriptDictInitListBuffer(buffer, type_id, layout.Size);
 
@@ -234,7 +234,7 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
 
     FO_VERIFY_AND_THROW(ti, "Dictionary type info is null");
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
-    const auto type_id = ti->GetSubTypeId(sub_type_index);
+    int32_t type_id = ti->GetSubTypeId(sub_type_index);
 
     if (type_id == AngelScript::asTYPEID_VOID) {
         return false;
@@ -243,7 +243,7 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
         nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
         FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-        const auto flags = sub_type->GetFlags();
+        auto flags = sub_type->GetFlags();
 
         if ((flags & AngelScript::asOBJ_VALUE) != 0 && (flags & AngelScript::asOBJ_POD) == 0) {
             bool found = false;
@@ -282,7 +282,7 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
         FO_VERIFY_AND_THROW(type_id & AngelScript::asTYPEID_OBJHANDLE, "AngelScript dictionary key type is not an object handle", type_id);
         nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
         FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-        const auto flags = sub_type->GetFlags();
+        auto flags = sub_type->GetFlags();
 
         if ((flags & AngelScript::asOBJ_GC) == 0) {
             if ((flags & AngelScript::asOBJ_SCRIPT_OBJECT) != 0) {
@@ -438,7 +438,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
 
     auto sub_type_data = SafeAlloc::MakeUnique<ScriptDictTypeData>();
 
-    const bool must_be_const = (type_id & AngelScript::asTYPEID_HANDLETOCONST) != 0;
+    bool must_be_const = (type_id & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
     nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
 
@@ -458,7 +458,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
             }
 
             AngelScript::asDWORD flags = 0;
-            const int32_t return_type_id = func->GetReturnTypeId(&flags);
+            int32_t return_type_id = func->GetReturnTypeId(&flags);
 
             if (flags != AngelScript::asTM_NONE) {
                 continue;
@@ -550,7 +550,7 @@ void ScriptDict::Set(ptr<void> key, ptr<void> value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it == _data.end()) {
         auto key_copy = CopyObject(_typeInfo, 0, key);
@@ -569,7 +569,7 @@ void ScriptDict::SetIfNotExist(ptr<void> key, ptr<void> value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it == _data.end()) {
         auto key_copy = CopyObject(_typeInfo, 0, key);
@@ -582,7 +582,7 @@ auto ScriptDict::Remove(ptr<void> key) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it != _data.end()) {
         ptr<void> key_obj = it->first;
@@ -637,7 +637,7 @@ auto ScriptDict::Get(ptr<void> key) const -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it == _data.end()) {
         throw ScriptException("Key not found");
@@ -650,7 +650,7 @@ auto ScriptDict::GetOrCreate(ptr<void> key) -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it == _data.end()) {
         auto key_copy = CopyObject(_typeInfo, 0, key);
@@ -666,7 +666,7 @@ auto ScriptDict::GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _data.find(key.get());
+    auto it = _data.find(key.get());
 
     if (it == _data.end()) {
         return def_val;
@@ -715,7 +715,7 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
 
     nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType(0);
     FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-    const string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_keyTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_keyTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
     FO_VERIFY_AND_THROW(arr_type, "Array type not found");
@@ -736,7 +736,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
 
     nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType(1);
     FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-    const string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_valueTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_valueTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
     FO_VERIFY_AND_THROW(arr_type, "Array type not found");
@@ -838,7 +838,7 @@ static void EnumStoredReference(ptr<AngelScript::asIScriptEngine> engine, int32_
         return;
     }
 
-    const nptr<void> reference = (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? NativeDataProvider::ReadHandleSlot(storage) : nptr<void> {storage};
+    nptr<void> reference = (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? NativeDataProvider::ReadHandleSlot(storage) : nptr<void> {storage};
 
     if (reference) {
         engine->GCEnumCallback(reference.get_no_const());
@@ -866,7 +866,7 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
+    int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     nptr<AngelScript::asITypeInfo> sub_type = obj_type->GetSubType(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
 
@@ -895,7 +895,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
+    int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     nptr<AngelScript::asITypeInfo> sub_type = obj_type->GetSubType(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
 
@@ -919,7 +919,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
     MemFill(copied, 0, element_size);
 
     if ((sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-        const auto copied_obj = NativeDataProvider::ReadHandleSlot(value);
+        auto copied_obj = NativeDataProvider::ReadHandleSlot(value);
         NativeDataProvider::WriteHandleSlot(copied, copied_obj);
 
         if (copied_obj) {
@@ -958,7 +958,7 @@ static void DestroyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_ty
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
+    int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
 
     if ((sub_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (sub_type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
@@ -967,7 +967,7 @@ static void DestroyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_ty
         engine->ReleaseScriptObject(value.get(), sub_type.get());
     }
     else {
-        const nptr<void> obj = (sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? NativeDataProvider::ReadHandleSlot(value) : nullptr;
+        nptr<void> obj = (sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? NativeDataProvider::ReadHandleSlot(value) : nullptr;
 
         if (obj) {
             nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(sub_type_id);
@@ -1100,11 +1100,11 @@ static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeD
         if (type_data && type_data->FastCompare != nullptr && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             ptr<const void> lhs = a.get();
             ptr<const void> rhs = b.get();
-            const int32_t r = type_data->FastCompare(lhs, rhs);
+            int32_t r = type_data->FastCompare(lhs, rhs);
             return check_less ? r < 0 : r == 0;
         }
 
-        const bool is_handle = (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
+        bool is_handle = (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
         nptr<void> lhs_obj {};
         nptr<void> rhs_obj {};
 
@@ -1144,7 +1144,7 @@ static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeD
 
         auto release_ctx = scope_exit([&]() noexcept {
             safe_call([&] {
-                const auto state = ctx->GetState();
+                auto state = ctx->GetState();
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {

@@ -56,7 +56,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
+FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
@@ -161,12 +161,21 @@ FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters bloc
 FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
 
+///@ ExportSettings Common
+SETTING_GROUP(SpriteMeshSettings, virtual BaseSettings);
+FIXED_SETTING(bool, SpriteMesh, Enabled, false); // If true, polygonal sprite meshes are generated during image baking
+FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold, 0); // Minimum alpha excluded from sprite mesh geometry (0-254)
+FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles, 4096); // Maximum triangle budget searched across whole-sprite, per-component, and detailed mesh candidates
+FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for removing a full frame area; one point offsets one submitted triangle
+SETTING_GROUP_END();
+
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
 FIXED_SETTING(vector<string>, Render, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
+FIXED_SETTING(vector<string>, Render, ModelLayerProperties); // Critter properties feeding model layers, as "<PropertyName>=<LayerIndex>" pairs; tools use them to dress a prototype the way the game does
 VARIABLE_SETTING(bool, Render, WindowCentered, true); // If true, window is centered
 VARIABLE_SETTING(bool, Render, WindowResizable, false); // If true, window is resizable
 VARIABLE_SETTING(bool, Render, HeadlessWindow, false); // If true, window is created hidden for off-screen rendering
@@ -181,6 +190,7 @@ FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); 
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
+VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
@@ -190,10 +200,6 @@ VARIABLE_SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 
 FIXED_SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
-FIXED_SETTING(int32_t, Render, DefaultModelViewWidth, 0); // Default model view width
-FIXED_SETTING(int32_t, Render, DefaultModelViewHeight, 0); // Default model view height
-FIXED_SETTING(int32_t, Render, DefaultModelDrawWidth, 128); // Default model draw width
-FIXED_SETTING(int32_t, Render, DefaultModelDrawHeight, 128); // Default model draw height
 FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base speed
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
@@ -258,12 +264,12 @@ FIXED_SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in mil
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual BaseSettings);
+SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings);
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
-FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
-FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
+FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
+FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
@@ -353,6 +359,10 @@ FIXED_SETTING(string, Mapper, StartMap, ""); // Start map name
 VARIABLE_SETTING(int32_t, Mapper, StartHexX, -1); // Start hex X coordinate
 VARIABLE_SETTING(int32_t, Mapper, StartHexY, -1); // Start hex Y coordinate
 VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles collection is split
+VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resource to preview after opening the start map
+VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
+VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
+VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

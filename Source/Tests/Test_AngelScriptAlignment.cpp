@@ -242,7 +242,7 @@ namespace AlignTest
 )"},
                 },
                 [](string_view message) {
-                    const auto message_str = string(message);
+                    string message_str = string(message);
 
                     if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                         throw ScriptSystemException(message_str);
@@ -252,7 +252,7 @@ namespace AlignTest
 
         static auto MakeResources() -> FileSystem
         {
-            const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
             auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -260,7 +260,7 @@ namespace AlignTest
             FileSystem compiler_resources;
             compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-            const auto script_blob = MakeScriptBinary(compiler_resources);
+            auto script_blob = MakeScriptBinary(compiler_resources);
 
             auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -308,11 +308,11 @@ namespace AlignTest
                 return sizeof(void*); // Script classes / arrays / funcdefs held as implicit handles
             }
 
-            const size_t size = type_info->GetSize();
+            size_t size = type_info->GetSize();
             return size >= 8 ? 8 : size >= 4 ? 4 : size >= 2 ? 2 : 1;
         }
 
-        const int32_t primitive_size = as_engine->GetSizeOfPrimitiveType(type_id);
+        int32_t primitive_size = as_engine->GetSizeOfPrimitiveType(type_id);
 
         if (primitive_size == 8) {
             return 8;
@@ -338,7 +338,7 @@ namespace AlignTest
             bool is_reference = false;
             REQUIRE(type_info->GetProperty(i, &prop_name, &prop_type_id, nullptr, nullptr, &prop_offset, &is_reference) >= 0);
 
-            const size_t required_alignment = RequiredMemberAlignment(as_engine, prop_type_id, is_reference);
+            size_t required_alignment = RequiredMemberAlignment(as_engine, prop_type_id, is_reference);
 
             INFO(strex("{}::{} offset {} required alignment {}", type_info->GetName(), prop_name != nullptr ? prop_name : "?", prop_offset, required_alignment).str());
             CHECK(numeric_cast<size_t>(prop_offset) % required_alignment == 0);
@@ -359,7 +359,7 @@ TEST_CASE("AngelScriptValueAlignment")
         });
     });
 
-    const auto startup_error = AlignTestRig::WaitForStart(server);
+    string startup_error = AlignTestRig::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -367,7 +367,7 @@ TEST_CASE("AngelScriptValueAlignment")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
     // the base class, both inheritance levels and the mixin-including class.
@@ -377,7 +377,7 @@ TEST_CASE("AngelScriptValueAlignment")
         REQUIRE(context_mngr);
 
         auto ctx = context_mngr->RequestContext();
-        const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
+        uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
@@ -388,7 +388,7 @@ TEST_CASE("AngelScriptValueAlignment")
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
         REQUIRE(script_module != nullptr);
 
-        for (const string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
+        for (string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
             REQUIRE(class_type != nullptr);
@@ -398,7 +398,7 @@ TEST_CASE("AngelScriptValueAlignment")
 
     // Runtime execution: under the UBSan leg any misaligned member/local/global constructor or read
     // trips a hard `alignment` runtime error in the value-type behaviours.
-    const auto call_and_check = [&](string_view func_name, int64_t expected) {
+    auto call_and_check = [&](string_view func_name, int64_t expected) {
         INFO(func_name);
         auto func = server->FindFunc<int64_t>(fn(func_name));
         REQUIRE(func);

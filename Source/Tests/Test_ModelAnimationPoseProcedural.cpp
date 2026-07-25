@@ -110,26 +110,26 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
 {
     FO_STACK_TRACE_ENTRY();
 
-    const array<vec3, 4> translations {
+    array<vec3, 4> translations {
         vec3 {1.0f, 2.0f, -1.0f},
         vec3 {2.0f, -1.0f, 3.0f},
         vec3 {-0.5f, 4.0f, 1.0f},
         vec3 {0.0f, 2.0f, 0.5f},
     };
-    const array<quaternion, 4> rotations {
+    array<quaternion, 4> rotations {
         glm::angleAxis(glm::radians(17.0f), glm::normalize(vec3 {0.0f, 1.0f, 1.0f})),
         glm::angleAxis(glm::radians(23.0f), vec3 {1.0f, 0.0f, 0.0f}),
         glm::angleAxis(glm::radians(-19.0f), vec3 {0.0f, 0.0f, 1.0f}),
         glm::angleAxis(glm::radians(11.0f), glm::normalize(vec3 {1.0f, 1.0f, 0.0f})),
     };
-    const array<vec3, 4> scales {
+    array<vec3, 4> scales {
         vec3 {1.25f, 0.8f, 1.1f},
         vec3 {2.0f, 0.5f, 1.5f},
         vec3 {0.75f, 1.25f, 0.6f},
         vec3 {1.0f},
     };
 
-    const array<mat44, 4> source_rest_locals {
+    array<mat44, 4> source_rest_locals {
         MakeModelAnimationRuntimeProceduralTestMatrix(translations[0], rotations[0], scales[0]),
         MakeModelAnimationRuntimeProceduralTestMatrix(translations[1], rotations[1], scales[1]),
         MakeModelAnimationRuntimeProceduralTestMatrix(translations[2], rotations[2], scales[2]),
@@ -144,10 +144,10 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
         MakeModelAnimationRuntimeProceduralTestJoint("Head", {"Root", "Body", "Head"}, source_rest_locals[2]),
         MakeModelAnimationRuntimeProceduralTestJoint("Leaf", {"Root", "Body", "Head", "Leaf"}, source_rest_locals[3]),
     };
-    const ModelSkeletonCompatibilityReport compatibility_report = BuildModelSkeletonCompatibilityReport(base_skeleton, {});
+    ModelSkeletonCompatibilityReport compatibility_report = BuildModelSkeletonCompatibilityReport(base_skeleton, {});
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts(model_description, base_skeleton, compatibility_report, {}, false);
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "procedural runtime pose test");
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "procedural runtime pose test");
 
     ModelAnimationRuntimeProceduralTestFixture fixture;
     fixture.Rig = LoadModelAnimationRuntimeRig(serialized, model_description, base_skeleton.FileName, false);
@@ -165,7 +165,7 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
     REQUIRE(fixture.Rig->GetJointName(fixture.LeafJoint) == "Leaf");
 
     for (size_t source_joint = 0; source_joint < source_rest_locals.size(); source_joint++) {
-        const size_t runtime_joint = fixture.Rig->GetBaseJointMapping()[source_joint];
+        size_t runtime_joint = fixture.Rig->GetBaseJointMapping()[source_joint];
         REQUIRE(fixture.Rig->GetBaseJointPresence()[runtime_joint] == 1);
         fixture.RestLocals[runtime_joint] = source_rest_locals[source_joint];
     }
@@ -180,20 +180,20 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
 #if FO_ENABLE_3D
     ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    const mat44 root_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {100.0f, -20.0f, 7.0f}, glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 1.0f})), vec3 {0.9f, 1.1f, 1.3f});
-    const quaternion body_rotation = glm::angleAxis(glm::radians(37.0f), vec3 {0.0f, 1.0f, 0.0f});
-    const quaternion head_rotation = glm::angleAxis(glm::radians(-29.0f), vec3 {1.0f, 0.0f, 0.0f});
-    const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural_rotations {
+    mat44 root_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {100.0f, -20.0f, 7.0f}, glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 1.0f})), vec3 {0.9f, 1.1f, 1.3f});
+    quaternion body_rotation = glm::angleAxis(glm::radians(37.0f), vec3 {0.0f, 1.0f, 0.0f});
+    quaternion head_rotation = glm::angleAxis(glm::radians(-29.0f), vec3 {1.0f, 0.0f, 0.0f});
+    array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural_rotations {
         ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint, .Rotation = body_rotation},
         ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint, .Rotation = head_rotation},
     };
 
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
 
-    const mat44 expected_root = root_matrix * fixture.RestLocals[fixture.RootJoint];
-    const mat44 expected_body = expected_root * glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint];
-    const mat44 expected_head = expected_body * glm::mat4_cast(head_rotation) * fixture.RestLocals[fixture.HeadJoint];
-    const mat44 expected_leaf = expected_head * fixture.RestLocals[fixture.LeafJoint];
+    mat44 expected_root = root_matrix * fixture.RestLocals[fixture.RootJoint];
+    mat44 expected_body = expected_root * glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint];
+    mat44 expected_head = expected_body * glm::mat4_cast(head_rotation) * fixture.RestLocals[fixture.HeadJoint];
+    mat44 expected_leaf = expected_head * fixture.RestLocals[fixture.LeafJoint];
     array<mat44, 4> expected_final_locals {mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}};
     expected_final_locals[fixture.RootJoint] = fixture.RestLocals[fixture.RootJoint];
     expected_final_locals[fixture.BodyJoint] = glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint];
@@ -212,7 +212,7 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
         CheckModelAnimationRuntimeProceduralTestMatrix(pose.GetWorldMatrices()[joint], expected_world[joint]);
     }
 
-    const vector<mat44> first_evaluation {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
+    vector<mat44> first_evaluation {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
 
     for (size_t joint = 0; joint < expected_world.size(); joint++) {
@@ -231,9 +231,9 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 #if FO_ENABLE_3D
     ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    const mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
+    mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
     pose.Evaluate({}, {}, root_matrix);
-    const vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
+    vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
     vector<mat44> before_body_locals;
     vector<mat44> before_final_locals;
     before_body_locals.reserve(pose.GetJointCount());
@@ -246,7 +246,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 
     SECTION("bounded count")
     {
-        const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 3> rotations {
+        array<ModelAnimationRuntimePose::ProceduralLocalRotation, 3> rotations {
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.RootJoint},
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint},
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint},
@@ -256,7 +256,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 
     SECTION("joint index")
     {
-        const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
+        array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = pose.GetJointCount()},
         };
         CHECK_THROWS_WITH(pose.Evaluate({}, {}, root_matrix, rotations), Catch::Matchers::ContainsSubstring("outside"));
@@ -264,7 +264,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 
     SECTION("finite quaternion")
     {
-        const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
+        array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
             ModelAnimationRuntimePose::ProceduralLocalRotation {
                 .JointIndex = fixture.BodyJoint,
                 .Rotation = quaternion {std::numeric_limits<float32_t>::quiet_NaN(), 0.0f, 0.0f, 0.0f},
@@ -275,7 +275,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 
     SECTION("normalized quaternion")
     {
-        const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
+        array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> rotations {
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint, .Rotation = quaternion {2.0f, 0.0f, 0.0f, 0.0f}},
         };
         CHECK_THROWS_WITH(pose.Evaluate({}, {}, root_matrix, rotations), Catch::Matchers::ContainsSubstring("not normalized"));
@@ -283,7 +283,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 
     SECTION("duplicate joint")
     {
-        const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> rotations {
+        array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> rotations {
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint},
             ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint},
         };
@@ -305,15 +305,15 @@ TEST_CASE("ModelAnimationRuntimePoseWorldOverrideDoesNotRecomputeDescendants")
 #if FO_ENABLE_3D
     ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    const mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
-    const array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> procedural_rotations {
+    mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
+    array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> procedural_rotations {
         ModelAnimationRuntimePose::ProceduralLocalRotation {
             .JointIndex = fixture.HeadJoint,
             .Rotation = glm::angleAxis(glm::radians(27.0f), vec3 {0.0f, 1.0f, 0.0f}),
         },
     };
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
-    const vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
+    vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
     vector<mat44> before_body_locals;
     vector<mat44> before_final_locals;
     before_body_locals.reserve(pose.GetJointCount());
@@ -324,7 +324,7 @@ TEST_CASE("ModelAnimationRuntimePoseWorldOverrideDoesNotRecomputeDescendants")
         before_final_locals.emplace_back(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)));
     }
 
-    const mat44 override_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {-50.0f, 80.0f, 12.0f}, glm::angleAxis(glm::radians(61.0f), glm::normalize(vec3 {1.0f, 1.0f, 2.0f})), vec3 {1.7f, 0.6f, 2.2f});
+    mat44 override_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {-50.0f, 80.0f, 12.0f}, glm::angleAxis(glm::radians(61.0f), glm::normalize(vec3 {1.0f, 1.0f, 2.0f})), vec3 {1.7f, 0.6f, 2.2f});
     pose.OverrideWorldMatrix(fixture.BodyJoint, override_matrix);
     CheckModelAnimationRuntimeProceduralTestMatrixExact(pose.GetWorldMatrices()[fixture.BodyJoint], override_matrix);
 

@@ -68,7 +68,7 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const CommandLineArgs args {argc, argv};
+    CommandLineArgs args {argc, argv};
     RunClientRuntime(args, runtime_result);
 }
 
@@ -129,7 +129,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
 
         WriteLog("Client runtime DLL: main loop exited");
 
-        const bool quit_success = GetApp()->GetRequestedQuitSuccess();
+        bool quit_success = GetApp()->GetRequestedQuitSuccess();
         CleanupClientApp();
 
         if (runtime_result) {
@@ -227,10 +227,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    const auto result = Data->ResourceUpdater->GetResult();
+                    auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); request that exact path.
-                    const auto staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {

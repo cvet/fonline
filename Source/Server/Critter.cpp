@@ -533,8 +533,8 @@ void Critter::MoveAttachedCritters()
 
     vector<pair<refcount_ptr<Critter>, mpos>> moved_critters;
 
-    const auto new_hex = GetHex();
-    const auto new_hex_offset = GetHexOffset();
+    auto new_hex = GetHex();
+    auto new_hex_offset = GetHexOffset();
 
     auto attached = GetAttachedCritters();
 
@@ -546,7 +546,7 @@ void Critter::MoveAttachedCritters()
 
         cr->SetHexOffset(new_hex_offset);
 
-        const auto hex = cr->GetHex();
+        auto hex = cr->GetHex();
 
         if (hex != new_hex) {
             map->RemoveCritterFromField(cr);
@@ -560,10 +560,10 @@ void Critter::MoveAttachedCritters()
     // Callbacks time
     auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
     auto map_ref_holder = map;
-    const auto dir = GetDir();
+    auto dir = GetDir();
 
     for (auto& [cr, prev_hex] : moved_critters) {
-        const auto is_cr_valid = [cr, map] {
+        auto is_cr_valid = [cr, map] {
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return false;
             }
@@ -602,13 +602,13 @@ void Critter::ClearVisibleEnitites()
 
     while (!_visibleCrWhoSeeMe.empty()) {
         auto cr = _visibleCrWhoSeeMe.front();
-        const auto del_ok = RemoveVisibleCritter(cr);
+        bool del_ok = RemoveVisibleCritter(cr);
         FO_STRONG_ASSERT(del_ok, "Failed to remove visible critter");
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
         auto cr = _visibleCr.front();
-        const auto del_ok2 = cr->RemoveVisibleCritter(this);
+        bool del_ok2 = cr->RemoveVisibleCritter(this);
         FO_STRONG_ASSERT(del_ok2, "Failed to remove self from visible critter");
     }
 
@@ -667,7 +667,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     }
 
     if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
-        const auto it = _visibleCrWhoSeeMeMap.find(cr_id);
+        auto it = _visibleCrWhoSeeMeMap.find(cr_id);
 
         if (it != _visibleCrWhoSeeMeMap.end()) {
             return it->second;
@@ -675,7 +675,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     }
 
     if (see_type == CritterSeeType::WhoISee || see_type == CritterSeeType::Any) {
-        const auto it = _visibleCrMap.find(cr_id);
+        auto it = _visibleCrMap.find(cr_id);
 
         if (it != _visibleCrMap.end()) {
             return it->second;
@@ -821,7 +821,7 @@ auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisi
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto it = _visibleCrModes.find(cr_id);
+    auto it = _visibleCrModes.find(cr_id);
     return it != _visibleCrModes.end() ? it->second : CritterVisibilityMode::None;
 }
 
@@ -854,13 +854,13 @@ auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> 
     FO_VERIFY_AND_THROW(mode != CritterVisibilityMode::None, "Critter visibility mode is not set");
     ValidateEntityAccess(cr);
 
-    const auto inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
+    bool inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
 
     if (!inserted) {
         return false;
     }
 
-    const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
+    bool inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
     FO_STRONG_ASSERT(inserted2, "Visible critter graph asymmetry on add", GetId(), cr->GetId());
 
     cr->_visibleCrModes[GetId()] = mode;
@@ -881,7 +881,7 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
     FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
     ValidateEntityAccess(cr);
 
-    const auto it_map = _visibleCrWhoSeeMeMap.find(cr->GetId());
+    auto it_map = _visibleCrWhoSeeMeMap.find(cr->GetId());
 
     if (it_map == _visibleCrWhoSeeMeMap.end()) {
         return false;
@@ -889,17 +889,17 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
 
     _visibleCrWhoSeeMeMap.erase(it_map);
 
-    const auto it_map2 = cr->_visibleCrMap.find(GetId());
+    auto it_map2 = cr->_visibleCrMap.find(GetId());
     FO_STRONG_ASSERT(it_map2 != cr->_visibleCrMap.end(), "Lookup failed in critter visible cr map");
     cr->_visibleCrMap.erase(it_map2);
 
     cr->_visibleCrModes.erase(GetId());
 
-    const auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
+    auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
     FO_STRONG_ASSERT(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
     _visibleCrWhoSeeMe.erase(it);
 
-    const auto it2 = std::ranges::find(cr->_visibleCr, this);
+    auto it2 = std::ranges::find(cr->_visibleCr, this);
     FO_STRONG_ASSERT(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
     cr->_visibleCr.erase(it2);
 
@@ -1138,7 +1138,7 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto it = std::ranges::find_if(_invItems, [&](ptr<Item> item) noexcept -> bool { return item->GetCritterSlot() == slot; });
+    auto it = std::ranges::find_if(_invItems, [&](ptr<Item> item) noexcept -> bool { return item->GetCritterSlot() == slot; });
 
     if (it == _invItems.end()) {
         return nullptr;
@@ -1177,7 +1177,7 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
     return {};
 }
 
-auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector<refcount_ptr<Player>>
+auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> small_vector<refcount_ptr<Player>, 8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1185,7 +1185,7 @@ auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector
 
     auto spectators = GetMapSpectators();
 
-    vector<refcount_ptr<Player>> recipients;
+    small_vector<refcount_ptr<Player>, 8> recipients;
     recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (ptr<Critter> cr : _visibleCrWhoSeeMe) {

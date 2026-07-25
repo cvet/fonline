@@ -86,6 +86,8 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
     TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
+    # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
     SetTargetProperty(rpmalloc C_STANDARD 11)
     TargetCompileOptions(rpmalloc PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:MSVC>>:/experimental:c11atomics>")
 else()
@@ -183,6 +185,26 @@ if(FO_BUILD_BAKER_LIB)
     AppendList(FO_BAKER_LIBS png_static)
     AppendList(FO_DUMMY_TARGETS png_genfiles)
     DisableLibWarnings(png_static)
+endif()
+
+# earcut.hpp
+if(FO_BUILD_BAKER_LIB)
+    StatusMessage("+ earcut.hpp")
+    SetValue(FO_EARCUT_DIR "${FO_ENGINE_ROOT}/ThirdParty/earcut")
+    AddIncludeDirectories("${FO_EARCUT_DIR}/include")
+endif()
+
+# Clipper2
+if(FO_BUILD_BAKER_LIB)
+    SetValue(FO_CLIPPER2_DIR "${FO_ENGINE_ROOT}/ThirdParty/clipper2")
+    SetValue(FO_CLIPPER2_SOURCE
+        "${FO_CLIPPER2_DIR}/src/clipper.engine.cpp"
+        "${FO_CLIPPER2_DIR}/src/clipper.offset.cpp")
+    AddStaticThirdPartyLibrary(Clipper2
+        SOURCE_LIST FO_CLIPPER2_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_CLIPPER2_DIR}/include")
+    DisableLibWarnings(Clipper2)
 endif()
 
 # Ogg
@@ -573,15 +595,45 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
     endif()
 endif()
 
-# Spark
-StatusMessage("+ Spark")
-SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
-SetCacheValues(SPARK_STATIC_BUILD ON)
-AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
-AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
-DisableLibWarnings(SPARK_Core PugiXML)
+# SPARK particle simulation runtime and XML/binary serializer.
+if(FO_SPARK_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ SPARK particle runtime")
+    SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
+    SetCacheValues(SPARK_STATIC_BUILD ON)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
+    DisableLibWarnings(SPARK_Core PugiXML)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS SPARK_Core PugiXML)
+    endif()
+endif()
+
+# Effekseer CPU simulation runtime. FOnline owns geometry generation and all
+# graphics backends, so RendererCommon and the upstream renderer libraries are
+# deliberately absent from the vendored tree and build graph.
+if(FO_EFFEKSEER_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ Effekseer particle runtime")
+    SetValue(FO_EFFEKSEER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Effekseer")
+    include("${FO_EFFEKSEER_DIR}/FOnline.cmake")
+    find_package(Threads REQUIRED)
+    AddStaticThirdPartyLibrary(EffekseerCore
+        SOURCE_LIST FO_EFFEKSEER_SOURCE
+        INCLUDE_DIRS "${FO_EFFEKSEER_DIR}/Dev/Cpp/Effekseer"
+        LINK_LIBS Threads::Threads)
+    target_compile_features(EffekseerCore PUBLIC cxx_std_17)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS EffekseerCore)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS EffekseerCore)
+    endif()
+endif()
 
 # glslang & SPIRV-Cross
 if(FO_BUILD_BAKER_LIB)

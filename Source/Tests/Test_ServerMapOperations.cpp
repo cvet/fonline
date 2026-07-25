@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace MapOpsTest
 {
@@ -339,7 +339,7 @@ namespace MapOpsTest
         Item item3 = cr.AddItem("TestItem".hstr(), 1);
         if (item3 is null) return -11;
 )"
-                                          R"(
+                                    R"(
         Item? movedPartialToContainer = Game.MoveItem(item3, 1, container);
         if (movedPartialToContainer is null) return -12;
 
@@ -421,7 +421,7 @@ namespace MapOpsTest
         array<Item> destroyedToMap = {destroyedMapItem};
         Game.MoveItems(destroyedToMap, map, mpos(26, 26));
 )"
-                                          R"(
+                                    R"(
         Item container = source.AddItem("TestItem2".hstr(), 1);
         Item contItem1 = source.AddItem("TestItem".hstr(), 1);
         Item contItem2 = source.AddItem("TestItem2".hstr(), 1);
@@ -588,7 +588,7 @@ namespace MapOpsTest
         Item item = map.AddItem(nearby, "TestItem".hstr(), 1);
         if (item is null) return -3;
 )"
-                                          R"(
+                                    R"(
         ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -4;
 
@@ -791,7 +791,7 @@ namespace MapOpsTest
         Location loc = CreateTestLocation();
         if (loc is null) {
 )"
-                                          R"(
+                                    R"(
             return;
         }
 
@@ -914,6 +914,86 @@ namespace MapOpsTest
         return 0;
     }
 
+    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
+    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
+    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
+    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
+    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
+    // spawn far from every probe hex, so they never enter a result set.
+    const int HexWalkFillerCritterCount = 32;
+
+    // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
+    const int MaxHexesInRadius2 = 25;
+
+    bool AddHexWalkFillerCritters(Map map)
+    {
+        for (int i = 0; i < HexWalkFillerCritterCount; i++) {
+            Critter filler = map.AddCritter("TestCritter".hstr(), mpos(10, 10 + i), mdir(0));
+            if (filler is null) return false;
+        }
+
+        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
+        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
+        // radius 2 probes below cannot silently fall back to the full scan
+        return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
+    }
+
+    bool ContainsCritterId(array<Critter> critters, ident id)
+    {
+        for (uint i = 0; i < critters.length(); i++) {
+            if (critters[i].Id == id) return true;
+        }
+
+        return false;
+    }
+
+    int TestMapGetCrittersInRadiusHexWalkArm()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        mpos probe(50, 50);
+        Critter onBoundary = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0));
+        Critter pastBoundary = map.AddCritter("TestCritter".hstr(), mpos(52, 50), mdir(0));
+        if (onBoundary is null || pastBoundary is null) return -3;
+
+        // Pin the fixture geometry the boundary assertions rely on, in case a spawn was relocated to a free hex
+        if (Game.GetDistance(probe, onBoundary.Hex) != 1) return -4;
+        if (Game.GetDistance(probe, pastBoundary.Hex) != 2) return -5;
+
+        if (!AddHexWalkFillerCritters(map)) return -6;
+
+        // A critter sitting exactly on the radius is inside, the one a hex further out is not
+        array<Critter> inRadius = map.GetCrittersInRadius(probe, 1, CritterFindType::Any);
+        if (inRadius.length() != 1) return -7;
+        if (!ContainsCritterId(inRadius, onBoundary.Id)) return -8;
+
+        // Widening the radius by one pulls in the hex that was just outside it
+        array<Critter> widened = map.GetCrittersInRadius(probe, 2, CritterFindType::Any);
+        if (widened.length() != 2) return -9;
+        if (!ContainsCritterId(widened, onBoundary.Id)) return -10;
+        if (!ContainsCritterId(widened, pastBoundary.Id)) return -11;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int CheckMultihexOverlapQueries(Map map, Critter cr)
+    {
+        // The critter centre sits 3 hexes away, so only its multihex 2 body reaches into the radius 1 probe
+        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
+        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -1;
+
+        // One hex further back the body no longer reaches
+        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
+        if (!outside.isEmpty()) return -2;
+
+        return 0;
+    }
+
     int TestMapGetCrittersInRadiusIncludesMultihexOverlap()
     {
         Location loc = CreateTestLocation();
@@ -924,12 +1004,17 @@ namespace MapOpsTest
 
         Critter cr = map.AddCritter("TestMultihexCritter".hstr(), mpos(53, 50), mdir(0));
         if (cr is null) return -3;
+        if (cr.Hex != mpos(53, 50)) return -4;
 
-        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
-        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -4;
+        // A lone critter never trips the walk threshold, so this proves the distance arithmetic arm
+        int fullScan = CheckMultihexOverlapQueries(map, cr);
+        if (fullScan != 0) return -10 + fullScan;
 
-        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
-        if (!outside.isEmpty()) return -5;
+        if (!AddHexWalkFillerCritters(map)) return -5;
+
+        // Identical answers on the hex walk arm, which resolves the same overlap through field registration instead
+        int hexWalk = CheckMultihexOverlapQueries(map, cr);
+        if (hexWalk != 0) return -20 + hexWalk;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -4623,7 +4708,7 @@ namespace MapOpsTest
                 {"Scripts/MapOpsTest.fos", script_source},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -4737,8 +4822,8 @@ namespace MapOpsTest
 
 #if FO_ANGELSCRIPT_SCRIPTING
         BakerServerEngine script_engine {rig.BakedFiles};
-        const vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-            const string message_str = string(message);
+        vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
@@ -4751,15 +4836,15 @@ namespace MapOpsTest
         rig.AddSourceFile("StaticMap.fomap",
             "[ProtoMap]\n"
             "$Name = StaticMap\n"
-            "[Critter]\n"
+            "[$Name/Critter]\n"
             "$Id = 11\n"
             "$Proto = TestStaticCritter\n"
             "Hex = 10 11\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 21\n"
             "$Proto = TestStaticItem\n"
             "Hex = 12 13\n"
-            "[Item]\n"
+            "[$Name/Item]\n"
             "$Id = 22\n"
             "$Proto = TestStaticHiddenItem\n"
             "Hex = 14 15\n");
@@ -4773,7 +4858,7 @@ namespace MapOpsTest
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -4784,34 +4869,34 @@ namespace MapOpsTest
 
         BakerServerEngine proto_engine {compiler_resources};
         BakerClientEngine client_proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
-        const auto client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
-        const auto client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
+        hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
+        auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
         REQUIRE(static_cast<bool>(critter_registrator));
-        const auto multihex_property = critter_registrator->FindProperty("Multihex");
+        auto multihex_property = critter_registrator->FindProperty("Multihex");
         REQUIRE(static_cast<bool>(multihex_property));
-        const vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
             {"TestCritter", {}},
             {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
         };
-        const auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
-        const auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
-        const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
-        const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        const auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
-        const auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        const auto static_map_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "StaticMap", msize {50, 50});
-        const auto static_map_client_proto_blob = MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50});
-        const auto fomap_blob = MakeEmptyMapBlob();
-        const auto static_fomap_blob = MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob);
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
+        auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
+        auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
+        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
+        auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
+        auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto static_map_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "StaticMap", msize {50, 50});
+        auto static_map_client_proto_blob = MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50});
+        auto fomap_blob = MakeEmptyMapBlob();
+        auto static_fomap_blob = MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob);
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -4865,12 +4950,12 @@ namespace MapOpsTest
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_FUNC(func_name) \
     { \
@@ -4884,7 +4969,7 @@ namespace MapOpsTest
     { \
         auto func = server->FindFunc<void>(get_func(func_name)); \
         REQUIRE(func); \
-        const auto prev_callback = GetExceptionCallback(); \
+        auto prev_callback = GetExceptionCallback(); \
         string message; \
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
@@ -5019,6 +5104,11 @@ TEST_CASE("MapCritterOperations")
     SECTION("GetCrittersInLargeRadius")
     {
         RUN_FUNC("MapOpsTest::TestMapGetCrittersInLargeRadius");
+    }
+
+    SECTION("GetCrittersInRadiusHexWalkArm")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusHexWalkArm");
     }
 
     SECTION("GetCrittersInRadiusIncludesMultihexOverlap")
@@ -5188,17 +5278,17 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
             }
         });
     });
-    const auto startup_error = WaitForStart(server.get());
+    string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto static_map_pid = server->Hashes.ToHashedString("StaticMap");
-    const auto static_critter_pid = server->Hashes.ToHashedString("TestStaticCritter");
-    const auto visible_item_pid = server->Hashes.ToHashedString("TestStaticItem");
-    const auto hidden_item_pid = server->Hashes.ToHashedString("TestStaticHiddenItem");
-    const auto map_proto = server->GetProtoMap(static_map_pid);
+    hstring static_map_pid = server->Hashes.ToHashedString("StaticMap");
+    hstring static_critter_pid = server->Hashes.ToHashedString("TestStaticCritter");
+    hstring visible_item_pid = server->Hashes.ToHashedString("TestStaticItem");
+    hstring hidden_item_pid = server->Hashes.ToHashedString("TestStaticHiddenItem");
+    auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 
     auto static_map = server->MapMngr.GetStaticMap(map_proto);
@@ -5213,8 +5303,8 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     REQUIRE(static_map->StaticItemsById.contains(ident_t {21}));
     REQUIRE(static_map->StaticItemsById.contains(ident_t {22}));
 
-    const auto visible_item = static_map->StaticItemsById.at(ident_t {21});
-    const auto hidden_item = static_map->StaticItemsById.at(ident_t {22});
+    auto visible_item = static_map->StaticItemsById.at(ident_t {21});
+    auto hidden_item = static_map->StaticItemsById.at(ident_t {22});
     CHECK(visible_item->GetProtoId() == visible_item_pid);
     CHECK(hidden_item->GetProtoId() == hidden_item_pid);
     CHECK(visible_item->GetHex() == mpos {12, 13});

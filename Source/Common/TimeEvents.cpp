@@ -91,8 +91,8 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
     FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Cannot start a time event for an entity that is being destroyed", entity->GetTypeName(), entity->GetId());
 
-    const auto event_id = ++_timeEventCounter;
-    const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
+    auto event_id = ++_timeEventCounter;
+    auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
 
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
     te->Id = event_id;
@@ -177,8 +177,8 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
             return;
         }
 
-        const auto effective_delay = repeat.has_value() ? std::max(repeat.value(), MIN_REPEAT_TIME) : timespan::zero;
-        const auto fire_time = repeat.has_value() ? _engine->GameTime.GetFrameTime() + effective_delay : nanotime::zero;
+        auto effective_delay = repeat.has_value() ? std::max(repeat.value(), MIN_REPEAT_TIME) : timespan::zero;
+        nanotime fire_time = repeat.has_value() ? _engine->GameTime.GetFrameTime() + effective_delay : nanotime::zero;
 
         for (size_t i = 0; i < time_events->size(); i++) {
             auto& te = (*time_events)[i];
@@ -243,7 +243,7 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
                 continue;
             }
 
-            const auto removed_id = te->Id;
+            uint32_t removed_id = te->Id;
             te->Id = 0;
             time_events->erase(time_events->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
             cancelled_ids.push_back(removed_id);
@@ -346,8 +346,8 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<shared_ptr<Entity::TimeEventData>> ready_events;
-    const auto time = _engine->GameTime.GetFrameTime();
+    small_vector<shared_ptr<Entity::TimeEventData>, 8> ready_events;
+    nanotime time = _engine->GameTime.GetFrameTime();
 
     {
         std::scoped_lock lock {_timeEventLocker};
@@ -381,7 +381,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
                 continue;
             }
 
-            const auto it = std::ranges::find(time_events->begin(), time_events->end(), te);
+            auto it = std::ranges::find(time_events->begin(), time_events->end(), te);
 
             if (it == time_events->end()) {
                 continue;
@@ -391,7 +391,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
             }
         }
 
-        const FiredTimeEvent result = FireTimeEvent(entity, te);
+        FiredTimeEvent result = FireTimeEvent(entity, te);
 
         if (entity->IsDestroyed()) {
             return;
@@ -409,7 +409,7 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
 
     vector<ReadyTimeEvent> ready;
     optional<nanotime> next_future_fire_time;
-    const auto time = _engine->GameTime.GetFrameTime();
+    nanotime time = _engine->GameTime.GetFrameTime();
 
     for (ptr<Entity> entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
@@ -458,14 +458,14 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
         return;
     }
 
-    const auto time = _engine->GameTime.GetFrameTime();
+    nanotime time = _engine->GameTime.GetFrameTime();
 
     auto remove_event = [entity, &te]() mutable {
         auto time_events = entity->GetTimeEvents();
 
         if (time_events) {
-            const auto id = te->Id;
-            const auto it = std::ranges::find_if(*time_events, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
+            uint32_t id = te->Id;
+            auto it = std::ranges::find_if(*time_events, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
 
             if (it != time_events->end()) {
                 time_events->erase(it);
@@ -496,7 +496,7 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
     }
 
     if (te->RepeatDuration && result.CallResult) {
-        const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
+        auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
         te->FireTime = next_fire_time;
     }
     else {
@@ -672,7 +672,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
             return std::nullopt;
         }
 
-        const auto it = std::ranges::find_if(*time_events, [event_id](const shared_ptr<Entity::TimeEventData>& candidate) { return candidate->Id == event_id; });
+        auto it = std::ranges::find_if(*time_events, [event_id](const shared_ptr<Entity::TimeEventData>& candidate) { return candidate->Id == event_id; });
 
         if (it == time_events->end()) {
             return std::nullopt;
@@ -681,7 +681,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         te = *it;
     }
 
-    const auto fired = FireTimeEvent(entity, te);
+    auto fired = FireTimeEvent(entity, te);
 
     nanotime next_fire_time;
 
@@ -703,7 +703,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         next_fire_time = te->FireTime;
     }
 
-    const auto now = _engine->GameTime.GetFrameTime();
+    nanotime now = _engine->GameTime.GetFrameTime();
 
     if (next_fire_time <= now) {
         // Edge case: handler took long enough that next FireTime is already in the past. Schedule

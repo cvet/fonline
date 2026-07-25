@@ -30,6 +30,7 @@ namespace SPK
 		nbReferences(0),
 		SHARE_POLICY(SHARE_POLICY),
 		shared(SHARE_POLICY == SHARE_POLICY_TRUE),
+		context(NULL),
 		copyBuffer(NULL)
 	{
 		SPK_LOG_DEBUG("Creation of SPKObject " << this);
@@ -40,6 +41,7 @@ namespace SPK
 		nbReferences(0),
 		SHARE_POLICY(obj.SHARE_POLICY),
 		shared(obj.shared),
+		context(obj.context),
 		copyBuffer(NULL)
 	{
 		SPK_LOG_DEBUG("Creation of SPKObject " << this << " from " << &obj);
@@ -50,6 +52,19 @@ namespace SPK
 		SPK_LOG_DEBUG("Destruction of SPKObject " << this);
 		SPK_ASSERT(nbReferences == 0,"SPKObject::~SPKObject() - The number of references of the object is not 0 during destruction");
 	}
+
+	void SPKObject::setContext(SPKContext& context)
+	{
+		if (this->context == &context)
+			return;
+
+		SPK_ASSERT(this->context == NULL,"SPKObject::setContext(SPKContext&) - Object is already bound to another SPARK context");
+		this->context = &context;
+		onContextSet();
+	}
+
+	void SPKObject::onContextSet()
+	{}
 
 	void SPKObject::setShared(bool shared)
 	{

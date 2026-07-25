@@ -306,11 +306,11 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
     FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
     FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
-    const auto offset = _updateFileTransfer.PortionIndex * max_portion_size;
+    size_t offset = _updateFileTransfer.PortionIndex * max_portion_size;
     FO_VERIFY_AND_THROW(offset <= file_size, "Updater file transfer portion offset is outside the file bounds", _updateFileTransfer.PendingFileIndex.value(), _updateFileTransfer.PortionIndex, max_portion_size, offset, file_size);
 
-    const auto remaining_size = file_size - offset;
-    const auto portion_size = std::min(remaining_size, max_portion_size);
+    size_t remaining_size = file_size - offset;
+    auto portion_size = std::min(remaining_size, max_portion_size);
 
     if (offset + portion_size < file_size) {
         _updateFileTransfer.PortionIndex++;
@@ -340,7 +340,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
         return {};
     }
 
-    const auto raw_buf = _outBuf.GetData();
+    auto raw_buf = _outBuf.GetData();
 
     if (!_settings->DisableZlibCompression) {
         _compressor.Compress(raw_buf, _sendBuf);

@@ -66,7 +66,7 @@ auto EntityManager::GetEntity(ident_t id) const noexcept -> refcount_nptr<const 
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
+    if (auto it = _allEntities.find(id); it != _allEntities.end()) {
         return it->second;
     }
 
@@ -79,7 +79,7 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> refcount_nptr<ServerEntity
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
+    if (auto it = _allEntities.find(id); it != _allEntities.end()) {
         return it->second;
     }
 
@@ -117,7 +117,7 @@ auto EntityManager::GetPlayer(ident_t id) const noexcept -> refcount_nptr<const 
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+    if (auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -130,7 +130,7 @@ auto EntityManager::GetPlayer(ident_t id) noexcept -> refcount_nptr<Player>
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+    if (auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -168,7 +168,7 @@ auto EntityManager::GetLocation(ident_t id) const noexcept -> refcount_nptr<cons
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
+    if (auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -181,7 +181,7 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> refcount_nptr<Location>
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
+    if (auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -219,7 +219,7 @@ auto EntityManager::GetMap(ident_t id) const noexcept -> refcount_nptr<const Map
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+    if (auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -232,7 +232,7 @@ auto EntityManager::GetMap(ident_t id) noexcept -> refcount_nptr<Map>
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+    if (auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -270,7 +270,7 @@ auto EntityManager::GetCritter(ident_t id) const noexcept -> refcount_nptr<const
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+    if (auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -283,7 +283,7 @@ auto EntityManager::GetCritter(ident_t id) noexcept -> refcount_nptr<Critter>
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+    if (auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -321,7 +321,7 @@ auto EntityManager::GetItem(ident_t id) const noexcept -> refcount_nptr<const It
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allItems.find(id); it != _allItems.end()) {
+    if (auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -334,7 +334,7 @@ auto EntityManager::GetItem(ident_t id) noexcept -> refcount_nptr<Item>
 
     shared_lock lock {_registryLock};
 
-    if (const auto it = _allItems.find(id); it != _allItems.end()) {
+    if (auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second.try_hold_ref();
     }
 
@@ -376,8 +376,8 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
     WriteLog("Load entities");
 
-    const int64_t last = _engine->GetLastEntityId().underlying_value();
-    const int64_t start = _engine->Settings->EntityStartId;
+    int64_t last = _engine->GetLastEntityId().underlying_value();
+    int64_t start = _engine->Settings->EntityStartId;
     _lastEntityId = std::max(last, start);
     _persistedEntityId = _lastEntityId;
 
@@ -392,9 +392,9 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
         LoadInnerEntities(_engine, is_error);
     }
 
-    const auto loc_ids = _engine->DbStorage.GetAllIntIds(_locationCollectionName);
+    auto loc_ids = _engine->DbStorage.GetAllIntIds(_locationCollectionName);
 
-    for (const auto loc_id : loc_ids) {
+    for (auto loc_id : loc_ids) {
         LoadLocation(loc_id, is_error);
     }
 
@@ -476,7 +476,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
     }
 
     try {
-        const auto map_ids = loc->GetMapIds();
+        auto map_ids = loc->GetMapIds();
         bool map_ids_changed = false;
 
         for (const auto& map_id : map_ids) {
@@ -485,8 +485,8 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
             if (map) {
                 FO_VERIFY_AND_THROW(map->GetLocId() == loc->GetId(), "Loaded map belongs to a different location");
 
-                const auto loc_map_index = map->GetLocMapIndex();
-                const auto expected_loc_map_index = numeric_cast<int32_t>(loc->GetMapsCount());
+                int32_t loc_map_index = map->GetLocMapIndex();
+                int32_t expected_loc_map_index = numeric_cast<int32_t>(loc->GetMapsCount());
 
                 if (loc_map_index != expected_loc_map_index) {
                     map_ids_changed = true;
@@ -501,7 +501,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         }
 
         if (map_ids_changed) {
-            const vector<ident_t> actual_map_ids = vec_transform(loc->GetMaps(), [](ptr<Map> map) -> ident_t { return map->GetId(); });
+            vector<ident_t> actual_map_ids = vec_transform(loc->GetMaps(), [](ptr<Map> map) -> ident_t { return map->GetId(); });
             loc->SetMapIds(actual_map_ids);
         }
 
@@ -557,7 +557,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
 
     try {
         // Map critters
-        const auto cr_ids = map->GetCritterIds();
+        auto cr_ids = map->GetCritterIds();
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
@@ -567,7 +567,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
                 cr->SetMapId(map->GetId());
                 FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
-                if (const auto hex = cr->GetHex(); !map->GetSize().is_valid_pos(hex)) {
+                if (auto hex = cr->GetHex(); !map->GetSize().is_valid_pos(hex)) {
                     cr->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
@@ -579,12 +579,12 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         }
 
         if (cr_ids_changed) {
-            const vector<ident_t> actual_cr_ids = vec_transform(map->GetCritters(), [](ptr<Critter> cr) -> ident_t { return cr->GetId(); });
+            vector<ident_t> actual_cr_ids = vec_transform(map->GetCritters(), [](ptr<Critter> cr) -> ident_t { return cr->GetId(); });
             map->SetCritterIds(actual_cr_ids);
         }
 
         // Map items
-        const auto item_ids = map->GetItemIds();
+        auto item_ids = map->GetItemIds();
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
@@ -594,7 +594,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
                 FO_VERIFY_AND_THROW(item->GetMapId() == map->GetId(), "Item belongs to a different map");
 
-                if (const auto hex = item->GetHex(); !map->GetSize().is_valid_pos(hex)) {
+                if (auto hex = item->GetHex(); !map->GetSize().is_valid_pos(hex)) {
                     item->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
@@ -606,7 +606,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         }
 
         if (item_ids_changed) {
-            const vector<ident_t> actual_item_ids = vec_transform(map->GetItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
+            vector<ident_t> actual_item_ids = vec_transform(map->GetItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
             map->SetItemIds(actual_item_ids);
         }
 
@@ -662,7 +662,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
 
     try {
         // Inventory
-        const auto item_ids = cr->GetItemIds();
+        auto item_ids = cr->GetItemIds();
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
@@ -680,7 +680,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
         }
 
         if (item_ids_changed) {
-            const vector<ident_t> actual_item_ids = vec_transform(cr->GetInvItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
+            vector<ident_t> actual_item_ids = vec_transform(cr->GetInvItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
             cr->SetItemIds(actual_item_ids);
         }
 
@@ -763,7 +763,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
 
     try {
         // Inner items
-        const auto inner_item_ids = item->GetInnerItemIds();
+        auto inner_item_ids = item->GetInnerItemIds();
         bool inner_item_ids_changed = false;
 
         for (const auto& inner_item_id : inner_item_ids) {
@@ -782,7 +782,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
 
         if (inner_item_ids_changed) {
             if (item->HasInnerItems()) {
-                const auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](auto&& inner_item) -> ident_t { return inner_item->GetId(); });
+                auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](auto&& inner_item) -> ident_t { return inner_item->GetId(); });
                 item->SetInnerItemIds(actual_inner_item_ids);
             }
             else {
@@ -827,7 +827,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
     try {
         auto holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
         auto holder_props = holder->GetPropertiesForEdit();
-        const auto inner_entity_ids = holder_props->GetValueFast<vector<ident_t>>(holder_prop);
+        auto inner_entity_ids = holder_props->GetValueFast<vector<ident_t>>(holder_prop);
 
         if (inner_entity_ids.empty()) {
             return;
@@ -841,7 +841,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         }
 
         const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
-        const auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
+        auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
             auto custom_entity = LoadCustomEntity(holder, inner_entity_type_name, id, is_error);
@@ -861,7 +861,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
 
         if (inner_entity_ids_changed) {
             vector<ident_t> actual_inner_entity_ids;
-            const auto inner_entities = holder->GetInnerEntities(entry);
+            auto inner_entities = holder->GetInnerEntities(entry);
 
             if (inner_entities) {
                 actual_inner_entity_ids = vec_transform(*inner_entities, [](auto&& entity) -> ident_t {
@@ -912,7 +912,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        const string_view proto_name = proto_value.AsString();
+        string_view proto_name = proto_value.AsString();
 
         if (proto_name.empty()) {
             WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
@@ -920,12 +920,12 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        auto proto_id = _engine->Hashes.ToHashedString(proto_name);
+        hstring proto_id = _engine->Hashes.ToHashedString(proto_name);
 
         // A proto whose migration rule resolves to the "Remove" sentinel was deleted on purpose: skip
         // the entity cleanly (without is_error) so callers drop it instead of failing the whole load.
         // A genuinely missing proto (no rule) keeps proto_id and surfaces later as proto-not-found.
-        if (const auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
+        if (auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
             WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
@@ -1109,7 +1109,7 @@ void EntityManager::UnregisterPlayer(ptr<Player> player)
 
     scoped_lock lock {_registryLock};
 
-    const auto it = _allPlayers.find(player->GetId());
+    auto it = _allPlayers.find(player->GetId());
     FO_STRONG_ASSERT(it != _allPlayers.end(), "Lookup failed in all players");
     _allPlayers.erase(it);
     UnregisterEntity(player, false);
@@ -1133,7 +1133,7 @@ void EntityManager::UnregisterLocation(ptr<Location> loc)
 
     scoped_lock lock {_registryLock};
 
-    const auto it = _allLocations.find(loc->GetId());
+    auto it = _allLocations.find(loc->GetId());
     FO_STRONG_ASSERT(it != _allLocations.end(), "Lookup failed in all locations");
     _allLocations.erase(it);
     UnregisterEntity(loc, true);
@@ -1157,7 +1157,7 @@ void EntityManager::UnregisterMap(ptr<Map> map)
 
     scoped_lock lock {_registryLock};
 
-    const auto it = _allMaps.find(map->GetId());
+    auto it = _allMaps.find(map->GetId());
     FO_STRONG_ASSERT(it != _allMaps.end(), "Lookup failed in all maps");
     _allMaps.erase(it);
     UnregisterEntity(map, true);
@@ -1181,7 +1181,7 @@ void EntityManager::UnregisterCritter(ptr<Critter> cr)
 
     scoped_lock lock {_registryLock};
 
-    const auto it = _allCritters.find(cr->GetId());
+    auto it = _allCritters.find(cr->GetId());
     FO_STRONG_ASSERT(it != _allCritters.end(), "Lookup failed in all critters");
     _allCritters.erase(it);
     UnregisterEntity(cr, !cr->GetControlledByPlayer());
@@ -1205,7 +1205,7 @@ void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
 
     scoped_lock lock {_registryLock};
 
-    const auto it = _allItems.find(item->GetId());
+    auto it = _allItems.find(item->GetId());
     FO_STRONG_ASSERT(it != _allItems.end(), "Lookup failed in all items");
     _allItems.erase(it);
     UnregisterEntity(item, delete_from_db);
@@ -1257,7 +1257,7 @@ void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool
     scoped_lock lock {_registryLock};
 
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
-    const auto it = custom_entities.find(custom_entity->GetId());
+    auto it = custom_entities.find(custom_entity->GetId());
     FO_STRONG_ASSERT(it != custom_entities.end(), "Lookup failed in custom entities");
     custom_entities.erase(it);
     UnregisterEntity(custom_entity, delete_from_db);
@@ -1417,8 +1417,8 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
 
     // Caller must hold _registryLock (unique).
     if (!entity->GetId()) {
-        const int64_t id_num = ++_lastEntityId;
-        const ident_t id {numeric_cast<int64_t>(id_num)};
+        int64_t id_num = ++_lastEntityId;
+        ident_t id {numeric_cast<int64_t>(id_num)};
         FO_STRONG_ASSERT(_allEntities.count(id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), id);
 
         if (id_num > _persistedEntityId) {
@@ -1432,7 +1432,7 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
         entity->SetId(id);
     }
     else {
-        const int64_t id_num = entity->GetId().underlying_value();
+        int64_t id_num = entity->GetId().underlying_value();
         _lastEntityId = std::max(_lastEntityId, id_num);
     }
 
@@ -1445,12 +1445,12 @@ void EntityManager::UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_
     FO_STACK_TRACE_ENTRY();
 
     // Caller must hold _registryLock (unique) for the erase portion.
-    const auto entity_id = entity->GetId();
-    const auto type_name_plural = entity->GetTypeNamePlural();
-    const bool is_persistent = entity->IsPersistent();
+    ident_t entity_id = entity->GetId();
+    hstring type_name_plural = entity->GetTypeNamePlural();
+    bool is_persistent = entity->IsPersistent();
     FO_VERIFY_AND_THROW(entity_id, "Missing required entity id");
 
-    const auto it = _allEntities.find(entity_id);
+    auto it = _allEntities.find(entity_id);
     FO_STRONG_ASSERT(it != _allEntities.end(), "Lookup failed in all entities");
     _allEntities.erase(it); // This may be the last ptr to the entity, so it may be destroyed here.
 
@@ -1506,7 +1506,7 @@ void EntityManager::DestroyInnerEntities(ptr<Entity> holder)
         }
 
         // Each pass must strictly reduce the holder's remaining inner entities; non-convergence is corruption.
-        const size_t remaining_deps = holder->GetInnerEntitiesCount();
+        size_t remaining_deps = holder->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Inner-entity destruction made no progress", holder->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -1516,7 +1516,7 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto destroy_entities = [this](auto& entities) FO_TSA_NO_ANALYSIS {
+    auto destroy_entities = [this](auto& entities) FO_TSA_NO_ANALYSIS {
         for (auto&& [id, entity] : copy(entities)) {
             entity->SetParent(nullptr);
             entity->MarkAsDestroyed();
@@ -1549,7 +1549,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     FO_VERIFY_AND_THROW(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry), "Holder entity type has no custom inner entry with the requested name", holder->GetTypeName(), holder->GetId(), entry);
 
-    const hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
+    hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     auto entity = ConstructCustomEntity(type_name, pid);
 
@@ -1624,7 +1624,7 @@ auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> ref
     FO_VERIFY_AND_THROW(_engine->IsValidEntityType(type_name), "Invalid entity type name");
     FO_VERIFY_AND_THROW(!_engine->GetEntityType(type_name).Exported, "Exported entity type cannot be created as custom entity");
 
-    const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
+    bool has_protos = _engine->GetEntityType(type_name).HasProtos;
     nptr<const ProtoEntity> proto;
 
     if (pid) {
@@ -1666,11 +1666,11 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
         {
             shared_lock lock {_registryLock};
 
-            const auto type_it = _allCustomEntities.find(type_name);
+            auto type_it = _allCustomEntities.find(type_name);
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
+        auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {
@@ -1679,7 +1679,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             return nullptr;
         }
 
-        const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
+        bool has_protos = _engine->GetEntityType(type_name).HasProtos;
         nptr<const ProtoEntity> proto;
 
         if (has_protos) {
@@ -1735,13 +1735,13 @@ auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> refcount_n
 
     shared_lock lock {_registryLock};
 
-    const auto type_it = _allCustomEntities.find(type_name);
+    auto type_it = _allCustomEntities.find(type_name);
 
     if (type_it == _allCustomEntities.end()) {
         return nullptr;
     }
 
-    const auto it = type_it->second.find(id);
+    auto it = type_it->second.find(id);
 
     if (it != type_it->second.end()) {
         return it->second.try_hold_ref();
@@ -1766,13 +1766,13 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
         DestroyInnerEntities(entity);
 
         // Each pass must strictly reduce the entity's remaining inner entities; non-convergence is corruption.
-        const size_t remaining_deps = entity->GetInnerEntitiesCount();
+        size_t remaining_deps = entity->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Custom-entity destruction made no progress", entity->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
 
     refcount_ptr<Entity> holder = [&]() -> refcount_ptr<Entity> {
-        if (const auto id = entity->GetCustomHolderId()) {
+        if (auto id = entity->GetCustomHolderId()) {
             auto parent = entity->GetParent();
             FO_VERIFY_AND_THROW(parent, "Custom entity holder has no parent entity");
             FO_VERIFY_AND_THROW(parent->GetId() == id, "Custom entity parent id does not match the holder id");
@@ -1788,7 +1788,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
         safe_call([&] { player->Send_RemoveCustomEntity(entity->GetId()); });
     });
 
-    const auto entry = entity->GetCustomHolderEntry();
+    auto entry = entity->GetCustomHolderEntry();
     holder->RemoveInnerEntity(entry, entity);
 
     auto holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
@@ -1811,7 +1811,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
     auto entity_ref = entity.hold_ref();
     ignore_unused(entity_ref);
 
-    const auto view_callback = [&](nptr<Player> player, bool owner) {
+    auto view_callback = [&](nptr<Player> player, bool owner) {
         if (player) {
             callback(player, owner);
         }
@@ -1828,8 +1828,8 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
                 ValidateEntityAccess(custom_entity_holder);
 
                 const auto& custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
-                const auto entry = custom_entity->GetCustomHolderEntry();
-                const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
+                auto entry = custom_entity->GetCustomHolderEntry();
+                auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 
                 if (entry_sync == EntityHolderEntrySync::OwnerSync || entry_sync == EntityHolderEntrySync::PublicSync) {
                     find_players_recursively(custom_entity_holder, std::min(entry_sync, derived_sync));

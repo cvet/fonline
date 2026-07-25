@@ -128,8 +128,8 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
             throw GenericException("threading pool called after shutdown");
         }
 
-        const bool has_idle_worker = pool.IdleCount > 0;
-        const bool can_spawn_worker = pool.Workers.size() < pool.MaxWorkers;
+        bool has_idle_worker = pool.IdleCount > 0;
+        bool can_spawn_worker = pool.Workers.size() < pool.MaxWorkers;
 
         if (!has_idle_worker && !can_spawn_worker && !can_queue) {
             // Pool saturated and caller asked for try-only — let them fall back to sync.
@@ -197,8 +197,8 @@ static void worker_loop(Pool* pool) noexcept
     // override. The spawn helper already set it (e.g. "Pool-0" or "AsyncPool-3"); tasks
     // transiently rename via `set_this_thread_name` while they execute, which makes Tracy /
     // debugger thread lists informative. Materialize the view before restoring the previous name.
-    const string_view base_name = get_this_thread_name();
-    const string base_thread_name {base_name.data(), base_name.size()};
+    string_view base_name = get_this_thread_name();
+    string base_thread_name {base_name.data(), base_name.size()};
 
     while (true) {
         PoolTask task;
@@ -279,7 +279,7 @@ static void internal_shutdown(Pool& pool) noexcept
 
 static auto hardware_concurrency_or_one() noexcept -> size_t
 {
-    const auto hw = std::thread::hardware_concurrency();
+    auto hw = std::thread::hardware_concurrency();
     return hw != 0 ? static_cast<size_t>(hw) : size_t {1};
 }
 

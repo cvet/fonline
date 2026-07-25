@@ -341,10 +341,10 @@ struct irect
     void expand(const irect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const irect& other) const noexcept -> irect
     {
-        const T x1 = std::min(x, other.x);
-        const T y1 = std::min(y, other.y);
-        const T x2 = std::max(x + width, other.x + other.width);
-        const T y2 = std::max(y + height, other.y + other.height);
+        T x1 = std::min(x, other.x);
+        T y1 = std::min(y, other.y);
+        T x2 = std::max(x + width, other.x + other.width);
+        T y2 = std::max(y + height, other.y + other.height);
         return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
@@ -593,10 +593,10 @@ struct frect
     void expand(const frect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const frect& other) const noexcept -> frect
     {
-        const T x1 = std::min(x, other.x);
-        const T y1 = std::min(y, other.y);
-        const T x2 = std::max(x + width, other.x + other.width);
-        const T y2 = std::max(y + height, other.y + other.height);
+        T x1 = std::min(x, other.x);
+        T y1 = std::min(y, other.y);
+        T x2 = std::max(x + width, other.x + other.width);
+        T y2 = std::max(y + height, other.y + other.height);
         return frect(x1, y1, x2 - y2, y2 - y1);
     }
 

@@ -120,9 +120,9 @@ namespace SPK
 
 	void SphericEmitter::generateVelocity(Particle& particle,float speed) const
 	{
-		float a = SPK_RANDOM(cosAngleMax,cosAngleMin);
+		float a = SPK_RANDOM(getContext(),cosAngleMax,cosAngleMin);
 		float theta = std::acos(a);
-		float phi = SPK_RANDOM(0.0f,2.0f * PI);
+		float phi = SPK_RANDOM(getContext(),0.0f,2.0f * PI);
 
 		float sinTheta = std::sin(theta);
 		float x = sinTheta * std::cos(phi);

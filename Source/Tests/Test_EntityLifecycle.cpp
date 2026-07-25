@@ -121,7 +121,7 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const const_span<uint8_t> encoded_data = SendCallback();
+            const_span<uint8_t> encoded_data = SendCallback();
 
             if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
@@ -156,7 +156,7 @@ namespace
                     }
 
                     if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
-                        const size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
+                        size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
                         if (tracked_index == 0) {
                             _firstSentTrackedMessage.store(message, std::memory_order_relaxed);
                         }
@@ -505,7 +505,7 @@ namespace EntityLifecycle
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -556,7 +556,7 @@ namespace EntityLifecycle
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -565,16 +565,16 @@ namespace EntityLifecycle
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        const auto fomap_blob = MakeEmptyMapBlob();
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto fomap_blob = MakeEmptyMapBlob();
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -676,7 +676,7 @@ namespace EntityLifecycle
         server->Unlock();
         locked = false;
 
-        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline = std::chrono::steady_clock::now() + timeout;
 
         while (std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds {5});
@@ -721,13 +721,13 @@ TEST_CASE("EntityInitEvents")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("CritterInitEventFires")
     {
@@ -787,7 +787,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(1));
 
-        const auto initial_item_count = server->EntityMngr.GetItemsCount();
+        size_t initial_item_count = server->EntityMngr.GetItemsCount();
         REQUIRE_THROWS_AS(server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr), ItemManagerException);
         CHECK(server->EntityMngr.GetItemsCount() == initial_item_count);
 
@@ -806,7 +806,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(2));
 
-        const auto initial_critter_count = server->EntityMngr.GetCrittersCount();
+        size_t initial_critter_count = server->EntityMngr.GetCrittersCount();
         REQUIRE_THROWS_AS(server->CreateCritter(fn("TestCritter"), false), GenericException);
         CHECK(server->EntityMngr.GetCrittersCount() == initial_critter_count);
 
@@ -825,7 +825,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(3));
 
-        const auto initial_location_count = server->EntityMngr.GetLocationsCount();
+        size_t initial_location_count = server->EntityMngr.GetLocationsCount();
         REQUIRE_THROWS_AS(server->MapMngr.CreateLocation(fn("TestLocation")), GenericException);
         CHECK(server->EntityMngr.GetLocationsCount() == initial_location_count);
 
@@ -844,9 +844,9 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(1));
 
-        const auto initial_item_count = server->EntityMngr.GetItemsCount();
+        size_t initial_item_count = server->EntityMngr.GetItemsCount();
         auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
-        const ident_t item_id = item->GetId();
+        ident_t item_id = item->GetId();
 
         server->ItemMngr.DestroyItem(item);
 
@@ -868,9 +868,9 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(2));
 
-        const auto initial_critter_count = server->EntityMngr.GetCrittersCount();
+        size_t initial_critter_count = server->EntityMngr.GetCrittersCount();
         auto cr = server->CreateCritter(fn("TestCritter"), false);
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         server->CrMngr.DestroyCritter(cr);
 
@@ -892,9 +892,9 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(3));
 
-        const auto initial_location_count = server->EntityMngr.GetLocationsCount();
+        size_t initial_location_count = server->EntityMngr.GetLocationsCount();
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
-        const ident_t loc_id = loc->GetId();
+        ident_t loc_id = loc->GetId();
 
         server->MapMngr.DestroyLocation(loc);
 
@@ -923,7 +923,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(cr->GetMapId() == map->GetId());
         REQUIRE(map->GetCritter(cr->GetId()) == cr.get());
 
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
         REQUIRE(set_mode_func);
@@ -954,7 +954,7 @@ TEST_CASE("EntityInitEvents")
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
         server->EntityMngr.MakePersistent(cr, true, true);
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         server->UnloadCritter(cr);
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
@@ -982,7 +982,7 @@ TEST_CASE("EntityInitEvents")
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
         server->EntityMngr.MakePersistent(cr, true, true);
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         server->UnloadCritter(cr);
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
@@ -1025,7 +1025,7 @@ TEST_CASE("EntityInitEvents")
 
         server->EntityMngr.MakePersistent(cr, true, true);
         server->DbStorage.WaitCommitChanges();
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         server->UnloadCritter(cr);
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
@@ -1044,7 +1044,7 @@ TEST_CASE("EntityInitEvents")
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
 
         server->DbStorage.WaitCommitChanges();
-        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
         CHECK(std::ranges::find(persisted_cr_ids, cr_id) == persisted_cr_ids.end());
     }
 
@@ -1058,7 +1058,7 @@ TEST_CASE("EntityInitEvents")
 
         server->EntityMngr.MakePersistent(cr, true, true);
         server->DbStorage.WaitCommitChanges();
-        const ident_t cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
 
         server->UnloadCritter(cr);
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
@@ -1077,7 +1077,7 @@ TEST_CASE("EntityInitEvents")
         CHECK(init_calls == 0);
 
         server->DbStorage.WaitCommitChanges();
-        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
         CHECK(std::ranges::find(persisted_cr_ids, cr_id) != persisted_cr_ids.end());
 
         server->DestroyUnloadedCritter(cr_id);
@@ -1098,23 +1098,23 @@ TEST_CASE("EntityManagerCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("GetEntitiesReturnsCorrectCollections")
     {
-        auto initial_critter_count = server->EntityMngr.GetCrittersCount();
+        size_t initial_critter_count = server->EntityMngr.GetCrittersCount();
 
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
         CHECK(server->EntityMngr.GetCrittersCount() == initial_critter_count + 1);
 
-        auto after_critter_item_count = server->EntityMngr.GetItemsCount();
+        size_t after_critter_item_count = server->EntityMngr.GetItemsCount();
 
         auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
 
@@ -1141,7 +1141,7 @@ TEST_CASE("EntityManagerCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        const auto cr_id = cr->GetId();
+        ident_t cr_id = cr->GetId();
         auto found_cr = server->EntityMngr.GetCritter(cr_id);
         REQUIRE(found_cr);
         CHECK(found_cr == cr);
@@ -1171,7 +1171,7 @@ TEST_CASE("EntityManagerCppApi")
     {
         auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
 
-        const auto item_id = item->GetId();
+        ident_t item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
         REQUIRE(found);
         CHECK(nptr<Item> {found} == item);
@@ -1183,7 +1183,7 @@ TEST_CASE("EntityManagerCppApi")
     {
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
 
-        const auto loc_id = loc->GetId();
+        ident_t loc_id = loc->GetId();
         auto found = server->EntityMngr.GetLocation(loc_id);
         REQUIRE(found);
         CHECK(nptr<Location> {found} == loc);
@@ -1193,7 +1193,7 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("LocationCount")
     {
-        auto initial_count = server->EntityMngr.GetLocationsCount();
+        size_t initial_count = server->EntityMngr.GetLocationsCount();
 
         auto loc1 = server->MapMngr.CreateLocation(fn("TestLocation"));
         CHECK(server->EntityMngr.GetLocationsCount() == initial_count + 1);
@@ -1233,13 +1233,13 @@ TEST_CASE("CritterCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("CritterStateChecks")
     {
@@ -1311,7 +1311,7 @@ TEST_CASE("CritterCppApi")
 
     SECTION("MultipleCritterCreation")
     {
-        const size_t count = 5;
+        size_t count = 5;
         vector<ptr<Critter>> critters;
 
         for (size_t i = 0; i < count; i++) {
@@ -1575,13 +1575,13 @@ TEST_CASE("ItemCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("ItemCreationAndDestruction")
     {
@@ -1666,13 +1666,13 @@ TEST_CASE("LocationCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("CreateAndDestroyLocation")
     {
@@ -1726,7 +1726,7 @@ TEST_CASE("ServerHealthInfo")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1734,13 +1734,13 @@ TEST_CASE("ServerHealthInfo")
 
     SECTION("HealthInfoNotEmpty")
     {
-        const auto info = server->GetHealthInfo();
+        string info = server->GetHealthInfo();
         CHECK_FALSE(info.empty());
     }
 
     SECTION("HealthInfoContainsUptime")
     {
-        const auto info = server->GetHealthInfo();
+        string info = server->GetHealthInfo();
         CHECK(info.find("Server uptime") != string::npos);
     }
 }
@@ -1759,7 +1759,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1770,7 +1770,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         }
     });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
@@ -1838,7 +1838,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func.Call(5));
 
         auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectReconnectNext");
-        const array<nptr<ServerEntity>, 2> reconnect_cover {player, unlogined_player};
+        array<nptr<ServerEntity>, 2> reconnect_cover {player, unlogined_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
         CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(unlogined_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
     }
@@ -1870,7 +1870,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func.Call());
 
         auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectLocalMapNext");
-        const array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_unlogined, cr, map, loc};
+        array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_unlogined, cr, map, loc};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
         auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
 
@@ -1906,7 +1906,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func.Call());
 
         auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectGlobalGroupNext");
-        const array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_unlogined, cr, group_member};
+        array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_unlogined, cr, group_member};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
         auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
 
@@ -1948,7 +1948,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(1));
 
-        const auto initial_player_count = server->EntityMngr.GetPlayersCount();
+        size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
         unlogined_player->SetName("LoginDisconnect");
@@ -1979,7 +1979,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        const auto initial_player_count = server->EntityMngr.GetPlayersCount();
+        size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
         unlogined_player->SetName("TempSessionDisconnect");
@@ -2113,11 +2113,11 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(player->GetControlledCritter() == cr.get());
         REQUIRE(cr->GetPlayer() == player);
 
-        const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
-        const vector<uint16_t> control_steps {3};
+        vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        vector<uint16_t> control_steps {3};
         server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
-        const uint32_t moving_uid = cr->GetMovingUid();
+        uint32_t moving_uid = cr->GetMovingUid();
 
         auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
         REQUIRE(set_mode_func);
@@ -2129,7 +2129,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
         ctx->SyncEntities(sync_entities);
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
@@ -2166,7 +2166,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
-        const mpos server_hex {20, 20};
+        mpos server_hex {20, 20};
         mpos blocked_client_hex = server_hex;
         REQUIRE(GeometryHelper::MoveHexByDir(blocked_client_hex, hdir::NorthWest, map->GetSize()));
 
@@ -2177,8 +2177,8 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         map->SetHexManualBlock(blocked_client_hex, true, true);
 
-        const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
-        const vector<uint16_t> control_steps {3};
+        vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        vector<uint16_t> control_steps {3};
         server->StartCritterMoving(cr.get(), uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
 
@@ -2192,7 +2192,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
         ctx->SyncEntities(sync_entities);
 
         CHECK(cr->GetHex() == server_hex);
@@ -2218,13 +2218,13 @@ TEST_CASE("CritterManagerCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("GetNonPlayerCritters")
     {
@@ -2281,13 +2281,13 @@ TEST_CASE("ProtoAccessCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("GetProtoCritter")
     {
@@ -2340,13 +2340,13 @@ TEST_CASE("ScriptFunctionCalls")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("CallFuncWithReturnValue")
     {

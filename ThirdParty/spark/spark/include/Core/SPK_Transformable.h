@@ -63,11 +63,11 @@ namespace SPK
         ///////////////////////
         /// TODO: See Transform
         void setTransformPosition(const Vector3D& pos);
-        const Vector3D& getTransformPosition() const;
+        Vector3D getTransformPosition() const;
         void setTransformLookLH(const Vector3D& pos);
-        const Vector3D& getTransformLookLH() const;
+        Vector3D getTransformLookLH() const;
         void setTransformUp(const Vector3D& pos);
-        const Vector3D& getTransformUp() const;
+        Vector3D getTransformUp() const;
 
 	protected :
 
@@ -140,11 +140,9 @@ namespace SPK
         transform.setPosition(pos);
     }
 
-    inline const Vector3D& Transformable::getTransformPosition() const
+    inline Vector3D Transformable::getTransformPosition() const
     {
-        /// TODO: improve Transform in order to remove this hack
-        static Vector3D v = transform.getLocalPos();
-        return v;
+        return transform.getLocalPos();
     }
 
     inline void Transformable::setTransformLookLH(const Vector3D& look)
@@ -152,11 +150,9 @@ namespace SPK
         transform.setOrientationLH(look, transform.getLocalUp());
     }
 
-    inline const Vector3D& Transformable::getTransformLookLH() const
+    inline Vector3D Transformable::getTransformLookLH() const
     {
-        /// TODO: improve Transform in order to remove this hack
-        static Vector3D v = transform.getLocalLookLH();
-        return v;
+        return transform.getLocalLookLH();
     }
 
     inline void Transformable::setTransformUp(const Vector3D& up)
@@ -164,11 +160,9 @@ namespace SPK
         transform.setOrientationLH(transform.getLocalLookLH(), up);
     }
 
-    inline const Vector3D& Transformable::getTransformUp() const
+    inline Vector3D Transformable::getTransformUp() const
     {
-        /// TODO: improve Transform in order to remove this hack
-        static Vector3D v = transform.getLocalUp();
-        return v;
+        return transform.getLocalUp();
     }
 }
 

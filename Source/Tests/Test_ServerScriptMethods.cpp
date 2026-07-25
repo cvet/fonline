@@ -2767,7 +2767,7 @@ namespace ScriptMethodsTest
 )"},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -2841,7 +2841,7 @@ namespace ScriptMethodsTest
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -2850,18 +2850,18 @@ namespace ScriptMethodsTest
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        const auto stackable_item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestStackableItem");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        const auto fomap_blob = MakeEmptyMapBlob();
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
+        auto stackable_item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestStackableItem");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto fomap_blob = MakeEmptyMapBlob();
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -2915,7 +2915,7 @@ TEST_CASE("ServerCritterInventoryOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2923,7 +2923,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("AddAndCountItems")
     {
@@ -2979,7 +2979,7 @@ TEST_CASE("ServerCritterStateOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2987,7 +2987,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("StateQueries")
     {
@@ -3075,7 +3075,7 @@ TEST_CASE("ServerGameCritterQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3083,7 +3083,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("GetCritterById")
     {
@@ -3123,7 +3123,7 @@ TEST_CASE("ServerGameItemOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3131,7 +3131,7 @@ TEST_CASE("ServerGameItemOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("ItemSetupScriptMethods")
     {
@@ -3227,7 +3227,7 @@ TEST_CASE("ServerEntityLifecycle")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3235,7 +3235,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     SECTION("Persistence")
     {
@@ -3339,7 +3339,7 @@ TEST_CASE("ServerMiscScriptOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3347,12 +3347,12 @@ TEST_CASE("ServerMiscScriptOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
-    const auto run_throwing_func = [&server, &get_func](string_view func_name, string_view expected_message) {
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto run_throwing_func = [&server, &get_func](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(get_func(func_name));
         REQUIRE(func);
 
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         string message;
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
@@ -3534,7 +3534,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerConnectionAndCritterMethods")
     {
-        const auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
+        auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
             auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
             unlogined_player->SetName(name);
@@ -3598,7 +3598,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerLoginHelpers")
     {
-        const auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
+        auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
             auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
             unlogined_player->SetName(name);
@@ -3628,7 +3628,7 @@ TEST_CASE("ServerMiscScriptOperations")
         REQUIRE(login_new_func.Call(new_unlogined));
         REQUIRE(login_new_func.GetResult() == 0);
 
-        const auto player_id = new_unlogined->GetId();
+        ident_t player_id = new_unlogined->GetId();
         REQUIRE(player_id);
 
         auto reconnect_func = server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));

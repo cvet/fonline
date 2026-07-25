@@ -140,7 +140,7 @@ extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTrac
     uint32_t prev_anchor = 0;
 
     for (const auto& layer : layers) {
-        const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
+        uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
 
         if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
             ResolveNativeRange(st, prev_anchor, anchor, frames);
@@ -178,7 +178,7 @@ extern auto FormatStackTrace(const StackTraceData& st) -> std::string
         if (!frame.File.empty()) {
             std::string_view file_name {frame.File};
 
-            if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+            if (auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
                 file_name = file_name.substr(pos + 1);
             }
 
@@ -197,8 +197,8 @@ extern auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string
         return "Catched at: " + FormatStackTrace(st.Catched);
     }
 
-    const auto origin_formatted = FormatStackTrace(*st.Origin);
-    const auto catched_st = FormatStackTrace(st.Catched);
+    auto origin_formatted = FormatStackTrace(*st.Origin);
+    auto catched_st = FormatStackTrace(st.Catched);
 
     // Skip 'Stack trace (most recent ...'
     auto pos = catched_st.find('\n');
@@ -224,7 +224,7 @@ extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTra
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto resolved = ResolveStackTrace(GetStackTrace());
+        auto resolved = ResolveStackTrace(GetStackTrace());
 
         if (deep < resolved.size()) {
             return resolved[deep];
@@ -245,12 +245,12 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
     out_truncated = false;
 
 #if FO_WINDOWS
-    const ULONG skip_count = 1u + skip;
+    ULONG skip_count = 1u + skip;
     constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
     void* raw_frames[REQUEST_COUNT] = {};
-    const USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
+    USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
     out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
-    const uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
+    uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
 
     for (uint32_t i = 0; i < n; i++) {
         out_frames[i] = std::bit_cast<NativeStackFrameAddress>(raw_frames[i]);
@@ -369,7 +369,7 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 
     try {
         for (uint32_t i = from; i < to; i++) {
-            const NativeStackFrameAddress addr = st.NativeFrames[i];
+            NativeStackFrameAddress addr = st.NativeFrames[i];
 
             if (addr == 0) {
                 continue;
@@ -391,14 +391,14 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
         return st.NativeFrameCount;
     }
 
-    const uint32_t birth_n = layer.BirthNativeFrameCount;
-    const uint32_t trace_n = st.NativeFrameCount;
+    uint32_t birth_n = layer.BirthNativeFrameCount;
+    uint32_t trace_n = st.NativeFrameCount;
 
     uint32_t matched = 0;
 
     while (matched < birth_n && matched < trace_n) {
-        const NativeStackFrameAddress birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
-        const NativeStackFrameAddress trace_addr = st.NativeFrames[trace_n - 1 - matched];
+        NativeStackFrameAddress birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
+        NativeStackFrameAddress trace_addr = st.NativeFrames[trace_n - 1 - matched];
 
         if (!SameFrameFunction(birth_addr, trace_addr)) {
             break;
@@ -411,7 +411,7 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
         return st.NativeFrameCount;
     }
 
-    const uint32_t anchor = trace_n - matched;
+    uint32_t anchor = trace_n - matched;
 
     if (anchor < search_from) {
         return st.NativeFrameCount;
@@ -458,7 +458,7 @@ static auto ResolveNativeFrame(NativeStackFrameAddress addr, uint32_t index) -> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto cached = TryGetResolvedNativeFrameFromCache(addr);
+    auto cached = TryGetResolvedNativeFrameFromCache(addr);
 
     if (cached.has_value()) {
         return cached.value();
@@ -540,8 +540,8 @@ static auto TryGetResolvedNativeFrameFromCache(NativeStackFrameAddress addr) -> 
     StackTraceState& state = GetStackTraceState();
     std::scoped_lock locker {state.ResolvedNativeFramesLocker};
 
-    const uintptr_t key = MakeNativeAddressKey(addr);
-    const auto it = state.ResolvedNativeFrames.find(key);
+    uintptr_t key = MakeNativeAddressKey(addr);
+    auto it = state.ResolvedNativeFrames.find(key);
 
     if (it == state.ResolvedNativeFrames.end()) {
         return std::nullopt;
@@ -558,7 +558,7 @@ static void StoreResolvedNativeFrameInCache(NativeStackFrameAddress addr, const 
         StackTraceState& state = GetStackTraceState();
         std::scoped_lock locker {state.ResolvedNativeFramesLocker};
 
-        const uintptr_t key = MakeNativeAddressKey(addr);
+        uintptr_t key = MakeNativeAddressKey(addr);
 
         if (state.ResolvedNativeFrames.find(key) != state.ResolvedNativeFrames.end()) {
             return;
@@ -645,14 +645,14 @@ static void TrimInPlace(std::string& s) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const size_t first = s.find_first_not_of(" \t\r\n");
+    size_t first = s.find_first_not_of(" \t\r\n");
 
     if (first == std::string::npos) {
         s.clear();
         return;
     }
 
-    const size_t last = s.find_last_not_of(" \t\r\n");
+    size_t last = s.find_last_not_of(" \t\r\n");
     s.erase(last + 1);
     s.erase(0, first);
 }

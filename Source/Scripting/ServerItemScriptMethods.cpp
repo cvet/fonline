@@ -158,7 +158,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
             return nullptr;
         }
 
-        auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
+        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
@@ -191,7 +191,7 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
             return nullptr;
         }
 
-        auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
+        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
         hex = cr->GetHex();
         return std::move(map);
     } break;

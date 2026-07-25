@@ -100,7 +100,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
         }
 
         th_setup_info* setup_info_raw = _impl->SetupInfo.release();
-        const int32_t r = th_decode_headerin(&_impl->VideoInfo.Value, &_impl->Comment.Value, &setup_info_raw, &_impl->Packet);
+        int32_t r = th_decode_headerin(&_impl->VideoInfo.Value, &_impl->Comment.Value, &setup_info_raw, &_impl->Packet);
         _impl->SetupInfo.reset(setup_info_raw);
 
         if (r == 0) {
@@ -244,7 +244,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         return _impl->RenderedTextureData;
     }
 
-    const auto start_frame_render = nanotime::now();
+    nanotime start_frame_render = nanotime::now();
 
     if (_impl->Paused) {
         _impl->RenderTime = _impl->PauseTime;
@@ -254,9 +254,9 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Calculate next frame
-    const float64_t cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<float64_t>() / 1000.0;
-    const int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_numerator) / numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_denominator));
-    const int32_t next_frame_diff = new_frame - _impl->CurFrame;
+    float64_t cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<float64_t>() / 1000.0;
+    int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_numerator) / numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_denominator));
+    int32_t next_frame_diff = new_frame - _impl->CurFrame;
 
     if (next_frame_diff <= 0) {
         return _impl->RenderedTextureData;
@@ -327,20 +327,20 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Fill texture data
-    const auto w = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width);
-    const auto h = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height);
+    int32_t w = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width);
+    int32_t h = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height);
 
     for (int32_t y = 0; y < h; y++) {
         for (int32_t x = 0; x < w; x++) {
             const th_ycbcr_buffer& cbuf = _impl->ColorBuffer;
-            const uint8_t cy = cbuf[0].data[y * cbuf[0].stride + x];
-            const uint8_t cu = cbuf[1].data[y / dj * cbuf[1].stride + x / di];
-            const uint8_t cv = cbuf[2].data[y / dj * cbuf[2].stride + x / di];
+            uint8_t cy = cbuf[0].data[y * cbuf[0].stride + x];
+            uint8_t cu = cbuf[1].data[y / dj * cbuf[1].stride + x / di];
+            uint8_t cv = cbuf[2].data[y / dj * cbuf[2].stride + x / di];
 
             // YUV to RGB
-            const float32_t cr = numeric_cast<float32_t>(cy) + 1.402f * numeric_cast<float32_t>(cv - 127);
-            const float32_t cg = numeric_cast<float32_t>(cy) - 0.344f * numeric_cast<float32_t>(cu - 127) - 0.714f * numeric_cast<float32_t>(cv - 127);
-            const float32_t cb = numeric_cast<float32_t>(cy) + 1.722f * numeric_cast<float32_t>(cu - 127);
+            float32_t cr = numeric_cast<float32_t>(cy) + 1.402f * numeric_cast<float32_t>(cv - 127);
+            float32_t cg = numeric_cast<float32_t>(cy) - 0.344f * numeric_cast<float32_t>(cu - 127) - 0.714f * numeric_cast<float32_t>(cv - 127);
+            float32_t cb = numeric_cast<float32_t>(cy) + 1.722f * numeric_cast<float32_t>(cu - 127);
 
             ucolor& pixel = _impl->RenderedTextureData[numeric_cast<size_t>(y) * numeric_cast<size_t>(w) + numeric_cast<size_t>(x)];
             pixel.comp.r = iround<uint8_t>(std::clamp(cr, 0.0f, 255.0f));
@@ -351,7 +351,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Store render time
-    const auto frame_render_duration = nanotime::now() - start_frame_render;
+    timespan frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds(0)) {
         _impl->AverageRenderTime = std::chrono::milliseconds(iround<uint64_t>((_impl->AverageRenderTime + frame_render_duration).to_ms<float64_t>() / 2.0));
@@ -380,7 +380,7 @@ int32_t VideoClip::DecodePacket()
     int32_t rv = 0;
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
-        const int32_t a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
+        int32_t a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
 
         switch (a) {
         case 1:
@@ -402,7 +402,7 @@ int32_t VideoClip::DecodePacket()
         ogg_page op;
 
         while (ogg_sync_pageout(&_impl->SyncState.Value, &op) != 1) {
-            auto read_bytes = numeric_cast<int32_t>(_impl->RawVideoData.size() - _impl->ReadPos);
+            int32_t read_bytes = numeric_cast<int32_t>(_impl->RawVideoData.size() - _impl->ReadPos);
             read_bytes = std::min(1024, read_bytes);
 
             if (read_bytes == 0) {
@@ -424,7 +424,7 @@ int32_t VideoClip::DecodePacket()
             }
 
             if (!_impl->Streams.StreamsState[i]) {
-                const int32_t a = ogg_stream_init(&_impl->Streams.Streams[i], ogg_page_serialno(&op));
+                int32_t a = ogg_stream_init(&_impl->Streams.Streams[i], ogg_page_serialno(&op));
                 _impl->Streams.StreamsState[i] = true;
 
                 if (a != 0) {
@@ -438,7 +438,7 @@ int32_t VideoClip::DecodePacket()
 
         for (int32_t i = 0; i < numeric_cast<int32_t>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
             ogg_stream_pagein(&_impl->Streams.Streams[i], &op);
-            const int32_t a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
+            int32_t a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
 
             switch (a) {
             case 1:

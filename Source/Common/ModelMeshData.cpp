@@ -71,19 +71,19 @@ void ReadModelMeshHeader(DataReader& reader, string_view context)
     }
 
     DataReader header_reader {header_data};
-    const const_span<uint8_t> magic = header_reader.ReadBytes(MODEL_MESH_MAGIC.size());
+    const_span<uint8_t> magic = header_reader.ReadBytes(MODEL_MESH_MAGIC.size());
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_MESH_MAGIC.begin())) {
         throw ModelMeshDataException("Invalid baked model mesh magic; expected 'LFMODMSH'", context);
     }
 
-    const uint16_t schema = header_reader.Read<uint16_t>();
+    uint16_t schema = header_reader.Read<uint16_t>();
 
     if (schema != MODEL_MESH_SCHEMA_VERSION) {
         throw ModelMeshDataException("Unsupported baked model mesh schema", context, MODEL_MESH_SCHEMA_VERSION, schema);
     }
 
-    const uint16_t flags = header_reader.Read<uint16_t>();
+    uint16_t flags = header_reader.Read<uint16_t>();
 
     if ((flags & ~MODEL_MESH_SUPPORTED_FLAGS) != 0) {
         throw ModelMeshDataException("Baked model mesh contains unsupported flags", context, flags);
@@ -222,8 +222,8 @@ static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_
         float32_t total_weight = 0.0f;
 
         for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
-            const float32_t weight = vertex.BlendWeights[influence];
-            const float32_t index = vertex.BlendIndices[influence];
+            float32_t weight = vertex.BlendWeights[influence];
+            float32_t index = vertex.BlendIndices[influence];
 
             if (!std::isfinite(weight)) {
                 throw ModelMeshDataException("Baked model mesh bone has non-finite skin weight", context, owner_bone, vertex_index, influence);
@@ -300,7 +300,7 @@ static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t 
     bone->Name = reader.ReadString();
     bone->TransformationMatrix = reader.Read<mat44>();
     bone->GlobalTransformationMatrix = reader.Read<mat44>();
-    const uint8_t has_attached_mesh = reader.Read<uint8_t>();
+    uint8_t has_attached_mesh = reader.Read<uint8_t>();
 
     if (has_attached_mesh > 1) {
         throw ModelMeshDataException("Baked model mesh has an invalid attached-mesh flag", context, bone->Name, has_attached_mesh);
@@ -309,7 +309,7 @@ static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t 
         bone->AttachedMesh.emplace(ReadModelMeshGeometry(reader, bone->Name, context));
     }
 
-    const uint32_t children_count = reader.Read<uint32_t>();
+    uint32_t children_count = reader.Read<uint32_t>();
 
     if (children_count > MODEL_MESH_MAX_JOINTS - joint_count) {
         throw ModelMeshDataException("Baked model mesh bone child count exceeds maximum", context, bone->Name, children_count, MODEL_MESH_MAX_JOINTS - joint_count);
@@ -330,7 +330,7 @@ static auto ReadModelMeshGeometry(DataReader& reader, string_view owner_bone, st
     FO_STACK_TRACE_ENTRY();
 
     ModelMeshGeometryData mesh;
-    const uint32_t vertices_count = reader.Read<uint32_t>();
+    uint32_t vertices_count = reader.Read<uint32_t>();
     constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1};
 
     if (vertices_count > max_vertex_count) {
@@ -341,13 +341,13 @@ static auto ReadModelMeshGeometry(DataReader& reader, string_view owner_bone, st
     mesh.Vertices.resize(vertices_count);
     reader.ReadObjectArray(span {mesh.Vertices});
 
-    const uint32_t indices_count = reader.Read<uint32_t>();
+    uint32_t indices_count = reader.Read<uint32_t>();
     VerifyModelMeshCountFitsData(reader, indices_count, sizeof(ModelMeshIndexData), "mesh indices", context, owner_bone);
     mesh.Indices.resize(indices_count);
     reader.ReadObjectArray(span {mesh.Indices});
     mesh.DiffuseTexture = reader.ReadString();
 
-    const uint32_t skin_bones_count = reader.Read<uint32_t>();
+    uint32_t skin_bones_count = reader.Read<uint32_t>();
 
     if (skin_bones_count > MODEL_MESH_MAX_SKIN_BONES) {
         throw ModelMeshDataException("Baked model mesh bone skin bone count exceeds maximum", context, owner_bone, skin_bones_count, MODEL_MESH_MAX_SKIN_BONES);
@@ -360,7 +360,7 @@ static auto ReadModelMeshGeometry(DataReader& reader, string_view owner_bone, st
         mesh.SkinBoneNames.emplace_back(reader.ReadString());
     }
 
-    const uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
+    uint32_t skin_bone_offsets_count = reader.Read<uint32_t>();
 
     if (skin_bone_offsets_count != skin_bones_count) {
         throw ModelMeshDataException("Baked model mesh bone skin bone offset count mismatch", context, owner_bone, skin_bone_offsets_count, skin_bones_count);

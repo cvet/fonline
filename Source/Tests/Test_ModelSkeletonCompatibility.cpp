@@ -86,10 +86,10 @@ TEST_CASE("ModelSkeletonCompatibilityBuildsDeterministicCanonicalJointMap")
     };
     pelvis_clip.AnimatedJointHierarchies = {{"Root", "Pelvis"}};
 
-    const vector<ModelSkeletonClipSource> forward_clips = {weapon_clip, pelvis_clip};
-    const vector<ModelSkeletonClipSource> reverse_clips = {pelvis_clip, weapon_clip};
-    const ModelSkeletonCompatibilityReport forward_report = BuildModelSkeletonCompatibilityReport(base, forward_clips);
-    const ModelSkeletonCompatibilityReport reverse_report = BuildModelSkeletonCompatibilityReport(base, reverse_clips);
+    vector<ModelSkeletonClipSource> forward_clips = {weapon_clip, pelvis_clip};
+    vector<ModelSkeletonClipSource> reverse_clips = {pelvis_clip, weapon_clip};
+    ModelSkeletonCompatibilityReport forward_report = BuildModelSkeletonCompatibilityReport(base, forward_clips);
+    ModelSkeletonCompatibilityReport reverse_report = BuildModelSkeletonCompatibilityReport(base, reverse_clips);
 
     REQUIRE(forward_report.CanonicalJoints.size() == 4);
     CHECK(forward_report.CanonicalJoints[0].Hierarchy == vector<string> {"Root"});
@@ -121,8 +121,8 @@ TEST_CASE("ModelSkeletonCompatibilityReportsRootAliases")
     };
     clip.AnimatedJointHierarchies = {{"Armature", "Spine"}};
 
-    const vector<ModelSkeletonClipSource> clips = {clip};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+    vector<ModelSkeletonClipSource> clips = {clip};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
 
     REQUIRE(report.RootAliases.size() == 1);
     CHECK(report.RootAliases.front().SourceRoot == "Armature");
@@ -150,8 +150,8 @@ TEST_CASE("ModelSkeletonCompatibilityUsesDeterministicDepthFirstJointOrder")
     };
     clip.AnimatedJointHierarchies = {{"Root", "A", "AChild"}, {"Root", "B"}};
 
-    const vector<ModelSkeletonClipSource> clips = {clip};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+    vector<ModelSkeletonClipSource> clips = {clip};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
 
     REQUIRE(report.CanonicalJoints.size() == 4);
     CHECK(report.CanonicalJoints[0].Hierarchy == vector<string> {"Root"});
@@ -169,7 +169,7 @@ TEST_CASE("ModelSkeletonCompatibilityAllowsEmptyTechnicalSceneRoot")
         MakeSkeletonJoint("Body", {"", "Body"}),
     };
 
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
 
     REQUIRE(report.CanonicalJoints.size() == 2);
     CHECK(report.CanonicalJoints[0].Name.empty());
@@ -192,9 +192,9 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsEmptyTechnicalSceneRootUnambiguously
     };
     clip.AnimatedJointHierarchies = {{"", "Body"}};
 
-    const vector<ModelSkeletonClipSource> clips = {clip};
-    const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
-    const string formatted_report = FormatModelSkeletonCompatibilityReport(report);
+    vector<ModelSkeletonClipSource> clips = {clip};
+    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+    string formatted_report = FormatModelSkeletonCompatibilityReport(report);
 
     CHECK(formatted_report.find("<empty-root>/Body") != string::npos);
     CHECK(formatted_report.find("contributions=[Body <-") == string::npos);
@@ -215,7 +215,7 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsAnimationDataIssues")
     issue.NonFiniteTranslationKeys = 1;
     report.AnimationDataIssues.emplace_back(std::move(issue));
 
-    const string formatted_report = FormatModelSkeletonCompatibilityReport(report);
+    string formatted_report = FormatModelSkeletonCompatibilityReport(report);
     CHECK(formatted_report.find("animation_data_issues=1") != string::npos);
     CHECK(formatted_report.find("non_finite_keys=3") != string::npos);
     CHECK(formatted_report.find("Root/UnusedHelper <- Animations/Broken.fbx#Idle") != string::npos);
@@ -287,7 +287,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Right", "Hand"}};
 
-        const vector<ModelSkeletonClipSource> clips = {clip};
+        vector<ModelSkeletonClipSource> clips = {clip};
         CHECK_THROWS_AS(BuildModelSkeletonCompatibilityReport(base, clips), ModelSkeletonCompatibilityException);
     }
 
@@ -302,8 +302,8 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Spine"}};
 
-        const vector<ModelSkeletonClipSource> clips = {clip};
-        const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+        vector<ModelSkeletonClipSource> clips = {clip};
+        ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
 
         REQUIRE(report.RestPoseDivergences.size() == 1);
         CHECK(report.RestPoseDivergences.front().Hierarchy == vector<string> {"Root", "Spine"});
@@ -325,8 +325,8 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Spine"}};
 
-        const vector<ModelSkeletonClipSource> clips = {clip};
-        const ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+        vector<ModelSkeletonClipSource> clips = {clip};
+        ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
         CHECK(report.RestPoseDivergences.empty());
     }
 }
@@ -343,7 +343,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsAnimationHierarchyOutsideSourceSkele
     clip.Joints = {MakeSkeletonJoint("Root", {"Root"})};
     clip.AnimatedJointHierarchies = {{"Root", "Missing"}};
 
-    const vector<ModelSkeletonClipSource> clips = {clip};
+    vector<ModelSkeletonClipSource> clips = {clip};
     CHECK_THROWS_AS(BuildModelSkeletonCompatibilityReport(base, clips), ModelSkeletonCompatibilityException);
 }
 

@@ -77,7 +77,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto GetOffset() const noexcept -> ipos32 { return _offset; }
-    [[nodiscard]] auto GetDrawEffectOr(ptr<RenderEffect> defaultEffect) const noexcept -> ptr<RenderEffect>;
+    [[nodiscard]] auto GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>;
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTexture() const -> nptr<const RenderTexture> { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
@@ -122,6 +122,8 @@ public:
 
     virtual auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> = 0;
     virtual void Update() { }
+    virtual void RetryFailedLoads() { }
+    virtual void InvalidateResource(hstring path) { ignore_unused(path); }
     virtual void ClenupCache() { }
 };
 
@@ -191,6 +193,7 @@ public:
     [[nodiscard]] auto IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
+    [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -202,6 +205,9 @@ public:
 
     void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
     auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
+    void ForgetFailedSprite(string_view path);
+    void InvalidateSpriteResource(string_view path);
+    void RetryFailedSpriteLoads();
     void CleanupSpriteCache();
 
     void PushScissor(irect32 rect);
@@ -247,6 +253,8 @@ private:
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
+    void QueueSpriteWireframe(size_t start_index, size_t index_count);
+    void DrawSpriteWireframe();
 
     ptr<RenderSettings> _settings;
     ptr<IAppWindow> _window;
@@ -270,6 +278,7 @@ private:
 
     vector<DipData> _dipQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};
+    vector<Vertex2D> _spriteWireframeVertices {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf;
     unique_ptr<RenderDrawBuffer> _primitiveDrawBuf;
     unique_ptr<RenderDrawBuffer> _flushDrawBuf;

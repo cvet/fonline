@@ -51,7 +51,7 @@ TEST_CASE("GameTimer")
     SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
         GameTimer timer {&settings};
-        const nanotime initial_time = timer.GetFrameTime();
+        nanotime initial_time = timer.GetFrameTime();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         timer.FrameAdvance(false);
@@ -63,7 +63,7 @@ TEST_CASE("GameTimer")
     SECTION("SynchronizedTimeMovesForwardAfterAdvance")
     {
         GameTimer timer {&settings};
-        const synctime sync_base {123456};
+        synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
         CHECK(timer.IsTimeSynchronized());
@@ -78,15 +78,15 @@ TEST_CASE("GameTimer")
     SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")
     {
         GameTimer timer {&settings};
-        const synctime sync_base {123456};
+        synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
 
-        const auto current_time = timer.GetSynchronizedTime();
-        const synctime older_time {current_time.milliseconds() - 100};
+        synctime current_time = timer.GetSynchronizedTime();
+        synctime older_time {current_time.milliseconds() - 100};
 
         timer.SetSynchronizedTimeMonotonic(older_time);
         CHECK(timer.GetSynchronizedTime() == current_time);
