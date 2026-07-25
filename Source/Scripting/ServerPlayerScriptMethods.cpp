@@ -125,6 +125,15 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Crit
     self->Send_Moving(cr);
 }
 
+// SyncScope: requires self; returns the map self currently spectates, but does not cover it for later reads.
+// The view target is an independent Map root that self's cover does not include, so a caller that reads or
+// mutates it covers the returned map first and re-reads this handle to prove the view did not change.
+///@ ExportMethod
+FO_SCRIPT_API nptr<Map> Server_Player_GetViewMapTarget(ptr<Player> self)
+{
+    return self->GetViewMapTarget();
+}
+
 // SyncScope: requires self + map + map location; sends load-map data and opens a map view for self.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos hex)
