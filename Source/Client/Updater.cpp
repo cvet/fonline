@@ -324,7 +324,7 @@ void Updater::GetNextFile()
             }
         }
 
-        int32_t open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
+        std::ios_base::openmode open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
         _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
 
         if (!_tempFile) {
