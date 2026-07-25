@@ -536,7 +536,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
@@ -649,7 +651,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();

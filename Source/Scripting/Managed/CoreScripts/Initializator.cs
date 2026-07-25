@@ -148,6 +148,29 @@ namespace FOnline
                 moduleName = moduleName.Substring(0, genericSuffix);
             }
 
+            if (!AngelScriptModulePaths.TryGetValue(moduleName, out string? scriptPath))
+            {
+                return false;
+            }
+
+            if (allowManagedModuleInitOwner && IsManagedModuleInitOwner(scriptPath))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        // Which modules the AngelScript backend owns is a property of the source tree, identical for every engine
+        // in the process, so it is snapshotted once instead of probed per module per engine. Probing with
+        // File.Exists on every call made the answer depend on transient IO: under a parallel suite run one worker
+        // could see a .fos as absent, run a managed [ModuleInit] its AngelScript twin already owns, and fail with
+        // "Lowest callback already added". One enumeration up front removes that window and keeps every engine in
+        // the process consistent with the others.
+        private static readonly Dictionary<string, string> AngelScriptModulePaths = CollectAngelScriptModulePaths();
+
+        private static Dictionary<string, string> CollectAngelScriptModulePaths()
+        {
             string[] scriptDirs =
             {
                 "Scripts",
@@ -158,21 +181,35 @@ namespace FOnline
                 Path.Combine("Engine", "Source", "Scripting", "AngelScript", "CoreScripts"),
             };
 
+            Dictionary<string, string> paths = new Dictionary<string, string>(StringComparer.Ordinal);
+
             for (int i = 0; i < scriptDirs.Length; i++)
             {
-                string scriptPath = Path.Combine(scriptDirs[i], moduleName + ".fos");
-                if (File.Exists(scriptPath))
-                {
-                    if (allowManagedModuleInitOwner && IsManagedModuleInitOwner(scriptPath))
-                    {
-                        continue;
-                    }
+                string[] files;
 
-                    return true;
+                try
+                {
+                    files = Directory.Exists(scriptDirs[i]) ? Directory.GetFiles(scriptDirs[i], "*.fos") : new string[0];
+                }
+                catch (Exception ex)
+                {
+                    Game.Log("Failed to enumerate AngelScript modules in: " + scriptDirs[i]);
+                    Game.Log(ex.ToString());
+                    continue;
+                }
+
+                foreach (string file in files)
+                {
+                    string moduleName = Path.GetFileNameWithoutExtension(file);
+
+                    if (!paths.ContainsKey(moduleName))
+                    {
+                        paths.Add(moduleName, file);
+                    }
                 }
             }
 
-            return false;
+            return paths;
         }
 
         private static bool IsManagedModuleInitOwner(string scriptPath)

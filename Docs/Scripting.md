@@ -110,6 +110,14 @@ reservation before it leaves the context-pool lock: an already-active context is
 coroutines from being either lost or re-entered concurrently. Client runtime callbacks are processed on the main
 loop and do not have the same worker-pool race window.
 
+A suspending routine has written neither its return value nor its mutable (`&`) arguments by the time control
+returns to the caller, so **only a call with no result at all may yield** — no return value and no out-arguments.
+`ScriptFuncCall()` computes that permission and, when the caller does expect a result, a `Yield` inside the callee
+raises `Can't yield current routine` instead of completing the call. Without that rule the caller reads untouched
+storage as if it were a real result: a cross-backend `Game.Invoke("Ns::Func", …, ref out)` from managed code into
+an `[[Async]]` AngelScript function that suspends used to return default-initialized out-values while
+`NativeInvokeScriptFunc` still reported success, so the failure was silent rather than diagnosable.
+
 When `asEP_ALLOW_UNSAFE_REFERENCES` is enabled, AngelScript may defer releasing method receivers and
 arguments until an expression reaches a safe point. Short-circuit boolean compilation processes the
 left operand's deferred parameters after materializing its primitive `bool` result and before merging
