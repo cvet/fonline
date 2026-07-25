@@ -40,17 +40,36 @@ FO_BEGIN_NAMESPACE
 class EffectManager;
 class FileSystem;
 class IAppRender;
+class RenderDrawBuffer;
 class RenderTexture;
+struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
-struct ParticleBounds3D final
+// Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
+// position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas
+// frame scale, entity scale) in full and rotates with the model's facing. The billboard radius is the largest
+// half-extent one particle's camera-facing sprite reaches: it follows only the placement's *scale*, because a sprite
+// always faces the camera and keeps the same screen footprint at every facing, so it is added once in the view plane
+// and never rotated or swept.
+struct ParticleBounds3D
 {
-    vec3 Min {};
-    vec3 Max {};
+    vec3 PositionMin {};
+    vec3 PositionMax {};
+    float32_t BillboardRadius {};
 };
 
-struct ParticleRuntimeSetup final
+// Validate a measured bake-time extent. An inverted or non-finite box and a negative radius mean the baked data cannot
+// frame anything, so the caller reserves no space instead of trusting it.
+auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>;
+
+// Fold a bake-time extent through a frame transform (the emitter's world placement combined with the view matrix).
+// The position box follows the matrix outright; the billboard radius follows only its scale, because the renderers
+// scale a sprite with the effect's placement while a camera-facing quad keeps the same screen footprint at every
+// facing - so the radius must never be rotated or swept.
+auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>;
+
+struct ParticleRuntimeSetup
 {
     mat44 Projection {};
     mat44 World {};
@@ -62,12 +81,13 @@ struct ParticleRuntimeSetup final
     bool TiltInProjection {};
 };
 
-struct ParticleRuntimeServices final
+struct ParticleRuntimeServices
 {
     ptr<EffectManager> EffectMngr;
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
     ParticleTextureLoader TextureLoader;
+    ptr<RenderSettings> Settings;
 };
 
 class ParticleRuntimeSystem
@@ -81,11 +101,10 @@ public:
     virtual ~ParticleRuntimeSystem() = default;
 
     [[nodiscard]] virtual auto IsActive() const -> bool = 0;
-    [[nodiscard]] virtual auto GetDrawSize(isize32 default_size) const -> isize32 = 0;
     [[nodiscard]] virtual auto GetDrawInScene() const -> bool = 0;
-    [[nodiscard]] virtual auto GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] virtual auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] virtual auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
 
-    virtual void EnableBoundsComputation() noexcept;
     virtual void RebaseWorldParticles(vec3 delta) noexcept;
     virtual void Setup(const ParticleRuntimeSetup& setup) = 0;
     virtual auto Prewarm() -> float32_t = 0;
@@ -111,6 +130,13 @@ public:
     virtual void InvalidateResource(string_view path) = 0;
 };
 
-[[nodiscard]] auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
+// Create particle runtime backends for all available particle systems.
+// The returned vector is sorted by backend priority, with the first backend being the most preferred.
+auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
+
+// Debug wireframe overlay for particle geometry: re-draws a particle draw buffer's triangles as a line list through
+// the primitive effect with the same projection, mirroring the sprite-batch wireframe from Render.DrawWireframe. The
+// overlay buffer is created lazily on first use and reused between draws.
+void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 
 FO_END_NAMESPACE

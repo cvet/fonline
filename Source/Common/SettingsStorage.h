@@ -29,54 +29,45 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #pragma once
 
 #include "Common.h"
-#include "ModelBounds.h"
-
-#if FO_ENABLE_3D
 
 FO_BEGIN_NAMESPACE
 
-constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
+class SettingsStorageImpl;
 
-struct ModelSpriteLayout
+// Small per-user key/value store for tool and editor settings (ImGui window layout, editor options, last
+// selection, ...). Values are scoped by an application name so different tools never collide. On Windows the
+// backing store is the registry under HKCU\Software\FOnline\<app_name>; on other platforms it is a file store
+// under the per-user data directory. Persistence is best-effort: a backend failure is logged, never thrown, so a
+// tool never dies because its settings could not be written.
+class SettingsStorage
 {
-    isize32 DrawSize {};
-    irect32 DrawRect {};
-    irect32 ViewRect {};
-};
+public:
+    explicit SettingsStorage(string_view app_name);
+    SettingsStorage(const SettingsStorage&) = delete;
+    SettingsStorage(SettingsStorage&&) noexcept;
+    auto operator=(const SettingsStorage&) = delete;
+    auto operator=(SettingsStorage&&) noexcept = delete;
+    ~SettingsStorage();
 
-struct ModelSpriteBoundsEnvelopeId
-{
-    array<int32_t, 2> BodyAnimationIndices {-1, -1};
-    array<int32_t, 2> MoveAnimationIndices {-1, -1};
-    uint64_t CombinedMeshGenerationRevision {};
-    uint8_t BodyAnimationCount {};
-    uint8_t MoveAnimationCount {};
-    bool ShadowEnabled {};
-    bool FullFrame {};
-};
+    [[nodiscard]] auto HasKey(string_view key) const -> bool;
+    [[nodiscard]] auto GetString(string_view key, string_view default_value = "") const -> string;
+    [[nodiscard]] auto GetInt(string_view key, int64_t default_value = 0) const -> int64_t;
+    [[nodiscard]] auto GetBool(string_view key, bool default_value = false) const -> bool;
+    [[nodiscard]] auto GetFloat(string_view key, float64_t default_value = 0.0) const -> float64_t;
 
-struct ModelSpriteBounds
-{
-    irect32 Rect {};
-    isize32 RequiredFrameSize {};
-    ipos32 Pivot {};
-    ModelSpriteBoundsEnvelopeId EnvelopeId {};
-};
+    void SetString(string_view key, string_view value);
+    void SetInt(string_view key, int64_t value);
+    void SetBool(string_view key, bool value);
+    void SetFloat(string_view key, float64_t value);
+    void Remove(string_view key);
 
-struct ModelSpriteFramePlacement
-{
-    isize32 Size {};
-    ipos32 Pivot {};
+private:
+    unique_ptr<SettingsStorageImpl> _impl;
 };
-
-auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>;
-auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>;
-auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>;
 
 FO_END_NAMESPACE
-
-#endif

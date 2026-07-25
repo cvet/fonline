@@ -89,6 +89,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
+    FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Cannot start a time event for an entity that is being destroyed", entity->GetTypeName(), entity->GetId());
 
     auto event_id = ++_timeEventCounter;
     auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
@@ -614,7 +615,7 @@ void TimeEventManager::NotifyCancel(uint32_t event_id)
     }
 }
 
-void TimeEventManager::CancelAllForEntity(ptr<Entity> entity)
+void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -640,7 +641,15 @@ void TimeEventManager::CancelAllForEntity(ptr<Entity> entity)
     }
 
     for (auto cid : cancelled_ids) {
-        NotifyCancel(cid);
+        try {
+            NotifyCancel(cid);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
     }
 }
 

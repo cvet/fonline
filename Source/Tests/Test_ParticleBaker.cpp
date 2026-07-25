@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ConfigFile.h"
+#include "EffekseerExtension.h"
 #include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "RawCopyBaker.h"
@@ -72,7 +73,86 @@ static constexpr string_view ValidParticle = R"PARTICLE(
         </attrib>
         <attrib id="renderer">
           <SparkQuadRenderer>
-            <attrib id="draw size" value="64;48" />
+            <attrib id="draw in scene" value="true" />
+            <attrib id="active" value="true" />
+            <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+            <attrib id="texture" value="TestParticle.png" />
+            <attrib id="scale" value="1.5;2" />
+            <attrib id="atlas dimensions" value="2;3" />
+          </SparkQuadRenderer>
+        </attrib>
+      </Group>
+    </attrib>
+  </System>
+</SPARK>
+)PARTICLE";
+
+static constexpr string_view NonEmittingParticle = R"PARTICLE(
+<SPARK>
+  <System name="NonEmittingParticle">
+    <attrib id="groups">
+      <Group name="NonEmittingGroup">
+        <attrib id="capacity" value="4" />
+        <attrib id="life time" value="1;1" />
+        <attrib id="emitters">
+          <StaticEmitter>
+            <attrib id="tank" value="0" />
+            <attrib id="flow" value="0" />
+            <attrib id="force" value="0" />
+            <attrib id="zone">
+              <Point>
+                <attrib id="position" value="(0,0,0)" />
+              </Point>
+            </attrib>
+            <attrib id="full" value="false" />
+          </StaticEmitter>
+        </attrib>
+        <attrib id="renderer">
+          <SparkQuadRenderer>
+            <attrib id="draw in scene" value="true" />
+            <attrib id="active" value="true" />
+            <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+            <attrib id="texture" value="TestParticle.png" />
+            <attrib id="scale" value="1.5;2" />
+            <attrib id="atlas dimensions" value="2;3" />
+          </SparkQuadRenderer>
+        </attrib>
+      </Group>
+    </attrib>
+  </System>
+</SPARK>
+)PARTICLE";
+
+static constexpr string_view FullyTransparentParticle = R"PARTICLE(
+<SPARK>
+  <System name="FullyTransparentParticle">
+    <attrib id="groups">
+      <Group name="FullyTransparentGroup">
+        <attrib id="capacity" value="4" />
+        <attrib id="life time" value="1;1" />
+        <attrib id="color interpolator">
+          <ColorGraphInterpolator>
+            <attrib id="graph keys" value="0;1" />
+            <attrib id="graph values" value="0x00000000;0x00000000" />
+            <attrib id="graph values 2" value="0x00000000;0x00000000" />
+            <attrib id="looping enabled" value="false" />
+          </ColorGraphInterpolator>
+        </attrib>
+        <attrib id="emitters">
+          <StaticEmitter>
+            <attrib id="tank" value="1" />
+            <attrib id="flow" value="-1" />
+            <attrib id="force" value="0" />
+            <attrib id="zone">
+              <Point>
+                <attrib id="position" value="(0,0,0)" />
+              </Point>
+            </attrib>
+            <attrib id="full" value="false" />
+          </StaticEmitter>
+        </attrib>
+        <attrib id="renderer">
+          <SparkQuadRenderer>
             <attrib id="draw in scene" value="true" />
             <attrib id="active" value="true" />
             <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
@@ -221,6 +301,15 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
             original_reference = read_uint32(reference_offset, object_end);
             system_reference = object_index + 1;
             attribute_position += numeric_cast<size_t>(group_count) * sizeof(uint32_t);
+
+            bool bounds_defined = read_bool(attribute_position, object_end);
+            if (bounds_defined) {
+                uint32_t bounds_value_count = read_uint32(attribute_position, object_end);
+                attribute_position += sizeof(uint32_t);
+                FO_VERIFY_AND_THROW(numeric_cast<size_t>(bounds_value_count) <= (object_end - attribute_position) / sizeof(float32_t), "Particle binary fixture has invalid baked-bounds data");
+                attribute_position += numeric_cast<size_t>(bounds_value_count) * sizeof(float32_t);
+            }
+
             FO_VERIFY_AND_THROW(attribute_position == object_end, "Particle binary fixture has trailing System attribute data");
         }
 
@@ -306,6 +395,151 @@ TEST_CASE("SPARK random streams", "[particle][spark]")
         CHECK(second_system->getStepMode() == SPK::STEP_MODE_REAL);
     }
 }
+
+TEST_CASE("SPARK baked bounds", "[particle][spark]")
+{
+    using namespace BakerTests;
+
+    SPK::SPKContext spark_context;
+    SPK::FO::EnsureSparkParticleObjectsRegistered(spark_context);
+    SPK::IO::IOManager& spark_io = spark_context.getIOManager();
+
+    auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> { return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size())); };
+
+    // The baker simulates the effect and records its extent so the runtime frames an emitting instance from a static
+    // measurement instead of computing an axis-aligned bounding box every frame. Position extent and billboard radius
+    // are recorded apart: the fixture emits one motionless particle at the origin from a point zone, so its position
+    // box is degenerate and the whole extent lives in the quad radius. That radius is the group's graphical radius
+    // (default 1) times the renderer's quad diagonal, sqrt(1.5^2 + 2^2) = 2.5 - it must not leak into the box, because
+    // the runtime transforms the box with the emitter's world placement but never scales the quad.
+    SECTION("BakerComputesAndStoresBoundsFromSimulation")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/UnitTest.spark", ValidParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 1);
+        const vector<uint8_t>& binary = rig.Outputs.at("Particles/UnitTest.spk");
+        REQUIRE_FALSE(binary.empty());
+
+        SPK::Ref<SPK::System> system = load_spk(binary);
+        REQUIRE(system);
+
+        SPK::Vector3D bounds_min = system->getBakedBoundsMin();
+        SPK::Vector3D bounds_max = system->getBakedBoundsMax();
+
+        CHECK(bounds_min.x == Catch::Approx(0.0f));
+        CHECK(bounds_min.y == Catch::Approx(0.0f));
+        CHECK(bounds_min.z == Catch::Approx(0.0f));
+        CHECK(bounds_max.x == Catch::Approx(0.0f));
+        CHECK(bounds_max.y == Catch::Approx(0.0f));
+        CHECK(bounds_max.z == Catch::Approx(0.0f));
+        CHECK(system->getBakedBillboardRadius() == Catch::Approx(2.5f));
+    }
+
+    // An explicit box must survive the binary save/load unchanged so the runtime reads back exactly what the baker
+    // measured.
+    SECTION("ExplicitBoundsSurviveBinaryRoundtrip")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/UnitTest.spark", ValidParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        SPK::Ref<SPK::System> system = load_spk(rig.Outputs.at("Particles/UnitTest.spk"));
+        REQUIRE(system);
+
+        const SPK::Vector3D expected_min(-1.5f, -2.0f, -3.25f);
+        const SPK::Vector3D expected_max(4.0f, 5.5f, 6.75f);
+        const float expected_radius = 0.375f;
+        system->setBakedBounds(expected_min, expected_max, expected_radius);
+
+        std::ostringstream oss(std::ios::binary);
+        REQUIRE(spark_io.save("spk", oss, system));
+
+        std::string str = oss.str();
+        const vector<uint8_t> resaved(str.begin(), str.end());
+
+        SPK::Ref<SPK::System> reloaded = load_spk(resaved);
+        REQUIRE(reloaded);
+
+        CHECK(reloaded->getBakedBoundsMin().x == Catch::Approx(expected_min.x));
+        CHECK(reloaded->getBakedBoundsMin().y == Catch::Approx(expected_min.y));
+        CHECK(reloaded->getBakedBoundsMin().z == Catch::Approx(expected_min.z));
+        CHECK(reloaded->getBakedBoundsMax().x == Catch::Approx(expected_max.x));
+        CHECK(reloaded->getBakedBoundsMax().y == Catch::Approx(expected_max.y));
+        CHECK(reloaded->getBakedBoundsMax().z == Catch::Approx(expected_max.z));
+        CHECK(reloaded->getBakedBillboardRadius() == Catch::Approx(expected_radius));
+    }
+
+    // Baked bounds are mandatory: a particle system that never emits cannot be measured, so the baker rejects it
+    // rather than shipping a system without a frame extent.
+    SECTION("RejectsSystemThatEmitsNoParticles")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/NonEmitting.spark", NonEmittingParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("no visible particles"));
+    }
+
+    // A fully transparent particle draws nothing, so it must not reserve frame space. Measuring it would inflate every
+    // effect whose colour graph fades out at the end of life, where the particle is also at its largest.
+    SECTION("RejectsSystemWhoseParticlesAreFullyTransparent")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Transparent.spark", FullyTransparentParticle, 10);
+
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("no visible particles"));
+    }
+}
+#endif
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("Effekseer baked bounds trailer", "[particle][effekseer]")
+{
+    SECTION("RoundtripsBounds")
+    {
+        vector<uint8_t> binary {'S', 'K', 'F', 'E', 0x10, 0x20, 0x30};
+        size_t payload_size = binary.size();
+        vec3 expected_min {-1.5f, -2.0f, -3.25f};
+        vec3 expected_max {4.0f, 5.5f, 6.75f};
+        float32_t expected_radius = 0.375f;
+
+        AppendEffekseerBoundsTrailer(binary, expected_min, expected_max, expected_radius);
+        CHECK(binary.size() == payload_size + 36);
+
+        EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(binary);
+        CHECK(trailer.PayloadSize == payload_size);
+        CHECK(trailer.PositionMin.x == Catch::Approx(expected_min.x));
+        CHECK(trailer.PositionMin.y == Catch::Approx(expected_min.y));
+        CHECK(trailer.PositionMin.z == Catch::Approx(expected_min.z));
+        CHECK(trailer.PositionMax.x == Catch::Approx(expected_max.x));
+        CHECK(trailer.PositionMax.y == Catch::Approx(expected_max.y));
+        CHECK(trailer.PositionMax.z == Catch::Approx(expected_max.z));
+        CHECK(trailer.BillboardRadius == Catch::Approx(expected_radius));
+    }
+
+    SECTION("ThrowsOnBinaryWithoutTrailer")
+    {
+        vector<uint8_t> binary {'S', 'K', 'F', 'E', 0x10, 0x20, 0x30};
+
+        CHECK_THROWS(ReadEffekseerBoundsTrailer(binary));
+    }
+
+    SECTION("ThrowsOnTruncatedBinary")
+    {
+        vector<uint8_t> binary {0x01, 0x02, 0x03};
+
+        CHECK_THROWS(ReadEffekseerBoundsTrailer(binary));
+    }
+}
 #endif
 
 TEST_CASE("ParticleBaker", "[particle][baker]")
@@ -375,8 +609,6 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK(&emitter->getContext() == &spark_context);
         CHECK(&emitter->getZone()->getContext() == &spark_context);
         CHECK(&renderer->getContext() == &spark_context);
-        CHECK(renderer_data.DrawWidth == 64);
-        CHECK(renderer_data.DrawHeight == 48);
         CHECK(renderer_data.DrawInScene);
         CHECK(renderer_data.EffectName == "Effects/Particles_ColorAdd.fofx");
         CHECK(renderer_data.TextureName == "TestParticle.png");

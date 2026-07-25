@@ -79,6 +79,7 @@ public:
     [[nodiscard]] auto Convert2dTo3d(ipos32 pos) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos32;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
+    [[nodiscard]] auto GetInformation() const noexcept -> ptr<ModelInformation> { return _modelInfo; }
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _curStateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _curActionAnim; }
     [[nodiscard]] auto GetMovingAnim() const noexcept -> CritterActionAnim;
@@ -90,15 +91,17 @@ public:
     [[nodiscard]] auto GetLightingSize() const noexcept -> isize32 { return _lightingDrawSize; }
     [[nodiscard]] auto GetSpriteBounds() const -> optional<ModelSpriteBounds>;
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32 { return _drawRect; }
+    [[nodiscard]] auto GetFramePivot() const noexcept -> ipos32 { return _framePivot; }
     [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
-    void SetupFrame(isize32 draw_size);
+    void SetupFrame(isize32 draw_size, ipos32 frame_pivot);
     void PrepareFrameLayout();
     void RequestRedraw() noexcept;
     void StartMeshGeneration();
@@ -111,10 +114,11 @@ public:
     void SetScale(float32_t sx, float32_t sy, float32_t sz);
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
-    void Draw();
-    void Draw(const mat44& proj, float32_t scale);
-    void MoveModel(ipos32 offset);
-    void UpdatePose(bool staying_pose, bool moving, int32_t moving_speed);
+    void PoseSpriteFrame(bool advance_animation);
+    void DrawSpriteFrame();
+    void DrawInScene(const mat44& proj, float32_t scale);
+    void AddMoveOffset(ipos32 offset);
+    void SetMovementState(bool staying_pose, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
@@ -178,7 +182,8 @@ private:
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
     void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
-    void DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles);
+    void Pose(float32_t scale, bool advance_animation);
+    void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
     void SnapshotAnimationWorldMatrices();
     void BuildRestWorldMatrices();
@@ -193,6 +198,7 @@ private:
     isize32 _frameSize {};
     isize32 _layoutDrawSize {};
     irect32 _drawRect {};
+    ipos32 _framePivot {};
     isize32 _lightingDrawSize {};
     irect32 _viewRect {};
     optional<ModelBounds3D> _configurationModelBounds {};
@@ -218,6 +224,7 @@ private:
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
+    bool _resetDrawTimeOnNextAnimationAdvance {};
     mat44 _matRot {};
     mat44 _matScale {1.0f};
     mat44 _matScaleBase {};
@@ -243,6 +250,7 @@ private:
     int32_t _curMovingAnimIndex {-1};
     CritterActionAnim _curMovingAnim {};
     bool _turnAnimPlaying {};
+    bool _playOnceAnimPlaying {};
     int32_t _curMoveTrack {};
     float32_t _movingSpeedFactor {};
     bool _isRunning {};

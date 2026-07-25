@@ -231,7 +231,11 @@ void ClientConnection::ProcessConnection()
             auto msg = _netIn.ReadMsg();
 
 #if FO_DEBUG
-            _msgHistory.insert(_msgHistory.begin(), msg);
+            _msgHistory.push_front(msg);
+
+            if (_msgHistory.size() > NET_MESSAGE_HISTORY_LIMIT) {
+                _msgHistory.pop_back();
+            }
 #endif
 
             if (_settings->DebugNet) {

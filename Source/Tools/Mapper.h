@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AnimationViewer.h"
 #include "AnyData.h"
 #include "CacheStorage.h"
 #include "Client.h"
@@ -51,11 +52,13 @@
 #include "MapView.h"
 #include "NetBuffer.h"
 #include "ParticleEditor.h"
+#include "ParticleViewer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
+#include "SettingsStorage.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
@@ -355,6 +358,8 @@ public:
     bool WorkspaceWindowVisible {};
     bool ContentWindowVisible {};
     bool CritterAnimationsWindowVisible {};
+    unique_nptr<AnimationViewer> AnimViewer {};
+    unique_nptr<ParticleViewer> PartViewer {};
     bool ScriptCallWindowVisible {};
     bool MapListWindowVisible {};
     bool MapWindowVisible {};
@@ -470,6 +475,10 @@ private:
     auto IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) const -> bool;
     void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value) const;
     void SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const;
+
+    // Per-user editor settings (currently the ImGui window layout). Registry-backed on Windows, file-backed
+    // elsewhere; distinct from the resource Cache so tool preferences do not live in the baked-resource store.
+    SettingsStorage _uiSettings {"Mapper"};
 };
 
 FO_END_NAMESPACE
