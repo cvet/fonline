@@ -634,12 +634,12 @@ class FOnlineEffekseerSpriteRenderer final : public Effekseer::SpriteRenderer
 public:
     FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
-        _effectMngr {effect_mngr},
-        _render {render},
-        _settings {settings},
         _multiplyEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorMul.fofx")},
         _addEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorAdd.fofx")},
-        _drawBuffer {render->CreateDrawBuffer(false)}
+        _drawBuffer {render->CreateDrawBuffer(false)},
+        _effectMngr {effect_mngr},
+        _render {render},
+        _settings {settings}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -901,12 +901,12 @@ class FOnlineEffekseerRingRenderer final : public Effekseer::RingRenderer
 public:
     FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
-        _effectMngr {effect_mngr},
-        _render {render},
-        _settings {settings},
         _multiplyEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorMul.fofx")},
         _addEffect {effect_mngr->LoadEffect(EffectUsage::QuadSprite, "Effects/Particles_ColorAdd.fofx")},
         _drawBuffer {render->CreateDrawBuffer(false)},
+        _effectMngr {effect_mngr},
+        _render {render},
+        _settings {settings},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
         FO_STACK_TRACE_ENTRY();

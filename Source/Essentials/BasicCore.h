@@ -178,6 +178,13 @@
 #define FO_MSVC_IGNORE_WARNINGS_POP()
 #endif
 
+// Empty member storage optimization
+#if defined(_MSC_VER)
+#define FO_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define FO_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
 // Force inline helper
 #if defined(__GNUC__)
 #define FO_FORCE_INLINE __attribute__((always_inline)) inline
