@@ -200,7 +200,7 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
 static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*;
-static auto NativeInvokeScriptFunc(MonoString* func_name, MonoArray* args) -> mono_bool;
+static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args) -> int32_t;
 static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler, mono_bool skip_existing_script_func);
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler);
 static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoArray* args_array);
@@ -1775,20 +1775,28 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
     return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
 }
 
-static auto NativeInvokeScriptFunc(MonoString* func_name, MonoArray* args) -> mono_bool
+// Invocation status handed back to managed code. Collapsing every outcome into a bool made "the function
+// does not exist", "an argument could not be marshalled" and "the routine threw" indistinguishable, so callers
+// reported a missing bridge for errors that had nothing to do with one. Mirrored by ScriptInvokeStatus in
+// CoreScripts/Native.cs.
+static constexpr int32_t INVOKE_STATUS_FAILED = -1;
+static constexpr int32_t INVOKE_STATUS_NO_CANDIDATE = 0;
+static constexpr int32_t INVOKE_STATUS_COMPLETED = 1;
+
+static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = ActiveBackend;
 
     if (!backend || backend->GetMetadata() == nullptr) {
-        return 0;
+        return INVOKE_STATUS_FAILED;
     }
 
     auto* script_sys = dynamic_cast<ScriptSystem*>(backend->GetMetadata());
 
     if (script_sys == nullptr) {
-        return 0;
+        return INVOKE_STATUS_FAILED;
     }
 
     const string func_name_str = ToStringAndFree(func_name);
@@ -1900,7 +1908,7 @@ static auto NativeInvokeScriptFunc(MonoString* func_name, MonoArray* args) -> mo
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-            return 0;
+            return INVOKE_STATUS_FAILED;
         }
 
         if (is_result_call) {
@@ -1943,10 +1951,10 @@ static auto NativeInvokeScriptFunc(MonoString* func_name, MonoArray* args) -> mo
             mono_array_setref(get_args(), i, arg);
         }
 
-        return 1;
+        return INVOKE_STATUS_COMPLETED;
     }
 
-    return 0;
+    return INVOKE_STATUS_NO_CANDIDATE;
 }
 
 static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler, mono_bool skip_existing_script_func)
@@ -2323,7 +2331,7 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::AddPropertySetterWithProperty", reinterpret_cast<const void*>(NativeAddPropertySetterWithProperty));
     mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetter", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
     mono_add_internal_call("FOnline.Native::CallMethod", reinterpret_cast<const void*>(NativeCallMethod));
-    mono_add_internal_call("FOnline.Native::InvokeScriptFunc", reinterpret_cast<const void*>(NativeInvokeScriptFunc));
+    mono_add_internal_call("FOnline.Native::InvokeScriptFuncStatus", reinterpret_cast<const void*>(NativeInvokeScriptFuncStatus));
     mono_add_internal_call("FOnline.Native::GetBackendAliveFlag", reinterpret_cast<const void*>(NativeGetBackendAliveFlag));
     mono_add_internal_call("FOnline.Native::GetBackend", reinterpret_cast<const void*>(NativeGetBackend));
     mono_add_internal_call("FOnline.Native::GetProtoEntity", reinterpret_cast<const void*>(NativeGetProtoEntity));

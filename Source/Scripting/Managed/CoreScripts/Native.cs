@@ -567,8 +567,29 @@ namespace FOnline
             IntPtr entityPtr,
             object[] args);
 
+        // Outcome of a managed -> script invocation. Mirrors INVOKE_STATUS_* in ManagedScriptBackend.cpp.
+        // Kept distinct because a single bool made "no such function" and "the call failed" the same answer,
+        // and callers legitimately assert the former as a missing bridge.
+        internal const int ScriptInvokeStatusFailed = -1;
+        internal const int ScriptInvokeStatusNoCandidate = 0;
+        internal const int ScriptInvokeStatusCompleted = 1;
+
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool InvokeScriptFunc(string funcName, object?[] args);
+        internal static extern int InvokeScriptFuncStatus(string funcName, object?[] args);
+
+        // A failed invocation is an error at the callee, not a missing entry: surface it instead of letting the
+        // caller mistake it for one. The engine has already logged the underlying exception with its stack.
+        internal static bool InvokeScriptFunc(string funcName, object?[] args)
+        {
+            int status = InvokeScriptFuncStatus(funcName, args);
+
+            if (status == ScriptInvokeStatusFailed)
+            {
+                throw new InvalidOperationException("Script function invocation failed: " + funcName);
+            }
+
+            return status == ScriptInvokeStatusCompleted;
+        }
 
         // Registers a managed global script function into the engine's cross-backend function map under a named
         // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
