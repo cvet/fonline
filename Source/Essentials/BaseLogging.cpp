@@ -101,7 +101,7 @@ extern void LogToFile(string_view path, bool append)
             BaseLogging->LogFileHandle.close();
         }
 
-        int32_t open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+        std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
         BaseLogging->LogFileHandle.open(std::string(path), open_mode);
 
         if (!BaseLogging->LogFileHandle) {

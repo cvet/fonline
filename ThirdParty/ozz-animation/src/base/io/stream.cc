@@ -129,7 +129,10 @@ size_t MemoryStream::Read(void* _buffer, size_t _size) {
   }
 
   const int read_size = math::Min(end_ - tell_, static_cast<int>(_size));
-  std::memcpy(_buffer, buffer_ + tell_, read_size);
+  if (read_size != 0) {  // (FOnline Patch) ozz serializes empty arrays through a null data pointer, and memcpy
+                         // with a null pointer is undefined even for a zero size (UBSan nonnull-attribute).
+    std::memcpy(_buffer, buffer_ + tell_, read_size);
+  }
   tell_ += read_size;
   return read_size;
 }
@@ -157,7 +160,10 @@ size_t MemoryStream::Write(const void* _buffer, size_t _size) {
   const int tell_end = tell_ + size;
   if (Resize(tell_end)) {
     end_ = math::Max(tell_end, end_);
-    std::memcpy(buffer_ + tell_, _buffer, _size);
+    if (_size != 0) {  // (FOnline Patch) ozz serializes empty arrays through a null data pointer, and memcpy
+                       // with a null pointer is undefined even for a zero size (UBSan nonnull-attribute).
+      std::memcpy(buffer_ + tell_, _buffer, _size);
+    }
     tell_ += size;
     return _size;
   }

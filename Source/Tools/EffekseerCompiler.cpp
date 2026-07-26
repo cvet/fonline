@@ -500,17 +500,32 @@ void BinaryWriter::WriteUtf16(string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    wstring wide = strex(value).to_wide_char();
-    WriteInt32(numeric_cast<int32_t>(wide.size() + 1));
+    // Decode the UTF-8 input directly rather than through a platform wide string: strex::to_wide_char is
+    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way.
+    vector<uint16_t> units;
+    units.reserve(value.length());
 
-    for (wchar_t ch : wide) {
-        uint32_t codepoint = numeric_cast<uint32_t>(ch);
+    for (size_t i = 0; i < value.length();) {
+        size_t length = value.length() - i;
+        auto text_pos = make_ptr(value.data() + i);
+        uint32_t codepoint = utf8::Decode(text_pos, length);
+
+        if (!utf8::IsValid(codepoint)) {
+            throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
+        }
 
         if (codepoint > 0xffffU) {
             throw EffekseerCompilerException("Effekseer dependency path contains a non-BMP character", value);
         }
 
-        WriteUInt16(numeric_cast<uint16_t>(codepoint));
+        units.emplace_back(numeric_cast<uint16_t>(codepoint));
+        i += length;
+    }
+
+    WriteInt32(numeric_cast<int32_t>(units.size() + 1));
+
+    for (uint16_t unit : units) {
+        WriteUInt16(unit);
     }
 
     WriteUInt16(0);
