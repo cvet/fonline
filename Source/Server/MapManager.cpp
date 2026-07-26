@@ -126,7 +126,7 @@ void MapManager::LoadFromResources()
 
                         // Checks
                         if (auto hex = cr->GetHex(); !map_size.is_valid_pos(hex)) {
-                            throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetName(), hex);
+                            throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetDisplayName(), hex);
                         }
                     }
                 }

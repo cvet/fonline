@@ -758,7 +758,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -851,14 +851,14 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
     ignore_unused(enabled);
 }
 
-void AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(text);
 }
 
-auto AppInput::GetClipboardText() -> const string&
+auto AppInput::GetClipboardText() -> const u8string&
 {
     FO_STACK_TRACE_ENTRY();
 

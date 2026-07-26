@@ -295,7 +295,7 @@ struct InputEvent
     struct KeyDownEvent
     {
         KeyCode Code {};
-        string Text {};
+        u8string Text {};
     } KeyDown {};
 
     struct KeyUpEvent
@@ -379,7 +379,7 @@ public:
     [[nodiscard]] virtual auto GetRenderTarget() -> nptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
@@ -399,7 +399,7 @@ public:
     [[nodiscard]] virtual auto IsMouseAvailable() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto GetMousePosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto GetGamepadState() const noexcept -> GamepadState = 0;
-    [[nodiscard]] virtual auto GetClipboardText() -> const string& = 0;
+    [[nodiscard]] virtual auto GetClipboardText() -> const u8string& = 0;
     [[nodiscard]] virtual auto IsShiftDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsCtrlDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsAltDown() const noexcept -> bool = 0;
@@ -409,7 +409,12 @@ public:
     virtual void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) = 0;
     virtual void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) = 0;
     virtual void SetScreenKeyboardEnabled(bool enabled) = 0;
-    virtual void SetClipboardText(string_view text) = 0;
+    virtual void SetClipboardText(u8string_view text) = 0;
+    void SetClipboardText(string_view text)
+    {
+        const u8string utf8_text = text;
+        SetClipboardText(utf8_text);
+    }
 };
 
 class IAppAudio
@@ -544,7 +549,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
@@ -571,10 +576,12 @@ class AppInput final : public IAppInput
 public:
     static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
+    using IAppInput::SetClipboardText;
+
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
     [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override;
-    [[nodiscard]] auto GetClipboardText() -> const string& override;
+    [[nodiscard]] auto GetClipboardText() -> const u8string& override;
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
     [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }
     [[nodiscard]] auto IsAltDown() const noexcept -> bool override { return _altDown; }
@@ -584,7 +591,7 @@ public:
     void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) override;
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override;
     void SetScreenKeyboardEnabled(bool enabled) override;
-    void SetClipboardText(string_view text) override;
+    void SetClipboardText(u8string_view text) override;
 
 private:
     explicit AppInput(ptr<Application> app) :
@@ -593,7 +600,7 @@ private:
     }
 
     ptr<Application> _app;
-    string _clipboardTextStorage {};
+    u8string _clipboardTextStorage {};
     ipos32 _lastMousePos {};
     bool _shiftDown {};
     bool _ctrlDown {};

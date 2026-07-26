@@ -1581,13 +1581,13 @@ void ServerEngine::DrawGui()
         ImGui::PushID(make_nptr(cr.get()).void_cast());
 
         const string_view cond_str = cond_to_str(cr->GetCondition());
-        const u8string label = u8strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str);
+        const u8string label = u8strex("{} ({}) [{}]", cr->GetDisplayName(), cr->GetId(), cond_str);
         const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
         if (ImGui::TreeNode(label_ptr.get())) {
             if (begin_info_table("##CritterSummary")) {
                 info_row("Id", strex("{}", cr->GetId()).str());
-                info_row("Name", cr->GetName());
+                info_row("Name", cr->GetDisplayName());
                 info_row("Proto", u8strex("{}", cr->GetProtoId()));
                 info_row("Map id", strex("{}", cr->GetMapId()).str());
                 info_row("Hex", strex("{}", cr->GetHex()).str());
@@ -1694,9 +1694,10 @@ void ServerEngine::DrawGui()
             auto player = players[i].as_ptr();
             ImGui::PushID(make_nptr(player.get()).void_cast());
 
-            string label = strex("{} ({})", player->GetName(), player->GetId()).str();
+            const u8string label = u8strex("{} ({})", player->GetDisplayName(), player->GetId());
+            const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-            if (ImGui::TreeNode(label.c_str())) {
+            if (ImGui::TreeNode(label_ptr.get())) {
                 auto controlled_critter = player->GetControlledCritter();
                 auto connection = player->GetConnection();
 
@@ -1704,7 +1705,7 @@ void ServerEngine::DrawGui()
                     auto connection_diagnostics = connection->GetDiagnostics();
 
                     info_row("Id", strex("{}", player->GetId()).str());
-                    info_row("Name", player->GetName());
+                    info_row("Name", player->GetDisplayName());
                     info_row("Logined", strex("{}", player->GetLogined()).str());
                     info_row("Host", connection->GetHost());
                     info_row("Port", strex("{}", connection->GetPort()).str());
@@ -2059,7 +2060,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
-        WriteLog("Disconnected player {}", player->GetName());
+        WriteLog("Disconnected player {}", player->GetDisplayName());
 
         ValidateEntityAccess(player);
         ValidateEntityAccess(player->GetControlledCritter());
@@ -2291,7 +2292,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     EnsureEntitySynced(cr);
 
-    WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
+    WriteLog(LogType::Info, "Unload critter {}", cr->GetDisplayName());
 
     if (cr->IsDestroying()) {
         throw GenericException("Critter in destroying state");
@@ -2416,7 +2417,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
             return;
         }
 
-        WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
+        WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetDisplayName(), prev_cr->GetDisplayName());
         // Recreate the old chosen as an ordinary critter view. RemoveCritter clears the client's
         // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false.
         player->Send_RemoveCritter(prev_cr);
@@ -2439,7 +2440,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         throw GenericException("Critter already attached to player");
     }
 
-    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
+    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetDisplayName(), cr->GetDisplayName());
 
     player->ResetViewMap();
 
@@ -2478,13 +2479,18 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 
     FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
-    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
-
     if (EntityMngr.GetCritter(cr_id)) {
         throw GenericException("Critter must be unloaded before destroying");
     }
 
-    DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
+    if (!DbStorage.Valid(CrittersCollectionName, cr_id)) {
+        WriteLog(LogType::Info, "Unloaded critter {} has no stored data to destroy", cr_id);
+        return;
+    }
+
+    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
+
+    DbStorage.Delete(CrittersCollectionName, cr_id);
 }
 
 void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)
@@ -2990,7 +2996,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
 
         if (player_doc.Contains("_Name")) {
             const auto player_name = AnyData::ValueToString(player_doc["_Name"]);
-            player->SetName(utf8_as_char_view(player_name.view()));
+            player->SetName(player_name);
         }
 
         player->SetLogined(true);
@@ -3151,7 +3157,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const string player_name {player->GetName()};
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3176,7 +3182,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    const string critter_name {cr->GetName()};
+    const u8string critter_name = cr->GetDisplayName();
 
     nptr<Critter> expected_cr = cr;
 
@@ -3327,7 +3333,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const string player_name {player->GetName()};
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3352,7 +3358,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    const string critter_name {cr->GetName()};
+    const u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
@@ -3435,7 +3441,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const string player_name {player->GetName()};
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3460,7 +3466,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    const string critter_name {cr->GetName()};
+    const u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
@@ -3646,38 +3652,38 @@ void ServerEngine::Process_Property(ptr<Player> player)
     }
 
     if (!prop) {
-        throw GenericException("Unknown property index", player->GetName(), type, property_index);
+        throw GenericException("Unknown property index", player->GetDisplayName(), type, property_index);
     }
     if (!entity) {
-        WriteLog(LogType::Info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetName(), type, prop->GetName(), property_index, cr_id, item_id);
+        WriteLog(LogType::Info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetDisplayName(), type, prop->GetName(), property_index, cr_id, item_id);
         return;
     }
 
     if (prop->IsDisabled()) {
-        throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is disabled", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (prop->IsVirtual()) {
-        throw GenericException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is virtual", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        throw GenericException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not public sync", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (!is_public && !prop->IsSynced()) {
-        throw GenericException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not synced", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
 
     try {
         ValidateInboundPropertyData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()}, *this);
     }
     catch (const ClientDataValidationException& ex) {
-        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetName(), type, entity->GetName());
+        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetDisplayName(), type, entity->GetName());
         throw;
     }
 
@@ -4151,8 +4157,8 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
-    const string player_name {player->GetName()};
-    const string critter_name {cr->GetName()};
+    const u8string player_name = player->GetDisplayName();
+    const u8string critter_name = cr->GetDisplayName();
     const string map_name {map->GetName()};
 
     auto moving = cr->GetMoving();
@@ -4282,8 +4288,8 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string player_name {player->GetName()};
-    const string critter_name {cr->GetName()};
+    const u8string player_name = player->GetDisplayName();
+    const u8string critter_name = cr->GetDisplayName();
     const string map_name {map->GetName()};
     const int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
 

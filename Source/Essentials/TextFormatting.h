@@ -71,12 +71,6 @@ namespace text_format_detail
     inline constexpr bool IsStrictArg = IsUtf8StrictArg<T>;
 
     template<typename T>
-    inline constexpr bool IsStrictOwner = std::same_as<plain_format_arg_t<T>, u8string>;
-
-    template<typename T>
-    inline constexpr bool IsRvalueStrictOwner = IsStrictOwner<T> && !std::is_lvalue_reference_v<T>;
-
-    template<typename T>
     inline constexpr bool IsVolatileStrictArg = IsStrictArg<T> && std::is_volatile_v<std::remove_reference_t<T>>;
 
     template<typename T>
@@ -113,7 +107,7 @@ namespace text_format_detail
     inline constexpr bool IsAmbiguousTextArg = !IsStrictArg<T> && (IsRawTextArg<T> || IsNativeTextArg<T> || IsImplicitTextArg<T>);
 
     template<typename T>
-    inline constexpr bool IsUtf8FormatArg = !IsRvalueStrictOwner<T> && !IsVolatileStrictArg<T> && (!IsAmbiguousTextArg<T> || IsNarrowCharTextArg<T> || IsStringProxyArg<T> || HasCharFormatter<T>);
+    inline constexpr bool IsUtf8FormatArg = !IsVolatileStrictArg<T> && (!IsAmbiguousTextArg<T> || IsNarrowCharTextArg<T> || IsStringProxyArg<T> || HasCharFormatter<T>);
 
     template<typename T>
     inline constexpr bool IsAsciiFormatArg = IsUtf8FormatArg<T> && !IsUtf8StrictArg<T> && !IsUtf8StringProxyArg<T>;

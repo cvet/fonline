@@ -318,13 +318,21 @@ extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
     {
-        return FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
+        const FO_NAMESPACE u8string& text = FO_NAMESPACE GetApp() -> Input.GetClipboardText();
+        return FO_NAMESPACE return_utf8_c_str(text.view_nt());
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
     {
         const FO_NAMESPACE nptr<const char> text_ptr = text;
-        FO_NAMESPACE GetApp() -> Input.SetClipboardText(text_ptr ? std::string_view {text_ptr.get()} : std::string_view {});
+        if (text_ptr) {
+            const size_t text_size = std::char_traits<char>::length(text_ptr.get()) + 1;
+            const FO_NAMESPACE u8string utf8_text = FO_NAMESPACE utf8_from_terminated_char_span(FO_NAMESPACE const_span<char> {text_ptr.get(), text_size});
+            FO_NAMESPACE GetApp() -> Input.SetClipboardText(utf8_text);
+        }
+        else {
+            FO_NAMESPACE GetApp() -> Input.SetClipboardText(u8"");
+        }
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
@@ -333,7 +341,12 @@ extern "C"
         using FO_NAMESPACE KeyCode;
 
         const FO_NAMESPACE nptr<const char> text_ptr = text;
-        FO_NAMESPACE string paste_text = text_ptr ? FO_NAMESPACE string {text_ptr.get()} : FO_NAMESPACE string {};
+        FO_NAMESPACE u8string paste_text;
+
+        if (text_ptr) {
+            const size_t text_size = std::char_traits<char>::length(text_ptr.get()) + 1;
+            paste_text = FO_NAMESPACE utf8_from_terminated_char_span(FO_NAMESPACE const_span<char> {text_ptr.get(), text_size});
+        }
 
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(paste_text);
         FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})}, false);
@@ -468,13 +481,13 @@ namespace WebRelated
 #endif
     }
 
-    void SyncClipboardToSystem(string_view text)
+    void SyncClipboardToSystem(u8string_view text)
     {
         FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
-        const string clipboard_text = string(text);
-        auto text_ptr = make_ptr(clipboard_text.c_str());
+        const u8string clipboard_text {text};
+        ptr<const char> text_ptr = utf8_to_c_str(clipboard_text.view_nt());
         WebSyncClipboardToSystemImpl(text_ptr.get());
 #else
         ignore_unused(text);
@@ -521,10 +534,10 @@ namespace WebRelated
         FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
-        const auto title_str = utf8_to_char_string(title);
-        const auto text_str = utf8_to_char_string(text);
-        auto title_ptr = make_ptr(title_str.c_str());
-        auto text_ptr = make_ptr(text_str.c_str());
+        const u8string title_str {title};
+        const u8string text_str {text};
+        const ptr<const char> title_ptr = utf8_to_c_str(title_str.view_nt());
+        const ptr<const char> text_ptr = utf8_to_c_str(text_str.view_nt());
         WebShowErrorImpl(title_ptr.get(), text_ptr.get());
 #else
         ignore_unused(title);

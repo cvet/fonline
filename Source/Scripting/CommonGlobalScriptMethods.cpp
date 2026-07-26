@@ -319,15 +319,15 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_GetClipboardText(ptr<BaseEngine> engine)
+FO_SCRIPT_API u8string Common_Game_GetClipboardText(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    return string {GetApp()->Input.GetClipboardText()};
+    return GetApp()->Input.GetClipboardText();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetClipboardText(ptr<BaseEngine> engine, string_view text)
+FO_SCRIPT_API void Common_Game_SetClipboardText(ptr<BaseEngine> engine, u8string_view text)
 {
     ignore_unused(engine);
 

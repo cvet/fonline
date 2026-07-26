@@ -1688,6 +1688,19 @@ auto u8strex::erase(char8_t begin, char8_t end) -> u8strex&
     return *this;
 }
 
+auto u8strex::erase_ascii_control_chars() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([](auto& storage) {
+        std::erase_if(storage, [](char8_t ch) {
+            const uint8_t code = static_cast<uint8_t>(ch);
+            return code < 0x20 || code == 0x7F;
+        });
+    });
+    return *this;
+}
+
 auto u8strex::replace(char8_t from, char8_t to) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();

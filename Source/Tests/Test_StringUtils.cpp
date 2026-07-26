@@ -199,6 +199,9 @@ TEST_CASE("StringUtils")
         CHECK_FALSE(u8strvex(hello_mixed).compare_ignore_case(u8" ПРЕТТТ   "));
         CHECK(u8strex(upper_source).lower() == hello_lower);
         CHECK(u8strex(upper_mixed).upper() == hello_upper);
+
+        const u8string controls_removed = u8strex(u8"\x03Привет\x7F\n").erase_ascii_control_chars();
+        CHECK(controls_removed == u8"Привет");
         CHECK(u8strvex(u8"\t Привет 🌍 \r\n").trim() == u8"Привет 🌍");
         CHECK(u8strvex(u8" \n\r\t").trim().empty());
         CHECK(u8strvex(u8"жПриветж").trim(u8"ж") == u8"Привет");

@@ -1128,7 +1128,7 @@ void SyncContext::EnsureFreshEntitySynced(nptr<ServerEntity> entity)
     EnsureEntitySyncedImpl(entity);
 }
 
-void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
+void FO_TSA_NO_ANALYSIS SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1201,20 +1201,105 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
 
     std::ranges::sort(ops, [](const auto& a, const auto& b) { return a.first < b.first; });
 
-    // One NON-BLOCKING attempt — no release, retry, back-off, yield, or block-acquire. Because `SyncEntities`
-    // locks exactly the requested set (there is no sibling-to-parent escalation), the entity is covered by
-    // an ancestor this thread holds EXCLUSIVELY, which excludes every other thread from the whole subtree —
-    // so the entity's own lock and each intermediate ancestor mark are ours to take uncontended, and this
-    // lands on the first try. The exclusion is STRICT because parked acquisitions hold nothing (the
-    // no-camping stage-2 protocol in `AcquireLocksOrderedFair`): a completed foreign acquisition inside
-    // the subtree would have blocked our exclusive ancestor via its root mark, an in-flight one either
-    // rolls back its transient try-pass or is parked empty-handed — so a miss here can only mean the
-    // entity is not actually covered (a contract violation — the caller must `Game.Sync` its subtree in
-    // advance) or a transient try-window race. Both fail immediately. An ordinary native call must
-    // propagate that failure rather than retry the same target; a script may prepare and revalidate a new
-    // invocation explicitly.
-    if (!TryAcquireEnsureOpsAtomically(ops)) {
-        throw EntitySyncException("EnsureEntitySynced: covered entity lock is contended", entity->GetName(), entity->GetId());
+    // NEVER a release-and-reacquire: this only ADDS to what we already hold, so the covered entity stays
+    // covered throughout and cannot be moved out from under us. Because `SyncEntities` locks exactly the
+    // requested set (there is no sibling-to-parent escalation), the entity is covered by an ancestor this
+    // thread holds EXCLUSIVELY, which excludes every other thread from the whole subtree — so the entity's
+    // own lock and each intermediate ancestor mark are logically ours to take. The exclusion is STRICT
+    // because a completed foreign acquisition inside the subtree would have blocked our exclusive ancestor
+    // via its root mark, and parked ones hold nothing (the no-camping stage-2 protocol in
+    // `AcquireLocksOrderedFair`). Only the microsecond-scale try-windows of foreign threads mid-flight
+    // through their own non-blocking passes can still stand in the way, and the batch loop below absorbs
+    // those with bounded back-off, so the acquisition is mandatory and lands sooner or later. It throws only
+    // when the entity is not actually covered — a contract violation, the caller must `Game.Sync` its subtree
+    // in advance — or the covered-cover invariant is corrupt; that is never ordinary contention. An ordinary
+    // native call must propagate the failure rather than retry the same target; a script may prepare and
+    // revalidate a new invocation explicitly.
+    //
+    // The acquisition is one all-or-nothing transaction, scoped so every state mutex is released as soon as
+    // the ownership commit is done and never held across this context's own bookkeeping below.
+    {
+        for (size_t i = 1; i < ops.size(); i++) {
+            FO_VERIFY_AND_THROW(ops[i - 1].first < ops[i].first, "Ensure acquisition operations must be sorted and unique", i);
+        }
+
+        vector<ptr<EntityLock>> state_locked;
+        state_locked.reserve(ops.size());
+
+        auto unlock_state = scope_exit([&state_locked]() FO_TSA_NO_ANALYSIS noexcept {
+            for (auto it = state_locked.rbegin(); it != state_locked.rend(); ++it) {
+                (*it)->UnlockStateMutex();
+            }
+        });
+
+        // Acquire the whole batch — try-lock every op's state mutex, then check compatibility with all of
+        // them held — retrying the batch as a unit until it lands. For a COVERED entity every miss is
+        // transient by construction, never a permanent conflict: we hold an ancestor EXCLUSIVELY, which
+        // excludes every other thread from the subtree, so no foreign thread can be a settled holder below
+        // it. What we can still meet is a foreign thread mid-flight through its own non-blocking protocol:
+        //   - RELEASING — its descendant-mark on our target momentarily outlives the ancestor-mark that
+        //     gated our exclusivity, because marks release by lock address, not by hierarchy; or its state
+        //     mutex is busy because it is inside `UnregisterDescendantHold` right now;
+        //   - ACQUIRING — `AcquireLocks` stage 1 took our target as part of its ascending-address prefix and
+        //     is about to fail on our exclusively-held ancestor and roll the prefix back (holding nothing
+        //     blocking while it does), or `AcquireLocksOrderedFair` stage 2 is parked HOLDING NOTHING.
+        // Both shapes clear within microseconds without any action from us, and we retain nothing across the
+        // back-off (the partial batch is rolled back, the caller's cover is never released), so retrying
+        // always makes progress and no wait-for cycle can form. `MAX_SYNC_RETRIES` is a livelock valve, not
+        // a normal give-up path: exhausting it means the covered-cover invariant is broken. Retaining every
+        // try-lock until the batch is checked also keeps the ownership commit atomic with respect to
+        // ordinary EntityLock operations.
+        for (int32_t attempt = 0;; attempt++) {
+            bool acquired = true;
+
+            for (const auto& [const_lock, is_exclusive] : ops) {
+                ignore_unused(is_exclusive);
+                auto op_lock = const_lock;
+
+                if (!op_lock->TryLockStateMutex()) {
+                    acquired = false;
+                    break;
+                }
+
+                state_locked.emplace_back(op_lock);
+            }
+
+            // Preflight the complete batch before changing a recursion counter, owner, or descendant mark.
+            if (acquired) {
+                for (const auto& [op_lock, is_exclusive] : ops) {
+                    if (!op_lock->IsEnsureOpCompatible(is_exclusive)) {
+                        acquired = false;
+                        break;
+                    }
+                }
+            }
+
+            if (acquired) {
+                break;
+            }
+
+            // Roll the partial batch back before backing off: parking on a prefix would block the very
+            // foreign pass whose completion we are waiting for.
+            for (auto it = state_locked.rbegin(); it != state_locked.rend(); ++it) {
+                (*it)->UnlockStateMutex();
+            }
+
+            state_locked.clear();
+
+            if (attempt + 1 >= MAX_SYNC_RETRIES) {
+                throw EntitySyncException("EnsureEntitySynced: covered entity lock is contended", entity->GetName(), entity->GetId());
+            }
+
+            BackoffBeforeSyncRetry(attempt);
+        }
+
+        // All internal state mutexes are still held and every operation is compatible. Allocation in the
+        // inline holder table follows the engine-wide terminate-on-OOM policy, so no recoverable failure
+        // can split this no-throw commit.
+        for (const auto& [const_lock, is_exclusive] : ops) {
+            auto op_lock = const_lock;
+            op_lock->CommitEnsureOp(is_exclusive);
+        }
     }
 
     // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a shared/
@@ -1227,55 +1312,6 @@ void SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> entity)
         _heldDescendantHolds.emplace_back(add_marks[i]);
         _heldDescendantHoldOwners.emplace_back(std::move(add_mark_owners[i]));
     }
-}
-
-auto FO_TSA_NO_ANALYSIS SyncContext::TryAcquireEnsureOpsAtomically(const_span<pair<ptr<EntityLock>, bool>> ops) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (size_t i = 1; i < ops.size(); i++) {
-        FO_VERIFY_AND_THROW(ops[i - 1].first < ops[i].first, "Ensure acquisition operations must be sorted and unique", i);
-    }
-
-    vector<ptr<EntityLock>> state_locked;
-    state_locked.reserve(ops.size());
-
-    auto unlock_state = scope_exit([&state_locked]() FO_TSA_NO_ANALYSIS noexcept {
-        for (auto it = state_locked.rbegin(); it != state_locked.rend(); ++it) {
-            (*it)->UnlockStateMutex();
-        }
-    });
-
-    // This is the only acquisition phase: a busy internal state mutex is contention, not permission
-    // to wait. Retaining every successful try-lock until the whole batch has been checked also makes
-    // the later ownership-state commit atomic with respect to ordinary EntityLock operations.
-    for (const auto& [const_lock, is_exclusive] : ops) {
-        ignore_unused(is_exclusive);
-        auto lock = const_lock;
-
-        if (!lock->TryLockStateMutex()) {
-            return false;
-        }
-
-        state_locked.emplace_back(lock);
-    }
-
-    // Preflight the complete batch before changing a recursion counter, owner, or descendant mark.
-    for (const auto& [lock, is_exclusive] : ops) {
-        if (!lock->IsEnsureOpCompatible(is_exclusive)) {
-            return false;
-        }
-    }
-
-    // All internal state mutexes are still held and every operation is compatible. Allocation in the
-    // inline holder table follows the engine-wide terminate-on-OOM policy, so no recoverable failure
-    // can split this no-throw commit.
-    for (const auto& [const_lock, is_exclusive] : ops) {
-        auto lock = const_lock;
-        lock->CommitEnsureOp(is_exclusive);
-    }
-
-    return true;
 }
 
 void SyncContext::Release() noexcept

@@ -38,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
-static auto DecodeFontLayoutChar(string_view text, size_t offset, size_t& encoded_length) noexcept -> uint32_t;
+static auto DecodeFontLayoutChar(std::u8string_view text, size_t offset, size_t& encoded_length) noexcept -> uint32_t;
 
 FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
@@ -657,7 +657,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    string& str = fi.Text;
+    auto& str = fi.Text;
     auto flags = fi.Format.Flags;
     auto font = fi.CurFont;
     FO_VERIFY_AND_THROW(font, "Font is null");
@@ -670,7 +670,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 
     // Colorize: strip `@color:...@` markers and write parsed colors into TextColor.
     nptr<ucolor> dots;
-    string buf;
+    FontFormatInfo::mutable_u8string buf;
     buf.reserve(str.size());
 
     if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize)) {
@@ -684,10 +684,10 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     size_t pos = 0;
 
     while (pos < str.size()) {
-        size_t marker_pos = str.find(InlineColorTagPrefix, pos);
+        size_t marker_pos = str.find(InlineColorTagPrefix.native_view(), pos);
 
-        if (marker_pos == string::npos) {
-            buf.append(str, pos, string::npos);
+        if (marker_pos == FontFormatInfo::mutable_u8string::npos) {
+            buf.append(str, pos, FontFormatInfo::mutable_u8string::npos);
             break;
         }
 
@@ -697,7 +697,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         ucolor d;
         bool reset = false;
 
-        if (!ParseInlineColorTag(str, marker_pos, tag_end, d, reset)) {
+        const u8string_view validated_str = u8string_view::FromChecked(std::u8string_view {str.data(), str.size()});
+
+        if (!ParseInlineColorTag(validated_str, marker_pos, tag_end, d, reset)) {
             buf.append(str, marker_pos, 1);
             pos = marker_pos + 1;
             continue;
@@ -858,7 +860,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                 }
                 else if (mode == FormatMode::Split) {
                     if (fi.LinesInRect != 0 && fi.LinesAll % fi.LinesInRect == 0) {
-                        fi.Lines.emplace_back(str.substr(0, numeric_cast<size_t>(i)));
+                        fi.Lines.emplace_back(u8string::FromChecked(std::u8string_view {str.data(), numeric_cast<size_t>(i)}));
                         str.erase(0, numeric_cast<size_t>(i + i_advance));
                         i = -i_advance;
                     }
@@ -918,7 +920,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     }
 
     if (mode == FormatMode::Split) {
-        fi.Lines.emplace_back(str);
+        fi.Lines.emplace_back(u8string::FromChecked(std::u8string_view {str.data(), str.size()}));
         return;
     }
     if (mode == FormatMode::LineCount) {
@@ -1051,74 +1053,81 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     }
 }
 
-auto FontManager::IsInlineColorHex(string_view value) -> bool
+auto FontManager::IsInlineColorHex(u8string_view value) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (value.size() >= 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
-        value.remove_prefix(2);
+    std::u8string_view native_value = value.native_view();
+
+    if (native_value.size() >= 2 && native_value[0] == u8'0' && (native_value[1] == u8'x' || native_value[1] == u8'X')) {
+        native_value.remove_prefix(2);
     }
 
-    if (value.size() != 6 && value.size() != 8) {
+    if (native_value.size() != 6 && native_value.size() != 8) {
         return false;
     }
 
-    return std::ranges::all_of(value, [](char ch) { return std::isxdigit(static_cast<unsigned char>(ch)) != 0; });
+    return std::ranges::all_of(native_value, [](char8_t ch) { return (ch >= u8'0' && ch <= u8'9') || (ch >= u8'a' && ch <= u8'f') || (ch >= u8'A' && ch <= u8'F'); });
 }
 
-auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool
+auto FontManager::ParseInlineColorTag(u8string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (marker_pos + InlineColorTagPrefix.size() >= str.size()) {
+    std::u8string_view native_str = str.native_view();
+    std::u8string_view native_prefix = InlineColorTagPrefix.native_view();
+
+    if (marker_pos + native_prefix.size() >= native_str.size()) {
         return false;
     }
-    if (str.compare(marker_pos, InlineColorTagPrefix.size(), InlineColorTagPrefix) != 0) {
-        return false;
-    }
-
-    size_t close_pos = str.find('@', marker_pos + InlineColorTagPrefix.size());
-
-    if (close_pos == string_view::npos) {
+    if (native_str.compare(marker_pos, native_prefix.size(), native_prefix) != 0) {
         return false;
     }
 
-    string_view value = str.substr(marker_pos + InlineColorTagPrefix.size(), close_pos - marker_pos - InlineColorTagPrefix.size());
+    size_t close_pos = native_str.find(u8'@', marker_pos + native_prefix.size());
 
-    if (value.empty()) {
+    if (close_pos == std::u8string_view::npos) {
+        return false;
+    }
+
+    std::u8string_view native_value = native_str.substr(marker_pos + native_prefix.size(), close_pos - marker_pos - native_prefix.size());
+
+    if (native_value.empty()) {
         tag_end = close_pos + 1;
         reset = true;
         return true;
     }
-    if (value.front() != ':') {
+    if (native_value.front() != u8':') {
         return false;
     }
 
-    value.remove_prefix(1);
+    native_value.remove_prefix(1);
 
-    while (!value.empty() && (value.back() == ' ' || value.back() == '\t')) {
-        value.remove_suffix(1);
+    while (!native_value.empty() && (native_value.back() == u8' ' || native_value.back() == u8'\t')) {
+        native_value.remove_suffix(1);
     }
-    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) {
-        value.remove_prefix(1);
+    while (!native_value.empty() && (native_value.front() == u8' ' || native_value.front() == u8'\t')) {
+        native_value.remove_prefix(1);
     }
+
+    const u8string_view value = u8string_view::FromChecked(native_value);
 
     if (!IsInlineColorHex(value)) {
         return false;
     }
 
-    if (value.size() >= 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
-        value.remove_prefix(2);
+    if (native_value.size() >= 2 && native_value[0] == u8'0' && (native_value[1] == u8'x' || native_value[1] == u8'X')) {
+        native_value.remove_prefix(2);
     }
 
-    string value_str {value};
+    const string value_str = utf8_to_string(u8string_view::FromChecked(native_value));
     color = ucolor {numeric_cast<uint32_t>(std::strtoul(value_str.c_str(), nullptr, 16))};
     tag_end = close_pos + 1;
     reset = false;
     return true;
 }
 
-auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>
+auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, u8string_view str) const -> ptr<const FontFormatInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1128,7 +1137,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
     const std::array<uint64_t, 8> key_parts {
-        HashStorage::DefaultHash(make_byte_span(str)),
+        HashStorage::DefaultHash(make_byte_span(str.native_view())),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),
@@ -1145,7 +1154,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         return it->second;
     }
 
-    auto str_len = str.length();
+    auto str_len = str.size();
     auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
     auto max_lines = std::max<size_t>(str_len + 1, 1);
 
@@ -1155,7 +1164,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     fi->Format = format;
     fi->Rect = irect32 {0, 0, rect.width, rect.height};
     fi->Color = color;
-    fi->Text.assign(str);
+    fi->Text.assign(str.native_view());
     fi->TextColor.assign(max_chars, ucolor::clear);
     fi->LineWidth.assign(max_lines, 0);
     fi->LineSpaceWidth.assign(max_lines, 0);
@@ -1168,14 +1177,6 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     return fi_ptr;
 }
 
-void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextFormat format)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const u8string utf8_str = str;
-    DrawText(rect, utf8_str, color, format);
-}
-
 void FontManager::DrawText(irect32 rect, u8string_view str, ucolor color, TextFormat format)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1184,13 +1185,12 @@ void FontManager::DrawText(irect32 rect, u8string_view str, ucolor color, TextFo
         return;
     }
 
-    const string str_chars = utf8_to_char_string(str);
     auto font = GetFont(format.Font);
     color = _sprMngr->ApplyColorBrightness(color);
-    auto fi = GetOrFormat(format, format.Font, rect, color, FormatMode::Draw, str_chars);
+    auto fi = GetOrFormat(format, format.Font, rect, color, FormatMode::Draw, str);
 
     auto flags = format.Flags;
-    const string& format_str = fi->Text;
+    const auto& format_str = fi->Text;
     int32_t color_offset = fi->ColorOffset;
     int32_t curx = rect.x + fi->CurX;
     int32_t cury = rect.y + fi->CurY;
@@ -1356,7 +1356,15 @@ void FontManager::DrawText(irect32 rect, u8string_view str, ucolor color, TextFo
     }
 }
 
-auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t
+void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextFormat format)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_str = str;
+    DrawText(rect, utf8_str, color, format);
+}
+
+auto FontManager::GetLinesCount(isize32 size, u8string_view str, FontType num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1376,7 +1384,15 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
     return fi->LinesInRect;
 }
 
-auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t
+auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_str = str;
+    return GetLinesCount(size, utf8_str, num_font);
+}
+
+auto FontManager::GetLinesHeight(isize32 size, u8string_view str, FontType num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1394,6 +1410,14 @@ auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_fon
     return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
 }
 
+auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_str = str;
+    return GetLinesHeight(size, utf8_str, num_font);
+}
+
 auto FontManager::GetLineHeight(FontType num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -1401,7 +1425,7 @@ auto FontManager::GetLineHeight(FontType num_font) const -> int32_t
     return GetFont(num_font)->LineHeight;
 }
 
-auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
+auto FontManager::GetTextInfo(isize32 size, u8string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1422,18 +1446,34 @@ auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, 
     return true;
 }
 
-auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>
+auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (cstr.empty()) {
+    const u8string utf8_str = str;
+    return GetTextInfo(size, utf8_str, format, result_size, lines);
+}
+
+auto FontManager::SplitLines(irect32 rect, u8string_view str, FontType num_font) -> vector<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (str.empty()) {
         return {};
     }
 
     TextFormat format;
     format.Font = num_font;
-    auto fi = GetOrFormat(format, num_font, rect, ucolor {}, FormatMode::Split, cstr);
+    auto fi = GetOrFormat(format, num_font, rect, ucolor {}, FormatMode::Split, str);
     return fi->Lines;
+}
+
+auto FontManager::SplitLines(irect32 rect, string_view str, FontType num_font) -> vector<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_str = str;
+    return SplitLines(rect, utf8_str, num_font);
 }
 
 auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
@@ -1443,7 +1483,7 @@ auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
     return GetFont(num_font)->Letters.count(letter) != 0;
 }
 
-static auto DecodeFontLayoutChar(string_view text, size_t offset, size_t& encoded_length) noexcept -> uint32_t
+static auto DecodeFontLayoutChar(std::u8string_view text, size_t offset, size_t& encoded_length) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 

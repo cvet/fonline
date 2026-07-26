@@ -159,8 +159,8 @@ static_assert(CanFormatUtf8WithAsciiFormatArgument<strvex&>);
 static_assert(CanFormatUtf8WithAsciiFormatArgument<std::string&>);
 static_assert(!CanFormatUtf8WithAsciiFormatArgument<std::u8string&>);
 static_assert(!CanFormatUtf8WithAsciiFormatArgument<std::u8string_view>);
-static_assert(!CanFormatUtf8WithAsciiFormatArgument<u8string>);
-static_assert(!CanFormatUtf8WithAsciiFormatArgument<const u8string>);
+static_assert(CanFormatUtf8WithAsciiFormatArgument<u8string>);
+static_assert(CanFormatUtf8WithAsciiFormatArgument<const u8string>);
 static_assert(CanFormatUtf8WithAsciiFormatArgument<const char*>);
 static_assert(!CanFormatUtf8WithAsciiFormatArgument<const char8_t*>);
 static_assert(!CanFormatUtf8WithAsciiFormatArgument<const wchar_t*>);
@@ -189,8 +189,8 @@ static_assert(CanFormatUtf8WithUtf8FormatArgument<strvex&>);
 static_assert(CanFormatUtf8WithUtf8FormatArgument<std::string&>);
 static_assert(!CanFormatUtf8WithUtf8FormatArgument<std::u8string&>);
 static_assert(!CanFormatUtf8WithUtf8FormatArgument<std::u8string_view>);
-static_assert(!CanFormatUtf8WithUtf8FormatArgument<u8string>);
-static_assert(!CanFormatUtf8WithUtf8FormatArgument<const u8string>);
+static_assert(CanFormatUtf8WithUtf8FormatArgument<u8string>);
+static_assert(CanFormatUtf8WithUtf8FormatArgument<const u8string>);
 static_assert(CanFormatUtf8WithUtf8FormatArgument<const char*>);
 static_assert(!CanFormatUtf8WithUtf8FormatArgument<const char8_t*>);
 static_assert(!CanFormatUtf8WithUtf8FormatArgument<const wchar_t*>);
@@ -262,8 +262,10 @@ TEST_CASE("TextFormatting")
         const string label {"message"};
         const u8string value {u8"мир 🌍"};
         const u8string result = FormatUtf8("{}: {}", label, value);
+        const u8string temporary_result = FormatUtf8("{}: {}", label, u8string {u8"временный 🌍"});
 
         CHECK(result == u8"message: мир 🌍");
+        CHECK(temporary_result == u8"message: временный 🌍");
     }
 
     SECTION("NarrowCharacterArgumentsPromoteDirectlyToUtf8")

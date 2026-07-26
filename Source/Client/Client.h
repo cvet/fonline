@@ -125,7 +125,7 @@ public:
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ProcessInputEvent(const InputEvent& ev);
-    void SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath);
+    void SetEffect(EffectType effectType, int64_t effectSubtype, u8string_view effectPath);
     void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
     void SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1);
     void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
@@ -219,7 +219,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchZoom, ipos32 /*screenPos*/, float32_t /*factor*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
+    FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, u8string /*text*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
     ///@ ExportEvent

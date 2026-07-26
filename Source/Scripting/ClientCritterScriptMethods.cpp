@@ -58,7 +58,7 @@ static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_SetName(ptr<CritterView> self, string_view name)
+FO_SCRIPT_API void Client_Critter_SetName(ptr<CritterView> self, u8string_view name)
 {
     self->SetName(name);
 }

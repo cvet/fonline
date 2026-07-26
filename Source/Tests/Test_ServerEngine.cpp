@@ -103,7 +103,11 @@ namespace
         return map_data;
     }
 
-    static auto ExpectEnsureStateMutexContentionIsNonBlocking(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock) -> std::chrono::steady_clock::duration
+    // A SUSTAINED state-mutex hold is an impossible state for a covered target (it can only be produced
+    // synthetically, as here): the retry loop absorbs transient windows, so an unending one exhausts the
+    // livelock valve and throws. Returns how long the give-up took, so the caller can assert the wait is
+    // bounded and self-terminating rather than rescued by the watchdog.
+    static auto ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock) -> std::chrono::steady_clock::duration
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -126,8 +130,11 @@ namespace
             std::this_thread::yield();
         }
 
+        // Safety net only — it must stay well above the retry budget (which on a coarse-timer platform is
+        // dominated by the sleep granularity), so releasing early can never turn the expected throw into a
+        // success and mask a regression.
         std::jthread contention_watchdog {[&](std::stop_token) {
-            for (int32_t i = 0; i < 2000 && !ensure_finished.load(std::memory_order_acquire); i++) {
+            for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
 
@@ -142,6 +149,29 @@ namespace
         state_owner.join();
         contention_watchdog.join();
         return ensure_elapsed;
+    }
+
+    // The realistic counterpart: a foreign thread that holds the state mutex only for the microsecond-to-
+    // millisecond span of its own non-blocking pass. Retention must retry THROUGH that window and land,
+    // because for a covered target such a block always clears on its own.
+    static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        std::atomic<bool> state_locked {};
+        std::jthread state_owner {[&](std::stop_token) {
+            state_lock->LockStateMutex();
+            state_locked.store(true, std::memory_order_release);
+            std::this_thread::sleep_for(std::chrono::milliseconds {40});
+            state_lock->UnlockStateMutex();
+        }};
+
+        while (!state_locked.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        CHECK_NOTHROW(ctx.EnsureEntitySynced(target));
+        state_owner.join();
     }
 
     static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
@@ -1554,8 +1584,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Distinct covered children can each be retained once without changing or releasing the parent cover.
-    // This is the runtime counterpart of the allowed structural-loop contract: one non-blocking attempt
-    // per newly visited entity is not a retry of the same target.
+    // This is the runtime counterpart of the allowed structural-loop contract: one acquisition per newly
+    // visited entity is not a retry of the same target.
     ctx.SyncEntity(map);
     ctx.EnsureEntitySynced(cr_a);
     ctx.EnsureEntitySynced(cr_b);
@@ -1587,10 +1617,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(successful_item_lock->GetExclusiveRecursionForCurrentThread() == 0);
     CHECK(successful_cr_lock->GetDescendantHoldCountForCurrentThread() == 0);
 
-    // A violated hierarchy contract must fail one non-blocking retention attempt without releasing
-    // the valid caller cover. Directly taking the child's raw lock simulates the impossible foreign
-    // contention while bypassing ancestor intention marks; the watchdog only prevents a broken
-    // blocking implementation from hanging the test forever.
+    // A violated hierarchy contract must fail retention without releasing the valid caller cover. Directly
+    // taking the child's raw lock simulates the impossible foreign contention while bypassing ancestor
+    // intention marks: an unending foreign exclusive hold under our exclusively-held ancestor cannot occur
+    // for a genuinely covered target, so retention retries it as if transient and then reports the corrupt
+    // invariant when the livelock valve trips. The watchdog is a safety net only and must stay above that
+    // valve, so it can never release early and turn the expected throw into a success.
     ctx.SyncEntity(map);
     auto cr_lock = cr_a->GetEntityLock();
     REQUIRE(cr_lock);
@@ -1613,7 +1645,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     std::jthread contention_watchdog {[&](std::stop_token) {
-        for (int32_t i = 0; i < 2000 && !ensure_finished.load(std::memory_order_acquire); i++) {
+        for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
             std::this_thread::sleep_for(std::chrono::milliseconds {1});
         }
 
@@ -1626,21 +1658,23 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     release_child.store(true, std::memory_order_release);
     child_owner.join();
     contention_watchdog.join();
-    CHECK(ensure_elapsed < std::chrono::milliseconds {500});
+    // Bounded and self-terminating: it gave up on its own retry budget, well before the watchdog released.
+    CHECK(ensure_elapsed < std::chrono::seconds {5});
     CHECK(ctx.ValidateAccess(map));
     const auto retained_cover = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
     CHECK(std::ranges::find(retained_cover, cr_a_entity) == retained_cover.end());
     ctx.Release();
 
-    // A busy target's internal state mutex is itself contention. Ensure must fail without waiting for
-    // the holder or changing the valid parent cover.
+    // A busy target's internal state mutex normally means a foreign non-blocking pass is mid-flight, so
+    // retention retries through it (covered below). An UNENDING hold cannot legitimately happen; ensure must
+    // then give up on its own bounded budget without changing the valid parent cover.
     {
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
         REQUIRE(target_lock);
-        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, cr_a, target_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
         const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
@@ -1649,8 +1683,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ctx.Release();
     }
 
-    // The same guarantee applies to an intermediate ancestor mark. Failing its state-mutex try-lock
-    // must not leave either the descendant's exclusive count or the intermediate mark incremented.
+    // The same guarantee applies to an intermediate ancestor mark. Giving up on its state mutex must not
+    // leave either the descendant's exclusive count or the intermediate mark incremented.
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1658,8 +1692,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         REQUIRE(target_lock);
         REQUIRE(intermediate_lock);
         REQUIRE(target_lock != intermediate_lock);
-        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, nested_item, intermediate_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, intermediate_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
@@ -1669,8 +1703,9 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ctx.Release();
     }
 
-    // Deterministically contend the second address-ordered state mutex. The failed one-shot attempt
-    // must release the first state mutex it already try-locked and leave both ownership counters at zero.
+    // Deterministically contend the second address-ordered state mutex. Every unlanded attempt — including
+    // the last one before giving up — must roll back the first state mutex it already try-locked and leave
+    // both ownership counters at zero.
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1680,8 +1715,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         REQUIRE(target_lock != intermediate_lock);
         auto first_lock = target_lock < intermediate_lock ? target_lock : intermediate_lock;
         auto second_lock = target_lock < intermediate_lock ? intermediate_lock : target_lock;
-        const auto ensure_state_mutex_elapsed = ExpectEnsureStateMutexContentionIsNonBlocking(ctx, nested_item, second_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::milliseconds {500});
+        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
+        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         const bool first_state_mutex_free = first_lock->TryLockStateMutex();
@@ -1694,6 +1729,44 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, nested_item_entity) == cover_after_second_state_mutex_contention.end());
         ctx.Release();
+    }
+
+    // The realistic case, and the reason retention retries at all: a foreign thread holds the state mutex
+    // only for the span of its own non-blocking pass. Retention must absorb that window and LAND — reporting
+    // it instead would make an ordinary concurrent access fail a caller that provably owns the cover (the
+    // regression this pins: `DestroyLocation` retaining a child map while a worker drains its marks).
+    {
+        ctx.SyncEntity(map);
+        auto target_lock = cr_a->GetEntityLock();
+        REQUIRE(target_lock);
+        ExpectTransientEnsureStateMutexContentionIsAbsorbed(ctx, cr_a, target_lock);
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 1);
+        CHECK(ctx.ValidateAccess(map));
+        CHECK(ctx.ValidateAccess(cr_a));
+        const auto cover_after_transient_contention = ctx.GetHeldEntities();
+        CHECK(std::ranges::find(cover_after_transient_contention, map_entity) != cover_after_transient_contention.end());
+        CHECK(std::ranges::find(cover_after_transient_contention, cr_a_entity) != cover_after_transient_contention.end());
+        ctx.Release();
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
+    }
+
+    // The same absorption for an intermediate ancestor mark: a transient hold on the mark's state mutex must
+    // not fail the nested target's retention.
+    {
+        ctx.SyncEntity(map);
+        auto target_lock = nested_item->GetEntityLock();
+        auto intermediate_lock = cr_a->GetEntityLock();
+        REQUIRE(target_lock);
+        REQUIRE(intermediate_lock);
+        REQUIRE(target_lock != intermediate_lock);
+        ExpectTransientEnsureStateMutexContentionIsAbsorbed(ctx, nested_item, intermediate_lock);
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 1);
+        CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 1);
+        CHECK(ctx.ValidateAccess(map));
+        CHECK(ctx.ValidateAccess(nested_item));
+        ctx.Release();
+        CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
+        CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
     }
 
     // A failed multi-op atomic preflight must leave every operation unchanged.

@@ -69,12 +69,12 @@ Player::~Player()
     }
 }
 
-auto Player::GetName() const noexcept -> string_view
+auto Player::GetDisplayName() const -> u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _name;
+    return _displayName;
 }
 
 auto Player::GetControlledCritter() noexcept -> nptr<Critter>
@@ -138,7 +138,15 @@ void Player::SetName(string_view name)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    _name = name;
+    _displayName.assign(name);
+}
+
+void Player::SetName(u8string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    _displayName.assign(name);
 }
 
 void Player::SetControlledCritter(nptr<Critter> cr)

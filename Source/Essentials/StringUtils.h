@@ -492,6 +492,7 @@ public:
 
     auto erase(char8_t what) -> u8strex&;
     auto erase(char8_t begin, char8_t end) -> u8strex&;
+    auto erase_ascii_control_chars() -> u8strex&;
     auto replace(char8_t from, char8_t to) -> u8strex&;
     auto replace(char8_t from1, char8_t from2, char8_t to) -> u8strex&;
     auto replace(u8string_view from, u8string_view to) -> u8strex&;

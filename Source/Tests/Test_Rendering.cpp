@@ -39,15 +39,15 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTestEffectLoader() -> RenderEffectLoader
 {
-    return [](string_view name) -> vector<byte> {
+    return [](u8string_view name) -> vector<byte> {
         string_view content;
 
-        if (name == "Effects/Test_Default.fofx") {
+        if (name == u8"Effects/Test_Default.fofx" || name == u8"Effects/Тест_Рендера.fofx") {
             content = R"([Effect]
 Passes = 1
 )";
         }
-        else if (name == "Effects/Test_Default.fofx-1-info") {
+        else if (name == u8"Effects/Test_Default.fofx-1-info" || name == u8"Effects/Тест_Рендера.fofx-1-info") {
             content = R"([EffectInfo]
 MainTex = 0
 MainTexBuf = 1
@@ -92,7 +92,7 @@ TEST_CASE("NullRenderer")
     {
         auto tex = renderer.CreateTexture({2, 2}, false, false);
         auto dbuf = renderer.CreateDrawBuffer(false);
-        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_Default.fofx", MakeTestEffectLoader());
 
         dbuf->Vertices.resize(4);
         dbuf->VertCount = 4;
@@ -105,6 +105,13 @@ TEST_CASE("NullRenderer")
         REQUIRE_NOTHROW(effect->DrawBuffer(dbuf));
         CHECK(effect->MainTexBuf.has_value());
         CHECK(effect->ProjBuf.has_value());
+    }
+
+    SECTION("Utf8EffectResourcePath")
+    {
+        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Тест_Рендера.fofx", MakeTestEffectLoader());
+
+        CHECK(effect->GetName() == u8"Effects/Тест_Рендера.fofx");
     }
 }
 

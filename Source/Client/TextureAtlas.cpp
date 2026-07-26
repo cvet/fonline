@@ -288,27 +288,25 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
 {
     FO_STACK_TRACE_ENTRY();
 
+    std::stable_sort(free_rectangles.begin(), free_rectangles.end(), [](const irect32& left, const irect32& right) { //
+        return GetArea(left.size()) > GetArea(right.size());
+    });
+
     vector<irect32> pruned_rectangles;
     pruned_rectangles.reserve(free_rectangles.size());
 
-    for (size_t i = 0; i < free_rectangles.size(); i++) {
+    for (const irect32& candidate : free_rectangles) {
         bool contained = false;
 
-        for (size_t j = 0; j < free_rectangles.size(); j++) {
-            if (i == j) {
-                continue;
-            }
-
-            bool duplicate_with_earlier = free_rectangles[i] == free_rectangles[j] && j < i;
-
-            if (Contains(free_rectangles[j], free_rectangles[i]) && (free_rectangles[i] != free_rectangles[j] || duplicate_with_earlier)) {
+        for (const irect32& keeper : pruned_rectangles) {
+            if (Contains(keeper, candidate)) {
                 contained = true;
                 break;
             }
         }
 
         if (!contained) {
-            pruned_rectangles.emplace_back(free_rectangles[i]);
+            pruned_rectangles.emplace_back(candidate);
         }
     }
 

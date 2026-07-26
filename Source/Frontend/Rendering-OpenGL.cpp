@@ -306,7 +306,7 @@ class OpenGL_Effect final : public RenderEffect
     friend class OpenGL_Renderer;
 
 public:
-    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, ptr<OpenGL_Renderer::Context> ctx) :
+    OpenGL_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, ptr<OpenGL_Renderer::Context> ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -724,7 +724,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     return std::move(opengl_dbuf);
 }
 
-auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto OpenGL_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -741,11 +741,11 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl_es";
         }
 
-        const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        u8string vert_fname = u8strex("{}.fofx-{}-vert-{}", u8strex(name).erase_file_extension(), pass + 1, ext);
         const vector<byte> vert_data = loader(vert_fname);
         const u8string vert_content = utf8_from_byte_span(vert_data);
         FO_VERIFY_AND_THROW(!vert_content.empty(), "OpenGL effect vertex shader content is empty after loading", name, pass + 1, vert_fname);
-        const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        u8string frag_fname = u8strex("{}.fofx-{}-frag-{}", u8strex(name).erase_file_extension(), pass + 1, ext);
         const vector<byte> frag_data = loader(frag_fname);
         const u8string frag_content = utf8_from_byte_span(frag_data);
         FO_VERIFY_AND_THROW(!frag_content.empty(), "OpenGL effect fragment shader content is empty after loading", name, pass + 1, frag_fname);

@@ -493,10 +493,14 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
     }
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
-        auto key_code = ev.KeyDown.Code;
-        string key_text = ev.KeyDown.Text;
+        KeyCode key_code = ev.KeyDown.Code;
+        // Windows turns Alt+numpad into an OS text-input event whose payload can be a bare C0 control character.
+        u8string key_text = u8strex(ev.KeyDown.Text).erase_ascii_control_chars().str();
 
-        OnKeyDown.Fire(key_code, key_text);
+        // Text event that carried nothing but control characters has no payload left to deliver
+        if (key_code != KeyCode::Text || !key_text.empty() || ev.KeyDown.Text.empty()) {
+            OnKeyDown.Fire(key_code, key_text);
+        }
     }
     else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
         auto key_code = ev.KeyUp.Code;
@@ -1976,7 +1980,7 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
+    hstring type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
@@ -2856,7 +2860,7 @@ void ClientEngine::ProcessVideo()
     }
 }
 
-void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath)
+void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
 {
     FO_STACK_TRACE_ENTRY();
 

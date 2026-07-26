@@ -63,6 +63,7 @@ public:
     ~Critter() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetDisplayName() const -> u8string override;
     [[nodiscard]] auto HasPlayer() const noexcept -> bool;
     [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>;
     [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>;

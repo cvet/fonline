@@ -349,6 +349,14 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 - `FontManager` loads fonts and formats/draws text, including inline color tags.
 - `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen render targets.
 
+Effect resource names remain strict UTF-8 from `EffectManager` through
+`IAppRender`, `RenderEffect`, every renderer backend, and `RenderEffectLoader`.
+The manager keeps an ASCII overload for ordinary technical literals, which
+promote into the UTF-8 path without caller-side adapters. Parsed effect
+configuration values such as blend functions and depth modes are technical
+ASCII tokens and cross that narrower boundary only through the checked
+`utf8_to_string()` conversion.
+
 For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
@@ -440,6 +448,12 @@ sampling rectangle is not the source sprite silhouette.
 
 `FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 
+Font layout, line splitting, measurement, and drawing accept `u8string_view` and keep their mutable
+layout storage as `char8_t`. ASCII overloads forward into the same pipeline for technical or
+literal-only callers. The only narrowing inside inline-tag parsing is the checked conversion of an
+already verified ASCII hexadecimal color token; ordinary rendered text is never exposed as a
+`char` view.
+
 `Game.BindFont(font, path, defaultScale = 1.0)` can downscale the bound font slot. The scale is applied once at bind time: glyph bitmaps are re-rasterized in place inside the font's atlas region with an area-average filter, and every metric (advances, offsets, line height, space width) is rounded to integers at the target size. The runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) therefore always works in plain integer pixel coordinates — a scaled font behaves exactly like a font authored at the smaller size, with no fractional glyph positions. The scale must be in `(0..1]`; upscaling a bitmap font is rejected — author a bigger font asset for larger text.
 
 ## Input and script-facing hooks
@@ -453,6 +467,10 @@ sampling rectangle is not the source sprite silhouette.
 - map render-stage events such as `OnRenderMap_BeforeTiles`, `OnRenderMap_AfterSprites`, and `OnRenderMap_AfterFlushMap`.
 
 Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
+
+**Typed text is filtered here, not in the frontend layer.** `ProcessInputEvent()` strips C0 control characters and `DEL` from `KeyDown.Text` before raising `OnKeyDown`, and drops a `KeyCode::Text` event whose payload was nothing but control characters. Windows delivers Alt+numpad as an ordinary OS text-input event, so codes below `0x20` arrive as bare control characters; a bitmap font then draws them as CP437 pseudographics and they surface as junk glyphs in chat and text fields. Filtering by *character* rather than by the Alt modifier keeps AltGr, ordinary typing, and printable Alt codes (`Alt+0169`) working. Byte-wise filtering is safe for UTF-8 because every byte of a multi-byte sequence is `>= 0x80`.
+
+`ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
 Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
 

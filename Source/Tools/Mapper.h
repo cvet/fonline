@@ -194,7 +194,7 @@ public:
     void HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
     void HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
     void UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup);
-    void HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text);
+    void HandleMapperConsoleKeyDown(KeyCode dikdw, u8string_view key_text);
     void ChangeZoom(float32_t new_zoom);
 
     void CurDraw();

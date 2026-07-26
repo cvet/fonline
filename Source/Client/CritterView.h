@@ -55,6 +55,7 @@ public:
     ~CritterView() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
+    [[nodiscard]] auto GetDisplayName() const -> u8string override { return _displayName; }
     [[nodiscard]] auto IsAlive() const noexcept -> bool { return GetCondition() == CritterCondition::Alive; }
     [[nodiscard]] auto IsKnockout() const noexcept -> bool { return GetCondition() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const noexcept -> bool { return GetCondition() == CritterCondition::Dead; }
@@ -72,7 +73,7 @@ public:
     auto AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>;
     void DeleteInvItem(ptr<ItemView> item);
     void DeleteAllInvItems();
-    void SetName(string_view name);
+    void SetName(u8string_view name);
     void SetAttachedCritters(vector<ident_t> attached_critters);
 
 protected:
@@ -80,6 +81,7 @@ protected:
 
     vector<refcount_ptr<ItemView>> _invItems {};
     vector<ident_t> _attachedCritters {};
+    u8string _displayName {};
 };
 
 FO_END_NAMESPACE

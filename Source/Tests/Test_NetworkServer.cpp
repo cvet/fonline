@@ -69,7 +69,7 @@ namespace
         vector<byte> result;
         result.reserve(values.size());
 
-        for (const uint8_t value : values) {
+        for (uint8_t value : values) {
             result.emplace_back(byte {value});
         }
 
@@ -147,7 +147,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     shared_ptr<NetworkServerConnection> accepted_conn;
     vector<byte> received_data;
     vector<byte> sent_data;
-    const vector<byte> response_data = Bytes({4, 5, 6});
+    vector<byte> response_data = Bytes({4, 5, 6});
     size_t client_disconnect_count = 0;
     size_t server_disconnect_count = 0;
 
@@ -356,6 +356,8 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
         error_message = ex.what();
     }
 
+    CAPTURE(error_message);
+
     REQUIRE_FALSE(error_message.empty());
     CHECK(error_message.find("Address already in use") != string::npos);
     CHECK(error_message.find(std::to_string(port)) != string::npos);
@@ -384,7 +386,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     auto server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
         conn->SetAsyncCallbacks([]() -> const_span<byte> { return {}; },
             [&](const_span<byte> buf) {
-                const scoped_lock lock {state_mutex};
+                scoped_lock lock {state_mutex};
                 received.insert(received.end(), buf.begin(), buf.end());
             },
             []() {});
@@ -400,7 +402,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     client.clear_error_channels(websocketpp::log::elevel::all);
     client.init_asio();
 
-    const vector<byte> payload = Bytes({1, 2, 3});
+    vector<byte> payload = Bytes({1, 2, 3});
 
     client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
         std::error_code send_error;

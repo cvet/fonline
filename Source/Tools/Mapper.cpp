@@ -855,7 +855,7 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     }
 }
 
-void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text)
+void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, u8string_view key_text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -6269,26 +6269,41 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
     FO_STACK_TRACE_ENTRY();
 
     auto map_files = MapsFileSys.FilterFiles("");
-    File map_file = map_files.FindFileByName(map_name);
+
+    string requested_stem = strex(map_name).extract_file_name().erase_file_extension().str();
+    File map_file;
+    string resolved_map_name;
+
+    auto resolve_declared_map = [&](const File& candidate) -> bool {
+        auto declared_maps = MapLoader::EnumerateMaps(candidate.GetPath(), candidate.GetText());
+
+        if (std::ranges::find(declared_maps, string {map_name}) != declared_maps.end()) {
+            resolved_map_name = string {map_name};
+            return true;
+        }
+
+        if (std::ranges::find(declared_maps, requested_stem) != declared_maps.end()) {
+            resolved_map_name = requested_stem;
+            return true;
+        }
+
+        return false;
+    };
+
+    if (File by_name = map_files.FindFileByName(map_name); by_name && resolve_declared_map(by_name)) {
+        map_file = std::move(by_name);
+    }
 
     if (!map_file) {
         string map_path = strex(map_name).format_path().str();
-        map_file = map_files.FindFileByPath(map_path);
 
         for (const auto& proto_ext : Settings->ProtoFileExtensions) {
-            if (map_file) {
+            File by_path = map_files.FindFileByPath(strex("{}.{}", map_path, proto_ext).str());
+
+            if (by_path && resolve_declared_map(by_path)) {
+                map_file = std::move(by_path);
                 break;
             }
-
-            map_file = map_files.FindFileByPath(strex("{}.{}", map_path, proto_ext).str());
-        }
-    }
-
-    if (map_file) {
-        auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetText());
-
-        if (std::ranges::find(declared_maps, map_name) == declared_maps.end()) {
-            map_file = File {};
         }
     }
 
@@ -6300,9 +6315,8 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
             }
 
             File candidate_file = File::Load(file_header);
-            auto declared_maps = MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetText());
 
-            if (std::ranges::find(declared_maps, map_name) != declared_maps.end()) {
+            if (resolve_declared_map(candidate_file)) {
                 map_file = std::move(candidate_file);
                 break;
             }
@@ -6315,7 +6329,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
     }
 
     const u8string map_text = map_file.GetText();
-    return LoadMapFromText(map_name, map_file.GetPath(), map_text);
+    return LoadMapFromText(resolved_map_name, map_file.GetPath(), map_text);
 }
 
 void MapperEngine::ShowMap(ptr<MapView> map)

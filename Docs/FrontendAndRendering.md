@@ -123,6 +123,13 @@ Input responsibilities include:
 - gamepad state;
 - normalization of mouse, keyboard, wheel, touch tap, touch double-tap, touch scroll, and touch zoom events.
 
+Text carried by input events and the clipboard is strict UTF-8: `KeyDown.Text` and the
+`IAppInput` clipboard API use `u8string`. SDL, ImGui, browser, and other C APIs are adapted only at
+their immediate `char*` boundary, where incoming bytes are validated and outgoing UTF-8 obtains a
+temporary null-terminated C view. C callbacks that return the borrowed clipboard pointer use the
+shared `return_utf8_c_str()` boundary helper; callers do not unwrap pointer facades themselves.
+ASCII call sites can use the forwarding clipboard overload without spelling a conversion.
+
 Mouse button input preserves the concrete platform button id when mapping to script-facing `MouseButton`
 values (`Left`, `Right`, `Middle`, `Ext0`/`Ext1`, ...); unknown native buttons are ignored rather than
 falling back to a primary click.
@@ -481,6 +488,14 @@ Local-map viewports recenter instantly on the chosen critter when their screen s
 - camera/model/model-texture/model-animation data.
 
 `EffectManager` in `Source/Client/EffectManager.h` loads minimal/default effects, resolves script-selected effects, writes script-value buffers, and performs per-frame updates. Scripts can write one `ScriptValueBuf` float with `Game.SetEffectScriptValue(...)`, or write a contiguous range with `Game.SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values, valuesOffset = 0, valuesCount = -1)` to avoid repeated native calls when updating shader parameter blocks. Both APIs validate the selected effect, require the shader to declare `ScriptValueBuf`, and enforce the configured `EFFECT_SCRIPT_VALUES` range.
+
+Effect resource paths are strict UTF-8 throughout the render boundary:
+`EffectManager`, `IAppRender::CreateEffect()`, `RenderEffect`, backend-generated
+shader/pass names, and `RenderEffectLoader` all use `u8string` /
+`u8string_view`. Ordinary ASCII literals still use the manager's natural
+overload and promote without explicit wrappers. Only the effect file's
+technical enum-like values (`BlendFunc`, `BlendEquation`, and `DepthFunc`) are
+checked down to ASCII before their parsers consume them.
 
 **Shader time is session-relative and wrapped.** `TimeBuf` (`FrameTime.x` / `GameTime.x`, seconds) is rebased to the first rendered frame and wrapped at 8192 s by `EffectManager::PerFrameEffectUpdate` — it is a periodic animation-phase input, not an absolute clock. The raw steady-clock time is seconds since OS boot (days-scale on long-running machines), and even session-relative time reaches 10^5–10^6 s on clients embedded into long-running servers; at such magnitudes fp32 `fract()`/hash/`sin` math degrades into visible stepping (high-frequency phases like `sin(t * 76)` break within a day) and the clock granularity eventually exceeds the frame delta. The fp32-exact wrap keeps granularity under 1 ms for any session length at the cost of a once-per-~2.3h phase pop, which consumers must keep on noisy/ambient math. Effects that feed the time into hash lattices should still wrap locally (`mod(p, period)` noise lattices in the fog effects); script-side accumulated effect clocks (e.g. weather anim clocks passed through `ScriptValueBuf`) need the same treatment — an fp32 accumulator that only grows will first quantize and then freeze once its ulp exceeds the per-tick increment.
 

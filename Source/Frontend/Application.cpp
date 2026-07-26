@@ -634,8 +634,20 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     }
 
-    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().c_str(); };
-    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED {
+        const u8string& text = GetApp()->Input.GetClipboardText();
+        return return_utf8_c_str(text.view_nt());
+    };
+    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED {
+        if (text != nullptr) {
+            const size_t text_size = std::char_traits<char>::length(text) + 1;
+            const u8string utf8_text = utf8_from_terminated_char_span(const_span<char> {text, text_size});
+            GetApp()->Input.SetClipboardText(utf8_text);
+        }
+        else {
+            GetApp()->Input.SetClipboardText(u8"");
+        }
+    };
     platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
@@ -730,11 +742,9 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view effect_path = utf8_as_char_view(Settings.ImGuiDefaultEffect.view());
-
-    if (!_imguiEffect && resources.IsFileExists(effect_path)) {
+    if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         auto active_renderer = GetActiveRenderer(_ctx);
-        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, effect_path, [&](string_view path) -> vector<byte> {
+        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](u8string_view path) -> vector<byte> {
             const auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
             return file.GetData();
@@ -1960,7 +1970,8 @@ void Application::BeginFrame()
                                 SDL_free(data.get());
                             }
                         });
-                        paste_ev.Text = string {clipboard_text.get()};
+                        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+                        paste_ev.Text = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
                     }
                     else {
                         paste_ev.Text = {};
@@ -2002,7 +2013,8 @@ void Application::BeginFrame()
         case SDL_EVENT_TEXT_INPUT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            ev1.Text = sdl_event.text.text;
+            const size_t text_size = std::char_traits<char>::length(sdl_event.text.text) + 1;
+            ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.text.text, text_size});
 
             if (!imgui_capture_keyboard) {
                 _ctx->EventsQueue.emplace_back(ev1);
@@ -2020,7 +2032,8 @@ void Application::BeginFrame()
         case SDL_EVENT_DROP_TEXT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            ev1.Text = sdl_event.drop.data;
+            const size_t text_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
+            ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.drop.data, text_size});
             _ctx->EventsQueue.emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
@@ -2051,10 +2064,10 @@ void Application::BeginFrame()
 
                 if (size == 0 || (file.read(buf, static_cast<std::streamsize>(size)) && file.gcount() == static_cast<std::streamsize>(size))) {
                     buf[size] = 0;
-                    const string_view drop_path_chars = utf8_as_char_view(drop_path.view());
+                    const u8string file_text = utf8_from_char_span(const_span<char> {buf, size});
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
-                    ev1.Text = strex("{}\n{}{}", drop_path_chars, buf, stripped ? "..." : "");
+                    ev1.Text = u8strex(u8"{}\n{}{}", drop_path, file_text, stripped ? "..." : "");
                     _ctx->EventsQueue.emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
@@ -2840,7 +2853,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return active_renderer->CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3017,17 +3030,17 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
     }
 }
 
-void AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    string clipboard_text = string(text);
-    auto clipboard_text_ptr = make_ptr(clipboard_text.c_str());
+    const u8string clipboard_text {text};
+    ptr<const char> clipboard_text_ptr = utf8_to_c_str(clipboard_text.view_nt());
     SDL_SetClipboardText(clipboard_text_ptr.get());
     WebRelated::SyncClipboardToSystem(text);
 }
 
-auto AppInput::GetClipboardText() -> const string&
+auto AppInput::GetClipboardText() -> const u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3039,7 +3052,8 @@ auto AppInput::GetClipboardText() -> const string&
                 SDL_free(data.get());
             }
         });
-        _clipboardTextStorage = string {clipboard_text.get()};
+        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+        _clipboardTextStorage = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
     }
     else {
         _clipboardTextStorage = {};
@@ -3164,15 +3178,15 @@ void Application::ShowErrorMessage(u8string_view message, u8string_view tracebac
     const u8string web_message = traceback.empty() ? u8string(message) : u8strex(u8"{}\n\n{}", message, traceback);
     WebRelated::ShowError(title, web_message);
 #else
-    const string title_text = utf8_to_char_string(title);
-    const string message_text = utf8_to_char_string(message);
-    auto title_ptr = make_ptr(title_text.c_str());
-    auto message_ptr = make_ptr(message_text.c_str());
+    const u8string title_text {title};
+    const u8string message_text {message};
+    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    const ptr<const char> message_ptr = utf8_to_c_str(message_text.view_nt());
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title_ptr.get(), message_ptr.get(), nullptr);
 #endif
 
 #else
-    const string title_text = utf8_to_char_string(title);
+    const u8string title_text {title};
     auto verb_message = u8string(message);
 
     if (!traceback.empty()) {
@@ -3215,13 +3229,11 @@ void Application::ShowErrorMessage(u8string_view message, u8string_view tracebac
     const SDL_MessageBoxButtonData buttons_with_ignore[] = {copy_button, ignore_all_button, ignore_button, exit_button};
     const SDL_MessageBoxButtonData buttons_with_exit[] = {copy_button, exit_button};
 
-    const string verb_message_text = utf8_to_char_string(verb_message);
-
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    auto title_ptr = make_ptr(title_text.c_str());
-    auto message_ptr = make_ptr(verb_message_text.c_str());
+    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    const ptr<const char> message_ptr = utf8_to_c_str(verb_message.view_nt());
     data.title = title_ptr.get();
     data.message = message_ptr.get();
     data.numbuttons = fatal_error ? 2 : 4;

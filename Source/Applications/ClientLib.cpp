@@ -98,7 +98,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION;
     exports->Run = &RunClientRuntimeAbi;
 
-    WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, build_hash, compatibility_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
+    WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
     return true;
 }
 
@@ -136,7 +136,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         if (runtime_result) {
             if (Data->ReloadRequested) {
                 FO_VERIFY_AND_THROW(!Data->StagedRuntimePath.empty(), "Client runtime requested reload but did not provide a staged runtime path", quit_success, Data->ReloadRequested);
-                WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath.view());
+                WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
                 runtime_result->ResultKind = ClientRuntimeResultKind::ReloadRequested;
                 runtime_result->Success = true;
                 runtime_result->RequestedRuntimePath = utf8_to_c_str(Data->StagedRuntimePath.view_nt()).get();
@@ -234,7 +234,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); request that exact path.
-                    string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    u8string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -245,7 +245,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
-                        WriteLog("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath.view());
+                        WriteLog("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
                         GetApp()->RequestQuit();
                         return;
                     default:

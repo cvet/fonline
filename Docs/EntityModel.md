@@ -46,7 +46,7 @@ For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](G
 
 Important accessors and mutation paths include:
 
-- identity/type: `GetName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
+- identity/type: `GetName()`, `GetDisplayName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
 - property access: `GetProperties()`, `GetPropertiesForEdit()`, `GetValueAsInt()`, `GetValueAsAny()`, `SetValueAsInt()`, `SetValueAsAny()`;
 - raw data snapshots: `StoreData()`, `RestoreData()`, `SetValueFromData()`;
 - lifecycle state: `IsDestroying()`, `IsDestroyed()`, `MarkAsDestroying()`, `MarkAsDestroyed()`;
@@ -54,6 +54,13 @@ Important accessors and mutation paths include:
 - event dispatch: `SubscribeEvent()`, `UnsubscribeEvent()`, `FireEvent()`.
 
 Do not bypass `Properties` when changing entity state. Property callbacks, overlay data, sync flags, persistence flags, and script-visible accessors depend on the property layer seeing the mutation.
+
+`GetName()` is the ASCII technical identity used for engine diagnostics and authored entity/prototype
+names. `GetDisplayName()` is the UTF-8 presentation identity exposed by script `Entity.Name`. Most
+entities implicitly promote their technical name, while player-backed server critters and client
+critter views override it with their `u8string` player/display name. Code that renders or logs a
+player-visible identity uses `GetDisplayName()`; code that selects a technical type, prototype, or
+hash uses `GetName()`.
 
 ## Generated property wrappers
 

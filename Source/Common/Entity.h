@@ -187,6 +187,7 @@ public:
     auto operator=(Entity&&) noexcept = delete;
 
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
+    [[nodiscard]] virtual auto GetDisplayName() const -> u8string { return GetName(); }
     [[nodiscard]] virtual auto GetId() const noexcept -> ident_t { return {}; }
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }

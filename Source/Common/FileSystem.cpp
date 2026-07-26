@@ -85,12 +85,11 @@ auto FileHeader::GetDiskPath() const -> u8string
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
-    const string_view pack_name = utf8_as_char_view(_dataSource->GetPackName());
-    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", pack_name, _fileSize, _writeTime);
-    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, pack_name);
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
+    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
 
-    const u8string file_path = _filePath;
-    return fs_path_to_u8string(std::filesystem::path {fs_make_path(_dataSource->GetPackName())} / std::filesystem::path {fs_make_path(file_path.view())});
+    u8string file_path = _filePath;
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(_dataSource->GetPackName())} / std::filesystem::path {fs_make_path(file_path)});
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -736,6 +735,14 @@ auto FileSystem::IsFileExists(string_view path) const -> bool
     }
 
     return false;
+}
+
+auto FileSystem::IsFileExists(u8string_view path) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string path_chars = utf8_to_char_string(path);
+    return IsFileExists(path_chars);
 }
 
 auto FileSystem::ReadFile(string_view path) const -> File

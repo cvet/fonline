@@ -52,6 +52,7 @@ using wide_string = std::basic_string<wchar_t, std::char_traits<wchar_t>, SafeAl
 [[nodiscard]] auto utf8_to_byte_span(u8string_view value) noexcept -> const_span<byte>;
 [[nodiscard]] auto string_to_byte_span(string_view value) noexcept -> const_span<byte>;
 [[nodiscard]] auto utf8_to_c_str(u8string_view_nt value) noexcept -> ptr<const char>;
+[[nodiscard]] auto return_utf8_c_str(u8string_view_nt value) noexcept -> const char*;
 
 [[nodiscard]] auto utf8_as_char_view(u8string_view value) noexcept -> string_view;
 [[nodiscard]] auto utf8_to_char_string(u8string_view value) -> string;

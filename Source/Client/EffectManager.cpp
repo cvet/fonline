@@ -48,12 +48,22 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
+    u8string utf8_path {path};
+    return LoadEffect(usage, utf8_path);
+}
+
+auto EffectManager::LoadEffect(EffectUsage usage, u8string_view path) -> nptr<RenderEffect>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8string effect_path {path};
+
+    if (auto it = _loadedEffects.find(effect_path); it != _loadedEffects.end()) {
         return it->second;
     }
 
     // Load new
-    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, path, [this](string_view path2) -> vector<byte> {
+    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, effect_path, [this](u8string_view path2) -> vector<byte> {
         if (const auto file = _resources->ReadFile(path2)) {
             return file.GetData();
         }
@@ -68,11 +78,19 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
     }
 
     auto effect_ptr = effect.as_nptr();
-    _loadedEffects.emplace(path, std::move(effect));
+    _loadedEffects.emplace(std::move(effect_path), std::move(effect));
     return effect_ptr;
 }
 
 auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8string utf8_effect_path {effectPath};
+    return ResolveEffect(defaultEffect, utf8_effect_path);
+}
+
+auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, u8string_view effectPath) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -192,7 +210,7 @@ void EffectManager::LoadMinimalEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, utf8_as_char_view(_settings->ImGuiDefaultEffect.view()));
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
@@ -208,7 +226,7 @@ void EffectManager::LoadDefaultEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, utf8_as_char_view(_settings->ImGuiDefaultEffect.view()));
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

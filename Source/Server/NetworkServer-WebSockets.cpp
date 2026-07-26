@@ -31,7 +31,6 @@
 // SOFTWARE.
 //
 
-#include "NetSockets.h"
 #include "NetworkServer.h"
 
 #if FO_HAVE_WEB_SOCKETS
@@ -227,10 +226,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, net_sockets::error_text(error));
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, net_sockets::error_text(error));
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -318,7 +317,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, net_sockets::error_text(error));
+            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
             Disconnect();
         }
     }
@@ -372,7 +371,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort), listen_error);
 
     if (listen_error) {
-        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, net_sockets::error_text(listen_error));
+        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, GetAsioErrorText(listen_error));
     }
 
     _server.start_accept();
@@ -440,7 +439,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
 
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", connection->get_remote_endpoint(), net_sockets::error_text(ec));
+    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", connection->get_remote_endpoint(), GetAsioErrorText(ec));
 }
 
 template<bool Secured>

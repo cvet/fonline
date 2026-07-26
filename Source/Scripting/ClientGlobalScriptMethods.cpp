@@ -759,7 +759,7 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
+FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
 {
     client->SetEffect(effectType, effectSubtype, effectPath);
 }
@@ -868,29 +868,34 @@ FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, string_view text = "")
+FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, u8string_view text = u8"")
 {
     if (key == KeyCode::None) {
         return;
     }
 
-    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, string(text)}});
+    u8string key_text {text};
+
+    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, key_text}});
     client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key}});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
+FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, KeyCode key1, KeyCode key2, u8string_view key1Text, u8string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {
         return;
     }
 
+    u8string key1_text {key1Text};
+    u8string key2_text {key2Text};
+
     if (key1 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key1, string(key1Text)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key1, key1_text}});
     }
 
     if (key2 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key2, string(key2Text)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key2, key2_text}});
         client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key2}});
     }
 
@@ -1058,7 +1063,7 @@ FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, u8string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
 {
     if (!client->FontMngr.GetTextInfo(size, text, format, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", format.Font);
@@ -1177,7 +1182,7 @@ FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ptr<ClientEngine> client, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
+FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, u8string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");

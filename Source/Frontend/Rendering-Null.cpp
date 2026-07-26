@@ -222,7 +222,7 @@ static auto CopyEffectConfigBytes(string_view text) -> vector<byte>
     return data;
 }
 
-static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> vector<byte>
+static auto GetNullEffectConfig(u8string_view name, const RenderEffectLoader& loader) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -232,7 +232,7 @@ static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& load
         return fofx_content;
     }
 
-    if (name.ends_with("-info")) {
+    if (u8strvex(name).ends_with(u8"-info")) {
         return CopyEffectConfigBytes("[EffectInfo]\n");
     }
 
@@ -242,8 +242,8 @@ static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& load
 class Null_Effect final : public RenderEffect
 {
 public:
-    Null_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
-        RenderEffect(usage, name, [&loader](string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
+    Null_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) :
+        RenderEffect(usage, name, [&loader](u8string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
     {
         FO_STACK_TRACE_ENTRY();
     }
@@ -309,7 +309,7 @@ auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuf
     return SafeAlloc::MakeUnique<Null_DrawBuffer>(is_static);
 }
 
-auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto Null_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 

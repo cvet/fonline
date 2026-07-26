@@ -225,6 +225,13 @@ auto utf8_to_c_str(u8string_view_nt value) noexcept -> ptr<const char>
     return data.reinterpret_as<char>();
 }
 
+auto return_utf8_c_str(u8string_view_nt value) noexcept -> const char*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return utf8_to_c_str(value).get();
+}
+
 auto validate_utf16_text(std::u16string_view value) noexcept -> optional<TextValidationIssue>
 {
     FO_NO_STACK_TRACE_ENTRY();

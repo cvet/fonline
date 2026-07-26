@@ -67,7 +67,8 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Player"; }
+    [[nodiscard]] auto GetDisplayName() const -> u8string override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
@@ -79,6 +80,7 @@ public:
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
 
     void SetName(string_view name);
+    void SetName(u8string_view name);
     void SetControlledCritter(nptr<Critter> cr);
     void DetachCritter();
     void SwapConnection(ptr<Player> other) noexcept;
@@ -140,7 +142,7 @@ private:
     // hold it (the GetConnection getters, the cross-object SwapConnection swap of other->_connection) reach it
     // under the cooperative entity cover — which also excludes SwapConnection — and are FO_TSA_NO_ANALYSIS.
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    string _name {"(Unlogined)"};
+    u8string _displayName {"(Unlogined)"};
     // Non-owning back-pointer to the controlled critter, atomic so the lock-free broadcast fan-out can read it
     // for the is_chosen identity compare (subject == controlled critter) without the recipient's entity lock.
     // Published under the player's cover (SetControlledCritter); also the Player->Critter sync-widen anchor.

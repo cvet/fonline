@@ -103,7 +103,7 @@ class Direct3D_Effect final : public RenderEffect
     friend class Direct3D_Renderer;
 
 public:
-    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, ptr<Direct3D_Renderer::Context> ctx) :
+    Direct3D_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, ptr<Direct3D_Renderer::Context> ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -711,7 +711,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
     return std::move(d3d_dbuf);
 }
 
-auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto Direct3D_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -721,7 +721,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            const string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).erase_file_extension(), pass + 1);
+            u8string vertex_shader_fname = u8strex("{}.fofx-{}-vert-hlsl", u8strex(name).erase_file_extension(), pass + 1);
             const vector<byte> vertex_shader_data = loader(vertex_shader_fname);
             const u8string vertex_shader_content = utf8_from_byte_span(vertex_shader_data);
             FO_VERIFY_AND_THROW(!vertex_shader_content.empty(), "Direct3D effect vertex shader content is empty after loading", name, pass + 1, vertex_shader_fname);
@@ -795,7 +795,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
         // Create the pixel shader
         {
-            const string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).erase_file_extension(), pass + 1);
+            u8string pixel_shader_fname = u8strex("{}.fofx-{}-frag-hlsl", u8strex(name).erase_file_extension(), pass + 1);
             const vector<byte> pixel_shader_data = loader(pixel_shader_fname);
             const u8string pixel_shader_content = utf8_from_byte_span(pixel_shader_data);
             FO_VERIFY_AND_THROW(!pixel_shader_content.empty(), "Direct3D effect pixel shader content is empty after loading", name, pass + 1, pixel_shader_fname);

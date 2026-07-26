@@ -84,13 +84,13 @@ static auto Entity_IsDestroying(const Entity* self) -> bool
     return self->IsDestroying();
 }
 
-static auto Entity_Name(const Entity* self) -> string
+static auto Entity_Name(const Entity* self) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     // May call on unsynced entity
     // May call on destroyed entity
-    return string(self->GetName());
+    return self->GetDisplayName();
 }
 
 static auto Entity_Id(const Entity* self) -> ident_t

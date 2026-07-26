@@ -2073,7 +2073,8 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        unlogined.SetName("ScriptPlayerNameOk");
+        unlogined.SetName("\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D");
+        if (unlogined.Name != "\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D") return -5;
         return 0;
     }
 
@@ -3558,7 +3559,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
         REQUIRE(methods_func.Call(methods_player));
         CHECK(methods_func.GetResult() == 0);
-        CHECK(methods_player->GetName() == "ScriptPlayerMethods");
+        CHECK(methods_player->GetDisplayName() == u8"ScriptPlayerMethods");
         CHECK(methods_player->GetConnection()->IsGracefulDisconnected());
         CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
 
@@ -3577,7 +3578,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
         REQUIRE(name_validation_func.Call(name_player));
         CHECK(name_validation_func.GetResult() == 0);
-        CHECK(name_player->GetName() == "ScriptPlayerNameOk");
+        CHECK(name_player->GetDisplayName() == u8"Игрок 🌍");
 
         auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);
