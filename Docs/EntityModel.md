@@ -158,6 +158,10 @@ The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom
 - `GetCustomEntity()`
 - `DestroyEntity()`
 
+A custom entity is published into the global registry only after its holder linkage is complete. Both publication paths — `EntityManager::CreateCustomInnerEntity()` and the inner-entity load path — bind the parent link, the nearest holder's `EntityLock` (or the engine's lock for engine-held entries), and `CustomHolderEntry` / `CustomHolderId` **before** calling `RegisterCustomEntity()`, which validates exactly that linkage and requires the holder lock to be held by the current thread. Registering first and linking afterwards would make the entity globally reachable while it still carries no lock.
+
+That holder lock comes from whoever drives the publication. A runtime `CreateCustomInnerEntity()` runs under the caller's prepared cover (for an engine-held entry, the script's `Game.Lock()`), and the world loader captures each fresh location/map/critter/item before descending into its inner entities. The engine singleton is the one holder that pre-exists the load, so `EntityManager::LoadEntities()` takes the engine's singleton lock itself around the engine-held inner-entity pass and releases it before restoring locations.
+
 When changing holder behavior, inspect server/client entity managers and persistence paths in addition to `Entity.*`.
 
 ## Events and time events
@@ -170,6 +174,10 @@ When changing holder behavior, inspect server/client entity managers and persist
 `EntityEventWrapper::Fire()` builds native call data differently for global and non-global entities: non-global events inject the entity as the first argument.
 
 `Entity::TimeEventData` stores scheduled script callbacks, fire time, repeat duration, and script data. Entities that support time events are declared with the `HasTimeEvents` metadata flag in the `ExportEntity` annotations.
+
+`TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
+
+`StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started.
 
 ## Serialization relationships
 

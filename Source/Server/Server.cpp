@@ -780,15 +780,25 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
     FO_STACK_TRACE_ENTRY();
 
     auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
+    ScopedSyncContext ctx;
 
-    {
-        ScopedSyncContext ctx;
+    // CreateUnloginedPlayer already holds the session in the unlogined list, but on the network
+    // thread nothing covers it yet. Capture its own lock in this context before the connection
+    // callback and the worker job can reach it.
+    ctx.GetContext().EnsureFreshEntitySynced(unlogined_player);
+    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
-        ctx.Sync(unlogined_player);
-        unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
-    }
+    scope_fail rollback_publication {[&]() noexcept {
+        safe_call([&] {
+            scoped_lock locker {_unloginedPlayersLocker};
+            vec_remove_unique_value(_unloginedPlayers, unlogined_player.hold_ref());
+        });
+        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+    }};
 
     _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_); });
+    rollback_publication.release();
 }
 
 auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>
@@ -1903,6 +1913,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
         {
             scoped_lock locker {_unloginedPlayersLocker};
+
             cur_players = EntityMngr.GetPlayersCount();
             cur_connections = _unloginedPlayers.size() + cur_players;
         }
@@ -1927,19 +1938,18 @@ auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net
 
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
         auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
-        auto result = new_player.as_ptr();
         _unloginedPlayers.emplace_back(std::move(new_player));
-        return result;
+        return _unloginedPlayers.back();
     }();
 
     // Widen the outer SyncContext's cover to include the freshly-created unlogined player so
     // the caller (script via `Game.CreateUnloginedPlayer()` or any engine path running inside
     // a job's SyncContext) can immediately read/write its properties without a separate
-    // `Sync::Lock(player)`. Network-thread path has no current context - the conditional skips
-    // safely there; the player isn't reachable from script until it's placed into the unlogined
-    // list anyway.
+    // `Sync::Lock(player)`. This is a creation boundary - the session shell has no cover yet, so
+    // it goes through the trusted fresh capture rather than ordinary retention. Network-thread
+    // path has no current context - the conditional skips safely there.
     if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
-        outermost->EnsureEntitySynced(unlogined_player);
+        outermost->EnsureFreshEntitySynced(unlogined_player);
     }
 
     OnPlayerConnected(unlogined_player);
@@ -2460,13 +2470,18 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 
     FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
-    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
-
     if (EntityMngr.GetCritter(cr_id)) {
         throw GenericException("Critter must be unloaded before destroying");
     }
 
-    DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
+    if (!DbStorage.Valid(CrittersCollectionName, cr_id)) {
+        WriteLog(LogType::Info, "Unloaded critter {} has no stored data to destroy", cr_id);
+        return;
+    }
+
+    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
+
+    DbStorage.Delete(CrittersCollectionName, cr_id);
 }
 
 void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)
@@ -2542,14 +2557,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
     cr->Send_AddCritter(cr);
 
-    if (!map) {
-        for (ptr<Critter> group_cr : cr->GetGlobalMapGroup()) {
-            if (group_cr != cr) {
-                cr->Send_AddCritter(group_cr);
-            }
-        }
-    }
-    else {
+    if (map) {
         // Send current critters
         for (auto visible_cr : cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
             if (same_map) {

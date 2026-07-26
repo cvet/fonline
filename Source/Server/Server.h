@@ -214,6 +214,7 @@ public:
     const hstring GameCollectionName = Hashes.ToHashedString("Game");
     const hstring HistoryCollectionName = Hashes.ToHashedString("History");
     const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
+    const hstring CrittersCollectionName = Hashes.ToHashedString("Critters");
     const hstring HashReportsCollectionName = Hashes.ToHashedString("HashReports");
 
     EventObserver<> OnWillFinish {};

@@ -344,6 +344,8 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
         error_message = ex.what();
     }
 
+    CAPTURE(error_message);
+
     REQUIRE_FALSE(error_message.empty());
     CHECK(error_message.find("Address already in use") != string::npos);
     CHECK(error_message.find(std::to_string(port)) != string::npos);

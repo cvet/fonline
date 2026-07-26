@@ -364,7 +364,7 @@ static void StableSortSnapshotsByCameraDepth(vector<T>& instances, bool reverse_
         draw_order[index] = index;
     }
 
-    std::stable_sort(draw_order.begin(), draw_order.end(), [&instances, reverse_order](size_t left, size_t right) {
+    std::stable_sort(draw_order.begin(), draw_order.end(), [&instances, reverse_order](size_t left, size_t right) { //
         return reverse_order ? instances[left].CameraDepth > instances[right].CameraDepth : instances[left].CameraDepth < instances[right].CameraDepth;
     });
 

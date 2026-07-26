@@ -500,9 +500,22 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         auto key_code = ev.KeyDown.Code;
-        string key_text = ev.KeyDown.Text;
+        // Windows turns Alt+numpad into an OS text-input event whose payload can be a bare C0 control character.
+        string key_text;
+        key_text.reserve(ev.KeyDown.Text.length());
 
-        OnKeyDown.Fire(key_code, key_text);
+        for (char ch : ev.KeyDown.Text) {
+            uint8_t code = static_cast<uint8_t>(ch);
+
+            if (code >= 0x20 && code != 0x7F) {
+                key_text += ch;
+            }
+        }
+
+        // Text event that carried nothing but control characters has no payload left to deliver
+        if (key_code != KeyCode::Text || !key_text.empty() || ev.KeyDown.Text.empty()) {
+            OnKeyDown.Fire(key_code, key_text);
+        }
     }
     else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
         auto key_code = ev.KeyUp.Code;
