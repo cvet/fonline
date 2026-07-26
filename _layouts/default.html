@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="{{ page.locale | default: site.data.docs-site.canonical_locale | default: 'en' }}" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#176d54">
+    <meta name="fonline-docs-version-channel" content="{{ site.data.docs-site.version.channel }}">
+    <meta name="fonline-docs-version" content="{{ site.data.docs-site.version.value }}">
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.data.docs-site.title | default: site.title }}</title>
+    <meta name="description" content="{{ site.data.docs-site.description | default: site.description | escape }}">
+    <link rel="canonical" href="{{ page.url | absolute_url }}">
+    <link rel="icon" type="image/png" href="{{ '/assets/images/fonline-mark.png' | relative_url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/docs.css' | relative_url }}">
+    <script>
+      (function () {
+        var savedTheme = localStorage.getItem("fonline-docs-theme");
+        var preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = savedTheme || preferredTheme;
+      }());
+    </script>
+  </head>
+  <body data-page-path="{{ page.path }}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="docs-header">
+      <button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open navigation" aria-controls="docs-sidebar" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+
+      <a class="docs-brand" href="{{ '/' | relative_url }}">
+        <img src="{{ '/assets/images/fonline-mark.png' | relative_url }}" width="36" height="36" alt="">
+        <span>FOnline Engine</span>
+      </a>
+
+      <div class="docs-header-actions">
+        <span class="version-indicator" title="Current documentation follows the rolling repository branch">
+          <span class="version-label">{{ site.data.docs-site.version.label }}</span>
+          <strong>{{ site.data.docs-site.version.value }}</strong>
+        </span>
+        <button class="icon-button search-open header-search" type="button" data-search-open aria-label="Search documentation"></button>
+        <a class="header-link" href="https://github.com/{{ site.data.docs-site.repository }}" aria-label="FOnline repository on GitHub">GitHub</a>
+        <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="Use dark theme"></button>
+      </div>
+    </header>
+
+    <div class="nav-scrim" data-nav-scrim></div>
+
+    <div class="docs-shell">
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+        <button class="sidebar-search search-open" type="button" data-search-open>
+          <span class="search-mark" aria-hidden="true"></span>
+          <span>Search documentation</span>
+        </button>
+
+        <nav class="docs-navigation">
+          {% for group in site.data.docs-site.navigation %}
+          <details class="nav-group" open>
+            <summary>{{ group.title }}</summary>
+            <ul>
+              {% for item in group.items %}
+              <li>
+                <a href="{{ item.url | relative_url }}"{% if item.path == page.path %} class="is-active" aria-current="page"{% endif %}>{{ item.title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </details>
+          {% endfor %}
+        </nav>
+
+        <div class="sidebar-footer">
+          <a href="{{ '/llms.txt' | relative_url }}">AI index</a>
+          <a href="{{ '/docs-manifest.json' | relative_url }}">Manifest</a>
+        </div>
+      </aside>
+
+      <main class="docs-main" id="main-content" tabindex="-1">
+        <div class="docs-reading-grid">
+          <article class="docs-content">
+            <div class="page-context">
+              <a href="{{ '/Docs/README.html' | relative_url }}">Documentation</a>
+              <span aria-hidden="true">/</span>
+              <span>{{ page.path | default: 'README.md' }}</span>
+            </div>
+
+            {{ content }}
+
+            <footer class="page-footer">
+              <span>FOnline Engine documentation</span>
+              <a href="https://github.com/{{ site.data.docs-site.repository }}/blob/{{ site.data.docs-site.source_ref }}/{{ page.path | default: 'README.md' }}">View source</a>
+            </footer>
+          </article>
+
+          <aside class="page-toc" aria-label="On this page" data-page-toc hidden>
+            <div class="page-toc-title">On this page</div>
+            <nav data-page-toc-links></nav>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="search-dialog" data-search-dialog data-search-url="{{ '/assets/docs-search.json' | relative_url }}">
+      <div class="search-dialog-header">
+        <label for="docs-search-input">Search FOnline documentation</label>
+        <button class="icon-button search-close" type="button" data-search-close aria-label="Close search">&times;</button>
+      </div>
+      <input id="docs-search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="API, maps, scripting, build..." data-search-input>
+      <div class="search-status" role="status" aria-live="polite" data-search-status>Start typing to search.</div>
+      <ol class="search-results" data-search-results></ol>
+    </dialog>
+
+    <script src="{{ '/assets/js/docs.js' | relative_url }}" defer></script>
+  </body>
+</html>

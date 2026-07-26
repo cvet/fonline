@@ -1,0 +1,190 @@
+# FOnline Engine
+
+> Standalone FOnline engine documentation for game developers, engine contributors, tool authors, and AI agents.
+
+Canonical site: https://fonline.ru
+Current documentation: `master` rolling branch.
+Machine-readable document index: https://fonline.ru/docs-manifest.json
+Bounded full-context bundle: https://fonline.ru/llms-full.txt
+
+## Start here
+
+- [FOnline Engine](https://fonline.ru/): `repository-home`; entry point; game-developer, engine-contributor, ai-agent.
+- [FOnline Engine Documentation](https://fonline.ru/Docs/README.html): `documentation-home`; entry point; game-developer, engine-contributor, ai-agent.
+- [Getting Started with FOnline Engine](https://fonline.ru/Docs/GettingStarted.html): `getting-started`; tutorial; game-developer.
+- [Embedding FOnline in a Game Project](https://fonline.ru/Docs/EmbeddingProject.html): `embedding-project`; how-to; game-developer, engine-contributor.
+- [Engine Architecture](https://fonline.ru/Docs/Architecture.html): `engine-architecture`; explanation; game-developer, engine-contributor, ai-agent.
+- [Build Workflow](https://fonline.ru/Docs/BuildWorkflow.html): `build-workflow`; how-to; game-developer, engine-contributor, release-operator.
+- [Scripting](https://fonline.ru/Docs/Scripting.html): `scripting-runtime`; explanation; game-developer, engine-contributor, native-extension-developer.
+- [Script Lifecycle and Concurrency](https://fonline.ru/Docs/ScriptLifecycleAndConcurrency.html): `script-lifecycle-concurrency`; how-to; game-developer, engine-contributor, native-extension-developer, ai-agent.
+- [Testing](https://fonline.ru/Docs/Testing.html): `testing`; how-to; engine-contributor, game-developer, ai-agent.
+- [Native Extensions](https://fonline.ru/Docs/NativeExtensions.html): `native-extensions-guide`; how-to; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Prototype Format](https://fonline.ru/Docs/PrototypeFormat.html): `prototype-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [FOnline Map Format](https://fonline.ru/Docs/MapFormat.html): `map-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Format and 3D Composition](https://fonline.ru/Docs/ModelFormat.html): `model-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Text And Localization](https://fonline.ru/Docs/TextAndLocalization.html): `text-and-localization-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect Format And Shader Runtime](https://fonline.ru/Docs/EffectFormat.html): `effect-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Image And Sprite Formats](https://fonline.ru/Docs/ImageFormat.html): `image-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Authoring And Runtime](https://fonline.ru/Docs/ParticleFormat.html): `particle-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Font Formats And Text Layout](https://fonline.ru/Docs/FontFormat.html): `font-format-guide`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+
+## Tutorials
+
+- [FOnline Engine Tutorial](https://fonline.ru/TUTORIAL.html): `legacy-tutorial-entry`; tutorial; game-developer.
+- [FOnline Minimal Project](https://fonline.ru/Examples/MinimalProject/README.html): `minimal-project-readme`; tutorial; game-developer, engine-contributor, ai-agent.
+
+## How-to guides
+
+- [Android Debugging](https://fonline.ru/Docs/AndroidDebugging.html): `android-debugging`; how-to; game-developer, engine-contributor.
+- [Debugging](https://fonline.ru/Docs/Debugging.html): `debugging`; how-to; game-developer, engine-contributor, release-operator.
+- [Documentation Maintenance](https://fonline.ru/Docs/DocumentationMaintenance.html): `documentation-maintenance`; how-to; engine-contributor, ai-agent.
+- [Documentation Site Publication](https://fonline.ru/Docs/SitePublication.html): `documentation-site-publication`; how-to; engine-contributor, release-operator, ai-agent.
+- [Generated Contract Change Management](https://fonline.ru/Docs/ApiChangeManagement.html): `api-change-management`; how-to; engine-contributor, release-operator, ai-agent.
+- [Mapper Tools](https://fonline.ru/Docs/MapperTools.html): `mapper-tools`; how-to; content-author, tool-developer, engine-contributor.
+- [Model Animation Metadata and Duration](https://fonline.ru/Docs/ModelAnimation.html): `model-animation`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [Public Example Repositories](https://fonline.ru/Docs/PublicExampleRepositories.html): `public-example-repositories`; how-to; game-developer, engine-contributor, release-operator, ai-agent.
+- [Sprite Root Motion and Walk Cycles](https://fonline.ru/Docs/SpriteRootMotion.html): `sprite-root-motion`; how-to; game-developer, content-author, engine-contributor, ai-agent.
+- [ThirdParty Maintenance](https://fonline.ru/Docs/ThirdPartyMaintenance.html): `third-party-maintenance`; how-to; engine-contributor, release-operator.
+- [Web Debugging](https://fonline.ru/Docs/WebDebugging.html): `web-debugging`; how-to; game-developer, engine-contributor.
+
+## Reference
+
+- [Applications and Entry Points](https://fonline.ru/Docs/Applications.html): `applications-entry-points`; reference; game-developer, engine-contributor.
+- [Binary BMFont Contract](https://fonline.ru/Docs/generated/font-format/bmfont.html): `generated-font-format-bmfont`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [BuildTools Commands](https://fonline.ru/Docs/generated/cli/commands.html): `generated-cli-commands`; reference; game-developer, tool-developer, engine-contributor, release-operator, ai-agent.
+- [BuildTools Pipeline](https://fonline.ru/Docs/BuildToolsPipeline.html): `buildtools-pipeline`; reference; tool-developer, engine-contributor, release-operator.
+- [Built-in Prototype Properties](https://fonline.ru/Docs/generated/prototype-format/properties.html): `generated-prototype-format-properties`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [CMake Project Helpers](https://fonline.ru/Docs/generated/cmake/helpers.html): `generated-cmake-helpers`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [CMake Project Options](https://fonline.ru/Docs/generated/cmake/options.html): `generated-cmake-options`; reference; game-developer, native-extension-developer, engine-contributor, release-operator, ai-agent.
+- [CMake Project Stages and Hooks](https://fonline.ru/Docs/generated/cmake/stages.html): `generated-cmake-stages`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Configuration and Data Sources](https://fonline.ru/Docs/ConfigurationAndDataSources.html): `configuration-data-sources`; reference; game-developer, content-author, engine-contributor.
+- [Effect Baking And Backends](https://fonline.ru/Docs/generated/effect-format/baking.html): `generated-effect-format-baking`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect File Syntax](https://fonline.ru/Docs/generated/effect-format/syntax.html): `generated-effect-format-syntax`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect Format Validation](https://fonline.ru/Docs/generated/effect-format/validation.html): `generated-effect-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect Render State](https://fonline.ru/Docs/generated/effect-format/render-state.html): `generated-effect-format-render-state`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect Runtime And Script API](https://fonline.ru/Docs/generated/effect-format/runtime.html): `generated-effect-format-runtime`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Effect Shader Resources](https://fonline.ru/Docs/generated/effect-format/resources.html): `generated-effect-format-resources`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Engine Events](https://fonline.ru/Docs/generated/api/events.html): `generated-api-events`; reference; game-developer, native-extension-developer, ai-agent.
+- [Engine Hooks](https://fonline.ru/Docs/generated/native-extension/hooks.html): `generated-native-extension-hooks`; reference; native-extension-developer, engine-contributor, ai-agent.
+- [Engine Settings](https://fonline.ru/Docs/generated/api/settings.html): `generated-api-settings`; reference; game-developer, native-extension-developer, release-operator, ai-agent.
+- [Entity Properties](https://fonline.ru/Docs/generated/api/properties.html): `generated-api-properties`; reference; game-developer, native-extension-developer, ai-agent.
+- [Essentials](https://fonline.ru/Docs/Essentials.html): `native-essentials`; reference; engine-contributor, native-extension-developer.
+- [FOFNT Field Reference](https://fonline.ru/Docs/generated/font-format/fofnt.html): `generated-font-format-fofnt`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [FOFRM Descriptor Reference](https://fonline.ru/Docs/generated/image-format/fofrm.html): `generated-image-format-fofrm`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [FOnline Engine Build Tools](https://fonline.ru/BuildTools/README.html): `buildtools-readme`; reference; game-developer, tool-developer, release-operator.
+- [FOnline Engine Source](https://fonline.ru/Source/README.html): `source-readme`; reference; engine-contributor, native-extension-developer.
+- [Font Binding Contract](https://fonline.ru/Docs/generated/font-format/binding.html): `generated-font-format-binding`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Font Rendering Contract](https://fonline.ru/Docs/generated/font-format/rendering.html): `generated-font-format-rendering`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Font Resource Formats](https://fonline.ru/Docs/generated/font-format/formats.html): `generated-font-format-formats`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Font Validation Contract](https://fonline.ru/Docs/generated/font-format/validation.html): `generated-font-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated API and Metadata](https://fonline.ru/Docs/GeneratedApiAndMetadata.html): `generated-api-metadata`; reference; game-developer, engine-contributor, native-extension-developer, ai-agent.
+- [Generated API Reference](https://fonline.ru/Docs/generated/api/index.html): `generated-api-index`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Generated BuildTools CLI Reference](https://fonline.ru/Docs/generated/cli/index.html): `generated-cli-index`; reference; game-developer, tool-developer, engine-contributor, release-operator, ai-agent.
+- [Generated CMake Project Interface](https://fonline.ru/Docs/generated/cmake/index.html): `generated-cmake-index`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Generated Effect Format Reference](https://fonline.ru/Docs/generated/effect-format/index.html): `generated-effect-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Font Format Reference](https://fonline.ru/Docs/generated/font-format/index.html): `generated-font-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Helper CLI Reference](https://fonline.ru/Docs/generated/helper-cli/index.html): `generated-helper-cli-index`; reference; game-developer, tool-developer, engine-contributor, release-operator, ai-agent.
+- [Generated Image Format Reference](https://fonline.ru/Docs/generated/image-format/index.html): `generated-image-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Map Format Reference](https://fonline.ru/Docs/generated/map-format/index.html): `generated-map-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Model Format Reference](https://fonline.ru/Docs/generated/model-format/index.html): `generated-model-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Native Extension Interface](https://fonline.ru/Docs/generated/native-extension/index.html): `generated-native-extension-index`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Generated Package Interface](https://fonline.ru/Docs/generated/package/index.html): `generated-package-index`; reference; game-developer, engine-contributor, release-operator, ai-agent.
+- [Generated Particle Format Reference](https://fonline.ru/Docs/generated/particle-format/index.html): `generated-particle-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Prototype Format Reference](https://fonline.ru/Docs/generated/prototype-format/index.html): `generated-prototype-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Generated Public Example Repository Registry](https://fonline.ru/Docs/generated/public-examples/index.html): `generated-public-examples-index`; reference; game-developer, engine-contributor, release-operator, ai-agent.
+- [Generated Text And Localization Reference](https://fonline.ru/Docs/generated/text-format/index.html): `generated-text-format-index`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Helper Commands](https://fonline.ru/Docs/generated/helper-cli/commands.html): `generated-helper-cli-commands`; reference; game-developer, tool-developer, engine-contributor, release-operator, ai-agent.
+- [Image Baking Contract](https://fonline.ru/Docs/generated/image-format/baking.html): `generated-image-format-baking`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Image Format Validation](https://fonline.ru/Docs/generated/image-format/validation.html): `generated-image-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Image Source Formats](https://fonline.ru/Docs/generated/image-format/formats.html): `generated-image-format-formats`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Languages And Normalization](https://fonline.ru/Docs/generated/text-format/languages.html): `generated-text-format-languages`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Legacy Image Filename Options](https://fonline.ru/Docs/generated/image-format/options.html): `generated-image-format-options`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Map Baking And Runtime Loading](https://fonline.ru/Docs/generated/map-format/baking.html): `generated-map-format-baking`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Map File Syntax](https://fonline.ru/Docs/generated/map-format/syntax.html): `generated-map-format-syntax`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Map Placement Properties](https://fonline.ru/Docs/generated/map-format/properties.html): `generated-map-format-properties`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Map Validation Rules](https://fonline.ru/Docs/generated/map-format/validation.html): `generated-map-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Migration Rules](https://fonline.ru/Docs/generated/api/migrations.html): `generated-api-migrations`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Model Animation Directives](https://fonline.ru/Docs/generated/model-format/animation.html): `generated-model-format-animation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Assets and Limits](https://fonline.ru/Docs/generated/model-format/assets.html): `generated-model-format-assets`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Composition](https://fonline.ru/Docs/generated/model-format/composition.html): `generated-model-format-composition`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Description Syntax](https://fonline.ru/Docs/generated/model-format/syntax.html): `generated-model-format-syntax`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Description Tokens](https://fonline.ru/Docs/generated/model-format/tokens.html): `generated-model-format-tokens`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Model Format Validation](https://fonline.ru/Docs/generated/model-format/validation.html): `generated-model-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Native Extension Binding Rules](https://fonline.ru/Docs/generated/native-extension/bindings.html): `generated-native-extension-bindings`; reference; native-extension-developer, engine-contributor, ai-agent.
+- [Native Extension Roles](https://fonline.ru/Docs/generated/native-extension/roles.html): `generated-native-extension-roles`; reference; game-developer, native-extension-developer, engine-contributor, ai-agent.
+- [Native Script Methods](https://fonline.ru/Docs/generated/api/methods.html): `generated-api-methods`; reference; game-developer, native-extension-developer, ai-agent.
+- [Package Declaration Grammar](https://fonline.ru/Docs/generated/package/declaration.html): `generated-package-declaration`; reference; game-developer, engine-contributor, release-operator, ai-agent.
+- [Package Payloads and Artifacts](https://fonline.ru/Docs/generated/package/payloads.html): `generated-package-payloads`; reference; game-developer, engine-contributor, release-operator, ai-agent.
+- [Package Targets, Platforms, and Packs](https://fonline.ru/Docs/generated/package/matrix.html): `generated-package-matrix`; reference; game-developer, engine-contributor, release-operator, ai-agent.
+- [Packager Command Line](https://fonline.ru/Docs/generated/package/cli.html): `generated-package-cli`; reference; engine-contributor, release-operator, ai-agent.
+- [Particle Format Validation](https://fonline.ru/Docs/generated/particle-format/validation.html): `generated-particle-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Formats and Backends](https://fonline.ru/Docs/generated/particle-format/objects.html): `generated-particle-format-objects`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Integration Contract](https://fonline.ru/Docs/generated/particle-format/integration.html): `generated-particle-format-integration`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Rendering Contract](https://fonline.ru/Docs/generated/particle-format/renderer.html): `generated-particle-format-renderer`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Runtime Contract](https://fonline.ru/Docs/generated/particle-format/runtime.html): `generated-particle-format-runtime`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Source Rules](https://fonline.ru/Docs/generated/particle-format/xml.html): `generated-particle-format-xml`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Particle Tooling Contract](https://fonline.ru/Docs/generated/particle-format/tooling.html): `generated-particle-format-tooling`; reference; content-author, engine-contributor, tool-developer, ai-agent.
+- [Prototype File Syntax](https://fonline.ru/Docs/generated/prototype-format/syntax.html): `generated-prototype-format-syntax`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Prototype Text](https://fonline.ru/Docs/generated/text-format/proto-text.html): `generated-text-format-proto-text`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Prototype Validation Rules](https://fonline.ru/Docs/generated/prototype-format/validation.html): `generated-prototype-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Remote Calls](https://fonline.ru/Docs/RemoteCalls.html): `remote-calls`; reference; game-developer, engine-contributor, ai-agent.
+- [Runtime Text API](https://fonline.ru/Docs/generated/text-format/runtime.html): `generated-text-format-runtime`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Script Methods Map](https://fonline.ru/Docs/ScriptMethodsMap.html): `script-methods-map`; reference; game-developer, native-extension-developer, ai-agent.
+- [Script Types](https://fonline.ru/Docs/generated/api/types.html): `generated-api-types`; reference; game-developer, native-extension-developer, ai-agent.
+- [Source Tree Guide](https://fonline.ru/Docs/SourceTree.html): `source-tree`; reference; engine-contributor, native-extension-developer, ai-agent.
+- [Sprite Runtime Contract](https://fonline.ru/Docs/generated/image-format/runtime.html): `generated-image-format-runtime`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Text Format Validation](https://fonline.ru/Docs/generated/text-format/validation.html): `generated-text-format-validation`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Text Layout Contract](https://fonline.ru/Docs/generated/font-format/layout.html): `generated-font-format-layout`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Text Pack Syntax](https://fonline.ru/Docs/generated/text-format/syntax.html): `generated-text-format-syntax`; reference; game-developer, content-author, engine-contributor, ai-agent.
+- [Tools](https://fonline.ru/Docs/Tools.html): `tools`; reference; game-developer, content-author, tool-developer.
+- [Unit Tests](https://fonline.ru/Source/Tests/README.html): `unit-tests-readme`; reference; engine-contributor.
+
+## Explanations
+
+- [ADR-0001: GitHub Pages Markdown Publication and Locale Layout](https://fonline.ru/Docs/Decisions/0001-github-pages-markdown-publication.html): `adr-github-pages-markdown-publication`; explanation; engine-contributor, release-operator, ai-agent.
+- [ADR-0002: Public API Stability Contract](https://fonline.ru/Docs/Decisions/0002-public-api-stability-contract.html): `adr-public-api-stability-contract`; explanation; game-developer, engine-contributor, native-extension-developer, ai-agent.
+- [ADR-0003: Manifest-Backed AI Documentation Delivery](https://fonline.ru/Docs/Decisions/0003-manifest-backed-ai-documentation-delivery.html): `adr-manifest-backed-ai-documentation-delivery`; explanation; game-developer, engine-contributor, tool-developer, ai-agent.
+- [ADR-0004: Manifest-Backed Site Navigation And Search](https://fonline.ru/Docs/Decisions/0004-manifest-backed-site-navigation-search.html): `adr-manifest-backed-site-navigation-search`; explanation; game-developer, engine-contributor, tool-developer, ai-agent.
+- [ADR-0005: Public Example Repository Ownership](https://fonline.ru/Docs/Decisions/0005-public-example-repository-ownership.html): `adr-public-example-repository-ownership`; explanation; game-developer, engine-contributor, release-operator, ai-agent.
+- [ADR-0006: Documentation Version, Locale, And Stable Route Policy](https://fonline.ru/Docs/Decisions/0006-documentation-version-locale-routing.html): `adr-documentation-version-locale-routing`; explanation; game-developer, engine-contributor, release-operator, ai-agent.
+- [Baking Pipeline](https://fonline.ru/Docs/BakingPipeline.html): `baking-pipeline`; explanation; game-developer, content-author, engine-contributor.
+- [Client Runtime](https://fonline.ru/Docs/ClientRuntime.html): `client-runtime`; explanation; game-developer, engine-contributor.
+- [Client Runtime Split and Updater](https://fonline.ru/Docs/ClientUpdater.html): `client-updater`; explanation; game-developer, engine-contributor, release-operator.
+- [Entity Model](https://fonline.ru/Docs/EntityModel.html): `entity-model`; explanation; game-developer, engine-contributor, native-extension-developer.
+- [Exception Safety and Engine-Invariant Stability](https://fonline.ru/Docs/ExceptionSafety.html): `exception-safety`; explanation; engine-contributor, native-extension-developer.
+- [Frontend and Rendering](https://fonline.ru/Docs/FrontendAndRendering.html): `frontend-rendering`; explanation; game-developer, engine-contributor, content-author.
+- [Local Variables](https://fonline.ru/Docs/LocalVariables.html): `local-variables`; explanation; engine-contributor, native-extension-developer.
+- [Maps, Movement, and Geometry](https://fonline.ru/Docs/MapsMovementGeometry.html): `maps-movement-geometry`; explanation; game-developer, content-author, engine-contributor.
+- [Networking](https://fonline.ru/Docs/Networking.html): `networking`; explanation; game-developer, engine-contributor, release-operator.
+- [Nullability](https://fonline.ru/Docs/Nullability.html): `nullability`; explanation; game-developer, engine-contributor, native-extension-developer.
+- [Persistence](https://fonline.ru/Docs/Persistence.html): `persistence`; explanation; game-developer, engine-contributor.
+- [Server Runtime](https://fonline.ru/Docs/ServerRuntime.html): `server-runtime`; explanation; game-developer, engine-contributor, release-operator.
+- [Smart Pointers](https://fonline.ru/Docs/SmartPointers.html): `smart-pointers`; explanation; engine-contributor, native-extension-developer.
+- [Thread Safety Analysis](https://fonline.ru/Docs/ThreadSafetyAnalysis.html): `thread-safety-analysis`; explanation; engine-contributor, native-extension-developer.
+
+## Entry points
+
+- [FOnline Engine AI Maintainer Guide](https://fonline.ru/AGENTS.html): `ai-maintainer-entry`; entry point; ai-agent.
+
+## Machine-readable references
+
+- [api_model](https://fonline.ru/Docs/generated/api.json): canonical generated JSON at `Docs/generated/api.json`.
+- [cli_reference](https://fonline.ru/Docs/generated/cli.json): canonical generated JSON at `Docs/generated/cli.json`.
+- [cmake_reference](https://fonline.ru/Docs/generated/cmake.json): canonical generated JSON at `Docs/generated/cmake.json`.
+- [site-document-routes](https://fonline.ru/Docs/generated/document-routes.json): canonical generated JSON at `Docs/generated/document-routes.json`.
+- [effect_format_reference](https://fonline.ru/Docs/generated/effect-format.json): canonical generated JSON at `Docs/generated/effect-format.json`.
+- [font_format_reference](https://fonline.ru/Docs/generated/font-format.json): canonical generated JSON at `Docs/generated/font-format.json`.
+- [helper_cli_reference](https://fonline.ru/Docs/generated/helper-cli.json): canonical generated JSON at `Docs/generated/helper-cli.json`.
+- [image_format_reference](https://fonline.ru/Docs/generated/image-format.json): canonical generated JSON at `Docs/generated/image-format.json`.
+- [map_format_reference](https://fonline.ru/Docs/generated/map-format.json): canonical generated JSON at `Docs/generated/map-format.json`.
+- [model_format_reference](https://fonline.ru/Docs/generated/model-format.json): canonical generated JSON at `Docs/generated/model-format.json`.
+- [native_extension_reference](https://fonline.ru/Docs/generated/native-extension.json): canonical generated JSON at `Docs/generated/native-extension.json`.
+- [package_reference](https://fonline.ru/Docs/generated/package.json): canonical generated JSON at `Docs/generated/package.json`.
+- [particle_format_reference](https://fonline.ru/Docs/generated/particle-format.json): canonical generated JSON at `Docs/generated/particle-format.json`.
+- [prototype_format_reference](https://fonline.ru/Docs/generated/prototype-format.json): canonical generated JSON at `Docs/generated/prototype-format.json`.
+- [public_examples_reference](https://fonline.ru/Docs/generated/public-examples.json): canonical generated JSON at `Docs/generated/public-examples.json`.
+- [source_inventory](https://fonline.ru/Docs/generated/source-inventory.json): canonical generated JSON at `Docs/generated/source-inventory.json`.
+- [text_format_reference](https://fonline.ru/Docs/generated/text-format.json): canonical generated JSON at `Docs/generated/text-format.json`.
+- [site-docs-site](https://fonline.ru/_data/docs-site.json): canonical generated JSON at `_data/docs-site.json`.
+- [site-docs-search](https://fonline.ru/assets/docs-search.json): canonical generated JSON at `assets/docs-search.json`.
+- [public documentation manifest](https://fonline.ru/docs-manifest.json): public paths, stable IDs, provenance, URLs, and content hashes.

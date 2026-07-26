@@ -1,0 +1,631 @@
+{
+  "schema_version": 2,
+  "generated_by": "BuildTools/docs_site.py",
+  "title": "FOnline Engine",
+  "description": "Standalone documentation for building games and extending the FOnline engine.",
+  "canonical_base_url": "https://fonline.ru",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "version": {
+    "channel": "current",
+    "kind": "rolling-branch",
+    "label": "Current",
+    "value": "master",
+    "source_ref": "master",
+    "path_prefix": "",
+    "support": "latest-development-revision"
+  },
+  "canonical_locale": "en",
+  "locales": [
+    {
+      "id": "en",
+      "label": "English",
+      "path_prefix": "Docs/en",
+      "status": "canonical-source-pending-migration"
+    },
+    {
+      "id": "ru",
+      "label": "Russian",
+      "path_prefix": "Docs/ru",
+      "status": "planned"
+    }
+  ],
+  "routes_path": "Docs/generated/document-routes.json",
+  "navigation_item_count": 78,
+  "navigation": [
+    {
+      "id": "start",
+      "title": "Start here",
+      "items": [
+        {
+          "id": "repository-home",
+          "title": "FOnline Engine",
+          "path": "README.md",
+          "url": "/",
+          "diataxis": "none"
+        },
+        {
+          "id": "documentation-home",
+          "title": "FOnline Engine Documentation",
+          "path": "Docs/README.md",
+          "url": "/Docs/README.html",
+          "diataxis": "none"
+        },
+        {
+          "id": "getting-started",
+          "title": "Getting Started with FOnline Engine",
+          "path": "Docs/GettingStarted.md",
+          "url": "/Docs/GettingStarted.html",
+          "diataxis": "tutorial"
+        },
+        {
+          "id": "legacy-tutorial-entry",
+          "title": "FOnline Engine Tutorial",
+          "path": "TUTORIAL.md",
+          "url": "/TUTORIAL.html",
+          "diataxis": "tutorial"
+        },
+        {
+          "id": "minimal-project-readme",
+          "title": "FOnline Minimal Project",
+          "path": "Examples/MinimalProject/README.md",
+          "url": "/Examples/MinimalProject/README.html",
+          "diataxis": "tutorial"
+        },
+        {
+          "id": "embedding-project",
+          "title": "Embedding FOnline in a Game Project",
+          "path": "Docs/EmbeddingProject.md",
+          "url": "/Docs/EmbeddingProject.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "public-example-repositories",
+          "title": "Public Example Repositories",
+          "path": "Docs/PublicExampleRepositories.md",
+          "url": "/Docs/PublicExampleRepositories.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-public-examples-index",
+          "title": "Generated Public Example Repository Registry",
+          "path": "Docs/generated/public-examples/index.md",
+          "url": "/Docs/generated/public-examples/index.html",
+          "diataxis": "reference"
+        }
+      ]
+    },
+    {
+      "id": "build-ship",
+      "title": "Build and ship",
+      "items": [
+        {
+          "id": "build-workflow",
+          "title": "Build Workflow",
+          "path": "Docs/BuildWorkflow.md",
+          "url": "/Docs/BuildWorkflow.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "buildtools-pipeline",
+          "title": "BuildTools Pipeline",
+          "path": "Docs/BuildToolsPipeline.md",
+          "url": "/Docs/BuildToolsPipeline.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "baking-pipeline",
+          "title": "Baking Pipeline",
+          "path": "Docs/BakingPipeline.md",
+          "url": "/Docs/BakingPipeline.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "configuration-data-sources",
+          "title": "Configuration and Data Sources",
+          "path": "Docs/ConfigurationAndDataSources.md",
+          "url": "/Docs/ConfigurationAndDataSources.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-cmake-index",
+          "title": "Generated CMake Project Interface",
+          "path": "Docs/generated/cmake/index.md",
+          "url": "/Docs/generated/cmake/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-cli-index",
+          "title": "Generated BuildTools CLI Reference",
+          "path": "Docs/generated/cli/index.md",
+          "url": "/Docs/generated/cli/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-helper-cli-index",
+          "title": "Generated Helper CLI Reference",
+          "path": "Docs/generated/helper-cli/index.md",
+          "url": "/Docs/generated/helper-cli/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-package-index",
+          "title": "Generated Package Interface",
+          "path": "Docs/generated/package/index.md",
+          "url": "/Docs/generated/package/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "client-updater",
+          "title": "Client Runtime Split and Updater",
+          "path": "Docs/ClientUpdater.md",
+          "url": "/Docs/ClientUpdater.html",
+          "diataxis": "explanation"
+        }
+      ]
+    },
+    {
+      "id": "scripting",
+      "title": "Script games",
+      "items": [
+        {
+          "id": "scripting-runtime",
+          "title": "Scripting",
+          "path": "Docs/Scripting.md",
+          "url": "/Docs/Scripting.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "script-lifecycle-concurrency",
+          "title": "Script Lifecycle and Concurrency",
+          "path": "Docs/ScriptLifecycleAndConcurrency.md",
+          "url": "/Docs/ScriptLifecycleAndConcurrency.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "remote-calls",
+          "title": "Remote Calls",
+          "path": "Docs/RemoteCalls.md",
+          "url": "/Docs/RemoteCalls.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-api-metadata",
+          "title": "Generated API and Metadata",
+          "path": "Docs/GeneratedApiAndMetadata.md",
+          "url": "/Docs/GeneratedApiAndMetadata.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "generated-api-index",
+          "title": "Generated API Reference",
+          "path": "Docs/generated/api/index.md",
+          "url": "/Docs/generated/api/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "script-methods-map",
+          "title": "Script Methods Map",
+          "path": "Docs/ScriptMethodsMap.md",
+          "url": "/Docs/ScriptMethodsMap.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "nullability",
+          "title": "Nullability",
+          "path": "Docs/Nullability.md",
+          "url": "/Docs/Nullability.html",
+          "diataxis": "explanation"
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "Author content",
+      "items": [
+        {
+          "id": "prototype-format-guide",
+          "title": "Prototype Format",
+          "path": "Docs/PrototypeFormat.md",
+          "url": "/Docs/PrototypeFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-prototype-format-index",
+          "title": "Generated Prototype Format Reference",
+          "path": "Docs/generated/prototype-format/index.md",
+          "url": "/Docs/generated/prototype-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "map-format-guide",
+          "title": "FOnline Map Format",
+          "path": "Docs/MapFormat.md",
+          "url": "/Docs/MapFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-map-format-index",
+          "title": "Generated Map Format Reference",
+          "path": "Docs/generated/map-format/index.md",
+          "url": "/Docs/generated/map-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "model-format-guide",
+          "title": "Model Format and 3D Composition",
+          "path": "Docs/ModelFormat.md",
+          "url": "/Docs/ModelFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-model-format-index",
+          "title": "Generated Model Format Reference",
+          "path": "Docs/generated/model-format/index.md",
+          "url": "/Docs/generated/model-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "text-and-localization-guide",
+          "title": "Text And Localization",
+          "path": "Docs/TextAndLocalization.md",
+          "url": "/Docs/TextAndLocalization.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-text-format-index",
+          "title": "Generated Text And Localization Reference",
+          "path": "Docs/generated/text-format/index.md",
+          "url": "/Docs/generated/text-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "effect-format-guide",
+          "title": "Effect Format And Shader Runtime",
+          "path": "Docs/EffectFormat.md",
+          "url": "/Docs/EffectFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-effect-format-index",
+          "title": "Generated Effect Format Reference",
+          "path": "Docs/generated/effect-format/index.md",
+          "url": "/Docs/generated/effect-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "image-format-guide",
+          "title": "Image And Sprite Formats",
+          "path": "Docs/ImageFormat.md",
+          "url": "/Docs/ImageFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-image-format-index",
+          "title": "Generated Image Format Reference",
+          "path": "Docs/generated/image-format/index.md",
+          "url": "/Docs/generated/image-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "particle-format-guide",
+          "title": "Particle Authoring And Runtime",
+          "path": "Docs/ParticleFormat.md",
+          "url": "/Docs/ParticleFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-particle-format-index",
+          "title": "Generated Particle Format Reference",
+          "path": "Docs/generated/particle-format/index.md",
+          "url": "/Docs/generated/particle-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "font-format-guide",
+          "title": "Font Formats And Text Layout",
+          "path": "Docs/FontFormat.md",
+          "url": "/Docs/FontFormat.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-font-format-index",
+          "title": "Generated Font Format Reference",
+          "path": "Docs/generated/font-format/index.md",
+          "url": "/Docs/generated/font-format/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "model-animation",
+          "title": "Model Animation Metadata and Duration",
+          "path": "Docs/ModelAnimation.md",
+          "url": "/Docs/ModelAnimation.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "sprite-root-motion",
+          "title": "Sprite Root Motion and Walk Cycles",
+          "path": "Docs/SpriteRootMotion.md",
+          "url": "/Docs/SpriteRootMotion.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "maps-movement-geometry",
+          "title": "Maps, Movement, and Geometry",
+          "path": "Docs/MapsMovementGeometry.md",
+          "url": "/Docs/MapsMovementGeometry.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "mapper-tools",
+          "title": "Mapper Tools",
+          "path": "Docs/MapperTools.md",
+          "url": "/Docs/MapperTools.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "tools",
+          "title": "Tools",
+          "path": "Docs/Tools.md",
+          "url": "/Docs/Tools.html",
+          "diataxis": "reference"
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "title": "Understand the runtime",
+      "items": [
+        {
+          "id": "engine-architecture",
+          "title": "Engine Architecture",
+          "path": "Docs/Architecture.md",
+          "url": "/Docs/Architecture.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "entity-model",
+          "title": "Entity Model",
+          "path": "Docs/EntityModel.md",
+          "url": "/Docs/EntityModel.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "client-runtime",
+          "title": "Client Runtime",
+          "path": "Docs/ClientRuntime.md",
+          "url": "/Docs/ClientRuntime.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "server-runtime",
+          "title": "Server Runtime",
+          "path": "Docs/ServerRuntime.md",
+          "url": "/Docs/ServerRuntime.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "networking",
+          "title": "Networking",
+          "path": "Docs/Networking.md",
+          "url": "/Docs/Networking.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "persistence",
+          "title": "Persistence",
+          "path": "Docs/Persistence.md",
+          "url": "/Docs/Persistence.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "frontend-rendering",
+          "title": "Frontend and Rendering",
+          "path": "Docs/FrontendAndRendering.md",
+          "url": "/Docs/FrontendAndRendering.html",
+          "diataxis": "explanation"
+        }
+      ]
+    },
+    {
+      "id": "extensions",
+      "title": "Extend the engine",
+      "items": [
+        {
+          "id": "native-extensions-guide",
+          "title": "Native Extensions",
+          "path": "Docs/NativeExtensions.md",
+          "url": "/Docs/NativeExtensions.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "generated-native-extension-index",
+          "title": "Generated Native Extension Interface",
+          "path": "Docs/generated/native-extension/index.md",
+          "url": "/Docs/generated/native-extension/index.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "native-essentials",
+          "title": "Essentials",
+          "path": "Docs/Essentials.md",
+          "url": "/Docs/Essentials.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "source-tree",
+          "title": "Source Tree Guide",
+          "path": "Docs/SourceTree.md",
+          "url": "/Docs/SourceTree.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "applications-entry-points",
+          "title": "Applications and Entry Points",
+          "path": "Docs/Applications.md",
+          "url": "/Docs/Applications.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "source-readme",
+          "title": "FOnline Engine Source",
+          "path": "Source/README.md",
+          "url": "/Source/README.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "buildtools-readme",
+          "title": "FOnline Engine Build Tools",
+          "path": "BuildTools/README.md",
+          "url": "/BuildTools/README.html",
+          "diataxis": "reference"
+        }
+      ]
+    },
+    {
+      "id": "quality",
+      "title": "Test and debug",
+      "items": [
+        {
+          "id": "testing",
+          "title": "Testing",
+          "path": "Docs/Testing.md",
+          "url": "/Docs/Testing.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "unit-tests-readme",
+          "title": "Unit Tests",
+          "path": "Source/Tests/README.md",
+          "url": "/Source/Tests/README.html",
+          "diataxis": "reference"
+        },
+        {
+          "id": "debugging",
+          "title": "Debugging",
+          "path": "Docs/Debugging.md",
+          "url": "/Docs/Debugging.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "web-debugging",
+          "title": "Web Debugging",
+          "path": "Docs/WebDebugging.md",
+          "url": "/Docs/WebDebugging.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "android-debugging",
+          "title": "Android Debugging",
+          "path": "Docs/AndroidDebugging.md",
+          "url": "/Docs/AndroidDebugging.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "smart-pointers",
+          "title": "Smart Pointers",
+          "path": "Docs/SmartPointers.md",
+          "url": "/Docs/SmartPointers.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "exception-safety",
+          "title": "Exception Safety and Engine-Invariant Stability",
+          "path": "Docs/ExceptionSafety.md",
+          "url": "/Docs/ExceptionSafety.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "thread-safety-analysis",
+          "title": "Thread Safety Analysis",
+          "path": "Docs/ThreadSafetyAnalysis.md",
+          "url": "/Docs/ThreadSafetyAnalysis.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "local-variables",
+          "title": "Local Variables",
+          "path": "Docs/LocalVariables.md",
+          "url": "/Docs/LocalVariables.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "third-party-maintenance",
+          "title": "ThirdParty Maintenance",
+          "path": "Docs/ThirdPartyMaintenance.md",
+          "url": "/Docs/ThirdPartyMaintenance.html",
+          "diataxis": "how-to"
+        }
+      ]
+    },
+    {
+      "id": "maintenance",
+      "title": "Maintain contracts and docs",
+      "items": [
+        {
+          "id": "api-change-management",
+          "title": "Generated Contract Change Management",
+          "path": "Docs/ApiChangeManagement.md",
+          "url": "/Docs/ApiChangeManagement.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "documentation-maintenance",
+          "title": "Documentation Maintenance",
+          "path": "Docs/DocumentationMaintenance.md",
+          "url": "/Docs/DocumentationMaintenance.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "documentation-site-publication",
+          "title": "Documentation Site Publication",
+          "path": "Docs/SitePublication.md",
+          "url": "/Docs/SitePublication.html",
+          "diataxis": "how-to"
+        },
+        {
+          "id": "adr-github-pages-markdown-publication",
+          "title": "ADR-0001: GitHub Pages Markdown Publication and Locale Layout",
+          "path": "Docs/Decisions/0001-github-pages-markdown-publication.md",
+          "url": "/Docs/Decisions/0001-github-pages-markdown-publication.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "adr-public-api-stability-contract",
+          "title": "ADR-0002: Public API Stability Contract",
+          "path": "Docs/Decisions/0002-public-api-stability-contract.md",
+          "url": "/Docs/Decisions/0002-public-api-stability-contract.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "adr-manifest-backed-ai-documentation-delivery",
+          "title": "ADR-0003: Manifest-Backed AI Documentation Delivery",
+          "path": "Docs/Decisions/0003-manifest-backed-ai-documentation-delivery.md",
+          "url": "/Docs/Decisions/0003-manifest-backed-ai-documentation-delivery.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "adr-manifest-backed-site-navigation-search",
+          "title": "ADR-0004: Manifest-Backed Site Navigation And Search",
+          "path": "Docs/Decisions/0004-manifest-backed-site-navigation-search.md",
+          "url": "/Docs/Decisions/0004-manifest-backed-site-navigation-search.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "adr-public-example-repository-ownership",
+          "title": "ADR-0005: Public Example Repository Ownership",
+          "path": "Docs/Decisions/0005-public-example-repository-ownership.md",
+          "url": "/Docs/Decisions/0005-public-example-repository-ownership.html",
+          "diataxis": "explanation"
+        },
+        {
+          "id": "adr-documentation-version-locale-routing",
+          "title": "ADR-0006: Documentation Version, Locale, And Stable Route Policy",
+          "path": "Docs/Decisions/0006-documentation-version-locale-routing.md",
+          "url": "/Docs/Decisions/0006-documentation-version-locale-routing.html",
+          "diataxis": "explanation"
+        }
+      ]
+    }
+  ]
+}

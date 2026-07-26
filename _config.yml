@@ -1,10 +1,32 @@
 title: FOnline Engine
 description: Flexible cross-platform isometric game engine
 email: cvet@tut.by
+url: https://fonline.ru
+baseurl: ""
+repository: cvet/fonline
 theme: jekyll-theme-slate
 google_analytics: UA-77340151-2
+markdown: kramdown
+strict_front_matter: true
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: true
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: default
 exclude:
   - BuildTools/
+  - Build/
+  - Build-*/
+  - Gemfile
+  - Gemfile.lock
   - Resources/
   - Source/
+  - Temp/
   - ThirdParty/
+  - Workspace/
