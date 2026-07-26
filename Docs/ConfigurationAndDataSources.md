@@ -10,6 +10,8 @@ Read this together with:
 
 - [BuildWorkflow.md](BuildWorkflow.md) for configure/build entry points.
 - [BakingPipeline.md](BakingPipeline.md) for resource-pack production.
+- [TextAndLocalization.md](TextAndLocalization.md) for `Baking.BakeLanguages`, `Client.Language`, text-pack filename selection, and bake-time normalization.
+- [FontFormat.md](FontFormat.md) for font descriptor raw-copy selection, referenced image lookup, client binding, and project-owned slot policy.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) for generated settings and metadata inputs.
 - [ClientRuntime.md](ClientRuntime.md), [ServerRuntime.md](ServerRuntime.md), and [Tools.md](Tools.md) for runtime/tool consumers.
 
@@ -97,6 +99,12 @@ Custom settings have two read shapes. Use `FindCustomSetting()` when missing key
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
 
+`Baking.BakeLanguages` is an ordered content contract, not an unordered locale
+allowlist: text baking uses the first value as the normalization base.
+`Client.Language` selects the initial client text pack. Exact `.fotxt`, `$Text`,
+fallback, and runtime lookup behavior belongs to
+[TextAndLocalization.md](TextAndLocalization.md).
+
 Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read. The writable-path knobs (`Client.UserWritablePath`, `Baking.CacheResources`) live in the config and sub-config, which are applied earlier, so the cache location is known without consulting the command line. The command line is then applied to the live settings exactly **once**, after the config, sub-config and local config, so it takes final precedence over all of them; a single pass also keeps `+`-append overrides (`-Setting +value`) from accumulating twice. That single pass logs each `Set <name> to <value>` override. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
 
 ## Resource packs and data sources
@@ -171,6 +179,8 @@ Related consumers are covered by resource, client, server, script, and baker tes
 - Mounted resource lookup: `Source/Common/DataSource.*` and `FileSystem.*`.
 - Raw disk operations: `Source/Essentials/DiskFileSystem.*`.
 - Runtime resource consumption: `Source/Client/ResourceManager.*` plus owning runtime docs.
+- Particle raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VisualParticles.*`, and [ParticleFormat.md](ParticleFormat.md).
+- Font descriptor raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, and [FontFormat.md](FontFormat.md).
 - Resource-pack generation: [BakingPipeline.md](BakingPipeline.md) and `Source/Tools/*Baker.*`.
 
 ## Validation checklist

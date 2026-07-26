@@ -11,30 +11,20 @@ Use this page when adding, moving, or reviewing script-visible native methods. T
 - preserve authoritative server boundaries and client/view-only boundaries;
 - update tests and docs when exported method groups move.
 
-## Source paths inspected
+## Source inventory
 
-All current native script method files were inspected:
+The authoritative file list and per-file `///@ ExportMethod` declaration counts are generated from `Source/Scripting/*ScriptMethods.cpp` into [source-inventory.json](generated/source-inventory.json). Full parsed method records live in the [canonical API model](generated/api.json), and the [generated methods reference](generated/api/methods.md) renders their overload IDs, signatures, defaults, nullability, runtime sides, effective receivers, stability, and source locations. This page owns the human explanation of method families and side/receiver boundaries; it does not duplicate generated totals or signatures.
 
-- `Source/Scripting/ClientCritterScriptMethods.cpp`
-- `Source/Scripting/ClientEntityScriptMethods.cpp`
-- `Source/Scripting/ClientGlobalScriptMethods.cpp`
-- `Source/Scripting/ClientImGuiScriptMethods.cpp`
-- `Source/Scripting/ClientItemScriptMethods.cpp`
-- `Source/Scripting/ClientLocationScriptMethods.cpp`
-- `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/ClientPlayerScriptMethods.cpp`
-- `Source/Scripting/CommonGlobalScriptMethods.cpp`
-- `Source/Scripting/CommonImGuiScriptMethods.cpp`
-- `Source/Scripting/MapperGlobalScriptMethods.cpp`
-- `Source/Scripting/ServerCritterScriptMethods.cpp`
-- `Source/Scripting/ServerEntityScriptMethods.cpp`
-- `Source/Scripting/ServerGlobalScriptMethods.cpp`
-- `Source/Scripting/ServerItemScriptMethods.cpp`
-- `Source/Scripting/ServerLocationScriptMethods.cpp`
-- `Source/Scripting/ServerMapScriptMethods.cpp`
-- `Source/Scripting/ServerPlayerScriptMethods.cpp`
+Regenerate the inventory after adding, removing, or moving an export:
 
-The current set contains **932** `///@ ExportMethod` declarations across these files.
+```bash
+python BuildTools/docs_api.py --write
+python BuildTools/docs_api.py --check
+python BuildTools/docs_reference.py --write
+python BuildTools/docs_reference.py --check
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
 
 ## Naming and ownership conventions
 
@@ -52,7 +42,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonGlobalScriptMethods.cpp`
 
-- Exported methods: 77
 - Prefix: `Common_Game_*`
 - Ownership: cross-side global helpers that do not require authoritative server-only state or client-only rendering state.
 - Typical responsibilities:
@@ -63,10 +52,10 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - geometry helpers such as distance, direction, line angle, intervals, trace line;
   - common serialization and formatting helpers.
 - Tests to inspect: `Source/Tests/Test_CommonScriptMethods.cpp`, `Source/Tests/Test_ScriptBuiltins.cpp`.
+- Model animation tuple, alias, bake, common lookup, and client-instance boundaries: [ModelAnimation.md](ModelAnimation.md).
 
 ### `Source/Scripting/CommonImGuiScriptMethods.cpp`
 
-- Exported methods: 235
 - Prefixes: `Common_Game_ImGui`, `Common_ImGui_*`
 - Ownership: script-visible ImGui wrappers shared by tools/frontends that expose ImGui.
 - Typical responsibilities:
@@ -80,7 +69,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerGlobalScriptMethods.cpp`
 
-- Exported methods: 122
 - Prefix: `Server_Game_*`
 - Ownership: authoritative game/server global operations.
 - Typical responsibilities:
@@ -93,7 +81,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
-- Exported methods: 35
 - Prefix: `Server_Entity_*`
 - Ownership: server-side base entity operations.
 - Typical responsibilities:
@@ -103,7 +90,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerCritterScriptMethods.cpp`
 
-- Exported methods: 59
 - Prefix: `Server_Critter_*`
 - Ownership: authoritative critter operations.
 - Typical responsibilities:
@@ -116,7 +102,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerMapScriptMethods.cpp`
 
-- Exported methods: 73
 - Prefix: `Server_Map_*`
 - Ownership: authoritative map operations.
 - Typical responsibilities:
@@ -129,7 +114,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerItemScriptMethods.cpp`
 
-- Exported methods: 9
 - Prefix: `Server_Item_*`
 - Ownership: authoritative item operations.
 - Typical responsibilities:
@@ -140,7 +124,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerLocationScriptMethods.cpp`
 
-- Exported methods: 10
 - Prefix: `Server_Location_*`
 - Ownership: authoritative location operations.
 - Typical responsibilities:
@@ -151,7 +134,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-- Exported methods: 11
 - Prefix: `Server_Player_*`
 - Ownership: connected player/session operations.
 - Typical responsibilities:
@@ -166,7 +148,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 112
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -181,7 +162,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientEntityScriptMethods.cpp`
 
-- Exported methods: 33
 - Prefix: `Client_Entity_*`
 - Ownership: client-side base entity time-event helpers.
 - Typical responsibilities:
@@ -191,7 +171,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientCritterScriptMethods.cpp`
 
-- Exported methods: 38
 - Prefix: `Client_Critter_*`
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
@@ -204,7 +183,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientMapScriptMethods.cpp`
 
-- Exported methods: 59
 - Prefix: `Client_Map_*`
 - Ownership: client-side map/view/rendering operations.
 - Typical responsibilities:
@@ -218,7 +196,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientItemScriptMethods.cpp`
 
-- Exported methods: 16
 - Prefix: `Client_Item_*`
 - Ownership: client-side visible item/view operations.
 - Typical responsibilities:
@@ -230,7 +207,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientImGuiScriptMethods.cpp`
 
-- Exported methods: 2
 - Prefix: `Client_ImGui_*`
 - Ownership: client-specific ImGui image/image-button helpers.
 - Typical responsibilities:
@@ -239,13 +215,11 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientLocationScriptMethods.cpp`
 
-- Exported methods: 0
 - Ownership: reserved/empty client-side location method group.
 - Keep this file as a routing marker unless client location methods are actually added.
 
 ### `Source/Scripting/ClientPlayerScriptMethods.cpp`
 
-- Exported methods: 0
 - Ownership: reserved/empty client-side player method group.
 - Player/session authority remains server-owned; add client methods here only for genuinely client-owned player view behavior.
 
@@ -253,7 +227,6 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/MapperGlobalScriptMethods.cpp`
 
-- Exported methods: 50
 - Prefix: `Mapper_Game_*`
 - Ownership: mapper/editor automation.
 - Typical responsibilities:
@@ -277,16 +250,18 @@ Use this checklist before editing a `*ScriptMethods.cpp` file:
 4. Spell a scalar pointer parameter/return `nptr<T>` only when it genuinely accepts or returns null; otherwise use the non-null `ptr<T>`. See [Nullability.md](Nullability.md).
 5. Regenerate code so method descriptors and wrappers reflect the new signature.
 6. Add or update the smallest relevant script method tests.
-7. Update this page if a file is added/removed or a group meaning changes.
+7. Review or add `///@ ApiContract` only when the method's support status has an owner-backed disposition; reachability is not a stability promise.
+8. Regenerate `Docs/generated/api.json`, generated reference pages, and `Docs/generated/source-inventory.json`; update this page only if a file or responsibility group changes meaning.
 
 ## Validation checklist
 
-1. Recount `///@ ExportMethod` declarations after large API changes.
-2. Run code generation and compile generated wrappers.
-3. Run the relevant method tests:
+1. Run `python BuildTools/tests/test_docs_api.py`, `python BuildTools/docs_api.py --write`, `python BuildTools/docs_reference.py --write`, and then both `--check` commands after API or contract changes.
+2. Run `python BuildTools/docs_inventory.py --write` and then `--check` after export-file changes.
+3. Run code generation and compile generated wrappers.
+4. Run the relevant method tests:
    - common methods: `Source/Tests/Test_CommonScriptMethods.cpp`;
    - server methods: `Source/Tests/Test_ServerScriptMethods.cpp` plus relevant server runtime tests;
    - entity/handle behavior: `Source/Tests/Test_ScriptEntityOps.cpp`;
    - builtins/types: `Source/Tests/Test_ScriptBuiltins.cpp`.
-4. Run nullable analyzers if any pointer signature changed.
-5. Validate runtime behavior on the owning side; compilation alone does not prove that a method belongs on that side.
+5. Run nullable analyzers if any pointer signature changed.
+6. Validate runtime behavior on the owning side; compilation alone does not prove that a method belongs on that side.

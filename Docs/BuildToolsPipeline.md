@@ -1,6 +1,6 @@
 # BuildTools Pipeline
 
-This document explains the staged CMake pipeline under `BuildTools/cmake/`. It is a source-grounded companion to [BuildWorkflow.md](BuildWorkflow.md): use `BuildWorkflow.md` for how to approach builds as a user, and this file for where the reusable build machinery lives.
+This document explains the staged CMake pipeline under `BuildTools/cmake/`. It is a source-grounded companion to [BuildWorkflow.md](BuildWorkflow.md): use `BuildWorkflow.md` for how to approach builds as a user, this file for implementation ownership, the [generated CMake reference](generated/cmake/index.md) for exact project-facing CMake declarations, the [generated helper CLI reference](generated/helper-cli/index.md) for executable helper syntax/ownership, the [generated native-extension reference](generated/native-extension/index.md) for source roles and hooks, and the [generated package reference](generated/package/index.md) for `DefinePackage` and payload contracts.
 
 ## Ownership model
 
@@ -10,6 +10,7 @@ FOnline is normally configured from an embedding game project. The engine suppli
 ## Source paths inspected
 
 - `BuildTools/Init.cmake`
+- `BuildTools/cmake/ProjectInterface.json`
 - `BuildTools/cmake/stages/Init.cmake`
 - `BuildTools/cmake/stages/ProjectOptions.cmake`
 - `BuildTools/cmake/stages/ThirdParty.cmake`
@@ -23,10 +24,22 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/Commands.cmake`
 - `BuildTools/cmake/helpers/Options.cmake`
+- `BuildTools/cmake/helpers/RunAndLog.cmake`
 - `BuildTools/cmake/helpers/State.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/EffekseerEditor/build.ps1`
+- `BuildTools/compile-mono-scripts.py`
+- `BuildTools/codecoverage.py`
+- `BuildTools/android_device.py`
+- `BuildTools/web/simple-web-server.py`
+- `BuildTools/HelperCliInterface.json`
+- `BuildTools/docs_helper_cli.py`
+- `BuildTools/docs_cmake.py`
+- `BuildTools/PackageInterface.json`
+- `BuildTools/docs_package.py`
+- `BuildTools/tests/validate_package_interface.cmake`
+- `BuildTools/tests/validate_project_interface.cmake`
 - `BuildTools/package.py`
 - `BuildTools/tests/test_package_include.py`
 - `BuildTools/msicreator/createmsi.py`
@@ -39,28 +52,13 @@ Important consequences:
 
 ## Stage files
 
-The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order is defined by `BuildTools/Init.cmake`: `Init`, `ProjectOptions`, `ThirdParty`, `EngineSources`, `Codegen`, `CoreLibs`, `Applications`, `ScriptsAndBaking`, `Packages`, `Finalize`.
+The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order, entrypoint names, and hook points are declared in `BuildTools/cmake/ProjectInterface.json`, loaded by `BuildTools/Init.cmake`, and rendered in [generated/cmake/stages.md](generated/cmake/stages.md). The loader rejects duplicate names/entrypoints, non-contiguous order, and unsupported hook points before an embedding project executes a stage.
 
 ### `Init.cmake`
 
-Establishes baseline configuration. It declares and checks core project options such as:
+Establishes baseline configuration. It declares every public project option from `BuildTools/cmake/ProjectInterface.json`, then checks required values and establishes the build hash and common generation context. The exact required inputs, cache types, defaults, allowed values, categories, and override precedence are generated in [generated/cmake/options.md](generated/cmake/options.md). Start in the manifest when a public option is added or changed; start in this stage when its configure-time behavior is wrong.
 
-- `FO_MAIN_CONFIG`
-- `FO_DEV_NAME`
-- `FO_NICE_NAME`
-- `FO_GEOMETRY`
-- `FO_APP_ICON`
-- `FO_OUTPUT_PATH`
-- build feature toggles such as `FO_BUILD_CLIENT`, `FO_BUILD_SERVER`, `FO_BUILD_MAPPER`, `FO_BUILD_ASCOMPILER`, `FO_BUILD_BAKER`, `FO_UNIT_TESTS`, the scripting toggles, and the independent `FO_SPARK_PARTICLES` / `FO_EFFEKSEER_PARTICLES` particle backends.
-
-Both particle backend options default to `OFF`. An embedding project explicitly
-enables either backend or both during a migration. Backend source files remain
-in the stable engine source lists and guard their implementation with the
-corresponding `FO_*_PARTICLES` macro. A disabled backend contributes no
-third-party target, compiled runtime or Mapper implementation, runtime resource
-extensions, or baker implementation.
-
-It also establishes build hash and common generation context. Start here when a build option is missing or validated too early/late.
+The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
 ### `ProjectOptions.cmake`
 
@@ -107,7 +105,7 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Mono script compilation through `BuildTools/compile-mono-scripts.py` when Mono scripting is enabled.
+- Mono script compilation through `BuildTools/compile-mono-scripts.py` when Mono scripting is enabled. CMake passes `FO_OUTPUT_PATH` explicitly as the required scripts/project directory and appends each `FO_MONO_ASSEMBLIES` entry.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
@@ -125,11 +123,17 @@ application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
 entry point configures and builds upstream sources independently of an
 embedding project's FOnline CMake configuration.
 
+For Visual Studio/MSBuild test targets, the stage invokes the test executable through `BuildTools/cmake/helpers/RunAndLog.cmake`. The helper captures stdout and stderr in `<build-dir>/<target>.log` and fails the CMake command from the real process exit code. This preserves expected negative-test diagnostics without letting MSBuild reinterpret lines containing words such as `error` as build failures. Other generators run the executable directly.
+
 See [Applications.md](Applications.md).
 
 ### `Packages.cmake`
 
-Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
+Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and the current `BINARY` entry's optional output postfix.
+
+`DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are versioned in `BuildTools/PackageInterface.json` and rendered in [generated/package/index.md](generated/package/index.md). `package.py` consumes the same manifest to reject unknown, duplicate, placeholder, unsupported-platform, target-incompatible, modifier-only, and invalid-architecture package requests before staging output. The embedding project still owns which valid combinations it declares.
+
+`POSTFIX <value>` follows a single `BINARY` clause and is never inherited by sibling entries. It must match the `FO_BINARY_OUTPUT_POSTFIX` used when that binary was built, because both sides participate in the input-directory name and packaged runtime identity. The `win32-win7` and `win64-win7` package architecture keys resolve to canonical `win32` and `win64` binary architectures; their legacy toolset choice comes from `buildtools.py`, while an explicit postfix such as `POSTFIX Win7` keeps the produced Raw/Zip/Wix names distinct. Run `BuildTools/check_windows7_imports.py` against every linked Win7 PE before packaging or publication.
 
 `package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
@@ -155,7 +159,7 @@ packager replaces the included target tree and updates an existing `SingleZip`
 without duplicate or stale entries. This path is covered by
 `BuildTools/tests/test_package_include.py`.
 
-Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
+Start in `Packages.cmake` when package target wiring changes. Start in `BuildTools/PackageInterface.json` plus `package.py` when declaration vocabulary, supported combinations, payload layout, artifact behavior, packager arguments, or package-time installer metadata changes.
 
 ### `Finalize.cmake`
 
@@ -170,10 +174,13 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `Build.cmake` — build/target creation helpers.
 - `Commands.cmake` — command target helpers.
 - `Options.cmake` — option/value helpers.
+- `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
 - `WriteBuildHash.cmake` — writes build-hash state used by generation/baking flows.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
+
+Helper location does not make a command public. Only the selected commands declared in `BuildTools/cmake/ProjectInterface.json` and rendered in [generated/cmake/helpers.md](generated/cmake/helpers.md) are the documented embedding-project surface; all other helper commands remain internal implementation details.
 
 ## Stage hooks
 
@@ -185,32 +192,41 @@ AddStageHook(<StageName> Pre|Post <macro-name>)
 
 Use hooks when an embedding project or a later refactor needs to extend stage behavior without editing the middle of a stage body. Keep hook behavior documented near the owning stage or in the project docs if it is game-specific.
 
+The generated [stage and hook reference](generated/cmake/stages.md) is authoritative for supported stage names, entrypoints, and hook positions.
+
 ## Change routing
 
-- New project option or option validation: `Init.cmake` / `ProjectOptions.cmake`.
+- New project option: `BuildTools/cmake/ProjectInterface.json`; option application/validation: `Init.cmake` / `ProjectOptions.cmake`.
 - New vendored dependency: `ThirdParty.cmake`.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
+- New helper command or argument: the executable `create_parser()`, `BuildTools/HelperCliInterface.json`, [generated/helper-cli/index.md](generated/helper-cli/index.md), and `BuildTools/docs_helper_cli.py`.
+- New project-native source role, hook, or binding rule: `BuildTools/NativeExtensionInterface.json`, [NativeExtensions.md](NativeExtensions.md), [generated/native-extension/index.md](generated/native-extension/index.md), and `BuildTools/docs_native_extension.py`.
 - New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and [Scripting.md](Scripting.md).
 - New executable/tool entry point: `Applications.cmake` and [Applications.md](Applications.md).
 - Auxiliary-tool build recipes: `BuildTools/buildtools.py build-auxiliary`,
   `BuildTools/EffekseerEditor/build.ps1`, and [Tools.md](Tools.md).
-- New package layout or installer metadata: `Packages.cmake`, `BuildTools/package.py`, `BuildTools/msicreator/createmsi.py`, plus platform docs.
+- New package declaration, support combination, layout, or artifact: `BuildTools/PackageInterface.json`, `Packages.cmake`, `BuildTools/package.py`, [generated/package/index.md](generated/package/index.md), `BuildTools/msicreator/createmsi.py` when relevant, plus platform docs.
 - Final target organization or verbose diagnostics: `Finalize.cmake`.
 
 ## Validation checklist
 
 For BuildTools changes:
 
-1. Configure from a real embedding project root.
-2. Use the narrowest preset that exercises the changed stage.
-3. For source-list changes, verify the affected target builds.
-4. For codegen changes, verify generated files and script API consumers.
-5. For baking changes, run normal and forced bake paths when relevant.
-6. For Effekseer Editor changes, run `buildtools.py build-auxiliary
+1. Run `cmake -P BuildTools/tests/validate_project_interface.cmake` for project-interface changes.
+2. Run `python BuildTools/tests/test_docs_cmake.py` and `python BuildTools/docs_cmake.py --check` after regenerating the CMake reference.
+3. Configure from a real embedding project root.
+4. Use the narrowest preset that exercises the changed stage.
+5. For source-list changes, verify the affected target builds.
+6. For codegen changes, verify generated files and script API consumers.
+7. For baking changes, run normal and forced bake paths when relevant.
+8. For Effekseer Editor changes, run `buildtools.py build-auxiliary
    effekseer-editor Release` on Windows win64 and inspect the staged
    managed/native/resources payload; exercise the package `INCLUDE` when the
    developer-package layout changes.
-7. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
-8. Run documentation link checks if docs changed.
-9. Run `git diff --check` before reporting completion.
+9. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
+10. For package-interface changes, run `python BuildTools/tests/test_docs_package.py`, `cmake -P BuildTools/tests/validate_package_interface.cmake`, and `python BuildTools/docs_package.py --check` after regeneration.
+11. For native-extension interface changes, run `python BuildTools/tests/test_docs_native_extension.py`, `cmake -P BuildTools/tests/validate_native_extension_interface.cmake`, and `python BuildTools/docs_native_extension.py --check` after regeneration.
+12. Compare all regenerated API/CMake/main-CLI/package/helper-CLI/native-extension models with the intended base through `BuildTools/docs_contract_diff.py`; complete any required [contract disposition](ApiChangeManagement.md).
+13. Run documentation link checks if docs changed.
+14. Run `git diff --check` before reporting completion.

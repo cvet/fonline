@@ -94,11 +94,13 @@ Built-in baker implementations:
 - `Source/Tools/MapBaker.*` — bakes map files and validates map/proto relationships.
 - `Source/Tools/TextBaker.*` — bakes text packs.
 - `Source/Tools/ProtoTextBaker.*` — bakes prototype text data.
-- `Source/Tools/ModelMeshBaker.*` — bakes model mesh data when 3D support is enabled.
-- `Source/Tools/ModelInfoBaker.*` — bakes model descriptions and the common model-animation duration table when 3D support is enabled.
+- `Source/Tools/ModelMeshBaker.*` — bakes current FBX/OBJ hierarchy, mesh, skinning, material, and animation data when 3D support is enabled; see [ModelFormat.md](ModelFormat.md).
+- `Source/Tools/ModelInfoBaker.*` — validates and bakes `.fo3d` composition plus the common model-animation duration table when 3D support is enabled; see [ModelFormat.md](ModelFormat.md) and [ModelAnimation.md](ModelAnimation.md).
 - `Source/Tools/AngelScriptBaker.*` — compiles/bakes AngelScript bytecode resources when AngelScript support is enabled.
 
-Detailed bake ordering, settings, output writing, and validation live in [BakingPipeline.md](BakingPipeline.md).
+Model animation tuple, speed, alias, metadata, and typed lookup semantics live in [ModelAnimation.md](ModelAnimation.md). Per-frame 2D sprite offsets and movement-driven walk/run cycles live in [SpriteRootMotion.md](SpriteRootMotion.md). Detailed bake ordering, settings, output writing, and validation live in [BakingPipeline.md](BakingPipeline.md).
+
+FOFNT and AngelCode BMFont descriptors have no editor or dedicated baker in the Engine. They are authored externally, copied by `RawCopyBaker`, and parsed by the client; referenced images follow the normal image pipeline. See [FontFormat.md](FontFormat.md) for descriptor syntax, `.bmfc` ownership, binding/layout behavior, and validation.
 
 ## Interactive developer tools
 
@@ -163,6 +165,8 @@ FOnline's renderer and supported-capability gate.
 
 There is no separate generic Editor application or `EditorLib`; Mapper is the engine's central interactive editing tool.
 
+The current source-backed workflow, exact SPARK object-handler coverage, save normalization, preview dependencies, and project validation boundary are documented in [ParticleFormat.md](ParticleFormat.md) and the generated [particle tooling reference](generated/particle-format/tooling.md). Project-specific asset catalogs and visual-quality procedures remain in the embedding project.
+
 ## Ownership boundaries
 
 Use engine docs for:
@@ -203,6 +207,9 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 
 ## Change routing
 
+- Model-description syntax, source meshes, layers, attachments, materials, cuts, and runtime composition: `Source/Tools/ModelMeshBaker.*`, `Source/Tools/ModelInfoBaker.*`, [ModelFormat.md](ModelFormat.md).
+- Model animation tuples and effective-duration metadata: `Source/Tools/ModelInfoBaker.*`, [ModelAnimation.md](ModelAnimation.md).
+- Image-frame offsets and 2D walk/run alignment: `Source/Tools/ImageBaker.*`, `Source/Client/CritterHexView.*`, [SpriteRootMotion.md](SpriteRootMotion.md).
 - Full resource bake orchestration: `Source/Tools/Baker.*`, `Source/Applications/BakerApp.cpp`, [BakingPipeline.md](BakingPipeline.md).
 - Script bytecode compilation: `Source/Tools/AngelScriptBaker.*`, `Source/Applications/ASCompilerApp.cpp`, [Scripting.md](Scripting.md).
 - Metadata tags and generated metadata resources: `Source/Tools/MetadataBaker.*`, [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
@@ -210,6 +217,10 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 - Particle editor boundary and preview: `Source/Tools/ParticleEditor.*`; Mapper only invokes its neutral lifecycle and drawing hooks.
 - SPARK particle editor implementation: `Source/Tools/SparkParticleEditor.*`, composed behind the neutral particle-editor boundary.
 - Effekseer authoring-tool build/staging and optional generic package include: `BuildTools/buildtools.py`, `BuildTools/EffekseerEditor/build.ps1`, `ThirdParty/Effekseer/Dev/Editor/`, and [BuildToolsPipeline.md](BuildToolsPipeline.md).
+- Editor shell/views: `Source/Tools/Editor.*`, `Source/Applications/EditorApp.cpp`.
+- Asset explorer: `Source/Tools/AssetExplorer.*`.
+- Particle source formats, baking, runtime factories, and preview behavior: `Source/Tools/ParticleEditor.*`, [ParticleFormat.md](ParticleFormat.md).
+- Font descriptor authoring and runtime binding: external bitmap-font tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [FontFormat.md](FontFormat.md).
 - Application target wiring: [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ## Validation checklist

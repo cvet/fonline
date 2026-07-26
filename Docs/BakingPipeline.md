@@ -361,6 +361,8 @@ The particle/model/prototype/map stages intentionally form a strict dependency c
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+### Shared animation metadata
+
 Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
 record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
 and resolved per-frame bounds, plus a `ModelAnimationInfo` payload in
@@ -488,18 +490,21 @@ mutable poses are never serialized into the shared mesh hierarchy.
 
 The model-specific bounds and duration contract is described immediately above; the Ozz conversion changes its source representation, not the common `AnimationInfo` query surface.
 
-`EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
+For `ProtoBaker` section resolution, identity, inheritance, side-specific property applicability, strict values, references, and migrations, use [PrototypeFormat.md](PrototypeFormat.md) and the generated [prototype-format reference](generated/prototype-format/index.md). Concrete project extensions, entity metadata, IDs, and semantic field combinations remain project-owned.
 
-`ImageBaker` imports PNG/TGA plus classic frame/image formats such as FRM,
-FRx, FOFRM, ART, SPR, ZAR, MOS, BAM, and TIL. FOFRM nested frame references
-forward `$` options to the referenced image loader. ART options accept palette
-selection (`0`..`3`), transparent-alpha derivation (`t`/`T`), horizontal and
-vertical mirroring (`h`/`H`, `v`/`V`), and frame selection/ranges (`f`/`F`,
-for example `f5` or `f7-5`). SPR options accept zero or more `[part,r,g,b]`
-color-offset entries, using either commas or whitespace as separators, followed
-by the sequence name. BAM options accept a cycle index and optional cycle-frame
-selector separated by `-` (for example `$1` or `$1-3`); out-of-range cycle and
-frame selectors fall back to the first available cycle/frame.
+For `.fomap` section order, placement IDs, ownership references, static/dynamic handling, mapper round-trip, and the coupled server/client payloads produced by `MapBaker`, use [MapFormat.md](MapFormat.md) and the generated [map-format reference](generated/map-format/index.md). Project map catalogs, composition rules, quests, encounters, and gameplay validation remain project-owned.
+
+`ModelMeshBaker` imports current `.fbx` / `.obj` inputs before `ModelInfoBaker` validates and emits concrete `.fo3d` descriptions. For lexical syntax, includes, layers, attachments, transforms, materials, cuts, runtime composition, and validation, use [ModelFormat.md](ModelFormat.md) and its generated reference. For animation tuples, `AnimSpeed`, one-step `StateAnimEqual` / `ActionAnimEqual` semantics, `ModelAnimationInfo.foinfo`, runtime distribution, and missing-data behavior, use [ModelAnimation.md](ModelAnimation.md). Baked mesh/description/config layouts are private baker/runtime contracts and must not be parsed by embedding-project scripts.
+
+`TextBaker` parses `<TextPack>.<Language>.fotxt`, completes changed pack language sets, and normalizes them against the first `Baking.BakeLanguages` entry. `ProtoTextBaker` merges inherited `$Text` fields and emits the five Engine-generated prototype text packs. Use [TextAndLocalization.md](TextAndLocalization.md) and the generated [text-format reference](generated/text-format/index.md) for exact syntax, fallback, runtime lookup, color-tag, and project-formatting boundaries.
+
+`ImageBaker` imports PNG/TGA and ten legacy/descriptor extensions, composes FOFRM sequences/directions/options, and writes the private RGBA sprite container consumed by the stock client. Use [ImageFormat.md](ImageFormat.md) and its generated [image-format reference](generated/image-format/index.md) for exact source support, FOFRM grammar, legacy selectors, output naming, runtime factory coverage, atlas/cache behavior, and validation. Signed per-frame `NextX` / `NextY` then enters the narrower movement-driven presentation contract in [SpriteRootMotion.md](SpriteRootMotion.md).
+
+Particle `.fopts` resources do not have a dedicated baker. `RawCopyBaker` copies their SPARK XML unchanged when `Baking.RawCopyFileExtensions` includes `fopts`; graph validation happens later in the client or tool runtime. Use [ParticleFormat.md](ParticleFormat.md) and its generated [particle-format reference](generated/particle-format/index.md) for XML, registered objects, renderer fields, editor behavior, cache semantics, integration routes, and the mandatory visible validation boundary.
+
+Bitmap-font descriptors also have no dedicated baker. `RawCopyBaker` copies runtime `.fofnt` and AngelCode text `.fnt` descriptors, while `.bmfc` is only an authoring sidecar that may be shipped for source provenance; the descriptor's referenced PNG/TGA image is baked separately by `ImageBaker`. `FontManager` validates and binds the descriptor at client startup. Use [FontFormat.md](FontFormat.md) and its generated [font-format reference](generated/font-format/index.md) for exact syntax, resource relationships, layout/rendering semantics, diagnostics, and visible validation.
+
+`EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses. Use [EffectFormat.md](EffectFormat.md) and the generated [effect-format reference](generated/effect-format/index.md) for the owning authoring, resource, runtime-cache, script-value, and validation contract.
 
 `ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
 frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
@@ -511,6 +516,13 @@ by `BakingSettings`:
   candidates;
 - `AreaSavingsWeight` converts the fraction of original quad area removed into
   selection-score points; one point compensates one submitted triangle.
+
+Declare all four values in an embedding project's `.fomain`, including when
+`Enabled = False`. Image baking resolves and validates the complete group before
+processing frames: `AlphaThreshold` must be in `0..254`, `MaxTriangles` must be
+positive, and `AreaSavingsWeight` must be finite and non-negative. The canonical
+minimal project records the Engine defaults explicitly so a standalone bake does
+not depend on an embedding project's generated or inherited settings state.
 
 The polygonization algorithm is isolated in `SpriteMeshing`. It accepts an
 RGBA frame, its dimensions, and the resolved mesh settings, then owns mask
@@ -930,7 +942,7 @@ memory results.
 `ScriptsAndBaking.cmake` also creates script compilation commands:
 
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
-- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` when `FO_MONO_SCRIPTING` is enabled.
+- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` with `FO_OUTPUT_PATH` as the required scripts/project directory when `FO_MONO_SCRIPTING` is enabled.
 
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
@@ -966,6 +978,11 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 - Baking command arguments: update `BuildTools/cmake/stages/ScriptsAndBaking.cmake`.
 - Resource build hash behavior: update `BuildTools/cmake/helpers/WriteBuildHash.cmake` and related tests/build validation.
 - Metadata baking: update `Source/Tools/MetadataBaker.*` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
+- Prototype format/property loading: update `BuildTools/PrototypeFormatInterface.json`, [PrototypeFormat.md](PrototypeFormat.md), regenerate its model/reference, run `test_docs_prototype_format.py`, and include it in the aggregate contract diff.
+- Map parsing/baking/materialization: update `BuildTools/MapFormatInterface.json`, [MapFormat.md](MapFormat.md), regenerate its model/reference, run `test_docs_map_format.py`, include it in the aggregate contract diff, run the affected map unit tests, and rebake an embedding project.
+- Image import, FOFRM composition, baked sprite records, or stock client loading/atlas/cache behavior: update `BuildTools/ImageFormatInterface.json`, [ImageFormat.md](ImageFormat.md), regenerate its model/reference, run `test_docs_image_format.py`, include it in the aggregate contract diff, run focused image/atlas tests, and rebake plus visibly inspect an affected embedding project.
+- Font descriptor delivery, `Baking.RawCopyFileExtensions`, FOFNT/BMFont parsing, binding, layout, or rendering: update `BuildTools/FontFormatInterface.json`, [FontFormat.md](FontFormat.md), regenerate its model/reference, run `test_docs_font_format.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project.
+- Effect parsing/baking/resources/runtime selection: update `BuildTools/EffectFormatInterface.json`, [EffectFormat.md](EffectFormat.md), regenerate its model/reference, run `test_docs_effect_format.py`, include it in the aggregate contract diff, run focused effect-baker tests, and validate affected backends in a visible embedding-project scene.
 - Script-specific bake behavior: update `Source/Tools/AngelScriptBaker.*` and [Scripting.md](Scripting.md).
 
 ## Validation checklist

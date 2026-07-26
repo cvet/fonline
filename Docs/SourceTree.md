@@ -35,13 +35,14 @@ Shared runtime code used by client/server/tools/scripts. Key areas include:
 - Maps and movement: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Networking primitives: `NetBuffer.*`, `NetworkUdp.*`.
 - Config/data access: `ConfigFile.*`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`.
+- Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 If a change is reusable and shared by both client and server, it likely starts here.
 
 ## `Source/Client/`
 
-Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect managers, render targets, and network-client transport variants.
+Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. Font descriptor parsing, slot binding, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and [FontFormat.md](FontFormat.md).
 
 Keep authoritative game-state decisions out of the client unless the server contract and validation are documented.
 
@@ -61,7 +62,14 @@ Use [Nullability.md](Nullability.md) when changing nullable script/native signat
 
 Developer and build-time tools. Current tool files include baker classes, config/effect/image/map/model/proto/text bakers, mapper, editor, asset explorer, and particle editor.
 
+Cross-baker reporting is owned by `BakingReport.*`. Polygonal 2D geometry is
+isolated in `SpriteMeshing.*`, while model animation bounds are calculated by
+`ModelBoundsCalculator.*`; their container integration remains in the owning
+image/model bakers.
+
 Build/resource pipeline docs should cite these files and the CMake stage that invokes them rather than guessing from app names.
+Particle XML has no dedicated baker: route `.fopts`, SPARK registry/editor, `SparkQuadRenderer`, and client integration work through [ParticleFormat.md](ParticleFormat.md).
+Font descriptors likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, referenced textures through `ImageBaker`, and `.fofnt`/`.fnt` parsing plus text layout through [FontFormat.md](FontFormat.md).
 
 ## `Source/Frontend/`
 

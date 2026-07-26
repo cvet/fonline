@@ -14,10 +14,10 @@ Use this page when choosing validation for an engine change or when adding/remov
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
+- `BuildTools/cmake/helpers/RunAndLog.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh`
 - `BuildTools/validate.cmd`
-- parent VS Code task references where available
 
 ## Test runner model
 
@@ -25,12 +25,12 @@ Use this page when choosing validation for an engine change or when adding/remov
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. It rejects the reported `CreateFile2` import; embedding-project CI should run it after linking and before packaging.
+`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files, fails closed on unreadable or malformed input, and rejects every reported `CreateFile2` import. Embedding-project CI should run it against all linked Win7 executables and runtime DLLs after linking and before packaging; see the [Windows 7 compatibility lane](BuildWorkflow.md#windows-7-compatibility-lane).
 
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
 
-For an embedding project with dev name `LF`, the standard generated names are `LF_UnitTests`, `RunUnitTests`, `LF_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
+The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
 ## Running tests
 
@@ -45,7 +45,7 @@ invoke the published helper through the production `ParticleBaker` path. They
 cover text compilation, dependency invalidation, malformed XML, and rejection
 of cooked files presented as authored inputs.
 
-The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
+The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors.
 
@@ -155,36 +155,18 @@ notes.
 
 ## Current test inventory
 
-Current count: **95** `Test_*.cpp` suites.
+The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](generated/source-inventory.json). Do not copy the total or full list into prose.
 
-### Essentials and low-level utilities
+Regenerate and verify it from the engine root:
 
-- `Source/Tests/Test_BaseLogging.cpp`
-- `Source/Tests/Test_BasicCore.cpp`
-- `Source/Tests/Test_CommonHelpers.cpp`
-- `Source/Tests/Test_Compressor.cpp`
-- `Source/Tests/Test_Containers.cpp`
-- `Source/Tests/Test_DataSerialization.cpp`
-- `Source/Tests/Test_DiskFileSystem.cpp`
-- `Source/Tests/Test_ExceptionHandling.cpp`
-- `Source/Tests/Test_ExtendedTypes.cpp`
-- `Source/Tests/Test_GenericUtils.cpp`
-- `Source/Tests/Test_GlobalData.cpp`
-- `Source/Tests/Test_HashedString.cpp`
-- `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
-- `Source/Tests/Test_Platform.cpp`
-- `Source/Tests/Test_SafeArithmetics.cpp`
-- `Source/Tests/Test_SmartPointers.cpp`
-- `Source/Tests/Test_StackTrace.cpp`
-- `Source/Tests/Test_StringUtils.cpp`
-- `Source/Tests/Test_StrongType.cpp`
-- `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
 
-### Configuration, data sources, files, and caches
+Use these ownership groups to choose a starting area; the filenames are representative, while the generated JSON is exhaustive:
+
+### Configuration and data sources
 
 - `Source/Tests/Test_CacheStorage.cpp`
 - `Source/Tests/Test_ConfigFile.cpp`
@@ -314,6 +296,18 @@ unchanged tree incremental-clean.
   bake path exercises the native fixed-profile exporter on real XML projects.
 - `Source/Tests/Test_Rendering.cpp`
 
+### Ownership summary
+
+| Area | Typical coverage and starting points |
+|---|---|
+| Essentials and low-level utilities | Logging, containers, serialization, filesystem, exceptions, memory, platform, smart pointers, stack traces, strings, time, and worker primitives. |
+| Configuration and data sources | Cache storage, config parsing, data sources, filesystems, and `Test_Settings.cpp`. |
+| Common runtime model | Metadata, entities/prototypes, geometry, map loading, movement, line tracing, and path finding. |
+| Networking and server/client integration | Network buffers, connection flows, ordered UDP, server engine/map operations, client runtime ABI, updater, and database behavior. |
+| Scripting and script-visible APIs | AngelScript core, compiler/runtime extensions, entity ops, exports, script methods, and value semantics. |
+| Bakers and tools | Baker, metadata/resource packers, mapper/editor tools, asset processors, and tool-side regressions. |
+| Frontend and rendering | Application init, frontend/rendering smoke cases, headless behavior, and renderer-facing contracts. |
+
 ## Validation routing by change type
 
 - Essentials utilities: start with [Essentials.md](Essentials.md) and the essentials tests listed above.
@@ -322,19 +316,20 @@ unchanged tree incremental-clean.
 - Bakers/resources: [BakingPipeline.md](BakingPipeline.md) and the matching baker tests.
 - Runtime entity/map/persistence/networking: [EntityModel.md](EntityModel.md), [MapsMovementGeometry.md](MapsMovementGeometry.md), [Persistence.md](Persistence.md), [Networking.md](Networking.md), and the focused runtime tests.
 - Client/frontend/server: [ClientRuntime.md](ClientRuntime.md), [FrontendAndRendering.md](FrontendAndRendering.md), [ServerRuntime.md](ServerRuntime.md), and the matching integration/smoke tests.
-- Scripting: [Scripting.md](Scripting.md), [ScriptMethodsMap.md](ScriptMethodsMap.md), [Nullability.md](Nullability.md), and the script/baker/method tests.
+- Scripting: [Scripting.md](Scripting.md), [ScriptLifecycleAndConcurrency.md](ScriptLifecycleAndConcurrency.md), [ScriptMethodsMap.md](ScriptMethodsMap.md), [Nullability.md](Nullability.md), and the script/baker/method tests. Route callback attributes to `Test_AngelScriptAttributes`, mutable-global policy to `Test_AngelScriptBaker`, and server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
 
 ## Adding or removing tests
 
 1. Add the new `Source/Tests/Test_*.cpp` file with deterministic Catch2 tests.
 2. Add it to `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`.
-3. Update this page and [../Source/Tests/README.md](../Source/Tests/README.md) so the inventory stays complete.
-4. Run the focused test binary and, when practical, `RunUnitTests`.
-5. If coverage behavior changed, verify the relevant coverage target.
+3. Run `python BuildTools/docs_inventory.py --write` so the generated filename list and count stay current.
+4. Update this page only when the new test changes an ownership group or validation route.
+5. Run the focused test binary and, when practical, `RunUnitTests`.
+6. If coverage behavior changed, verify the relevant coverage target.
 
 ## Validation checklist
 
-1. Every current `Source/Tests/Test_*.cpp` file should appear in this page.
-2. No deleted/nonexistent test file should be listed.
-3. Target names should be described as generated from `FO_DEV_NAME`, not hard-coded as universal engine names.
-4. If `TestingApp.cpp`, `FO_TESTS_SOURCE`, or coverage target wiring changes, update this page in the same change.
+1. `python BuildTools/docs_inventory.py --check` proves the generated filename list and count match `Source/Tests/`.
+2. `python BuildTools/docs_validate.py` proves the generated artifact and documentation links are current.
+3. Target names are described as generated from `FO_DEV_NAME`, not hard-coded as universal engine names.
+4. If `TestingApp.cpp`, `FO_TESTS_SOURCE`, ownership groups, or coverage target wiring changes, update this page in the same change.

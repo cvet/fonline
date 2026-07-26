@@ -1,21 +1,25 @@
 # Debugging
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Engine-owned documentation for reusable native, AngelScript, stack-trace, and client-runtime debugging. Concrete launch profiles, game tests, binary names, and editor tasks belong in the embedding project.
 
 Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `ReportExceptionAndExit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
 
 ## Visual Studio Visualizers
 
-For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are included in the generated project automatically.
+For MSVC-generated solutions, engine and supported third-party natvis files are included in the generated project automatically.
 
 `essentials.natvis` covers Essentials smart pointers, stack traces, exceptions, hashed strings, and compact helper value types.
 
 `unordered_dense.natvis` covers `ankerl::unordered_dense` containers.
 
+The vendored [`small_vector.natvis`](../ThirdParty/small_vector/source/support/visualstudio/small_vector.natvis) displays `gch::small_vector` size, capacity, inline/heap storage, and elements. `BuildTools/cmake/stages/ThirdParty.cmake` attaches it to the generated MSVC project; no manual Visual Studio installation is required.
+
 ## Source paths inspected
 
 - `../BuildTools/natvis/essentials.natvis`
 - `../BuildTools/natvis/unordered_dense.natvis`
+- `../ThirdParty/small_vector/source/support/visualstudio/small_vector.natvis`
+- `../BuildTools/cmake/stages/ThirdParty.cmake`
 - `../BuildTools/cmake/stages/Finalize.cmake`
 - `../BuildTools/cmake/helpers/Build.cmake`
 - `../Source/Essentials/StackTrace.h`
@@ -28,8 +32,9 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
-- `../../.vscode/launch.json`
-- `../../.vscode/tasks.json`
+- `../BuildTools/angelscript-debugger/`
+- `../Source/Scripting/AngelScript/AngelScriptDebugger.cpp`
+- `../Source/Common/Settings.inc`
 
 ## Stack Trace Architecture
 
@@ -127,7 +132,7 @@ Every abnormal death must leave usable diagnostics in the log file, not only on 
 
 ## Visual Studio Solution Folders
 
-For the MSVC CMake generators, solution-folder grouping is only reliable when a target is created with `CMAKE_FOLDER` already set. Keep the late regrouping pass in `../BuildTools/cmake/stages/Finalize.cmake`, but make sure the helper macros in `../BuildTools/cmake/helpers/Build.cmake` set `CMAKE_FOLDER` while creating `Applications`, `Commands`, `CoreLibs`, and `ThirdParty` targets. For external packages added through `AddSubdirectory(...)`, pass `FOLDER "..."` to the repository-owned wrapper so the subproject targets are created inside the intended solution folder without editing vendor `../../CMakeLists.txt`.
+For the MSVC CMake generators, solution-folder grouping is only reliable when a target is created with `CMAKE_FOLDER` already set. Keep the late regrouping pass in `../BuildTools/cmake/stages/Finalize.cmake`, but make sure the helper macros in `../BuildTools/cmake/helpers/Build.cmake` set `CMAKE_FOLDER` while creating `Applications`, `Commands`, `CoreLibs`, and `ThirdParty` targets. For external packages added through `AddSubdirectory(...)`, pass `FOLDER "..."` to the repository-owned wrapper so subproject targets are created inside the intended solution folder without editing vendor `CMakeLists.txt` files.
 
 ## Quick Validation
 
@@ -137,105 +142,126 @@ For the MSVC CMake generators, solution-folder grouping is only reliable when a 
 4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
 5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.
 
-## VS Code Debug Configurations
+## Debugger integration in an embedding project
 
-Current `../../.vscode/launch.json` entries use:
+The engine supplies debuggable applications, symbols, stack traces, and the AngelScript debugger endpoint. An embedding project owns the launch configuration that selects a generated binary, working directory, project config, and any bake/build prerequisites.
 
-- `Debugging :: Launch [windows]` for native Windows server debugging (`cppvsdbg`)
-- `Debugging :: Launch [linux]` for native Linux server debugging (`cppdbg` with `gdb`)
-- `Debugging :: Attach` for the AngelScript debugger over UDP discovery on port `43001`
-- compound launchers such as `Debugging :: Launch and Attach [windows]` and `Debugging :: Launch and Attach [linux]`
+A project debugger setup should expose three independent routes:
 
-These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
+- native launch or attach for the generated client, server, mapper, editor, or baker;
+- AngelScript attach through the bundled debug adapter;
+- platform-specific browser or Android launch when the bug requires those runtimes.
 
-The AngelScript debugger requires `Script.DebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
+The AngelScript debugger requires `Script.DebuggerEnabled = True`. Its TCP endpoint
+binds to `Script.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an
+explicit command-line or subconfig override on a trusted network.
 
-## Fast Route Selection
+Keep project task names and binary prefixes in the project documentation. Engine
+guidance should remain valid when `<ProjectDevName>` and output directories change.
 
-Before choosing a debugger, identify the smallest boundary that can prove the symptom:
+## Fast route selection
 
-| Symptom family | First doc route | Validation route |
-|----------------|-----------------|------------------|
-| Gameplay rule, player-state, AI, combat, survival, inventory, or world traversal | [GameSystems.md](../../Docs/GameSystems.md) and the owning domain doc | [Testing.md#validation-boundary-test-routing](../../Docs/Testing.md#validation-boundary-test-routing) with the narrowest `Testing.Filter` |
-| Auth, login, account lookup, or platform-only runtime behavior | [AuthLoginFlow.md](../../Docs/AuthLoginFlow.md) first; add [SteamIntegration.md](../../Docs/SteamIntegration.md) for Steam client/server runtime issues | `Testing.Filter = authentication` for script flow; manual `Steam :: Launch Login` only when Steam runtime state is involved |
-| Achievement, stat, analytics, or platform mirror mismatch | [Achievements.md](../../Docs/Achievements.md), [Analytics.md](../../Docs/Analytics.md), [SteamIntegration.md](../../Docs/SteamIntegration.md) | prove the gameplay event first, then inspect analytics transport or Steam mirror queues |
-| Client-visible GUI/text/input issue | [GuiSystem.md](../../Docs/GuiSystem.md), [Localization.md](../../Docs/Localization.md), and the platform-specific debug doc if needed | GUI generation, `Testing.Filter = client`, then web or Android launch paths for platform-only failures |
-| Native crash, script API binding, or engine/unit behavior | [NativeExtensions.md](../../Docs/NativeExtensions.md), [Scripts.md](../../Docs/Scripts.md), or engine tests | `RunUnitTests` / `validate.sh unit-tests`, then `CompileAngelScript` and the smallest consuming gameplay suite |
+Choose the smallest engine boundary that can prove the symptom:
 
-Use this table as the bridge between the entry-index fast routes and the concrete launch profiles below. If the boundary can be captured by a deterministic test, add or narrow that test before opening an interactive debugger. If the symptom depends on renderer, browser, Android packaging, Steam client state, or live script stepping, move to the matching launch/debug profile.
+| Symptom family | Start with | Validation boundary |
+|---|---|---|
+| Native assertion, exception, crash, or lifecycle failure | This page plus [ExceptionSafety.md](ExceptionSafety.md) | Reproduce in the smallest engine unit test and inspect the captured native/script stack. |
+| Script compile, binding, event, remote-call, or nullability failure | [Scripting.md](Scripting.md), [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md), and [Nullability.md](Nullability.md) | Compile a minimal script fixture or run the owning engine test before using an interactive debugger. |
+| Client host/runtime load or update failure | [ClientRuntime.md](ClientRuntime.md) and [ClientUpdater.md](ClientUpdater.md) | Validate host/runtime ABI and compatibility behavior independently from gameplay. |
+| Server runtime, entity, persistence, or map-lifecycle failure | [ServerRuntime.md](ServerRuntime.md), [EntityModel.md](EntityModel.md), and [Persistence.md](Persistence.md) | Use the narrow owning test under `Source/Tests/`. |
+| Transport, handshake, replication, or connection failure | [Networking.md](Networking.md) | Prove protocol/connection behavior before debugging game authentication policy. |
+| Rendering or frontend failure | [FrontendAndRendering.md](FrontendAndRendering.md) | Use a minimal visible client/mapper case; branch to Web or Android only for platform-specific failures. |
+| Browser packaging/runtime failure | [WebDebugging.md](WebDebugging.md) | Reproduce in the generated web package and browser console. |
+| Android package/device failure | [AndroidDebugging.md](AndroidDebugging.md) | Isolate workspace, native build, Gradle, ADB, and host-connect layers in that order. |
 
-## Choosing The Right Debug Path
+Gameplay rules, quests, UI composition, authentication policy, analytics, and product SDK integration are embedding-project domains. Route those symptoms through the project's owning docs and tests after the engine boundary is identified.
 
-Use the debug path that matches the bug boundary instead of starting with the heaviest interactive session:
+## Native debugging
 
-| Symptom | Start here | Why |
-|---------|------------|-----|
-| Script, proto, dialog, scene state, gameplay rule regression | `Launch Tests [linux]` / `Launch Tests [windows]` with `GameplayTests` after selecting the boundary in [Testing.md#validation-boundary-test-routing](../../Docs/Testing.md#validation-boundary-test-routing) | fastest repeatable server-side signal after resource baking |
-| Native crash or engine assertion before gameplay state matters | `Debugging :: Launch [linux]` or `[windows]` | attaches C++ debugger to `LF_Server` under `LocalTest` |
-| AngelScript breakpoint or call-stack inspection | compound `Debugging :: Launch and Attach [...]` | starts native server and attaches the FOS debugger on discovery port `43001` |
-| Browser package, web client, or JavaScript-side failure | `Debugging :: Launch Web [...]` / Web Scene profiles | launches Chrome against the web-debug workspace and pairs with web service tasks |
-| Android APK, Wi-Fi ADB, or device-to-host scene failure | `Android :: Launch Remote Scene [linux]` / `Docs/AndroidDebugging.md` | validates the external-device client path, APK install, and `ClientNetwork.ServerHost` override |
-| Startup-scene-only bug | scene launch, Web Scene, or Android remote-scene profile first, then headless test only after isolating the rule | preserves intro/personal-room scene flow that regular gameplay suites may bypass |
+Build the narrow generated application or unit-test target with debug information. The exact target name and prefix are project-derived.
 
-A practical rule: if the repro can be expressed as a deterministic gameplay assertion, add or narrow a headless suite before opening an interactive debugger. If the repro depends on renderer, input, browser or Android packaging, external-device networking, or script stepping, use the launch profiles.
+On Windows, use the Visual Studio debugger or `cppvsdbg` with the matching PDB files. On Linux, use GDB or LLDB with the executable and shared-library symbols from the same build. For either platform:
 
-## Unit Test Validation
+1. reproduce with the smallest config that still loads the failing engine surface;
+2. break on thrown C++ exceptions or the reported assertion path as appropriate;
+3. retain the original log and stack trace before adding extra logging;
+4. verify that executable, runtime library, and symbols come from one build;
+5. convert a deterministic failure into an engine unit test when the boundary is reusable.
 
-Use the deterministic engine test target for Common and metadata regressions before moving to wider gameplay checks.
+The stack-trace layer described above complements a debugger; it does not replace one when process state, registers, or memory corruption must be inspected.
 
-1. Build the suite with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target LF_UnitTests`.
-2. Run it with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target RunUnitTests`.
-3. Prefer this path for migration-rule, serialization, and other engine-only regressions that do not require resource baking or a live server-client session.
-4. Self-contained client-engine tests run through `NullRenderer`. They may still log missing `.fofx` files from the minimal in-memory test resources, but the headless renderer now synthesizes the required effect metadata instead of treating those missing shader assets as fatal.
+## AngelScript debugger
 
-## Gameplay Bug Triage
+Set `Script.DebuggerEnabled = True` in a development-only config. When enabled, the AngelScript backend retains line cues, disables bytecode optimization needed for stepping, starts the debugger endpoint, and advertises it over UDP discovery port `43001`.
 
-Use the headless workflow first for script, proto, content, and scene-runtime regressions. It is more deterministic than starting the regular server with an embedded client and keeps reproduction focused on gameplay state.
+The bundled adapter lives under `BuildTools/angelscript-debugger/`. An embedding project's editor configuration should launch or attach that adapter and may override discovery settings when several development instances share a host.
 
-1. Reproduce the bug first, then rebake resources after any changes under `../../Scripts/`, `../../Scripts/Tests/`, `../../Scripts/Scenes/`, `Modifiers/`, `Items/`, `Critters/`, `Dialogs/`, `Maps/`, or `../../LastFrontier.fomain`.
-2. Run `Prepare :: Gameplay Tests Launch`, then the platform launch task (`Launch Tests [windows]` or `Launch Tests [linux]`). This starts `LF_ServerHeadless` with `--ApplySubConfig GameplayTests`.
-3. `GameplayTests` now uses suite-level multi-instance execution by default: matched gameplay suites run in dedicated in-process server+client worker threads, with `Testing.RunSuitesInParallel` enabling overlap and `Testing.MaxParallelInstances` capping how many worker instances may stay active at once. Worker servers are started one by one to avoid startup fan-out on busy machines, then continue running in parallel after startup succeeds. When `Testing.MaxParallelInstances = 0`, the controller uses `std::thread::hardware_concurrency()` and logs the resolved value at startup. Narrow validation with `Testing.Filter` when a bug maps to an existing gameplay suite or tag. New gameplay test files are only discovered after `Bake Resources` rebakes scripts.
-4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `WorkThread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
-5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
-6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
+Do not enable the debugger in performance measurements or production configs. Its line-cue and optimization settings intentionally change script execution characteristics.
 
-## Key Files and Integration Points
+When attach fails:
 
-If you need to trace the current debugging flow through the live repository, start with these files:
+1. confirm the selected config resolves `Script.DebuggerEnabled = True`;
+2. inspect the engine log for the TCP endpoint and UDP discovery lines;
+3. verify UDP `43001` is reachable or configure the adapter with an explicit endpoint;
+4. confirm script sources correspond to the loaded baked bytecode;
+5. reduce multi-instance launches so the intended endpoint is unambiguous.
 
-- `../../.vscode/launch.json` - live native, AngelScript-attach, and web-debug launch entries such as `Debugging :: Launch [linux]`, `Debugging :: Attach`, and the compound launch-and-attach profiles
-- `../../.vscode/tasks.json` - task wiring behind `Prepare :: Launch (Debug)`, gameplay-test preparation, Win32 variants, and the web debug service lifecycle tasks paired with launch profiles
-- `../../LastFrontier.fomain` - base config plus `LocalTest`, `GameplayTests`, and scene-launch subconfigs that control debugger availability and startup behavior
-- `../BuildTools/natvis/essentials.natvis` and `../BuildTools/natvis/unordered_dense.natvis` - debugger visualizers for MSVC sessions
-- `../BuildTools/cmake/stages/Finalize.cmake` and `../BuildTools/cmake/helpers/Build.cmake` - current solution-folder and generated-project wiring mentioned by the Visual Studio guidance in this doc
-- `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` - embedded-client and client-visible gameplay probes that are often the fastest debugger-adjacent validation targets
-- `Docs/Testing.md` - current headless gameplay-test triage flow and validation-boundary test routing used before falling back to regular embedded-client debugging
-- `Docs/GameSystems.md` - cross-system debugging clusters that help choose the owning gameplay/content doc before choosing a launch profile
-- `Docs/Scenes.md` - startup-scene runtime details that matter when a bug only reproduces through intro, personal-room, or other scene-driven entry paths
-- `Docs/WebDebugging.md` - companion reference for browser-side and web packaging debug flows that branch away from the native server debugger path
-- `Docs/AndroidDebugging.md` - companion reference for Android APK, Wi-Fi ADB, external-device networking, and remote-scene debug flows
+## Engine test validation
 
-## Validation and Tests
+[Testing.md](Testing.md) owns the current unit-test inventory and commands. For a reusable engine regression:
 
-Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
+1. select or add the smallest `Source/Tests/Test_*.cpp` case;
+2. build the embedding project's generated unit-test target;
+3. run the exact test binary or filtered Catch2 case;
+4. confirm the failure reproduces before the fix and passes after it;
+5. run the broader unit-test target when shared runtime or Essentials behavior changed.
 
-- verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.DebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
-- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.DebuggerEnabled = False`
-- `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
-- `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
-- `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table
+Game script tests and bake commands remain project-owned. Engine docs may describe the required boundary but must not cite a project test suite as normative proof.
 
-## Client Host and Runtime Validation
+## Client host and runtime validation
 
-The client ships as `LF_Client.exe` (host) plus a sibling loadable runtime library built by the `LF_ClientLib` target. The host loads the runtime through a stable C ABI and falls back to the embedded client only when the requested compatibility version matches its built-in one. See [ClientUpdater.md](ClientUpdater.md) for the full architecture, ABI surface, updater protocol, and packaging behavior.
+Generated native clients can use a small host executable plus a sibling runtime library. [ClientUpdater.md](ClientUpdater.md) owns the ABI, compatibility, and update protocol.
 
-Quick validation when touching either side:
+Use project-derived names in commands. The reusable validation sequence is:
 
-1. Build `LF_Client`; on native host/runtime platforms it depends on `LF_ClientLib`. Confirm the host-derived runtime alias lands next to the host (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly only when the host is not needed.
-2. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup.
-3. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
-4. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no embedded fallback when compatibility differs).
-5. Point `--ClientLibPath` to an invalid path without `--ClientLibCompatibilityVersion` â†’ host falls back to the embedded client.
-6. Re-run `LF_UnitTests` after ABI changes; `Test_ClientRuntimeApi.cpp` covers exports validation and compatibility helpers.
-7. Build a packaged server target and confirm `<Settings.PlatformBinaries>/<target>/` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the runtime libraries the client will pull during startup binary sync.
+1. build the generated client host target; on native platforms its dependency also builds the runtime library, which remains independently buildable for isolated checks;
+2. confirm the runtime alias is adjacent to the host in the output directory;
+3. launch with the bundled runtime and verify normal startup;
+4. launch with `--ClientLibPath <path>` and a compatible alternate runtime;
+5. request an incompatible version with `--ClientLibCompatibilityVersion <other>` and verify that missing/incompatible runtime fails rather than silently loading the wrong code;
+6. provide an invalid alternate path without an explicit incompatible version and verify the documented embedded fallback;
+7. run `Source/Tests/Test_ClientRuntimeApi.cpp` coverage after ABI changes.
+
+A packaged server's platform-binary layout is a build/release concern; validate it through the selected embedding-project package after the engine ABI tests pass.
+
+## Project launch-profile checklist
+
+A project-owned native launch profile should record:
+
+- generated target and configuration;
+- executable path and working directory;
+- selected project config/sub-config;
+- resource bake/build prerequisite;
+- debugger type and symbol path;
+- environment variables and secrets policy;
+- whether `Script.DebuggerEnabled` is expected;
+- the narrow test or manual scenario that proves the profile.
+
+Keep these values in project docs or editor configuration. Do not copy them back into this engine page as universal commands.
+
+## Validation checklist
+
+1. Run `Source/Tests/Test_StackTrace.cpp` and `Source/Tests/Test_ExceptionHandling.cpp` after stack-trace or crash-path changes.
+2. Verify MSVC visualizers load from `BuildTools/natvis/` in a generated solution.
+3. Verify AngelScript discovery defaults against `Source/Scripting/AngelScript/AngelScriptDebugger.cpp` and the bundled adapter.
+4. Test one native launch with symbols and one AngelScript attach using an embedding-project configuration.
+5. Run client host/runtime tests after changing the loadable client ABI.
+6. Confirm this page contains no required path, binary name, launch task, or test owned only by an embedding project.
+
+## See also
+
+- [Testing.md](Testing.md) for engine-owned regression routing.
+- [Scripting.md](Scripting.md) for AngelScript runtime ownership.
+- [ExceptionSafety.md](ExceptionSafety.md) for invariant and termination policy.
+- [ClientUpdater.md](ClientUpdater.md) for host/runtime and updater diagnostics.
+- [WebDebugging.md](WebDebugging.md) and [AndroidDebugging.md](AndroidDebugging.md) for platform-specific paths.

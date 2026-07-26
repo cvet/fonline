@@ -242,7 +242,7 @@ rg "^\s*(mutable\s+)?unique_ptr<[^\n;]+>\s+\w+[^;{}]*\{\}\s*;" Source SourceExt
 rg "^\s*(mutable\s+)?refcount_ptr<[^\n;]+>\s+\w+[^;{}]*\{\}\s*;" Source SourceExt
 ```
 
-Run `LF_UnitTests` / `RunUnitTests` after pointer-layer changes. If native script bindings or exported method signatures are touched, also run the script compilation/baking validation used by the embedding project.
+Run the embedding project's generated engine unit-test target after pointer-layer changes. If native script bindings or exported method signatures are touched, also run the script compilation/baking validation used by that project.
 
 Embedding projects can keep lightweight migration guards in source control. The current companion tooling is:
 

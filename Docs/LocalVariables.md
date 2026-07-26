@@ -107,22 +107,19 @@ The reason is mandatory and must contain at least eight characters.
 
 ## Enforcement
 
-These rules are enforced by an out-of-tree analyzer pair — an explicit-type
-checker and a `clang-query` + `clang-tidy` redundant-const / use-after-move
-validator — that consumes a Clang 20+ `compile_commands.json`. The engine owns
-only the rules above and the `FO_REDUNDANT_CONST_SUPPRESS` /
-`FO_USE_AFTER_MOVE_SUPPRESS` markers; the analyzer itself, the compile-database
-generation, and the CI gate live in the embedding project so the reusable engine
-carries no project-specific tooling.
+These rules are intended for a Clang 20+ `compile_commands.json` analyzer:
+an explicit-type checker plus `clang-query` / `clang-tidy` checks for redundant
+local constness and use after move. The engine owns only the rules above and the
+`FO_REDUNDANT_CONST_SUPPRESS` / `FO_USE_AFTER_MOVE_SUPPRESS` markers. An
+embedding project owns analyzer implementation, compile-database generation,
+scope selection, and CI policy.
 
-Last Frontier ships the analyzer as `Tools/ExplicitLocalTypes` and
-`Tools/LocalVariableValidator` and gates it with the nightly/dispatch
-`local-variable-analysis` job over engine `Source` (via `--engine-root Engine`);
-`--mode check` (explicit types) and `--mode full-enforcement`
-(`redundant-local-const`, `use-after-move`) fail on any remaining debt.
+Run all three checks over changed engine sources before publication. A project
+may extend the same gate to its native extensions, but project paths, task
+names, and workflow jobs are not part of this reusable contract.
 
-Both the `clang-query` and the `clang-tidy` binary must be present on the host
-running the gate, and the compile database has to be usable for a real parse:
-generated headers reachable from the engine's common include chain must exist
-before the analyzers run, or every translation unit fails on a missing include
-long before any rule is evaluated.
+Both `clang-query` and `clang-tidy` must be present on the host running the
+gate, and the compile database must support a real parse. Generated headers
+reachable from the engine's common include chain must exist before analysis;
+otherwise translation units fail on missing includes before any rule is
+evaluated.

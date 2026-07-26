@@ -1,6 +1,6 @@
 # Nullability
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Engine-owned documentation. This page defines the reusable compiler, runtime, and native-boundary contract. Project-side analyzers may enforce stricter authoring policy, but they are not part of the engine contract.
 
 Convention and runtime enforcement for nullable values across AngelScript and the native engine boundary. For the broader scripting runtime, see [Scripting.md](Scripting.md); for exported native method ownership, see [ScriptMethodsMap.md](ScriptMethodsMap.md).
 
@@ -14,7 +14,7 @@ This applies symmetrically on both sides of the script-engine boundary.
 
 ## Script side: `T?` suffix
 
-AngelScript modules in [Scripts/](../../Scripts/) use a Kotlin/C#-style `?` suffix on the type to mark nullability. Default is **non-nullable**.
+AngelScript modules use a Kotlin/C#-style `?` suffix on the type to mark nullability. Default is **non-nullable**.
 
 ```angelscript
 // Return may be null
@@ -49,20 +49,19 @@ The same `?` suffix is supported in `///@ Event` and `///@ RemoteCall` tag decla
 ///@ RemoteCall Server SwitchCharacter(Critter? newCritter)
 ```
 
-The declaration is the contract. Every `[[Event]]` subscriber and every `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` / `[[AdminRemoteCall]]` implementation that matches the event/call name must use the same `?` marker on each argument. [`validate_nullable.py`](../../Tools/NullableEstimate/validate_nullable.py) walks all `.fos` files, pairs declarations with their handlers by function name, and fails on any per-arg nullable mismatch.
+The declaration is the contract. Every `[[Event]]` subscriber and every `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` implementation that matches the event/call name must use the same `?` marker on each argument. The baker and side-specific handler binding enforce this relationship for remote calls; see [RemoteCalls.md](RemoteCalls.md). `[[AdminRemoteCall]]` is a separate command entry point rather than a `///@ RemoteCall` target.
 
 ```angelscript
 // Matches the OnCritterDamaged declaration above.
 [[Event]]
 void OnCritterDamaged(Critter cr, Critter? attacker, int32 damage) { ... }
 
-// Would be rejected by validate_nullable.py — declaration has `Critter?`,
-// handler drops the `?`:
+// Violates declaration parity: declaration has `Critter?`, handler drops `?`.
 [[Event]]
 void OnCritterDamaged(Critter cr, Critter attacker, int32 damage) { ... }
 ```
 
-Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see «Runtime enforcement» below). `validate_nullable.py` still enforces the static convention that an `[[Event]]` / `[[*RemoteCall]]` handler matches its declaration argument-by-argument — the AS engine has no way to know two unrelated declarations are supposed to share a contract.
+Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see "Runtime enforcement" below). Event and remote-call declaration parity remains a project-side static-analysis responsibility: the AS engine has no way to know that two otherwise unrelated declarations are supposed to share a contract.
 
 ## Engine side: `ptr<T>` / `nptr<T>` and raw-pointer nullability
 
@@ -204,7 +203,7 @@ In addition to the runtime `asBC_RefCpyChk`, the AS front-end raises two compile
    *"Cannot assign 'null' to a non-nullable handle of type 'T' (use 'T?' to allow null)"*.
    This catches `T x = null;`, `someField = null;`, and the implicit `T x;` form that AS lowers into a null initializer.
 
-2. **Nullable handle source to a non-nullable destination is rejected when `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE` is enabled.** Last Frontier turns this property on at engine setup in [../Source/Scripting/AngelScript/AngelScriptBackend.cpp](../Source/Scripting/AngelScript/AngelScriptBackend.cpp). Emits:
+2. **Nullable handle source to a non-nullable destination is rejected when `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE` is enabled.** FOnline enables this property in [../Source/Scripting/AngelScript/AngelScriptBackend.cpp](../Source/Scripting/AngelScript/AngelScriptBackend.cpp). Emits:
    *"Cannot assign nullable 'T?' to non-nullable 'T' without a null-check (add `if (src != null)` or change the destination to 'T?')"*.
 
 3. **Redundant `?` on local initializer is warned about.** When the destination is declared `T?` but the initializer is statically a non-nullable handle (the source type cannot produce `null`), the front-end emits:
@@ -242,7 +241,7 @@ The runtime `asBC_RefCpyChk` is still the safety net underneath both errors: eve
 | Both sides are ref types **without** `opEquals` (`Gui::Screen`, `Object`, custom classes, funcdef handles) | handle-identity (`asBC_CmpPtr`) - same as `is` |
 | One side is a reference and the other is a handle | implicit conversion to handle, then handle-identity |
 
-This means the choice between "id-based" and "pointer-based" is determined by the *type*, not the operator - so the operator carries no extra information and `is` is pure cognitive noise. [`validate_nullable.py`](../../Tools/NullableEstimate/validate_nullable.py) (`_validate_no_is_operator`) flags any `is` / `!is` usage in `.fos` and CI rejects PRs that re-introduce it.
+This means the choice between "id-based" and "pointer-based" is determined by the *type*, not the operator, so the operator carries no extra information and `is` is pure cognitive noise. Projects that adopt the `==` / `!=` convention should enforce it with a read-only source check in CI.
 
 ### Smart-cast (flow-sensitive narrowing)
 
@@ -391,79 +390,49 @@ The macro is **variadic**: `verify(cond, message, ctx...)` forwards `message` an
 
 On the C++ engine side the matching pointer spellings (`ptr<Critter>` / `nptr<Critter>`, `ptr<CritterView>` / `nptr<CritterView>`, `ptr<Map>` / `nptr<Map>`, `ptr<ProtoItem>`, `ptr<StaticItem>`, `ptr<MovingContext>`, …) are all in scope. The membership test lives in `is_validated_pointer_meta_type(...)` in [../BuildTools/codegen.py](../BuildTools/codegen.py), which is now the sole arbiter: with no `FO_NULLABLE` marker, codegen treats exported `ptr<T>` handles as non-null and `nptr<T>` handles as nullable. Bare raw handle pointers are rejected before registration.
 
-Marking `?` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, …) is a misuse [validate_nullable.py](#tooling) flags — those types have no `null` representation, so the marker is meaningless.
+Marking `?` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, …) is rejected because those types have no `null` representation.
 
-**Out of scope:** script-to-script parameter passing. The `asBC_RefCpyChk` instruction covers handle **assignments** and **initializations**; AS argument passing typically uses copy-on-call patterns that bypass REFCPY. Static analysis (`validate_nullable.py`) plus the native-boundary check still cover the common case where a script value flows through an engine call.
+**Out of scope:** script-to-script parameter passing. The `asBC_RefCpyChk` instruction covers handle **assignments** and **initializations**; AS argument passing typically uses copy-on-call patterns that bypass REFCPY. A project-side declaration analyzer plus the native-boundary check can cover the common case where a script value flows through an engine call.
 
 ### Migration note
 
-The change is **source-incompatible** for any AS code that assigned `null` — or a value that might be null at runtime — to a bare handle. After this change, those scripts must mark the destination `T?`. The convention in `Scripts/` already follows this rule (`validate_nullable.py` would have flagged drift), and inline test scripts embedded in `Engine/Source/Tests/Test_*.cpp` were updated in lock-step so the whole `LF_UnitTests` suite passes again.
+The change is **source-incompatible** for any AS code that assigned `null`, or a value that might be null at runtime, to a bare handle. After this change, those scripts must mark the destination `T?`. Inline test scripts embedded in `Source/Tests/Test_*.cpp` were updated in lock-step and are the engine-owned regression coverage.
 
-The strict compile-time variant (`asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE`) catches more shapes at build time. Last Frontier enables it by default and the `Scripts/` migration to use `T?` on `T x = expr.get(key, null);` / `T field = null;` / `T x = maybeNull();` style patterns is tracked through the gameplay-test runs — any remaining runtime *"Null assignment to non-nullable handle"* is a still-needed marker fix-up. Common shapes that the smart-cast or compile-time checker cannot see through (and therefore require an explicit `T?` on the destination or an `if (x == null) { <recover>; return null; }` guard before the use): `dict<K,V>.get(key, null)`, output-reference parameters (`Map& out`), and class fields assigned across method boundaries.
+The strict compile-time variant (`asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE`) catches more shapes at build time and should be enabled by projects that have completed the nullable migration. Any remaining runtime *"Null assignment to non-nullable handle"* indicates a missing marker or an invalid non-null contract. Common shapes that the smart-cast or compile-time checker cannot see through, and therefore require an explicit `T?` on the destination or a guarding recovery path, include `dict<K,V>.get(key, null)`, output-reference parameters (`Map& out`), and class fields assigned across method boundaries.
 
-Style note for this codebase: the engine runs with `asEP_ALLOW_IMPLICIT_HANDLE_TYPES`, so script code must use the implicit-handle form (`Critter`, `Item?`, `array<Critter>`) rather than the explicit `@` form (`Critter@`, `Item@?`, `array<Critter@>`) — the implicit form is the project's convention everywhere the type is itself a ref class. The builder rejects an explicit `@` on `asOBJ_IMPLICIT_HANDLE` types when compiling a user-authored script section with the error *"Explicit handle '@' is not allowed on implicit-handle type 'X'"*. Funcdef parameters keep the `Type@+` form (handle with auto-add-ref) because the trailing `+` modifier is semantically required and the bare `Type+` form is not a valid AS signature.
+FOnline runs with `asEP_ALLOW_IMPLICIT_HANDLE_TYPES`, so script code uses the implicit-handle form (`Critter`, `Item?`, `array<Critter>`) rather than the explicit `@` form (`Critter@`, `Item@?`, `array<Critter@>`) wherever the type is itself a ref class. The builder rejects an explicit `@` on `asOBJ_IMPLICIT_HANDLE` types when compiling a user-authored script section with the error *"Explicit handle '@' is not allowed on implicit-handle type 'X'"*. Funcdef parameters keep the `Type@+` form (handle with auto-add-ref) because the trailing `+` modifier is semantically required and the bare `Type+` form is not a valid AS signature.
 
 Native API registrations (`RegisterObjectType`, `RegisterFuncdef`, `RegisterObjectMethod`, `GetFunctionByDecl`) and engine-generated declaration strings continue to accept the explicit `@`. The rejection only fires when there is a script module being built (`module != 0`) and the builder is not in silent lookup mode — see `CreateDataTypeFromNode` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp).
 
-## Tooling
+## Project-side tooling
 
-Four Python tools in [Tools/NullableEstimate/](../../Tools/NullableEstimate/):
+The engine owns compiler/runtime enforcement and the native binding contract. An embedding project can add read-only source analyzers for authoring rules that span otherwise unrelated script declarations. Useful checks include:
 
-| Tool | Purpose |
-|------|---------|
-| `apply_nullables.py` | Scans `.fos` and strips dead defensive null guards on entity-pointer params that are NOT marked `?` — codegen / convention guarantees them non-null. Does **not** add or remove `?` markers; the author owns placement. Idempotent. |
-| `apply_local_nullables.py` | Promotes local variable declarations `T name = expr;` — where `name` is later null-checked in the same function body — to `T? name = expr;`. The author already proves intent with the null-check; the type just needs to agree. Idempotent. Skips primitives and enums. |
-| `validate_nullable.py` | Read-only placement check for the **script `?` side**. Four layers: (1) script `?` must target a handle-able ref type (`int?`/`bool?`/`mpos?` etc. are rejected), (2) explicit `@` on `asOBJ_IMPLICIT_HANDLE` types is rejected because the engine will reject the build anyway, (3) a local declaration whose name is null-checked below must already be `?`, (4) a `T?` local must not be dereferenced (`name.X` / `name[i]`) before *some* null-check — crashes at runtime with *"Null pointer access"* otherwise. It also cross-checks that every `[[Event]]` / `[[*RemoteCall]]` handler matches its `///@ Event` / `///@ RemoteCall` declaration argument-by-argument. The native side declares the contract with `ptr<T>` / `nptr<T>`; raw handle pointers are not valid generated export/event ABI. |
-| `estimate_nullables.py` | Read-only coverage report — counts function/parameter/return shapes across `.fos`. |
+- `?` is used only on handle-capable reference types;
+- event and remote-call handlers match declaration nullability argument by argument;
+- a nullable local is narrowed before dereference;
+- a guarded native `nptr<T>` is dereferenced directly instead of copied into a redundant narrowing alias;
+- project style does not mix implicit-handle syntax with explicit `@` syntax;
+- forbidden identity operators or redundant defensive null guards do not return.
 
-The applier tools accept `--check` (exit non-zero if dead defensive guards still exist) or `--dry-run` (preview without writing). `validate_nullable.py` is always read-only. CI uses these check modes to fail PRs that drift.
+Keep marker placement explicit. Inferring nullability from body shape is unreliable: a forwarding function may never dereference a non-null parameter, while a nullable return may be produced only through a helper. Authors declare `ptr<T>` / `nptr<T>` on native exports and `T` / `T?` in scripts; analyzers verify those declarations rather than rewriting contracts heuristically.
 
-### Why marker placement stays explicit
-
-Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere → mark the type nullable; no defensive throw + no dereference → mark param). The heuristics produced churn against a curated codebase: a one-liner that only forwards a pointer would round-trip to a nullable spelling because the body never dereferences it — but the contract is non-null. Author intent is the source of truth (spell `ptr<T>` / `nptr<T>` on native exports, `T?` on script handles); the applier's job is only to delete dead guards that codegen / the runtime null checks have made redundant.
-
-## Workflows
-
-### VS Code tasks ([.vscode/tasks.json](../../.vscode/tasks.json))
-
-Generators (modify code) — run after editing scripts:
-- `Generate :: Nullable Markers (Scripts)` → `apply_nullables.py`
-- `Generate and Format All` → bundles the script applier, then formatter pass
-
-Analyzers (check-only, exit non-zero on drift) — run before committing or in CI:
-- `Analyze :: Nullable Markers (Scripts)` → `apply_nullables.py --check`
-- `Analyze :: Nullable Placement` → `validate_nullable.py`
-- `Analyze :: Nullable Coverage` → `estimate_nullables.py`
-- `Analyze :: Smart Pointer Audit` → the native smart-pointer vocabulary gate (see [SmartPointers.md](SmartPointers.md))
-- `Analyze All` → bundles the four
-
-### CI
-
-`.github/workflows/ci.yml` (and `smoke-tests.yml`) run the script applier in `--check` mode plus `validate_nullable.py` on every push and PR. Drift in the script `?` markers, or a misplaced marker (a `?` on a non-handle type, or an `[[Event]]` / `[[*RemoteCall]]` handler that disagrees with its declaration), fails the run with a hint pointing to the generator task to fix it.
-
-### Manual
-
-```bash
-python Tools/NullableEstimate/apply_nullables.py          # apply script-side markers
-python Tools/NullableEstimate/validate_nullable.py        # check placement
-python Tools/NullableEstimate/estimate_nullables.py       # report only
-```
-
-Append `--check` to either applier to verify idempotency without writing files.
+Project-side generators and analyzer task names belong in that project's documentation. If a checker becomes reusable across FOnline games, move it into `BuildTools/` with engine-owned tests before citing it here as a standard command.
 
 ## Adding / editing markers
 
 When you write a new script function or native export:
 
 1. Choose the nullable contract explicitly in the declaration (`T?` for script handles; `nptr<T>` for nullable native exported pointers, `ptr<T>` for non-null) when the function meaningfully accepts or returns null.
-2. Run the nullable applier/check tasks to remove dead defensive guards for non-null contracts and to verify idempotency.
-3. Run `validate_nullable.py` to catch misplaced markers or primitive/value-type misuse.
+2. Compile the affected script modules so the engine's nullable diagnostics run.
+3. Run any project-side declaration-parity and style analyzers required by the embedding project.
 
-The current appliers do not own contract inference: they preserve author-chosen markers and remove guard code made redundant by generated runtime checks. If a nullable case is real (for example a `dynamic_cast<X*>(param)` path where null is meaningful), keep the marker in the signature and update the analyzer only when its guard-removal pattern is wrong.
+Project-side rewriters must not own contract inference: they should preserve author-chosen markers and may remove only guard code made redundant by generated runtime checks. If a nullable case is real (for example a `dynamic_cast<X*>(param)` path where null is meaningful), keep the marker in the signature and update the analyzer only when its guard-removal pattern is wrong.
 
 ## See also
 
 - [Scripting.md](Scripting.md) — overall engine scripting runtime, AngelScript backend, and method-export organization.
+- [RemoteCalls.md](RemoteCalls.md) - remote-call signatures, handlers, serialization, and project catalog generation.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — current `///@ ExportMethod` file map and ownership boundaries.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — generated metadata/API flow that must stay aligned with script-visible contracts.
 - [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary.

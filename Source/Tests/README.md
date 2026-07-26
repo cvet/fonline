@@ -11,38 +11,18 @@ This directory contains deterministic engine tests built into the generated test
 - Generated run target: `RunUnitTests`
 - Generated coverage target shape: `<ProjectDevName>_CodeCoverage` plus `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage` when coverage is enabled
 
-In Last Frontier-style builds the dev-name prefix is `LF`, so the common target names are `LF_UnitTests` and `RunUnitTests`. Treat that prefix as embedding-project generated, not universal engine API.
+The executable target uses the embedding project's development-name prefix (`<ProjectDevName>_UnitTests`); `RunUnitTests` is the generated runner target. Treat the prefix as project-generated, not universal engine API.
 
 ## Current test suites
 
-Current count: **95** `Test_*.cpp` suites.
+The complete source-backed filename list and count are generated in [source-inventory.json](../../Docs/generated/source-inventory.json). [Testing.md](../../Docs/Testing.md) provides the maintained ownership groups and validation routing.
 
-### Essentials and low-level utilities
+After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
 
-- `Source/Tests/Test_BaseLogging.cpp`
-- `Source/Tests/Test_BasicCore.cpp`
-- `Source/Tests/Test_CommonHelpers.cpp`
-- `Source/Tests/Test_Compressor.cpp`
-- `Source/Tests/Test_Containers.cpp`
-- `Source/Tests/Test_DataSerialization.cpp`
-- `Source/Tests/Test_DiskFileSystem.cpp`
-- `Source/Tests/Test_ExceptionHandling.cpp`
-- `Source/Tests/Test_ExtendedTypes.cpp`
-- `Source/Tests/Test_GenericUtils.cpp`
-- `Source/Tests/Test_GlobalData.cpp`
-- `Source/Tests/Test_HashedString.cpp`
-- `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
-- `Source/Tests/Test_Platform.cpp`
-- `Source/Tests/Test_SafeArithmetics.cpp`
-- `Source/Tests/Test_SmartPointers.cpp`
-- `Source/Tests/Test_StackTrace.cpp`
-- `Source/Tests/Test_StringUtils.cpp`
-- `Source/Tests/Test_StrongType.cpp`
-- `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
 
 ### Configuration, data sources, files, and caches
 
@@ -128,17 +108,15 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
 
-The model-animation coverage is intentionally split between wire-format corruption
-tests (`Test_ModelAnimationData.cpp`), offline conversion and production runtime
-ownership/type-tag tests (`Test_ModelAnimationConverter.cpp`), real
-baker-to-runtime/binding resolution (`Test_ModelBaker.cpp`), and the model
-animation controller/timeline contract (`Test_ModelAnimation.cpp`).
-Renderer-independent rest pose matrices and canonical joint links live in
-`Test_ModelAnimationRuntime.cpp`;
-bounded procedural rotations and exact link-matrix overrides live in
-`Test_ModelAnimationPoseProcedural.cpp`. Keep
-these boundaries green independently while the immutable production payload is
-staged ahead of the atomic sampler/matrix cutover.
+The model-pipeline coverage is intentionally split. `Test_ModelMeshData.cpp`
+owns the mesh-only wire contract; `Test_ModelSourceLoader.cpp` and
+`Test_ModelAnimationConverter.cpp` own source extraction and canonical
+conversion; `Test_ModelAnimationData.cpp` owns the versioned rig archive;
+`Test_ModelBaker.cpp` crosses source-backed baking and binding resolution; and
+the animation, runtime-pose, procedural, skeleton-compatibility, and Ozz suites
+cover the production sampling and matrix path. Keep these boundaries green
+independently, then use `Test_ClientEngine.cpp` for the baker-to-client parser
+boundary.
 
 ### Rendering/frontend smoke tests
 
@@ -153,6 +131,8 @@ staged ahead of the atomic sampler/matrix cutover.
   exercises the native fixed-profile exporter on real XML projects.
 - `Source/Tests/Test_Rendering.cpp`
 
+The documentation CI job rejects stale generated inventory; the groups above are representative and do not replace the generated complete list.
+
 ## Running tests
 
 Prefer running the generated run target from a configured build directory:
@@ -161,10 +141,10 @@ Prefer running the generated run target from a configured build directory:
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Use the executable target directly when you need Catch2 arguments. In common Last Frontier output layouts, binaries are emitted under `Binaries/Tests-*`, for example:
+Use the executable target directly when you need Catch2 arguments. Generated test binaries are normally emitted under `Binaries/Tests-*`, for example:
 
-- Windows: `Binaries/Tests-Windows-win64/LF_UnitTests.exe`
-- Linux: `Binaries/Tests-Linux-x64/LF_UnitTests`
+- Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
+- Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
 
 ## Running code coverage
 

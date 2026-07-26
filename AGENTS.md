@@ -15,6 +15,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 3. Verify before editing: docs may drift, and when a doc and the live source disagree, the source wins — fix the doc in the same change.
 4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
 5. Do not commit or push unless explicitly asked by the repository owner.
+6. When pulling, rebasing, or changing the engine revision, follow [Docs/DocumentationMaintenance.md#revision-update-reconciliation](Docs/DocumentationMaintenance.md#revision-update-reconciliation): record old/new SHAs, audit every incoming source/test change, regenerate affected models, and document the reconciliation before dropping any safety stash.
 
 ## Documentation Map
 
@@ -22,22 +23,69 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 
 - [Docs/Architecture.md](Docs/Architecture.md) - engine layer map and where a behavior belongs.
 - [Docs/SourceTree.md](Docs/SourceTree.md) - source-tree navigation.
-- [Docs/Essentials.md](Docs/Essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, and utilities.
+- [Docs/Essentials.md](Docs/Essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, utilities, and `vector` / `small_vector` selection rules.
 - [Docs/ConfigurationAndDataSources.md](Docs/ConfigurationAndDataSources.md) - config parsing, settings, data sources, file lookup, and caches.
 - [Docs/Testing.md](Docs/Testing.md) - test-suite inventory, generated test targets, coverage, and validation routing.
 - [Docs/DocumentationMaintenance.md](Docs/DocumentationMaintenance.md) - source-grounded docs maintenance workflow.
+- [Docs/SitePublication.md](Docs/SitePublication.md) - GitHub Pages/Jekyll navigation/search, preview, CI artifact, custom-domain contract, and production verification.
+- [Docs/PublicExampleRepositories.md](Docs/PublicExampleRepositories.md) - external example portfolio, ownership, exact Engine pins, compatibility lanes, governance overlay, releases, support, and asset provenance.
+- [llms.txt](llms.txt), [llms-full.txt](llms-full.txt), and [docs-manifest.json](docs-manifest.json) - generated external-agent routes derived from the documentation manifest; regenerate with `BuildTools/docs_ai_delivery.py`, never edit them manually.
+- [_data/docs-site.json](_data/docs-site.json), [assets/docs-search.json](assets/docs-search.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation/search plus version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
+- [Docs/Decisions/0006-documentation-version-locale-routing.md](Docs/Decisions/0006-documentation-version-locale-routing.md) - rolling/current documentation identity, deferred release snapshots, planned English/Russian paths, and durable Markdown redirect policy.
 - [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/ClientUpdater.md](Docs/ClientUpdater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
 - [Docs/Debugging.md](Docs/Debugging.md) - stack traces, debugger helpers, native debugging, and validation notes.
 - [Docs/Nullability.md](Docs/Nullability.md) - `T?` script / `ptr<T>`·`nptr<T>` native boundary contract.
+- [Docs/ScriptLifecycleAndConcurrency.md](Docs/ScriptLifecycleAndConcurrency.md) - script module init, callback ownership, `[[Async]]`/`Yield`, server entity covers, mutable-state ownership, and teardown.
+- [Docs/RemoteCalls.md](Docs/RemoteCalls.md) - remote-call declaration, direction, handler, authority, baked catalog, and validation contract.
+- [Docs/NativeExtensions.md](Docs/NativeExtensions.md) - project-native C++ roles, hooks, script exports, lifecycle, compatibility boundary, and validation.
+- [Docs/PrototypeFormat.md](Docs/PrototypeFormat.md) - prototype syntax, inheritance, property applicability, references, migrations, and project-owned semantic validation.
+- [Docs/MapFormat.md](Docs/MapFormat.md) - `.fomap` sections, placement ids, ownership, mapper round-trip, side-specific baking, and runtime materialization.
+- [Docs/ModelFormat.md](Docs/ModelFormat.md) - `.fo3d` syntax, FBX/OBJ inputs, layers, attachments, transforms, materials, cuts, runtime composition, and validation.
+- [Docs/TextAndLocalization.md](Docs/TextAndLocalization.md) - `.fotxt` syntax, language normalization, prototype `$Text`, runtime lookup, renderer color tags, and the project-formatting boundary.
+- [Docs/ImageFormat.md](Docs/ImageFormat.md) - image source formats, FOFRM composition, legacy selectors, baked sprite records, runtime factories, atlases, caches, and validation.
+- [Docs/EffectFormat.md](Docs/EffectFormat.md) - `.fofx` sections, passes, render state, shader resources, baking outputs, runtime cache, script values, and validation.
+- [Docs/ParticleFormat.md](Docs/ParticleFormat.md) - optional SPARK/Effekseer selection, `.spark`/`.efkproj` authoring, `.spk`/`.efk` baking, Mapper tools, runtime routes, integrations, and validation.
+- [Docs/FontFormat.md](Docs/FontFormat.md) - FOFNT and BMFont descriptor syntax, resource delivery, slots, binding scale, measurement, wrapping, rendering flags, inline colors, and validation.
+- [Docs/ModelAnimation.md](Docs/ModelAnimation.md) - `.fo3d` animation tuples, authored speed, one-step aliases, common duration metadata, script lookup, and project boundary.
+- [Docs/SpriteRootMotion.md](Docs/SpriteRootMotion.md) - 2D per-frame `NextX`/`NextY` offsets, walk/run cycle anchoring, movement-driven frame selection, and project validation.
+- [Docs/ApiChangeManagement.md](Docs/ApiChangeManagement.md) - multi-domain generated contract diff, shared disposition ledger, and CI enforcement workflow.
 - [Docs/SmartPointers.md](Docs/SmartPointers.md) - native smart-pointer vocabulary (`ptr<T>`/`nptr<T>` borrows, `unique_*`/`refcount_*` owners, engine-own `shared_ptr`/`weak_ptr`), raw-pointer allowlist, and audit expectations.
 - [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) - engine-invariant stability under exceptions: terminate-on-OOM allocation model, entity-lifecycle throw-as-signal contract, and the `FO_STRONG_ASSERT` disposition rules.
 - [Docs/ThreadSafetyAnalysis.md](Docs/ThreadSafetyAnalysis.md) - `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
 - [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.
+- [Docs/generated/api/index.md](Docs/generated/api/index.md) - generated human reference for the native-codegen API surface.
+- [Docs/generated/api.json](Docs/generated/api.json) - canonical machine-readable native-codegen API model.
+- [Docs/generated/cmake/index.md](Docs/generated/cmake/index.md) - generated human reference for project options, stages, hooks, and selected CMake helpers.
+- [Docs/generated/cmake.json](Docs/generated/cmake.json) - canonical machine-readable CMake project-interface model.
+- [Docs/generated/cli/index.md](Docs/generated/cli/index.md) - generated human reference for the main BuildTools command line.
+- [Docs/generated/cli.json](Docs/generated/cli.json) - canonical machine-readable BuildTools CLI model.
+- [Docs/generated/helper-cli/index.md](Docs/generated/helper-cli/index.md) - generated human reference for engine-owned helper-script command lines.
+- [Docs/generated/helper-cli.json](Docs/generated/helper-cli.json) - canonical machine-readable helper CLI model and ownership inventory.
+- [Docs/generated/native-extension/index.md](Docs/generated/native-extension/index.md) - generated role, hook, and native binding reference.
+- [Docs/generated/native-extension.json](Docs/generated/native-extension.json) - canonical machine-readable native-extension model.
+- [Docs/generated/prototype-format/index.md](Docs/generated/prototype-format/index.md) - generated prototype grammar, built-in properties, and validation reference.
+- [Docs/generated/prototype-format.json](Docs/generated/prototype-format.json) - canonical machine-readable prototype-format model.
+- [Docs/generated/map-format/index.md](Docs/generated/map-format/index.md) - generated map grammar, ownership, properties, baking, and validation reference.
+- [Docs/generated/map-format.json](Docs/generated/map-format.json) - canonical machine-readable map-format model.
+- [Docs/generated/model-format/index.md](Docs/generated/model-format/index.md) - generated model-description grammar, assets, composition, animation, and validation reference.
+- [Docs/generated/model-format.json](Docs/generated/model-format.json) - canonical machine-readable model-format contract.
+- [Docs/generated/text-format/index.md](Docs/generated/text-format/index.md) - generated text-pack, language, prototype-text, runtime, and validation reference.
+- [Docs/generated/text-format.json](Docs/generated/text-format.json) - canonical machine-readable text-format contract.
+- [Docs/generated/effect-format/index.md](Docs/generated/effect-format/index.md) - generated effect syntax, render-state, resource, baking, runtime, and validation reference.
+- [Docs/generated/effect-format.json](Docs/generated/effect-format.json) - canonical machine-readable effect-format contract.
+- [Docs/generated/particle-format/index.md](Docs/generated/particle-format/index.md) - generated particle backend, source/runtime form, baking, rendering, tooling, integration, and validation reference.
+- [Docs/generated/particle-format.json](Docs/generated/particle-format.json) - canonical machine-readable particle-format contract.
+- [Docs/generated/font-format/index.md](Docs/generated/font-format/index.md) - generated font descriptor, binding, layout, rendering, and validation reference.
+- [Docs/generated/font-format.json](Docs/generated/font-format.json) - canonical machine-readable font-format contract.
+- [Docs/generated/package/index.md](Docs/generated/package/index.md) - generated human reference for package declarations, support matrix, payloads, and artifacts.
+- [Docs/generated/package.json](Docs/generated/package.json) - canonical machine-readable package interface model.
 - [PUBLIC_API.md](PUBLIC_API.md) - public API notes.
-- [TUTORIAL.md](TUTORIAL.md) - engine tutorial.
+- [TUTORIAL.md](TUTORIAL.md) - tested first headless project tutorial.
+- [Examples/MinimalProject/README.md](Examples/MinimalProject/README.md) - canonical engine-owned starter and smoke contract.
+- [Docs/generated/public-examples/index.md](Docs/generated/public-examples/index.md) and [Docs/generated/public-examples.json](Docs/generated/public-examples.json) - checked public-example repository registry from `Examples/PublicRepositories.json`.
 - [Source/README.md](Source/README.md) - source-tree overview.
 - [Source/Tests/README.md](Source/Tests/README.md) - engine unit-test suites.
 - [BuildTools/README.md](BuildTools/README.md) - build-tooling notes.
@@ -45,16 +93,27 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 ## Validation Routing
 
 - **Zero tolerance for warnings.** Engine C++ builds and codegen must finish clean; there is no acceptable warning backlog (Clang thread-safety analysis already runs as `-Werror=thread-safety`). Never introduce a new warning; if a change surfaces one, resolve it at the root in the same change rather than suppressing it.
-- Engine C++ changes: build and run the engine unit-test target used by the embedding project (`LF_UnitTests` / `RunUnitTests` in Last Frontier).
-- Build-system changes: validate the affected CMake preset or BuildTools command in the embedding project that exercises it.
-- Platform-packaging changes: validate the relevant package path (`Raw`, `Raw+WebServer`, Android package, etc.) and update the platform doc.
-- Script/native API boundary changes: update nullability/API docs and run the smallest test target that covers the changed binding.
+- Engine C++ changes: build and run the embedding project's generated engine unit-test target (`<ProjectDevName>_UnitTests` / `RunUnitTests`).
+- Build-system changes: update `BuildTools/cmake/ProjectInterface.json` when the project-facing CMake surface changes, regenerate the CLI reference when `BuildTools/buildtools.py::create_parser()` changes, run the affected structural/generated-reference checks and the aggregate contract diff, and validate the affected preset or BuildTools command in the embedding project that exercises it.
+- Platform-packaging changes: update `BuildTools/PackageInterface.json` when targets, platforms, architectures, packs, payloads, or artifacts change; regenerate its model/reference, run the structural package test and aggregate contract diff, validate the relevant package path (`Raw`, `Raw+WebServer`, Android package, etc.), and update the platform doc.
+- Native-extension composition or hook changes: update `BuildTools/NativeExtensionInterface.json`, regenerate its model/reference, run `validate_native_extension_interface.cmake`, the aggregate contract diff, and the minimal starter or affected embedding-project path.
+- Prototype parser, property text loading, `HasProtos` metadata, or `Baking.ProtoFileExtensions` changes: update `BuildTools/PrototypeFormatInterface.json`, [Docs/PrototypeFormat.md](Docs/PrototypeFormat.md), regenerate/check the prototype-format model/reference, run its focused test and aggregate contract diff, then rebake an affected embedding project.
+- Map parser, mapper serialization, map baker, `ItemOwnership`, static-map loading, or map materialization changes: update `BuildTools/MapFormatInterface.json`, [Docs/MapFormat.md](Docs/MapFormat.md), regenerate/check the map-format model/reference, run its focused test and aggregate contract diff, then run engine map tests and rebake an affected embedding project.
+- `.fo3d` parser state/tokens, FBX/OBJ import, model layers, attachments, particles, transforms, materials, cuts, rendering flags, or compile-time model limits: update `BuildTools/ModelFormatInterface.json` and [Docs/ModelFormat.md](Docs/ModelFormat.md), regenerate/check the model-format reference, run `BuildTools/tests/test_docs_model_format.py`, the aggregate contract diff, focused model-baker tests, and a visible embedding-project scene.
+- `.fotxt` parsing, language selection/normalization, `TextBaker`, prototype `$Text`, text script methods, or inline color tags: update `BuildTools/TextFormatInterface.json` and [Docs/TextAndLocalization.md](Docs/TextAndLocalization.md), regenerate/check the text-format reference, run `BuildTools/tests/test_docs_text_format.py`, the aggregate contract diff, focused text-baker tests, and an embedding-project bake plus visible language check.
+- `.fofx` sections/state, `EffectBaker`, built-in shader resources, renderer bindings, `EffectManager`, effect script methods, or `FO_EFFECT_*` limits: update `BuildTools/EffectFormatInterface.json` and [Docs/EffectFormat.md](Docs/EffectFormat.md), regenerate/check the effect-format reference, run `BuildTools/tests/test_docs_effect_format.py`, the aggregate contract diff, focused effect-baker tests, and visible checks on every affected backend/profile.
+- `ImageBaker`, FOFRM fields/flattening, any built-in image loader, the baked sprite container, `DefaultSpriteFactory`, `SpriteManager` image dispatch/cache, or `TextureAtlas` upload behavior: update `BuildTools/ImageFormatInterface.json` and [Docs/ImageFormat.md](Docs/ImageFormat.md), regenerate/check the image-format reference, run `BuildTools/tests/test_docs_image_format.py`, the aggregate contract diff, focused image/atlas tests, and an affected embedding-project bake plus visible client checks.
+- `FO_*_PARTICLES`, `.spark`/`.efkproj` source parsing, `.spk`/`.efk` baking, backend composition, `SparkQuadRenderer`, Effekseer callbacks, Mapper particle tools, `ParticleManager`, `ParticleSpriteFactory`, script methods, or model-particle integration: update `BuildTools/ParticleFormatInterface.json` and [Docs/ParticleFormat.md](Docs/ParticleFormat.md), regenerate/check the particle-format reference, run `BuildTools/tests/test_docs_particle_format.py`, the aggregate contract diff, focused baker/runtime/model tests, and an affected embedding-project bake plus visible backend/integration checks.
+- `.fofnt`/`.fnt` parsing, `Baking.RawCopyFileExtensions`, `FontManager`, `FontType`, `FontFlag`, `TextFormat`, `Game.BindFont`, text measurement, wrapping, or inline color behavior: update `BuildTools/FontFormatInterface.json` and [Docs/FontFormat.md](Docs/FontFormat.md), regenerate/check the font-format reference, run `BuildTools/tests/test_docs_font_format.py`, the aggregate contract diff, native unit tests, and an affected embedding-project bake plus focused measurement and visible rendering checks.
+- Model animation tokens, mesh clip durations, alias selection, `ModelInfoBaker`, `ModelAnimInfo.foinfo`, metadata registration, or duration script methods: update [Docs/ModelAnimation.md](Docs/ModelAnimation.md), run `BuildTools/tests/test_docs_model_animation.py`, regenerate/check the native API/reference when exports changed, run the focused native tests, and rebake an affected embedding project.
+- Image-frame `NextX`/`NextY`, baked sprite offsets, `SpriteSheet`, `MovingContext` interpolation, or `CritterHexView` walk/run phase behavior: update [Docs/SpriteRootMotion.md](Docs/SpriteRootMotion.md), run `BuildTools/tests/test_docs_sprite_root_motion.py` and focused image-baker tests, then validate the affected locomotion in a visible client scene.
+- Public example portfolio, ownership, common policy/workflow files, starter source, compatibility boundaries, or published example pins: update `Examples/PublicRepositories.json` and [Docs/PublicExampleRepositories.md](Docs/PublicExampleRepositories.md), regenerate/check the public-example model, validate affected repositories in both pinned/current modes, and update only verified public links.
+- Script/native API boundary changes: update nullability/API docs, review the source-owned `///@ ApiContract` disposition, run the aggregate contract diff described in `Docs/ApiChangeManagement.md` (using the specialized API report when deeper symbol context is useful), and run the smallest test target that covers the changed binding. For project remote calls, bake both sides and check the project catalog described in `Docs/RemoteCalls.md`.
 - When a serialized contract changes (entity properties, network messages, save data), update the relevant `///@ MigrationRule` metadata.
-- Engine changes that affect network interaction or are otherwise substantial enough to matter for client/server runtime compatibility must force a compatibility-version change by bumping the central marker in `Source/Common/Common.h`:
+- Engine changes that affect network interaction or are otherwise substantial enough to matter for client/server runtime compatibility must force a compatibility-version change by bumping the central marker in `Source/Common/Common.h`. Locate and increment the current marker instead of copying a fixed value from documentation:
 
-  ```cpp
-  // Force change of compatability version
-  ///@ MigrationRule Version 0 0 5
+  ```bash
+  rg -n "MigrationRule Version" Source/Common/Common.h
   ```
 
 ## Behavioral Rules
@@ -81,7 +140,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 - Keep a comment attached to the code block it describes below: put a blank line before the comment, but no blank line between the comment and that block. For control-flow spacing, the comment is part of the following block.
 - Prefer `FO_VERIFY_AND_THROW` over silently masking unexpected states.
 - **Throw engine exceptions with a fixed message plus context arguments, never a pre-formatted string.** `FO_DECLARE_EXCEPTION` exception types and `FO_VERIFY_AND_THROW` take a constant `string_view` message followed by variadic context values; the base exception preserves the bare message and appends each value as its own `- value` line. Write `throw SomeException("Fixed human-readable message", id, path, value);` and `FO_VERIFY_AND_THROW(cond, "Fixed message", ctx...);`, not `throw SomeException(strex("... {} ...", value));`. A constant message keeps every occurrence of the same failure identical, so failures group and sort by message uniqueness while the variable parts travel in the arguments — the same rule the script-side `verify` macro follows. Do not build the message with `strex` / `std::format` / `+` from runtime values.
-- **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). Embedding projects track the per-function level in an audit baseline gated by CI (Last Frontier: `Tools/ExceptionSafetyAudit/`); update it in the same change.
+- **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). If an embedding project maintains a per-function audit baseline, update that project-owned baseline in the same integration change; it is not normative engine evidence.
 - Use `numeric_cast` for numeric conversions; do not use `static_cast` for numeric narrowing/widening unless the surrounding code has a specific established reason.
 - Use fixed-width types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `float32_t`, `float64_t`, `size_t`) instead of bare `int` / `float` in new engine code.
 - Do not use `auto` for primitive values or simple obvious types such as `string`, `hstring`, `size_t`, and the fixed-width aliases.

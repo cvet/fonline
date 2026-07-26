@@ -16,6 +16,7 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Common/NetBuffer.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
+- `Source/Common/Settings.inc`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -25,6 +26,9 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Server/NetworkServer-UdpSockets.cpp`
 - `Source/Server/NetworkServer-Asio.cpp`
 - `Source/Server/NetworkServer-WebSockets.cpp`
+- `Source/Server/Server.cpp`
+- `Source/Server/ServerConnection.h`
+- `Source/Server/ServerConnection.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
@@ -70,6 +74,7 @@ The server treats all inbound bytes as hostile. Two layers guard against resourc
 - **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
+- **Pre-handshake parse failures stay operational noise.** A malformed payload that raises `NetBufferException` before `ServerConnection::IsHandshakeComplete()` is logged once as an invalid-handshake warning with the remote host/port and hard-disconnected without invoking the global exception reporter. The same exception after a completed handshake still follows normal exception reporting. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` pins the distinction.
 
 The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, and enum/hash/proto resolution. It does not impose a fixed maximum string length or element count, so absolute length/flood ceilings still live in the buffer/transport layer above.
 
@@ -151,6 +156,10 @@ The server runtime applies two independent limits to connections that have not l
   authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
+
+`ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
+`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` and the transport shutdown tests cover accepted
+connection ownership and concurrent accept rejection.
 
 `NetworkServer` starts transport-specific servers through factories:
 

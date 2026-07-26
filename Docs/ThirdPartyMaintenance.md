@@ -21,6 +21,14 @@ docs, CI files, helper scripts, editor settings, package metadata, and release
 automation is acceptable when the engine does not build or distribute those
 parts.
 
+The polygonal sprite baker currently consumes the pruned `clipper2` and
+`earcut` trees directly: Clipper2 owns contour offset/union/intersection work,
+while earcut triangulates outer rings and holes. Update either dependency with
+`Source/Tools/SpriteMeshing.cpp`, `Source/Tests/Test_ImageBaker.cpp`, a clean
+resource bake, and the sprite-mesh report/atlas diagnostics in scope. A
+compile-only check does not prove deterministic geometry or visible-pixel
+coverage.
+
 ## Update Workflow
 
 The whole `ThirdParty/` surface is refreshed in one sweep: every maintained
@@ -55,8 +63,18 @@ deliberately tracked at a branch).
 8. Run at least `git diff --check` on the touched dependency. Then validate the
    smallest embedding-project configure/build/test path that exercises the
    dependency. For build-critical libraries (allocator, shader toolchain,
-   serialization), prefer a functional pass over the real data path — e.g. a
-   full resource bake or the engine unit-test suite — not just compile-and-link.
+   serialization), prefer a functional pass over the real data path - e.g. a
+   full resource bake or the engine unit-test suite - not just compile-and-link.
+   If a vendored C update raises its language requirement, declare the standard
+   on that dependency target (`C_STANDARD` / `C_STANDARD_REQUIRED`) and include
+   native MSVC in validation; a Windows cross build through clang does not prove
+   that MSVC accepts C11 headers such as `<stdatomic.h>`. Current MSVC also
+   requires `/experimental:c11atomics` on the affected C target. Mark vendored
+   include directories as `SYSTEM` when first-party translation units consume
+   them. When a linked vendored CMake target publishes ordinary
+   `INTERFACE_INCLUDE_DIRECTORIES`, mark that target `SYSTEM` too; otherwise its
+   transitive path can take precedence over a direct system path and let
+   dependency-header warnings bypass third-party warning policy.
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
 

@@ -16,16 +16,17 @@ If a question is about reusable runtime behavior, engine tools, platform build m
 ## First reading path
 
 1. Read the repository overview in [../README.md](../README.md).
-2. Read [EmbeddingProject.md](EmbeddingProject.md) to understand how a game project composes the engine.
-3. Read [BuildWorkflow.md](BuildWorkflow.md) before running CMake or platform package steps.
-4. Open [../Source/README.md](../Source/README.md) when you need source-tree orientation.
-5. Open [../BuildTools/README.md](../BuildTools/README.md) when touching generated files, CMake stages, packaging, or platform workspaces.
+2. Complete the tested [first headless project tutorial](../TUTORIAL.md).
+3. Read [EmbeddingProject.md](EmbeddingProject.md) to understand how a game project composes the engine.
+4. Read [BuildWorkflow.md](BuildWorkflow.md) before running other CMake or platform package steps.
+5. Open [../Source/README.md](../Source/README.md) when you need source-tree orientation.
+6. Open [../BuildTools/README.md](../BuildTools/README.md) when touching generated files, CMake stages, packaging, or platform workspaces.
 
 ## Common tasks
 
 ### I want to create or inspect a game project
 
-Start with [EmbeddingProject.md](EmbeddingProject.md). The game repository should own its root CMake files, `.fomain`, content folders, scripts, and release-specific settings. The engine should stay reusable.
+Run [TUTORIAL.md](../TUTORIAL.md), then inspect the complete [minimal project](../Examples/MinimalProject/README.md) and continue with [EmbeddingProject.md](EmbeddingProject.md). The game repository should own its root CMake files, `.fomain`, content folders, scripts, and release-specific settings. The engine should stay reusable.
 
 ### I want to build or run tests
 

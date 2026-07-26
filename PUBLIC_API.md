@@ -1,167 +1,50 @@
 # FOnline Engine Public API
 
-> Document under development, do not rely on this API before the global refactoring complete.  
-> Estimated finishing date is middle of 2021.
+> Placeholder route. FOnline does not yet publish a complete stable API contract from this path.
 
-## Table of Content
+Use the current source-backed references while the public-contract and generated-reference work is in progress:
 
-...generate content...
+- [Generated API Reference](Docs/generated/api/index.md) for searchable, source-linked native methods, properties, events, types, settings, and migration rules.
+- [Generated CMake Project Interface](Docs/generated/cmake/index.md) for source-linked project options, strict stages and hooks, and selected embedding helpers.
+- [Generated BuildTools CLI Reference](Docs/generated/cli/index.md) for the main executable parser's commands, arguments, defaults, choices, and help.
+- [Generated Helper CLI Reference](Docs/generated/helper-cli/index.md) for source-backed codegen, coverage, Android-device, web-server, MSI, and other helper-script command lines.
+- [Generated Native Extension Interface](Docs/generated/native-extension/index.md) for role routing, supported engine hooks, fallback behavior, and native binding rules.
+- [Generated Prototype Format Reference](Docs/generated/prototype-format/index.md) for sections, directives, built-in entity/property applicability, and validation rules.
+- [Generated Map Format Reference](Docs/generated/map-format/index.md) for `.fomap` sections, directives, ownership, built-in placement properties, baking, and validation rules.
+- [Generated Model Format Reference](Docs/generated/model-format/index.md) for `.fo3d` tokens, source assets, composition, animation adjacency, and validation rules.
+- [Generated Text Format Reference](Docs/generated/text-format/index.md) for `.fotxt` syntax, language normalization, prototype `$Text`, runtime lookup, color tags, and validation.
+- [Generated Effect Format Reference](Docs/generated/effect-format/index.md) for `.fofx` sections, passes, render state, resources, backend outputs, runtime caching, script values, and validation.
+- [Generated Image Format Reference](Docs/generated/image-format/index.md) for source formats, FOFRM fields, legacy selectors, baking, default client loading, atlases, caches, and validation.
+- [Generated Particle Format Reference](Docs/generated/particle-format/index.md) for SPARK and Effekseer source/runtime forms, baking, rendering, tooling, integrations, and validation.
+- [Generated Font Format Reference](Docs/generated/font-format/index.md) for FOFNT/BMFont descriptors, binding, scaling, layout, rendering flags, inline colors, and validation.
+- [Generated Package Interface](Docs/generated/package/index.md) for `DefinePackage`, targets, platforms, pack tokens, payloads, and artifacts.
+- [Native Extensions](Docs/NativeExtensions.md) for project-native C++ authoring, lifecycle, dependencies, compatibility, and testing.
+- [Prototype Format](Docs/PrototypeFormat.md) for prototype authoring, inheritance, references, migrations, and the engine/project boundary.
+- [Map Format](Docs/MapFormat.md) for map source authoring, placement identity, ownership, mapper round-trip, and server/client bake behavior.
+- [Model Format](Docs/ModelFormat.md) for `.fo3d` syntax, includes, layers, attachments, transforms, materials, cuts, baking, and runtime composition.
+- [Effect Format](Docs/EffectFormat.md) for `.fofx` authoring, built-in buffers, descriptor conventions, baking, runtime selection, and project-owned slot policy.
+- [Image And Sprite Formats](Docs/ImageFormat.md) for image source selection, FOFRM composition, legacy import, baked/runtime boundaries, and project-owned asset policy.
+- [Particle Authoring And Runtime](Docs/ParticleFormat.md) for optional backend selection, `.spark`/`.efkproj` authoring, baked `.spk`/`.efk` resources, Engine tooling/runtime behavior, integrations, and project-owned visual policy.
+- [Font Format And Text Layout](Docs/FontFormat.md) for bitmap-font authoring, Engine binding/layout/rendering behavior, and project-owned font-slot and glyph-coverage policy.
+- [Generated API and Metadata](Docs/GeneratedApiAndMetadata.md) for code generation, metadata, and registration ownership.
+- [Script Methods Map](Docs/ScriptMethodsMap.md) for native script-method families and their owning runtime sides.
+- [Scripting](Docs/Scripting.md) for the AngelScript runtime and native binding boundary.
+- [Remote Calls](Docs/RemoteCalls.md) for project-authored client/server contracts and the baked project catalog generator.
+- [Configuration and Data Sources](Docs/ConfigurationAndDataSources.md) for settings/configuration behavior.
+- [Canonical API model](Docs/generated/api.json) for deterministic native codegen symbols, signatures, runtime sides, nullability, defaults, source locations, and current stability labels.
+- [Canonical CMake model](Docs/generated/cmake.json) for deterministic option, stage, hook, and helper records with stable IDs.
+- [Canonical prototype-format model](Docs/generated/prototype-format.json) for deterministic grammar, built-in property, and validation-rule records.
+- [Canonical map-format model](Docs/generated/map-format.json) for deterministic map grammar, ownership, property, bake, and validation-rule records.
+- [Canonical model-format model](Docs/generated/model-format.json) for deterministic compile-limit, asset, token, and composition-rule records.
+- [Canonical text-format model](Docs/generated/text-format.json) for deterministic text syntax, language, prototype-text, runtime, rendering, and validation records.
+- [Canonical effect-format model](Docs/generated/effect-format.json) for deterministic syntax, render-state, resource, baking, runtime, script-method, and validation records.
+- [Canonical image-format model](Docs/generated/image-format.json) for deterministic source-format, FOFRM field, filename-option, baking, runtime, and validation records.
+- [Canonical particle-format model](Docs/generated/particle-format.json) for deterministic object, XML, renderer, tooling, runtime, integration, and validation records.
+- [Canonical font-format model](Docs/generated/font-format.json) for deterministic descriptor, binding, layout, rendering, and validation records.
+- [Generated Contract Change Management](Docs/ApiChangeManagement.md) for aggregate base-revision diff reports and mandatory public breaking-change dispositions.
+- [Source Inventory](Docs/generated/source-inventory.json) for deterministic current export, test, and settings inventories.
+- [Production Documentation Plan](Docs/ProductionDocumentationPlan.md#phase-3---public-api-and-generated-reference) for the remaining contract-domain and stability-review work required before this route can become authoritative.
 
-## About
+Existing symbols and build helpers are not implicitly stable merely because they are reachable from an embedding project. Generated contract cells now distinguish explicit source classifications from the default `internal` policy, but a future public contract still requires owner-reviewed stability and migration/release disposition for breaking changes.
 
-Public API is convention between engine development and development of games based on it.  
-You can rely on backward compatibility of this API and do not afraid of changed behaviours of exposed functionality.  
-If some thing is not described neither in included or not included then it's likely in second group of things.
-
-## What is included
-
-In articles below described what is public api include to itself.  
-What is not included or just planned to including will described in the end of this document.
-
-### Build scripts
-
-* `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
-* `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
-* `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
-* `BuildTools/build.sh/bat` - build executable for specific platform
-* `BuildTools/toolset.sh/bat` - script to call different commands for manage build pipeline
-* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
-
-Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).  
-Other scripts and files in `BuildTools` dir are not part of reliable public API.
-
-### Environment variables
-
-These environment variables affected only on build scripts described above.
-
-`FO_WORKSPACE (default: Workspace)`
-
-Path where all intermediate build files will be stored.  
-In most cases you don't need to specify this variable if you run build scripts from one directory.
-
-### CMake options
-
-These options managed by build scripts (described above) automatically but if you use CMake directly then you can tweak their manually.
-
-`FO_VERBOSE_BUILD (default: OFF)`
-
-By default all non-fonline related output are hidden but with enabling this option you will see whole output from CMake.  
-Also some of additional information will be printed during configuration.  
-This option can help if something goes wrong during CMake configuration processing.
-
-`FO_OUTPUT_PATH (default: *cmake binary dir*)`
-
-Path where resulted binaries will be placed.  
-This option allow to redirect output from different CMake build trees to one place.  
-I.e. build win/linux/mac/etc binaries in different places but collect output in single place.
-
-`FO_BUILD_CLIENT (default: OFF)`
-
-Produce client binaries.  
-Binaries will be placed in `output/Client` directory in separate directory named as `platform-arch-configuration` (i.e. Windows-win64-Debug).  
-These binaries later will be consumed by packager.
-
-`FO_BUILD_SERVER (default: OFF)`
-
-Produce server binaries.  
-Binaries will be placed in `output/Server` directory in separate directory named as `platform-arch-configuration` (i.e. Linux-x64-Release).
-These binaries later will be consumed by packager.
-
-`FO_BUILD_MAPPER (default: OFF)`
-
-Produce mapper binaries.  
-Binaries will be placed in `output/Tools` directory.
-
-`FO_BUILD_ASCOMPILER (default: OFF)`
-
-Produce AngelScript compiler.  
-Binaries will be placed in `output/Tools` directory and later used for AngelScript scripts compilation.
-
-`FO_BUILD_BAKER (default: OFF)`
-
-Produce baker binaries.  
-Binaries will be placed in `output/Tools` directory and later used for baking resources.
-
-`FO_UNIT_TESTS (default: ON)`
-
-Create binaries for unit testing.  
-Binaries will be placed in `output/Tests` directory.
-
-`FO_CODE_COVERAGE (default: OFF)`
-
-Create binaries for code coverage calculation.  
-Binaries will be placed in `output/Tests` directory.
-
-### CMake contribution
-
-CMake contributions included to main CMakeLists.txt scope.
-
-* SetupGame option value option value...
-  + DEV_NAME - name of game in short format, without whitespaces
-  + NICE_NAME - representative name of game, any characters allowed
-  + AUTHOR_NAME - authoring
-  + GAME_VERSION - any string that describe current version of game
-  + NATIVE_SCRIPTING - allow native C++ scripting
-  + ANGELSCRIPT_SCRIPTING - allow AngelScript scripting
-  + MONO_SCRIPTING - allow Mono C# scripting
-* AddContent dir(s)
-* AddResources packName dir(s)
-* AddRawResources dir(s)
-* AddNativeSource pathPattern(s)
-* AddMonoAssembly assembly
-* AddMonoReference assembly target ref(s)
-* AddMonoSource assembly target pathPattern(s)
-* CreatePackage package config debug
-* AddToPackage package binary platform arch packType [customConfig]
-
-### Script API
-
-Because developers can contribute to script API provided document describes only clear engine script API without any contribution.  
-Script API documents:
-...
-
-### Internal file formats
-
-* fonline*.json
-* .foitem
-* .focr
-* .fomap
-* .foloc
-* .fofrm
-* .fo3d
-* .fos
-* .fobin
-* .fofx
-* .focfg
-* .fodlg
-* .fogui
-
-### External file formats
-
-* .png
-* .tga
-* .frm
-* .rix
-* .fbx
-* .ogg
-...
-
-### Data base storage
-
-...
-
-## What is not included
-
-In this article described what is not included in public API.  
-...write about reasons of instability these things...
-
-### Engine core
-### CMake tweaks outside provided API
-
-Yeah, you can use different CMake functionality to affect internal build processes but there is not grantee that this functionality not broken during development.  
-For example you can add source file directly to client lib using target_sources(ClientLib "MySourceFile.cpp") and this may work long time but some minor update can break this code.  
-So if you ready for these surprises then why not.
-
-### Repository structure
-### Resources packed formats
-### Network protocol
+The current `api.json` scope is `engine-native-codegen`, and its generated Markdown pages are authoritative renderings of those declarations. Project-authored remote calls have a separate parser-owned supplement generated from paired baked metadata; they are not engine symbols and therefore do not belong in this repository's snapshot. The project-facing CMake, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, and font-format surfaces are separate experimental models consumed or source-validated against runtime build/codegen/parser paths and their documentation generators. The main BuildTools CLI, package declarations/payloads, helper CLIs, and derived property inventories have source-backed internal contracts. One aggregate base-revision gate compares all fourteen generated domains while preserving their different stability policies. Explicit non-internal stability classification across the broad native API remains incomplete, so this route is still a visible placeholder.

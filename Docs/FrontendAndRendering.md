@@ -9,6 +9,8 @@ The frontend layer is the boundary between the platform and the engine runtime. 
 Read this page together with:
 
 - [ClientRuntime.md](ClientRuntime.md) for how `ClientEngine`, `SpriteManager`, `MapView`, and runtime managers use these services.
+- [ImageFormat.md](ImageFormat.md) for baked sprite loading, atlas placement, filter borders, hit masks, and image cache identity.
+- [FontFormat.md](FontFormat.md) for bitmap-font texture loading, atlas placement, bind-time raster scaling, text layout, and rendering flags.
 - [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md) for configure/build composition.
 - [WebDebugging.md](WebDebugging.md) and [AndroidDebugging.md](AndroidDebugging.md) for platform package/debug flows.
 - [Debugging.md](Debugging.md) for native debugging and stack traces.
@@ -31,8 +33,10 @@ Read this page together with:
 - `Source/Client/RenderTarget.cpp`
 - `Source/Client/SpriteManager.h`
 - `Source/Client/SpriteManager.cpp`
-- `Source/Client/3dStuff.h`
-- `Source/Client/3dStuff.cpp`
+- `Source/Client/DefaultSprites.h`
+- `Source/Client/DefaultSprites.cpp`
+- `Source/Client/TextureAtlas.h`
+- `Source/Client/TextureAtlas.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ModelSpriteLayout.h`
@@ -48,6 +52,11 @@ Read this page together with:
 - `Source/Tests/Test_Rendering.cpp`
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_TextureAtlas.cpp`
+- `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/SpriteMeshing.cpp`
+- `Source/Tools/BakingReport.cpp`
 
 ## Layer map
 
@@ -58,6 +67,10 @@ The frontend/rendering split has three layers:
 3. **Client drawing layer** (`SpriteManager`, `RenderTargetManager`, `EffectManager`, `MapView`) builds engine/game drawing operations on top of the renderer abstraction.
 
 This keeps most client code renderer-agnostic. The client asks for sprites, effects, draw buffers, render targets, and input events; the selected backend decides how those are implemented.
+
+Image source decoding belongs to the baker, not this frontend layer. At runtime, `DefaultSpriteFactory` turns the baked RGBA container into atlas-backed sprites; `TextureAtlasManager` allocates by `AtlasType`, and the renderer receives only texture-region uploads and draw data. See [ImageFormat.md](ImageFormat.md) for the source-to-atlas contract and [SpriteRootMotion.md](SpriteRootMotion.md) for the narrower movement-driven use of per-frame offsets.
+
+Bitmap-font descriptors are raw runtime resources, while their referenced PNG/TGA images still pass through normal image baking. `FontManager` parses the descriptor, uploads normal and bordered glyph regions to the font atlas, and submits text through `SpriteManager`; backend renderers do not interpret FOFNT/BMFont syntax or wrapping flags. See [FontFormat.md](FontFormat.md) for that boundary and the exact draw/measurement behavior.
 
 ## Matrix convention
 
@@ -166,6 +179,8 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 - `Renderer` — backend interface implemented by concrete renderers.
 
 `Source/Frontend/Rendering.cpp` owns backend-independent helper behavior, including draw-buffer allocation checks and effect configuration parsing. It reads effect sections such as `Effect` and `EffectInfo`, pass counts, blend settings, and script-visible buffers before backend-specific code consumes shader files.
+
+### Sprite and model atlas geometry
 
 `EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex
 topology restriction. The sprite draw buffer is an indexed triangle list, and
@@ -497,6 +512,13 @@ Local-map viewports recenter instantly on the chosen critter when their screen s
 
 ## Effects and shader data
 
+Use [EffectFormat.md](EffectFormat.md) and the generated
+[effect-format reference](generated/effect-format/index.md) for `.fofx`
+sections, pass/render state, vertex inputs, built-in resources, descriptor
+conventions, baked artifacts, path-cache identity, script-value lifetime, and
+authoring validation. This page owns how those effects participate in the
+frontend/render pipeline.
+
 `RenderEffect` owns standard buffers used by render paths:
 
 - projection/main texture data;
@@ -690,7 +712,7 @@ The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDra
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
-**World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
+**World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit and is shared by 3D models and in-scene particles. The Engine default is `40.0`; an embedding project may override it consistently for both systems. **1 world unit = 1 hex = 1 m** remains the authoring metric, but the pixel projection factor does not have to equal `MAP_HEX_WIDTH`. A scene-type system that emits within a radius of N units therefore spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale. See [ParticleFormat.md](ParticleFormat.md#runtime-contract) for the complete backend-neutral particle route.
 
 ## Platform packages and BuildTools relationship
 

@@ -141,7 +141,7 @@ Complex property raw data also keeps its interior aligned. The layout contract l
 - `AddProto()` for adding constructed prototypes;
 - `LoadFromResources()` for loading baked/resource-backed prototype data.
 
-Prototype loading is adjacent to resource baking. For baker-side proto handling, see [BakingPipeline.md](BakingPipeline.md).
+Prototype loading is adjacent to resource baking. For authoring syntax, identity, inheritance, built-in property applicability, references, and migrations, see [PrototypeFormat.md](PrototypeFormat.md) and its generated [property catalog](generated/prototype-format/properties.md). For baker orchestration, see [BakingPipeline.md](BakingPipeline.md).
 
 ## Inner entities and holders
 

@@ -9,11 +9,14 @@ The scripting layer is the contract between the C++ engine runtime and game-auth
 Read this page together with:
 
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) for generated metadata, `///@` annotations, and codegen output.
+- [ScriptLifecycleAndConcurrency.md](ScriptLifecycleAndConcurrency.md) for module initialization, callback ownership, `[[Async]]`, `Yield`, server synchronization covers, mutable-state ownership, and teardown rules.
+- [RemoteCalls.md](RemoteCalls.md) for remote-call grammar, direction, handlers, authority, project catalog generation, and validation.
 - [Nullability.md](Nullability.md) for `T?` (script) and `ptr<T>`·`nptr<T>` (native) contracts across script/native boundaries.
 - [EntityModel.md](EntityModel.md) for entity, prototype, property, and holder concepts exposed to scripts.
 - [ServerRuntime.md](ServerRuntime.md) and [ClientRuntime.md](ClientRuntime.md) for runtime events and script callback ownership.
 - [MapperTools.md](MapperTools.md) for mapper-specific script helpers.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) for the native script method file map.
+- [TextAndLocalization.md](TextAndLocalization.md) for `TextPackKey`, `LanguageName`, `Game.GetText`, language switching, and the boundary from project-owned lexem formatting.
 
 ## Source paths inspected
 
@@ -121,12 +124,15 @@ Entity deletion/unload clears the entity's own event callbacks and time events f
 
 - nullable `T?` suffix stripping and propagation into metadata;
 - `///@ Event` declarations and matching `[[Event]]` handlers;
-- `///@ RemoteCall` declarations and matching `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, or `[[AdminRemoteCall]]` implementations;
+- `///@ RemoteCall` declarations and matching `[[ServerRemoteCall]]` or `[[ClientRemoteCall]]` implementations;
+- the separate `[[AdminRemoteCall]]` command entry point;
 - module/init-function priorities;
 - callback attribute validation rules;
 - `[[InvokeEntry]]` for functions dispatched only by name through the global `Invoke(...)` helper. It blocks ordinary direct calls while still allowing a function reference for `NameOf(...)` registration.
 
 These attributes are source-level contracts. AngelScript sees normalized declarations after preprocessing, while engine metadata and analyzers retain the higher-level FOnline-specific meaning.
+
+The complete authoring and runtime model for `[[ModuleInit]]`, callback-only attributes, transitive `[[Async]]`, `Yield`, server `Game.Sync` / `Game.Lock`, state ownership, and callback teardown is in [ScriptLifecycleAndConcurrency.md](ScriptLifecycleAndConcurrency.md). Keep this page focused on subsystem composition and use that guide for lifecycle-sensitive script design.
 
 ## Entities and properties in scripts
 
@@ -151,6 +157,8 @@ Use [EntityModel.md](EntityModel.md) for entity/property/prototype ownership and
 
 Events and remote calls are intentionally separate concepts. Events describe engine/runtime lifecycle and gameplay notifications; remote calls describe network-addressable script entry points. Both rely on metadata signatures, nullability contracts, and generated descriptors.
 
+The complete authoring, caller-surface, namespace, security, baked-catalog, and compatibility contract is in [RemoteCalls.md](RemoteCalls.md).
+
 ## Native script method exports
 
 Native script APIs are grouped by file name:
@@ -165,6 +173,11 @@ Each exported function is marked with `///@ ExportMethod` and normally starts wi
 For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
+
+Text lookup follows the same side ownership. Client/mapper scripts can retrieve
+strings and change language; server scripts expose only text presence and
+variant counts. The complete behavioral contract and missing-data semantics are
+in [TextAndLocalization.md](TextAndLocalization.md).
 
 Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `Game.DrawSpriteRegion` are valid only during render-facing script callbacks (`RenderIface` / GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` draws a normalized `[0, 1]` sub-rectangle of the sprite's original logical image into a destination rectangle; polygon-cropped atlas frames are remapped through their source offset and transparent cropped margins remain transparent in the destination. `Game.DrawSpritePattern` follows the same logical-image contract for every complete or partial tile. Region drawing is intended for reusable GUI composition such as script-side 9-slice panels, and returns `false` when the sprite cannot provide atlas-region drawing.
 
@@ -194,7 +207,7 @@ Treat these files as engine library code. Game-specific script modules should li
 - `FO_ANGELSCRIPT_SCRIPTING` enables the `CompileAngelScript` command target.
 - The target runs the project AS compiler app (`${FO_DEV_NAME}_ASCompiler`) with the main config arguments.
 - `CompileAngelScript` depends on `ForceCodeGeneration`, so script-visible generated metadata is current before compilation.
-- `FO_MONO_SCRIPTING` wires `CompileMonoScripts` through `BuildTools/compile-mono-scripts.py` and `FO_MONO_ASSEMBLIES` / `FO_MONO_SOURCE`.
+- `FO_MONO_SCRIPTING` wires `CompileMonoScripts` through `BuildTools/compile-mono-scripts.py`, passes `FO_OUTPUT_PATH` as its required scripts/project directory, and supplies `FO_MONO_ASSEMBLIES`; `FO_MONO_SOURCE` remains the CMake dependency/metadata source list.
 - `BakeResources` and `ForceBakeResources` also depend on code generation and run the project baker app.
 
 Script compilation and resource baking are adjacent but not identical. Script compilation produces bytecode/runtime inputs; baking packages resources and metadata for runtime consumption. See [BakingPipeline.md](BakingPipeline.md) for resource baking.
@@ -225,7 +238,7 @@ Use these tests as executable documentation when changing script registration, g
 - AngelScript compiler/runtime lifecycle: `Source/Scripting/AngelScript/AngelScriptScripting.*` and `AngelScriptBackend.*`.
 - Attribute syntax and nullable preprocessing: `Source/Scripting/AngelScript/AngelScriptAttributes.*` and [Nullability.md](Nullability.md).
 - Script entity/property registration: `Source/Scripting/AngelScript/AngelScriptEntity.*` plus [EntityModel.md](EntityModel.md).
-- Remote caller registration/dispatch support: `Source/Scripting/AngelScript/AngelScriptRemoteCalls.*` plus [Networking.md](Networking.md).
+- Remote caller registration/dispatch support: `Source/Scripting/AngelScript/AngelScriptRemoteCalls.*`, [RemoteCalls.md](RemoteCalls.md), and [Networking.md](Networking.md).
 - Reflection helpers: `Source/Scripting/AngelScript/AngelScriptReflection.*`.
 - Native exported methods: `Source/Scripting/*ScriptMethods.cpp` and [ScriptMethodsMap.md](ScriptMethodsMap.md).
 - Build target wiring: `BuildTools/cmake/stages/ScriptsAndBaking.cmake` and [BuildToolsPipeline.md](BuildToolsPipeline.md).

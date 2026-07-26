@@ -90,6 +90,22 @@ GameProject/
 
 ## Getting started
 
+- **Run the first engine-owned project:** [TUTORIAL.md](TUTORIAL.md) - configure, build, bake, start, verify, and stop the minimal headless server.
+- **Inspect the canonical scaffold:** [Examples/MinimalProject/README.md](Examples/MinimalProject/README.md) - the complete project and CI smoke contract.
+- **Plan and validate public examples:** [Docs/PublicExampleRepositories.md](Docs/PublicExampleRepositories.md) and its [generated registry](Docs/generated/public-examples/index.md) - ownership, exact Engine pins, compatibility lanes, repository template, support, and asset provenance.
+- **Browse the generated native API:** [Docs/generated/api/index.md](Docs/generated/api/index.md) - methods, properties, events, types, settings, migrations, and source links.
+- **Author prototypes:** [Docs/PrototypeFormat.md](Docs/PrototypeFormat.md) and its [generated reference](Docs/generated/prototype-format/index.md) - exact syntax, inheritance, built-in properties, references, migrations, and validation.
+- **Author maps:** [Docs/MapFormat.md](Docs/MapFormat.md) and its [generated reference](Docs/generated/map-format/index.md) - `.fomap` sections, placement IDs, ownership, mapper normalization, side-specific baking, and runtime loading.
+- **Author localized text:** [Docs/TextAndLocalization.md](Docs/TextAndLocalization.md) and its [generated reference](Docs/generated/text-format/index.md) - `.fotxt` syntax, language normalization, prototype `$Text`, runtime lookup, color tags, and the game-formatting boundary.
+- **Author images and sprite sheets:** [Docs/ImageFormat.md](Docs/ImageFormat.md) and its [generated reference](Docs/generated/image-format/index.md) - PNG/TGA and legacy import, FOFRM composition, baking, runtime factories, atlases, caches, and validation.
+- **Author shader effects:** [Docs/EffectFormat.md](Docs/EffectFormat.md) and its [generated reference](Docs/generated/effect-format/index.md) - `.fofx` sections, passes, render state, shader resources, backend outputs, runtime selection, and script values.
+- **Author particles:** [Docs/ParticleFormat.md](Docs/ParticleFormat.md) and its [generated reference](Docs/generated/particle-format/index.md) - optional SPARK/Effekseer selection, `.spark`/`.efkproj` authoring, `.spk`/`.efk` baking, Mapper tools, runtime routes, and model/script integration.
+- **Author bitmap fonts and lay out text:** [Docs/FontFormat.md](Docs/FontFormat.md) and its [generated reference](Docs/generated/font-format/index.md) - FOFNT/BMFont descriptors, slot binding, scaling, measurement, wrapping, rendering flags, colors, and validation.
+- **Inspect project integration contracts:** [Docs/generated/cmake/index.md](Docs/generated/cmake/index.md), [Docs/generated/cli/index.md](Docs/generated/cli/index.md), [Docs/generated/helper-cli/index.md](Docs/generated/helper-cli/index.md), [Docs/generated/native-extension/index.md](Docs/generated/native-extension/index.md), [Docs/generated/package/index.md](Docs/generated/package/index.md), and [Docs/generated/public-examples/index.md](Docs/generated/public-examples/index.md) - exact CMake, main/helper BuildTools, native-extension, packaging, and example-program surfaces.
+- **Add project-native C++ safely:** [Docs/NativeExtensions.md](Docs/NativeExtensions.md) - source roles, hooks, script exports, state ownership, compatibility, and executable validation.
+- **Browse the generated CMake interface:** [Docs/generated/cmake/index.md](Docs/generated/cmake/index.md) - project options, strict stages and hooks, selected helpers, defaults, and source links.
+- **Publishing documentation:** [Docs/SitePublication.md](Docs/SitePublication.md) - generated navigation/search/route data, rolling version and locale policy, local Jekyll preview, rendered CI artifacts, and the existing `fonline.ru` GitHub Pages route.
+- **AI and offline documentation:** [llms.txt](llms.txt), [llms-full.txt](llms-full.txt), and [docs-manifest.json](docs-manifest.json) - generated routes, bounded context, canonical/source URLs, provenance, and content hashes from the same Markdown manifest.
 - **New to the engine:** [Docs/GettingStarted.md](Docs/GettingStarted.md) — the first route: what to read, what to build, what belongs where.
 - **Starting or inspecting a game project:** [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) — expected repository shape and ownership rules.
 - **Building:** [Docs/BuildWorkflow.md](Docs/BuildWorkflow.md) — prerequisites, presets, and validation strategy. Builds are normally driven from the embedding game repository, not from the engine checkout.
@@ -114,7 +130,7 @@ The maintained index is [Docs/README.md](Docs/README.md). Deep dives by theme:
 | Architecture & navigation | [Architecture](Docs/Architecture.md) · [SourceTree](Docs/SourceTree.md) · [Applications](Docs/Applications.md) · [Essentials](Docs/Essentials.md) |
 | Runtime model | [EntityModel](Docs/EntityModel.md) · [MapsMovementGeometry](Docs/MapsMovementGeometry.md) · [Networking](Docs/Networking.md) · [Persistence](Docs/Persistence.md) |
 | Client & server | [ClientRuntime](Docs/ClientRuntime.md) · [ServerRuntime](Docs/ServerRuntime.md) · [FrontendAndRendering](Docs/FrontendAndRendering.md) · [ClientUpdater](Docs/ClientUpdater.md) |
-| Scripting | [Scripting](Docs/Scripting.md) · [ScriptMethodsMap](Docs/ScriptMethodsMap.md) · [Nullability](Docs/Nullability.md) · [GeneratedApiAndMetadata](Docs/GeneratedApiAndMetadata.md) |
+| Scripting | [Scripting](Docs/Scripting.md) · [LifecycleAndConcurrency](Docs/ScriptLifecycleAndConcurrency.md) · [RemoteCalls](Docs/RemoteCalls.md) · [ScriptMethodsMap](Docs/ScriptMethodsMap.md) · [Nullability](Docs/Nullability.md) · [GeneratedApiAndMetadata](Docs/GeneratedApiAndMetadata.md) · [ApiChangeManagement](Docs/ApiChangeManagement.md) |
 | Build & content pipeline | [BuildWorkflow](Docs/BuildWorkflow.md) · [BuildToolsPipeline](Docs/BuildToolsPipeline.md) · [BakingPipeline](Docs/BakingPipeline.md) · [ConfigurationAndDataSources](Docs/ConfigurationAndDataSources.md) |
 | Tools | [Tools](Docs/Tools.md) · [MapperTools](Docs/MapperTools.md) |
 | Quality & conventions | [Testing](Docs/Testing.md) · [ExceptionSafety](Docs/ExceptionSafety.md) · [SmartPointers](Docs/SmartPointers.md) · [ThreadSafetyAnalysis](Docs/ThreadSafetyAnalysis.md) |

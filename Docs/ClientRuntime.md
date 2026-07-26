@@ -10,6 +10,9 @@ Read this page together with:
 
 - [EntityModel.md](EntityModel.md) for the entity/property/prototype model that client views wrap.
 - [MapsMovementGeometry.md](MapsMovementGeometry.md) for map positions, path finding, line tracing, and movement contexts.
+- [ImageFormat.md](ImageFormat.md) for image import, FOFRM composition, baked sprite loading, atlases, and cache behavior.
+- [FontFormat.md](FontFormat.md) for bitmap-font descriptors, slot binding, bind-time scaling, text layout, rendering flags, and inline colors.
+- [SpriteRootMotion.md](SpriteRootMotion.md) for 2D per-frame offsets and movement-driven walk/run cycle alignment.
 - [Networking.md](Networking.md) for command buffers, transports, and property sync.
 - [FrontendAndRendering.md](FrontendAndRendering.md) for platform windows, input, audio, and renderer backends.
 - [WebDebugging.md](WebDebugging.md), [AndroidDebugging.md](AndroidDebugging.md), and [Debugging.md](Debugging.md) for platform-specific validation flows.
@@ -36,6 +39,10 @@ Read this page together with:
 - `Source/Client/PlayerView.h`
 - `Source/Client/DefaultSprites.h`
 - `Source/Client/DefaultSprites.cpp`
+- `Source/Client/SpriteManager.h`
+- `Source/Client/SpriteManager.cpp`
+- `Source/Client/TextureAtlas.h`
+- `Source/Client/TextureAtlas.cpp`
 - `Source/Client/ModelAnimation.h`
 - `Source/Client/ModelAnimation.cpp`
 - `Source/Client/ModelBakedData.h`
@@ -185,6 +192,8 @@ the engine's native model-animation runtime and baked format.
 
 ## Critter model animation
 
+The complete `.fo3d` loading and composition contract - source meshes, layers, root modifiers, child models, particles, transforms, materials, cuts, and rendering controls - is [ModelFormat.md](ModelFormat.md).
+
 3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
 animation-specific speed (`AnimSpeed`) to the body/action controller, while `RefreshMoveAnimation()` assigns gait and
 movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
@@ -261,6 +270,18 @@ The nested LF archive hash detects accidental corruption but is not an
 authentication mechanism. Ozz deserialization assumes the baked resource pack
 is trusted; deployments that permit attacker-rewritable packs must authenticate
 the pack before this loader runs.
+
+## Sprite loading and atlases
+
+The stock client does not decode source PNG/TGA or legacy image bytes. `SpriteManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately for the life of the manager.
+
+The complete source-format, FOFRM, baked-record, default-extension, atlas, and cache contract is [ImageFormat.md](ImageFormat.md). Project code should feed supported sources through the pinned baker rather than parse the private baked stream.
+
+Particle resources follow a separate factory path. `ParticleManager` parses raw-copied `.fopts` SPARK XML, caches the base graph by exact path (including failed loads), and clones simulation state per instance. `ParticleSpriteFactory` then selects atlas-backed or direct map-scene rendering from the Engine renderer fields; model-bone attachments use the 3D composition path. The complete authoring, renderer, cache, tooling, script, and validation contract is [ParticleFormat.md](ParticleFormat.md).
+
+## 2D sprite root motion
+
+Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `NextX` / `NextY` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [SpriteRootMotion.md](SpriteRootMotion.md).
 
 ## `MapView`: map presentation and local spatial state
 
@@ -437,6 +458,8 @@ padded custom-effect/contour draws intentionally construct quads because their
 sampling rectangle is not the source sprite silhouette.
 
 ### Fonts and Inline Color Tags
+
+The complete authoring and runtime contract is owned by [FontFormat.md](FontFormat.md); use its [generated reference](generated/font-format/index.md) for exact fields, enum values, limits, and validation records. This page only places `FontManager` in the wider client lifecycle.
 
 `FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 

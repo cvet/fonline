@@ -2,6 +2,10 @@
 
 > **For Hermes:** Use this plan as the roadmap for iterative documentation work. Each documentation slice must start with repository research, cite exact source paths, update the owning `Engine/Docs/*.md` file, and finish with link/status verification. Do not commit or push unless Anton asks.
 
+**Status:** Completed — every phase below is finished and the resulting docs are tracked with per-doc verification status in [DocumentationBacklog.md](DocumentationBacklog.md). This file is kept as the historical roadmap and for the reusable per-task execution checklist; new documentation work starts from new source changes, stale findings, or explicit requests, not from this plan.
+
+**Successor:** [ProductionDocumentationPlan.md](ProductionDocumentationPlan.md) is the active roadmap for making the documentation standalone, public-contract driven, example-backed, bilingual, and production ready.
+
 **Goal:** Build a complete, navigable, source-grounded documentation set for the FOnline engine that explains how the engine is structured, embedded, built, debugged, extended, and validated.
 
 **Architecture:** Documentation is organized as a layered map: landing pages route readers to focused topic docs; each topic doc owns one engine subsystem or workflow; source-tree READMEs stay brief and link to deeper `Docs/` pages. Every new doc is written from repository evidence, not memory or guesses.
@@ -19,39 +23,17 @@
 - **Source-grounded references.** Include exact file/path references such as `Source/Common/Entity.cpp` or `BuildTools/cmake/stages/ScriptsAndBaking.cmake`.
 - **Verification after every slice.** Run markdown link checks and `git diff --check`; confirm staged area is empty unless explicitly staging.
 
-## Current baseline
+## Current status
 
-Existing docs:
+All phases of this plan are complete. The maintained documentation set is indexed in [README.md](README.md); per-doc verification status lives in [DocumentationBacklog.md](DocumentationBacklog.md). Do not maintain a duplicate doc inventory here — it drifts.
 
-- `README.md` — engine landing page.
-- `Docs/README.md` — documentation hub.
-- `Docs/GettingStarted.md` — first route for new developers.
-- `Docs/EmbeddingProject.md` — embedding-project ownership model.
-- `Docs/BuildWorkflow.md` — build workflow overview.
-- `Docs/BuildToolsPipeline.md` — BuildTools CMake stage map.
-- `Docs/BakingPipeline.md` — resource baking and baker ownership.
-- `Docs/GeneratedApiAndMetadata.md` — codegen and metadata registration.
-- `Docs/ConfigurationAndDataSources.md` — config parsing, settings, data sources, file lookup, and caches.
-- `Docs/EntityModel.md` — entity/property/prototype runtime model.
-- `Docs/MapsMovementGeometry.md` — map coordinates, path finding, movement, and loading.
-- `Docs/Networking.md` — network buffers, commands, transports, and UDP ordering.
-- `Docs/Persistence.md` — database facade, backends, commit queue, and recovery.
-- `Docs/ClientRuntime.md` — client lifecycle, connection, view entities, resources, sprites, and tests.
-- `Docs/FrontendAndRendering.md` — application/window/input/audio abstraction, renderer backends, and render-target bridge.
-- `Docs/ServerRuntime.md` — authoritative server lifecycle, managers, networking, persistence, movement, and updater backend.
-- `Docs/ClientUpdater.md` — updater/runtime split.
-- `Docs/Debugging.md` — native debugging.
-- `Docs/Scripting.md` — scripting runtime, AngelScript backend, native method exports, core scripts, and compile flow.
-- `Docs/ScriptMethodsMap.md` — native script method ownership by runtime side and receiver family.
-- `Docs/Nullability.md` — script/native nullability.
-- `Docs/Tools.md` — engine tools map: bakers, mapper, editor, asset explorer, particle editor, and application entry points.
-- `Docs/MapperTools.md` — mapper lifecycle, native helper boundaries, and mapper automation.
-- `Docs/Testing.md` — test-suite inventory, generated test targets, coverage, and validation routing.
-- `Docs/DocumentationMaintenance.md` — source-grounded docs maintenance workflow.
-- `Docs/WebDebugging.md` — Web debugging.
-- `Docs/AndroidDebugging.md` — Android debugging.
+Later production slices added source-backed generated contracts for prototype,
+map, model, text/localization, effect, image, particle, and font formats. Their current ownership and status
+live in [ProductionDocumentationPlan.md](ProductionDocumentationPlan.md) and
+[DocumentationBacklog.md](DocumentationBacklog.md), not in the historical
+phase checklist below.
 
-High-value source areas to document:
+Source areas covered by the documentation set:
 
 - `Source/Applications/` — executable entry points.
 - `Source/Common/` — shared runtime model, entities, properties, networking primitives, maps, configs.
@@ -698,14 +680,12 @@ For every task above:
 8. Run `git status --short` and confirm no accidental staging.
 9. Report changed files and remaining questions.
 
-## Suggested order for the next work session
+## Next work session
 
-1. `Docs/Essentials.md`
-2. `Docs/ConfigurationAndDataSources.md`
-3. `Docs/Testing.md`
-4. `Docs/DocumentationMaintenance.md`
-6. `Docs/ConfigurationAndDataSources.md`
-7. `Docs/Testing.md`
-8. `Docs/DocumentationMaintenance.md`
+The initial backlog is fully documented and verified. There is no queued slice from this plan. Start the next documentation session from one of:
 
-This order documents scripting/tooling next, then low-level infrastructure, tests, and maintenance.
+- a behavior change in `Source/`, `BuildTools/`, or the script/native boundary that makes an owning doc stale;
+- a `verified` doc whose cited source paths no longer exist or whose claims drifted;
+- an explicitly requested new topic.
+
+Track any new slice in [DocumentationBacklog.md](DocumentationBacklog.md) with its source-path research and verification date, following the per-task execution checklist above.

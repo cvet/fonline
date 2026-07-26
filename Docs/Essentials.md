@@ -32,6 +32,8 @@ The essentials layer should stay dependency-light. It is included by most of the
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
+- `ThirdParty/small_vector/README.md`
+- `ThirdParty/small_vector/source/include/gch/small_vector.hpp`
 - `Source/Essentials/StringUtils.h`
 - `Source/Essentials/StringUtils.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -139,6 +141,34 @@ Not hooked, with reasons: **LibreSSL** exports `CRYPTO_set_mem_functions` but it
 
 When vendoring or updating a library, check whether it has an allocator hook and either wire it or record why not — and read the hook's *implementation*, not just its declaration. Two of the entries above were initially misjudged from the call site or the symbol name alone.
 
+#### Vector containers and inline storage
+
+`Containers.h` exposes two sequence aliases backed by `SafeAllocator<T>`:
+
+- `vector<T>` is the normal dynamically allocated sequence and remains the default for unbounded data, persistent collections that amortize their allocation, move-heavy pipelines, and exact engine interfaces.
+- `small_vector<T, InlineCapacity>` stores up to `InlineCapacity` elements inside the object and spills to `SafeAllocator` storage above that limit. The engine alias requires an explicit capacity; `GCH_SMALL_VECTOR_DEFAULT_SIZE` configures the vendored implementation and is not a capacity-selection policy.
+
+Use `small_vector` only when measurements or a hard protocol limit show that a frequently constructed collection is usually small. Choose the capacity from observed typical cardinality, keep rare large cases correct through heap spill, and account for the inline bytes in every instance. A per-call scratch list can be a strong candidate; adding several inline buffers to every cell in a dense map can cost more memory than the avoided first allocation. `inlined()` reports the current storage mode and is useful in focused tests and profiling instrumentation.
+
+The representation has several correctness consequences:
+
+1. Moving an inline `small_vector` relocates its elements into the destination object's inline buffer. Pointers, references, and iterators into the source do not follow the move as they commonly do when a heap-backed `vector` transfers its allocation. Audit every address that survives a container move.
+2. Inline moves and swaps perform element work and are only conditionally `noexcept`; re-derive the touched function's exception-safety guarantee instead of inheriting assumptions from `vector`.
+3. A `small_vector<T, N>` data member instantiates inline element destruction at the containing class boundary. `T` must therefore be complete there; it is not a drop-in replacement for a `vector` member whose element type is only forward-declared.
+4. With the vendored implementation, a member whose element is a nested type with default member initializers can make default-inserting operations ill-formed while the enclosing class is incomplete, notably under Clang. For a shrink, prefer `erase(begin() + new_size, end())`; otherwise move the element type out of the enclosing class or make construction requirements explicit.
+5. Heap spill still follows the engine's terminate-on-OOM policy because the alias uses `SafeAllocator`. Element construction, conversion, and move operations may still throw; see [ExceptionSafety.md](ExceptionSafety.md).
+
+Do not substitute `small_vector` across an exact-type boundary merely because the operations look vector-like:
+
+- script export/codegen signatures and `ScriptSystem` registration use exact `vector<T>` / `readonly_vector<T>` spellings and type identities;
+- property writes, serialized backing stores, `DataReader` / `DataWriter`, `NetBuffer`, and `CScriptArray` have exact `vector` contracts at selected boundaries;
+- a span-taking internal helper may accept either representation without exposing the concrete container type, which is the preferred seam when both are valid;
+- `FO_ENTITY_PROPERTY` cannot take `small_vector<T, N>` directly because the comma also separates macro arguments.
+
+`vector_collection` admits both engine aliases for generic readers. The producing helpers `vec_filter`, `vec_transform`, and `vec_sorted` preserve `vector` versus `small_vector` and retain the inline capacity through `rebind_vector_t`; non-vector ranges materialize as `vector`. `to_vector` intentionally always materializes a `vector`, while `copy_hold_ref` exposes an opaque ref-held snapshot rather than a concrete sequence contract. The generic formatter accepts both aliases for ordinary numeric elements, but its string and boolean special cases currently match exact `vector<string>` and `vector<bool>` types; do not assume equivalent formatting for `small_vector<string, N>` or `small_vector<bool, N>` without extending and testing that formatter.
+
+For an adoption, record the measured distribution and object count, audit address lifetime plus move/swap sites, verify complete-type and exact-interface constraints, and add focused coverage for inline operation, spill, and any generic-helper result type. Then run the complete native unit suite, the embedding project's exception-safety and smart-pointer audits when present, and representative bake/gameplay/profiling paths for the changed subsystem.
+
 ### Serialization, values, strings, and hashes
 
 `DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `DataReader::Read<T>()` and `DataWriter::Write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `ReadPtr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `Read<T>()` or `ReadPtr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
@@ -181,6 +211,8 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_TimeRelated.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
 
+`Test_Containers.cpp` pins the engine alias, allocator, inline-to-heap transition, move, swap, and formatting behavior. `Test_CommonHelpers.cpp` pins container-kind preservation through `rebind_vector_t` and the producing `vec_*` helpers. Keep both focused suites current when changing vector aliases or generic sequence helpers.
+
 See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 
 ## Change routing
@@ -199,3 +231,4 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 3. Run the smallest matching essentials test and then the broader `RunUnitTests` target when behavior crosses utility boundaries.
 4. For diagnostics changes, also verify [Debugging.md](Debugging.md) stays accurate.
 5. For filesystem/socket/threading changes, validate at least one higher-level consumer if the low-level contract changed.
+6. For a `small_vector` adoption, prove capacity and object-count assumptions with data, audit move/address lifetime and exact-type boundaries, and re-run exception-safety plus pointer-ownership gates.

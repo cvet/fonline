@@ -2,6 +2,8 @@
 
 This document explains the reusable map-coordinate, movement, path-finding, line-tracing, and map-loading primitives used by client/server runtime and tools.
 
+Use [MapFormat.md](MapFormat.md) for authored `.fomap` sections, placement identity and ownership, mapper round-trip behavior, side-specific baking, and runtime content materialization. This page owns geometry and movement semantics.
+
 Use it when changing `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map baker behavior, or map/movement tests.
 
 ## Ownership model
@@ -246,6 +248,7 @@ Relevant tests include:
 - Line tracing: `Source/Common/LineTracer.*` and `Source/Common/PathFinding.*`.
 - BFS/path blocking behavior: `Source/Common/PathFinding.*` plus caller-provided blocker callbacks.
 - Movement interpolation/state: `Source/Common/Movement.*`.
+- Client 2D walk/run presentation over movement interpolation: [SpriteRootMotion.md](SpriteRootMotion.md).
 - Map file parsing: `Source/Common/MapLoader.*`.
 - Map resource baking: `Source/Tools/MapBaker.*` and [BakingPipeline.md](BakingPipeline.md).
 - Runtime map entity behavior: [ServerRuntime.md](ServerRuntime.md), [ClientRuntime.md](ClientRuntime.md), and [EntityModel.md](EntityModel.md).
