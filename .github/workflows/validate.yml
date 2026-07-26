@@ -24,6 +24,106 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
+  documentation:
+    name: Validate documentation
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - run: python3 BuildTools/tests/test_docs_api.py
+    - run: python3 BuildTools/tests/test_docs_api_diff.py
+    - run: python3 BuildTools/tests/test_docs_ai_delivery.py
+    - run: python3 BuildTools/tests/test_docs_site.py
+    - run: python3 BuildTools/tests/test_docs_site_layout.py
+    - run: python3 BuildTools/tests/test_docs_contract_diff.py
+    - run: python3 BuildTools/tests/test_docs_cli.py
+    - run: python3 BuildTools/tests/test_docs_helper_cli.py
+    - run: python3 BuildTools/tests/test_docs_native_extension.py
+    - run: python3 BuildTools/tests/test_docs_prototype_format.py
+    - run: python3 BuildTools/tests/test_docs_map_format.py
+    - run: python3 BuildTools/tests/test_docs_model_format.py
+    - run: python3 BuildTools/tests/test_docs_text_format.py
+    - run: python3 BuildTools/tests/test_docs_effect_format.py
+    - run: python3 BuildTools/tests/test_docs_image_format.py
+    - run: python3 BuildTools/tests/test_docs_particle_format.py
+    - run: python3 BuildTools/tests/test_docs_font_format.py
+    - run: python3 BuildTools/tests/test_docs_package.py
+    - run: python3 BuildTools/tests/test_docs_examples.py
+    - run: python3 BuildTools/tests/test_docs_cmake.py
+    - run: python3 BuildTools/tests/test_docs_reference.py
+    - run: python3 BuildTools/tests/test_docs_script_lifecycle.py
+    - run: python3 BuildTools/tests/test_docs_model_animation.py
+    - run: python3 BuildTools/tests/test_docs_sprite_root_motion.py
+    - run: python3 BuildTools/tests/test_docs_metadata.py
+    - run: python3 BuildTools/tests/test_docs_inventory.py
+    - run: python3 BuildTools/tests/test_docs_validate.py
+    - run: cmake -P BuildTools/tests/validate_project_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_package_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_native_extension_interface.cmake
+    - run: python3 BuildTools/docs_api.py --check
+    - run: python3 BuildTools/docs_cli.py --check
+    - run: python3 BuildTools/docs_helper_cli.py --check
+    - run: python3 BuildTools/docs_native_extension.py --check
+    - run: python3 BuildTools/docs_prototype_format.py --check
+    - run: python3 BuildTools/docs_map_format.py --check
+    - run: python3 BuildTools/docs_model_format.py --check
+    - run: python3 BuildTools/docs_text_format.py --check
+    - run: python3 BuildTools/docs_effect_format.py --check
+    - run: python3 BuildTools/docs_image_format.py --check
+    - run: python3 BuildTools/docs_particle_format.py --check
+    - run: python3 BuildTools/docs_font_format.py --check
+    - run: python3 BuildTools/docs_package.py --check
+    - run: python3 BuildTools/docs_examples.py --check
+    - run: python3 BuildTools/docs_cmake.py --check
+    - run: python3 BuildTools/docs_reference.py --check
+    - run: python3 BuildTools/docs_inventory.py --check
+    - run: python3 BuildTools/docs_site.py --check
+    - run: python3 BuildTools/docs_ai_delivery.py --check
+    - run: python3 BuildTools/docs_validate.py
+    - name: Classify generated contract changes against the base revision
+      env:
+        CONTRACT_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        python3 BuildTools/docs_contract_diff.py \
+          --baseline-git-ref "$CONTRACT_BASE_REF" \
+          --current-dir Docs/generated \
+          --dispositions Docs/contract-change-dispositions.json \
+          --json-output Workspace/contract-diff.json \
+          --markdown-output Workspace/contract-diff.md \
+          --allow-missing-baseline \
+          --write \
+          --enforce
+    - name: Upload generated contract diff report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: contract-diff-${{ github.sha }}
+        path: Workspace/contract-diff.*
+        if-no-files-found: ignore
+        retention-days: 14
+  documentation-site:
+    name: Build documentation site
+    needs: documentation
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build GitHub Pages-compatible site
+      uses: actions/jekyll-build-pages@v1
+      with:
+        source: ./
+        destination: ./_site
+        verbose: true
+    - name: Upload rendered site
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site-${{ github.sha }}
+        path: _site/
+        if-no-files-found: error
+        retention-days: 14
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-24.04
@@ -81,6 +181,7 @@ jobs:
         - win64-mapper
         - win64-ascompiler
         - win64-baker
+        - win64-starter-smoke
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
@@ -123,6 +224,8 @@ jobs:
         - app: linux-baker
           prepare: linux-packages linux
         - app: linux-gcc-baker
+          prepare: linux-packages linux
+        - app: linux-starter-smoke
           prepare: linux-packages linux
     steps:
     - uses: actions/checkout@v6
