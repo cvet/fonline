@@ -35,88 +35,9 @@ void operator delete[](void*) noexcept;
 #endif
 
 
-#ifndef SPK_TRACE_MEMORY
 #define SPK_NEW(name,...) new name(__VA_ARGS__)
 #define SPK_NEW_ARRAY(name,nb) new name[nb]
 #define SPK_DELETE(name) delete name
 #define SPK_DELETE_ARRAY(name) delete[] name
 #define SPK_DUMP_MEMORY {}
-#else
-#define SPK_NEW(name,...) (name*)SPK::SPKMemoryTracer::get().registerAllocation(new name(__VA_ARGS__),sizeof(name),#name,__FILE__,__LINE__)
-#define SPK_NEW_ARRAY(name,nb) (name*)SPK::SPKMemoryTracer::get().registerAllocation(new name[nb],sizeof(name) * nb,std::string(#name).append("[]"),__FILE__,__LINE__)
-#define SPK_DELETE(name) { SPK::SPKMemoryTracer::get().unregisterAllocation(name); delete name; }
-#define SPK_DELETE_ARRAY(name) { SPK::SPKMemoryTracer::get().unregisterAllocation(name); delete[] name; }
-#define SPK_DUMP_MEMORY { SPK::SPKMemoryTracer::get().dumpMemory(); }
-
-#include <string>
-#include <set>
-
-namespace SPK
-{
-    // Note: don't forget to verify static objects that depends on the tracer.
-    // For the moment, only SPKContext and IO::Manager depends on it
-    class SPK_PREFIX SPKMemoryTracer
-    {
-    struct BlockInfo;
-
-    friend bool operator==(const BlockInfo&,const BlockInfo&);
-    friend bool operator<(const BlockInfo&,const BlockInfo&);
-    friend bool compareAllocTime(const BlockInfo&,const BlockInfo&);
-
-    public :
-
-        static SPKMemoryTracer& get();
-
-        void* registerAllocation(void* position, size_t size, const std::string& type, const std::string& file, size_t line);
-        void unregisterAllocation(void* position);
-        std::string formatSize(unsigned int s);
-        void dumpMemory();
-
-    private :
-
-        struct BlockInfo
-        {
-            void* position;
-            size_t size;
-            std::string type;
-            std::string fileName;
-            size_t lineNb;
-            float time;
-            unsigned long index;
-
-            BlockInfo(void* position) : position(position) {}
-        };
-
-        SPKMemoryTracer() :
-            nextIndex(0),
-            totalMemorySize(0),
-            maxMemorySize(0)
-        {}
-
-        SPKMemoryTracer(const SPKMemoryTracer&); // Not used
-        SPKMemoryTracer& operator=(const SPKMemoryTracer&); // Not used
-
-        unsigned long nextIndex;
-        unsigned long totalMemorySize;
-        unsigned long maxMemorySize;
-
-        std::set<BlockInfo> blocks;
-    };
-
-    inline bool operator==(const SPKMemoryTracer::BlockInfo& block0,const SPKMemoryTracer::BlockInfo& block1)
-    {
-        return block0.position == block1.position;
-    }
-
-    inline bool operator<(const SPKMemoryTracer::BlockInfo& block0,const SPKMemoryTracer::BlockInfo& block1)
-    {
-        return block0.position < block1.position;
-    }
-
-    inline bool compareAllocTime(const SPKMemoryTracer::BlockInfo& block0,const SPKMemoryTracer::BlockInfo& block1)
-    {
-        return block0.index < block1.index;
-    }
-}
-#endif
 #endif

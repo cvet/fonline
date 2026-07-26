@@ -48,7 +48,7 @@ The provider handles the multi-context case naturally: if a script function call
 
 `AngelScriptBackend` mutes the AngelScript message callback during final script-engine teardown. Runtime and compilation messages still go through the normal callback before teardown begins, but shutdown-only GC survivor messages are kept out of normal logs.
 
-When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the server log now includes the entity parent/widen chain, the script/native stack, and the current `SyncContext`'s recent cover-transition ring buffer. The transition trace records `SyncEntities` requests/acquisitions and `Release()` calls with the previous/requested/held entity cover so a post-`Yield`, cover-replacement, or missing-widen failure can be matched against the last lock transition rather than inferred from stack frames alone.
+When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the server log includes the entity parent/widen chain and the script/native stack. This identifies the uncovered entity path and the access site; the engine does not currently retain a `SyncContext` transition history, so earlier cover replacement or `Release()` activity must still be reconstructed from the surrounding execution path.
 
 The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
 
@@ -148,7 +148,7 @@ Current `../../.vscode/launch.json` entries use:
 
 These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
 
-The AngelScript debugger requires `AngelScript.DebuggerEnabled = True`. The current `LocalTest` subconfig enables it, while `GameplayTests` disables it.
+The AngelScript debugger requires `Script.DebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
 
 ## Fast Route Selection
 
@@ -220,7 +220,8 @@ If you need to trace the current debugging flow through the live repository, sta
 Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
 
 - verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../.vscode/tasks.json` and `../../LastFrontier.fomain` confirm the documented split between `LocalTest` debug launches with `AngelScript.DebuggerEnabled = True` and `GameplayTests` runs with `AngelScript.DebuggerEnabled = False`
+- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.DebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
+- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.DebuggerEnabled = False`
 - `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
 - `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
 - `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table

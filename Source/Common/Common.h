@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 32
+///@ MigrationRule Version 0 0 33
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -232,7 +232,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        const auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks = std::move(_unsubscribeCallbacks);
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -309,7 +309,7 @@ public:
     {
         if (!_observer->_subscriberCallbacks.empty()) {
             for (auto& cb : _observer->_subscriberCallbacks) {
-                cb(std::forward<Args>(args)...);
+                cb(args...);
             }
         }
         return *this;

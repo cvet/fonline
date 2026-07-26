@@ -17,8 +17,8 @@ static auto MakeEffectInfoConfig(string_view path, u8string text) -> ConfigFile
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string strict_path = path;
-    return ConfigFile {strict_path.view(), std::move(text)};
+    (void)path;
+    return ConfigFile {std::move(text)};
 }
 
 static constexpr string_view VALID_EFFECT = R"(
@@ -146,7 +146,7 @@ TEST_CASE("EffectBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == EffectBaker::NAME);
@@ -247,7 +247,7 @@ TEST_CASE("EffectBaker")
 
     SECTION("RejectsInvalidEffects")
     {
-        const vector<pair<string, string>> invalid_effects = {
+        vector<pair<string, string>> invalid_effects = {
             {"Effects/NoEffect.fofx", "[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},
             {"Effects/NoVertex.fofx", "[Effect]\n\n[FragmentShader]\nvoid main(void) { }\n"},
             {"Effects/NoFragment.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},

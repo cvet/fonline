@@ -83,14 +83,14 @@ TEST_CASE("FileSystem")
         CHECK_FALSE(fs.IsFileExists("missing.txt"));
         CHECK(fs.ReadFileText("texts/a.txt") == u8string {u8"alpha"});
 
-        const FileHeader header = fs.ReadFileHeader("texts/a.txt");
+        FileHeader header = fs.ReadFileHeader("texts/a.txt");
         REQUIRE(header);
         CHECK(header.GetNameNoExt() == "a");
         CHECK(header.GetPath() == "texts/a.txt");
         CHECK(header.GetSize() == 5);
         CHECK(header.GetDataSource()->IsDiskDir());
 
-        const File file = fs.ReadFile("texts/b.bin");
+        File file = fs.ReadFile("texts/b.bin");
         REQUIRE(file);
         CHECK(file.GetText() == u8string {u8"beta"});
 
@@ -103,7 +103,7 @@ TEST_CASE("FileSystem")
         CHECK(raw_reader.GetUInt8() == 0x80);
         CHECK(raw_reader.GetUInt8() == 0xFF);
 
-        const FileCollection txt_files = fs.FilterFiles("txt");
+        FileCollection txt_files = fs.FilterFiles("txt");
         CHECK(txt_files.GetFilesCount() == 4);
         CHECK(txt_files.FindFileByName("a").GetText() == u8string {u8"alpha"});
         CHECK(txt_files.FindFileByPath("root.txt").GetText() == u8string {u8"root"});
@@ -114,35 +114,35 @@ TEST_CASE("FileSystem")
         const FileCollection all_files = fs.GetAllFiles();
         CHECK(all_files.GetFilesCount() == 8);
 
-        const vector<string> no_patterns;
-        const vector<string> root_txt_patterns = {"*.txt"};
-        const FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
+        vector<string> no_patterns;
+        vector<string> root_txt_patterns = {"*.txt"};
+        FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
         REQUIRE(root_txt_files.GetFilesCount() == 1);
         CHECK(root_txt_files.FindFileByPath("root.txt"));
 
-        const vector<string> recursive_txt_patterns = {"**/*.txt"};
-        const FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
+        vector<string> recursive_txt_patterns = {"**/*.txt"};
+        FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
         CHECK(recursive_txt_files.GetFilesCount() == 4);
         CHECK(recursive_txt_files.FindFileByPath("texts/nested/c.txt"));
 
-        const vector<string> direct_text_patterns = {"texts/*.txt"};
-        const FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
+        vector<string> direct_text_patterns = {"texts/*.txt"};
+        FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
         REQUIRE(direct_text_files.GetFilesCount() == 2);
         CHECK(direct_text_files.FindFileByPath("texts/a.txt"));
 
-        const vector<string> root_name_patterns = {"**/root.txt"};
-        const FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
+        vector<string> root_name_patterns = {"**/root.txt"};
+        FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
         REQUIRE(root_name_files.GetFilesCount() == 1);
         CHECK(root_name_files.FindFileByPath("root.txt"));
 
-        const vector<string> map_patterns = {"maps\\**\\*.fomap"};
-        const vector<string> scratch_map_patterns = {"**/_*.fomap"};
-        const FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
+        vector<string> map_patterns = {"maps\\**\\*.fomap"};
+        vector<string> scratch_map_patterns = {"**/_*.fomap"};
+        FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
         REQUIRE(authored_maps.GetFilesCount() == 1);
         CHECK(authored_maps.FindFileByPath("maps/Generated/Authored.fomap"));
 
-        const vector<string> single_character_patterns = {"**/?.txt"};
-        const FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
+        vector<string> single_character_patterns = {"**/?.txt"};
+        FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
         CHECK(single_character_names.GetFilesCount() == 2);
 
         CHECK(fs_remove_dir_tree(temp_dir.view()));
@@ -204,13 +204,48 @@ TEST_CASE("FileSystem")
         FileSystem fs;
         fs.AddDirSource(temp_dir.view(), true);
 
-        const FileCollection files = fs.GetAllFiles();
+        FileCollection files = fs.GetAllFiles();
         REQUIRE(files.GetFilesCount() == 1);
         CHECK(files.GetFileByIndex(0).GetNameNoExt() == "one");
         CHECK_FALSE(files.FindFileByName("missing"));
         CHECK_FALSE(files.FindFileByPath("entries/missing.txt"));
 
         CHECK(fs_remove_dir_tree(temp_dir.view()));
+    }
+
+    SECTION("CachedDirectoryCanRefreshItsFileIndex")
+    {
+        const u8string temp_dir = MakeTempMountedDir("filesystem_refresh");
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        const u8string first_path = fs_combine_path(temp_dir, "first.txt");
+        const u8string second_path = fs_combine_path(temp_dir, "second.txt");
+        REQUIRE(fs_write_file_text(first_path, u8"first"));
+
+        FileSystem fs;
+        fs.AddDirSource(temp_dir, true);
+
+        REQUIRE(fs.IsFileExists("first.txt"));
+        REQUIRE_FALSE(fs.IsFileExists("second.txt"));
+        REQUIRE(fs_write_file_text(second_path, u8"second"));
+        REQUIRE_FALSE(fs.IsFileExists("second.txt"));
+
+        CHECK(fs.ReindexDataSources());
+
+        CHECK(fs.IsFileExists("second.txt"));
+        CHECK(fs.ReadFileText("second.txt") == u8"second");
+
+        CHECK_FALSE(fs.ReindexDataSources());
+        REQUIRE(fs_write_file_text(first_path, u8"first updated"));
+        CHECK(fs.ReindexDataSources());
+        CHECK(fs.ReadFileText("first.txt") == u8"first updated");
+
+        REQUIRE(fs_remove_file(second_path));
+        CHECK(fs.ReindexDataSources());
+        CHECK_FALSE(fs.IsFileExists("second.txt"));
+        CHECK_FALSE(fs.ReindexDataSources());
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 }
 

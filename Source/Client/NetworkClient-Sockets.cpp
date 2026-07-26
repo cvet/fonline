@@ -80,8 +80,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_WEB
-    const string_view host = _settings->ServerHost;
-    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
+    string_view host = _settings->ServerHost;
+    uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
     WriteLog("Connecting to server '{}:{}'", host, port);
 
@@ -122,7 +122,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
     // SOCKS4/5 payloads embed the destination as raw IPv4 + port, HTTP CONNECT embeds them as text.
     // Resolve the game host once and stash the parts; tcp_socket does its own DNS for connect targets.
-    const auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
         throw NetworkClientException("Can't resolve game host for proxy", host);
@@ -148,7 +148,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             throw NetworkClientException("Net output error");
         }
 
-        const auto time = nanotime::now();
+        nanotime time = nanotime::now();
 
         while (true) {
             if (CheckStatus(false)) {
@@ -304,11 +304,11 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool ready = for_write ? _sock.can_write({}) : _sock.can_read({});
+    bool ready = for_write ? _sock.can_write({}) : _sock.can_read({});
 
     if (ready) {
         if (_isConnecting) {
-            const auto sock_error = _sock.peek_socket_error();
+            int32_t sock_error = _sock.peek_socket_error();
 
             if (sock_error != 0) {
                 throw NetworkClientException("Socket error during async connect", sock_error);
@@ -325,7 +325,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 
     if (_isConnecting) {
         // While connect is in flight, peek_socket_error reports any pending error even before select wakes.
-        const auto sock_error = _sock.peek_socket_error();
+        int32_t sock_error = _sock.peek_socket_error();
 
         if (sock_error == 0) {
             return false;
@@ -341,7 +341,7 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<byte> buf) -> size
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto sent = _sock.send(buf);
+    int32_t sent = _sock.send(buf);
 
     if (sent <= 0) {
         throw NetworkClientException("Socket error while send to server", net_sockets::last_error_text());
@@ -356,7 +356,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<byte>& buf) -> size
 
     FO_VERIFY_AND_THROW(_sock.is_valid(), "Socket is not valid");
 
-    auto len = _sock.receive(buf);
+    int32_t len = _sock.receive(buf);
 
     if (len < 0) {
         throw NetworkClientException("Socket error while receive from server", net_sockets::last_error_text());

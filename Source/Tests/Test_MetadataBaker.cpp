@@ -41,8 +41,8 @@ TEST_CASE("MetadataBaker")
     const auto read_baked_tags = [](const vector<byte>& output) {
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
-        const auto tag_count = reader.Read<uint16_t>();
-        const auto read_string = [&reader](uint16_t size) -> string {
+        auto tag_count = reader.Read<uint16_t>();
+        auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
             reader.ReadStringBytes(value);
@@ -50,17 +50,17 @@ TEST_CASE("MetadataBaker")
         };
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            const auto tag_name_len = reader.Read<uint16_t>();
-            const auto tag_name = read_string(tag_name_len);
-            const auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_name_len = reader.Read<uint16_t>();
+            string tag_name = read_string(tag_name_len);
+            auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                const auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.Read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    const auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.Read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -115,8 +115,8 @@ TEST_CASE("MetadataBaker")
         REQUIRE(rig.Outputs.size() == 1);
         REQUIRE(rig.Outputs.contains("MetaPack.fometa-client"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("MetaPack.fometa-client"));
-        const auto enum_it = tags.find("Enum");
+        auto tags = read_baked_tags(rig.Outputs.at("MetaPack.fometa-client"));
+        auto enum_it = tags.find("Enum");
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
@@ -155,8 +155,8 @@ Value = 5 // trailing comment
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        const auto enum_it = tags.find("Enum");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        auto enum_it = tags.find("Enum");
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"ContinuedCoverage", "uint8", "Value", "5"}) == 1);
@@ -199,8 +199,8 @@ namespace TestEnumEdges
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        const auto enum_it = tags.find("Enum");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        auto enum_it = tags.find("Enum");
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSigned", "int32", "Negative", "-2", "Auto", "0"}) == 1);
@@ -222,13 +222,13 @@ namespace TestEngineEnumEdges
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto enum_it = tags.find("Enum");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        auto enum_it = tags.find("Enum");
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::any_of(enum_it->second, [](const vector<string>& entry) { return entry.size() == 4 && entry[0] == "CritterProperty" && entry[1].empty() && entry[2] == "MetadataBakerCoverageExtra"; }));
 
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Enum CritterProperty None", "cannot override engine enum value"},
             {"///@ Enum CritterProperty MetadataBakerCoverageCollision = 0", "duplicate enum value in engine enum"},
         };
@@ -240,7 +240,7 @@ namespace TestEngineEnumEdges
 
     SECTION("rejects invalid enum declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Enum BadOnly", "insufficient parameters"},
             {"///@ Enum Bad Entry\n///@ Enum Bad Entry", "duplicate enum entry"},
             {"///@ Enum Bad Entry =", "expected value after '='"},
@@ -257,7 +257,7 @@ namespace TestEngineEnumEdges
 
     SECTION("rejects invalid entity declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Entity Server", "insufficient parameters"},
             {"///@ Entity Server ProtoBad", "entity name cannot start with 'Proto'"},
             {"///@ Entity Server AbstractBad", "entity name cannot start with 'Abstract'"},
@@ -285,8 +285,8 @@ namespace TestValueType
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        const auto value_type_it = tags.find("ValueType");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        auto value_type_it = tags.find("ValueType");
 
         REQUIRE(value_type_it != tags.end());
         CHECK(std::ranges::count(value_type_it->second, vector<string> {"CoverageValue", "Label", "hstring", "Count", "int32", "Enabled", "bool"}) == 1);
@@ -299,7 +299,7 @@ namespace TestValueType
 
     SECTION("rejects invalid value type declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ ValueType Common Bad Layout =", "insufficient parameters"},
             {"///@ ValueType Mapper Bad Layout = int32 - Value", "invalid target"},
             {"///@ ValueType Common Bad Wrong = int32 - Value", "expected 'Layout ='"},
@@ -335,9 +335,9 @@ namespace TestEntityFlagsAndHolders
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto entity_it = tags.find("Entity");
-        const auto holder_it = tags.find("EntityHolder");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        auto entity_it = tags.find("Entity");
+        auto holder_it = tags.find("EntityHolder");
 
         REQUIRE(entity_it != tags.end());
         CHECK(std::ranges::count(entity_it->second, vector<string> {"CoverageHolder", "Global", "HasProtos", "HasStatics", "HasAbstract"}) == 1);
@@ -365,18 +365,18 @@ namespace TestOffTargetMetadataStubs
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto holder_it = tags.find("EntityHolder");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        auto holder_it = tags.find("EntityHolder");
 
         REQUIRE(holder_it != tags.end());
         CHECK(std::ranges::count(holder_it->second, vector<string> {"Stub", "Critter", "", "ClientEntries", "PublicSync"}) == 1);
 
-        const auto entity_it = tags.find("Entity");
+        auto entity_it = tags.find("Entity");
         if (entity_it != tags.end()) {
             CHECK(std::ranges::none_of(entity_it->second, [](const vector<string>& entry) { return !entry.empty() && entry.front() == "ClientHeld"; }));
         }
 
-        const auto fixed_type_it = tags.find("FixedType");
+        auto fixed_type_it = tags.find("FixedType");
         if (fixed_type_it != tags.end()) {
             CHECK(std::ranges::none_of(fixed_type_it->second, [](const vector<string>& entry) { return !entry.empty() && entry.front() == "ClientFixed"; }));
         }
@@ -384,7 +384,7 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("rejects invalid entity holder declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ EntityHolder Server Holder Target", "insufficient parameters"},
             {"///@ EntityHolder Server MissingHolder MissingTarget Entry", "unknown holder entity type"},
             {R"(
@@ -420,7 +420,7 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("rejects invalid fixed type declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ FixedType Server", "insufficient parameters"},
             {"///@ FixedType Server CoverageFixed ExtraFlag", "flags are not supported"},
             {"///@ FixedType Server CoverageFixed\n///@ FixedType Server CoverageFixed", "duplicate fixed type"},
@@ -483,8 +483,8 @@ namespace TestSettings
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
-        const auto tag_count = reader.Read<uint16_t>();
-        const auto read_string = [&reader](uint16_t size) -> string {
+        auto tag_count = reader.Read<uint16_t>();
+        auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
             reader.ReadStringBytes(value);
@@ -494,17 +494,17 @@ namespace TestSettings
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            const auto tag_name_len = reader.Read<uint16_t>();
-            const auto tag_name = read_string(tag_name_len);
-            const auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_name_len = reader.Read<uint16_t>();
+            string tag_name = read_string(tag_name_len);
+            auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                const auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.Read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    const auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.Read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -536,9 +536,9 @@ namespace TestEventsAndRemoteCalls
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto event_it = tags.find("Event");
-        const auto remote_call_it = tags.find("RemoteCall");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        auto event_it = tags.find("Event");
+        auto remote_call_it = tags.find("RemoteCall");
 
         REQUIRE(event_it != tags.end());
         CHECK(std::ranges::count(event_it->second, vector<string> {"Critter", "CoverageEvent"}) == 1);
@@ -551,7 +551,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid event declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Event Server Critter CoverageEvent", "insufficient parameters"},
             {"///@ Event Server MissingEntity CoverageEvent ( )", "invalid entity type"},
             {"///@ Event Server Critter CoverageEvent ) trailing", "expected '(' after event name"},
@@ -568,7 +568,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid remote call declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ RemoteCall Server CoverageCall", "insufficient parameters"},
             {"///@ RemoteCall Mapper CoverageCall ( )", "expected 'Server' or 'Client' as target"},
             {"///@ RemoteCall Server CoverageCall ) trailing", "expected '(' after remote call name"},
@@ -584,7 +584,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid setting declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Setting Server bool", "insufficient parameters"},
             {"///@ Setting Mapper bool Coverage.Setting", "expected 'Common', 'Server' or 'Client' as target"},
             {"///@ Setting Server MissingType Coverage.Setting", "invalid type"},
@@ -598,7 +598,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects malformed migration rules")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ MigrationRule Property Item OnlyOneArg", "insufficient parameters"},
             {"///@ MigrationRule Property Item . Remove", "insufficient parameters"},
             {"///@ MigrationRule Property Item . Bad Remove", "malformed dotted name"},
@@ -627,8 +627,8 @@ namespace TestMigration
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
-        const auto tag_count = reader.Read<uint16_t>();
-        const auto read_string = [&reader](uint16_t size) -> string {
+        auto tag_count = reader.Read<uint16_t>();
+        auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
             reader.ReadStringBytes(value);
@@ -639,17 +639,17 @@ namespace TestMigration
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            const auto tag_name_len = reader.Read<uint16_t>();
-            const auto tag_name = read_string(tag_name_len);
-            const auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_name_len = reader.Read<uint16_t>();
+            string tag_name = read_string(tag_name_len);
+            auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                const auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.Read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    const auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.Read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -672,11 +672,11 @@ namespace TestMigration
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(output)));
 
-        const auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"), meta.Hashes.ToHashedString("Item"), meta.Hashes.ToHashedString("Weapon.AmmoPid"));
+        auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"), meta.Hashes.ToHashedString("Item"), meta.Hashes.ToHashedString("Weapon.AmmoPid"));
         REQUIRE(property_rule.has_value());
         CHECK(property_rule.value() == meta.Hashes.ToHashedString("Weapon.Ammo"));
 
-        const auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
+        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
         REQUIRE(proto_rule.has_value());
         CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
     }
@@ -720,13 +720,13 @@ namespace TestRefTypeProps
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        const auto tags = read_baked_tags(output);
-        const auto ref_type_it = tags.find("RefType");
+        auto tags = read_baked_tags(output);
+        auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
         CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Steps", "int32[]", "0", "Tags", "hstring[]", "0", "Note", "string", "0"}) == 1);
 
-        const auto property_it = tags.find("Property");
+        auto property_it = tags.find("Property");
         if (property_it != tags.end()) {
             CHECK(std::ranges::none_of(property_it->second, [](const auto& entry) { return !entry.empty() && entry.front() == "RouteSnapshot"; }));
         }
@@ -768,8 +768,8 @@ namespace TestRefTypeEntityProps
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-server");
-        const auto tags = read_baked_tags(output);
-        const auto property_it = tags.find("Property");
+        auto tags = read_baked_tags(output);
+        auto property_it = tags.find("Property");
 
         REQUIRE(property_it != tags.end());
         CHECK(std::ranges::count(property_it->second, vector<string> {"Critter", "Server", "RouteSnapshot", "Snapshot", "Mutable", "Persistent"}) == 1);
@@ -813,8 +813,8 @@ namespace TestEntityComponentProps
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto property_it = tags.find("Property");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        auto property_it = tags.find("Property");
 
         REQUIRE(property_it != tags.end());
         CHECK(std::ranges::count(property_it->second, vector<string> {"Critter", "Server", "bool", "Marker", "Component"}) == 1);
@@ -823,7 +823,7 @@ namespace TestEntityComponentProps
 
     SECTION("rejects invalid entity properties")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ Property Critter Server int32", "insufficient parameters"},
             {"///@ Property MissingEntity Server int32 Value", "unknown entity type"},
             {"///@ Property Critter Mapper int32 Value", "invalid target"},
@@ -871,8 +871,8 @@ namespace TestNestedRefTypeProps
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        const auto tags = read_baked_tags(output);
-        const auto ref_type_it = tags.find("RefType");
+        auto tags = read_baked_tags(output);
+        auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
         REQUIRE(ref_type_it->second.size() == 2);
@@ -914,7 +914,7 @@ namespace TestLegacyRefType
 
     SECTION("rejects invalid ref type declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {"///@ RefType Server", "insufficient parameters"},
             {"///@ RefType Mapper BadRef", "invalid target"},
             {"///@ RefType Server BadRef Extra", "unexpected parameters"},
@@ -934,7 +934,7 @@ namespace TestLegacyRefType
 
     SECTION("rejects invalid ref type field declarations")
     {
-        const vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases = {
             {R"(
 ///@ RefType Server BadRef
 ///@ Property BadRef Client int32 Value
@@ -1016,8 +1016,8 @@ namespace TestRefTypeComponent
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-server");
-        const auto tags = read_baked_tags(output);
-        const auto ref_type_it = tags.find("RefType");
+        auto tags = read_baked_tags(output);
+        auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
         // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating.

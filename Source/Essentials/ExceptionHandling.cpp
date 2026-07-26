@@ -171,7 +171,7 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto st = MakeErrorStackTrace(ex);
+        auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
             const u8string message = exception_message_utf8(ex);
@@ -208,7 +208,7 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto st = MakeErrorStackTrace(ex);
+        auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
             const u8string message = exception_message_utf8(ex);

@@ -80,8 +80,8 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("ValidExportsAreAccepted")
     {
-        const ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
-            const CommandLineArgs args {argc, argv};
+        ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
+            CommandLineArgs args {argc, argv};
             if (raw_runtime_result != nullptr) {
                 auto result = make_ptr(raw_runtime_result);
                 result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
@@ -177,7 +177,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.Success = true;
         runtime_result->RequestedRuntimePath = "runtime";
 
-        const optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime);
+        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime);
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -190,7 +190,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.ResultKind = ClientRuntimeResultKind::Shutdown;
         runtime_result->Result.Success = true;
 
-        const optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion);
+        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion);
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -200,19 +200,19 @@ TEST_CASE("ClientRuntimeApi")
     {
         // Both helpers depend on Platform::GetExePath, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended.
-        const auto live = GetClientRuntimeLivePath();
-        const auto staging = MakeClientRuntimeStagingPath(live);
+        u8string live = GetClientRuntimeLivePath();
+        u8string staging = MakeClientRuntimeStagingPath(live);
 
         CHECK_FALSE(live.empty());
         CHECK_FALSE(staging.empty());
         CHECK(staging.size() > live.size());
-        CHECK(staging.view().native_view().starts_with(live.view().native_view()));
-        CHECK_FALSE(staging.view().native_view().ends_with(live.view().native_view()));
+        CHECK(u8strvex(staging).starts_with(live));
+        CHECK_FALSE(u8strvex(staging).ends_with(live));
     }
 
     SECTION("CurrentRuntimeLibraryNameIsNonEmpty")
     {
-        const auto name = GetCurrentClientRuntimeLibraryName();
+        string name = GetCurrentClientRuntimeLibraryName();
 
         CHECK_FALSE(name.empty());
         // Library name must not contain a path separator — it is a basename, not a path.

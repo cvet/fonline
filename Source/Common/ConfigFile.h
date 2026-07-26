@@ -37,11 +37,17 @@
 
 FO_BEGIN_NAMESPACE
 
+// Section names are stored verbatim. A name containing '/' is a nested section: the parser only
+// recognizes the nesting syntax, never what a prefix means - resolving a prefix against the section
+// it belongs to is the consuming format's rule, and GetOrderedSections() exposes the file order it
+// needs for that. ConfigFileOption::SkipNestedSections parses only non-nested sections and skips
+// nested section bodies, which keeps header enumeration cheap on files with large nested payloads.
+
 enum class ConfigFileOption : uint8_t
 {
     None = 0,
     CollectContent = 0x1,
-    ReadFirstSection = 0x2,
+    SkipNestedSections = 0x2,
 };
 
 using ConfigKeyValueMap = map<string_view, u8string_view>;
@@ -50,14 +56,13 @@ using ConfigSections = multimap<string_view, ConfigKeyValueMap>;
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(u8string str, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
-    ConfigFile(ConfigFile&&) noexcept;
+    ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept -> ConfigFile&;
-    ~ConfigFile();
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    ~ConfigFile() = default;
 
-    [[nodiscard]] auto GetNameHint() const noexcept -> u8string_view { return _fileNameHint.view(); }
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> u8string_view;
@@ -67,12 +72,11 @@ public:
     [[nodiscard]] auto GetSection(string_view section_name) const -> const ConfigKeyValueMap&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<ptr<ConfigKeyValueMap>>;
     [[nodiscard]] auto GetSections() noexcept -> ptr<ConfigSections>;
+    [[nodiscard]] auto GetOrderedSections() const noexcept -> const vector<pair<string_view, ptr<ConfigKeyValueMap>>>& { return _orderedSections; }
     [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> nptr<const ConfigKeyValueMap>;
     [[nodiscard]] auto GetSectionContent(string_view section_name) const -> u8string_view;
 
 private:
-    struct Data;
-
     auto ParseConfigKeyValueLine(std::u8string_view line, string& key, u8string& value, bool& append_value) -> bool;
     void TrimConfigRange(std::u8string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char8_t ch) -> bool;
@@ -82,10 +86,11 @@ private:
     auto StoreOwnedValue(u8string_view value) -> u8string_view;
     auto StoreOwnedValue(u8string&& value) -> u8string_view;
 
-    u8string _fileNameHint;
     ConfigFileOption _options;
-    unique_ptr<Data> _data;
+    list<string> _ownedKeys {};
+    list<u8string> _ownedValues {};
     ConfigSections _sectionKeyValues {};
+    vector<pair<string_view, ptr<ConfigKeyValueMap>>> _orderedSections {};
 };
 
 FO_END_NAMESPACE

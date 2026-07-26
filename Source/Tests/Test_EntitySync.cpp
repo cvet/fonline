@@ -68,12 +68,12 @@ TEST_CASE("EntityLock")
             }
 
             lock.AcquireShared(0);
-            const int32_t n = inside.fetch_add(1) + 1;
+            int32_t n = inside.fetch_add(1) + 1;
             int32_t prev = max_concurrent.load();
             while (n > prev && !max_concurrent.compare_exchange_weak(prev, n)) {
             }
 
-            const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
             while (max_concurrent.load() < 2 && std::chrono::steady_clock::now() < deadline) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
@@ -795,7 +795,7 @@ TEST_CASE("EntityLockDescendantHold")
         std::atomic_int in_count {0};
         std::atomic_bool release_all {false};
 
-        const auto worker = [&]() {
+        auto worker = [&]() {
             lock.RegisterDescendantHold(0);
             in_count.fetch_add(1);
             while (!release_all.load()) {
@@ -1215,7 +1215,7 @@ TEST_CASE("SyncContextNegative")
         SyncContext ctx;
         ctx.Activate();
 
-        const array<nptr<ServerEntity>, 3> nulls {nullptr, nullptr, nullptr};
+        array<nptr<ServerEntity>, 3> nulls {nullptr, nullptr, nullptr};
         ctx.SyncEntities(nulls);
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
 

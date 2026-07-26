@@ -122,7 +122,7 @@ static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
     const ptr<const char> module_name {mod.c_str()};
     const ptr<const char> proc_name {name.c_str()};
 
-    const auto hmod = ::GetModuleHandleA(module_name.get());
+    auto hmod = ::GetModuleHandleA(module_name.get());
 
     if (hmod != nullptr) {
         FARPROC proc = ::GetProcAddress(hmod, proc_name.get());
@@ -339,7 +339,7 @@ auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing
     FO_STACK_TRACE_ENTRY();
 
 #if FO_LINUX || FO_MAC
-    const pid_t pid = ::fork();
+    pid_t pid = ::fork();
 
     if (pid < 0) {
         return false;
@@ -392,12 +392,12 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
     }
     unsigned long size_pages = 0;
     unsigned long rss_pages = 0;
-    const int matched = std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages);
+    int matched = std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages);
     std::fclose(file.get());
     if (matched != 2) {
         return 0;
     }
-    const long page_size = ::sysconf(_SC_PAGESIZE);
+    long page_size = ::sysconf(_SC_PAGESIZE);
     if (page_size <= 0) {
         return 0;
     }
@@ -460,7 +460,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     CpuUsageSnapshot result;
 
 #if FO_WINDOWS
-    const auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
+    auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
         ULARGE_INTEGER value {};
         value.LowPart = time.dwLowDateTime;
         value.HighPart = time.dwHighDateTime;
@@ -477,7 +477,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
 
-    const DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
     result.LogicalCoreCount = processor_count != 0 ? static_cast<uint32_t>(processor_count) : 1U;
 
     FILETIME idle_time {};
@@ -499,14 +499,14 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     constexpr size_t IOWAIT_FIELD_INDEX = 4;
     constexpr size_t TOTAL_TIME_FIELD_COUNT = 8; // user..steal; guest/guest_nice are folded into user/nice
 
-    const auto parse_uint64 = [](string_view text, uint64_t& value) noexcept -> bool {
+    auto parse_uint64 = [](string_view text, uint64_t& value) noexcept -> bool {
         if (text.empty()) {
             return false;
         }
 
         auto text_begin = make_nptr(text.data());
         ptr<const char> text_end = text_begin.offset(text.size());
-        const auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
+        auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
         return parse_result.ec == std::errc {} && text_end == parse_result.ptr;
     };
 
@@ -516,13 +516,13 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         string line;
 
         while (std::getline(stat_file, line)) {
-            const string_view line_view {line};
+            string_view line_view {line};
 
             if (line_view.size() <= 3 || !line_view.starts_with("cpu") || !std::isdigit(static_cast<unsigned char>(line_view[3]))) {
                 continue;
             }
 
-            const size_t fields_pos = line_view.find(' ');
+            size_t fields_pos = line_view.find(' ');
 
             if (fields_pos == string_view::npos) {
                 continue;
@@ -531,9 +531,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             uint64_t values[MAX_CPU_FIELDS] {};
             size_t values_count = 0;
             bool parse_failed = false;
-            const vector<string_view> fields = strvex(line_view.substr(fields_pos + 1)).split(' ');
+            vector<string_view> fields = strvex(line_view.substr(fields_pos + 1)).split(' ');
 
-            for (const string_view field : fields) {
+            for (string_view field : fields) {
                 if (values_count == std::size(values)) {
                     break;
                 }
@@ -554,7 +554,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             }
 
             uint64_t total_time = 0;
-            const size_t total_field_count = std::min<size_t>(values_count, TOTAL_TIME_FIELD_COUNT);
+            size_t total_field_count = std::min<size_t>(values_count, TOTAL_TIME_FIELD_COUNT);
 
             for (size_t i = 0; i < total_field_count; i++) {
                 total_time += values[i];
@@ -579,15 +579,15 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         string text;
         std::getline(file, text);
 
-        const size_t comm_end = text.rfind(')');
+        size_t comm_end = text.rfind(')');
 
         if (comm_end == string::npos || comm_end + 2 >= text.size()) {
             return 0;
         }
 
-        const size_t fields_offset = comm_end + 2;
-        const string_view fields_text = string_view {text}.substr(fields_offset);
-        const vector<string_view> fields = strvex(fields_text).split(' ');
+        size_t fields_offset = comm_end + 2;
+        string_view fields_text = string_view {text}.substr(fields_offset);
+        vector<string_view> fields = strvex(fields_text).split(' ');
 
         if (fields.size() <= 12) {
             return 0;
@@ -604,7 +604,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return 0;
         }
 
-        const long ticks_per_second = ::sysconf(_SC_CLK_TCK);
+        long ticks_per_second = ::sysconf(_SC_CLK_TCK);
 
         if (ticks_per_second <= 0) {
             return 0;
@@ -622,16 +622,16 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
         auto processor_info = make_ptr(raw_processor_info);
         auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
-        const auto load_info = make_span(load_info_data, processor_count);
+        auto load_info = make_span(load_info_data, processor_count);
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 
         for (natural_t i = 0; i < processor_count; i++) {
-            const processor_cpu_load_info_data_t& info = load_info[i];
-            const uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
-            const uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
-            const uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
-            const uint64_t nice_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_NICE]);
+            processor_cpu_load_info_data_t& info = load_info[i];
+            uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
+            uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
+            uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
+            uint64_t nice_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_NICE]);
 
             result.Cores.emplace_back(CpuUsageCoreSnapshot {
                 .IdleTime = idle_time,

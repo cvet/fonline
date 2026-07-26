@@ -145,7 +145,7 @@ namespace
 TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
-    const auto port = TestClientPort.fetch_add(1);
+    auto port = TestClientPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
@@ -165,7 +165,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
         };
     });
 
-    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
     auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
@@ -205,7 +205,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
-    const auto port = TestClientPort.fetch_add(1);
+    auto port = TestClientPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
@@ -216,7 +216,7 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
         return [](const_span<byte>) { };
     });
 
-    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
     auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
@@ -232,7 +232,7 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 {
     auto settings = MakeClientNetworkSettings();
-    const auto port = TestClientPort.fetch_add(1);
+    auto port = TestClientPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
     BakerTests::OverrideSetting(settings.DisableZlibCompression, false);
 
@@ -249,7 +249,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
         };
     });
 
-    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
     optional<ClientConnection::ConnectResult> connect_result;
     ClientConnection client {&settings};

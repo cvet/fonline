@@ -107,6 +107,9 @@ public:
     auto operator=(ModelInformation&&) noexcept = delete;
     ~ModelInformation();
 
+    [[nodiscard]] auto GetAvailableAnimations() const -> vector<pair<CritterStateAnim, CritterActionAnim>>;
+    [[nodiscard]] auto GetRootBone() const -> ptr<const ModelBone>;
+
 private:
     struct BakedModelDescriptionCutInfo
     {

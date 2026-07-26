@@ -100,7 +100,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, cons
                 throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
             }
 
-            const size_t field_data_size = field_size;
+            size_t field_data_size = field_size;
 
             if (field_data_size != 0) {
                 data_pos = align_up(data_pos, field_prop->GetDataAlignment());
@@ -165,7 +165,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
         for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
             auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto field_raw_data = GetProps()->GetRawData(field_prop);
+            auto field_raw_data = GetProps()->GetRawData(field_prop);
 
             bool is_default = field_raw_data.empty();
 
@@ -210,7 +210,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
             size_t data_pos = 0;
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
-                const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
+                uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 span_write_object(raw_buffer, data_pos, field_size);
 
@@ -323,8 +323,8 @@ auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_
         return false;
     }
 
-    const auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
-        const auto it = _engineTypes.find(right);
+    auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
+        auto it = _engineTypes.find(right);
         FO_VERIFY_AND_RETURN_VALUE(it != _engineTypes.end(), false, "Script engine type index is not registered while validating arguments", right);
         return left == it->second;
     };
@@ -346,7 +346,7 @@ auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noe
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto range = _globalFuncMap.equal_range(func_name);
+    auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
         if (ValidateArgs(it->second, arg_types, ArgMapTypeIndex<void>())) {
@@ -361,9 +361,9 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto range = _globalFuncMap.equal_range(func_name);
+    auto range = _globalFuncMap.equal_range(func_name);
 
-    const auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
+    auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
         if (func_arg.Kind != caller_arg.Kind) {
             return false;
         }

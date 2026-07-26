@@ -40,7 +40,7 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto first = line.find('{', offset);
+    auto first = line.find('{', offset);
 
     if (first == string::npos) {
         return false;
@@ -101,10 +101,10 @@ auto TextPackKey::FromParts(HashResolver& hash_resolver, string_view collection,
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hcollection = hash_resolver.ToHashedString(collection);
-    const auto hkey1 = hash_resolver.ToHashedString(key1);
-    const auto hkey2 = hash_resolver.ToHashedString(key2);
-    const auto hkey3 = hash_resolver.ToHashedString(key3);
+    hstring hcollection = hash_resolver.ToHashedString(collection);
+    hstring hkey1 = hash_resolver.ToHashedString(key1);
+    hstring hkey2 = hash_resolver.ToHashedString(key2);
+    hstring hkey3 = hash_resolver.ToHashedString(key3);
     return TextPackKey {TextPackName {hcollection}, hkey1, hkey2, hkey3};
 }
 
@@ -227,9 +227,9 @@ auto TextPack::LoadFromBinaryData(const_span<byte> data, string_view collection)
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
-    const auto collection_key = TextPackName {MakeKeyPart(collection)};
+    auto collection_key = TextPackName {MakeKeyPart(collection)};
 
-    const auto count = reader.Read<uint32_t>();
+    auto count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < count; i++) {
         TextPackKey key;
@@ -243,7 +243,7 @@ auto TextPack::LoadFromBinaryData(const_span<byte> data, string_view collection)
             key.Collection = collection_key;
         }
 
-        const auto str_len = reader.Read<uint32_t>();
+        auto str_len = reader.Read<uint32_t>();
 
         u8string text = utf8_from_byte_span(reader.ReadBytes(str_len));
         AddText(key, std::move(text));
@@ -318,10 +318,10 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
     auto text_files = resources.FilterFiles("fotxt-bin");
 
     for (const auto& text_file_header : text_files) {
-        const auto text_file = File::Load(text_file_header);
-        const auto file_name = text_file.GetNameNoExt();
+        auto text_file = File::Load(text_file_header);
+        string_view file_name = text_file.GetNameNoExt();
 
-        const auto name_triplet = strvex(file_name).split('.');
+        auto name_triplet = strvex(file_name).split('.');
         FO_VERIFY_AND_THROW(name_triplet.size() == 3, "Baked text filename must contain pack prefix, text pack name and language suffix", text_file_header.GetPath(), file_name, name_triplet.size());
         const auto& pack_name_str = name_triplet[1];
         const auto& lang_name = name_triplet[2];
@@ -454,7 +454,7 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
 
         // Normalize texts to the base language
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            const auto it = base_lang_pack.find(pack_name);
+            auto it = base_lang_pack.find(pack_name);
             FO_VERIFY_AND_THROW(it != base_lang_pack.end(), "Lookup failed in base lang pack");
             text_pack.FixText(it->second);
         }
@@ -472,7 +472,7 @@ void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view str = part.as_str();
+    string_view str = part.as_str();
     writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
@@ -484,7 +484,7 @@ auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str_len = reader.Read<uint32_t>();
+    auto str_len = reader.Read<uint32_t>();
 
     if (str_len == 0) {
         return {};

@@ -35,36 +35,23 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto ConfigSectionParseHook(string_view fname, string_view section, string& out_section, map<string, string>& init_section_kv) -> bool;
-extern auto ConfigEntryParseHook(string_view fname, string_view section, string_view key, string_view value, string& out_key, string& out_value) -> bool;
-
-struct ConfigFile::Data
-{
-    u8string Input {};
-    list<string> OwnedKeys {};
-    list<u8string> OwnedValues {};
-};
-
-ConfigFile::~ConfigFile() = default;
-ConfigFile::ConfigFile(ConfigFile&&) noexcept = default;
-auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
-
-ConfigFile::ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption options) :
-    _fileNameHint {name_hint},
-    _options {options},
-    _data {SafeAlloc::MakeUnique<Data>()}
+ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
+    _options {options}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->Input = std::move(str);
+    // The input is the first owned node, so the section views into it keep a stable address even
+    // after this object is moved; appending further nodes never invalidates it
+    const u8string& owned_input = _ownedValues.emplace_back(std::move(str));
+    const std::u8string_view input = owned_input.view().native_view();
 
     auto cur_section_it = _sectionKeyValues.emplace(string_view {}, ConfigKeyValueMap {});
     ptr<ConfigKeyValueMap> cur_section = &cur_section_it->second;
-    string_view section_name_for_hook {};
-    const string_view file_name_for_hook = utf8_as_char_view(_fileNameHint.view());
+    bool skip_cur_section = false;
+
+    _orderedSections.emplace_back(string_view {}, cur_section);
 
     std::u8string section_content;
-    const std::u8string_view input = _data->Input.view().native_view();
 
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
         section_content.reserve(input.size());
@@ -116,10 +103,6 @@ ConfigFile::ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption o
 
         // New section
         if (line.front() == u8'[') {
-            if (IsEnumSet(_options, ConfigFileOption::ReadFirstSection) && _sectionKeyValues.size() == 2) {
-                break;
-            }
-
             // Parse name
             const size_t end = line.find(u8']');
 
@@ -138,48 +121,37 @@ ConfigFile::ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption o
             }
 
             const string raw_section_name = utf8_to_string(raw_section_name_utf8);
-            map<string, string> section_kv;
-            string section_name;
-            const bool section_changed = ConfigSectionParseHook(file_name_for_hook, raw_section_name, section_name, section_kv);
 
-            if (!section_changed) {
-                section_name = raw_section_name;
+            // A name with a separator is a nested section; what its prefix means is up to the consumer
+            const bool nested_section = raw_section_name.find('/') != string::npos;
+
+            // Store current section content
+            if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
+                (*cur_section)[string_view {}] = StoreOwnedValue(u8string::FromChecked(section_content));
+                section_content.clear();
             }
 
-            if (section_name.empty()) {
+            if (nested_section && IsEnumSet(_options, ConfigFileOption::SkipNestedSections)) {
+                skip_cur_section = true;
+                section_content.clear();
                 continue;
             }
 
-            (void)string(section_name);
-
-            // Store current section content
-            if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-                (*cur_section)[string_view {}] = StoreOwnedValue(u8string::FromChecked(section_content));
-                section_content.clear();
-
-                for (const auto& [existing_key, existing_value] : section_kv) {
-                    const string_view existing_key_ascii = string_view(existing_key);
-                    const u8string existing_value_utf8 = utf8_from_char_span(const_span<char> {existing_value.data(), existing_value.size()});
-                    const u8string line = FormatUtf8("{} = {}\n", existing_key_ascii, existing_value_utf8);
-                    section_content.append(line.view().native_view());
-                }
-            }
+            skip_cur_section = false;
 
             // Add new section
-            const string_view stored_section_name = StoreOwnedKey(std::move(section_name));
+            const string_view stored_section_name = StoreOwnedKey(raw_section_name);
 
             cur_section_it = _sectionKeyValues.emplace(stored_section_name, ConfigKeyValueMap {});
             cur_section = &cur_section_it->second;
-            section_name_for_hook = stored_section_name;
-
-            for (const auto& [existing_key, existing_value] : section_kv) {
-                (void)string(existing_key);
-                const u8string strict_existing_value = utf8_from_char_span(const_span<char> {existing_value.data(), existing_value.size()});
-                (*cur_section)[StoreOwnedKey(existing_key)] = StoreOwnedValue(strict_existing_value.view());
-            }
+            _orderedSections.emplace_back(stored_section_name, cur_section);
         }
         // Section content
         else {
+            if (skip_cur_section) {
+                continue;
+            }
+
             // Store raw content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
                 section_content.append(line);
@@ -192,28 +164,11 @@ ConfigFile::ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption o
                 continue;
             }
 
-            const string raw_key = key;
-            const u8string raw_value = value;
-            string hook_key;
-            string hook_value;
-            const bool entry_changed = ConfigEntryParseHook(file_name_for_hook, section_name_for_hook, raw_key, utf8_as_char_view(raw_value.view()), hook_key, hook_value);
-
-            if (entry_changed) {
-                key = std::move(hook_key);
-                u8string strict_hook_value = utf8_from_char_span(const_span<char> {hook_value.data(), hook_value.size()});
-                value = std::move(strict_hook_value);
-            }
-
-            if (key.empty()) {
-                continue;
-            }
-
-            (void)string(key);
             const string_view stored_key = StoreOwnedKey(key);
             const u8string_view stored_value = StoreOwnedValue(value.view());
 
             if (append_value) {
-                const auto existing_it = cur_section->find(stored_key);
+                auto existing_it = cur_section->find(stored_key);
 
                 if (existing_it != cur_section->end()) {
                     if (!stored_value.empty()) {
@@ -235,7 +190,7 @@ ConfigFile::ConfigFile(u8string_view name_hint, u8string str, ConfigFileOption o
     }
 
     // Store current section content
-    if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+    if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
         (*cur_section)[string_view {}] = StoreOwnedValue(u8string::FromChecked(section_content));
     }
 }
@@ -265,8 +220,8 @@ auto ConfigFile::ParseConfigKeyValueLine(std::u8string_view line, string& key, u
     size_t content_end = line.size();
 
     for (size_t i = 0; i < line.size(); i++) {
-        const auto ch = line[i];
-        const bool escaped = (backslash_run & 1U) != 0;
+        const char8_t ch = line[i];
+        bool escaped = (backslash_run & 1U) != 0;
 
         if (ch == u8'"' && !escaped) {
             inside_double_quotes = !inside_double_quotes;
@@ -335,32 +290,32 @@ auto ConfigFile::StoreOwnedKey(string_view value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedKeys.emplace_back(value);
-    return _data->OwnedKeys.back();
+    _ownedKeys.emplace_back(value);
+    return _ownedKeys.back();
 }
 
 auto ConfigFile::StoreOwnedKey(string&& value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedKeys.emplace_back(std::move(value));
-    return _data->OwnedKeys.back();
+    _ownedKeys.emplace_back(std::move(value));
+    return _ownedKeys.back();
 }
 
 auto ConfigFile::StoreOwnedValue(u8string_view value) -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedValues.emplace_back(value);
-    return _data->OwnedValues.back().view();
+    _ownedValues.emplace_back(value);
+    return _ownedValues.back().view();
 }
 
 auto ConfigFile::StoreOwnedValue(u8string&& value) -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    _data->OwnedValues.emplace_back(std::move(value));
-    return _data->OwnedValues.back().view();
+    _ownedValues.emplace_back(std::move(value));
+    return _ownedValues.back().view();
 }
 
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const u8string_view>
@@ -386,7 +341,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str = GetRawValue(section_name, key_name);
+    auto str = GetRawValue(section_name, key_name);
 
     return str ? *str : u8string_view {};
 }
@@ -395,7 +350,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, u8stri
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str = GetRawValue(section_name, key_name);
+    auto str = GetRawValue(section_name, key_name);
 
     return str ? *str : def_val;
 }
@@ -404,36 +359,32 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str = GetRawValue(section_name, key_name);
+    auto str = GetRawValue(section_name, key_name);
 
-    const string_view str_chars = str ? utf8_as_char_view(*str) : string_view {};
-
-    if (str && str_chars.length() == "true"_len && strvex(str_chars).compare_ignore_case("true")) {
+    if (str && str->size() == "true"_len && u8strvex(*str).compare_ignore_case(u8"true")) {
         return 1;
     }
-    if (str && str_chars.length() == "false"_len && strvex(str_chars).compare_ignore_case("false")) {
+    if (str && str->size() == "false"_len && u8strvex(*str).compare_ignore_case(u8"false")) {
         return 0;
     }
 
-    return str ? strvex(str_chars).to_int32() : 0;
+    return str ? u8strvex(*str).to_int32() : 0;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str = GetRawValue(section_name, key_name);
+    auto str = GetRawValue(section_name, key_name);
 
-    const string_view str_chars = str ? utf8_as_char_view(*str) : string_view {};
-
-    if (str && str_chars.length() == "true"_len && strvex(str_chars).compare_ignore_case("true")) {
+    if (str && str->size() == "true"_len && u8strvex(*str).compare_ignore_case(u8"true")) {
         return 1;
     }
-    if (str && str_chars.length() == "false"_len && strvex(str_chars).compare_ignore_case("false")) {
+    if (str && str->size() == "false"_len && u8strvex(*str).compare_ignore_case(u8"false")) {
         return 0;
     }
 
-    return str ? strvex(str_chars).to_int32() : def_val;
+    return str ? u8strvex(*str).to_int32() : def_val;
 }
 
 auto ConfigFile::GetSection(string_view section_name) const -> const ConfigKeyValueMap&
@@ -450,7 +401,7 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<ConfigKeyVa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t count = _sectionKeyValues.count(section_name);
+    size_t count = _sectionKeyValues.count(section_name);
     auto it = _sectionKeyValues.find(section_name);
 
     vector<ptr<ConfigKeyValueMap>> key_values;
@@ -474,7 +425,7 @@ auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = _sectionKeyValues.find(section_name);
     return it_section != _sectionKeyValues.end();
 }
 
@@ -482,13 +433,13 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return false;
     }
 
-    const auto it_key = it_section->second.find(key_name);
+    auto it_key = it_section->second.find(key_name);
 
     if (it_key == it_section->second.end()) {
         return false;
@@ -501,7 +452,7 @@ auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
@@ -516,13 +467,13 @@ auto ConfigFile::GetSectionContent(string_view section_name) const -> u8string_v
 
     FO_VERIFY_AND_THROW(IsEnumSet(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
-    const auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return {};
     }
 
-    const auto it_key = it_section->second.find(string_view {});
+    auto it_key = it_section->second.find(string_view {});
 
     if (it_key == it_section->second.end()) {
         return {};

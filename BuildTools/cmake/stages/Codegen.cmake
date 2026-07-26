@@ -20,7 +20,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS -internalcfg "${FO_INTERNAL_CONFIG_CAPACITY}"
 # line. The codegen args file is written with file(WRITE), which does not evaluate generator expressions, so
 # resolve every value to a literal here.
 # Scope: only value/shape config that is consumed *after* an engine header is included. The feature/backend
-# toggles (FO_ENABLE_3D, FO_*_SCRIPTING) and per-config FO_DEBUG stay -D compiler defines — they gate whole
+# toggles (FO_ENABLE_3D, FO_*_SCRIPTING, FO_*_PARTICLES) and per-config FO_DEBUG stay -D compiler defines — they gate whole
 # files/headers and are evaluated before any engine header is pulled in (see Init.cmake).
 if(FO_GEOMETRY STREQUAL "HEXAGONAL")
 	SetValue(foGeometryValue 1)

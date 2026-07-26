@@ -152,7 +152,7 @@ void Application::DestroyChildWindow(nptr<AppWindow> window)
 
     std::erase_if(_allWindows, [&](const auto& entry) { return entry == window; });
 
-    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; });
+    auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; });
 
     if (it == _childWindows.end()) {
         return;
@@ -242,10 +242,10 @@ auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) co
         return {};
     }
 
-    const float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
-    const float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
-    const int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
-    const int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
+    float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
+    float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
+    int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
+    int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
 
     return {(target_size.width - width) / 2, (target_size.height - height) / 2, width, height};
 }
@@ -265,7 +265,7 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
     Render.SetRenderTarget(window->GetRenderTexture());
     _currentRenderingWindow = window;
 
-    const isize32 screen_size = window->GetScreenSize();
+    isize32 screen_size = window->GetScreenSize();
 
     if (screen_size.width > 0 && screen_size.height > 0) {
         _hostScreenWidthSaved = Settings.ScreenWidth;
@@ -284,7 +284,7 @@ void Application::EndWindowRender()
         return;
     }
 
-    const bool was_virtual = _currentRenderingWindow->_isVirtual;
+    bool was_virtual = _currentRenderingWindow->_isVirtual;
     auto prev = _previousRenderTarget;
 
     _previousRenderTarget = nullptr;
@@ -637,7 +637,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     }
 
     auto window = ResolveWindowStub();
-    const bool changed = window->Fullscreen != enable;
+    bool changed = window->Fullscreen != enable;
     window->Fullscreen = enable;
     _app->Settings.Fullscreen = enable;
     _app->_mainWindowFullscreenBackbufferMode = enable;
@@ -955,7 +955,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     if (!selected.empty()) {
         std::cout << "Default input:";
 
-        for (const int32_t sel : selected) {
+        for (int32_t sel : selected) {
             std::cout << " " << (sel + 1);
         }
 
@@ -967,12 +967,12 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     string str;
     std::getline(std::cin, str);
 
-    const auto in_selected = strex(str).split_to_int32(' ');
+    auto in_selected = strex(str).split_to_int32(' ');
 
     if (!in_selected.empty()) {
         selected.clear();
 
-        for (const int32_t sel : in_selected) {
+        for (int32_t sel : in_selected) {
             if (sel >= 1 && sel < numeric_cast<int32_t>(options.size() + 1)) {
                 selected.emplace(sel - 1);
             }

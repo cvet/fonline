@@ -66,7 +66,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             throw UpdaterException("Resource pack for client not found", disk_path);
         }
 
-        const size_t file_size = stream_get_size(file);
+        size_t file_size = stream_get_size(file);
 
         if (settings.UpdateFilesInMemory) {
             data.InMemory = true;
@@ -82,7 +82,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         else {
             data.DiskPath = u8string {disk_path};
             data.Size = numeric_cast<uint64_t>(file_size);
-            const auto file_hash = fs_hash_file(disk_path);
+            auto file_hash = fs_hash_file(disk_path);
 
             if (!file_hash.has_value()) {
                 throw UpdaterException("Can't hash resource pack for client", disk_path);
@@ -142,7 +142,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     const auto build_update_desc = [&update_files, &common_update_files](vector<byte>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
-        const auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
+        auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
             const auto& data = update_files[info.FileIndex];
             writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
             writer.WriteStringBytes(info.ClientPath);
@@ -186,7 +186,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto desc_it = _binaryTargetUpdateFilesDesc.find(string(binary_target_name));
+    auto desc_it = _binaryTargetUpdateFilesDesc.find(string(binary_target_name));
     return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
@@ -197,8 +197,8 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    const auto file_index = in_buf->Read<uint32_t>();
-    const auto start_offset = in_buf->Read<uint64_t>();
+    auto file_index = in_buf->Read<uint32_t>();
+    auto start_offset = in_buf->Read<uint64_t>();
 
     in_buf.Unlock();
 
@@ -215,7 +215,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     }
 
     const auto& update_file = _updateFiles[file_index];
-    const auto file_size = update_file.Size;
+    uint64_t file_size = update_file.Size;
 
     if (start_offset > file_size) {
         WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
@@ -223,10 +223,10 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         return;
     }
 
-    const uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
-    const uint64_t remaining_size = file_size - start_offset;
-    const uint64_t update_portion = std::min(update_portion_limit, remaining_size);
-    const size_t update_portion_size = numeric_cast<size_t>(update_portion);
+    uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
+    uint64_t remaining_size = file_size - start_offset;
+    uint64_t update_portion = std::min(update_portion_limit, remaining_size);
+    size_t update_portion_size = numeric_cast<size_t>(update_portion);
 
     vector<byte> disk_update_data {};
 
@@ -262,7 +262,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
-            const size_t offset = numeric_cast<size_t>(start_offset);
+            size_t offset = numeric_cast<size_t>(start_offset);
             FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
             update_data = {update_file.MemoryData.data() + offset, update_portion_size};
         }

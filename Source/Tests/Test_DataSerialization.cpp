@@ -229,11 +229,11 @@ TEST_CASE("DataSerialization")
         writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
 
         DataReader string_view_reader {span {buf}};
-        const uint32_t hostile_string_size = string_view_reader.Read<uint32_t>();
+        uint32_t hostile_string_size = string_view_reader.Read<uint32_t>();
         CHECK_THROWS_AS(string_view_reader.ReadStringView(hostile_string_size), DataReadingException);
 
         DataReader payload_count_reader {span {buf}};
-        const uint32_t hostile_count = payload_count_reader.Read<uint32_t>();
+        uint32_t hostile_count = payload_count_reader.Read<uint32_t>();
         CHECK_THROWS_AS(payload_count_reader.VerifyPayloadCount(numeric_cast<size_t>(hostile_count), sizeof(uint32_t)), DataReadingException);
 
         DataReader string_reader {span {buf}};

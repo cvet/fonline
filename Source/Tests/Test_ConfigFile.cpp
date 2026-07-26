@@ -42,8 +42,8 @@ static auto MakeConfig(const char8_t (&name)[NameSize], u8string content, Config
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string_view strict_name = u8string_view::FromChecked(std::u8string_view {name, NameSize - 1});
-    return ConfigFile {strict_name, std::move(content), options};
+    (void)name;
+    return ConfigFile {std::move(content), options};
 }
 
 template<size_t NameSize, size_t ContentSize>
@@ -81,7 +81,7 @@ static auto BuildConfigBenchmarkInput(int32_t section_count, int32_t keys_per_se
 
 TEST_CASE("ConfigFile")
 {
-    SECTION("StoresViewsAndOwnedHookResults")
+    SECTION("StoresViewsIntoOwnedInput")
     {
         u8string source {u8"[ProtoItem]\n$Name = ItemOne\nName = Base\nName += Extra\n"};
         ConfigFile config = MakeConfig(u8"Test.fomap", source);
@@ -116,6 +116,24 @@ TEST_CASE("ConfigFile")
         CHECK(target.HasSection("ProtoItem"));
         CHECK(NativeText(target.GetAsStr("ProtoItem", "$Name")) == u8"Assigned");
         CHECK(NativeText(target.GetAsStr("ProtoItem", "Name")) == u8"Payload");
+    }
+
+    SECTION("PreservesViewsAfterMoveForShortInput")
+    {
+        // An input this small fits every implementation's small-string buffer, so holding it in a
+        // plain string member would move the characters inside the object and dangle every stored
+        // view. The input lives in the owned-node list precisely to keep its address stable here.
+        ConfigFile original {u8string {u8"[A]\nk = v\n"}};
+        ConfigFile moved {std::move(original)};
+
+        CHECK(moved.HasSection("A"));
+        CHECK(moved.GetAsStr("A", "k") == u8"v");
+
+        ConfigFile assigned {u8string {u8"[B]\nx = y\n"}};
+        assigned = std::move(moved);
+
+        CHECK(assigned.HasSection("A"));
+        CHECK(assigned.GetAsStr("A", "k") == u8"v");
     }
 
     SECTION("CollectsSectionContent")
@@ -159,7 +177,6 @@ TEST_CASE("ConfigFile")
         const u8string source {u8"[Section]\nEnabled = true\nDisabled = FALSE\nCount = 42\nName = Value\n"};
         const ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
-        CHECK(NativeText(config.GetNameHint()) == u8"Test.cfg");
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
         CHECK(config.GetAsInt("Section", "Disabled") == 0);
         CHECK(config.GetAsInt("Section", "Enabled", 99) == 1);
@@ -176,7 +193,6 @@ TEST_CASE("ConfigFile")
     {
         const ConfigFile config = MakeConfig(u8"Конфигурация.fomain", u8"[Text]\nValue = Привет, 世界 🌍\nCombining = é\n");
 
-        CHECK(NativeText(config.GetNameHint()) == u8"Конфигурация.fomain");
         CHECK(NativeText(config.GetAsStr("Text", "Value")) == u8"Привет, 世界 🌍");
         CHECK(NativeText(config.GetAsStr("Text", "Combining")) == u8"é");
     }
@@ -295,27 +311,75 @@ TEST_CASE("ConfigFile")
         CHECK(NativeText(config.GetAsStr("ProtoItem", "Name")) == u8"Base");
     }
 
-    SECTION("StopsAfterFirstSectionWhenRequested")
+    SECTION("StoresNestedSectionNamesVerbatim")
     {
-        ConfigFile config = MakeConfig(u8"Items.fopro", u8"[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n", ConfigFileOption::ReadFirstSection);
+        ConfigFile config = MakeConfig(u8"Maps.fopro",
+            u8"[ProtoMap]\n"
+            u8"$Name = MapOne\n"
+            u8"[$Name/Item]\n"
+            u8"Kind = FromOne\n"
+            u8"[MapOne/Item]\n"
+            u8"Kind = ExplicitOne\n"
+            u8"[/Item]\n"
+            u8"Kind = BareSlash\n");
 
-        CHECK(config.HasSection("ProtoItem"));
-        CHECK(NativeText(config.GetAsStr("ProtoItem", "$Name")) == u8"One");
-        CHECK(config.GetSections("ProtoItem").size() == 1);
-        CHECK(config.GetSections()->size() == 2);
+        CHECK(config.GetSections("$Name/Item").size() == 1);
+        CHECK(NativeText(config.GetAsStr("$Name/Item", "Kind")) == u8"FromOne");
+        CHECK(NativeText(config.GetAsStr("MapOne/Item", "Kind")) == u8"ExplicitOne");
+        CHECK(NativeText(config.GetAsStr("/Item", "Kind")) == u8"BareSlash");
     }
 
-    SECTION("CollectsContentWhenStoppingAfterFirstSection")
+    SECTION("ExposesSectionsInFileOrder")
     {
-        const auto options = static_cast<ConfigFileOption>(static_cast<uint8_t>(ConfigFileOption::CollectContent) | static_cast<uint8_t>(ConfigFileOption::ReadFirstSection));
+        string source = "[ProtoMap]\n"
+                        "$Name = MapOne\n"
+                        "[$Name/Item]\n"
+                        "Kind = FromOne\n"
+                        "[ProtoMap]\n"
+                        "$Name = MapTwo\n"
+                        "[$Name/Item]\n"
+                        "Kind = FromTwo\n"
+                        "[$Name/Critter]\n"
+                        "Kind = TwosCritter\n";
+        ConfigFile config {source};
 
-        ConfigFile config = MakeConfig(u8"Effect.fofx", u8"[ShaderCommon]\nline_1 \\\nline_2\n[VertexShader]\nvoid main() {}\n", options);
+        const auto& ordered = config.GetOrderedSections();
+        REQUIRE(ordered.size() == 6);
+        CHECK(ordered[0].first.empty());
+        CHECK(ordered[1].first == "ProtoMap");
+        CHECK(NativeText(ordered[1].second->at("$Name")) == u8"MapOne");
+        CHECK(ordered[2].first == "$Name/Item");
+        CHECK(NativeText(ordered[2].second->at("Kind")) == u8"FromOne");
+        CHECK(ordered[3].first == "ProtoMap");
+        CHECK(NativeText(ordered[3].second->at("$Name")) == u8"MapTwo");
+        CHECK(ordered[4].first == "$Name/Item");
+        CHECK(NativeText(ordered[4].second->at("Kind")) == u8"FromTwo");
+        CHECK(ordered[5].first == "$Name/Critter");
+        CHECK(NativeText(ordered[5].second->at("Kind")) == u8"TwosCritter");
+    }
 
-        CHECK(config.HasSection("ShaderCommon"));
-        CHECK_FALSE(config.HasSection("VertexShader"));
-        CHECK(config.GetSections("ShaderCommon").size() == 1);
-        CHECK(config.GetSections()->size() == 2);
-        CHECK(NativeText(config.GetSectionContent("ShaderCommon")) == u8"line_1 line_2\n");
+    SECTION("SkipsNestedSectionsWhenRequested")
+    {
+        ConfigFile config = MakeConfig(u8"Maps.fopro",
+            u8"[ProtoMap]\n"
+            u8"$Name = MapOne\n"
+            u8"[$Name/Item]\n"
+            u8"Kind = Skipped\n"
+            u8"[MapOne/Critter]\n"
+            u8"Kind = SkippedAsWell\n"
+            u8"[ProtoMap]\n"
+            u8"$Name = MapTwo\n",
+            ConfigFileOption::SkipNestedSections);
+
+        CHECK(config.GetSections("ProtoMap").size() == 2);
+        CHECK_FALSE(config.HasSection("$Name/Item"));
+        CHECK_FALSE(config.HasSection("MapOne/Critter"));
+        CHECK(config.GetSections()->size() == 3);
+        CHECK(config.GetOrderedSections().size() == 3);
+
+        vector<ptr<ConfigKeyValueMap>> anchors = config.GetSections("ProtoMap");
+        CHECK(NativeText(anchors[0]->at("$Name")) == u8"MapOne");
+        CHECK(NativeText(anchors[1]->at("$Name")) == u8"MapTwo");
     }
 
     SECTION("ReturnsNullForMissingSectionKeyValues")

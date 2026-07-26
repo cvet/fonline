@@ -68,6 +68,10 @@ inline void LogToFile(const u8strex& path, bool append = false)
 auto fs_make_path(u8string_view path) -> std::u8string;
 auto fs_path_to_u8string(const std::filesystem::path& path) -> u8string;
 auto fs_resolve_path(u8string_view path) -> u8string;
+inline auto fs_resolve_path(const u8string& path) -> u8string
+{
+    return fs_resolve_path(path.view());
+}
 auto fs_exists(u8string_view path) noexcept -> bool;
 auto fs_is_dir(u8string_view path) noexcept -> bool;
 auto fs_is_absolute_path(u8string_view path) noexcept -> bool;
@@ -85,8 +89,21 @@ auto fs_read_file_text(u8string_view path) -> optional<u8string>;
 auto fs_compare_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_text(u8string_view path, u8string_view content) -> bool;
+inline auto fs_write_file_text(u8string_view path, string_view ascii_content) -> bool
+{
+    const u8string utf8_content = ascii_content;
+    return fs_write_file_text(path, utf8_content);
+}
 auto fs_remove_file(u8string_view path) noexcept -> bool;
+inline auto fs_remove_file(const u8string& path) noexcept -> bool
+{
+    return fs_remove_file(path.view());
+}
 auto fs_remove_dir_tree(u8string_view dir) noexcept -> bool;
+inline auto fs_remove_dir_tree(const u8string& dir) noexcept -> bool
+{
+    return fs_remove_dir_tree(dir.view());
+}
 auto fs_touch_file(u8string_view path) noexcept -> bool;
 auto fs_rename(u8string_view from_path, u8string_view to_path) noexcept -> bool;
 auto fs_open_ifstream(u8string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;

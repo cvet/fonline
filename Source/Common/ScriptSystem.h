@@ -694,7 +694,7 @@ namespace NativeDataProvider
 
     inline void CheckArgNotNull(const FuncCallData& call, size_t arg_index, string_view method_name, string_view arg_name, string_view type_name)
     {
-        const auto arg_object = ReadHandleSlot(call.ArgsData[arg_index]);
+        auto arg_object = ReadHandleSlot(call.ArgsData[arg_index]);
 
         if (!arg_object) {
             throw ScriptException("Null passed to non-nullable parameter", method_name, arg_name, type_name);
@@ -705,7 +705,7 @@ namespace NativeDataProvider
     {
         FO_VERIFY_AND_THROW(call.RetData, "Script call has no return value storage");
 
-        const auto ret_object = ReadHandleSlot(call.RetData);
+        auto ret_object = ReadHandleSlot(call.RetData);
 
         if (!ret_object) {
             throw ScriptException("Non-nullable method returned null", method_name, type_name);
@@ -767,7 +767,7 @@ namespace NativeDataCaller
 
         if constexpr (vector_collection<raw_t>) {
             auto& v = temp.emplace();
-            const auto size = accessor.GetArraySize(data);
+            size_t size = accessor.GetArraySize(data);
             v.reserve(size);
 
             for (size_t i = 0; i < size; i++) {
@@ -778,7 +778,7 @@ namespace NativeDataCaller
         }
         else if constexpr (map_collection<raw_t>) {
             auto& m = temp.emplace();
-            const auto size = accessor.GetDictSize(data);
+            size_t size = accessor.GetDictSize(data);
 
             for (size_t i = 0; i < size; i++) {
                 const auto kv = accessor.GetDictElement(data, i);
@@ -879,7 +879,7 @@ namespace NativeDataCaller
                 using elem_t = typename raw_t::element_type;
                 FO_VERIFY_AND_THROW(temp.has_value(), "Optional value is not set");
                 if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                    const nptr<elem_t> target_entity = temp.value();
+                    nptr<elem_t> target_entity = temp.value();
                     NativeDataProvider::WriteTypedHandleSlot<Entity>(data, target_entity);
                 }
                 else {
@@ -967,7 +967,7 @@ public:
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) noexcept -> nptr<T>
     {
-        const auto it = _backends.find(index);
+        auto it = _backends.find(index);
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -979,7 +979,7 @@ public:
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) const noexcept -> nptr<const T>
     {
-        const auto it = _backends.find(index);
+        auto it = _backends.find(index);
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -990,8 +990,8 @@ public:
     template<typename TRet, typename... Args>
     [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
     {
-        const auto range = _globalFuncMap.equal_range(func_name);
-        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+        auto range = _globalFuncMap.equal_range(func_name);
+        array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>())) {
@@ -1008,8 +1008,8 @@ public:
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
     {
-        const auto range = _globalFuncMap.equal_range(func_name);
-        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+        auto range = _globalFuncMap.equal_range(func_name);
+        array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>()) && (attribute.empty() || it->second->AttributeChecker(attribute))) {
@@ -1046,8 +1046,8 @@ public:
         requires(std::is_void_v<TRet>)
     [[nodiscard]] auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
-        const auto range = _globalFuncMap.equal_range(func_name);
-        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+        auto range = _globalFuncMap.equal_range(func_name);
+        array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
             if (!it->second->AttributeChecker("AdminRemoteCall") || !ValidateArgs(it->second, args_arr, ArgMapTypeIndex<void>())) {
@@ -1072,8 +1072,8 @@ public:
     {
         using raw_t = std::remove_cvref_t<T>;
 
-        const ComplexTypeDesc simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type};
-        const ComplexTypeDesc mutable_simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true};
+        ComplexTypeDesc simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type};
+        ComplexTypeDesc mutable_simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true};
 
         _engineTypes.emplace(typeid(raw_t).hash_code(), simple_type);
         _engineTypes.emplace(typeid(ptr<raw_t>).hash_code(), simple_type);
@@ -1088,8 +1088,8 @@ public:
 
         // Skip vector of bool due to temporary address of indexed element
         if constexpr (!std::is_same_v<T, bool>) {
-            const ComplexTypeDesc array_type {.Kind = ComplexTypeKind::Array, .BaseType = type};
-            const ComplexTypeDesc mutable_array_type {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true};
+            ComplexTypeDesc array_type {.Kind = ComplexTypeKind::Array, .BaseType = type};
+            ComplexTypeDesc mutable_array_type {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true};
 
             _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), array_type);
             _engineTypes.emplace(typeid(vector<ptr<raw_t>>).hash_code(), array_type);

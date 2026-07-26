@@ -77,7 +77,7 @@ namespace
 
         auto GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
         {
-            const auto key_type = GetCollectionKeyType(collection_name);
+            auto key_type = GetCollectionKeyType(collection_name);
             auto ids = GetAllRecordIds(collection_name);
 
             for (auto& id : ids) {
@@ -133,7 +133,7 @@ namespace
             }
 
             const auto& collection = _collections.at(collection_name);
-            const auto it = collection.find(id);
+            auto it = collection.find(id);
             return it != collection.end() ? it->second.Copy() : AnyData::Document {};
         }
 
@@ -269,7 +269,7 @@ namespace
             }
 
             const auto& collection = _collections.at(collection_name);
-            const auto it = collection.find(id);
+            auto it = collection.find(id);
             return it != collection.end() ? it->second.Copy() : AnyData::Document {};
         }
 
@@ -526,8 +526,8 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     db.Insert(collection, record_id, MakeDoc({{"a", 1}}));
     db.Update(collection, record_id, "b", numeric_cast<int64_t>(2));
@@ -536,7 +536,7 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
     db.StartCommitChanges();
     db.WaitCommitChanges();
 
-    const auto committed_doc = db.SnapshotRecord(collection, record_id);
+    auto committed_doc = db.SnapshotRecord(collection, record_id);
     REQUIRE(!committed_doc.Empty());
     CHECK(committed_doc["a"].AsInt64() == 3);
     CHECK(committed_doc["b"].AsInt64() == 2);
@@ -547,15 +547,15 @@ TEST_CASE("DataBaseRejectsNonFiniteFloatUpdates")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
 
     CHECK_THROWS_AS(db.Update(collection, record_id, "value", std::numeric_limits<float64_t>::quiet_NaN()), DataBaseException);
     CHECK_THROWS_AS(db.Update(collection, record_id, "value", std::numeric_limits<float64_t>::infinity()), DataBaseException);
 
-    const auto doc = db.SnapshotRecord(collection, record_id);
+    auto doc = db.SnapshotRecord(collection, record_id);
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
 }
@@ -565,7 +565,7 @@ TEST_CASE("DataBaseRejectsNonFiniteFloatDocuments")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
 
     AnyData::Document plain_doc;
     plain_doc.Assign("value", std::numeric_limits<float64_t>::infinity());
@@ -589,13 +589,13 @@ TEST_CASE("DataBaseGetDocumentAppliesConcurrentPendingChange")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
     db.SetOnGetRecord([&] { db.Update(collection, record_id, "value", numeric_cast<int64_t>(2)); });
 
-    const auto doc = db.GetDocument(collection, record_id);
+    auto doc = db.GetDocument(collection, record_id);
 
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 2);
@@ -609,8 +609,8 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     constexpr size_t worker_count = 4;
     constexpr int64_t updates_per_worker = 5;
@@ -644,7 +644,7 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         workers.emplace_back([&, worker_index] {
             for (int64_t update_index = 0; update_index < updates_per_worker; update_index++) {
-                const auto value = numeric_cast<int64_t>(100 + worker_index * 10 + update_index);
+                int64_t value = numeric_cast<int64_t>(100 + worker_index * 10 + update_index);
                 db.Update(collection, record_id, "value", value);
             }
         });
@@ -656,7 +656,7 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
 
     db.UnblockRecordRead();
 
-    const auto doc = doc_future.get();
+    auto doc = doc_future.get();
     reader.join();
 
     REQUIRE(!doc.Empty());
@@ -671,8 +671,8 @@ TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
     db.StartCommitChanges();
@@ -694,7 +694,7 @@ TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
     db.WaitCommitChanges();
     db.UnblockRecordRead();
 
-    const auto doc = doc_future.get();
+    auto doc = doc_future.get();
     reader.join();
 
     REQUIRE(!doc.Empty());
@@ -707,15 +707,15 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChanges")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto target_id = ident_t {1001};
-    const auto other_id = ident_t {1002};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t target_id = ident_t {1001};
+    ident_t other_id = ident_t {1002};
 
     db.PrimeRecord(collection, target_id, MakeDoc({{"value", 1}}));
     db.PrimeRecord(collection, other_id, MakeDoc({{"value", 10}}));
     db.SetOnGetRecord([&] { db.Update(collection, other_id, "value", numeric_cast<int64_t>(20)); });
 
-    const auto doc = db.GetDocument(collection, target_id);
+    auto doc = db.GetDocument(collection, target_id);
 
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
@@ -729,8 +729,8 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto target_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t target_id = ident_t {1001};
 
     constexpr size_t worker_count = 4;
     constexpr size_t records_per_worker = 6;
@@ -739,7 +739,7 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
 
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         for (size_t record_index = 0; record_index < records_per_worker; record_index++) {
-            const auto other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
+            ident_t other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
             db.PrimeRecord(collection, other_id, MakeDoc({{"value", 10}}));
         }
     }
@@ -765,7 +765,7 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         workers.emplace_back([&, worker_index] {
             for (size_t record_index = 0; record_index < records_per_worker; record_index++) {
-                const auto other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
+                ident_t other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
 
                 for (int64_t update_index = 0; update_index < 5; update_index++) {
                     db.Update(collection, other_id, "value", numeric_cast<int64_t>(1000 + worker_index * 100 + record_index * 10 + update_index));
@@ -780,7 +780,7 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
 
     db.UnblockRecordRead();
 
-    const auto target_doc = target_future.get();
+    auto target_doc = target_future.get();
     target_reader.join();
 
     REQUIRE(!target_doc.Empty());
@@ -795,7 +795,7 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
 
     constexpr size_t thread_count = 4;
     constexpr size_t records_per_thread = 8;
@@ -808,7 +808,7 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
     for (size_t thread_index = 0; thread_index < thread_count; thread_index++) {
         workers.emplace_back([&, thread_index] {
             for (size_t record_index = 0; record_index < records_per_thread; record_index++) {
-                const auto id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
+                ident_t id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
                 db.Insert(collection, id, MakeDoc({{"thread", numeric_cast<int64_t>(thread_index)}}));
                 db.Update(collection, id, "record", numeric_cast<int64_t>(record_index));
                 db.Update(collection, id, "value", numeric_cast<int64_t>(thread_index * 1000 + record_index));
@@ -824,8 +824,8 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
 
     for (size_t thread_index = 0; thread_index < thread_count; thread_index++) {
         for (size_t record_index = 0; record_index < records_per_thread; record_index++) {
-            const auto id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
-            const auto doc = db.SnapshotRecord(collection, id);
+            ident_t id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
+            auto doc = db.SnapshotRecord(collection, id);
 
             REQUIRE(!doc.Empty());
             CHECK(doc["thread"].AsInt64() == numeric_cast<int64_t>(thread_index));
@@ -840,9 +840,9 @@ TEST_CASE("DataBaseSlowReadDoesNotBlockOtherReads")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto blocked_id = ident_t {1001};
-    const auto free_id = ident_t {1002};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t blocked_id = ident_t {1001};
+    ident_t free_id = ident_t {1002};
 
     db.PrimeRecord(collection, blocked_id, MakeDoc({{"value", 11}}));
     db.PrimeRecord(collection, free_id, MakeDoc({{"value", 22}}));
@@ -873,13 +873,13 @@ TEST_CASE("DataBaseSlowReadDoesNotBlockOtherReads")
     }};
 
     REQUIRE(free_future.wait_for(std::chrono::milliseconds {200}) == std::future_status::ready);
-    const auto free_doc = free_future.get();
+    auto free_doc = free_future.get();
     REQUIRE(!free_doc.Empty());
     CHECK(free_doc["value"].AsInt64() == 22);
 
     db.UnblockRecordRead();
 
-    const auto blocked_doc = blocked_future.get();
+    auto blocked_doc = blocked_future.get();
     REQUIRE(!blocked_doc.Empty());
     CHECK(blocked_doc["value"].AsInt64() == 11);
 
@@ -917,7 +917,7 @@ TEST_CASE("DataBaseRestorePendingInsertSkipsEqualDocument")
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -926,7 +926,7 @@ TEST_CASE("DataBaseRestorePendingInsertSkipsEqualDocument")
 
         REQUIRE_NOTHROW(db.RestorePendingChanges());
 
-        const auto doc = db.SnapshotRecord(collection, ident_t {1001});
+        auto doc = db.SnapshotRecord(collection, ident_t {1001});
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -943,7 +943,7 @@ TEST_CASE("DataBaseRestorePendingInsertDetectsConflict")
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -963,7 +963,7 @@ TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":1}\n");
 
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -972,7 +972,7 @@ TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
 
         REQUIRE_NOTHROW(db.RestorePendingChanges());
 
-        const auto doc = db.SnapshotRecord(collection, ident_t {1001});
+        auto doc = db.SnapshotRecord(collection, ident_t {1001});
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
         CHECK(doc["other"].AsInt64() == 7);
@@ -990,7 +990,7 @@ TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":3,\"added\":9}\n");
 
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -999,7 +999,7 @@ TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
 
         REQUIRE_NOTHROW(db.RestorePendingChanges());
 
-        const auto doc = db.SnapshotRecord(collection, ident_t {1001});
+        auto doc = db.SnapshotRecord(collection, ident_t {1001});
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 3);
         CHECK(doc["other"].AsInt64() == 7);
@@ -1090,7 +1090,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
     ScopedRecoveryLogs recovery_logs {"stop-after-spill"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.ToHashedString("test_collection");
 
     {
         TestDataBase db {settings};
@@ -1111,9 +1111,9 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
             }
         }};
 
-        const auto start = std::chrono::steady_clock::now();
+        auto start = std::chrono::steady_clock::now();
         db.WaitCommitChanges();
-        const auto elapsed = std::chrono::steady_clock::now() - start;
+        auto elapsed = std::chrono::steady_clock::now() - start;
 
         {
             scoped_lock locker {fallback_locker};
@@ -1136,8 +1136,8 @@ TEST_CASE("DataBaseSupportsStringKeys")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam:user-123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam:user-123")};
 
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
@@ -1177,7 +1177,7 @@ TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
     db.StartCommitChanges();
     db.WaitCommitChanges();
 
-    const auto all_ids = db.GetAllStringIds(collection);
+    auto all_ids = db.GetAllStringIds(collection);
     REQUIRE(all_ids.size() == 1);
     CHECK(all_ids.front() == std::get<string>(record_id));
     CHECK(db.Valid(collection, record_id));
@@ -1187,9 +1187,9 @@ TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    const auto int_collection = hashes.ToHashedString("test_collection");
-    const auto string_collection = hashes.ToHashedString("test_string_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {
+    hstring int_collection = hashes.ToHashedString("test_collection");
+    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
     };
@@ -1205,8 +1205,8 @@ TEST_CASE("DataBaseGetAllIdsRejectsBackendKeyTypeMismatch")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto int_collection = hashes.ToHashedString("test_collection");
-    const auto string_collection = hashes.ToHashedString("test_string_collection");
+    hstring int_collection = hashes.ToHashedString("test_collection");
+    hstring string_collection = hashes.ToHashedString("test_string_collection");
 
     db.PrimeRecord(int_collection, DataBaseKey {string("wrong-type")}, MakeDoc({{"value", 1}}));
     db.PrimeRecord(string_collection, DataBaseKey {ident_t {1001}}, MakeDoc({{"value", 1}}));
@@ -1220,8 +1220,8 @@ TEST_CASE("DataBaseGetAllIdsRejectsInvalidUtf8BackendStringKey")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
-    const auto string_collection = hashes.ToHashedString("test_string_collection");
-    const auto invalid_key = string(1, static_cast<char>(0xC3));
+    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    string invalid_key = string(1, static_cast<char>(0xC3));
 
     db.PrimeRecord(string_collection, DataBaseKey {invalid_key}, MakeDoc({{"value", 1}}));
 
@@ -1254,8 +1254,8 @@ TEST_CASE("DataBaseRejectsInvalidUtf8StringKeys")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings};
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey invalid_record_id {string(1, static_cast<char>(0xC3))};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey invalid_record_id {string(1, static_cast<char>(0xC3))};
 
     REQUIRE_THROWS_AS(db.Insert(collection, invalid_record_id, MakeDoc({{"value", 1}})), DataBaseException);
 }
@@ -1265,18 +1265,18 @@ TEST_CASE("DataBaseRelaxedStringKeysKeepRawBackendIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam% user\n123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam% user\n123")};
 
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
 
-    const auto stored_ids = db.GetAllRecordIds(collection);
+    auto stored_ids = db.GetAllRecordIds(collection);
     REQUIRE(stored_ids.size() == 1);
     CHECK(stored_ids.front() == record_id);
 
-    const auto doc = db.GetDocument(collection, record_id);
+    auto doc = db.GetDocument(collection, record_id);
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
 }
@@ -1286,19 +1286,19 @@ TEST_CASE("DataBaseFileStringKeysEncodeBackendIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::File};
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam user/123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam user/123")};
 
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
 
-    const auto stored_ids = db.GetAllRecordIds(collection);
+    auto stored_ids = db.GetAllRecordIds(collection);
     REQUIRE(stored_ids.size() == 1);
     REQUIRE(std::holds_alternative<string>(stored_ids.front()));
     CHECK(std::get<string>(stored_ids.front()) == "steam%20user%2f123");
 
-    const auto doc = db.GetDocument(collection, record_id);
+    auto doc = db.GetDocument(collection, record_id);
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
 }
@@ -1308,19 +1308,19 @@ TEST_CASE("DataBaseHexStringKeysEncodeBackendIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam:user-123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam:user-123")};
 
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
 
-    const auto stored_ids = db.GetAllRecordIds(collection);
+    auto stored_ids = db.GetAllRecordIds(collection);
     REQUIRE(stored_ids.size() == 1);
     REQUIRE(std::holds_alternative<string>(stored_ids.front()));
     CHECK(std::get<string>(stored_ids.front()) == "s_737465616d3a757365722d313233");
 
-    const auto doc = db.GetDocument(collection, record_id);
+    auto doc = db.GetDocument(collection, record_id);
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
 }
@@ -1332,8 +1332,8 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     {
         TestDataBase db {settings};
@@ -1349,7 +1349,7 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
         db.WaitUntilPendingChangesRestored();
         db.WaitCommitChanges();
 
-        const auto doc = db.GetDocument(collection, record_id);
+        auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -1364,8 +1364,8 @@ TEST_CASE("DataBaseReconnectRestoresComplexDocumentFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-complex-doc"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
 
     {
         TestDataBase db {settings};
@@ -1394,8 +1394,8 @@ TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam:user-123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam:user-123")};
 
     {
         TestDataBase db {settings};
@@ -1411,7 +1411,7 @@ TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
         db.WaitUntilPendingChangesRestored();
         db.WaitCommitChanges();
 
-        const auto doc = db.GetDocument(collection, record_id);
+        auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -1426,8 +1426,8 @@ TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-relaxed-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam% user\n123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam% user\n123")};
 
     {
         TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
@@ -1443,11 +1443,11 @@ TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
         db.WaitUntilPendingChangesRestored();
         db.WaitCommitChanges();
 
-        const auto stored_ids = db.GetAllRecordIds(collection);
+        auto stored_ids = db.GetAllRecordIds(collection);
         REQUIRE(stored_ids.size() == 1);
         CHECK(stored_ids.front() == record_id);
 
-        const auto doc = db.GetDocument(collection, record_id);
+        auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -1462,8 +1462,8 @@ TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-file-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam% user/123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam% user/123")};
 
     {
         TestDataBase db {settings, DataBaseStringKeyEscaping::File};
@@ -1479,12 +1479,12 @@ TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
         db.WaitUntilPendingChangesRestored();
         db.WaitCommitChanges();
 
-        const auto stored_ids = db.GetAllRecordIds(collection);
+        auto stored_ids = db.GetAllRecordIds(collection);
         REQUIRE(stored_ids.size() == 1);
         REQUIRE(std::holds_alternative<string>(stored_ids.front()));
         CHECK(std::get<string>(stored_ids.front()) == "steam%25%20user%2f123");
 
-        const auto doc = db.GetDocument(collection, record_id);
+        auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -1499,8 +1499,8 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-hex-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    const auto collection = hashes.ToHashedString("test_string_collection");
-    const DataBaseKey record_id {string("steam%:user-123")};
+    hstring collection = hashes.ToHashedString("test_string_collection");
+    DataBaseKey record_id {string("steam%:user-123")};
 
     {
         TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
@@ -1516,12 +1516,12 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
         db.WaitUntilPendingChangesRestored();
         db.WaitCommitChanges();
 
-        const auto stored_ids = db.GetAllRecordIds(collection);
+        auto stored_ids = db.GetAllRecordIds(collection);
         REQUIRE(stored_ids.size() == 1);
         REQUIRE(std::holds_alternative<string>(stored_ids.front()));
         CHECK(std::get<string>(stored_ids.front()) == "s_737465616d253a757365722d313233");
 
-        const auto doc = db.GetDocument(collection, record_id);
+        auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -1559,7 +1559,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(ids[1] == second_id);
     CHECK(ids[2] == complex_id);
 
-    const auto first_doc = db.Get(collection, first_id);
+    auto first_doc = db.Get(collection, first_id);
     REQUIRE(!first_doc.Empty());
     CHECK(first_doc["value"].AsInt64() == 1);
     CHECK(first_doc["other"].AsInt64() == 7);
@@ -1574,7 +1574,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     db.Delete(collection, second_id);
     db.WaitCommitChanges();
 
-    const auto updated_doc = db.Get(collection, first_id);
+    auto updated_doc = db.Get(collection, first_id);
     REQUIRE(!updated_doc.Empty());
     CHECK(updated_doc["value"].AsInt64() == 3);
     CHECK(updated_doc["other"].AsInt64() == 7);
@@ -1593,10 +1593,10 @@ TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-errors"};
-    const auto storage_dir = *storage_dir_scope.Dir() / "storage";
-    const auto collection_dir = storage_dir / "test_collection";
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
+    auto storage_dir = *storage_dir_scope.Dir() / "storage";
+    auto collection_dir = storage_dir / "test_collection";
+    hstring collection = hashes.ToHashedString("test_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     std::filesystem::create_directories(collection_dir);
 
     const u8string storage_dir_utf8 = fs_path_to_u8string(storage_dir);
@@ -1665,9 +1665,9 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
-    const auto record_id = ident_t {1001};
+    hstring collection = hashes.ToHashedString("test_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
+    ident_t record_id = ident_t {1001};
 
     REQUIRE_THROWS_AS(ConnectToDataBase(&settings, u8"Unknown", collection_schemas, {}), DataBaseException);
     REQUIRE_THROWS_AS(ConnectToDataBase(&settings, u8"JSON", collection_schemas, {}), DataBaseException);
@@ -1678,7 +1678,7 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
 
-    const auto doc = db.Get(collection, record_id);
+    auto doc = db.Get(collection, record_id);
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
     CHECK(db.GetDbRequestsPerMinute() >= 1);
@@ -1798,7 +1798,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
         CHECK_FALSE(db.Valid(int_collection, int_id));
         CHECK(db.GetAllIntIds(int_collection).empty());
 
-        const auto string_ids = db.GetAllStringIds(string_collection);
+        auto string_ids = db.GetAllStringIds(string_collection);
         REQUIRE(string_ids.size() == 1);
         CHECK(string_ids.front() == std::get<string>(string_id));
     }

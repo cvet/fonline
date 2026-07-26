@@ -51,7 +51,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type = GetCollectionKeyType(collection_name);
         vector<DataBaseKey> ids;
 
         std::error_code ec;
@@ -73,14 +73,14 @@ protected:
                     continue;
                 }
 
-                const auto key_str = strvex(path).extract_file_name().erase_file_extension().str();
+                string key_str = strvex(path).extract_file_name().erase_file_extension().str();
 
                 if (key_type == DataBaseKeyType::IntId) {
                     if (!strvex(key_str).is_number()) {
                         throw DataBaseException("DbJson invalid numeric key format", key_str);
                     }
 
-                    const auto id_value = strvex(key_str).to_int64();
+                    int64_t id_value = strvex(key_str).to_int64();
 
                     if (id_value <= 0) {
                         throw DataBaseException("DbJson invalid numeric key value", key_str);

@@ -130,11 +130,11 @@ static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> vect
         });
     }
 
-    const auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
+    auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
 
     for (const auto& entry : central_entries) {
-        const auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
-        const auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
+        auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
+        auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
 
         AppendLe32(zip, 0x02014B50);
         AppendLe16(zip, 20);
@@ -156,8 +156,8 @@ static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> vect
         AppendTextBytes(zip, entry.FileName);
     }
 
-    const auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
-    const auto entry_count = numeric_cast<uint16_t>(central_entries.size());
+    auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
+    auto entry_count = numeric_cast<uint16_t>(central_entries.size());
 
     AppendLe32(zip, 0x06054B50);
     AppendLe16(zip, 0);
@@ -196,7 +196,7 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     AppendTextBytes(zip, file_name);
     AppendTextBytes(zip, file_content);
 
-    const auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
+    auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
 
     AppendLe32(zip, 0x02014B50);
     AppendLe16(zip, 20);
@@ -217,7 +217,7 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     AppendLe32(zip, 0);
     AppendTextBytes(zip, file_name);
 
-    const auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
+    auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
 
     AppendLe32(zip, 0x06054B50);
     AppendLe16(zip, 0);
@@ -263,8 +263,8 @@ static auto MakeFallout2DatEntry(string_view file_name, string_view file_payload
 
     AppendBytes(dat, tree);
 
-    const auto tree_size = numeric_cast<uint32_t>(tree.size());
-    const auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
+    auto tree_size = numeric_cast<uint32_t>(tree.size());
+    auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
 
     AppendLe32(dat, tree_size);
     AppendLe32(dat, dat_size);
@@ -274,7 +274,7 @@ static auto MakeFallout2DatEntry(string_view file_name, string_view file_payload
 
 static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> vector<byte>
 {
-    const auto content_size = numeric_cast<uint32_t>(file_content.size());
+    auto content_size = numeric_cast<uint32_t>(file_content.size());
 
     return MakeFallout2DatEntry(file_name, file_content, 0, content_size, content_size, 0);
 }
@@ -289,8 +289,8 @@ static auto MakeFallout2DatWithInvalidNameSize() -> vector<byte>
 
     AppendBytes(dat, tree);
 
-    const auto tree_size = numeric_cast<uint32_t>(tree.size());
-    const auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
+    auto tree_size = numeric_cast<uint32_t>(tree.size());
+    auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
 
     AppendLe32(dat, tree_size);
     AppendLe32(dat, dat_size);
@@ -398,7 +398,7 @@ TEST_CASE("DataSource")
         CHECK_FALSE(non_recursive->GetFileInfo("nested/child.txt", size, write_time));
         CHECK_FALSE(non_recursive->GetFileInfo("missing.txt", size, write_time));
 
-        const auto root_buf = non_recursive->OpenFile("root.txt", size, write_time);
+        auto root_buf = non_recursive->OpenFile("root.txt", size, write_time);
         REQUIRE(root_buf);
         CHECK(BufferAsString(root_buf, size) == "root");
         CHECK_FALSE(non_recursive->OpenFile("nested/child.txt", size, write_time));
@@ -411,17 +411,19 @@ TEST_CASE("DataSource")
         CHECK_FALSE(recursive->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(recursive->OpenFile("missing.txt", size, write_time));
 
-        const auto buf = recursive->OpenFile("nested/child.txt", size, write_time);
+        auto buf = recursive->OpenFile("nested/child.txt", size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "child");
 
-        const auto non_recursive_names = non_recursive->GetFileNames("", false, "txt");
+        auto non_recursive_names = non_recursive->GetFileNames("", false, "txt");
         REQUIRE(non_recursive_names.size() == 1);
         CHECK(non_recursive_names[0] == "root.txt");
 
-        const auto recursive_names = recursive->GetFileNames("nested", true, "txt");
+        auto recursive_names = recursive->GetFileNames("nested", true, "txt");
         REQUIRE(recursive_names.size() == 1);
         CHECK(recursive_names[0] == "nested/child.txt");
+        CHECK(recursive->GetFileNames("missing", true, "txt").empty());
+        CHECK(recursive->GetFileNames("nested/child.txt", true, "txt").empty());
 
         CHECK(fs_remove_dir_tree(temp_dir.view()));
     }
@@ -489,9 +491,9 @@ TEST_CASE("DataSource")
         const u8string entry_path = fs_combine_path(temp_dir.view(), "entry.bin");
         REQUIRE(fs_write_file_bytes(entry_path.view(), string_to_byte_span("abc")));
 
-        const auto mounted = DataSource::MountDir(temp_dir.view(), false, false, false);
+        auto mounted = DataSource::MountDir(temp_dir, false, false, false);
 
-        const DataSourceRef ds_ref {mounted};
+        DataSourceRef ds_ref {mounted};
         size_t size = 0;
         uint64_t write_time = 0;
 
@@ -502,11 +504,23 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK(ds_ref.GetPackName() == mounted->GetPackName());
 
-        const auto buf = ds_ref.OpenFile("entry.bin", size, write_time);
+        auto buf = ds_ref.OpenFile("entry.bin", size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "abc");
 
-        CHECK(fs_remove_dir_tree(temp_dir.view()));
+        const u8string late_path = fs_combine_path(temp_dir, "late.bin");
+        REQUIRE(fs_write_file_bytes(late_path, string_to_byte_span("late")));
+        REQUIRE_FALSE(ds_ref.IsFileExists("late.bin"));
+
+        CHECK(ds_ref.Reindex());
+        CHECK_FALSE(ds_ref.Reindex());
+
+        CHECK(ds_ref.IsFileExists("late.bin"));
+        auto late_buf = ds_ref.OpenFile("late.bin", size, write_time);
+        REQUIRE(late_buf);
+        CHECK(BufferAsString(late_buf, size) == "late");
+
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("ZipPackLoadsStoredEntries")
@@ -533,18 +547,18 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK_FALSE(zip_pack->GetFileInfo("missing.txt", size, write_time));
 
-        const auto root_names = zip_pack->GetFileNames("", false, "txt");
+        auto root_names = zip_pack->GetFileNames("", false, "txt");
         CHECK(root_names.empty());
 
-        const auto nested_names = zip_pack->GetFileNames("nested", false, "txt");
+        auto nested_names = zip_pack->GetFileNames("nested", false, "txt");
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "nested/entry.txt");
 
-        const auto normalized_names = zip_pack->GetFileNames("nested\\", true, "");
+        auto normalized_names = zip_pack->GetFileNames("nested\\", true, "");
         REQUIRE(normalized_names.size() == 1);
         CHECK(normalized_names.front() == "nested/entry.txt");
 
-        const auto buf = zip_pack->OpenFile("nested/entry.txt", size, write_time);
+        auto buf = zip_pack->OpenFile("nested/entry.txt", size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "zip-data");
         CHECK_FALSE(zip_pack->OpenFile("missing.txt", size, write_time));
@@ -577,21 +591,21 @@ TEST_CASE("DataSource")
         CHECK_FALSE(zip_pack->GetFileInfo("folder/", size, write_time));
         CHECK_FALSE(zip_pack->OpenFile("folder/", size, write_time));
 
-        const auto root_names = zip_pack->GetFileNames("", false, "txt");
+        auto root_names = zip_pack->GetFileNames("", false, "txt");
         REQUIRE(root_names.size() == 1);
         CHECK(root_names.front() == "root.txt");
 
-        const auto folder_txt_names = zip_pack->GetFileNames("folder", false, "txt");
+        auto folder_txt_names = zip_pack->GetFileNames("folder", false, "txt");
         REQUIRE(folder_txt_names.size() == 1);
         CHECK(folder_txt_names.front() == "folder/first.txt");
 
-        const auto folder_recursive_names = zip_pack->GetFileNames("folder", true, "");
+        auto folder_recursive_names = zip_pack->GetFileNames("folder", true, "");
         REQUIRE(folder_recursive_names.size() == 2);
         CHECK(std::ranges::find(folder_recursive_names, "folder/first.txt") != folder_recursive_names.end());
         CHECK(std::ranges::find(folder_recursive_names, "folder/deeper/second.bin") != folder_recursive_names.end());
         CHECK(zip_pack->GetFileNames("", true, "dat").empty());
 
-        const auto buf = zip_pack->OpenFile("folder/deeper/second.bin", size, write_time);
+        auto buf = zip_pack->OpenFile("folder/deeper/second.bin", size, write_time);
         REQUIRE(buf);
         CHECK(size == 3);
         CHECK(write_time != 0);
@@ -614,7 +628,7 @@ TEST_CASE("DataSource")
 
         size_t size = 0;
         uint64_t write_time = 0;
-        const auto buf = bos_pack->OpenFile("entry.bin", size, write_time);
+        auto buf = bos_pack->OpenFile("entry.bin", size, write_time);
 
         REQUIRE(buf);
         CHECK(size == 8);
@@ -647,11 +661,11 @@ TEST_CASE("DataSource")
         CHECK(size == 8);
         CHECK(write_time != 0);
 
-        const auto nested_names = dat_pack->GetFileNames("nested", false, "txt");
+        auto nested_names = dat_pack->GetFileNames("nested", false, "txt");
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "nested/entry.txt");
 
-        const auto buf = dat_pack->OpenFile("nested/entry.txt", size, write_time);
+        auto buf = dat_pack->OpenFile("nested/entry.txt", size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "dat-data");
         CHECK_FALSE(dat_pack->OpenFile("missing.txt", size, write_time));
@@ -759,11 +773,11 @@ TEST_CASE("DataSource")
         CHECK(size == content.size());
         CHECK(write_time != 0);
 
-        const auto nested_names = dat_pack->GetFileNames("deep", true, "txt");
+        auto nested_names = dat_pack->GetFileNames("deep", true, "txt");
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "deep/packed.txt");
 
-        const auto buf = dat_pack->OpenFile("deep/packed.txt", size, write_time);
+        auto buf = dat_pack->OpenFile("deep/packed.txt", size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == content);
 
@@ -881,7 +895,7 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK_FALSE(files_list->GetFileInfo(missing_file, size, write_time));
 
-        const auto buf = files_list->OpenFile(listed_file, size, write_time);
+        auto buf = files_list->OpenFile(listed_file, size, write_time);
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "listed-data");
         CHECK_FALSE(files_list->OpenFile(missing_file, size, write_time));

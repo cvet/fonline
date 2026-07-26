@@ -37,25 +37,94 @@
 
 FO_BEGIN_NAMESPACE
 
-void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+static constexpr string_view MAP_ANCHOR_SECTION = "ProtoMap";
+static constexpr string_view CONTEXT_PREFIX = "$Name";
+
+void MapLoader::Load(string_view name, string_view file_name, const u8string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Load from file
-    const std::u8string_view native_buf = buf.view().native_view();
-    const bool is_old_format = native_buf.find(u8"[Header]") != std::u8string_view::npos && native_buf.find(u8"[Tiles]") != std::u8string_view::npos && native_buf.find(u8"[Objects]") != std::u8string_view::npos;
+    ConfigFile map_data(buf);
 
-    if (is_old_format) {
-        throw MapLoaderException("Unable to load map from old map format", name);
+    // Walk the file in order: a [ProtoMap] anchor declares a map (named by its $Name, or by the
+    // file when it carries none) and owns the nested sections that follow it. A nested prefix is
+    // either the CONTEXT_PREFIX token, meaning the anchor above, or an explicit map name
+    const string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
+
+    struct NestedMapSection
+    {
+        string Owner {};
+        string_view Type {};
+        ptr<ConfigKeyValueMap> KeyValues;
+    };
+
+    vector<string> anchor_names;
+    vector<NestedMapSection> nested_sections;
+    string cur_anchor_name;
+    bool has_anchor = false;
+
+    for (const auto& [section_name, section_kv] : map_data.GetOrderedSections()) {
+        if (section_name.empty()) {
+            continue;
+        }
+
+        const size_t slash_pos = section_name.find('/');
+
+        if (slash_pos == string_view::npos) {
+            if (section_name != MAP_ANCHOR_SECTION) {
+                throw MapLoaderException("Invalid map file section, expected a ProtoMap anchor or nested map content", section_name, name, file_name);
+            }
+
+            const auto anchor_name_it = section_kv->find("$Name");
+            cur_anchor_name = anchor_name_it != section_kv->end() ? utf8_to_string(anchor_name_it->second) : file_stem;
+            has_anchor = true;
+            anchor_names.emplace_back(cur_anchor_name);
+            continue;
+        }
+
+        const string_view prefix = section_name.substr(0, slash_pos);
+        const string_view nested_type = section_name.substr(slash_pos + 1);
+
+        if (nested_type != "Critter" && nested_type != "Item") {
+            throw MapLoaderException("Unknown nested map section type", section_name, name, file_name);
+        }
+
+        if (prefix == CONTEXT_PREFIX) {
+            if (!has_anchor) {
+                throw MapLoaderException("Nested map section appears before any ProtoMap anchor", section_name, name, file_name);
+            }
+
+            nested_sections.emplace_back(NestedMapSection {cur_anchor_name, nested_type, section_kv});
+        }
+        else {
+            nested_sections.emplace_back(NestedMapSection {string {prefix}, nested_type, section_kv});
+        }
     }
 
-    // Header
-    const u8string config_name = u8strex("{}.fomap", name);
-    ConfigFile map_data(config_name.view(), buf);
-
-    if (!map_data.HasSection("ProtoMap")) {
-        throw MapLoaderException("Invalid map format", name);
+    if (!has_anchor) {
+        throw MapLoaderException("Invalid map format, no ProtoMap anchor declared", name, file_name);
     }
+    if (std::ranges::find(anchor_names, name) == anchor_names.end()) {
+        throw MapLoaderException("Map is not declared in the file", name, file_name);
+    }
+
+    for (const auto& nested_section : nested_sections) {
+        if (std::ranges::find(anchor_names, nested_section.Owner) == anchor_names.end()) {
+            throw MapLoaderException("Nested map section is addressed to an undeclared map", nested_section.Owner, name, file_name);
+        }
+    }
+
+    const auto collect_map_sections = [&](string_view nested_type) -> vector<ptr<ConfigKeyValueMap>> {
+        vector<ptr<ConfigKeyValueMap>> sections;
+
+        for (const auto& nested_section : nested_sections) {
+            if (nested_section.Owner == name && nested_section.Type == nested_type) {
+                sections.emplace_back(nested_section.KeyValues);
+            }
+        }
+
+        return sections;
+    };
 
     size_t errors = 0;
 
@@ -63,7 +132,7 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
     unordered_set<ident_t::underlying_type> busy_ids;
     ident_t::underlying_type last_lowest_id = 1;
 
-    const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
+    auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
         if (id <= 0 || !busy_ids.emplace(id).second) {
             auto new_id = last_lowest_id;
 
@@ -80,7 +149,7 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
     };
 
     // Critters
-    for (const auto& pkv : map_data.GetSections("Critter")) {
+    for (const auto& pkv : collect_map_sections("Critter")) {
         const auto proto_it = pkv->find("$Proto");
 
         if (proto_it == pkv->end()) {
@@ -92,8 +161,8 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
         const map<string_view, string_view> kv = utf8_map_as_char_views(*pkv);
         const auto id_it = kv.find("$Id");
         const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
-        const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        const string proto_name = utf8_to_string(proto_it->second);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (!proto) {
@@ -113,7 +182,7 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
     }
 
     // Items
-    for (const auto& pkv : map_data.GetSections("Item")) {
+    for (const auto& pkv : collect_map_sections("Item")) {
         const auto proto_it = pkv->find("$Proto");
 
         if (proto_it == pkv->end()) {
@@ -125,8 +194,8 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
         const map<string_view, string_view> kv = utf8_map_as_char_views(*pkv);
         const auto id_it = kv.find("$Id");
         const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
-        const auto& proto_name = proto_it->second;
-        const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        const string proto_name = utf8_to_string(proto_it->second);
+        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         auto proto = meta.GetProtoItem(hashed_proto_name);
 
         if (!proto) {
@@ -148,6 +217,33 @@ void MapLoader::Load(string_view name, const u8string& buf, const EngineMetadata
     if (errors != 0) {
         throw MapLoaderException("Map load error", name);
     }
+}
+
+// Enumerates the maps a file declares; an empty result means the file is not a map container.
+// This doubles as the map-file detector: map files are recognized by their [ProtoMap] anchors,
+// not by a dedicated extension.
+auto MapLoader::EnumerateMaps(string_view file_name, const u8string& buf) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto map_data = ConfigFile(buf, ConfigFileOption::SkipNestedSections);
+    const auto anchor_sections = map_data.GetSections(MAP_ANCHOR_SECTION);
+
+    vector<string> map_names;
+    map_names.reserve(anchor_sections.size());
+
+    for (const auto& anchor_kv : anchor_sections) {
+        const auto anchor_name_it = anchor_kv->find("$Name");
+        string map_name = anchor_name_it != anchor_kv->end() ? utf8_to_string(anchor_name_it->second) : strex(file_name).extract_file_name().erase_file_extension().str();
+
+        // Several anchors without $Name all resolve to the file stem; enumerating the id once is
+        // enough — the duplicate itself is reported by the generic proto collision check on bake
+        if (std::ranges::find(map_names, map_name) == map_names.end()) {
+            map_names.emplace_back(std::move(map_name));
+        }
+    }
+
+    return map_names;
 }
 
 FO_END_NAMESPACE

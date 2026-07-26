@@ -28,7 +28,7 @@ static auto MakeDynamicMetadataBlob(const vector<pair<string_view, vector<vector
         for (const auto& tokens : entries) {
             writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
-            for (const string_view token : tokens) {
+            for (string_view token : tokens) {
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
                 writer.WriteStringBytes(token);
             }
@@ -40,7 +40,7 @@ static auto MakeDynamicMetadataBlob(const vector<pair<string_view, vector<vector
 
 static auto LoadOutputTextPack(const BakerTests::TestRig& rig, string_view path, HashStorage& hashes) -> TextPack
 {
-    const auto it = rig.Outputs.find(string(path));
+    auto it = rig.Outputs.find(string(path));
     REQUIRE(it != rig.Outputs.end());
 
     TextPack pack(&hashes);
@@ -64,7 +64,7 @@ TEST_CASE("ProtoTextBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(ProtoTextBaker::NAME)}, rig);
+    auto bakers = MakeRequestedBakers({string(ProtoTextBaker::NAME)}, rig);
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == ProtoTextBaker::NAME);
@@ -101,7 +101,7 @@ $Text engl Name = Ignored
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
         local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
-        local_rig.AddSourceFile("Items/TextItems.fopro", R"([ProtoItem]
+        local_rig.AddSourceFile("Items/TextItems.fopro", u8R"([ProtoItem]
 $Name = BaseItem
 $Text engl Name = Base item name
 $Text engl Desc = Base item description
@@ -111,14 +111,14 @@ $Name = ChildItem
 $Parent = BaseItem
 $Text engl Desc = Child item description
 $Text engl Long = Line\nBreak
-$Text russ Desc = Child item ru
+$Text russ Desc = Дочернее описание
 $Text span Name = Nombre ignorado
 )");
         local_rig.AddSourceFile("Critters/TextCritter.fopro", R"([ProtoCritter]
 $Name = TextCritter
 $Text engl Name = Critter name
 )");
-        local_rig.AddSourceFile("Maps/TextMap.fomap", R"([Header]
+        local_rig.AddSourceFile("Maps/TextMap.fomap", R"([ProtoMap]
 $Name = TextMap
 $Text engl Name = Map name
 )");
@@ -138,20 +138,20 @@ $Text engl Name = Custom gizmo name
         CHECK_FALSE(local_rig.Outputs.contains("ProtoTextPack.Items.span.fotxt-bin"));
 
         HashStorage hashes;
-        const auto items_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Items.engl.fotxt-bin", hashes);
-        const auto items_russ = LoadOutputTextPack(local_rig, "ProtoTextPack.Items.russ.fotxt-bin", hashes);
-        const auto critters_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Critters.engl.fotxt-bin", hashes);
-        const auto maps_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Maps.engl.fotxt-bin", hashes);
-        const auto locations_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Locations.engl.fotxt-bin", hashes);
-        const auto protos_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.engl.fotxt-bin", hashes);
-        const auto protos_russ = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.russ.fotxt-bin", hashes);
+        auto items_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Items.engl.fotxt-bin", hashes);
+        auto items_russ = LoadOutputTextPack(local_rig, "ProtoTextPack.Items.russ.fotxt-bin", hashes);
+        auto critters_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Critters.engl.fotxt-bin", hashes);
+        auto maps_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Maps.engl.fotxt-bin", hashes);
+        auto locations_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Locations.engl.fotxt-bin", hashes);
+        auto protos_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.engl.fotxt-bin", hashes);
+        auto protos_russ = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.russ.fotxt-bin", hashes);
 
         CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "BaseItem", "Name"), 0), u8"Base item name"));
         CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0), u8"Base item name"));
         CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0), u8"Child item description"));
         CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Long"), 0), u8"Line\nBreak"));
         CHECK(TextEquals(items_russ.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0), u8"Base item name"));
-        CHECK(TextEquals(items_russ.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0), u8"Child item ru"));
+        CHECK(TextEquals(items_russ.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0), u8"Дочернее описание"));
         CHECK(TextEquals(critters_engl.GetText(MakeTextKey(hashes, "Critters", "TextCritter", "Name"), 0), u8"Critter name"));
         CHECK(TextEquals(maps_engl.GetText(MakeTextKey(hashes, "Maps", "TextMap", "Name"), 0), u8"Map name"));
         CHECK(TextEquals(locations_engl.GetText(MakeTextKey(hashes, "Locations", "TextLocation", "Name"), 0), u8"Location name"));

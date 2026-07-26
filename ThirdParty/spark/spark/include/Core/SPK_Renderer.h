@@ -69,18 +69,6 @@ namespace SPK
 		// Setters //
 		/////////////
 
-		/**
-		* Specifies whether to use shader or not if possible
-		* @param hint : the shader hint
-		*/
-		static  void useShaderHint(ShaderHint hint);
-
-		/**
-		* Specifies whether to use vbo to transfer data to GPU if possible
-		* @param hint : the vbo hint
-		*/
-		static  void useVBOHint(bool hint);
-
 		virtual  void enableRenderingOption(RenderingOption option,bool enable);
 		virtual  void setAlphaTestThreshold(float alphaThreshold);
 		void setActive(bool active);
@@ -88,18 +76,6 @@ namespace SPK
 		/////////////
 		// Getters //
 		/////////////
-
-		/**
-		* Gets the shader hint
-		* @return : the shader hint
-		*/
-		static ShaderHint getShaderHint();
-
-		/**
-		* Gets the vbo hint
-		* @return : the vbo hint
-		*/
-		static bool getVBOHint();
 
 		virtual  bool isRenderingOptionEnabled(RenderingOption option) const;
 		virtual  float getAlphaTestThreshold() const;
@@ -118,10 +94,6 @@ namespace SPK
 
 	private :
 
-		// Rendering hints
-		static ShaderHint shaderHint;
-		static bool vboHint;
-
 		bool active;
 
 		int renderingOptionsMask;
@@ -132,7 +104,7 @@ namespace SPK
 		virtual  void init(const Particle& particle,DataSet* dataSet) const {};
 		virtual  void update(const Group& group,DataSet* dataSet) const {};
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const = 0;
+		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) = 0;
 		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const = 0;
 	};
 
@@ -160,16 +132,6 @@ namespace SPK
 	inline void Renderer::setActive(bool active)
 	{
 		this->active = active;
-	}
-
-	inline ShaderHint Renderer::getShaderHint()
-	{
-		return shaderHint;
-	}
-
-	inline bool Renderer::getVBOHint()
-	{
-		return vboHint;
 	}
 
 	inline bool Renderer::isRenderingOptionEnabled(RenderingOption option) const

@@ -297,7 +297,7 @@ TEST_CASE("SmartPointers")
         CHECK(base_ptr->Value == 42);
 
         ptr<PtrBase> moved_ptr {std::move(base_ptr)};
-        CHECK(base_ptr.get() == nullptr);
+        CHECK(base_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from pointer contract
         REQUIRE(moved_ptr.get() != nullptr);
         CHECK(moved_ptr.get() == &value);
 
@@ -599,7 +599,7 @@ TEST_CASE("SmartPointers")
         auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(88);
         unique_nptr<PtrBase> ptr {std::move(owned_ptr)};
 
-        CHECK(owned_ptr.get() == nullptr);
+        CHECK(owned_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from owner contract
 
         REQUIRE(ptr);
         nptr<PtrBase> maybe_borrowed_ptr = ptr;
@@ -682,7 +682,7 @@ TEST_CASE("SmartPointers")
         refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_add_ref(raw.get());
         maybe_ref = std::move(non_null_ptr);
 
-        CHECK(non_null_ptr.get() == nullptr);
+        CHECK(non_null_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
         REQUIRE(maybe_ref);
         CHECK(maybe_ref->RefCount == 1);
         CHECK(maybe_ref->Value == 44);
@@ -696,7 +696,7 @@ TEST_CASE("SmartPointers")
 
         {
             refcount_ptr<RefCountedValue> scoped_ptr = std::move(restored_ptr);
-            CHECK(restored_ptr.get() == nullptr);
+            CHECK(restored_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
         }
 
         CHECK(destroy_count == 1);
@@ -944,7 +944,7 @@ TEST_CASE("SmartPointers")
 
         size_t deleted_count = 0;
 
-        const auto make_node = [&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
+        auto make_node = [&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
             auto owner = SafeAlloc::MakeUnique<DelNode>();
             auto released = owner.release();
             released->Value = value;

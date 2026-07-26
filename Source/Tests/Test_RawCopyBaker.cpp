@@ -33,7 +33,7 @@ TEST_CASE("RawCopyBaker")
     SECTION("SetupBakersReturnsRequestedBaker")
     {
         TestRig rig;
-        const auto bakers = MakeRequestedBakers({string(RawCopyBaker::NAME)}, rig);
+        auto bakers = MakeRequestedBakers({string(RawCopyBaker::NAME)}, rig);
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == RawCopyBaker::NAME);

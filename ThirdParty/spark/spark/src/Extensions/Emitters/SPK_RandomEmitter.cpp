@@ -34,7 +34,7 @@ namespace SPK
 		
 		do 
 		{
-			particle.velocity().set(SPK_RANDOM(-1.0f,1.0f),SPK_RANDOM(-1.0f,1.0f),SPK_RANDOM(-1.0f,1.0f));
+			particle.velocity().set(SPK_RANDOM(getContext(),-1.0f,1.0f),SPK_RANDOM(getContext(),-1.0f,1.0f),SPK_RANDOM(getContext(),-1.0f,1.0f));
 			sqrNorm = particle.velocity().getSqrNorm();
 		}
 		while((sqrNorm > 1.0f) || (sqrNorm == 0.0f));

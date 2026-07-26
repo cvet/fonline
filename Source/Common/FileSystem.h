@@ -198,6 +198,7 @@ public:
     void AddPackSource(u8string_view dir, u8string_view pack, bool maybe_not_available = false);
     void AddPacksSource(u8string_view dir, const vector<string>& packs);
     void AddCustomSource(unique_ptr<DataSource> data_source);
+    auto ReindexDataSources() -> bool;
     void CleanDataSources();
 
 private:

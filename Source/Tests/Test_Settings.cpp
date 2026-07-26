@@ -18,9 +18,9 @@ static auto MakeTempSettingsDir(string_view name) -> u8string
 
 static auto MakeSettingsConfig(string_view name, string_view text) -> ConfigFile
 {
-    const u8string strict_name = name;
+    (void)name;
     u8string strict_text = text;
-    return ConfigFile {strict_name.view(), std::move(strict_text)};
+    return ConfigFile {std::move(strict_text)};
 }
 
 TEST_CASE("Settings")
@@ -98,7 +98,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Mode") == "child");
         CHECK(settings.GetCustomSetting("Leaf") == "extra");
 
-        const auto packs = settings.GetResourcePacks();
+        auto packs = settings.GetResourcePacks();
         REQUIRE(packs.size() == 2);
         CHECK(packs[0].Name == "CommonPack");
         REQUIRE(packs[0].InputDirs.size() == 2);
@@ -124,14 +124,13 @@ TEST_CASE("Settings")
     SECTION("Utf8PathSettingsAndResourceInputsPreserveUnicode")
     {
         GlobalSettings settings {false};
-        ConfigFile config {u8"Настройки.fomain",
-            u8string {u8"Common.GameName = Последний рубеж 🌍\n"
-                      u8"Baking.BakeOutput = данные/мир-🌍\n"
-                      u8"[ResourcePack]\n"
-                      u8"Name = UnicodePack\n"
-                      u8"InputDirs = ресурсы/карты\n"
-                      u8"InputFiles = архивы/текстуры.zip\n"
-                      u8"Bakers = RawCopy\n"}};
+        ConfigFile config {u8string {u8"Common.GameName = Последний рубеж 🌍\n"
+                                     u8"Baking.BakeOutput = данные/мир-🌍\n"
+                                     u8"[ResourcePack]\n"
+                                     u8"Name = UnicodePack\n"
+                                     u8"InputDirs = ресурсы/карты\n"
+                                     u8"InputFiles = архивы/текстуры.zip\n"
+                                     u8"Bakers = RawCopy\n"}};
         const u8string config_dir {u8"корень/конфигурация"};
 
         settings.ApplyConfigFile(config, config_dir.view());
@@ -152,7 +151,7 @@ TEST_CASE("Settings")
     SECTION("AsciiSettingRejectsUnicode")
     {
         GlobalSettings settings {false};
-        ConfigFile config {u8"InvalidAscii.fomain", u8string {u8"Client.Language = русский\n"}};
+        ConfigFile config {u8string {u8"Client.Language = русский\n"}};
 
         try {
             settings.ApplyConfigFile(config, u8string_view {});
@@ -216,7 +215,7 @@ TEST_CASE("Settings")
 
     SECTION("CommandLineArgsAcceptEmptyNativeArgv")
     {
-        const CommandLineArgs args {0, nullptr};
+        CommandLineArgs args {0, nullptr};
 
         CHECK(args.empty());
     }
@@ -355,12 +354,12 @@ TEST_CASE("Settings")
     {
         GlobalSettings settings {false};
 
-        const auto missing = settings.FindCustomSetting("Missing");
+        auto missing = settings.FindCustomSetting("Missing");
         CHECK_FALSE(static_cast<bool>(missing));
         CHECK(settings.GetCustomSetting("Missing").empty());
 
         settings.SetCustomSetting("Present", any_t(string("value")));
-        const auto present = settings.FindCustomSetting("Present");
+        auto present = settings.FindCustomSetting("Present");
 
         REQUIRE(static_cast<bool>(present));
         CHECK(*present == "value");
@@ -374,8 +373,8 @@ TEST_CASE("Settings")
 
         settings.ApplyConfigFile(config, u8string_view {});
 
-        const auto saved = settings.Save();
-        const auto it = saved.find("CustomSaved");
+        auto saved = settings.Save();
+        auto it = saved.find("CustomSaved");
         REQUIRE(it != saved.end());
         CHECK(it->second.view() == u8"value");
     }

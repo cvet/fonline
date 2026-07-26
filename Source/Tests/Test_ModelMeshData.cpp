@@ -135,7 +135,7 @@ TEST_CASE("ModelMeshDataWirePayload")
         CHECK(decoded.RootBone->Name == "Root");
         REQUIRE(decoded.RootBone->AttachedMesh);
         CHECK(decoded.RootBone->AttachedMesh->Vertices.size() == 1);
-        const vec3 expected_position {1.0f, 2.0f, 3.0f};
+        vec3 expected_position {1.0f, 2.0f, 3.0f};
         CHECK(decoded.RootBone->AttachedMesh->Vertices.front().Position == expected_position);
         CHECK(decoded.RootBone->AttachedMesh->Indices == vector<ModelMeshIndexData> {0});
         CHECK(decoded.RootBone->AttachedMesh->DiffuseTexture == "Test.png");

@@ -1,10 +1,16 @@
 # 2D_Default — textured-sprite shader with the "egg" transparency reveal.
 # Where: engine default for the Font, Iface, Generic, Critter and Rain QuadSprite draw slots (the main textured-sprite shader); includes the "egg" transparency reveal that fades sprites occluding a focal point.
 # How: vertex transforms the sprite by the projection matrix and forwards colour, UV, egg flags and screen position; fragment samples MainTex, multiplies by vertex colour with a 2x brightness scale, and where the egg flag is set scales alpha by a radial falloff around the egg centre so occluding sprites fade out; near-zero alpha is discarded. Depth test LessEqual.
+# Depth: writes depth (so direct-draw 3D models and in-scene particles occlude against sprites) but does
+# NOT test it (DepthFunc = Always) — standing map sprites all share one depth gradient, so their depth
+# planes are parallel and never intersect, which makes the painter order by screen row exactly equivalent
+# to a per-pixel depth test while being immune to the interpolation noise that made coincident planes
+# z-fight in horizontal stripes. Draw order is authoritative for sprite-vs-sprite occlusion; see
+# MapSpriteList::MakeDrawOrderPos and Docs/FrontendAndRendering.md.
 # Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
 
 [Effect]
-DepthFunc = LessEqual
+DepthFunc = Always
 
 [VertexShader]
 layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };

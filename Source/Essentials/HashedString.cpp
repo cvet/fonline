@@ -109,9 +109,9 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-            const auto collision_detected = s != it->second->Str;
+            bool collision_detected = s != it->second->Str;
 #else
             const auto collision_detected = s.length() != it->second->Str.length();
 #endif
@@ -158,7 +158,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(it->second.get());
         }
     }
@@ -181,7 +181,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexce
     {
         shared_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(it->second.get());
         }
     }

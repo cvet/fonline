@@ -61,9 +61,9 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     unordered_set<string> configs_to_bake;
 
-    const auto check_bake_config = [&](string_view sub_config) {
-        const auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
-            const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
+    auto check_bake_config = [&](string_view sub_config) {
+        auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
+            string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
             if (!_context->BakeChecker || _context->BakeChecker(cfg_name, std::numeric_limits<uint64_t>::max())) {
                 configs_to_bake.emplace(sub_config);
             }
@@ -77,10 +77,10 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     std::ranges::for_each(_context->Settings->GetSubConfigs(), [&](auto&& sub_config) { check_bake_config(sub_config.Name); });
 
     if (!configs_to_bake.empty()) {
-        const auto server_engine = BakerServerEngine(*_context->BakedFiles);
-        const auto client_engine = BakerClientEngine(*_context->BakedFiles);
+        auto server_engine = BakerServerEngine(*_context->BakedFiles);
+        auto client_engine = BakerClientEngine(*_context->BakedFiles);
 
-        const auto bake_config = [&](string_view sub_config) -> bool {
+        auto bake_config = [&](string_view sub_config) -> bool {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
             const u8string config_path = _context->Settings->GetAppliedConfigs().front();
             const std::filesystem::path native_config_path {fs_make_path(config_path.view())};
@@ -94,7 +94,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 maincfg.ApplySubConfigSection(sub_config);
             }
 
-            const auto config_settings = maincfg.Save();
+            auto config_settings = maincfg.Save();
 
             auto server_settings = GetServerSettings();
             auto client_settings = GetClientSettings();

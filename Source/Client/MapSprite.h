@@ -147,7 +147,7 @@ private:
     void Reset() noexcept;
 
     nptr<MapSpriteList> _owner {};
-    uint32_t _drawOrderPos {};
+    uint64_t _drawOrderPos {};
     uint32_t _globalPos {};
     uint32_t _index {};
     DrawOrderType _drawOrder {};
@@ -197,6 +197,8 @@ public:
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
+
+    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
 
 private:
     void GrowPool() noexcept;

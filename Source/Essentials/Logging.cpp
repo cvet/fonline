@@ -215,8 +215,8 @@ static void FlushLogMessageRepeatsLocked()
         return;
     }
 
-    const optional<LogType> last_log_type = Logging->LastLogType;
-    const uint64_t same_message_count = Logging->SameLogMessageCount;
+    optional<LogType> last_log_type = Logging->LastLogType;
+    uint64_t same_message_count = Logging->SameLogMessageCount;
 
     ClearLastLogMessage();
 

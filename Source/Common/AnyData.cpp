@@ -63,7 +63,7 @@ static auto ParseValidatedScalarValue(u8string_view raw_value, AnyData::ValueTyp
             throw AnyDataException("Invalid float64 value", ascii_value);
         }
 
-        const float64_t parsed_value = value.to_float64();
+        float64_t parsed_value = value.to_float64();
 
         if (!std::isfinite(parsed_value)) {
             throw AnyDataException("Invalid float64 value", ascii_value);
@@ -77,8 +77,8 @@ static auto ParseValidatedScalarValue(u8string_view raw_value, AnyData::ValueTyp
         }
 
         if (value.is_number()) {
-            const auto int_value = value.to_int64();
-            const auto float_value = value.to_float64();
+            int64_t int_value = value.to_int64();
+            float64_t float_value = value.to_float64();
 
             if (!is_float_equal(float_value, static_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
                 throw AnyDataException("Invalid bool numeric value", ascii_value);
@@ -184,13 +184,13 @@ auto AnyData::ValueToCodedString(const Value& value) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto default_buf_size = 1024;
+    constexpr int32_t default_buf_size = 1024;
 
     switch (value.Type()) {
     case ValueType::Int64:
         return FormatUtf8("{}", value.AsInt64());
     case ValueType::Float64: {
-        const float64_t float_value = value.AsDouble();
+        float64_t float_value = value.AsDouble();
 
         if (!std::isfinite(float_value)) {
             throw AnyDataException("Cannot serialize non-finite float64 value", float_value);
@@ -255,7 +255,7 @@ auto AnyData::ValueToString(const Value& value) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto str = ValueToCodedString(value);
+    u8string str = ValueToCodedString(value);
 
     const auto str_view = str.view().native_view();
 
@@ -562,7 +562,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
+    bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
 
     if (protect) {
         result.append(1, '\"');
@@ -629,7 +629,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     size_t length = str.length();
     (void)utf8::Decode(s, length);
 
-    const auto is_protected = length == 1 && *s == '\"';
+    bool is_protected = length == 1 && *s == '\"';
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {

@@ -186,6 +186,14 @@ void CacheStorage::SetText(string_view entry_name, u8string_view text)
     SetText(utf8_entry_name, text);
 }
 
+void CacheStorage::SetText(string_view entry_name, string_view text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_text = text;
+    SetText(entry_name, utf8_text);
+}
+
 void CacheStorage::SetText(u8string_view entry_name, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();

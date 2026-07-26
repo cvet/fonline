@@ -38,9 +38,9 @@ namespace IO
 {
     bool XMLLoader::innerLoad(std::istream& is,Graph& graph,const std::string& path) const
 	{
+		(void)path; // Stream loading no longer reopens the optional source path.
 		pugi::xml_document doc;
-        //pugi::xml_parse_result result = doc.doc.load(is);
-        pugi::xml_parse_result result = doc.load_file(path.c_str());
+		pugi::xml_parse_result result = doc.load(is); // Honor the stream overload instead of reopening an optional path.
 
 		if (!result)
 		{
@@ -61,7 +61,8 @@ namespace IO
 
 		findObjects(root,objElements,ref2Index,true);
 		for (size_t i = 0; i < objElements.size(); ++i)
-			graph.addNode(i,std::string(objElements[i].name()));
+			if (!graph.addNode(i,std::string(objElements[i].name()))) // Reject graphs containing unknown or duplicate objects.
+				return false;
 
 		if (!graph.validateNodes())
 			return false;
@@ -106,7 +107,8 @@ namespace IO
 
         findObjects(root,objElements,ref2Index,true);
         for (size_t i = 0; i < objElements.size(); ++i)
-            graph.addNode(i,std::string(objElements[i].name()));
+            if (!graph.addNode(i,std::string(objElements[i].name()))) // Reject graphs containing unknown or duplicate objects.
+                return false;
 
         if (!graph.validateNodes())
             return false;

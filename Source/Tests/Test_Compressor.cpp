@@ -53,10 +53,10 @@ TEST_CASE("Compressor")
             src.emplace_back(byte {numeric_cast<uint8_t>(i % 251)});
         }
 
-        const auto compressed = Compressor::Compress(src);
+        auto compressed = Compressor::Compress(src);
         CHECK_FALSE(compressed.empty());
 
-        const auto restored = Compressor::Decompress(compressed, 2);
+        auto restored = Compressor::Decompress(compressed, 2);
         CHECK(restored == src);
     }
 
@@ -78,10 +78,10 @@ TEST_CASE("Compressor")
     {
         vector<byte> src(4096, byte {0x2A});
 
-        const auto compressed = Compressor::Compress(src);
+        auto compressed = Compressor::Compress(src);
         REQUIRE(compressed.size() < src.size());
 
-        const auto restored = Compressor::Decompress(compressed, 1);
+        auto restored = Compressor::Decompress(compressed, 1);
         CHECK(restored == src);
     }
 

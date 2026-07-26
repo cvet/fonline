@@ -56,7 +56,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
+FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
@@ -175,6 +175,7 @@ FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smoo
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
 FIXED_SETTING(vector<string>, Render, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
+FIXED_SETTING(vector<string>, Render, ModelLayerProperties); // Critter properties feeding model layers, as "<PropertyName>=<LayerIndex>" pairs; tools use them to dress a prototype the way the game does
 VARIABLE_SETTING(bool, Render, WindowCentered, true); // If true, window is centered
 VARIABLE_SETTING(bool, Render, WindowResizable, false); // If true, window is resizable
 VARIABLE_SETTING(bool, Render, HeadlessWindow, false); // If true, window is created hidden for off-screen rendering
@@ -189,7 +190,7 @@ FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); 
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
-VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite triangle edges are overlaid for geometry debugging
+VARIABLE_SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
@@ -267,8 +268,8 @@ SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
-FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
-FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
+FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
+FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(u8string, Baking, BakeOutput, u8"Baking"); // Bake output directory
 FIXED_SETTING(u8string, Baking, ServerResources, u8"ServerResources"); // Server resources directory
@@ -358,6 +359,10 @@ FIXED_SETTING(string, Mapper, StartMap, ""); // Start map name
 VARIABLE_SETTING(int32_t, Mapper, StartHexX, -1); // Start hex X coordinate
 VARIABLE_SETTING(int32_t, Mapper, StartHexY, -1); // Start hex Y coordinate
 VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles collection is split
+VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resource to preview after opening the start map
+VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
+VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
+VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

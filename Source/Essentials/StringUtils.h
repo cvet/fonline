@@ -503,8 +503,11 @@ public:
     auto extract_file_name() -> u8strex&;
     auto get_file_extension() -> u8strex&;
     auto erase_file_extension() -> u8strex&;
+    auto change_file_name(string_view new_name) -> u8strex&;
     auto change_file_name(u8string_view new_name) -> u8strex&;
+    auto change_file_extension(string_view new_ext) -> u8strex&;
     auto change_file_extension(u8string_view new_ext) -> u8strex&;
+    auto combine_path(string_view path) -> u8strex&;
     auto combine_path(u8string_view path) -> u8strex&;
     auto normalize_path_slashes() -> u8strex&;
     auto normalize_line_endings() -> u8strex&;

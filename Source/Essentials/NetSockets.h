@@ -53,6 +53,7 @@ public:
     static auto ipv4_to_string(uint32_t addr_net_order) noexcept -> string;
     static auto host_to_net_u16(uint16_t value) noexcept -> uint16_t;
     static auto last_recv_was_would_block() noexcept -> bool;
+    static auto error_text(const std::error_code& error) noexcept -> string;
     static auto last_error_text() noexcept -> string;
 };
 

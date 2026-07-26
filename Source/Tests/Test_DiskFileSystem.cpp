@@ -39,7 +39,8 @@
 FO_BEGIN_NAMESPACE
 
 static_assert(std::same_as<decltype(fs_read_file_text(u8string_view {})), optional<u8string>>);
-static_assert(!std::is_invocable_r_v<bool, decltype(&fs_write_file_text), string_view, string_view>);
+using FsWriteAsciiText = bool (*)(u8string_view, string_view);
+static_assert(!std::is_invocable_r_v<bool, FsWriteAsciiText, string_view, string_view>);
 
 static auto MakeTempTestDir(string_view name) -> u8string
 {
@@ -199,7 +200,7 @@ TEST_CASE("DiskFileSystem")
             CHECK(*fs_hash_file(file_path.view()) == fs_hash_bytes(data));
         };
 
-        for (const auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {
+        for (auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {
             check_hash(size);
         }
 

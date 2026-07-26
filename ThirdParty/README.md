@@ -6,6 +6,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * AngelScript - [2.39.0 WIP 15.03.26](https://github.com/anjo76/angelscript)
 * Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.15.2](https://github.com/catchorg/Catch2)
+* Effekseer - [Effekseer-1.80.5](https://github.com/effekseer/Effekseer)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
 * Clipper2 - [Clipper2-2.0.1](https://github.com/AngusJohnson/Clipper2)
 * earcut.hpp - [earcut.hpp-3.2.3](https://github.com/mapbox/earcut.hpp)

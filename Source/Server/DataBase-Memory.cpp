@@ -58,7 +58,7 @@ protected:
 
         const auto& collection = _collections.at(collection_name);
 
-        const auto it = collection.find(id);
+        auto it = collection.find(id);
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
@@ -86,7 +86,7 @@ protected:
 
         auto& collection = _collections.at(collection_name);
 
-        const auto it_collection = collection.find(id);
+        auto it_collection = collection.find(id);
 
         if (it_collection == collection.end()) {
             throw DataBaseException("DbMemory Document not found for update", collection_name, id);
@@ -105,7 +105,7 @@ protected:
 
         auto& collection = _collections.at(collection_name);
 
-        const auto it = collection.find(id);
+        auto it = collection.find(id);
 
         if (it == collection.end()) {
             throw DataBaseException("DbMemory Document not found for delete", collection_name, id);
@@ -122,7 +122,7 @@ protected:
 
         constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-        const auto info_row = [](string_view key, string_view value) {
+        auto info_row = [](string_view key, string_view value) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGuiTextUnformatted(key);
@@ -153,7 +153,7 @@ protected:
             vector<DocEntry> docs;
         };
 
-        const string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
+        string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
 
         vector<CollEntry> model;
         model.reserve(_collections.size());

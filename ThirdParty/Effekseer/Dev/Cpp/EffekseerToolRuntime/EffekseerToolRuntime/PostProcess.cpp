@@ -1,0 +1,109 @@
+#include "PostProcess.h"
+
+namespace Effekseer
+{
+namespace ToolRuntime
+{
+
+PostProcess::PostProcess(Backend::GraphicsDeviceRef graphicsDevice, Backend::ShaderRef shader, size_t uniformBufferVSSize, size_t uniformBufferPSSize, PostProcessBlendType blendType)
+	: graphicsDevice_(graphicsDevice)
+	, shader_(shader)
+{
+	std::array<Vertex, 4> vdata;
+	vdata[0] = Vertex{-1.0f, 1.0f, 0.0f, 0.0f};
+	vdata[1] = Vertex{1.0f, 1.0f, 1.0f, 0.0f};
+	vdata[2] = Vertex{1.0f, -1.0f, 1.0f, 1.0f};
+	vdata[3] = Vertex{-1.0f, -1.0f, 0.0f, 1.0f};
+	vb_ = graphicsDevice->CreateVertexBuffer(sizeof(Vertex) * 4, vdata.data(), false);
+
+	std::array<int32_t, 6> idata;
+	idata[0] = 0;
+	idata[1] = 1;
+	idata[2] = 2;
+	idata[3] = 0;
+	idata[4] = 2;
+	idata[5] = 3;
+	ib_ = graphicsDevice->CreateIndexBuffer(6, idata.data(), Backend::IndexBufferStrideType::Stride4);
+
+	std::vector<Backend::VertexLayoutElement> vertexLayoutElements;
+	vertexLayoutElements.resize(2);
+	vertexLayoutElements[0].Format = Backend::VertexLayoutFormat::R32G32_FLOAT;
+	vertexLayoutElements[0].Name = "Input_Pos";
+	vertexLayoutElements[0].SemanticIndex = 0;
+	vertexLayoutElements[0].SemanticName = "POSITION";
+	vertexLayoutElements[1].Format = Backend::VertexLayoutFormat::R32G32_FLOAT;
+	vertexLayoutElements[1].Name = "Input_UV";
+	vertexLayoutElements[1].SemanticIndex = 0;
+	vertexLayoutElements[1].SemanticName = "TEXCOORD";
+
+	vertexLayout_ = graphicsDevice->CreateVertexLayout(vertexLayoutElements.data(), static_cast<int32_t>(vertexLayoutElements.size()));
+
+	Backend::PipelineStateParameter pipParam;
+
+	// OpenGL doesn't require it
+	pipParam.FrameBufferPtr = nullptr;
+	pipParam.VertexLayoutPtr = vertexLayout_;
+	pipParam.ShaderPtr = shader;
+	pipParam.IsDepthTestEnabled = false;
+	pipParam.IsDepthWriteEnabled = false;
+
+	if (blendType == PostProcessBlendType::None)
+	{
+		pipParam.IsBlendEnabled = false;
+	}
+	else if (blendType == PostProcessBlendType::Blend)
+	{
+		using namespace Effekseer::Backend;
+
+		pipParam.IsBlendEnabled = true;
+		pipParam.BlendSrcFunc = BlendFuncType::SrcAlpha;
+		pipParam.BlendDstFunc = BlendFuncType::OneMinusSrcAlpha;
+		pipParam.BlendSrcFuncAlpha = BlendFuncType::SrcAlpha;
+		pipParam.BlendDstFuncAlpha = BlendFuncType::OneMinusSrcAlpha;
+
+		pipParam.BlendEquationRGB = BlendEquationType::Add;
+		pipParam.BlendEquationAlpha = BlendEquationType::Add;
+	}
+	else if (blendType == PostProcessBlendType::Add)
+	{
+		using namespace Effekseer::Backend;
+
+		pipParam.IsBlendEnabled = true;
+		pipParam.BlendSrcFunc = BlendFuncType::SrcAlpha;
+		pipParam.BlendDstFunc = BlendFuncType::One;
+		pipParam.BlendSrcFuncAlpha = BlendFuncType::SrcAlpha;
+		pipParam.BlendDstFuncAlpha = BlendFuncType::One;
+
+		pipParam.BlendEquationRGB = BlendEquationType::Add;
+		pipParam.BlendEquationAlpha = BlendEquationType::Add;
+	}
+
+	pip_ = graphicsDevice->CreatePipelineState(pipParam);
+
+	if (uniformBufferVSSize > 0)
+	{
+		uniformBufferVS_ = graphicsDevice->CreateUniformBuffer(uniformBufferVSSize, nullptr);
+	}
+
+	if (uniformBufferPSSize > 0)
+	{
+		uniformBufferPS_ = graphicsDevice->CreateUniformBuffer(uniformBufferPSSize, nullptr);
+	}
+
+	drawParam_.VertexBufferPtr = vb_;
+	drawParam_.IndexBufferPtr = ib_;
+	drawParam_.PipelineStatePtr = pip_;
+	drawParam_.VertexUniformBufferPtrs[0] = uniformBufferVS_;
+	drawParam_.PixelUniformBufferPtrs[0] = uniformBufferPS_;
+	drawParam_.VertexStride = sizeof(Vertex);
+	drawParam_.PrimitiveCount = 2;
+	drawParam_.InstanceCount = 1;
+}
+
+void PostProcess::Render()
+{
+	graphicsDevice_->Draw(drawParam_);
+}
+
+} // namespace ToolRuntime
+} // namespace Effekseer

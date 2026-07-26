@@ -99,9 +99,9 @@ int main(int argc, char** argv) // Handled by SDL
     LogToFile(GetExeLogFileName(), false);
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
-    const bool run_result = RunEmbeddedOrLoadedClient(args);
+    bool run_result = RunEmbeddedOrLoadedClient(args);
 
     ExitApp(run_result);
 }
@@ -110,8 +110,8 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto requested_runtime = ResolveRequestedClientRuntime(args);
-    const bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+    auto requested_runtime = ResolveRequestedClientRuntime(args);
+    bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
 
     const string_view compatibility_check = requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled";
     const string_view explicit_path = requested_runtime.ExplicitPath ? "yes" : "no";
@@ -122,11 +122,11 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     // Try the bundled runtime DLL first on self-update platforms (the DLL is the authoritative
     // runtime); if it is absent or fails to load, RunClientFromLibrary falls back to the embedded
     // engine. ForceEmbeddedRuntime skips the implicit DLL load; an explicit --ClientLibPath still loads.
-    const bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
+    bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
 
     if (can_load_bundled_runtime) {
-        const auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime);
-        const auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
+        auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime);
+        auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
 
         if (loaded_result.has_value()) {
             return loaded_result.value();
@@ -143,8 +143,8 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
         return false;
     }
 
-    const auto embedded_runtime_result = RunEmbeddedClient(args);
-    const auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
+    auto embedded_runtime_result = RunEmbeddedClient(args);
+    auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
 
     FO_VERIFY_AND_THROW(embedded_result.has_value(), "Embedded client runtime pass did not return a result");
     return embedded_result.value();
@@ -181,7 +181,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 
     WriteLog("Client runtime host: loaded DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat, exports.Metadata.HostAbiVersion);
 
-    const auto unload_runtime = scope_exit([&]() noexcept {
+    auto unload_runtime = scope_exit([&]() noexcept {
         WriteLog("Client runtime host: unloading DLL {}, runtime {}, build {}, compatibility {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat);
         Platform::UnloadModule(runtime_module);
         WriteLog("Client runtime host: unloaded DLL {}", requested_runtime.Path);
@@ -229,7 +229,7 @@ static auto PromoteStagedReloadForRestart(u8string_view runtime_path) -> bool
     }
 
     if (IsInstalledClientLayout()) {
-        const auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
+        auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
 
         if (!bootstrap_path.has_value()) {
             WriteLog("Client runtime host: failed to resolve installed runtime bootstrap path for {}", runtime_path);
@@ -305,7 +305,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         WriteLog("Exit from game");
         WriteLog("Client runtime embedded: main loop exited");
 
-        const bool quit_success = GetApp()->GetRequestedQuitSuccess();
+        bool quit_success = GetApp()->GetRequestedQuitSuccess();
         CleanupClientApp();
 
         if (Data->ReloadRequested) {
@@ -398,10 +398,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    const auto result = Data->ResourceUpdater->GetResult();
+                    auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); reload that exact path.
-                    const auto staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    u8string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -502,9 +502,9 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     exports = {};
     exports.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
 
-    const bool query_ok = query_exports(FO_CLIENT_RUNTIME_HOST_ABI_VERSION, &exports);
-    const bool exports_valid = query_ok && IsValidClientRuntimeExports(exports);
-    const bool abi_supported = exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion);
+    bool query_ok = query_exports(FO_CLIENT_RUNTIME_HOST_ABI_VERSION, &exports);
+    bool exports_valid = query_ok && IsValidClientRuntimeExports(exports);
+    bool abi_supported = exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion);
 
     if (!query_ok || !exports_valid || !abi_supported) {
         const string_view query_status = query_ok ? "ok" : "failed";
@@ -584,14 +584,14 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
     requested_runtime.Path = ResolveBundledRuntimePath();
 
     for (size_t index = 1; index < args.size(); index++) {
-        auto arg = args.Get(index);
+        const u8string_view arg = args.Get(index);
 
         if (arg.empty()) {
             continue;
         }
 
         const bool has_next_arg = index + 1 < args.size();
-        auto next_arg = args.Get(index + 1);
+        const u8string_view next_arg = args.Get(index + 1);
 
         if (arg == u8"--ClientLibPath" && has_next_arg) {
             requested_runtime.ExplicitPath = true;

@@ -46,7 +46,7 @@ static auto PrepareInputBuffer(string_view text, uint32_t max_length) -> vector<
         throw ScriptException("Text arg length must be less or equal to maxLength arg");
     }
 
-    const auto initial_len = std::max(numeric_cast<size_t>(max_length), text.size());
+    auto initial_len = std::max(numeric_cast<size_t>(max_length), text.size());
     vector<char> buffer(initial_len + 1);
 
     if (!text.empty()) {
@@ -135,7 +135,7 @@ static void StoreColor4(ucolor& color, const float32_t (&values)[4])
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
 {
-    const auto imgui_context = ImGui::GetCurrentContext();
+    auto imgui_context = ImGui::GetCurrentContext();
 
     if (!imgui_context) {
         throw ScriptException("ImGui context is not available");
@@ -153,7 +153,7 @@ FO_SCRIPT_API bool Common_Game_IsImGuiAvailable(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    const auto imgui_context = ImGui::GetCurrentContext();
+    auto imgui_context = ImGui::GetCurrentContext();
     return imgui_context && imgui_context->WithinFrameScope;
 }
 
@@ -307,7 +307,7 @@ FO_SCRIPT_API void Common_ImGui_TextWrapped([[maybe_unused]] ptr<ScriptImGui> se
 ///@ ExportMethod
 FO_SCRIPT_API fsize32 Common_ImGui_CalcTextSize([[maybe_unused]] ptr<ScriptImGui> self, string_view text, bool hideTextAfterDoubleHash = false, float32_t wrapWidth = -1.0f)
 {
-    const auto source = string(text);
+    string source = string(text);
     return ToFSize32(ImGui::CalcTextSize(source.c_str(), nullptr, hideTextAfterDoubleHash, wrapWidth));
 }
 
@@ -673,7 +673,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ptr<ScriptImGui> self
     }
 
     int values[2] {valueX, valueY};
-    const auto changed = ImGui::InputInt2(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputInt2(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -691,7 +691,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ptr<ScriptImGui> self
     }
 
     int values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::InputInt3(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputInt3(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -710,7 +710,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ptr<ScriptImGui> self
     }
 
     int values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::InputInt4(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputInt4(string(label).c_str(), values, static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -750,7 +750,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     float32_t values[2] {valueX, valueY};
-    const auto changed = ImGui::DragFloat2(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragFloat2(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -768,7 +768,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     float32_t values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::DragFloat3(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragFloat3(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -787,7 +787,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     float32_t values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::DragFloat4(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragFloat4(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -807,7 +807,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ptr<ScriptImGui> self,
     }
 
     int values[2] {valueX, valueY};
-    const auto changed = ImGui::DragInt2(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragInt2(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -825,7 +825,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ptr<ScriptImGui> self,
     }
 
     int values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::DragInt3(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragInt3(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -844,7 +844,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ptr<ScriptImGui> self,
     }
 
     int values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::DragInt4(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::DragInt4(string(label).c_str(), values, speed, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -884,7 +884,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ptr<ScriptImGui> s
     }
 
     float32_t values[2] {valueX, valueY};
-    const auto changed = ImGui::SliderFloat2(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderFloat2(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -902,7 +902,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ptr<ScriptImGui> s
     }
 
     float32_t values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::SliderFloat3(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderFloat3(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -921,7 +921,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ptr<ScriptImGui> s
     }
 
     float32_t values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::SliderFloat4(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderFloat4(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -941,7 +941,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     int values[2] {valueX, valueY};
-    const auto changed = ImGui::SliderInt2(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderInt2(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -959,7 +959,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     int values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::SliderInt3(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderInt3(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -978,7 +978,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ptr<ScriptImGui> sel
     }
 
     int values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::SliderInt4(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
+    bool changed = ImGui::SliderInt4(string(label).c_str(), values, minValue, maxValue, "%d", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -1381,7 +1381,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginPopupModal([[maybe_unused]] ptr<ScriptImGui
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_BeginPopupContextItem([[maybe_unused]] ptr<ScriptImGui> self, string_view strId = "", ImGui_PopupFlags popupFlags = ImGui_PopupFlags::None)
 {
-    const auto str_id = string(strId);
+    string str_id = string(strId);
     const char* id_ptr = str_id.empty() ? nullptr : str_id.c_str();
     return ImGui::BeginPopupContextItem(id_ptr, static_cast<ImGuiPopupFlags>(popupFlags));
 }
@@ -1389,7 +1389,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginPopupContextItem([[maybe_unused]] ptr<Scrip
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_BeginPopupContextWindow([[maybe_unused]] ptr<ScriptImGui> self, string_view strId = "", ImGui_PopupFlags popupFlags = ImGui_PopupFlags::None)
 {
-    const auto str_id = string(strId);
+    string str_id = string(strId);
     const char* id_ptr = str_id.empty() ? nullptr : str_id.c_str();
     return ImGui::BeginPopupContextWindow(id_ptr, static_cast<ImGuiPopupFlags>(popupFlags));
 }
@@ -1397,7 +1397,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginPopupContextWindow([[maybe_unused]] ptr<Scr
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_BeginPopupContextVoid([[maybe_unused]] ptr<ScriptImGui> self, string_view strId = "", ImGui_PopupFlags popupFlags = ImGui_PopupFlags::MouseButtonRight)
 {
-    const auto str_id = string(strId);
+    string str_id = string(strId);
     const char* id_ptr = str_id.empty() ? nullptr : str_id.c_str();
     return ImGui::BeginPopupContextVoid(id_ptr, static_cast<ImGuiPopupFlags>(popupFlags));
 }
@@ -1427,7 +1427,7 @@ FO_SCRIPT_API bool Common_ImGui_IsPopupOpen([[maybe_unused]] ptr<ScriptImGui> se
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_OpenPopupOnItemClick([[maybe_unused]] ptr<ScriptImGui> self, string_view strId = "", ImGui_PopupFlags popupFlags = ImGui_PopupFlags::MouseButtonRight)
 {
-    const auto str_id = string(strId);
+    string str_id = string(strId);
     const char* id_ptr = str_id.empty() ? nullptr : str_id.c_str();
     ImGui::OpenPopupOnItemClick(id_ptr, static_cast<ImGuiPopupFlags>(popupFlags));
 }
@@ -1677,7 +1677,7 @@ FO_SCRIPT_API void Common_ImGui_LogToTTY([[maybe_unused]] ptr<ScriptImGui> self,
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_LogToFile([[maybe_unused]] ptr<ScriptImGui> self, int32_t autoOpenDepth = -1, string_view filename = "")
 {
-    const auto filename_str = string(filename);
+    string filename_str = string(filename);
     ImGui::LogToFile(autoOpenDepth, filename_str.empty() ? nullptr : filename_str.c_str());
 }
 
@@ -1722,7 +1722,7 @@ FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ptr<ScriptImGui> self, st
         throw ScriptException("Combo label arg is empty");
     }
 
-    const auto items = string(itemsSeparatedByZeros);
+    string items = string(itemsSeparatedByZeros);
     return ImGui::Combo(string(label).c_str(), &currentItem, items.c_str(), popupMaxHeightInItems);
 }
 
@@ -1757,7 +1757,7 @@ FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ptr<ScriptImGui> se
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ptr<ScriptImGui> self, float32_t fraction, isize32 size, string_view overlay = "")
 {
-    const auto overlay_text = string(overlay);
+    string overlay_text = string(overlay);
     const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
     ImGui::ProgressBar(fraction, ToImVec2(size), overlay_str);
 }
@@ -1810,7 +1810,7 @@ FO_SCRIPT_API void Common_ImGui_PlotLines([[maybe_unused]] ptr<ScriptImGui> self
         throw ScriptException("Plot label arg is empty");
     }
 
-    const auto overlay_text = string(overlay);
+    string overlay_text = string(overlay);
     const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
     ImGui::PlotLines(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
 }
@@ -1822,7 +1822,7 @@ FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ptr<ScriptImGui> 
         throw ScriptException("Plot label arg is empty");
     }
 
-    const auto overlay_text = string(overlay);
+    string overlay_text = string(overlay);
     const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
     ImGui::PlotHistogram(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
 }
@@ -1882,7 +1882,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit3([[maybe_unused]] ptr<ScriptImGui> sel
 
     float32_t values[3];
     ColorToFloat3(color, values);
-    const auto changed = ImGui::ColorEdit3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
+    bool changed = ImGui::ColorEdit3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
     if (changed) {
         StoreColor3(color, values);
@@ -1900,7 +1900,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit4([[maybe_unused]] ptr<ScriptImGui> sel
 
     float32_t values[4];
     ColorToFloat4(color, values);
-    const auto changed = ImGui::ColorEdit4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
+    bool changed = ImGui::ColorEdit4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
     if (changed) {
         StoreColor4(color, values);
@@ -1918,7 +1918,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker3([[maybe_unused]] ptr<ScriptImGui> s
 
     float32_t values[3];
     ColorToFloat3(color, values);
-    const auto changed = ImGui::ColorPicker3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
+    bool changed = ImGui::ColorPicker3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
     if (changed) {
         StoreColor3(color, values);
@@ -1936,7 +1936,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker4([[maybe_unused]] ptr<ScriptImGui> s
 
     float32_t values[4];
     ColorToFloat4(color, values);
-    const auto changed = ImGui::ColorPicker4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
+    bool changed = ImGui::ColorPicker4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
     if (changed) {
         StoreColor4(color, values);
@@ -1981,7 +1981,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ptr<ScriptImGui> se
     }
 
     float32_t values[2] {valueX, valueY};
-    const auto changed = ImGui::InputFloat2(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputFloat2(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -1999,7 +1999,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ptr<ScriptImGui> se
     }
 
     float32_t values[3] {valueX, valueY, valueZ};
-    const auto changed = ImGui::InputFloat3(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputFloat3(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -2018,7 +2018,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ptr<ScriptImGui> se
     }
 
     float32_t values[4] {valueX, valueY, valueZ, valueW};
-    const auto changed = ImGui::InputFloat4(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputFloat4(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         valueX = values[0];
@@ -2041,7 +2041,7 @@ FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ptr<ScriptImGui> self
     }
 
     auto buffer = PrepareInputBuffer(value, maxLength);
-    const auto changed = ImGui::InputText(string(label).c_str(), buffer.data(), buffer.size(), static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputText(string(label).c_str(), buffer.data(), buffer.size(), static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         value = buffer.data();
@@ -2061,7 +2061,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ptr<ScriptIm
     }
 
     auto buffer = PrepareInputBuffer(value, maxLength);
-    const auto changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         value = buffer.data();
@@ -2080,10 +2080,10 @@ FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ptr<ScriptImG
         throw ScriptException("Max length arg must be greater than zero");
     }
 
-    const auto label_text = string(label);
-    const auto hint_text = string(hint);
+    string label_text = string(label);
+    string hint_text = string(hint);
     auto buffer = PrepareInputBuffer(value, maxLength);
-    const auto changed = ImGui::InputTextWithHint(label_text.c_str(), hint_text.c_str(), buffer.data(), buffer.size(), static_cast<ImGuiInputTextFlags>(flags));
+    bool changed = ImGui::InputTextWithHint(label_text.c_str(), hint_text.c_str(), buffer.data(), buffer.size(), static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         value = buffer.data();

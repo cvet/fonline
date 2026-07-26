@@ -116,7 +116,8 @@ private:
     nanotime _pingCallTime {};
     size_t _msgCount {};
 #if FO_DEBUG
-    vector<NetMessage> _msgHistory {};
+    static constexpr size_t NET_MESSAGE_HISTORY_LIMIT = 1024;
+    deque<NetMessage> _msgHistory {};
 #endif
 };
 

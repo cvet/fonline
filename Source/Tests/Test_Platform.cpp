@@ -95,7 +95,7 @@ TEST_CASE("Platform")
 
     SECTION("CurrentProcessIdStringMatchesRuntime")
     {
-        const auto pid_str = Platform::GetCurrentProcessIdStr();
+        string pid_str = Platform::GetCurrentProcessIdStr();
 
         CHECK_FALSE(pid_str.empty());
         CHECK(pid_str.find_first_not_of("0123456789") == std::string::npos);
@@ -211,7 +211,7 @@ TEST_CASE("Platform")
 
     SECTION("CpuUsageSnapshotIsWellFormed")
     {
-        const Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
+        Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
         REQUIRE_FALSE(snapshot.Cores.empty());
@@ -228,12 +228,12 @@ TEST_CASE("Platform")
 
     SECTION("GetUserDataBaseResolvesFromEnvironment")
     {
-        const auto save_env = [](const char* name) -> optional<string> {
+        auto save_env = [](const char* name) -> optional<string> {
             const char* value = std::getenv(name);
             return value != nullptr ? optional<string> {string(value)} : optional<string> {};
         };
 
-        const auto set_env = [](const char* name, const char* value) {
+        auto set_env = [](const char* name, const char* value) {
 #if FO_WINDOWS
             _putenv_s(name, value);
 #else
@@ -246,7 +246,7 @@ TEST_CASE("Platform")
 #endif
         };
 
-        const auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
+        auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
 
         const optional<string> saved_generic = save_env("FO_PLATFORM_UTF8_ENV_TEST");
         set_env("FO_PLATFORM_UTF8_ENV_TEST", "strict-value");
@@ -266,15 +266,15 @@ TEST_CASE("Platform")
         const auto saved_local = save_env("LOCALAPPDATA");
         const auto saved_roaming = save_env("APPDATA");
 
-        const auto local_dir = strex("C:").combine_path("AppData/Local").str();
-        const auto roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
+        string local_dir = strex("C:").combine_path("AppData/Local").str();
+        string roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
 
         set_env("LOCALAPPDATA", local_dir.c_str());
-        const auto from_local = Platform::GetUserDataBase();
+        string from_local = Platform::GetUserDataBase();
 
         set_env("LOCALAPPDATA", "");
         set_env("APPDATA", roaming_dir.c_str());
-        const auto from_roaming = Platform::GetUserDataBase();
+        string from_roaming = Platform::GetUserDataBase();
 
         restore_env("LOCALAPPDATA", saved_local);
         restore_env("APPDATA", saved_roaming);

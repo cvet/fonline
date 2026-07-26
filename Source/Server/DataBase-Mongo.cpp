@@ -163,7 +163,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto it = _collections.find(collection_name.as_str());
+        auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             bson_error_t error;
@@ -188,7 +188,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type = GetCollectionKeyType(collection_name);
 
         ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
@@ -411,7 +411,7 @@ protected:
         bson_t reply;
         bson_error_t error;
         auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
-        const auto ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
+        bool ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
 
         if (ok) {
             bson_destroy(&reply);
@@ -428,7 +428,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto it = _collections.find(collection_name.as_str());
+        auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             throw DataBaseException("DbMongo Collection not found", collection_name);

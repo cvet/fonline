@@ -225,7 +225,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         bool auto_find_config = false;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = args.Get(i);
+            const u8string_view arg = args.Get(i);
 
             if (arg.empty()) {
                 continue;
@@ -234,9 +234,13 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             const u8string arg_value = u8strex(arg).trim();
 
             if (arg_value == u8"-ApplyConfig" || arg_value == u8"--ApplyConfig") {
-                auto next_arg = args.Get(i + 1);
+                if (i + 1 >= args.size()) {
+                    throw AppInitException("Config name not provided");
+                }
 
-                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
+                const u8string_view next_arg = args.Get(i + 1);
+
+                if (CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
@@ -278,7 +282,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         vector<string> sub_configs_to_apply;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = args.Get(i);
+            const u8string_view arg = args.Get(i);
 
             if (arg.empty()) {
                 continue;
@@ -287,9 +291,13 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             const u8string arg_value = u8strex(arg).trim();
 
             if (arg_value == u8"-ApplySubConfig" || arg_value == u8"--ApplySubConfig") {
-                auto next_arg = args.Get(i + 1);
+                if (i + 1 >= args.size()) {
+                    throw AppInitException("Sub config name not provided");
+                }
 
-                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
+                const u8string_view next_arg = args.Get(i + 1);
+
+                if (CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 
@@ -326,7 +334,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             const u8string cache_text = cache.GetText(LOCAL_CONFIG_NAME);
             const u8string config_name = LOCAL_CONFIG_NAME;
-            auto config = ConfigFile(config_name.view(), cache_text);
+            auto config = ConfigFile(cache_text);
             settings.ApplyConfigFile(config, u8string_view {});
         }
     }
@@ -346,7 +354,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     if (root.empty()) {
         // No explicit path: switch to the per-user writable layout only when the installer marker is
         // present next to the exe; otherwise stay portable.
-        const auto exe_path = Platform::GetExePath();
+        auto exe_path = Platform::GetExePath();
 
         const u8string marker_path = exe_path.has_value() ? fs_path_to_u8string(std::filesystem::path {fs_make_path(exe_path->view())}.parent_path() / std::filesystem::path {fs_make_path(INSTALLED_MARKER_NAME)}) : u8string {};
 

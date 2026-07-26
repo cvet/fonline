@@ -19,7 +19,7 @@ Source/Tests/Test_FileSystem.cpp	1	c0b2da7d595f6fffff610594b5bd90a57fe8c1969c7f8
 Source/Tests/Test_Geometry.cpp	3	1bec8c09644998d0ec1b39b613399e3455bb61facafa46546f6453f2aeddff86	numeric multihex direction and run-length test values
 Source/Tests/Test_HashedString.cpp	1	a6e0313eb5262e8481533a4f2d6304c6b1ab9e580c1478c3c3418d75e5718adf	compile-time gate proving numeric uint8_t spans cannot enter text hashing APIs
 Source/Tests/Test_ImageBaker.cpp	33	2d38d4e59e23cb40ddf037b0c2f3f030a7f4b45698debd995a01aca581b32f5d	numeric decoded RGBA channels palette indices and expected pixel values
-Source/Tests/Test_ModelAnimation.cpp	3	3b5ffddd52496640e0a7d1970c8e3099d4f08e7ebf2d3c7dda70da7d43eef865	numeric canonical-joint presence test masks
+Source/Tests/Test_ModelAnimation.cpp	3	49dd2bcb7fa52047f29002189d6e8df3b04892f5ab14f163497fa46ba7015888	numeric canonical-joint presence test masks
 Source/Tests/Test_ModelAnimationConverter.cpp	10	2343eb8942df1f70fdbf41f55bc3dd029cbd5531099b7f96facb1e27a08a7efa	numeric animation joint-presence and track-selection test masks
 Source/Tests/Test_ModelBaker.cpp	1	f064b572d0b1b567759327f7fc5355b3b069879c4eb3a4a43113d7236562e526	numeric mesh-vertex visitation flags
 Source/Tests/Test_NetBuffer.cpp	2	c1f6f07975878c78c0581a5a4e3fa7aa2e34c56a9ca7012af645773f6e6a5153	compile-time gates proving numeric uint8_t spans cannot enter raw-byte network APIs
@@ -29,5 +29,6 @@ Source/Tests/Test_TextureAtlas.cpp	1	3c035663115a0038b5a4e3749d41b0474bbe94d9445
 Source/Tools/ImageBaker.cpp	18	c02cbb03c19dcf47108208f0f3a2c3bb3a6cea38dd09939f3318c25c6253a5d6	numeric decoded RGBA channels palette indices and animation color values
 Source/Tools/ImageBaker.h	1	7bc8fe94d7e81d386df56c14dec96fe1bb567b80788c9bed855dc19a33bd9151	numeric decoded RGBA channel output
 Source/Tools/ModelAnimationConverter.cpp	1	0cb26cb1f3a34d34ad1a792f68bd44fe4e6770cfc972f0b7980f6b823ddf2537	numeric canonical-joint presence mask
-Source/Tools/SpriteMeshing.cpp	31	aa8f22e31ab201af5cb92dd21c9ca8d91830c029ad3f4895f9a6a7dea98f81c1	numeric RGBA channels binary masks visitation flags and contour directions
+Source/Tools/EffekseerCompiler.cpp	1	d4e7f899dbd48697a236226344a94ef1d0dc47b2d6f68f58889960530a7bfd1e	numeric HSV/RGB color channels
+Source/Tools/SpriteMeshing.cpp	31	bf1be4a1f480e41f6cd9fd8d55201dd1d3b2da463277caff08b9955fc266c33c	numeric RGBA channels binary masks visitation flags and contour directions
 Source/Tools/SpriteMeshing.h	1	14426389f6e4cebadc7bfd64324f6aed35e8abe4aba4ead5dc87d9f70fd7cd27	numeric decoded RGBA channel input

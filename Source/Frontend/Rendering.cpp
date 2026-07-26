@@ -77,16 +77,17 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     const vector<byte> fofx_data = loader(name);
     const u8string fofx_content = utf8_from_byte_span(fofx_data);
     const u8string fofx_name = name;
-    const auto fofx = ConfigFile(fofx_name.view(), fofx_content, ConfigFileOption::CollectContent);
+    const auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
-    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
+    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
     FO_VERIFY_AND_THROW(passes >= 1, "FOFX effect must declare at least one render pass", name, passes);
     FO_VERIFY_AND_THROW(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES), "FOFX effect declares more render passes than the renderer supports", name, passes, EFFECT_MAX_PASSES);
 
 #if FO_ENABLE_3D
-    const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
+    int32_t shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
     FO_VERIFY_AND_THROW(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)), "FOFX shadow pass index is outside the supported pass range", name, shadow_pass, EFFECT_MAX_PASSES);
+
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
@@ -193,7 +194,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     const auto depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", u8"Always");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
-        const string pass_str = strex("_Pass{}", pass + 1);
+        string pass_str = strex("_Pass{}", pass + 1);
 
         const string blend_func_value {utf8_as_char_view(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default))};
         auto blend_func = strvex(blend_func_value).split(' ');
@@ -208,7 +209,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         const vector<byte> pass_info_data = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
-        const auto pass_info = ConfigFile(fofx_name.view(), pass_info_content);
+        const auto pass_info = ConfigFile(std::move(pass_info_content));
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);

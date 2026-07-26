@@ -66,10 +66,10 @@ public:
             ReportAndExit("Model animation allocation size overflow");
         }
 
-        const size_t allocation_size = size + sizeof(ModelAnimationAllocationHeader) + alignment - 1;
+        size_t allocation_size = size + sizeof(ModelAnimationAllocationHeader) + alignment - 1;
         constexpr SafeAllocator<uint8_t> allocator;
-        const ptr<uint8_t> allocation {allocator.allocate(allocation_size)};
-        const uintptr_t aligned_address = align_up(allocation.as_uintptr() + sizeof(ModelAnimationAllocationHeader), static_cast<uintptr_t>(alignment));
+        ptr<uint8_t> allocation {allocator.allocate(allocation_size)};
+        uintptr_t aligned_address = align_up(allocation.as_uintptr() + sizeof(ModelAnimationAllocationHeader), static_cast<uintptr_t>(alignment));
         ptr<ModelAnimationAllocationHeader> header {reinterpret_cast<ModelAnimationAllocationHeader*>(aligned_address - sizeof(ModelAnimationAllocationHeader))};
         header->AllocationAddress = allocation.as_uintptr();
         header->AllocationSize = allocation_size;
@@ -81,7 +81,7 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         if (block != nullptr) {
-            const ptr<ModelAnimationAllocationHeader> header {reinterpret_cast<ModelAnimationAllocationHeader*>(reinterpret_cast<uintptr_t>(block) - sizeof(ModelAnimationAllocationHeader))};
+            ptr<ModelAnimationAllocationHeader> header {reinterpret_cast<ModelAnimationAllocationHeader*>(reinterpret_cast<uintptr_t>(block) - sizeof(ModelAnimationAllocationHeader))};
             constexpr SafeAllocator<uint8_t> allocator;
             allocator.deallocate(reinterpret_cast<uint8_t*>(header->AllocationAddress), header->AllocationSize);
         }
@@ -168,7 +168,7 @@ auto ReadModelAnimationArchive(const_span<byte> data, const ModelAnimationArchiv
         throw ModelAnimationArchiveException("Unsupported LF model animation archive schema (expected vs got)", context, MODEL_ANIMATION_ARCHIVE_SCHEMA_VERSION, archive.SchemaVersion);
     }
 
-    const uint16_t raw_kind = ReadModelAnimationArchiveLittleEndian<uint16_t>(data, read_pos, "payload kind", context);
+    uint16_t raw_kind = ReadModelAnimationArchiveLittleEndian<uint16_t>(data, read_pos, "payload kind", context);
     archive.Metadata.Kind = static_cast<ModelAnimationArchiveKind>(raw_kind);
 
     if (!IsModelAnimationArchiveKindValid(archive.Metadata.Kind)) {
@@ -223,7 +223,7 @@ auto ReadModelAnimationArchive(const_span<byte> data, const ModelAnimationArchiv
         throw ModelAnimationArchiveException("LF model animation archive object name mismatch (expected vs got)", context, expected_metadata.ObjectName, archive.Metadata.ObjectName);
     }
 
-    const uint64_t payload_length = ReadModelAnimationArchiveLittleEndian<uint64_t>(data, read_pos, "payload length", context);
+    uint64_t payload_length = ReadModelAnimationArchiveLittleEndian<uint64_t>(data, read_pos, "payload length", context);
     archive.PayloadHash = ReadModelAnimationArchiveLittleEndian<uint64_t>(data, read_pos, "payload hash", context);
 
     if (payload_length == 0) {
@@ -233,8 +233,8 @@ auto ReadModelAnimationArchive(const_span<byte> data, const ModelAnimationArchiv
         throw ModelAnimationArchiveException("LF model animation archive payload is too large for this platform", context, payload_length);
     }
 
-    const size_t expected_payload_size = static_cast<size_t>(payload_length);
-    const size_t remaining_size = data.size() - read_pos;
+    size_t expected_payload_size = static_cast<size_t>(payload_length);
+    size_t remaining_size = data.size() - read_pos;
 
     if (remaining_size < expected_payload_size) {
         throw ModelAnimationArchiveException("Truncated LF model animation archive payload (declared vs remaining)", context, expected_payload_size, remaining_size);
@@ -316,7 +316,7 @@ static auto GetModelAnimationArchiveWireSize(const ModelAnimationArchiveMetadata
     FO_STACK_TRACE_ENTRY();
 
     constexpr size_t fixed_size = MODEL_ANIMATION_ARCHIVE_MAGIC.size() + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t) + 3 * sizeof(uint64_t) + 3 * sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint64_t);
-    const array<size_t, 4> variable_sizes {MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION.size(), metadata.SourceAsset.size(), metadata.ObjectName.size(), payload_size};
+    array<size_t, 4> variable_sizes {MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION.size(), metadata.SourceAsset.size(), metadata.ObjectName.size(), payload_size};
     size_t wire_size = fixed_size;
 
     for (size_t variable_size : variable_sizes) {
@@ -369,7 +369,7 @@ static auto ReadModelAnimationArchiveBytes(const_span<byte> data, size_t& read_p
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(read_pos <= data.size(), "LF model animation archive reader position is outside the input", read_pos, data.size());
-    const size_t remaining_size = data.size() - read_pos;
+    size_t remaining_size = data.size() - read_pos;
 
     if (size > remaining_size) {
         throw ModelAnimationArchiveException("Truncated LF model animation archive while reading a field (need vs remain)", context, field_name, size, remaining_size);
@@ -487,8 +487,8 @@ auto ReadModelAnimationJointRemapPayload(const_span<byte> payload, string_view c
         throw ModelAnimationRigDataException("Invalid animation joint-remap magic", context);
     }
 
-    const uint16_t schema = ReadModelAnimationRigDataLittleEndian<uint16_t>(payload, read_pos, "schema", context);
-    const uint16_t reserved = ReadModelAnimationRigDataLittleEndian<uint16_t>(payload, read_pos, "reserved flags", context);
+    uint16_t schema = ReadModelAnimationRigDataLittleEndian<uint16_t>(payload, read_pos, "schema", context);
+    uint16_t reserved = ReadModelAnimationRigDataLittleEndian<uint16_t>(payload, read_pos, "reserved flags", context);
 
     if (schema != MODEL_ANIMATION_JOINT_REMAP_SCHEMA_VERSION || reserved != 0) {
         throw ModelAnimationRigDataException("Unsupported animation joint-remap header (schema, reserved)", context, schema, reserved);
@@ -497,8 +497,8 @@ auto ReadModelAnimationJointRemapPayload(const_span<byte> payload, string_view c
     ModelAnimationJointRemap result;
     result.Duration = std::bit_cast<float32_t>(ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "duration", context));
     result.CanonicalJointCount = ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "canonical joint count", context);
-    const uint32_t source_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "source joint count", context);
-    const uint32_t nearest_time_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "nearest time count", context);
+    uint32_t source_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "source joint count", context);
+    uint32_t nearest_time_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "nearest time count", context);
 
     if (result.CanonicalJointCount == 0 || result.CanonicalJointCount > MODEL_ANIMATION_RIG_MAX_JOINTS) {
         throw ModelAnimationRigDataException("Invalid canonical joint count", result.CanonicalJointCount, context);
@@ -510,7 +510,7 @@ auto ReadModelAnimationJointRemapPayload(const_span<byte> payload, string_view c
         throw ModelAnimationRigDataException("Nearest-sampling timeline exceeds the maximum time points", context, nearest_time_count, std::numeric_limits<uint16_t>::max());
     }
 
-    const size_t expected_body_size = numeric_cast<size_t>(source_count) * sizeof(uint32_t) + numeric_cast<size_t>(result.CanonicalJointCount) + numeric_cast<size_t>(nearest_time_count) * sizeof(uint32_t);
+    size_t expected_body_size = numeric_cast<size_t>(source_count) * sizeof(uint32_t) + numeric_cast<size_t>(result.CanonicalJointCount) + numeric_cast<size_t>(nearest_time_count) * sizeof(uint32_t);
 
     if (read_pos > payload.size() || expected_body_size != payload.size() - read_pos) {
         throw ModelAnimationRigDataException("Invalid animation joint-remap payload size (expected vs got body bytes)", context, expected_body_size, read_pos <= payload.size() ? payload.size() - read_pos : 0);
@@ -589,7 +589,7 @@ void ValidateModelAnimationJointRemap(const ModelAnimationJointRemap& remap, str
         }
 
         for (size_t i = 0; i < remap.NearestSampleTimes.size(); i++) {
-            const float32_t time = remap.NearestSampleTimes[i];
+            float32_t time = remap.NearestSampleTimes[i];
 
             if (!std::isfinite(time) || time < 0.0f || time > remap.Duration || (i != 0 && time <= remap.NearestSampleTimes[i - 1])) {
                 throw ModelAnimationRigDataException("Invalid nearest-sampling time at index", time, i, context);
@@ -618,7 +618,7 @@ auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view co
         AppendModelAnimationRigArchiveData(result, rig.BaseJointRemap, strex("{} base joint remap", context));
 
         for (const ModelAnimationRigClipData& clip : rig.Clips) {
-            const string clip_context = strex("{} clip '{}#{}'", context, clip.Animation.Metadata.SourceAsset, clip.Animation.Metadata.ObjectName);
+            string clip_context = strex("{} clip '{}#{}'", context, clip.Animation.Metadata.SourceAsset, clip.Animation.Metadata.ObjectName);
             AppendModelAnimationRigArchiveData(result, clip.Animation, clip_context);
             AppendModelAnimationRigArchiveData(result, clip.JointRemap, clip_context);
         }
@@ -648,8 +648,8 @@ auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> Mo
         throw ModelAnimationRigDataException("Invalid animation rig-data magic; expected 'LFOZZRIG'", context);
     }
 
-    const uint16_t schema = ReadModelAnimationRigDataLittleEndian<uint16_t>(data, read_pos, "schema", context);
-    const uint16_t flags = ReadModelAnimationRigDataLittleEndian<uint16_t>(data, read_pos, "flags", context);
+    uint16_t schema = ReadModelAnimationRigDataLittleEndian<uint16_t>(data, read_pos, "schema", context);
+    uint16_t flags = ReadModelAnimationRigDataLittleEndian<uint16_t>(data, read_pos, "flags", context);
 
     if (schema != MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION) {
         throw ModelAnimationRigDataException("Unsupported animation rig-data schema (expected vs got)", context, MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION, schema);
@@ -661,8 +661,8 @@ auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> Mo
     ModelAnimationRigData result;
     result.RigSignature = ReadModelAnimationRigDataLittleEndian<uint64_t>(data, read_pos, "rig signature", context);
     result.CacheSignature = ReadModelAnimationRigDataLittleEndian<uint64_t>(data, read_pos, "cache signature", context);
-    const uint32_t clip_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "clip count", context);
-    const uint32_t binding_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding count", context);
+    uint32_t clip_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "clip count", context);
+    uint32_t binding_count = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding count", context);
 
     if (clip_count > MODEL_ANIMATION_RIG_MAX_CLIPS) {
         throw ModelAnimationRigDataException("Animation rig data exceeds the maximum clip count", context, clip_count, MODEL_ANIMATION_RIG_MAX_CLIPS);
@@ -676,9 +676,9 @@ auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> Mo
         result.BaseJointRemap = ReadModelAnimationRigArchiveData(data, read_pos, ModelAnimationArchiveKind::JointRemap, result.RigSignature, result.CacheSignature, strex("{} base joint remap", context));
 
         FO_STRONG_ASSERT(read_pos <= data.size(), "Animation rig-data reader position is outside the input", read_pos, data.size(), context);
-        const size_t remaining_size = data.size() - read_pos;
-        const size_t minimum_clip_bytes = numeric_cast<size_t>(clip_count) * MODEL_ANIMATION_RIG_MIN_ARCHIVE_MANIFEST_SIZE * 2;
-        const size_t minimum_binding_bytes = numeric_cast<size_t>(binding_count) * MODEL_ANIMATION_RIG_BINDING_WIRE_SIZE;
+        size_t remaining_size = data.size() - read_pos;
+        size_t minimum_clip_bytes = numeric_cast<size_t>(clip_count) * MODEL_ANIMATION_RIG_MIN_ARCHIVE_MANIFEST_SIZE * 2;
+        size_t minimum_binding_bytes = numeric_cast<size_t>(binding_count) * MODEL_ANIMATION_RIG_BINDING_WIRE_SIZE;
 
         if (minimum_clip_bytes > remaining_size || minimum_binding_bytes > remaining_size - minimum_clip_bytes) {
             throw ModelAnimationRigDataException("Truncated animation rig data (required vs remaining trailing bytes)", context, clip_count, binding_count, minimum_clip_bytes + minimum_binding_bytes, remaining_size);
@@ -703,7 +703,7 @@ auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> Mo
         binding.StateAnim = std::bit_cast<int32_t>(ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding state animation", context));
         binding.ActionAnim = std::bit_cast<int32_t>(ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding action animation", context));
         binding.ClipIndex = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding clip index", context);
-        const uint32_t binding_flags = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding flags", context);
+        uint32_t binding_flags = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, read_pos, "binding flags", context);
 
         if ((binding_flags & ~MODEL_ANIMATION_RIG_BINDING_SUPPORTED_FLAGS) != 0) {
             throw ModelAnimationRigDataException("Animation rig binding contains unsupported flags", i, context, binding_flags);
@@ -746,7 +746,7 @@ static void ValidateModelAnimationRigData(const ModelAnimationRigData& rig, stri
 
     for (size_t i = 0; i < rig.Clips.size(); i++) {
         const ModelAnimationRigClipData& clip = rig.Clips[i];
-        const string clip_context = strex("{} clip {}", context, i);
+        string clip_context = strex("{} clip {}", context, i);
         ValidateModelAnimationRigArchiveData(clip.Animation, ModelAnimationArchiveKind::Animation, rig.RigSignature, rig.CacheSignature, clip_context);
         ValidateModelAnimationRigArchiveData(clip.JointRemap, ModelAnimationArchiveKind::JointRemap, rig.RigSignature, rig.CacheSignature, clip_context);
 
@@ -754,13 +754,13 @@ static void ValidateModelAnimationRigData(const ModelAnimationRigData& rig, stri
             throw ModelAnimationRigDataException("Animation rig clip has an animation/remap source mismatch", i, context, clip.Animation.Metadata.SourceAsset, clip.JointRemap.Metadata.SourceAsset);
         }
 
-        const string expected_remap_name = strex("{}:JointRemap", clip.Animation.Metadata.ObjectName);
+        string expected_remap_name = strex("{}:JointRemap", clip.Animation.Metadata.ObjectName);
 
         if (clip.JointRemap.Metadata.ObjectName != expected_remap_name) {
             throw ModelAnimationRigDataException("Animation rig clip has an unexpected remap object name (actual vs expected)", i, context, clip.JointRemap.Metadata.ObjectName, expected_remap_name);
         }
 
-        const pair<string_view, string_view> identity {clip.Animation.Metadata.SourceAsset, clip.Animation.Metadata.ObjectName};
+        pair<string_view, string_view> identity {clip.Animation.Metadata.SourceAsset, clip.Animation.Metadata.ObjectName};
 
         if (has_previous_clip && !(previous_clip_identity < identity)) {
             throw ModelAnimationRigDataException("Animation rig clips are duplicate or not strictly sorted", context, identity.first, identity.second);
@@ -776,7 +776,7 @@ static void ValidateModelAnimationRigData(const ModelAnimationRigData& rig, stri
 
     for (size_t i = 0; i < rig.Bindings.size(); i++) {
         const ModelAnimationRigBinding& binding = rig.Bindings[i];
-        const pair<int32_t, int32_t> identity {binding.StateAnim, binding.ActionAnim};
+        pair<int32_t, int32_t> identity {binding.StateAnim, binding.ActionAnim};
 
         if (has_previous_binding && !(previous_binding < identity)) {
             throw ModelAnimationRigDataException("Animation rig bindings are duplicate or not strictly sorted", context, binding.StateAnim, binding.ActionAnim);
@@ -856,7 +856,7 @@ static auto ReadModelAnimationRigArchiveData(const_span<byte> data, size_t& read
     expected_metadata.CacheSignature = cache_signature;
     expected_metadata.SourceAsset = ReadModelAnimationRigDataString(data, read_pos, "archive source asset", context);
     expected_metadata.ObjectName = ReadModelAnimationRigDataString(data, read_pos, "archive object name", context);
-    const uint64_t archive_size = ReadModelAnimationRigDataLittleEndian<uint64_t>(data, read_pos, "archive size", context);
+    uint64_t archive_size = ReadModelAnimationRigDataLittleEndian<uint64_t>(data, read_pos, "archive size", context);
 
     if (archive_size == 0 || archive_size > numeric_cast<uint64_t>(std::numeric_limits<int>::max())) {
         throw ModelAnimationRigDataException("Animation rig archive has an invalid runtime size", context, archive_size);

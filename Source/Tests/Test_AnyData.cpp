@@ -301,14 +301,14 @@ TEST_CASE("AnyData")
         arr.EmplaceBack(u8string(u8" spaced value "));
         arr.EmplaceBack(u8string(u8"quote \" value"));
 
-        const auto encoded_arr = AnyData::ValueToString(arr.Copy());
+        u8string encoded_arr = AnyData::ValueToString(arr.Copy());
         CHECK(arr == AnyData::ParseValue(encoded_arr, false, true, AnyData::ValueType::String).AsArray());
 
         AnyData::Dict dict;
         dict.Emplace("key space", u8string(u8"value with spaces"));
         dict.Emplace("key_quote", u8string(u8"value \"quote\""));
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
@@ -329,7 +329,7 @@ TEST_CASE("AnyData")
         AnyData::Dict normalized_dict;
         normalized_dict.Emplace("payload", u8string {u8"head\ntail"});
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(normalized_dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
@@ -339,8 +339,8 @@ TEST_CASE("AnyData")
         dict.Emplace("key \"quoted\"", u8string(u8"value1"));
         dict.Emplace("path\\segment", u8string(u8"value2"));
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
-        const auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
+        auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
         const auto& parsed_dict = parsed_value.AsDict();
 
         CHECK(parsed_dict.Contains("key \"quoted\""));

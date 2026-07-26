@@ -33,7 +33,7 @@ static auto WriteConfigBakerTextFile(string_view path, string_view content) -> b
 
 static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
 {
-    const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 }
@@ -53,7 +53,7 @@ static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<ve
         for (const auto& tokens : entries) {
             writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
-            for (const string_view token : tokens) {
+            for (string_view token : tokens) {
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
                 writer.WriteStringBytes(token);
             }
@@ -79,7 +79,7 @@ static auto FormatConfigBakerSettingValue(const vector<T>& value) -> string
 {
     string result;
 
-    for (const T entry : value) {
+    for (T entry : value) {
         if (!result.empty()) {
             result += " ";
         }
@@ -137,10 +137,9 @@ TEST_CASE("ConfigBaker")
     SECTION("BakeCheckerCanSkipAllConfigs")
     {
         TestRig rig;
-        ConfigFile config {u8"Skip.fomain",
-            u8string {u8"[SubConfig]\n"
-                      "Name = Child\n"
-                      "Common.GameName = ChildGame\n"}};
+        ConfigFile config {u8string {u8"[SubConfig]\n"
+                                     "Name = Child\n"
+                                     "Common.GameName = ChildGame\n"}};
         rig.Settings.ApplyConfigFile(config, u8string_view {});
 
         vector<pair<string, uint64_t>> checks;
@@ -161,7 +160,7 @@ TEST_CASE("ConfigBaker")
 
     SECTION("BakesCompleteRootConfig")
     {
-        const string temp_dir = MakeConfigBakerTempDir();
+        string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
         REQUIRE(WriteConfigBakerTextFile(config_path, MakeCompleteConfigBakerConfig()));
@@ -191,7 +190,7 @@ TEST_CASE("ConfigBaker")
 
     SECTION("BakesDynamicMetadataSettings")
     {
-        const string temp_dir = MakeConfigBakerTempDir();
+        string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
         REQUIRE(WriteConfigBakerTextFile(config_path,
@@ -233,7 +232,7 @@ TEST_CASE("ConfigBaker")
 
     SECTION("BakingRequiresBakedMetadata")
     {
-        const auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
+        auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
         std::filesystem::create_directories(temp_dir);
         const auto fomain_path = temp_dir / "Test.fomain";
         const u8string fomain_path_utf8 = fs_path_to_u8string(fomain_path);
@@ -254,7 +253,7 @@ TEST_CASE("ConfigBaker")
 
     SECTION("BakingReportsIncompleteConfigSettings")
     {
-        const string temp_dir = MakeConfigBakerTempDir();
+        string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(temp_dir));
         const string config_path = strex(temp_dir).combine_path("Test.fomain");
         REQUIRE(WriteConfigBakerTextFile(config_path,
@@ -278,7 +277,7 @@ TEST_CASE("ConfigBaker")
     SECTION("SetupBakersReturnsRequestedBaker")
     {
         TestRig rig;
-        const auto bakers = MakeRequestedBakers({string(ConfigBaker::NAME)}, rig);
+        auto bakers = MakeRequestedBakers({string(ConfigBaker::NAME)}, rig);
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == ConfigBaker::NAME);

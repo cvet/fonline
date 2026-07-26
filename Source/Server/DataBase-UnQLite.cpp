@@ -58,7 +58,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto it = _collections.find(collection_name);
+        auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
             nptr<unqlite> db;
@@ -82,20 +82,20 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type = GetCollectionKeyType(collection_name);
         ptr<unqlite> db = GetCollection(collection_name);
 
         nptr<unqlite_kv_cursor> cursor;
-        const auto kv_cursor_init = unqlite_kv_cursor_init(db.get(), cursor.get_pp());
+        int32_t kv_cursor_init = unqlite_kv_cursor_init(db.get(), cursor.get_pp());
 
         if (kv_cursor_init != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_init);
         }
 
         FO_VERIFY_AND_THROW(cursor, "Initialized key-value cursor is null");
-        const auto release_cursor = scope_exit([&]() noexcept { unqlite_kv_cursor_release(db.get(), cursor.get()); });
+        auto release_cursor = scope_exit([&]() noexcept { unqlite_kv_cursor_release(db.get(), cursor.get()); });
 
-        const auto kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor.get());
+        int32_t kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor.get());
 
         if (kv_cursor_first_entry != UNQLITE_OK && kv_cursor_first_entry != UNQLITE_DONE) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_first_entry", kv_cursor_first_entry);
@@ -107,7 +107,7 @@ protected:
             vector<byte> key_data;
             auto key_data_user_data = make_ptr(&key_data).void_cast();
 
-            const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
+            auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor.get(),
                 [](const void* output, unsigned output_len, void* user_data) {
                     nptr<vector<byte>> result = cast_from_void<vector<byte>*>(user_data);
@@ -133,7 +133,7 @@ protected:
 
             ids.emplace_back(ParseUnQLiteKey(key_data, key_type));
 
-            const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor.get());
+            int32_t kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor.get());
 
             if (kv_cursor_next_entry != UNQLITE_OK && kv_cursor_next_entry != UNQLITE_DONE) {
                 throw DataBaseException("DbUnQLite kv_cursor_next_entry", kv_cursor_next_entry);
@@ -163,10 +163,10 @@ protected:
 
         ptr<unqlite> db = GetCollection(collection_name);
 
-        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
         auto key_data = make_nptr(key.data());
-        const int32_t key_size = numeric_cast<int32_t>(key.size());
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
+        int32_t key_size = numeric_cast<int32_t>(key.size());
+        int32_t kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
@@ -182,7 +182,7 @@ protected:
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
-        const auto kv_store = unqlite_kv_store(db.get(), key_data.get(), key_size, bson_data.get(), bson.len);
+        int32_t kv_store = unqlite_kv_store(db.get(), key_data.get(), key_size, bson_data.get(), bson.len);
 
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
@@ -203,8 +203,8 @@ protected:
 
         ptr<unqlite> db = GetCollection(collection_name);
 
-        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        const int32_t key_size = numeric_cast<int32_t>(key.size());
+        auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        int32_t key_size = numeric_cast<int32_t>(key.size());
         auto actual_doc = GetRecordUnlocked(collection_name, id);
 
         if (actual_doc.Empty()) {
@@ -225,7 +225,7 @@ protected:
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
-        const auto kv_store = unqlite_kv_store(db.get(), key.data(), key_size, bson_data.get(), bson.len);
+        int32_t kv_store = unqlite_kv_store(db.get(), key.data(), key_size, bson_data.get(), bson.len);
 
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
@@ -244,9 +244,9 @@ protected:
 
         ptr<unqlite> db = GetCollection(collection_name);
 
-        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        const int32_t key_size = numeric_cast<int32_t>(key.size());
-        const auto kv_delete = unqlite_kv_delete(db.get(), key.data(), key_size);
+        auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        int32_t key_size = numeric_cast<int32_t>(key.size());
+        int32_t kv_delete = unqlite_kv_delete(db.get(), key.data(), key_size);
 
         if (kv_delete != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_delete", kv_delete);
@@ -361,7 +361,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto commit = unqlite_commit(db.get());
+        int32_t commit = unqlite_commit(db.get());
 
         if (commit != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_commit", commit);
@@ -372,7 +372,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto it = _collections.find(collection_name);
+        auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
             throw DataBaseException("DbUnQLite Invalid collection", collection_name);
@@ -387,12 +387,12 @@ private:
 
         ptr<unqlite> db = GetCollection(collection_name);
 
-        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        const int32_t key_size = numeric_cast<int32_t>(key.size());
+        auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
-        auto document_user_data = make_ptr(&doc).void_cast();
+        void* document_user_data = make_ptr(&doc).void_cast();
 
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(
+        auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db.get(), key.data(), key_size,
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;

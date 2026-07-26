@@ -57,6 +57,7 @@ public:
     [[nodiscard]] auto GetBytes(string_view entry_name) const -> vector<byte>;
     [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte>;
 
+    void SetText(string_view entry_name, string_view text);
     void SetText(string_view entry_name, u8string_view text);
     void SetText(u8string_view entry_name, u8string_view text);
     void SetBytes(string_view entry_name, const_span<byte> bytes);

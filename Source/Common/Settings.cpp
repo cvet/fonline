@@ -329,7 +329,7 @@ void GlobalSettings::ApplyConfigAtPath(u8string_view config_name, u8string_view 
     if (const auto settings_content = fs_read_file_text(config_path.view())) {
         _appliedConfigs.emplace_back(config_path);
 
-        auto config = ConfigFile(config_path.view(), std::move(*settings_content));
+        auto config = ConfigFile(std::move(*settings_content));
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -394,7 +394,7 @@ void GlobalSettings::ApplyInternalConfig()
     }
 
     const u8string config_text = config_str;
-    auto config = ConfigFile(u8"InternalConfig.fomain", config_text);
+    auto config = ConfigFile(config_text);
     ApplyConfigFile(config, u8string_view {});
 }
 
@@ -491,8 +491,8 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
-    const auto it = std::ranges::find_if(_subConfigs, find_predicate);
+    auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
+    auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
     if (it == _subConfigs.end()) {
         throw SettingsException("Sub config not found", name);
@@ -507,7 +507,7 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _customSettings.find(name);
+    auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
         return _emptySetting;
@@ -520,7 +520,7 @@ auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _customSettings.find(name);
+    auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
         return nullptr;
@@ -797,7 +797,7 @@ auto GlobalSettings::Save() const -> map<string, u8string>
         }
     }
 
-    const auto add_setting = [&](string_view name, const auto& value) {
+    auto add_setting = [&](string_view name, const auto& value) {
         if (_appliedSettings.count(name) != 0) {
             using value_type = std::remove_cvref_t<decltype(value)>;
 
@@ -861,7 +861,7 @@ bool GlobalSettings::IsSecretSettingName(string_view name) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string lower_name = strex(name).lower().str();
+    string lower_name = strex(name).lower().str();
 
     for (const auto& token : SecretSettingTokens) {
         if (!token.empty() && lower_name.find(strex(token).lower().str()) != string::npos) {

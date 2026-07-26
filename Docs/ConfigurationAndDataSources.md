@@ -26,6 +26,8 @@ Read this together with:
 - `Source/Common/FileSystem.cpp`
 - `Source/Common/CacheStorage.h`
 - `Source/Common/CacheStorage.cpp`
+- `Source/Common/SettingsStorage.h`
+- `Source/Common/SettingsStorage.cpp`
 - `Source/Essentials/DiskFileSystem.h`
 - `Source/Essentials/DiskFileSystem.cpp`
 - `Source/Essentials/Platform.h`
@@ -46,21 +48,32 @@ Read this together with:
 
 ## Layer map
 
-1. **Config text parser** — `ConfigFile` parses sections, keys, values, repeated sections, optional collected content, and first-section reads.
+1. **Config text parser** — `ConfigFile` parses sections, keys, values, repeated and nested sections, ordered section traversal, optional collected content, and anchor-only reads.
 2. **Settings model** — `Settings.inc` declares setting groups; `Settings.*` turns config files, command-line overrides, internal config, defaults, auto-settings, sub-configs, and resource-pack declarations into `GlobalSettings`.
 3. **Data-source abstraction** — `DataSource` mounts disk directories and pack files behind a uniform file-list/open interface.
 4. **File-system view** — `FileSystem` combines mounted data sources, exposes `FileHeader`, `File`, `FileReader`, and `FileCollection`, and resolves file reads by path/name.
 5. **Cache storage** — `CacheStorage` persists named text/byte entries for reusable cache consumers.
-6. **Low-level disk access** — `DiskFileSystem` performs direct disk operations below mounted engine resources.
+6. **Settings store** — `SettingsStorage` persists per-user tool preferences, scoped by application name.
+7. **Low-level disk access** — `DiskFileSystem` performs direct disk operations below mounted engine resources.
 
 ## Config parsing
 
 `Source/Common/ConfigFile.*` owns syntax-level parsing. `ConfigFileOption` controls optional behavior:
 
 - `CollectContent` preserves section content for consumers that need raw block text.
-- `ReadFirstSection` supports workflows that only need the first section.
+- `SkipNestedSections` parses only anchor sections and skips nested (`/`-addressed) section bodies —
+  cheap header enumeration on files with large nested payloads (map files).
+- Nested sections: a section name containing `/` is nested. `ConfigFile` recognizes only the
+  syntax - names are stored **verbatim** and no prefix is ever resolved, so what a prefix means
+  belongs to the consuming format. `GetOrderedSections()` exposes sections in file order, which is
+  what a consumer needs to bind a nested section to the section it follows (the by-name multimap
+  cannot express that, since repeated names collapse). `SkipNestedSections` parses only non-nested
+  sections and skips nested bodies.
+- `ConfigFile` takes only the content: no file identity, no parse callbacks, no format tokens. For
+  map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
+  or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
 
-The parser accepts the file-name hint as `u8string_view` and the complete file text as an owning `u8string`; there is no legacy `string` constructor. Section names and keys are technical identifiers: they are validated as ASCII and exposed as `string_view`. Values and collected section bodies are UTF-8 text and are exposed as `u8string_view`. The parser owns copied hook results and any materialized values internally, so no returned view may outlive its `ConfigFile` instance. The current migration hooks still use their legacy character ABI only through bounded adapters; hook-produced section/key text is revalidated as ASCII and hook-produced values as UTF-8 before storage.
+The parser accepts the complete file text as an owning `u8string`; an ASCII `string` source promotes through the normal implicit ASCII-to-UTF-8 conversion. It has no file-name parameter or parse callbacks. Section names and keys are technical identifiers: they are checked while narrowing to ASCII and exposed as `string_view`. Values and collected section bodies remain strict UTF-8 and are exposed as `u8string_view`. The parser owns all stored keys and values, so no returned view may outlive its `ConfigFile` instance.
 
 ## Runtime settings
 
@@ -136,6 +149,12 @@ Cache entries do not carry a separate text/binary type tag: `SetText()` and `Set
 
 Cache storage is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. The file and UnQLite backends persist the same payload bytes. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
 
+## Settings store
+
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `Platform::GetUserDataBase()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+
+Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
+
 ## Build and package routing
 
 - `BuildTools/cmake/stages/Codegen.cmake` generates internal config inputs used by runtime settings.
@@ -148,6 +167,7 @@ Cache storage is separate from resource packs: cache entries are mutable runtime
 Focused tests for this area:
 
 - `Source/Tests/Test_CacheStorage.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_ConfigFile.cpp`
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`

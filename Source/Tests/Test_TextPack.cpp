@@ -62,7 +62,7 @@ TEST_CASE("TextPack")
 {
     SECTION("TextPackKeyFormatsAndParsesStructuredTuple")
     {
-        const auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name", "Short");
+        auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name", "Short");
         CHECK(FormatKey(key) == "{Items}{LaserRifle}{Name}{Short}");
 
         TextPackKey parsed;
@@ -111,16 +111,16 @@ TEST_CASE("TextPack")
     SECTION("BinaryRoundtripPreservesEntries")
     {
         TextPack pack(&TestHashes);
-        const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
-        const auto dialogs_ten = MakeKey("Dialogs", "10");
-        const auto dialogs_twenty = MakeKey("Dialogs", "20");
+        auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
+        auto dialogs_ten = MakeKey("Dialogs", "10");
+        auto dialogs_twenty = MakeKey("Dialogs", "20");
 
         pack.AddText(structured_key, u8"Laser Rifle");
         pack.AddText(dialogs_ten, u8"Alpha");
         pack.AddText(dialogs_twenty, u8"Beta");
         pack.AddText(dialogs_twenty, u8"Gamma");
 
-        const auto data = pack.GetBinaryData();
+        auto data = pack.GetBinaryData();
 
         TextPack restored(&TestHashes);
         REQUIRE(restored.LoadFromBinaryData(data));
