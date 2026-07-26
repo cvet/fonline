@@ -2850,7 +2850,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         anim_buf->AnimAbsoluteTime[0] = _animPosTime;
     }
 
-    effect->DisableCulling = _disableCulling;
+    effect->CullMode = _disableCulling ? CullModeType::None : CullModeType::Back;
     effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());

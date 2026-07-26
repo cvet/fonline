@@ -121,6 +121,8 @@ public:
         int32_t FragMainTex {-1};
         int32_t VertIndoorMaskTex {-1};
         int32_t FragIndoorMaskTex {-1};
+        int32_t VertBackgroundTex {-1};
+        int32_t FragBackgroundTex {-1};
 
         int32_t VertProjBuf {-1};
         int32_t FragProjBuf {-1};
@@ -130,6 +132,8 @@ public:
         int32_t FragEggBuf {-1};
         int32_t VertSpriteBorderBuf {-1};
         int32_t FragSpriteBorderBuf {-1};
+        int32_t VertParticleSamplingBuf {-1};
+        int32_t FragParticleSamplingBuf {-1};
         int32_t VertTimeBuf {-1};
         int32_t FragTimeBuf {-1};
         int32_t VertRandomValueBuf {-1};
@@ -271,6 +275,22 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
         return SDL_GPU_BLENDOP_MAX;
     case BlendEquationType::Min:
         return SDL_GPU_BLENDOP_MIN;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
+static auto ConvertCullMode(CullModeType cull_mode) -> SDL_GPUCullMode
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (cull_mode) {
+    case CullModeType::None:
+        return SDL_GPU_CULLMODE_NONE;
+    case CullModeType::Back:
+        return SDL_GPU_CULLMODE_BACK;
+    case CullModeType::Front:
+        return SDL_GPU_CULLMODE_FRONT;
     }
 
     FO_UNREACHABLE_PLACE();
@@ -843,10 +863,12 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         read_slot_pair("MainTex", slots.VertMainTex, slots.FragMainTex);
         read_slot_pair("IndoorMaskTex", slots.VertIndoorMaskTex, slots.FragIndoorMaskTex);
+        read_slot_pair("BackgroundTex", slots.VertBackgroundTex, slots.FragBackgroundTex);
         read_slot_pair("ProjBuf", slots.VertProjBuf, slots.FragProjBuf);
         read_slot_pair("MainTexBuf", slots.VertMainTexBuf, slots.FragMainTexBuf);
         read_slot_pair("EggBuf", slots.VertEggBuf, slots.FragEggBuf);
         read_slot_pair("SpriteBorderBuf", slots.VertSpriteBorderBuf, slots.FragSpriteBorderBuf);
+        read_slot_pair("ParticleSamplingBuf", slots.VertParticleSamplingBuf, slots.FragParticleSamplingBuf);
         read_slot_pair("TimeBuf", slots.VertTimeBuf, slots.FragTimeBuf);
         read_slot_pair("RandomValueBuf", slots.VertRandomValueBuf, slots.FragRandomValueBuf);
         read_slot_pair("ScriptValueBuf", slots.VertScriptValueBuf, slots.FragScriptValueBuf);
@@ -1399,14 +1421,9 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 {
     FO_STACK_TRACE_ENTRY();
 
-    bool disable_culling =
-#if FO_ENABLE_3D
-        DisableCulling;
-#else
-        false;
-#endif
-
-    uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (disable_culling ? 1u << 8 : 0u);
+    size_t depth_slot = GetDepthVariantSlot(pass);
+    CullModeType cull_mode = ResolveCullMode();
+    uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (static_cast<uint32_t>(cull_mode) << 8) | (numeric_cast<uint32_t>(depth_slot) << 10);
 
     auto pipeline_it = _pipelines.find(key);
 
@@ -1473,11 +1490,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
 
-#if FO_ENABLE_3D
-    pipeline_info.rasterizer_state.cull_mode = _usage == EffectUsage::Model && !disable_culling ? SDL_GPU_CULLMODE_BACK : SDL_GPU_CULLMODE_NONE;
-#else
-    pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
-#endif
+    pipeline_info.rasterizer_state.cull_mode = ConvertCullMode(cull_mode);
 
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -1490,8 +1503,8 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 
     if (with_depth && depth_usage) {
         pipeline_info.depth_stencil_state.enable_depth_test = true;
-        pipeline_info.depth_stencil_state.enable_depth_write = _depthWrite[pass];
-        pipeline_info.depth_stencil_state.compare_op = ConvertCompareOp(_depthFunc[pass]);
+        pipeline_info.depth_stencil_state.enable_depth_write = GetDepthVariantWrite(depth_slot);
+        pipeline_info.depth_stencil_state.compare_op = ConvertCompareOp(GetDepthVariantFunc(pass, depth_slot));
     }
 
     // Color target: always RGBA8 (offscreen textures and the backbuffer proxy share the format)
@@ -1646,6 +1659,14 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             bind_sampler(slots.VertIndoorMaskTex, slots.FragIndoorMaskTex, indoor_tex);
         }
 
+        if (slots.VertBackgroundTex != -1 || slots.FragBackgroundTex != -1) {
+            nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(background_tex_source, "SDL_GPU dummy texture is not created");
+            auto background_tex = background_tex_source.dyn_cast<const SDLGpu_Texture>();
+            FO_VERIFY_AND_THROW(background_tex, "SDL_GPU background texture is not of the expected backend type");
+            bind_sampler(slots.VertBackgroundTex, slots.FragBackgroundTex, background_tex);
+        }
+
 #if FO_ENABLE_3D
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1680,6 +1701,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         push_uniform(_needMainTexBuf, MainTexBuf, slots.VertMainTexBuf, slots.FragMainTexBuf);
         push_uniform(_needEggBuf, EggBuf, slots.VertEggBuf, slots.FragEggBuf);
         push_uniform(_needSpriteBorderBuf, SpriteBorderBuf, slots.VertSpriteBorderBuf, slots.FragSpriteBorderBuf);
+        push_uniform(_needParticleSamplingBuf, ParticleSamplingBuf, slots.VertParticleSamplingBuf, slots.FragParticleSamplingBuf);
         push_uniform(_needTimeBuf, TimeBuf, slots.VertTimeBuf, slots.FragTimeBuf);
         push_uniform(_needRandomValueBuf, RandomValueBuf, slots.VertRandomValueBuf, slots.FragRandomValueBuf);
         push_uniform(_needScriptValueBuf, ScriptValueBuf, slots.VertScriptValueBuf, slots.FragScriptValueBuf);

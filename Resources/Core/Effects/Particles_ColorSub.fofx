@@ -1,10 +1,17 @@
-# Particles_ColorMul — alpha-blended (over) particles using the full texture colour.
+# Particles_ColorSub — subtractively blended particles using the full texture colour.
 # Where: a particle-system blend shader.
-# How: BlendFunc SrcAlpha InvSrcAlpha (standard over-blend); the fragment multiplies the per-particle vertex colour by the full texture sample (RGB and alpha), so the texture's colour is used, not just its alpha mask.
-# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+# How: BlendFunc SrcAlpha One with BlendEquation FuncReverseSubtract (destination minus the incoming premultiplied
+# sample), so the particle darkens what is already drawn; the fragment multiplies the per-particle vertex colour by the
+# full texture sample (RGB and alpha), matching the additive and multiply variants.
+# Note: the equation applies to colour and alpha alike, because an effect declares one blend equation for both. Upstream
+# particle runtimes keep destination alpha untouched for this mode; that difference is invisible wherever the target's
+# alpha is not composited further.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it
+# runs on the weakest hardware; embedding projects override with richer copies where needed.
 
 [Effect]
-BlendFunc = SrcAlpha InvSrcAlpha
+BlendFunc = SrcAlpha One
+BlendEquation = FuncReverseSubtract
 DepthWrite = False
 DepthFunc = LessEqual
 DepthVariants = True

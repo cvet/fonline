@@ -616,9 +616,8 @@ private:
 };
 
 // Half-extent of one drawn instance in its own local space, read from the same instance parameters our renderers build
-// their vertices from. Only the sprite and ring families are rendered - RejectingEffekseerRenderer refuses ribbon,
-// track, and model nodes when the effect loads - so only those two report an extent and everything else falls through
-// to the zero overload and contributes positions alone.
+// their vertices from. Every drawable family reports one; a node type with no shape of its own falls through to the
+// zero overload and contributes positions alone.
 template<typename TInstanceParameter>
 static auto GetEffekseerInstanceLocalExtent(const TInstanceParameter& instance) -> float32_t
 {
@@ -651,6 +650,69 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::RingRenderer::Insta
     return std::max(outer, inner);
 }
 
+// A ribbon spreads from its centre line to the two edge offsets. Positions[2] and [3] are read only by the spline path,
+// which the runtime rejects, and the emitter leaves them uninitialised - so they must stay out of the measurement.
+static auto GetEffekseerInstanceLocalExtent(const Effekseer::RibbonRenderer::InstanceParameter& instance) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::max(std::abs(instance.Positions[0]), std::abs(instance.Positions[1]));
+}
+
+// A track cross-section is centred on its instance and reaches half its width to either side; which of the three widths
+// applies depends on where along the trail the instance sits, so the measurement takes the largest of them.
+static auto GetEffekseerInstanceLocalExtent(const Effekseer::TrackRenderer::InstanceParameter& instance) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::max({std::abs(instance.SizeFor), std::abs(instance.SizeMiddle), std::abs(instance.SizeBack)}) * 0.5f;
+}
+
+// A model node's shape lives in its mesh rather than in the instance, so its extent is the furthest vertex of the
+// furthest frame - measured once per node, since every instance draws the same mesh.
+static auto GetEffekseerNodeLocalExtent(const Effekseer::ModelRenderer::NodeParameter& parameter) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (parameter.EffectPointer == nullptr || parameter.ModelIndex < 0 || parameter.ModelIndex >= parameter.EffectPointer->GetModelCount()) {
+        return 0.0f;
+    }
+
+    Effekseer::ModelRef model = parameter.EffectPointer->GetModel(parameter.ModelIndex);
+
+    if (!model) {
+        return 0.0f;
+    }
+
+    float32_t extent = 0.0f;
+
+    for (int32_t frame = 0; frame < model->GetFrameCount(); frame++) {
+        size_t vertex_count = numeric_cast<size_t>(model->GetVertexCount(frame));
+
+        if (vertex_count == 0) {
+            continue;
+        }
+
+        const_span<Effekseer::Model::Vertex> vertices {model->GetVertexes(frame), vertex_count};
+
+        for (const Effekseer::Model::Vertex& vertex : vertices) {
+            extent = std::max(extent, std::sqrt(vertex.Position.X * vertex.Position.X + vertex.Position.Y * vertex.Position.Y + vertex.Position.Z * vertex.Position.Z));
+        }
+    }
+
+    return extent;
+}
+
+template<typename TNodeParameter>
+static auto GetEffekseerNodeLocalExtent(const TNodeParameter& parameter) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(parameter);
+
+    return 0.0f;
+}
+
 // A minimal renderer that discards geometry and only records each drawn particle's world position (its SRTMatrix43
 // translation, which every renderer family exposes) plus the world-space half-extent of its shape. Instantiated for
 // every family - sprite, ribbon, ring, track, and model - so any effect contributes to the bounds. The body carries no
@@ -666,13 +728,14 @@ public:
 
     void Rendering(const typename TRenderer::NodeParameter& parameter, const typename TRenderer::InstanceParameter& instance, void* user_data) override
     {
-        ignore_unused(parameter, user_data);
+        ignore_unused(user_data);
 
         // The local extent is expressed in the instance's own space, so stretch it by the largest axis scale of the
         // instance transform to get an orientation-independent world radius.
         Effekseer::SIMD::Vec3f scale = instance.SRTMatrix43.GetScale();
         float32_t max_axis_scale = std::max({std::abs(scale.GetX()), std::abs(scale.GetY()), std::abs(scale.GetZ())});
-        _collector->Include(instance.SRTMatrix43.GetTranslation(), GetEffekseerInstanceLocalExtent(instance) * max_axis_scale);
+        float32_t local_extent = std::max(GetEffekseerInstanceLocalExtent(instance), GetEffekseerNodeLocalExtent(parameter));
+        _collector->Include(instance.SRTMatrix43.GetTranslation(), local_extent * max_axis_scale);
     }
 
 private:

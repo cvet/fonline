@@ -45,6 +45,10 @@ class RenderTexture;
 struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
+// Hands out a copy of the scene as it was before the current draw, for content that refracts what is behind it. Returns
+// nothing where there is no scene to refract, such as an offscreen atlas. Called only by a draw that needs it, so the
+// copy it triggers is never paid for by an ordinary particle.
+using ParticleSceneBackgroundProvider = function<nptr<const RenderTexture>()>;
 
 // Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
 // position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas
@@ -87,6 +91,7 @@ struct ParticleRuntimeServices
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
     ParticleTextureLoader TextureLoader;
+    ParticleSceneBackgroundProvider SceneBackgroundProvider;
     ptr<RenderSettings> Settings;
 };
 

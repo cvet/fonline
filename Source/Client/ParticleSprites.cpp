@@ -193,7 +193,8 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
     _sprMngr {spr_mngr},
     _settings {settings},
     _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), spr_mngr->GetResources(), game_time, //
-        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }}
+        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->AcquireSceneBackground(); }}
 {
     FO_STACK_TRACE_ENTRY();
 }

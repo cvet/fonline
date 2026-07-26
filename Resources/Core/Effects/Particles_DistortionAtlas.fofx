@@ -1,0 +1,86 @@
+# Particles_DistortionAtlas — particles that refract the scene behind them instead of drawing their own colour.
+# Where: a particle-system distortion shader, selected by a runtime whose emitters carry a distortion material.
+# How: the distortion texture's red and green channels are a displacement in the particle's own plane. The vertex
+# carries that plane as a tangent and a bitangent, and the fragment projects all three points (the vertex, the
+# vertex plus tangent, the vertex plus bitangent) to find how far that displacement reaches on screen, then samples
+# BackgroundTex — a copy of the scene taken before this draw — at the displaced position. The result keeps the
+# distortion texture's alpha, so the particle's own shape still masks the refraction.
+# Why the plane travels per vertex: the displacement direction is the emitter's, not the screen's, and a rotated or
+# freely oriented particle has its own. Deriving it from the screen would rotate the refraction wrongly.
+# Note: the texture coordinate is addressed inside the atlas sub-rectangle exactly as in Particles_ColorAddAtlas,
+# because the distortion texture shares the same atlas.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so
+# it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
+[Effect]
+BlendFunc = SrcAlpha InvSrcAlpha
+DepthWrite = False
+DepthFunc = LessEqual
+DepthVariants = True
+CullVariants = True
+
+[VertexShader]
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec3 InNormal;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 3) in vec2 InTexCoordBase;
+layout(location = 4) in vec3 InTangent;
+layout(location = 5) in vec3 InBinormal;
+layout(location = 6) in vec4 InBlendWeights;
+layout(location = 7) in vec4 InBlendIndices;
+layout(location = 8) in vec4 InColor;
+
+layout(location = 0) out vec4 Color;
+layout(location = 1) out vec2 TexCoord;
+layout(location = 2) out vec4 ClipPos;
+layout(location = 3) out vec4 ClipTangent;
+layout(location = 4) out vec4 ClipBinormal;
+
+void main(void)
+{
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
+    Color = InColor;
+    TexCoord = InTexCoord;
+    ClipPos = gl_Position;
+    ClipTangent = ProjMatrix * vec4(InPosition + InTangent, 1.0);
+    ClipBinormal = ProjMatrix * vec4(InPosition + InBinormal, 1.0);
+}
+
+[FragmentShader]
+layout(set = 0, binding = 1, std140) uniform SpriteBorderBuf { vec4 SpriteBorder; };
+layout(set = 0, binding = 2, std140) uniform ParticleSamplingBuf { vec4 ParticleSampling; };
+layout(set = 0, binding = 3, std140) uniform MainTexBuf { vec4 MainTexSize; };
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+layout(set = 1, binding = 1) uniform sampler2D BackgroundTex;
+
+layout(location = 0) in vec4 Color;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 2) in vec4 ClipPos;
+layout(location = 3) in vec4 ClipTangent;
+layout(location = 4) in vec4 ClipBinormal;
+
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    vec2 atlas_min = SpriteBorder.xy;
+    vec2 atlas_size = SpriteBorder.zw - SpriteBorder.xy;
+    vec2 tiled = TexCoord - floor(TexCoord);
+    vec2 addressed = mix(tiled, clamp(TexCoord, 0.0, 1.0), ParticleSampling.y);
+    vec2 uv = atlas_min + addressed * atlas_size;
+    vec2 snapped = (floor(uv * MainTexSize.xy) + 0.5) * MainTexSize.zw;
+    vec4 displacement = texture(MainTex, mix(uv, snapped, ParticleSampling.x));
+
+    vec2 screen_pos = ClipPos.xy / ClipPos.w;
+    vec2 screen_tangent = ClipTangent.xy / ClipTangent.w;
+    vec2 screen_binormal = ClipBinormal.xy / ClipBinormal.w;
+    float tangent_scale = (displacement.x * 2.0 - 1.0) * Color.x * ParticleSampling.z;
+    float binormal_scale = (displacement.y * 2.0 - 1.0) * Color.y * ParticleSampling.z;
+    vec2 displaced = screen_pos + (screen_tangent - screen_pos) * tangent_scale + (screen_binormal - screen_pos) * binormal_scale;
+
+    vec2 background_uv = displaced * 0.5 + 0.5;
+    background_uv.y = mix(background_uv.y, 1.0 - background_uv.y, ParticleSampling.w);
+    FragColor = vec4(texture(BackgroundTex, clamp(background_uv, 0.0, 1.0)).rgb, displacement.w * Color.w);
+}
