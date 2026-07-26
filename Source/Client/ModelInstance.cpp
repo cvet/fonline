@@ -1647,6 +1647,16 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         child->_parentMatrix = GetWorldMatrix(child->_parentJointIndex) * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
+    // Move child animations
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
+    }
+
+    // Attached effects are placed from the world matrix of the joint they hang on, so they are set up only after every
+    // model in the hierarchy - this one and its children - has been posed. Placing them earlier leaves an effect that
+    // hangs on a child joint one pose behind the root: harmless as a one-frame lag while drawing, but fatal to
+    // DrawModelToAtlas' frame-sizing loop, which then measures a stale effect box against a fresh root placement,
+    // grows the frame, moves the root again and never converges.
     for (auto& model_particle : _modelParticles) {
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
         vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
@@ -1681,11 +1691,6 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         else {
             ++it;
         }
-    }
-
-    // Move child animations
-    for (size_t i = 0; i != _children.size(); ++i) {
-        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     if (!_parent) {

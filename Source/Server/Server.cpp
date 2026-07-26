@@ -2466,13 +2466,18 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 
     FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
-    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
-
     if (EntityMngr.GetCritter(cr_id)) {
         throw GenericException("Critter must be unloaded before destroying");
     }
 
-    DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
+    if (!DbStorage.Valid(CrittersCollectionName, cr_id)) {
+        WriteLog(LogType::Info, "Unloaded critter {} has no stored data to destroy", cr_id);
+        return;
+    }
+
+    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
+
+    DbStorage.Delete(CrittersCollectionName, cr_id);
 }
 
 void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)

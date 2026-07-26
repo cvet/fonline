@@ -117,7 +117,7 @@ public:
     void AbortPendingWaiters() noexcept;
 
     // Internal state-mutex handles plus a single Ensure operation split into a read-only
-    // compatibility check and a no-throw ownership commit. SyncContext's one-shot multi-op Ensure
+    // compatibility check and a no-throw ownership commit. SyncContext's all-or-nothing multi-op Ensure
     // transaction and lock-contention tests drive these; hold the state mutex only across the
     // paired check/commit, never across a blocking operation.
     void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
@@ -272,12 +272,10 @@ private:
     // an unpublished parentless entity that has no existing caller cover. Keep the C++ surface
     // restricted to the two owners whose exact call sites are also pinned by the native audit.
     void EnsureFreshEntitySynced(nptr<ServerEntity> entity);
-    void EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
-
-    // EnsureEntitySynced's one-shot transaction over the sorted-unique op batch: every state mutex
-    // is try-locked before compatibility is checked or any ownership state is committed, so failure
-    // is genuinely non-blocking and mutation-free.
-    static auto FO_TSA_NO_ANALYSIS TryAcquireEnsureOpsAtomically(const_span<pair<ptr<EntityLock>, bool>> ops) -> bool;
+    // Takes the target's own lock plus a descendant-mark on each separate-lock ancestor up to the cover as
+    // one all-or-nothing state-mutex transaction, retried until it lands (see the body). TSA cannot follow
+    // the try-lock/roll-back batch, hence FO_TSA_NO_ANALYSIS.
+    void FO_TSA_NO_ANALYSIS EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
 
     // Acquire the exclusive cover (`locks`/`owners`) AND register the hierarchical intention marks
     // (`holds`/`hold_owners` — the cover owners' separate-lock ancestors) in ONE deadlock-free
