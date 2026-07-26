@@ -50,6 +50,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [FrontendAndRendering.md](FrontendAndRendering.md) — application abstraction, windows/input/audio, headless/stub modes, renderers, the screen-size/resolution + letterbox model (windowed, fullscreen, multi-client virtual windows), effects, and platform package boundaries.
 - [ClientUpdater.md](ClientUpdater.md) — client host/runtime split, runtime ABI, updater protocol, and server-side updater backend.
 - [Debugging.md](Debugging.md) — native debugger support, stack traces, Visual Studio helpers, and client host/runtime validation.
+- [Diagnostics.md](Diagnostics.md) — always-available Essentials instrumentation for temporary timing/memory scopes, stacks, dumps/PCAP, faults, watchdogs, counters, histories, and UDP output.
 - [Scripting.md](Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — native `///@ ExportMethod` file map by runtime side and receiver family.
 - [Nullability.md](Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native boundary contract and analyzers.

@@ -72,4 +72,5 @@
 #include "DiskFileSystem.h"
 #include "CommonHelpers.h"
 #include "NetSockets.h"
+#include "Diagnostics.h"
 // clang-format on
