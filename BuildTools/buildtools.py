@@ -793,12 +793,16 @@ def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
 			'if errorlevel 1 exit /b %ERRORLEVEL%',
 		])
 	wrapper_lines.extend([
-		'call build.cmd %*',
+		f'call "{runtime_root / "build.cmd"}" %*',
 		'if errorlevel 1 exit /b %ERRORLEVEL%',
 	])
 	wrapper.write_text('\n'.join(wrapper_lines) + '\n', encoding='utf-8')
 
-	run(['cmd', '/d', '/c', wrapper.name, *build_args], cwd=runtime_root)
+	# Absolute paths, not bare names resolved against the current directory: cmd.exe drops the implicit
+	# leading "." from its search path when NoDefaultCurrentDirectoryInExePath is set in the environment
+	# (a common Windows hardening setting), and the bare name then fails with "not recognized as an
+	# internal or external command" even though cwd is correct.
+	run(['cmd', '/d', '/c', str(wrapper), *build_args], cwd=runtime_root)
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
