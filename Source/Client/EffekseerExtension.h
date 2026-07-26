@@ -41,9 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Points the Effekseer allocation callbacks at the engine memory system. Idempotent; call before the
-// first Effekseer object is created. Both Effekseer owners - the client runtime and the baker - go
-// through this one definition.
 void InitializeEffekseerMemory() noexcept;
 
 class EffekseerParticleRuntimeBackend;

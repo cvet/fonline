@@ -33,42 +33,18 @@ TEST_CASE("CacheStorage")
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
-    SECTION("EntryNamesAndContentsAreObfuscatedOnDisk")
+    SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_obfuscation");
+        string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
         bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        constexpr string_view entry_name = "dir\\nested/file.txt";
-        constexpr string_view marker = "PLAINTEXT-MARKER-3141592653";
-
         CacheStorage cache {temp_dir};
-        cache.SetString(entry_name, marker);
+        cache.SetString("dir\\nested/file.txt", "payload");
 
-        // Reading back through the cache is unaffected by the on-disk representation.
-        CHECK(cache.HasEntry(entry_name));
-        CHECK(cache.GetString(entry_name) == marker);
-
-        // The previous backend wrote a readable, merely sanitized name.
-        CHECK_FALSE(fs_exists(strex(temp_dir).combine_path("dir_nested_file.txt").str()));
-
-        vector<string> stored_files;
-        fs_iterate_dir(temp_dir, false, [&](string_view path, size_t size, uint64_t write_time) {
-            ignore_unused(size, write_time);
-            stored_files.emplace_back(path);
-        });
-
-        REQUIRE(stored_files.size() == 1);
-
-        // Neither the entry name nor the payload may be recoverable by looking at the file.
-        for (const auto& stored_path : stored_files) {
-            CHECK(stored_path.find("file.txt") == string::npos);
-            CHECK(stored_path.find("nested") == string::npos);
-
-            auto stored = fs_read_file(strex(temp_dir).combine_path(stored_path).str());
-            REQUIRE(stored.has_value());
-            CHECK(stored->find(marker) == string::npos);
-        }
+        CHECK(cache.HasEntry("dir\\nested/file.txt"));
+        CHECK(cache.GetString("dir\\nested/file.txt") == "payload");
+        CHECK(fs_exists(strex(temp_dir).combine_path("dir_nested_file.txt").str()));
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

@@ -32,7 +32,6 @@
 //
 
 #include "CacheStorage.h"
-#include "Compressor.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -131,115 +130,11 @@ void CacheStorage::RemoveEntry(string_view entry_name)
     _impl->RemoveEntry(entry_name);
 }
 
-// Cache entries are obfuscated, not encrypted. The goal is that a user poking around the cache
-// directory sees neither what is cached (file names are hashed) nor its contents (compressed, then
-// masked with a keystream derived from the entry name). Anyone determined can still recover it —
-// the transform is deterministic and the key material ships in the binary. If the cache ever has to
-// be tamper-proof rather than merely opaque, that needs an authentication tag, not a better scramble.
-static constexpr uint64_t CACHE_OBFUSCATION_SEED = 0x9E3779B97F4A7C15ULL;
-static constexpr array<uint8_t, 4> CACHE_ENTRY_MAGIC {'F', 'O', 'C', '1'};
-
-static auto MakeCacheKeystreamState(string_view entry_name) noexcept -> uint64_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return hashing::hash<string_view> {}(entry_name) ^ CACHE_OBFUSCATION_SEED;
-}
-
-// SplitMix64 over the entry-derived state: cheap, no dependencies, and produces a different
-// keystream per entry so identical payloads do not produce identical files.
-static void ApplyCacheKeystream(span<uint8_t> data, uint64_t state) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    uint64_t block = 0;
-
-    for (size_t i = 0; i < data.size(); i++) {
-        size_t byte_index = i % sizeof(uint64_t);
-
-        if (byte_index == 0) {
-            state += 0x9E3779B97F4A7C15ULL;
-            uint64_t z = state;
-            z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-            z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-            block = z ^ (z >> 31);
-        }
-
-        data[i] ^= numeric_cast<uint8_t>((block >> (byte_index * 8)) & 0xFFU);
-    }
-}
-
-// On disk: magic, then the uncompressed size, then the compressed payload — the whole lot masked
-// with the entry keystream. Compression alone already defeats `strings`; the mask stops the zlib
-// header from advertising what the file is.
-static auto EncodeCacheEntry(string_view entry_name, const_span<uint8_t> data) -> vector<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto compressed = Compressor::Compress(data);
-
-    vector<uint8_t> encoded;
-    encoded.reserve(CACHE_ENTRY_MAGIC.size() + sizeof(uint64_t) + compressed.size());
-    encoded.insert(encoded.end(), CACHE_ENTRY_MAGIC.begin(), CACHE_ENTRY_MAGIC.end());
-
-    uint64_t original_size = numeric_cast<uint64_t>(data.size());
-
-    for (size_t i = 0; i < sizeof(original_size); i++) {
-        encoded.push_back(numeric_cast<uint8_t>((original_size >> (i * 8)) & 0xFFU));
-    }
-
-    encoded.insert(encoded.end(), compressed.begin(), compressed.end());
-
-    ApplyCacheKeystream(span<uint8_t> {encoded.data(), encoded.size()}, MakeCacheKeystreamState(entry_name));
-    return encoded;
-}
-
-static auto DecodeCacheEntry(string_view entry_name, vector<uint8_t> stored) -> optional<vector<uint8_t>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    constexpr size_t header_size = CACHE_ENTRY_MAGIC.size() + sizeof(uint64_t);
-
-    if (stored.size() < header_size) {
-        return std::nullopt;
-    }
-
-    ApplyCacheKeystream(span<uint8_t> {stored.data(), stored.size()}, MakeCacheKeystreamState(entry_name));
-
-    if (!std::equal(CACHE_ENTRY_MAGIC.begin(), CACHE_ENTRY_MAGIC.end(), stored.begin())) {
-        // Foreign or corrupted file: treat as a cache miss rather than failing the caller.
-        return std::nullopt;
-    }
-
-    uint64_t original_size = 0;
-
-    for (size_t i = 0; i < sizeof(original_size); i++) {
-        original_size |= numeric_cast<uint64_t>(stored[CACHE_ENTRY_MAGIC.size() + i]) << (i * 8);
-    }
-
-    auto payload = make_const_span(stored.data() + header_size, stored.size() - header_size);
-
-    try {
-        auto decompressed = Compressor::Decompress(payload, 4);
-
-        if (decompressed.size() != original_size) {
-            return std::nullopt;
-        }
-
-        return decompressed;
-    }
-    catch (const std::exception&) {
-        return std::nullopt;
-    }
-}
-
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The file name reveals nothing about the entry it holds.
-    uint64_t name_hash = hashing::hash<string_view> {}(data_name) ^ CACHE_OBFUSCATION_SEED;
-    return strex(work_path).combine_path(strex("{:016x}.bin", name_hash).str());
+    return strex(work_path).combine_path(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path)
@@ -277,13 +172,14 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto data = GetData(entry_name);
+    string path = MakeCacheEntryPath(_workPath, entry_name);
+    auto str = fs_read_file(path);
 
-    if (data.empty()) {
+    if (!str) {
         return {};
     }
 
-    return string {span_to_string(make_const_span(data))};
+    return *str;
 }
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
@@ -291,19 +187,13 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto stored = fs_read_file(path);
+    auto data = fs_read_file(path);
 
-    if (!stored) {
+    if (!data) {
         return {};
     }
 
-    auto decoded = DecodeCacheEntry(entry_name, vector<uint8_t>(stored->begin(), stored->end()));
-
-    if (!decoded.has_value()) {
-        return {};
-    }
-
-    return std::move(*decoded);
+    return vector<uint8_t>(data->begin(), data->end());
 }
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
@@ -314,7 +204,12 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    SetData(entry_name, make_const_span(str));
+    string path = MakeCacheEntryPath(_workPath, entry_name);
+
+    if (!fs_write_file(path, str)) {
+        fs_remove_file(path);
+        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+    }
 }
 
 void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
@@ -325,10 +220,9 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
         return;
     }
 
-    auto encoded = EncodeCacheEntry(entry_name, data);
     string path = MakeCacheEntryPath(_workPath, entry_name);
 
-    if (!fs_write_file(path, make_const_span(encoded))) {
+    if (!fs_write_file(path, data)) {
         fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }

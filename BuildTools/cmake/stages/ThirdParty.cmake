@@ -526,8 +526,6 @@ if(FO_BUILD_SERVER_LIB)
 endif()
 
 # SQLite
-# Server-only: it backs the embedded DataBase-SQLite backend and nothing else, so it is deliberately
-# not in FO_COMMON_LIBS — clients carry no embedded database. Excluded on Web, which has no server.
 if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ SQLite")
     SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
