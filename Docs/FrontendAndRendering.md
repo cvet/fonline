@@ -226,6 +226,27 @@ the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
 
+The view rectangle may never *grow* past that baked view bound. The live pose and
+attached child models are excluded on purpose. A pose-derived box would have to be
+accumulated (a frame layout may not shrink mid-animation), and accumulation makes it
+grow frame after frame — root motion alone sweeps it across a whole clip — until the
+name floats far above the critter. An attachment cannot contribute either: for a
+child linked by matching bone names, its own bound is an unposed extent that says
+nothing about where its skinned geometry lands. A critter whose silhouette needs the
+name higher is served by the prototype's authored `NameOffset`. The drawing frame,
+in contrast, *does* take attachments and *does* grow monotonically — it has to cover
+whatever is actually rasterized. So the view rectangle stays inside the frame by
+construction: the baked view bound is the idle subset of the model bound the frame
+starts from.
+
+It does follow the animation **downwards**, which `SelectModelViewBounds` decides: when
+the active clip's baked box tops out lower than the idle box, that clip's box is taken
+whole. A corpse or a prone body would otherwise wear its name at standing height, far
+above itself; a lying pose is also wider than a standing one, so its top alone would
+not do. The asymmetry is the point — a raised weapon or an overhead swing tops out
+*higher* and is ignored, so names never rise with a swing. Both inputs are baked per
+clip, so the result is constant for a given animation and cannot drift within it.
+
 The automatic logical frame owns the reusable 2x scratch render target. After
 the pose is evaluated, the client combines its per-animation prediction with an
 exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
