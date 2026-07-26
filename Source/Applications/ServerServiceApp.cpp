@@ -227,7 +227,7 @@ int main(int argc, char** argv)
             constexpr DWORD buf_len = 4096 * 2;
             wchar_t buf[buf_len];
             ::GetModuleFileNameW(nullptr, buf, buf_len);
-            auto path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
+            wstring path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
             auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed

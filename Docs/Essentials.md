@@ -128,10 +128,10 @@ Known and accepted limits: `std::function`, `std::future`/`std::promise`/`std::p
 | SDL | `SafeAlloc::*Raw` | `Frontend/Application.cpp` |
 | Effekseer | `SafeAlloc::*Raw` + aligned | `Client/EffekseerExtension.cpp`, declared in its header; both owners (client runtime and `Tools/ParticleBaker.cpp`) install through that one definition |
 | libpng | `SafeAlloc::*Raw` | `Tools/ImageBaker.cpp`, via `png_create_read_struct_2` |
-| mongo-c / bson | `SafeAlloc::*Raw` + aligned | `Server/DataBase-Mongo.cpp`, via `bson_mem_set_vtable` before `mongoc_init()` |
+| libbson / mongo-c | `SafeAlloc::*Raw` + aligned | shared `Server/DataBase.cpp`; every BSON-backed factory (JSON, SQLite, Mongo) installs the process-global vtable before constructing its backend |
 | SQLite | `SafeAlloc::*Raw` | `Server/DataBase-SQLite.cpp`, via `sqlite3_config(SQLITE_CONFIG_MALLOC)` before `sqlite3_initialize()` |
 
-The bson vtable is worth reading before copying its shape elsewhere: it supplies `aligned_alloc` but releases those blocks through the plain `free` member, never recording the alignment. That is sound only while both paths end in the same release function, which holds under rpmalloc and is pinned there by a `static_assert(FO_HAVE_RPMALLOC, …)` in the backend. Dropping `aligned_alloc` is not a safer alternative — bson then substitutes an internal fallback that discards the requested alignment.
+The bson vtable is worth reading before copying its shape elsewhere: it supplies `aligned_alloc` but releases those blocks through the plain `free` member, never recording the alignment. That is sound only while both paths end in the same release function, which holds under rpmalloc and is pinned by a `static_assert(FO_HAVE_RPMALLOC, …)` in the shared database layer. The vtable is process-global, so every BSON-backed factory installs the same callbacks before its backend can allocate; changing it later could pair an old allocation with a new free callback. Dropping `aligned_alloc` is not a safer alternative — bson then substitutes an internal fallback that discards the requested alignment.
 
 SQLite's hook needs an `xSize` callback and hands the free/realloc/size functions only a pointer, so each block carries an 8-byte size header. Its configuration must also be installed *before* `sqlite3_initialize`, which is why the library is built with `SQLITE_OMIT_AUTOINIT` and every caller goes through one exported initializer.
 

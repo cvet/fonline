@@ -116,6 +116,10 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
             else if constexpr (std::same_as<T, FO_NAMESPACE vector<bool>>) {
                 result += e ? "True" : "False";
             }
+            else if constexpr (std::is_integral_v<std::remove_cvref_t<decltype(e)>>) {
+                // Preserve std::to_string's integral-promotion behaviour for char-like elements.
+                (void)std::format_to(std::back_inserter(result), "{}", +e);
+            }
             else if constexpr (std::is_floating_point_v<std::remove_cvref_t<decltype(e)>>) {
                 (void)std::format_to(std::back_inserter(result), "{:f}", e);
             }

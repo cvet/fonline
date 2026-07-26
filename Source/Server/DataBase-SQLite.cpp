@@ -110,6 +110,11 @@ static auto SqliteMemRoundup(int32_t size) -> int32_t
     }
 
     constexpr int32_t alignment = 8;
+
+    if (size > std::numeric_limits<int32_t>::max() - (alignment - 1)) {
+        return 0;
+    }
+
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
@@ -211,9 +216,7 @@ protected:
             return;
         }
 
-        string sql = strex("CREATE TABLE IF NOT EXISTS {} (key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL) WITHOUT ROWID",
-            QuoteIdentifier(collection_name.as_str()))
-                         .str();
+        string sql = strex("CREATE TABLE IF NOT EXISTS {} (key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL) WITHOUT ROWID", QuoteIdentifier(collection_name.as_str())).str();
         Execute(sql, collection_name);
         _collections.emplace(collection_name);
     }
@@ -224,7 +227,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto key_type = GetCollectionKeyType(collection_name);
+        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
         VerifyCollection(collection_name);
 
         string sql = strex("SELECT key FROM {}", QuoteIdentifier(collection_name.as_str())).str();
@@ -332,12 +335,13 @@ private:
     class Statement
     {
     public:
-        Statement(const DbSQLite& db, string_view sql, hstring context)
+        Statement(const DbSQLite& db, string_view sql, hstring context) FO_TSA_REQUIRES(db._storageLocker)
         {
             FO_STACK_TRACE_ENTRY();
 
+            ptr<sqlite3> db_handle = db.GetHandle();
             nptr<sqlite3_stmt> stmt;
-            int32_t prepare = sqlite3_prepare_v2(db.GetHandle().get(), sql.data(), numeric_cast<int32_t>(sql.size()), stmt.get_pp(), nullptr);
+            int32_t prepare = sqlite3_prepare_v2(db_handle.get(), sql.data(), numeric_cast<int32_t>(sql.size()), stmt.get_pp(), nullptr);
 
             if (prepare != SQLITE_OK) {
                 throw DataBaseException("DbSQLite sqlite3_prepare_v2", context, sql, db.LastError());
@@ -345,7 +349,7 @@ private:
 
             FO_VERIFY_AND_THROW(stmt, "Prepared statement is null");
             _stmt = stmt;
-            _db = make_ptr(&db);
+            _db = db_handle;
             _context = context;
         }
 
@@ -372,7 +376,7 @@ private:
             int32_t bind = sqlite3_bind_blob(_stmt.get(), index, data.data(), numeric_cast<int32_t>(data.size()), SQLITE_TRANSIENT);
 
             if (bind != SQLITE_OK) {
-                throw DataBaseException("DbSQLite sqlite3_bind_blob", _context, _db->LastError());
+                throw DataBaseException("DbSQLite sqlite3_bind_blob", _context, LastError());
             }
         }
 
@@ -383,7 +387,7 @@ private:
             int32_t bind = sqlite3_bind_blob(_stmt.get(), index, data.data(), numeric_cast<int32_t>(data.size()), SQLITE_TRANSIENT);
 
             if (bind != SQLITE_OK) {
-                throw DataBaseException("DbSQLite sqlite3_bind_blob", _context, _db->LastError());
+                throw DataBaseException("DbSQLite sqlite3_bind_blob", _context, LastError());
             }
         }
 
@@ -400,7 +404,7 @@ private:
                 return false;
             }
 
-            throw DataBaseException("DbSQLite sqlite3_step", _context, _db->LastError());
+            throw DataBaseException("DbSQLite sqlite3_step", _context, LastError());
         }
 
         [[nodiscard]] auto ColumnBlob(int32_t index) const -> const_span<uint8_t>
@@ -422,14 +426,24 @@ private:
         }
 
     private:
+        [[nodiscard]] auto LastError() const -> string
+        {
+            FO_STACK_TRACE_ENTRY();
+
+            auto text = make_nptr(sqlite3_errmsg(make_ptr(_db.get_no_const()).get()));
+            return text ? string(text.get()) : string("unknown");
+        }
+
         nptr<sqlite3_stmt> _stmt {};
-        nptr<const DbSQLite> _db {};
+        nptr<sqlite3> _db {};
         hstring _context {};
     };
 
     void OpenDataBase()
     {
         FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
 
         string db_path = strex("{}/Storage.sqlite", _storageDir);
         auto db_path_ptr = make_ptr(db_path.c_str());
@@ -451,7 +465,7 @@ private:
         FO_VERIFY_AND_THROW(db, "Opened database handle is null");
         _db = db;
 
-        auto close_db = scope_fail([&]() noexcept {
+        auto close_db = scope_fail([&]() FO_TSA_REQUIRES(_storageLocker) noexcept {
             (void)sqlite3_close(_db.get());
             _db = nullptr;
         });
@@ -465,7 +479,7 @@ private:
         Execute("PRAGMA foreign_keys = ON", hstring());
     }
 
-    [[nodiscard]] auto GetHandle() const -> ptr<sqlite3>
+    [[nodiscard]] ptr<sqlite3> GetHandle() const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -473,7 +487,7 @@ private:
         return make_ptr(_db.get_no_const());
     }
 
-    [[nodiscard]] auto LastError() const -> string
+    [[nodiscard]] string LastError() const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -485,7 +499,7 @@ private:
         return text ? string(text.get()) : string("unknown");
     }
 
-    void Execute(string_view sql, hstring context) const
+    void Execute(string_view sql, hstring context) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -496,7 +510,7 @@ private:
         }
     }
 
-    void WriteDocument(string_view sql, hstring collection_name, const DataBaseKey& id, const vector<uint8_t>& key, const AnyData::Document& doc)
+    void WriteDocument(string_view sql, hstring collection_name, const DataBaseKey& id, const vector<uint8_t>& key, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -525,7 +539,7 @@ private:
         }
     }
 
-    [[nodiscard]] auto GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker) -> AnyData::Document
+    [[nodiscard]] AnyData::Document GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -604,7 +618,7 @@ private:
             return result;
         }
 
-        auto key_str = std::get<string>(key);
+        string key_str = std::get<string>(key);
         return vector<uint8_t>(key_str.begin(), key_str.end());
     }
 
@@ -660,6 +674,7 @@ private:
 
 auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
+    InitializeBsonMemory();
     return SafeAlloc::MakeUnique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
 }
 

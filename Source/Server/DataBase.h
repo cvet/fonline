@@ -250,6 +250,10 @@ private:
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };
 
+// Installs the engine allocator into libbson. Every BSON-backed database factory calls this before
+// constructing its backend because bson's allocator vtable is process-global and must not change
+// while allocations made through an earlier vtable are alive. Idempotent.
+void InitializeBsonMemory() noexcept;
 auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #if FO_HAVE_SQLITE
 // Installs the engine allocator into SQLite and initializes it. Must run before any other SQLite

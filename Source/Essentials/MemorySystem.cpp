@@ -1,4 +1,4 @@
-﻿//      __________        ___               ______            _
+//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -342,6 +342,11 @@ auto SafeAlloc::MallocRaw(size_t size) noexcept -> nptr<void>
 auto SafeAlloc::CallocRaw(size_t num, size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    if (size != 0 && num > std::numeric_limits<size_t>::max() / size) {
+        ReportBadAlloc("Raw calloc size overflow", "byte", num, size);
+        ReportAndExit("Raw calloc size overflow");
+    }
 
     nptr<void> mem = MemCalloc(num, size);
 

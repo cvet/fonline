@@ -60,6 +60,20 @@ TEST_CASE("Containers")
         CHECK(text == "1 2 3");
     }
 
+    SECTION("VectorFormatterChar")
+    {
+        vector<char> values = {'A', ' '};
+        std::string text = std::format("{}", values);
+        CHECK(text == "65 32");
+    }
+
+    SECTION("VectorFormatterByte")
+    {
+        vector<uint8_t> values = {0, 65, 255};
+        std::string text = std::format("{}", values);
+        CHECK(text == "0 65 255");
+    }
+
     SECTION("VectorFormatterString")
     {
         vector<string> values = {"one", "two", "three"};

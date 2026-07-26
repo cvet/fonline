@@ -127,10 +127,10 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 - JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
 - SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, and SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`.
-- Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; BSON conversion helpers live in the shared header/source.
+- Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; it shares the BSON conversion and allocator setup used by the JSON and SQLite backends.
 - Memory backend: useful for tests and non-durable runtime paths.
 
-`DocumentToBson()` and `BsonToDocument()` convert between `AnyData::Document` and BSON for Mongo-backed storage. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
+`DocumentToBson()` and `BsonToDocument()` convert between `AnyData::Document` and the BSON payload used by JSON, SQLite, and Mongo storage. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
 
 ## Relationship to entity state
 
@@ -166,7 +166,7 @@ Relevant tests include:
 - Public facade and shared commit/recovery logic: `Source/Server/DataBase.h` and `Source/Server/DataBase.cpp`.
 - JSON backend: `Source/Server/DataBase-Json.cpp`.
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
-- Mongo backend and BSON conversion: `Source/Server/DataBase-Mongo.cpp`, `DocumentToBson()`, `BsonToDocument()`.
+- Shared BSON allocator/conversion: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
 - Entity/property serialization: [EntityModel.md](EntityModel.md) and `PropertiesSerializator.*`.
 - Build feature toggles: [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
