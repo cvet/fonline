@@ -1528,7 +1528,9 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 #endif
 
-    constexpr size_t max_uniform_blocks = 11;
+    // One slot per standard uniform block the gather below walks, used or not: the counter advances for every
+    // block so the indices stay stable across draws that declare different subsets.
+    constexpr size_t max_uniform_blocks = 12;
     size_t block_offsets[max_uniform_blocks] = {};
     size_t block_sizes[max_uniform_blocks] = {};
 
