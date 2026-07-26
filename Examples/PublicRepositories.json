@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "program": {
+    "id": "fonline-public-examples",
+    "organization": "cvet",
+    "engine_repository": "cvet/fonline",
+    "engine_clone_url": "https://github.com/cvet/fonline.git",
+    "documentation_url": "https://fonline.ru",
+    "default_branch": "main",
+    "license": "MIT",
+    "owners": {
+      "documentation": "Documentation maintainers",
+      "build_release": "Build and release maintainers",
+      "runtime": "Engine runtime maintainers",
+      "content": "Content and asset maintainers",
+      "security": "Repository administrators"
+    },
+    "compatibility": {
+      "release_engine_ref": "exact-commit",
+      "development_engine_ref": "master",
+      "scheduled_cadence": "weekly",
+      "update_delivery": "reviewed-pull-request",
+      "required_lanes": [
+        "pinned-engine",
+        "current-engine"
+      ],
+      "boundaries": [
+        "gameplay-compatibility-version",
+        "updater-protocol-generation",
+        "client-host-runtime-abi"
+      ]
+    },
+    "publication": {
+      "template_path": "Examples/PublicRepositoryTemplate",
+      "metadata_path": "example-repository.json",
+      "asset_provenance_path": "assets/provenance.json",
+      "protected_branch": "main",
+      "security_advisories_required": true,
+      "required_files": [
+        ".github/CODEOWNERS",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/current-engine.yml",
+        ".github/workflows/pinned-engine.yml",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "README.md",
+        "SECURITY.md",
+        "SUPPORT.md",
+        "THIRD_PARTY_NOTICES.md",
+        "assets/provenance.json",
+        "example-repository.json"
+      ],
+      "copy_files": {
+        ".github/CODEOWNERS.template": ".github/CODEOWNERS",
+        ".github/PULL_REQUEST_TEMPLATE.md": ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/current-engine.template.yml": ".github/workflows/current-engine.yml",
+        ".github/workflows/pinned-engine.template.yml": ".github/workflows/pinned-engine.yml",
+        "CONTRIBUTING.md": "CONTRIBUTING.md",
+        "LICENSE": "LICENSE",
+        "README.template.md": "README.md",
+        "SECURITY.md": "SECURITY.md",
+        "SUPPORT.md": "SUPPORT.md",
+        "THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+        "assets/provenance.json": "assets/provenance.json",
+        "example-repository.template.json": "example-repository.json"
+      },
+      "placeholders": [
+        "{{CODEOWNER}}",
+        "{{ENGINE_REVISION}}",
+        "{{PRIMARY_CHECK_COMMAND}}",
+        "{{REPOSITORY_ID}}",
+        "{{REPOSITORY_NAME}}",
+        "{{REPOSITORY_SLUG}}",
+        "{{SUMMARY}}"
+      ]
+    }
+  },
+  "repositories": [
+    {
+      "id": "project-template",
+      "repository": "cvet/fonline-project-template",
+      "sequence": 1,
+      "tier": "foundation",
+      "status": "source-ready",
+      "remote": {
+        "visibility": "private",
+        "state": "source-staged",
+        "created_on": "2026-07-20"
+      },
+      "owner": "build_release",
+      "source_path": "Examples/MinimalProject",
+      "source_required_files": [
+        ".gitignore",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "FOnlineStarter.fomain",
+        "README.md",
+        "Scripts/Starter.fos",
+        "StarterServerExtension.cpp",
+        "run_starter_smoke.py",
+        "validate.py"
+      ],
+      "depends_on": [],
+      "purpose": "Canonical GitHub template and source for the first successful headless-project quickstart.",
+      "capabilities": [
+        "configure",
+        "resource-bake",
+        "headless-server",
+        "native-extension",
+        "remote-call-metadata",
+        "deterministic-smoke"
+      ],
+      "required_checks": [
+        "governance-contract",
+        "pinned-engine",
+        "current-engine",
+        "windows-smoke",
+        "linux-smoke"
+      ],
+      "required_artifacts": [
+        "headless-server",
+        "smoke-log",
+        "compatibility-report"
+      ],
+      "asset_policy": "none",
+      "exit_gate": "A clean Windows or Linux host reaches the documented successful server state in under 30 minutes from a tagged exact Engine revision."
+    },
+    {
+      "id": "minimal-multiplayer",
+      "repository": "cvet/fonline-minimal-multiplayer",
+      "sequence": 2,
+      "tier": "tutorial",
+      "status": "planned",
+      "remote": {
+        "visibility": "private",
+        "state": "reserved",
+        "created_on": "2026-07-20"
+      },
+      "owner": "documentation",
+      "source_path": null,
+      "depends_on": [
+        "project-template"
+      ],
+      "purpose": "Tiny playable vertical slice used by first server, client, content, scripting, persistence, and test tutorials.",
+      "capabilities": [
+        "one-map-location",
+        "player-and-npc",
+        "item-interaction",
+        "replicated-persisted-property",
+        "event-and-remote-call",
+        "english-and-russian-text",
+        "client-visible-smoke"
+      ],
+      "required_checks": [
+        "governance-contract",
+        "pinned-engine",
+        "current-engine",
+        "windows-smoke",
+        "linux-smoke",
+        "tutorial-tag-replay"
+      ],
+      "required_artifacts": [
+        "desktop-client",
+        "headless-server",
+        "tutorial-report"
+      ],
+      "asset_policy": "project-original-or-permissive",
+      "exit_gate": "Every tutorial checkpoint reproduces from its pinned tag and the final project is understandable without Last Frontier or TLA."
+    },
+    {
+      "id": "content-showcase",
+      "repository": "cvet/fonline-content-showcase",
+      "sequence": 3,
+      "tier": "showcase",
+      "status": "planned",
+      "remote": {
+        "visibility": "private",
+        "state": "reserved",
+        "created_on": "2026-07-20"
+      },
+      "owner": "content",
+      "source_path": null,
+      "depends_on": [
+        "project-template",
+        "minimal-multiplayer"
+      ],
+      "purpose": "Presentation-quality gallery for rendering and authoring capabilities without a large gameplay codebase.",
+      "capabilities": [
+        "sprites-and-animation",
+        "lighting-and-effects",
+        "particles-and-audio",
+        "mapper-source-assets",
+        "cross-backend-captures",
+        "web-build"
+      ],
+      "required_checks": [
+        "governance-contract",
+        "pinned-engine",
+        "current-engine",
+        "asset-provenance",
+        "performance-budget",
+        "capture-reproduction"
+      ],
+      "required_artifacts": [
+        "web-build",
+        "desktop-build",
+        "capture-set",
+        "asset-provenance-report"
+      ],
+      "asset_policy": "audited-public-or-project-original",
+      "exit_gate": "A tagged build produces the public showcase and reproducible captures with complete machine-readable rights and provenance."
+    },
+    {
+      "id": "native-extension-sample",
+      "repository": "cvet/fonline-native-extension-sample",
+      "sequence": 4,
+      "tier": "advanced",
+      "status": "planned",
+      "remote": {
+        "visibility": "private",
+        "state": "reserved",
+        "created_on": "2026-07-20"
+      },
+      "owner": "runtime",
+      "source_path": null,
+      "depends_on": [
+        "project-template"
+      ],
+      "purpose": "Advanced minimal example of project-native C++ composition, lifecycle hooks, script exports, tests, and ABI review.",
+      "capabilities": [
+        "lifecycle-hook",
+        "script-export",
+        "role-specific-source",
+        "focused-native-test",
+        "abi-and-compatibility-review"
+      ],
+      "required_checks": [
+        "governance-contract",
+        "pinned-engine",
+        "current-engine",
+        "native-unit-test",
+        "native-extension-contract"
+      ],
+      "required_artifacts": [
+        "native-test-report",
+        "headless-server",
+        "compatibility-report"
+      ],
+      "asset_policy": "none",
+      "exit_gate": "The tagged sample demonstrates one complete native extension path without game-specific services and passes the generated extension contract checks."
+    }
+  ]
+}

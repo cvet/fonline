@@ -1,0 +1,7 @@
+/Baking/
+/Binaries/
+/Build/
+/Cache/
+/Workspace/
+/__pycache__/
+/*.log

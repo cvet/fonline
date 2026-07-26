@@ -1,0 +1,62 @@
+Common.GameName = FOnline Starter
+Common.GameVersion = 0.1.0
+
+Network.ServerPort = 4000
+Network.WebSocketPort = 4001
+
+Server.DbStorage = Memory
+Server.EntityStartId = 10000000001
+Server.EntityIdReserveBatch = 1000
+
+ServerNetwork.DisableNetworking = False
+
+Baking.ForceBaking = False
+Baking.SingleThreadBaking = False
+Baking.IgnoreMissingBakerWarning = False
+Baking.RawCopyFileExtensions = fopts fofnt bmfc fnt acm ogg wav ogv json ini
+Baking.ProtoFileExtensions = fopro fomap
+Baking.BakeLanguages = engl
+Baking.BakeOutput = Baking
+Baking.ServerResources = ServerResources
+Baking.ClientResources = Resources
+Baking.PlatformBinaries = PlatformBinaries
+Baking.CacheResources = Cache
+Baking.ZipCompressLevel = 1
+
+SpriteMesh.Enabled = False
+SpriteMesh.AlphaThreshold = 0
+SpriteMesh.MaxTriangles = 4096
+SpriteMesh.AreaSavingsWeight = 32.0
+
+Starter.ExitAfterStart = False
+View.ScreenWidth = 1024
+View.ScreenHeight = 768
+
+[SubConfig]
+Name = StarterSmoke
+Starter.ExitAfterStart = True
+ServerNetwork.DisableNetworking = True
+
+[ResourcePack]
+Name = Metadata
+InputDirs = Scripts
+Bakers = Metadata
+ServerOnly = True
+
+[ResourcePack]
+Name = Scripts
+InputDirs = Scripts
+Bakers = AngelScript
+ServerOnly = True
+
+[ResourcePack]
+Name = Embedded
+InputDirs = Engine/Resources/Embedded
+RecursiveInput = True
+Bakers = Image Effect RawCopy
+
+[ResourcePack]
+Name = Core
+InputDirs = Engine/Resources/Core Engine/Resources/Embedded
+RecursiveInput = True
+Bakers = Image Effect RawCopy

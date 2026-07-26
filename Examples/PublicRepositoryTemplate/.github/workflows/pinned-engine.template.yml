@@ -1,0 +1,26 @@
+name: Pinned Engine
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Prepare Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: Engine/BuildTools/prepare-workspace.sh linux-packages linux
+      - name: Verify repository contract and exact Engine pin
+        run: python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pinned
+      - name: Run primary example check
+        run: "{{PRIMARY_CHECK_COMMAND}}"

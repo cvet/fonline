@@ -1,0 +1,27 @@
+name: Current Engine Compatibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Prepare Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: Engine/BuildTools/prepare-workspace.sh linux-packages linux
+      - name: Select current Engine master
+        shell: bash
+        run: |
+          git -C Engine fetch --depth=1 origin master
+          git -C Engine checkout --detach FETCH_HEAD
+      - name: Verify repository contract
+        run: python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode current
+      - name: Run primary example check
+        run: "{{PRIMARY_CHECK_COMMAND}}"
