@@ -1,0 +1,21 @@
+---
+title: Particle Integration Contract
+document_id: generated-particle-format-integration
+locale: en
+generated: true
+---
+
+# Particle Integration Contract
+
+> Generated reference. Do not edit this page directly. Update `BuildTools/ParticleFormatInterface.json`, then run `python BuildTools/docs_particle_format.py --write`.
+
+[Reference index](index.md) | [Source rules](xml.md) | [Formats and backends](objects.md) | [Rendering](renderer.md) | [Tooling](tooling.md) | [Runtime](runtime.md) | [Integration](integration.md) | [Validation](validation.md) | [Canonical JSON model](../particle-format.json)
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-particle-format-integration-sprite-de6d20af68"></a><code>particle-format.integration.sprite</code> | Sprite integration | Load particle sprites through ParticleSpriteFactory and let the backend choose atlas or direct-scene rendering. | The factory exposes enabled runtime extensions and constructs ParticleSprite from ParticleManager. | [Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
+| <a id="entry-particle-format-integration-model-e2b153fc92"></a><code>particle-format.integration.model</code> | Model attachment | Use AttachParticles with a baked runtime resource and a valid model bone, then verify transforms and lifetime in a visible scene. | The model baker verifies the resource and runtime creates the particle at the target joint. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp)<br>[Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-particle-format-integration-client-script-3c35e6ad00"></a><code>particle-format.integration.client-script</code> | Client script controls | Use the client API for seeded playback, prewarm, scale, or live critter-bone effects and handle a false result where the API reports one. | The exported methods narrow generic sprites to particle sprites before applying backend-neutral controls. | [Source/Scripting/ClientGlobalScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientGlobalScriptMethods.cpp)<br>[Source/Scripting/ClientCritterScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientCritterScriptMethods.cpp) |
+| <a id="entry-particle-format-integration-project-boundary-87d72207f8"></a><code>particle-format.integration.project-boundary</code> | Embedding-project ownership | Keep particle catalogs, visual policy, backend selection, resource provenance, performance budgets, and acceptance scenes in project documentation. | The Engine documents reusable mechanics but cannot define a game's assets or production targets. | [Source/Client/ParticleRuntime.h](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleRuntime.h) |
+| <a id="entry-particle-format-integration-critter-run-particle-b803c79a33"></a><code>particle-format.integration.critter-run-particle</code> | Critter model particle | Critter.RunParticle creates a named particle on a model bone only in FO_ENABLE_3D builds; the export is a no-op otherwise. | The script method depends on an active ModelInstance and is not a 2D critter-sprite fallback. | [Source/Scripting/ClientCritterScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientCritterScriptMethods.cpp) |
+| <a id="entry-particle-format-integration-model-attachment-6fac6386d9"></a><code>particle-format.integration.model-attachment</code> | .fo3d AttachParticles | A layer/value-selected .fo3d link stores a global baked particle path and requires a valid target bone; it lives only while the selected link remains active. | ModelInfoBaker validates the resource and bone, and runtime creates/removes the particle with model composition. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp)<br>[Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |

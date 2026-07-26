@@ -1,0 +1,1298 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_effect_format.py",
+  "source_manifest": "BuildTools/EffectFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed authoring, baking, renderer-resource, runtime-loading, and script-control contract for FOnline .fofx effects.",
+  "scope": {
+    "surface": "effect-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The contract is generated for a pinned Engine revision. Projects own effect catalogs, visual policy, quality profiles, concrete override paths, and ScriptValue slot meanings.",
+    "included": [
+      ".fofx config sections, shader-stage fallback, pass declarations, render state, and shader compiler prelude",
+      "vertex input layouts, recognized samplers, built-in uniform buffers, descriptor conventions, reflection, and backend limits",
+      "per-pass baked artifacts for Vulkan, SDL_GPU, OpenGL, OpenGL ES, Direct3D, and Metal",
+      "runtime loading, path cache identity, EffectUsage selection, script-value persistence, script methods, and validation"
+    ],
+    "excluded": [
+      "project effect catalogs, shader art direction, quality tiers, and concrete resource-pack shadowing policy",
+      "project-defined ScriptValue indices, ranges, ownership, defaults, and gameplay meaning",
+      "general GLSL language reference, GPU performance tuning, and vendor-specific shader debugging",
+      "particle-system authoring, image formats, sprite baking, model-description grammar, and GUI layout"
+    ]
+  },
+  "sources": {
+    "effect_baker": "Source/Tools/EffectBaker.cpp",
+    "effect_baker_header": "Source/Tools/EffectBaker.h",
+    "render_effect": "Source/Frontend/Rendering.cpp",
+    "render_effect_header": "Source/Frontend/Rendering.h",
+    "effect_manager": "Source/Client/EffectManager.cpp",
+    "effect_manager_header": "Source/Client/EffectManager.h",
+    "client_runtime": "Source/Client/Client.cpp",
+    "client_script_api": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "project_interface": "BuildTools/cmake/ProjectInterface.json",
+    "cmake_codegen": "BuildTools/cmake/stages/Codegen.cmake",
+    "opengl_backend": "Source/Frontend/Rendering-OpenGL.cpp",
+    "direct3d_backend": "Source/Frontend/Rendering-Direct3D.cpp",
+    "vulkan_backend": "Source/Frontend/Rendering-Vulkan.cpp",
+    "sdl_gpu_backend": "Source/Frontend/Rendering-SDLGpu.cpp",
+    "core_effect": "Resources/Core/Effects/2D_Default.fofx",
+    "model_effect": "Resources/Core/Effects/3D_Skinned.fofx",
+    "tests": [
+      "Source/Tests/Test_EffectBaker.cpp",
+      "Source/Tests/Test_Rendering.cpp"
+    ]
+  },
+  "outputs": {
+    "source_extension": ".fofx",
+    "metadata_suffix": ".fofx-<pass>-info",
+    "runtime_side": "client",
+    "source_copy": true,
+    "stages": [
+      "vert",
+      "frag"
+    ],
+    "stage_flavors": [
+      "spv",
+      "spv_sdl",
+      "glsl",
+      "glsl_es",
+      "hlsl",
+      "msl_mac",
+      "msl_ios"
+    ],
+    "native_descriptor_sets": {
+      "uniform_buffers": 0,
+      "samplers": 1
+    },
+    "sdl_gpu_descriptor_sets": {
+      "vertex_samplers": 0,
+      "vertex_uniform_buffers": 1,
+      "fragment_samplers": 2,
+      "fragment_uniform_buffers": 3
+    },
+    "sdl_gpu_stage_limits": {
+      "samplers": 16,
+      "uniform_buffers": 4
+    }
+  },
+  "compile_limits": [
+    {
+      "id": "effect-format.limit.script-values",
+      "option": "FO_EFFECT_SCRIPT_VALUES",
+      "runtime_name": "EFFECT_SCRIPT_VALUES",
+      "description": "Number of float slots in ScriptValueBuf. The value must be positive and divisible by four because the GLSL declaration is an array of vec4 values and the native buffer is 16-byte aligned.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;",
+            "uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };",
+            "sizeof(ScriptValueBuffer) % 16 == 0"
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/ProjectInterface.json",
+          "anchors": [
+            "\"name\": \"FO_EFFECT_SCRIPT_VALUES\""
+          ]
+        }
+      ],
+      "default": "16",
+      "value_kind": "integer",
+      "category": "rendering-shape"
+    },
+    {
+      "id": "effect-format.limit.passes",
+      "option": "FO_EFFECT_MAX_PASSES",
+      "runtime_name": "EFFECT_MAX_PASSES",
+      "description": "Maximum number of render passes in one effect and the exclusive storage bound for per-pass state and backend objects.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;",
+            "BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "FOFX effect declares more render passes than the renderer supports"
+          ]
+        }
+      ],
+      "default": "6",
+      "value_kind": "integer",
+      "category": "rendering-shape"
+    },
+    {
+      "id": "effect-format.limit.model-textures",
+      "option": "FO_MODEL_MAX_TEXTURES",
+      "runtime_name": "MODEL_MAX_TEXTURES",
+      "description": "Number of ModelTexN samplers and ModelTexBuf entries available to 3D effects.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;",
+            "nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "#define MAX_TEXTURES {}",
+            "for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++)"
+          ]
+        }
+      ],
+      "default": "8",
+      "value_kind": "integer",
+      "category": "model-shape"
+    },
+    {
+      "id": "effect-format.limit.model-bones",
+      "option": "FO_MODEL_MAX_BONES",
+      "runtime_name": "MODEL_MAX_BONES",
+      "description": "Number of WorldMatrices entries exposed to 3D effects through ModelBuf and the MAX_BONES shader define.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;",
+            "float32_t WorldMatrices[16 * MODEL_MAX_BONES] {};"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "#define MAX_BONES {}"
+          ]
+        }
+      ],
+      "default": "54",
+      "value_kind": "integer",
+      "category": "model-shape"
+    }
+  ],
+  "sections": [
+    {
+      "id": "effect-format.section.effect",
+      "name": "[Effect]",
+      "syntax": "[Effect]",
+      "requirement": "Every .fofx source must contain an Effect section. It stores pass count, shader version, shadow-pass selection, and default or per-pass render state.",
+      "rationale": "Both the baker and runtime loader reject a source without this section.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "if (!fofx.HasSection(\"Effect\"))",
+            "\".fofx file truncated\""
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "FOFX file does not contain the required Effect section"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.section.shader-common",
+      "name": "[ShaderCommon]",
+      "syntax": "[ShaderCommon]",
+      "requirement": "ShaderCommon is optional raw shader text prepended to both stages of every pass after the Engine-generated prelude.",
+      "rationale": "It is the only format-level reuse block; the .fofx parser has no include directive.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "string shader_common_content = string(fofx.GetSectionContent(\"ShaderCommon\"));",
+            "shader_common_text.get()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.section.vertex",
+      "name": "[VertexShader] and [VertexShader PassN]",
+      "syntax": "[VertexShader] or [VertexShader PassN]",
+      "requirement": "Each declared pass needs non-empty vertex shader text. The baker first reads VertexShader PassN and falls back to the generic VertexShader section when the pass-specific section is empty.",
+      "rationale": "A shared vertex stage can serve all passes while selected passes override it.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "GetSectionContent(strex(\"VertexShader Pass{}\", pass))",
+            "vertex_pass_content = string(fofx.GetSectionContent(\"VertexShader\"));",
+            "\"No content for vertex shader\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.section.fragment",
+      "name": "[FragmentShader] and [FragmentShader PassN]",
+      "syntax": "[FragmentShader] or [FragmentShader PassN]",
+      "requirement": "Each declared pass needs non-empty fragment shader text. The baker first reads FragmentShader PassN and falls back to the generic FragmentShader section when the pass-specific section is empty.",
+      "rationale": "Multi-pass effects often share geometry processing and vary only the fragment stage.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "GetSectionContent(strex(\"FragmentShader Pass{}\", pass))",
+            "fragment_pass_content = string(fofx.GetSectionContent(\"FragmentShader\"));",
+            "\"No content for fragment shader\""
+          ]
+        }
+      ]
+    }
+  ],
+  "effect_options": [
+    {
+      "id": "effect-format.option.version",
+      "name": "Shader source version",
+      "syntax": "Version",
+      "default": "310",
+      "requirement": "Version is parsed as an integer and emitted as '#version <Version> es' for glslang input.",
+      "rationale": "The authored source omits its own version directive because the baker supplies it.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "int32_t shader_version = fofx.GetAsInt(\"Effect\", \"Version\", 310);",
+            "strex(\"#version {} es\\n\", shader_version)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.passes",
+      "name": "Render pass count",
+      "syntax": "Passes",
+      "default": "1",
+      "requirement": "Passes must be in the inclusive range 1..EFFECT_MAX_PASSES. Pass indices in section names and state suffixes are one-based.",
+      "rationale": "The runtime allocates fixed per-pass arrays and validates the authored count before loading metadata.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "int32_t passes = fofx.GetAsInt(\"Effect\", \"Passes\", 1);",
+            "FOFX effect must declare at least one render pass",
+            "FOFX effect declares more render passes than the renderer supports"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.shadow-pass",
+      "name": "3D shadow pass",
+      "syntax": "ShadowPass",
+      "default": "-1",
+      "availability": "FO_ENABLE_3D builds",
+      "requirement": "ShadowPass is -1 for no shadow pass or a one-based pass index in 1..EFFECT_MAX_PASSES. It marks that pass as the model shadow pass.",
+      "rationale": "Shadow execution can be disabled independently at runtime for 3D draws.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "int32_t shadow_pass = fofx.GetAsInt(\"Effect\", \"ShadowPass\", -1);",
+            "FOFX shadow pass index is outside the supported pass range",
+            "_isShadow[shadow_pass - 1] = true;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.blend-func",
+      "name": "Blend factors",
+      "syntax": "BlendFunc or BlendFunc_PassN",
+      "default": "SrcAlpha InvSrcAlpha",
+      "values": [
+        "Zero",
+        "One",
+        "SrcColor",
+        "InvSrcColor",
+        "DstColor",
+        "InvDstColor",
+        "SrcAlpha",
+        "InvSrcAlpha",
+        "DstAlpha",
+        "InvDstAlpha",
+        "ConstantColor",
+        "InvConstantColor",
+        "SrcAlphaSaturate"
+      ],
+      "requirement": "The value contains exactly two accepted tokens: source factor followed by destination factor. A pass-specific key inherits the unsuffixed default when absent.",
+      "rationale": "The runtime parses factors before each backend creates its blend state.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "string_view blend_func_default = fofx.GetAsStr(\"Effect\", \"BlendFunc\", \"SrcAlpha InvSrcAlpha\");",
+            "FOFX blend function must contain source and destination factors",
+            "if (s == \"SrcAlphaSaturate\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.blend-equation",
+      "name": "Blend equation",
+      "syntax": "BlendEquation or BlendEquation_PassN",
+      "default": "FuncAdd",
+      "values": [
+        "FuncAdd",
+        "FuncSubtract",
+        "FuncReverseSubtract",
+        "Max",
+        "Min"
+      ],
+      "requirement": "The value selects one accepted blend equation. A pass-specific key inherits the unsuffixed default when absent.",
+      "rationale": "Unknown tokens fail effect construction instead of falling back silently.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "string_view blend_equation_default = fofx.GetAsStr(\"Effect\", \"BlendEquation\", \"FuncAdd\");",
+            "Unknown blend equation type"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.depth-write",
+      "name": "Depth write mask",
+      "syntax": "DepthWrite or DepthWrite_PassN",
+      "default": "True",
+      "values": [
+        "True",
+        "False"
+      ],
+      "requirement": "The value is parsed as a boolean and controls depth writes for QuadSprite and Model usages when the active target has a depth attachment.",
+      "rationale": "UI, primitive, and flush targets may have no depth attachment even though the state remains present in the effect.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "string_view depth_write_default = fofx.GetAsStr(\"Effect\", \"DepthWrite\", \"True\");",
+            "_depthWrite[pass] = strvex"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering-SDLGpu.cpp",
+          "anchors": [
+            "depth_usage = depth_usage || _usage == EffectUsage::Model;",
+            "pipeline_info.depth_stencil_state.enable_depth_write = _depthWrite[pass];"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.depth-func",
+      "name": "Depth comparison",
+      "syntax": "DepthFunc or DepthFunc_PassN",
+      "default": "Always",
+      "values": [
+        "Always",
+        "Never",
+        "Less",
+        "LessEqual",
+        "Equal",
+        "GreaterEqual",
+        "Greater",
+        "NotEqual"
+      ],
+      "requirement": "The value selects one accepted depth comparison. A pass-specific key inherits the unsuffixed default when absent.",
+      "rationale": "Depth-dependent effects must choose comparison explicitly because the default never rejects a fragment.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "string_view depth_func_default = fofx.GetAsStr(\"Effect\", \"DepthFunc\", \"Always\");",
+            "Unknown depth func type"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.pass-overrides",
+      "name": "Per-pass state suffix",
+      "syntax": "<Key>_PassN",
+      "default": "inherit unsuffixed key",
+      "requirement": "BlendFunc, BlendEquation, DepthWrite, and DepthFunc support an exact one-based _PassN suffix. Shader sections use a space before PassN instead.",
+      "rationale": "State overrides and stage overrides use intentionally different config spellings.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "string pass_str = strex(\"_Pass{}\", pass + 1);",
+            "strex(\"BlendFunc{}\", pass_str)",
+            "strex(\"DepthFunc{}\", pass_str)"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "strex(\"VertexShader Pass{}\", pass)",
+            "strex(\"FragmentShader Pass{}\", pass)"
+          ]
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "id": "effect-format.resource.vertex-2d",
+      "name": "Vertex2D input layout",
+      "requirement": "ImGui, QuadSprite, and Primitive effects consume locations 0..3 from Vertex2D: vec3 position, normalized color, vec2 texture coordinate, and vec2 egg/auxiliary data.",
+      "rationale": "The non-model usages share one native vertex structure even when a shader ignores some inputs.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "struct Vertex2D",
+            "float32_t PosX {};",
+            "ucolor Color {};",
+            "float32_t EggFlags[2] {};"
+          ]
+        },
+        {
+          "path": "Resources/Core/Effects/2D_Default.fofx",
+          "anchors": [
+            "layout(location = 0) in vec3 InPosition;",
+            "layout(location = 3) in vec2 InEggData;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.vertex-model",
+      "name": "Vertex3D input layout",
+      "availability": "FO_ENABLE_3D builds",
+      "requirement": "Model effects consume locations 0..8: position, normal, primary UV, base UV, tangent, bitangent, blend weights, blend indices, and color.",
+      "rationale": "All model shaders must match the fixed Vertex3D layout configured by every active backend.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "struct Vertex3D",
+            "float32_t BlendWeights[MODEL_BONES_PER_VERTEX] {};",
+            "ucolor Color {};"
+          ]
+        },
+        {
+          "path": "Resources/Core/Effects/3D_Skinned.fofx",
+          "anchors": [
+            "layout(location = 0) in vec3 InPosition;",
+            "layout(location = 8) in vec4 InColor;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.native-descriptor-sets",
+      "name": "Native Vulkan descriptor convention",
+      "requirement": "Author native shader resources with uniform buffers in descriptor set 0 and combined image samplers in descriptor set 1.",
+      "rationale": "The native SPIR-V is consumed unchanged by Rendering-Vulkan and is the source for GLSL, GLSL ES, and HLSL cross-compilation.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "set 0 = uniform",
+            "set 1 = combined image samplers",
+            "native `-spv`"
+          ]
+        },
+        {
+          "path": "Resources/Core/Effects/2D_Default.fofx",
+          "anchors": [
+            "layout(set = 0, binding = 0, std140) uniform ProjBuf",
+            "layout(set = 1, binding = 0) uniform sampler2D MainTex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.explicit-bindings",
+      "name": "Explicit bindings",
+      "requirement": "Every live sampler and uniform block must declare an explicit binding. Binding numbers must be unique within each shader stage and resource class.",
+      "rationale": "SDL_GPU slot assignment sorts authored bindings and remaps them to dense per-stage slots.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "Sampler must have an explicit binding",
+            "Uniform buffer must have an explicit binding",
+            "Duplicate resource binding within one shader stage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.samplers",
+      "name": "Renderer-provided samplers",
+      "requirement": "The runtime has producers for MainTex and IndoorMaskTex, plus ModelTex0 through ModelTexN-1 in 3D builds. Other reflected sampler names are not populated by RenderEffect.",
+      "rationale": "A shader may compile with another sampler name but receives no Engine-owned texture binding.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "CHECK_TEX(\"MainTex\");",
+            "CHECK_TEX(\"IndoorMaskTex\");",
+            "CHECK_TEX(strex(\"ModelTex{}\", j).strv());"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "nptr<const RenderTexture> MainTex {};",
+            "nptr<const RenderTexture> IndoorMaskTex {};",
+            "nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.general-buffers",
+      "name": "General uniform buffers",
+      "requirement": "Recognized general buffers are ProjBuf, MainTexBuf, EggBuf, SpriteBorderBuf, TimeBuf, RandomValueBuf, ScriptValueBuf, and CameraBuf. Declarations must match the native std140-compatible layouts exactly.",
+      "rationale": "EffectBaker validates reflected byte sizes against RenderEffect buffer structures.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "CHECK_BUF(ProjBuf);",
+            "CHECK_BUF(ScriptValueBuf);",
+            "CHECK_BUF(CameraBuf);"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "struct ProjBuffer",
+            "struct ScriptValueBuffer",
+            "struct CameraBuffer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.model-buffers",
+      "name": "3D uniform buffers",
+      "availability": "FO_ENABLE_3D builds",
+      "requirement": "Recognized model buffers are ModelBuf, ModelTexBuf, and ModelAnimBuf, with MAX_BONES and MAX_TEXTURES supplied by the baker prelude.",
+      "rationale": "These layouts carry skinning, lighting, texture-atlas, and animation timing data for model effects.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "CHECK_BUF(ModelBuf);",
+            "CHECK_BUF(ModelTexBuf);",
+            "CHECK_BUF(ModelAnimBuf);"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "struct ModelBuffer",
+            "struct ModelTexBuffer",
+            "struct ModelAnimBuffer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.script-values",
+      "name": "ScriptValueBuf",
+      "requirement": "Declare 'vec4 ScriptValue[MAX_SCRIPT_VALUES / 4]' inside ScriptValueBuf. The flat script-facing index range is 0..EFFECT_SCRIPT_VALUES-1.",
+      "rationale": "The baker supplies MAX_SCRIPT_VALUES and the client API writes float ranges into the same native buffer.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "#define MAX_SCRIPT_VALUES {}"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };",
+            "float32_t ScriptValue[EFFECT_SCRIPT_VALUES] {};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.time-random",
+      "name": "Per-frame buffers",
+      "requirement": "TimeBuf exposes FrameTime.x and GameTime.x as session-relative seconds wrapped at 8192; RandomValueBuf exposes four independent [0,1] values refreshed each frame.",
+      "rationale": "These buffers are updated per loaded effect only when reflection reports that the effect needs them.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "constexpr float64_t shader_time_period = 8192.0;",
+            "random_value_buf->RandomValue[3]"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "struct TimeBuffer",
+            "struct RandomValueBuffer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.camera",
+      "name": "CameraBuf affine bases",
+      "requirement": "CameraBuf contains MapAnchorScreenPos and ChunkScreenAnchor. Shaders evaluate either basis as '.xy + TexCoord * .zw' for world-anchored or screen-anchored coordinates.",
+      "rationale": "The scale terms preserve continuity across padded/chunked render targets and zoom.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "uniform CameraBuf { vec4 MapAnchorScreenPos; vec4 ChunkScreenAnchor; };",
+            "uv = .xy + TexCoord * .zw"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.unsupported",
+      "name": "Unsupported shader resources",
+      "requirement": "Unknown uniform blocks, storage buffers, and storage images are rejected. Dead declared descriptor resources are rejected during SDL SPIR-V patching.",
+      "rationale": "The renderer binds only its fixed buffer vocabulary and sampled textures.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "Invalid uniform buffer",
+            "Storage buffers are not supported in effects",
+            "Storage images are not supported in effects",
+            "Shader declares an unused resource"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.resource.sdl-limits",
+      "name": "SDL_GPU per-stage limits",
+      "requirement": "Each shader stage may use at most 16 samplers and 4 uniform buffers. Slots become dense independently for vertex samplers, vertex UBOs, fragment samplers, and fragment UBOs.",
+      "rationale": "SDL_CreateGPUShader requires per-stage counts and the backend descriptor convention differs from native Vulkan.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "SDLGPU_MAX_SAMPLERS_PER_STAGE = 16",
+            "SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4",
+            "Too many resources for one SDL_GPU shader stage"
+          ]
+        }
+      ]
+    }
+  ],
+  "baking_rules": [
+    {
+      "id": "effect-format.baking.compiler-prelude",
+      "name": "Generated shader prelude",
+      "requirement": "The baker prepends '#version <Version> es', 'precision highp float', MAX_SCRIPT_VALUES, and, in 3D builds, MAX_BONES and MAX_TEXTURES before ShaderCommon and stage text.",
+      "rationale": "Authored shaders share one compile-time shape contract and must not duplicate these directives.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "string shader_version_str = strex(\"#version {} es\\n\", shader_version).str();",
+            "#define MAX_SCRIPT_VALUES {}",
+            "#define MAX_BONES {}"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.compiler-target",
+      "name": "glslang target environment",
+      "requirement": "Both stages compile as GLSL for a Vulkan 1.0 client and SPIR-V 1.0 target, then link and build reflection once per pass.",
+      "rationale": "All backend flavors derive from the same validated linked program.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0)",
+            "setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0)",
+            "program.buildReflection()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.link-interface",
+      "name": "Stage interface validation",
+      "requirement": "Vertex and fragment stages must parse, link, and expose a valid reflection model for every pass.",
+      "rationale": "Location/type mismatches and syntax errors fail the resource bake before runtime.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "Failed to parse vertex shader",
+            "Failed to parse fragment shader",
+            "Failed to link shader program",
+            "Failed to build reflection shader program"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.metadata",
+      "name": "Per-pass metadata",
+      "requirement": "Each pass emits an info artifact with [EffectInfo] native bindings and [EffectInfoSdl] per-stage dense slots and resource counts.",
+      "rationale": "Runtime backends consume reflection results without running glslang.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "program_info = \"[EffectInfo]\\n\";",
+            "program_info += \"\\n[EffectInfoSdl]\\n\";",
+            "VertexUniformBuffers",
+            "FragmentUniformBuffers"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.native-flavors",
+      "name": "Native and cross-compiled flavors",
+      "requirement": "Each stage emits native Vulkan SPIR-V, desktop GLSL 330, GLSL ES 300, HLSL Shader Model 4.0, and Metal source for macOS and iOS.",
+      "rationale": "One source effect supports the active renderer backends without project-side shader forks.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "options.version = 330;",
+            "options.version = 300;",
+            "options.shader_model = 40;",
+            "Options::macOS",
+            "Options::iOS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.sdl-remap",
+      "name": "SDL_GPU descriptor remap",
+      "requirement": "The baker copies native SPIR-V, rewrites descriptor sets and bindings to SDL_GPU's per-stage convention, and emits the result as spv_sdl. Metal source is compiled from the remapped module.",
+      "rationale": "Native Vulkan bindings remain untouched while SDL_GPU gets dense stage-local slots.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "std::vector<uint32_t> sdl_spirv = spirv;",
+            "PatchSpirvForSdlGpu",
+            "ApplySdlMslResourceBindings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.source-copy",
+      "name": "Baked source copy",
+      "requirement": "The original .fofx source is written to the baked resource set after all pass artifacts.",
+      "rationale": "RenderEffect reparses [Effect] state at runtime; the source file is part of the runtime artifact set.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "_context->WriteData(fname, vector<uint8_t>(content.begin(), content.end()));"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "auto fofx_content = loader(name);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.incremental",
+      "name": "Incremental output set",
+      "requirement": "The bake checker tracks the source copy, pass metadata, and every stage/flavor artifact for every declared pass.",
+      "rationale": "A missing or stale flavor must make the effect eligible for rebaking.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "fofx-{}-info",
+            "fofx-{}-vert-spv_sdl",
+            "fofx-{}-frag-msl_ios"
+          ]
+        }
+      ]
+    }
+  ],
+  "runtime_rules": [
+    {
+      "id": "effect-format.runtime.state-and-metadata",
+      "name": "Runtime artifact pair",
+      "requirement": "RenderEffect loads the baked .fofx source for pass/render state and one .fofx-N-info artifact per pass for reflected resource positions.",
+      "rationale": "Changing only a shader binary cannot change pass count or blend/depth state.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "auto fofx_content = loader(name);",
+            "strex(\"{}.fofx-{}-info\"",
+            "FOFX pass EffectInfo section is missing"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.cache-key",
+      "name": "Path-only effect cache",
+      "requirement": "EffectManager caches one mutable RenderEffect object per resource path. Re-loading the same path returns the existing object.",
+      "rationale": "ScriptValueBuf and per-frame optional buffers belong to the cached object, not to an effect slot.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "if (auto it = _loadedEffects.find(path); it != _loadedEffects.end())",
+            "_loadedEffects.emplace(path, std::move(effect));"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.first-usage",
+      "name": "First-load EffectUsage",
+      "requirement": "The first load of a path fixes that RenderEffect object's EffectUsage. Do not reuse one path across incompatible ImGui, QuadSprite, Primitive, or Model usage categories.",
+      "rationale": "The cache key omits EffectUsage and later loads return the first object without rebuilding its vertex layout or pipeline assumptions.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "auto EffectManager::LoadEffect(EffectUsage usage, string_view path)",
+            "_render->CreateEffect(usage, path"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "enum class EffectUsage",
+            "EffectUsage _usage;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.script-value-lifetime",
+      "name": "ScriptValue persistence",
+      "requirement": "An effect declaring ScriptValueBuf receives a zeroed buffer on first load. Values persist on the cached path until overwritten or explicitly cleared; SetEffect does not clear them.",
+      "rationale": "Switching to another path selects another object's buffer, while switching back to a previously loaded path restores that object's prior values.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();",
+            "script_value_buf->ScriptValue[value_start_index + i] = values[i];",
+            "*script_value_buf = RenderEffect::ScriptValueBuffer();"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "void ClientEngine::SetEffect(EffectType effectType",
+            "EffectMngr.ResolveEffect"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.script-value-target",
+      "name": "Script-value target resolution",
+      "requirement": "Script writes resolve the currently selected effect for one EffectType/subtype, require it to be loaded, and require that it declares ScriptValueBuf.",
+      "rationale": "Writing a slot on a passthrough/default effect without ScriptValueBuf is a script error.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "ResolveRequiredEffectScriptValueTarget",
+            "Effect script value target is not loaded",
+            "Effect does not declare ScriptValueBuf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.per-frame-update",
+      "name": "Per-frame buffer updates",
+      "requirement": "Every loaded effect is visited each frame; TimeBuf and RandomValueBuf are allocated/refreshed only when reflection marks them as needed.",
+      "rationale": "Declaring a built-in buffer opts the effect into its Engine producer.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "for (auto& effect : _loadedEffects | std::views::values)",
+            "if (effect->IsNeedTimeBuf())",
+            "if (effect->IsNeedRandomValueBuf())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.runtime.default-selection",
+      "name": "Default effect resolution",
+      "requirement": "An empty SetEffect path resolves back to the slot's default effect; a non-empty path loads it using the default effect's EffectUsage.",
+      "rationale": "Projects can temporarily override a slot and restore the Engine/project default without naming its path.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "if (!effectPath.empty())",
+            "LoadEffect(defaultEffect->GetUsage(), effectPath)",
+            "return defaultEffect;"
+          ]
+        }
+      ]
+    }
+  ],
+  "script_methods": [
+    {
+      "id": "effect-format.script.set-effect",
+      "name": "Select effect",
+      "signature": "void Game.SetEffect(EffectType effectType, int64 effectSubtype, string effectPath)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Selects a path for the requested effect slot or restores the default when effectPath is empty.",
+      "requirement": "Invalid subtypes and missing/broken effects throw. The selected path must be compatible with the slot's EffectUsage.",
+      "rationale": "Effect selection is client-renderer state and is not a server API.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API void Client_Game_SetEffect",
+            "client->SetEffect(effectType, effectSubtype, effectPath);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.script.set-value",
+      "name": "Write one script value",
+      "signature": "void Game.SetEffectScriptValue(EffectType effectType, int64 effectSubtype, int valueIndex, float value)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Writes one float into the selected cached effect object's ScriptValueBuf.",
+      "requirement": "The index must be in range and the selected effect must be loaded and declare ScriptValueBuf.",
+      "rationale": "Single-value writes suit infrequent scalar tuning.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API void Client_Game_SetEffectScriptValue"
+          ]
+        },
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "void EffectManager::SetEffectScriptValue"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.script.set-values",
+      "name": "Write a script-value range",
+      "signature": "void Game.SetEffectScriptValues(EffectType effectType, int64 effectSubtype, int valueStartIndex, float[] values, int valuesOffset = 0, int valuesCount = -1)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Writes a contiguous slice of values in one native call; valuesCount -1 selects the remaining input range.",
+      "requirement": "Input offset/count and destination range are validated before resolving and writing the effect.",
+      "rationale": "Bulk writes avoid repeated native calls for parameter blocks updated together.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API void Client_Game_SetEffectScriptValues",
+            "valuesCount = -1"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "Effect script values offset is out of range",
+            "Effect script value range is out of range"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.script.clear-values",
+      "name": "Clear script values",
+      "signature": "void Game.ClearEffectScriptValues(EffectType effectType, int64 effectSubtype)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Zeroes the entire ScriptValueBuf of the selected cached effect object.",
+      "requirement": "The selected effect must be loaded and declare ScriptValueBuf.",
+      "rationale": "Clearing is explicit because SetEffect does not reset cached values.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API void Client_Game_ClearEffectScriptValues"
+          ]
+        },
+        {
+          "path": "Source/Client/EffectManager.cpp",
+          "anchors": [
+            "void EffectManager::ClearEffectScriptValues"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "effect-format.validation.required-sections",
+      "name": "Required source content",
+      "requirement": "Reject a missing Effect section or a pass without usable vertex or fragment text.",
+      "rationale": "A partial source cannot produce a complete linked program or runtime state.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "RejectsInvalidEffects",
+            "Effects/NoEffect.fofx",
+            "Effects/NoVertex.fofx",
+            "Effects/NoFragment.fofx"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.compiler-diagnostics",
+      "name": "Compiler diagnostics",
+      "requirement": "Shader parse/link/reflection failures stop effect baking and normalize compiler diagnostics to a single log line.",
+      "rationale": "Build logs remain machine-readable while preserving the shader compiler message.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "ShaderCompilerDiagnosticsStayOnOneLogLine",
+            "Shader compiler diagnostic:"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "MakeShaderCompilerInfoLogForMessage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.buffer-layout",
+      "name": "Uniform buffer layout",
+      "requirement": "Reject known uniform buffers whose reflected byte size differs from the corresponding RenderEffect structure and reject every unknown uniform block.",
+      "rationale": "All backends upload fixed native structures without per-shader layout adaptation.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "RejectsMismatchedKnownUniformBuffer",
+            "EFFECT_WITH_BAD_PROJ_BUFFER"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "Invalid uniform buffer size",
+            "Invalid uniform buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.bindings",
+      "name": "Descriptor bindings",
+      "requirement": "Reject missing explicit bindings, duplicate same-stage bindings, dead descriptor declarations, and SDL_GPU stage-limit overflow.",
+      "rationale": "Dense SDL slot remapping must be deterministic and complete.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "Sampler must have an explicit binding",
+            "Duplicate resource binding within one shader stage",
+            "Shader declares an unused resource",
+            "Too many resources for one SDL_GPU shader stage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.output-flavors",
+      "name": "Baked flavor completeness",
+      "requirement": "Verify source, metadata, native SPIR-V, SDL SPIR-V, GLSL, GLSL ES, HLSL, and both MSL outputs for every stage/pass.",
+      "rationale": "A resource can pass one backend and still be incomplete for another package.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "EffectBakerBakesSdlGpuFlavors",
+            "Effects/Test.fofx-1-vert-spv_sdl",
+            "Effects/Test.fofx-1-frag-spv_sdl"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.metadata-bindings",
+      "name": "Reflection metadata",
+      "requirement": "Verify native [EffectInfo] binding values and SDL [EffectInfoSdl] counts/slots for representative effects.",
+      "rationale": "Backends depend on metadata identity even when shader compilation itself succeeds.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "EffectBakerBakesExplicitBindings",
+            "EffectBakerBakesAuxiliaryBindings",
+            "EffectInfoSdl"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.cross-backend",
+      "name": "Cross-backend visible validation",
+      "requirement": "Validate project effects on every renderer/backend profile the embedding project ships, including depth/blend-sensitive scenes and the lowest supported shader profile.",
+      "rationale": "Cross-compilation cannot prove driver behavior, feature-level support, visual output, or performance.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering-OpenGL.cpp",
+          "anchors": [
+            "OpenGL_Effect::DrawBuffer"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering-Direct3D.cpp",
+          "anchors": [
+            "Direct3D_Effect::DrawBuffer"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering-Vulkan.cpp",
+          "anchors": [
+            "Vulkan_Effect::DrawBuffer"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering-SDLGpu.cpp",
+          "anchors": [
+            "SDLGpu_Effect::DrawBuffer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.validation.project-ownership",
+      "name": "Project contract validation",
+      "requirement": "An embedding project must validate every effect path, EffectType/subtype assignment, ScriptValue slot registry, buffer writer, resource-pack override, and visible fallback it owns.",
+      "rationale": "The Engine can validate format mechanics but cannot infer project shader semantics or art-direction intent.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/EffectManager.h",
+          "anchors": [
+            "enum class EffectType",
+            "struct EffectCollection"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "Slot meanings are project-defined"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 55,
+    "compile_limit_count": 4,
+    "section_count": 4,
+    "effect_option_count": 8,
+    "resource_count": 12,
+    "baking_rule_count": 8,
+    "runtime_rule_count": 7,
+    "script_method_count": 4,
+    "validation_rule_count": 8,
+    "entries_by_stability": {
+      "experimental": 51
+    }
+  },
+  "contract_digest": "639a106c254f8593874e3a9f6da992058e665a6c20a63ad48b5a3ae82b50d22f"
+}

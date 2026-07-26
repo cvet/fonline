@@ -1,0 +1,3615 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_prototype_format.py",
+  "source_manifest": "BuildTools/PrototypeFormatInterface.json",
+  "source_parser": "Source/Tools/ProtoBaker.cpp",
+  "config_parser": "Source/Common/ConfigFile.cpp",
+  "property_parser": "Source/Common/Properties.cpp",
+  "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+  "api_model_generator": "BuildTools/docs_api.py",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed authoring contract for FOnline prototype files.",
+  "scope": {
+    "surface": "prototype-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned.",
+    "included": [
+      "prototype file discovery and side-specific bake outputs",
+      "section forms, prototype identity, inheritance, and migration",
+      "property applicability and strict text-value validation",
+      "built-in InitScript callback signature validation",
+      "built-in HasProtos entity types and their engine-owned property catalog"
+    ],
+    "excluded": [
+      "project-authored entity and FixedType declarations or properties",
+      "nested map placement sections addressed as $Name/Critter or $Name/Item",
+      "gameplay balance, content ids, directory taxonomy, and localization policy",
+      "runtime persistence records and project migration rollout policy"
+    ]
+  },
+  "sources": {
+    "source_parser": "Source/Tools/ProtoBaker.cpp",
+    "config_parser": "Source/Common/ConfigFile.cpp",
+    "property_parser": "Source/Common/Properties.cpp",
+    "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "api_model_generator": "BuildTools/docs_api.py",
+    "api_model": "Docs/generated/api.json",
+    "tests": [
+      "Source/Tests/Test_ProtoBaker.cpp",
+      "Source/Tests/Test_ConfigFile.cpp",
+      "Source/Tests/Test_Properties.cpp",
+      "Source/Tests/Test_ProtoManager.cpp",
+      "Source/Tests/Test_EntityProtos.cpp"
+    ]
+  },
+  "file_selection": {
+    "setting": "Baking.ProtoFileExtensions",
+    "setting_anchor": "FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions",
+    "output_pattern": "<pack>.fopro-bin-<side>",
+    "runtime_sides": [
+      "server",
+      "client",
+      "mapper"
+    ],
+    "nested_sections_skipped": true,
+    "description": "The engine defaults are read from Settings.inc; embedding projects may add extensions without changing the grammar. ProtoBaker consumes every top-level prototype/fixed-type section and skips nested map placements.",
+    "engine_defaults": [
+      "fopro"
+    ]
+  },
+  "section_forms": [
+    {
+      "id": "prototype-format.section.proto-entity",
+      "name": "Prototype entity section",
+      "syntax": "[Proto<Type>]",
+      "resolves_to": "Entity metadata type <Type> with HasProtos",
+      "stability": "experimental",
+      "description": "Declares a prototype for a built-in or project-authored entity type whose metadata enables prototypes.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "starts_with(\"Proto\")",
+          "HasProtos"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.section.fixed-type",
+      "name": "Fixed type section",
+      "syntax": "[<FixedType>]",
+      "resolves_to": "A metadata type declared with ///@ FixedType",
+      "stability": "experimental",
+      "description": "Declares a prototype-like fixed value defined by embedding-project metadata.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "meta->IsFixedType(section_name)"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.section.fomap-proto-map",
+      "name": "Map prototype section",
+      "syntax": "[ProtoMap]",
+      "resolves_to": "Map",
+      "stability": "experimental",
+      "description": "Each top-level ProtoMap anchor declares a Map prototype. Nested $Name/Item and $Name/Critter placement sections are skipped by ProtoBaker and consumed by MapBaker.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "ConfigFileOption::SkipNestedSections",
+          "strvex(section_name).starts_with(\"Proto\")"
+        ]
+      }
+    }
+  ],
+  "directives": [
+    {
+      "id": "prototype-format.directive.name",
+      "name": "$Name",
+      "syntax": "$Name = <PrototypeId>",
+      "default": "source file name without its extension",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Sets the prototype identity within its resolved type. The identity is migration-resolved before duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "section_kv.count(\"$Name\")",
+          "file.GetNameNoExt()"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.directive.parent",
+      "name": "$Parent",
+      "syntax": "$Parent = <ParentId> [<ParentId> ...]",
+      "default": "no parents",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Lists same-type parent prototypes separated by spaces. Parents are merged left to right and the child is applied last.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "cur_kv.count(\"$Parent\")",
+          "split(' ')",
+          "fill_parent_recursive"
+        ]
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "prototype-format.rule.config-syntax",
+      "name": "Configuration syntax",
+      "requirement": "Use repeated INI-like sections, key = value assignments, # comments, backslash line continuation, and key += value append where appropriate.",
+      "stability": "experimental",
+      "description": "Prototype files use the shared ConfigFile parser; quoted or escaped comment characters remain part of the value.",
+      "source": {
+        "path": "Source/Common/ConfigFile.cpp",
+        "anchors": [
+          "ConfigFile::ParseConfigKeyValueLine",
+          "append_value",
+          "inside_double_quotes"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.file-filter",
+      "name": "Extension filter",
+      "requirement": "Only files whose extension occurs in Baking.ProtoFileExtensions enter ProtoBaker.",
+      "stability": "experimental",
+      "description": "Directories and conventional extension names do not select a prototype type; the section does.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "Settings->ProtoFileExtensions",
+          "filtered_files.emplace_back"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identity-per-type",
+      "name": "Identity and duplicates",
+      "requirement": "A migration-resolved prototype id must be unique within its resolved type across the complete pack input.",
+      "stability": "experimental",
+      "description": "The same text id may exist in different prototype types; duplicate ids in one type fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "Proto already loaded",
+          "all_file_protos[type_name]"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-scope",
+      "name": "Inheritance scope",
+      "requirement": "Every parent must resolve inside the same prototype type and current pack input.",
+      "stability": "experimental",
+      "description": "Parents may be declared in another file, but cross-type and missing parents fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "file_proto_pids.find(parent_pid)",
+          "Proto fail to load parent"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-precedence",
+      "name": "Inheritance precedence",
+      "requirement": "Merge ancestors depth first, then parents from left to right, then the child; later property values replace earlier values.",
+      "stability": "experimental",
+      "description": "$-prefixed control directives are not copied into the merged property map.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "fill_parent_recursive(parent_name",
+          "insert_map_values(it_parent->second",
+          "insert_map_values(file_kv"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.acyclic-inheritance",
+      "name": "Acyclic inheritance",
+      "requirement": "Prototype parent graphs must be acyclic.",
+      "stability": "experimental",
+      "description": "The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "function<void(string_view",
+          "fill_parent_recursive(parent_name"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.property-resolution",
+      "name": "Property resolution",
+      "requirement": "Every non-control key must resolve to a property available for the current bake side.",
+      "stability": "experimental",
+      "description": "Unknown, disabled-for-this-side, virtual, and temporary properties are rejected; opposite-side-only properties are skipped for that side.",
+      "source": {
+        "path": "Source/Common/Properties.cpp",
+        "anchors": [
+          "Failed to load unknown property",
+          "Failed to load virtual property",
+          "Failed to load temporary property"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.strict-values",
+      "name": "Strict text values",
+      "requirement": "Property values must parse according to the metadata type without overflow, unknown enum/prototype references, non-finite numbers, or malformed collection structure.",
+      "stability": "experimental",
+      "description": "The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializator.cpp",
+        "anchors": [
+          "ParseStrictIntText",
+          "ParseStrictFloatText",
+          "LoadPropertyFromText"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.init-script-signature",
+      "name": "InitScript callback signatures",
+      "requirement": "A non-empty built-in Item, Critter, Map, or Location InitScript property must resolve to a global void callback receiving that entity type and bool firstTime.",
+      "stability": "experimental",
+      "description": "Server baking validates ScriptFuncType metadata for every authored callback property and rejects missing functions or mismatched signatures before runtime.",
+      "source": {
+        "path": "Source/Tools/Baker.cpp",
+        "anchors": [
+          "\"ItemInit\"",
+          "\"CritterInit\"",
+          "\"MapInit\"",
+          "\"LocationInit\"",
+          "Script function signature does not match property binding"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-reference",
+      "name": "Prototype references",
+      "requirement": "FixedType and Proto entity property references must resolve after migration unless the property is nullable and the authored value is empty.",
+      "stability": "experimental",
+      "description": "A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializator.cpp",
+        "anchors": [
+          "Proto reference does not exist",
+          "Proto MigrationRule"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-migration",
+      "name": "Prototype migration",
+      "requirement": "Proto migration rules are applied to declared ids, parent ids, lookups, and persisted references before final resolution.",
+      "stability": "experimental",
+      "description": "Author migrations in native/project metadata with ///@ MigrationRule Proto <Type> <Old> <NewOrRemove>.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "CheckMigrationRule(proto_rule_name, type_name, pid)",
+          "CheckMigrationRule(proto_rule_name, type_name, parent_pid)"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.side-specific-output",
+      "name": "Side-specific output",
+      "requirement": "The same source set is parsed and serialized separately for server, client, and mapper metadata.",
+      "stability": "experimental",
+      "description": "A source property can be meaningful on one side and skipped on another; server output also validates script callback properties.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          ".fopro-bin-server",
+          ".fopro-bin-client",
+          ".fopro-bin-mapper",
+          "ValidateProperties"
+        ]
+      }
+    }
+  ],
+  "entity_types": [
+    {
+      "id": "prototype-format.entity.Critter",
+      "name": "Critter",
+      "section": "[ProtoCritter]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 48
+      }
+    },
+    {
+      "id": "prototype-format.entity.Item",
+      "name": "Item",
+      "section": "[ProtoItem]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": true,
+        "abstract": true,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 49
+      }
+    },
+    {
+      "id": "prototype-format.entity.Location",
+      "name": "Location",
+      "section": "[ProtoLocation]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 46
+      }
+    },
+    {
+      "id": "prototype-format.entity.Map",
+      "name": "Map",
+      "section": "[ProtoMap]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 47
+      }
+    }
+  ],
+  "properties": [
+    {
+      "id": "prototype-format.property.Critter.AttachMaster",
+      "entity": "Critter",
+      "name": "AttachMaster",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 268
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Condition",
+      "entity": "Critter",
+      "name": "Condition",
+      "type": "CritterCondition",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 277
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ControlledByPlayer",
+      "entity": "Critter",
+      "name": "ControlledByPlayer",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 260
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.CustomHolderEntry",
+      "entity": "Critter",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 87
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.CustomHolderId",
+      "entity": "Critter",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 85
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.DeadDrawNoFlatten",
+      "entity": "Critter",
+      "name": "DeadDrawNoFlatten",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 284
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Dir",
+      "entity": "Critter",
+      "name": "Dir",
+      "type": "mdir",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 241
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Elevation",
+      "entity": "Critter",
+      "name": "Elevation",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 239
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ExplicitlyPersistent",
+      "entity": "Critter",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.GlobalMapTripId",
+      "entity": "Critter",
+      "name": "GlobalMapTripId",
+      "type": "uint32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 233
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Hex",
+      "entity": "Critter",
+      "name": "Hex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 235
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.HexOffset",
+      "entity": "Critter",
+      "name": "HexOffset",
+      "type": "ipos16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 237
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.HideSprite",
+      "entity": "Critter",
+      "name": "HideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 270
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.InitScript",
+      "entity": "Critter",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "CritterInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 229
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsAttached",
+      "entity": "Critter",
+      "name": "IsAttached",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 266
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsChosen",
+      "entity": "Critter",
+      "name": "IsChosen",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 262
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsPlayerOffline",
+      "entity": "Critter",
+      "name": "IsPlayerOffline",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 264
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ItemIds",
+      "entity": "Critter",
+      "name": "ItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 243
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightColor",
+      "entity": "Critter",
+      "name": "LightColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 294
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightDistance",
+      "entity": "Critter",
+      "name": "LightDistance",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 290
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightFlags",
+      "entity": "Critter",
+      "name": "LightFlags",
+      "type": "uint16",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 292
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightIntensity",
+      "entity": "Critter",
+      "name": "LightIntensity",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 288
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightSource",
+      "entity": "Critter",
+      "name": "LightSource",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 286
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LookDistance",
+      "entity": "Critter",
+      "name": "LookDistance",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "OwnerSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 281
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.MapId",
+      "entity": "Critter",
+      "name": "MapId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 231
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ModelLayers",
+      "entity": "Critter",
+      "name": "ModelLayers",
+      "type": "int32[]",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 257
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ModelName",
+      "entity": "Critter",
+      "name": "ModelName",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 245
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.MovingSpeed",
+      "entity": "Critter",
+      "name": "MovingSpeed",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 272
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Multihex",
+      "entity": "Critter",
+      "name": "Multihex",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 247
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.NameOffset",
+      "entity": "Critter",
+      "name": "NameOffset",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 279
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ScaleFactor",
+      "entity": "Critter",
+      "name": "ScaleFactor",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 249
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist1",
+      "entity": "Critter",
+      "name": "ShowCritterDist1",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 251
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist2",
+      "entity": "Critter",
+      "name": "ShowCritterDist2",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 253
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist3",
+      "entity": "Critter",
+      "name": "ShowCritterDist3",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 255
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.VisibilityMode",
+      "entity": "Critter",
+      "name": "VisibilityMode",
+      "type": "CritterVisibilityMode",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 274
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.AlwaysHideSprite",
+      "entity": "Item",
+      "name": "AlwaysHideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 157
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Colorize",
+      "entity": "Item",
+      "name": "Colorize",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 214
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ColorizeColor",
+      "entity": "Item",
+      "name": "ColorizeColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 179
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ContainerId",
+      "entity": "Item",
+      "name": "ContainerId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 121
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ContainerStack",
+      "entity": "Item",
+      "name": "ContainerStack",
+      "type": "any",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 123
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Corner",
+      "entity": "Item",
+      "name": "Corner",
+      "type": "CornerType",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 136
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Count",
+      "entity": "Item",
+      "name": "Count",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 130
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CritterId",
+      "entity": "Item",
+      "name": "CritterId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 115
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CritterSlot",
+      "entity": "Item",
+      "name": "CritterSlot",
+      "type": "CritterItemSlot",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 119
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CustomHolderEntry",
+      "entity": "Item",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 87
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CustomHolderId",
+      "entity": "Item",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 85
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DisableEgg",
+      "entity": "Item",
+      "name": "DisableEgg",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 138
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawFlatten",
+      "entity": "Item",
+      "name": "DrawFlatten",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 201
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawMultihexLines",
+      "entity": "Item",
+      "name": "DrawMultihexLines",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 147
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawMultihexMesh",
+      "entity": "Item",
+      "name": "DrawMultihexMesh",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 149
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawOrderOffsetHexY",
+      "entity": "Item",
+      "name": "DrawOrderOffsetHexY",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 203
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Elevation",
+      "entity": "Item",
+      "name": "Elevation",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 112
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ExplicitlyPersistent",
+      "entity": "Item",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Hex",
+      "entity": "Item",
+      "name": "Hex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 110
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Hidden",
+      "entity": "Item",
+      "name": "Hidden",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 152
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.HideSprite",
+      "entity": "Item",
+      "name": "HideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 154
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.InitScript",
+      "entity": "Item",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 100
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.InnerItemIds",
+      "entity": "Item",
+      "name": "InnerItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 126
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsGag",
+      "entity": "Item",
+      "name": "IsGag",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 211
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsRoofTile",
+      "entity": "Item",
+      "name": "IsRoofTile",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 196
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsScenery",
+      "entity": "Item",
+      "name": "IsScenery",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 190
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsTile",
+      "entity": "Item",
+      "name": "IsTile",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 194
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsTrigger",
+      "entity": "Item",
+      "name": "IsTrigger",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 186
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsWall",
+      "entity": "Item",
+      "name": "IsWall",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 192
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightColor",
+      "entity": "Item",
+      "name": "LightColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 177
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightDistance",
+      "entity": "Item",
+      "name": "LightDistance",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 173
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightFlags",
+      "entity": "Item",
+      "name": "LightFlags",
+      "type": "uint16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 175
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightIntensity",
+      "entity": "Item",
+      "name": "LightIntensity",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 171
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightSource",
+      "entity": "Item",
+      "name": "LightSource",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 169
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightThru",
+      "entity": "Item",
+      "name": "LightThru",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 166
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MapId",
+      "entity": "Item",
+      "name": "MapId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 108
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexGeneration",
+      "entity": "Item",
+      "name": "MultihexGeneration",
+      "type": "MultihexGenerationType",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 145
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexLines",
+      "entity": "Item",
+      "name": "MultihexLines",
+      "type": "uint8[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 141
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexMesh",
+      "entity": "Item",
+      "name": "MultihexMesh",
+      "type": "mpos[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 143
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoBlock",
+      "entity": "Item",
+      "name": "NoBlock",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 160
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoHighlight",
+      "entity": "Item",
+      "name": "NoHighlight",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 206
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoLightInfluence",
+      "entity": "Item",
+      "name": "NoLightInfluence",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 209
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Offset",
+      "entity": "Item",
+      "name": "Offset",
+      "type": "ipos16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 134
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Ownership",
+      "entity": "Item",
+      "name": "Ownership",
+      "type": "ItemOwnership",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 106
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.PicInv",
+      "entity": "Item",
+      "name": "PicInv",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 188
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.PicMap",
+      "entity": "Item",
+      "name": "PicMap",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 132
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ShootThru",
+      "entity": "Item",
+      "name": "ShootThru",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 163
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Stackable",
+      "entity": "Item",
+      "name": "Stackable",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 128
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Static",
+      "entity": "Item",
+      "name": "Static",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 103
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.StaticScript",
+      "entity": "Item",
+      "name": "StaticScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemStatic",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 182
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.TileLayer",
+      "entity": "Item",
+      "name": "TileLayer",
+      "type": "uint8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 198
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.TriggerScript",
+      "entity": "Item",
+      "name": "TriggerScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemTrigger",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 184
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.CustomHolderEntry",
+      "entity": "Location",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 87
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.CustomHolderId",
+      "entity": "Location",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 85
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.ExplicitlyPersistent",
+      "entity": "Location",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.InitScript",
+      "entity": "Location",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "LocationInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 360
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.MapIds",
+      "entity": "Location",
+      "name": "MapIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 362
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CritterIds",
+      "entity": "Map",
+      "name": "CritterIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 315
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CustomHolderEntry",
+      "entity": "Map",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 87
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CustomHolderId",
+      "entity": "Map",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 85
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.DayColor",
+      "entity": "Map",
+      "name": "DayColor",
+      "type": "uint8[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 337
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.DayColorTime",
+      "entity": "Map",
+      "name": "DayColorTime",
+      "type": "int32[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 335
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ExplicitlyPersistent",
+      "entity": "Map",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.FixedDayTime",
+      "entity": "Map",
+      "name": "FixedDayTime",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 332
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.GlobalDayColor",
+      "entity": "Map",
+      "name": "GlobalDayColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 341
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.GlobalDayLightCapacity",
+      "entity": "Map",
+      "name": "GlobalDayLightCapacity",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 345
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.InitScript",
+      "entity": "Map",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "MapInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 309
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ItemIds",
+      "entity": "Map",
+      "name": "ItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 317
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.LocId",
+      "entity": "Map",
+      "name": "LocId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 311
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.LocMapIndex",
+      "entity": "Map",
+      "name": "LocMapIndex",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 313
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.MapDayColor",
+      "entity": "Map",
+      "name": "MapDayColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 339
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.MapDayLightCapacity",
+      "entity": "Map",
+      "name": "MapDayLightCapacity",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 343
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ScrollAxialArea",
+      "entity": "Map",
+      "name": "ScrollAxialArea",
+      "type": "irect",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 325
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ScrollOffset",
+      "entity": "Map",
+      "name": "ScrollOffset",
+      "type": "ipos",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 323
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.Size",
+      "entity": "Map",
+      "name": "Size",
+      "type": "msize",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 319
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.SpritesZoom",
+      "entity": "Map",
+      "name": "SpritesZoom",
+      "type": "float32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 327
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.SpritesZoomTarget",
+      "entity": "Map",
+      "name": "SpritesZoomTarget",
+      "type": "float32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 329
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.WorkHex",
+      "entity": "Map",
+      "name": "WorkHex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 321
+      }
+    }
+  ],
+  "summary": {
+    "section_form_count": 3,
+    "directive_count": 2,
+    "rule_count": 12,
+    "entity_type_count": 4,
+    "property_count": 113,
+    "authorable_property_count": 92,
+    "excluded_property_count": 21,
+    "properties_by_entity": {
+      "Critter": 35,
+      "Item": 52,
+      "Location": 5,
+      "Map": 21
+    },
+    "authorable_properties_by_entity": {
+      "Critter": 21,
+      "Item": 52,
+      "Location": 5,
+      "Map": 14
+    }
+  },
+  "contract_digest": "8eb6e5df0a49649619fc2bb0040cf9c42c95be1066209ed7560339a92452311c"
+}
