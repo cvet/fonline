@@ -1,0 +1,1154 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_helper_cli.py",
+  "source_manifest": "BuildTools/HelperCliInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Canonical ownership and publication boundary for executable FOnline helper-script command lines.",
+  "scope": {
+    "surface": "helper-cli",
+    "stability": "internal",
+    "since": null,
+    "support_note": "Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision.",
+    "included": [
+      "engine-owned Python helper scripts that expose a top-level create_parser() factory",
+      "exact argparse usage, help output, arguments, subcommands, ownership, audience, and invocation context"
+    ],
+    "excluded": [
+      "the separately modeled BuildTools/buildtools.py command line",
+      "the separately modeled BuildTools/package.py command line and package declaration contract",
+      "documentation generators, tests, library-only modules, shell scripts, and embedding-project tools"
+    ]
+  },
+  "discovery": {
+    "root": "BuildTools",
+    "excluded_directories": [
+      "tests"
+    ],
+    "excluded_name_prefixes": [
+      "docs_"
+    ],
+    "excluded_parser_sources": [
+      {
+        "source": "BuildTools/buildtools.py",
+        "reason": "Owned by Docs/generated/cli.json and BuildTools/docs_cli.py."
+      },
+      {
+        "source": "BuildTools/package.py",
+        "reason": "Owned by Docs/generated/package.json and BuildTools/docs_package.py."
+      }
+    ]
+  },
+  "helpers": [
+    {
+      "id": "helper-cli.codegen",
+      "name": "Code generation",
+      "source": "BuildTools/codegen.py",
+      "factory": "create_parser",
+      "program": "codegen.py",
+      "owner": "build-release",
+      "audiences": [
+        "engine-contributor",
+        "embedding-project-build-system"
+      ],
+      "invocation_owner": "BuildTools/cmake/stages/Codegen.cmake",
+      "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files.",
+      "parser_description": "FOnline code generator",
+      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME -embedded EMBEDDED\n                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]\n                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]",
+      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME -embedded EMBEDDED\n                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]\n                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -internalcfg INTERNALCFG\n                        internal config buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a\n                        macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.codegen.argument.maincfg",
+          "destination": "maincfg",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-maincfg"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "main config file"
+        },
+        {
+          "id": "helper-cli.codegen.argument.buildhash",
+          "destination": "buildhash",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-buildhash"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "build hash"
+        },
+        {
+          "id": "helper-cli.codegen.argument.devname",
+          "destination": "devname",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-devname"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "dev game name"
+        },
+        {
+          "id": "helper-cli.codegen.argument.nicename",
+          "destination": "nicename",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-nicename"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "nice game name"
+        },
+        {
+          "id": "helper-cli.codegen.argument.embedded",
+          "destination": "embedded",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-embedded"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "embedded buffer capacity"
+        },
+        {
+          "id": "helper-cli.codegen.argument.internalcfg",
+          "destination": "internalcfg",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-internalcfg"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "internal config buffer capacity"
+        },
+        {
+          "id": "helper-cli.codegen.argument.enginedefine",
+          "destination": "enginedefine",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "-enginedefine"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h"
+        },
+        {
+          "id": "helper-cli.codegen.argument.meta",
+          "destination": "meta",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "-meta"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "path to script api metadata (///@ tags)"
+        },
+        {
+          "id": "helper-cli.codegen.argument.commonheader",
+          "destination": "commonheader",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "-commonheader"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "path to common header file"
+        },
+        {
+          "id": "helper-cli.codegen.argument.genoutput",
+          "destination": "genoutput",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-genoutput"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "generated code output dir"
+        },
+        {
+          "id": "helper-cli.codegen.argument.verbose",
+          "destination": "verbose",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "-verbose"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "verbose mode"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.compile-mono-scripts",
+      "name": "Mono script compilation",
+      "source": "BuildTools/compile-mono-scripts.py",
+      "factory": "create_parser",
+      "program": "compile-mono-scripts.py",
+      "owner": "scripting",
+      "audiences": [
+        "engine-contributor",
+        "embedding-project-build-system"
+      ],
+      "invocation_owner": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+      "description": "Compile configured Mono assemblies for engine application roles.",
+      "parser_description": "FOnline scripts generation",
+      "usage": "usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]",
+      "help_output": "usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]\n\nFOnline scripts generation\n\noptions:\n  -h, --help          show this help message and exit\n  -scripts SCRIPTS    path to scripts directory\n  -assembly ASSEMBLY  assembly name\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.compile-mono-scripts.argument.scripts",
+          "destination": "scripts",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-scripts"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "path to scripts directory"
+        },
+        {
+          "id": "helper-cli.compile-mono-scripts.argument.assembly",
+          "destination": "assembly",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "-assembly"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "assembly name"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.codecoverage",
+      "name": "Code coverage",
+      "source": "BuildTools/codecoverage.py",
+      "factory": "create_parser",
+      "program": "codecoverage.py",
+      "owner": "quality",
+      "audiences": [
+        "engine-contributor",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "BuildTools/cmake/stages/Applications.cmake",
+      "description": "Clean, collect, and report engine code coverage for generated test targets.",
+      "parser_description": "Run and analyze engine code coverage",
+      "usage": "usage: codecoverage.py [-h] {clean,run,report,full} ...",
+      "help_output": "usage: codecoverage.py [-h] {clean,run,report,full} ...\n\nRun and analyze engine code coverage\n\npositional arguments:\n  {clean,run,report,full}\n    clean               Remove previously collected coverage data and reports\n    run                 Run the instrumented test binary and collect coverage\n                        data\n    report              Generate text and HTML reports from collected coverage\n                        data\n    full                Clean, run the instrumented binary, and generate\n                        reports\n\noptions:\n  -h, --help            show this help message and exit\n",
+      "global_arguments": [],
+      "commands": [
+        {
+          "id": "helper-cli.codecoverage.command.clean",
+          "name": "clean",
+          "summary": "Remove previously collected coverage data and reports",
+          "description": "Remove previously collected coverage data and reports",
+          "usage": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT\n                             --build-dir BUILD_DIR --binary BINARY\n                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                             ...",
+          "help_output": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT\n                             --build-dir BUILD_DIR --binary BINARY\n                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                             ...\n\nRemove previously collected coverage data and reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "arguments": [
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.workspace_root",
+              "destination": "workspace_root",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--workspace-root"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "embedding-project source directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.build_dir",
+              "destination": "build_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--build-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "configured CMake build directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.binary",
+              "destination": "binary",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--binary"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "instrumented test executable"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.backend",
+              "destination": "backend",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--backend"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": [
+                "gcc",
+                "llvm",
+                "msvc"
+              ],
+              "default": null,
+              "type": null,
+              "description": "coverage compiler/toolchain backend"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.output_dir",
+              "destination": "output_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--output-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "coverage data and report output directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.clean.argument.binary_args",
+              "destination": "binary_args",
+              "kind": "positional",
+              "action": "store",
+              "option_strings": [],
+              "metavar": null,
+              "required": false,
+              "nargs": "...",
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "arguments passed to the test binary"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.codecoverage.command.run",
+          "name": "run",
+          "summary": "Run the instrumented test binary and collect coverage data",
+          "description": "Run the instrumented test binary and collect coverage data",
+          "usage": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT\n                           --build-dir BUILD_DIR --binary BINARY\n                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                           ...",
+          "help_output": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT\n                           --build-dir BUILD_DIR --binary BINARY\n                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                           ...\n\nRun the instrumented test binary and collect coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "arguments": [
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.workspace_root",
+              "destination": "workspace_root",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--workspace-root"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "embedding-project source directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.build_dir",
+              "destination": "build_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--build-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "configured CMake build directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.binary",
+              "destination": "binary",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--binary"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "instrumented test executable"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.backend",
+              "destination": "backend",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--backend"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": [
+                "gcc",
+                "llvm",
+                "msvc"
+              ],
+              "default": null,
+              "type": null,
+              "description": "coverage compiler/toolchain backend"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.output_dir",
+              "destination": "output_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--output-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "coverage data and report output directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.run.argument.binary_args",
+              "destination": "binary_args",
+              "kind": "positional",
+              "action": "store",
+              "option_strings": [],
+              "metavar": null,
+              "required": false,
+              "nargs": "...",
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "arguments passed to the test binary"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.codecoverage.command.report",
+          "name": "report",
+          "summary": "Generate text and HTML reports from collected coverage data",
+          "description": "Generate text and HTML reports from collected coverage data",
+          "usage": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT\n                              --build-dir BUILD_DIR --binary BINARY\n                              --backend {gcc,llvm,msvc}\n                              --output-dir OUTPUT_DIR\n                              ...",
+          "help_output": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT\n                              --build-dir BUILD_DIR --binary BINARY\n                              --backend {gcc,llvm,msvc}\n                              --output-dir OUTPUT_DIR\n                              ...\n\nGenerate text and HTML reports from collected coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "arguments": [
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.workspace_root",
+              "destination": "workspace_root",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--workspace-root"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "embedding-project source directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.build_dir",
+              "destination": "build_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--build-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "configured CMake build directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.binary",
+              "destination": "binary",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--binary"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "instrumented test executable"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.backend",
+              "destination": "backend",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--backend"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": [
+                "gcc",
+                "llvm",
+                "msvc"
+              ],
+              "default": null,
+              "type": null,
+              "description": "coverage compiler/toolchain backend"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.output_dir",
+              "destination": "output_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--output-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "coverage data and report output directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.report.argument.binary_args",
+              "destination": "binary_args",
+              "kind": "positional",
+              "action": "store",
+              "option_strings": [],
+              "metavar": null,
+              "required": false,
+              "nargs": "...",
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "arguments passed to the test binary"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.codecoverage.command.full",
+          "name": "full",
+          "summary": "Clean, run the instrumented binary, and generate reports",
+          "description": "Clean, run the instrumented binary, and generate reports",
+          "usage": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT\n                            --build-dir BUILD_DIR --binary BINARY\n                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                            ...",
+          "help_output": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT\n                            --build-dir BUILD_DIR --binary BINARY\n                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                            ...\n\nClean, run the instrumented binary, and generate reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "arguments": [
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.workspace_root",
+              "destination": "workspace_root",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--workspace-root"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "embedding-project source directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.build_dir",
+              "destination": "build_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--build-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "configured CMake build directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.binary",
+              "destination": "binary",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--binary"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "instrumented test executable"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.backend",
+              "destination": "backend",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--backend"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": [
+                "gcc",
+                "llvm",
+                "msvc"
+              ],
+              "default": null,
+              "type": null,
+              "description": "coverage compiler/toolchain backend"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.output_dir",
+              "destination": "output_dir",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--output-dir"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "Path",
+              "description": "coverage data and report output directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.binary_args",
+              "destination": "binary_args",
+              "kind": "positional",
+              "action": "store",
+              "option_strings": [],
+              "metavar": null,
+              "required": false,
+              "nargs": "...",
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "arguments passed to the test binary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "helper-cli.windows7-import-check",
+      "name": "Windows 7 import validation",
+      "source": "BuildTools/check_windows7_imports.py",
+      "factory": "create_parser",
+      "program": "check_windows7_imports.py",
+      "owner": "quality",
+      "audiences": [
+        "engine-contributor",
+        "embedding-project-build-system",
+        "release-operator"
+      ],
+      "invocation_owner": "embedding-project Windows 7 CI and release validation",
+      "description": "Inspect linked PE files and reject imports that are unavailable on Windows 7.",
+      "parser_description": "Reject CreateFile2 from Windows 7-compatible PE binaries",
+      "usage": "usage: check_windows7_imports.py [-h] binaries [binaries ...]",
+      "help_output": "usage: check_windows7_imports.py [-h] binaries [binaries ...]\n\nReject CreateFile2 from Windows 7-compatible PE binaries\n\npositional arguments:\n  binaries    linked PE executable or DLL to inspect\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.windows7-import-check.argument.binaries",
+          "destination": "binaries",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": "+",
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "linked PE executable or DLL to inspect"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.android-device",
+      "name": "Android device control",
+      "source": "BuildTools/android_device.py",
+      "factory": "create_parser",
+      "program": "android_device.py",
+      "owner": "platform",
+      "audiences": [
+        "game-developer",
+        "engine-contributor"
+      ],
+      "invocation_owner": "embedding-project Android tasks and direct developer use",
+      "description": "Discover, connect, install, launch, stop, and inspect Android Wi-Fi devices through adb.",
+      "parser_description": "Android Wi-Fi device helper for BuildTools tasks",
+      "usage": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]\n                         {discover,connect,install,launch,launch-game,stop,logcat} ...",
+      "help_output": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]\n                         {discover,connect,install,launch,launch-game,stop,logcat} ...\n\nAndroid Wi-Fi device helper for BuildTools tasks\n\npositional arguments:\n  {discover,connect,install,launch,launch-game,stop,logcat}\n    discover            List Android Wi-Fi devices discovered through adb mdns\n    connect             Connect to an Android Wi-Fi device and cache the\n                        endpoint\n    install             Install an APK on the selected Android Wi-Fi device\n    launch              Launch an Android activity on the selected device\n    launch-game         Launch the Android game activity and pass\n                        RemoteSceneLaunch server host override\n    stop                Force-stop an Android package on the selected device\n    logcat              Stream logcat from the selected device\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        Workspace directory path containing android-sdk and\n                        android-debug\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.android-device.argument.workspace_root",
+          "destination": "workspace_root",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--workspace-root"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "Workspace directory path containing android-sdk and android-debug"
+        }
+      ],
+      "commands": [
+        {
+          "id": "helper-cli.android-device.command.discover",
+          "name": "discover",
+          "summary": "List Android Wi-Fi devices discovered through adb mdns",
+          "description": null,
+          "usage": "usage: android_device.py discover [-h]",
+          "help_output": "usage: android_device.py discover [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.android-device.command.connect",
+          "name": "connect",
+          "summary": "Connect to an Android Wi-Fi device and cache the endpoint",
+          "description": null,
+          "usage": "usage: android_device.py connect [-h] [--device DEVICE]",
+          "help_output": "usage: android_device.py connect [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and\n                   interactive selection are used\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.connect.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, auto-discovery and interactive selection are used"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.android-device.command.install",
+          "name": "install",
+          "summary": "Install an APK on the selected Android Wi-Fi device",
+          "description": null,
+          "usage": "usage: android_device.py install [-h] --apk APK [--device DEVICE]",
+          "help_output": "usage: android_device.py install [-h] --apk APK [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --apk APK        APK path\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery\n                   is used\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.install.argument.apk",
+              "destination": "apk",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--apk"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "APK path"
+            },
+            {
+              "id": "helper-cli.android-device.command.install.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, cached endpoint or discovery is used"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.android-device.command.launch",
+          "name": "launch",
+          "summary": "Launch an Android activity on the selected device",
+          "description": null,
+          "usage": "usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]",
+          "help_output": "usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]\n\noptions:\n  -h, --help           show this help message and exit\n  --activity ACTIVITY  Fully qualified activity component, e.g.\n                       com.example.game/.FOnlineActivity\n  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or\n                       discovery is used\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.launch.argument.activity",
+              "destination": "activity",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--activity"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Fully qualified activity component, e.g. com.example.game/.FOnlineActivity"
+            },
+            {
+              "id": "helper-cli.android-device.command.launch.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, cached endpoint or discovery is used"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.android-device.command.launch-game",
+          "name": "launch-game",
+          "summary": "Launch the Android game activity and pass RemoteSceneLaunch server host override",
+          "description": null,
+          "usage": "usage: android_device.py launch-game [-h] --activity ACTIVITY\n                                     [--device DEVICE]\n                                     [--server-host SERVER_HOST]",
+          "help_output": "usage: android_device.py launch-game [-h] --activity ACTIVITY\n                                     [--device DEVICE]\n                                     [--server-host SERVER_HOST]\n\noptions:\n  -h, --help            show this help message and exit\n  --activity ACTIVITY   Fully qualified activity component, e.g.\n                        com.example.game/.FOnlineActivity\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or\n                        discovery is used\n  --server-host SERVER_HOST\n                        Host IP or name for ClientNetwork.ServerHost; if\n                        omitted, auto-detected from the route to the selected\n                        device\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.launch-game.argument.activity",
+              "destination": "activity",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--activity"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Fully qualified activity component, e.g. com.example.game/.FOnlineActivity"
+            },
+            {
+              "id": "helper-cli.android-device.command.launch-game.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, cached endpoint or discovery is used"
+            },
+            {
+              "id": "helper-cli.android-device.command.launch-game.argument.server_host",
+              "destination": "server_host",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--server-host"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Host IP or name for ClientNetwork.ServerHost; if omitted, auto-detected from the route to the selected device"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.android-device.command.stop",
+          "name": "stop",
+          "summary": "Force-stop an Android package on the selected device",
+          "description": null,
+          "usage": "usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]",
+          "help_output": "usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]\n\noptions:\n  -h, --help            show this help message and exit\n  --package PACKAGE_NAME\n                        Android package name\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or\n                        discovery is used\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.stop.argument.package_name",
+              "destination": "package_name",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--package"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Android package name"
+            },
+            {
+              "id": "helper-cli.android-device.command.stop.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, cached endpoint or discovery is used"
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.android-device.command.logcat",
+          "name": "logcat",
+          "summary": "Stream logcat from the selected device",
+          "description": null,
+          "usage": "usage: android_device.py logcat [-h] [--device DEVICE]",
+          "help_output": "usage: android_device.py logcat [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery\n                   is used\n",
+          "arguments": [
+            {
+              "id": "helper-cli.android-device.command.logcat.argument.device",
+              "destination": "device",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--device"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Device IP[:port]; if omitted, cached endpoint or discovery is used"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "helper-cli.simple-web-server",
+      "name": "Local web server",
+      "source": "BuildTools/web/simple-web-server.py",
+      "factory": "create_parser",
+      "program": "simple-web-server.py",
+      "owner": "platform",
+      "audiences": [
+        "game-developer",
+        "release-operator"
+      ],
+      "invocation_owner": "BuildTools/package.py WebServer payload",
+      "description": "Serve a packaged web client from a no-cache local HTTP server.",
+      "parser_description": "Simple HTTP server",
+      "usage": "usage: simple-web-server.py [-h] [--port PORT] [--fork]",
+      "help_output": "usage: simple-web-server.py [-h] [--port PORT] [--fork]\n\nSimple HTTP server\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT  web server port\n  --fork       fork process\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.simple-web-server.argument.port",
+          "destination": "port",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--port"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": 7000,
+          "type": "int",
+          "description": "web server port"
+        },
+        {
+          "id": "helper-cli.simple-web-server.argument.fork",
+          "destination": "fork",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--fork"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "fork process"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.createmsi",
+      "name": "MSI creation",
+      "source": "BuildTools/msicreator/createmsi.py",
+      "factory": "create_parser",
+      "program": "createmsi.py",
+      "owner": "build-release",
+      "audiences": [
+        "release-operator",
+        "engine-contributor"
+      ],
+      "invocation_owner": "BuildTools/package.py Wix pack",
+      "description": "Build an MSI installer from a package-generated WiX definition.",
+      "parser_description": "Build an MSI package from a WiX definition",
+      "usage": "usage: createmsi.py [-h] definition.json",
+      "help_output": "usage: createmsi.py [-h] definition.json\n\nBuild an MSI package from a WiX definition\n\npositional arguments:\n  definition.json  bare WiX package definition filename in the working\n                   directory\n\noptions:\n  -h, --help       show this help message and exit\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.createmsi.argument.jsonfile",
+          "destination": "jsonfile",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": "definition.json",
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "bare WiX package definition filename in the working directory"
+        }
+      ],
+      "commands": []
+    }
+  ],
+  "summary": {
+    "helper_count": 7,
+    "command_count": 11,
+    "global_argument_count": 18,
+    "command_argument_count": 35
+  },
+  "contract_digest": "c9f5192190b77e1f7858b219f4bd12858a752e83b399179233c6150fbf3a5180"
+}

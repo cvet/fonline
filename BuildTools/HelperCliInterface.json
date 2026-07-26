@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "description": "Canonical ownership and publication boundary for executable FOnline helper-script command lines.",
+  "scope": {
+    "surface": "helper-cli",
+    "stability": "internal",
+    "since": null,
+    "support_note": "Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision.",
+    "included": [
+      "engine-owned Python helper scripts that expose a top-level create_parser() factory",
+      "exact argparse usage, help output, arguments, subcommands, ownership, audience, and invocation context"
+    ],
+    "excluded": [
+      "the separately modeled BuildTools/buildtools.py command line",
+      "the separately modeled BuildTools/package.py command line and package declaration contract",
+      "documentation generators, tests, library-only modules, shell scripts, and embedding-project tools"
+    ]
+  },
+  "discovery": {
+    "root": "BuildTools",
+    "excluded_directories": ["tests"],
+    "excluded_name_prefixes": ["docs_"],
+    "excluded_parser_sources": [
+      {
+        "source": "BuildTools/buildtools.py",
+        "reason": "Owned by Docs/generated/cli.json and BuildTools/docs_cli.py."
+      },
+      {
+        "source": "BuildTools/package.py",
+        "reason": "Owned by Docs/generated/package.json and BuildTools/docs_package.py."
+      }
+    ]
+  },
+  "helpers": [
+    {
+      "id": "helper-cli.codegen",
+      "name": "Code generation",
+      "source": "BuildTools/codegen.py",
+      "factory": "create_parser",
+      "program": "codegen.py",
+      "owner": "build-release",
+      "audiences": ["engine-contributor", "embedding-project-build-system"],
+      "invocation_owner": "BuildTools/cmake/stages/Codegen.cmake",
+      "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files."
+    },
+    {
+      "id": "helper-cli.compile-mono-scripts",
+      "name": "Mono script compilation",
+      "source": "BuildTools/compile-mono-scripts.py",
+      "factory": "create_parser",
+      "program": "compile-mono-scripts.py",
+      "owner": "scripting",
+      "audiences": ["engine-contributor", "embedding-project-build-system"],
+      "invocation_owner": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+      "description": "Compile configured Mono assemblies for engine application roles."
+    },
+    {
+      "id": "helper-cli.codecoverage",
+      "name": "Code coverage",
+      "source": "BuildTools/codecoverage.py",
+      "factory": "create_parser",
+      "program": "codecoverage.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "ci-maintainer"],
+      "invocation_owner": "BuildTools/cmake/stages/Applications.cmake",
+      "description": "Clean, collect, and report engine code coverage for generated test targets."
+    },
+    {
+      "id": "helper-cli.windows7-import-check",
+      "name": "Windows 7 import validation",
+      "source": "BuildTools/check_windows7_imports.py",
+      "factory": "create_parser",
+      "program": "check_windows7_imports.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "embedding-project-build-system", "release-operator"],
+      "invocation_owner": "embedding-project Windows 7 CI and release validation",
+      "description": "Inspect linked PE files and reject imports that are unavailable on Windows 7."
+    },
+    {
+      "id": "helper-cli.android-device",
+      "name": "Android device control",
+      "source": "BuildTools/android_device.py",
+      "factory": "create_parser",
+      "program": "android_device.py",
+      "owner": "platform",
+      "audiences": ["game-developer", "engine-contributor"],
+      "invocation_owner": "embedding-project Android tasks and direct developer use",
+      "description": "Discover, connect, install, launch, stop, and inspect Android Wi-Fi devices through adb."
+    },
+    {
+      "id": "helper-cli.simple-web-server",
+      "name": "Local web server",
+      "source": "BuildTools/web/simple-web-server.py",
+      "factory": "create_parser",
+      "program": "simple-web-server.py",
+      "owner": "platform",
+      "audiences": ["game-developer", "release-operator"],
+      "invocation_owner": "BuildTools/package.py WebServer payload",
+      "description": "Serve a packaged web client from a no-cache local HTTP server."
+    },
+    {
+      "id": "helper-cli.createmsi",
+      "name": "MSI creation",
+      "source": "BuildTools/msicreator/createmsi.py",
+      "factory": "create_parser",
+      "program": "createmsi.py",
+      "owner": "build-release",
+      "audiences": ["release-operator", "engine-contributor"],
+      "invocation_owner": "BuildTools/package.py Wix pack",
+      "description": "Build an MSI installer from a package-generated WiX definition."
+    }
+  ]
+}

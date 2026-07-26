@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_native_extension.py",
+  "source_manifest": "BuildTools/NativeExtensionInterface.json",
+  "project_interface": "BuildTools/cmake/ProjectInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Runtime-owned native extension composition and engine-hook contract for FOnline embedding projects.",
+  "scope": {
+    "surface": "native-extension-interface",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "Source-compatible use is documented for a pinned engine revision; independently built binary compatibility is not promised.",
+    "included": [
+      "role-scoped project C++ source registration through AddEngineSources",
+      "metadata/codegen participation of registered project sources",
+      "optional EngineHook declarations, signatures, owning roles, call sites, and generated fallback behavior",
+      "native binding and namespace rules required by generated script exports"
+    ],
+    "excluded": [
+      "project-local extension implementations, dependencies, settings, persistence, and release policy",
+      "third-party SDK ABI and project-specific native library packaging",
+      "client host/runtime updater ABI and compatibility across independently built engine revisions",
+      "native scripting backend internals controlled by FO_NATIVE_SCRIPTING"
+    ]
+  },
+  "registration": {
+    "cmake_helper": "AddEngineSources",
+    "source_stage": "EngineSources",
+    "required_before": "RegisterEngineSources",
+    "contribution_root_variable": "FO_CONTRIBUTION_DIR",
+    "metadata_source_list": "FO_SOURCE_META_FILES",
+    "codegen_parser": "BuildTools/codegen.py",
+    "generated_stub_output": "GeneratedSource/GenericCode-Common.gen.cpp",
+    "namespace_open_macro": "FO_BEGIN_NAMESPACE",
+    "namespace_close_macro": "FO_END_NAMESPACE",
+    "namespace_definition_macro": "FO_NAMESPACE",
+    "export_macro": "FO_SCRIPT_API"
+  },
+  "roles": [
+    {
+      "id": "native-extension.role.common",
+      "name": "COMMON",
+      "source_list": "FO_COMMON_SOURCE",
+      "library_target": "CommonLib",
+      "primary_header": "Common.h",
+      "consumers": [
+        "client",
+        "server",
+        "mapper",
+        "baker",
+        "editor",
+        "tests"
+      ],
+      "script_targets": [
+        "common"
+      ],
+      "description": "Code shared by every enabled engine role; use only for genuinely common dependencies and hooks."
+    },
+    {
+      "id": "native-extension.role.server",
+      "name": "SERVER",
+      "source_list": "FO_SERVER_SOURCE",
+      "library_target": "ServerLib",
+      "primary_header": "Server.h",
+      "consumers": [
+        "server",
+        "tests"
+      ],
+      "script_targets": [
+        "server"
+      ],
+      "description": "Authoritative server-only code and script exports."
+    },
+    {
+      "id": "native-extension.role.client",
+      "name": "CLIENT",
+      "source_list": "FO_CLIENT_SOURCE",
+      "library_target": "ClientLib",
+      "primary_header": "Client.h",
+      "consumers": [
+        "client",
+        "mapper",
+        "tests"
+      ],
+      "script_targets": [
+        "client",
+        "mapper"
+      ],
+      "description": "Client runtime code; MapperLib links ClientLib and receives client-side metadata registrations."
+    },
+    {
+      "id": "native-extension.role.mapper",
+      "name": "MAPPER",
+      "source_list": "FO_MAPPER_SOURCE",
+      "library_target": "MapperLib",
+      "primary_header": "Mapper.h",
+      "consumers": [
+        "mapper",
+        "tests"
+      ],
+      "script_targets": [
+        "mapper"
+      ],
+      "description": "Mapper-only native tooling and mapper script exports."
+    },
+    {
+      "id": "native-extension.role.baker",
+      "name": "BAKER",
+      "source_list": "FO_BAKER_SOURCE",
+      "library_target": "BakerLib",
+      "primary_header": "Baker.h",
+      "consumers": [
+        "baker",
+        "editor",
+        "tests"
+      ],
+      "script_targets": [],
+      "description": "Resource-baker extensions; EditorLib links BakerLib, but BAKER is not a script export target."
+    }
+  ],
+  "hooks": [
+    {
+      "id": "native-extension.hook.ApplicationInitHook",
+      "name": "ApplicationInitHook",
+      "role": "COMMON",
+      "signature": "void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings)",
+      "call_sites": [
+        "Source/Frontend/ApplicationInit.cpp"
+      ],
+      "stub_declarations": [
+        "enum class AppInitFlags : uint8_t;",
+        "struct GlobalSettings;"
+      ],
+      "stub_definition": "void ApplicationInitHook(AppInitFlags, GlobalSettings&) { /* Stub */ }",
+      "default_behavior": "No-op before application runtime initialization continues.",
+      "compatibility_hashed": true,
+      "description": "Inspect or adjust application startup settings after platform initialization."
+    },
+    {
+      "id": "native-extension.hook.ApplicationShutdownHook",
+      "name": "ApplicationShutdownHook",
+      "role": "COMMON",
+      "signature": "void ApplicationShutdownHook()",
+      "call_sites": [
+        "Source/Applications/ClientApp.cpp",
+        "Source/Applications/ClientLib.cpp"
+      ],
+      "stub_declarations": [],
+      "stub_definition": "void ApplicationShutdownHook() { /* Stub */ }",
+      "default_behavior": "No-op during guarded client/application shutdown.",
+      "compatibility_hashed": false,
+      "description": "Release project-owned process services during application shutdown."
+    },
+    {
+      "id": "native-extension.hook.ServerInitHook",
+      "name": "ServerInitHook",
+      "role": "SERVER",
+      "signature": "void ServerInitHook(ptr<ServerEngine> server)",
+      "call_sites": [
+        "Source/Server/Server.cpp"
+      ],
+      "stub_declarations": [
+        "class ServerEngine;"
+      ],
+      "stub_definition": "void ServerInitHook(ptr<ServerEngine>) { /* Stub */ }",
+      "default_behavior": "No-op while server initialization continues.",
+      "compatibility_hashed": true,
+      "description": "Initialize project-owned server services and engine user data."
+    },
+    {
+      "id": "native-extension.hook.ClientInitHook",
+      "name": "ClientInitHook",
+      "role": "CLIENT",
+      "signature": "void ClientInitHook(ptr<ClientEngine> client)",
+      "call_sites": [
+        "Source/Client/Client.cpp"
+      ],
+      "stub_declarations": [
+        "class ClientEngine;"
+      ],
+      "stub_definition": "void ClientInitHook(ptr<ClientEngine>) { /* Stub */ }",
+      "default_behavior": "No-op while client initialization continues.",
+      "compatibility_hashed": true,
+      "description": "Initialize project-owned client services and engine user data."
+    },
+    {
+      "id": "native-extension.hook.ClientStartupSettingsHook",
+      "name": "ClientStartupSettingsHook",
+      "role": "COMMON",
+      "signature": "void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded)",
+      "call_sites": [
+        "Source/Applications/ClientApp.cpp",
+        "Source/Applications/ServerApp.cpp",
+        "Source/Applications/ServerHeadlessApp.cpp"
+      ],
+      "stub_declarations": [
+        "struct GlobalSettings;"
+      ],
+      "stub_definition": "void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }",
+      "default_behavior": "No-op before standalone or embedded client startup.",
+      "compatibility_hashed": true,
+      "description": "Adjust per-client startup settings, including embedded multi-client instances."
+    },
+    {
+      "id": "native-extension.hook.SetupBakersHook",
+      "name": "SetupBakersHook",
+      "role": "BAKER",
+      "signature": "void SetupBakersHook(const_span<string> requested, vector<unique_ptr<BaseBaker>>& bakers, shared_ptr<BakingContext> context)",
+      "call_sites": [
+        "Source/Tools/Baker.cpp"
+      ],
+      "stub_declarations": [
+        "class BaseBaker;",
+        "struct BakingContext;"
+      ],
+      "stub_definition": "void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }",
+      "default_behavior": "Register no project-owned bakers.",
+      "compatibility_hashed": true,
+      "description": "Append project-owned resource bakers requested by the active bake configuration."
+    },
+    {
+      "id": "native-extension.hook.CheckCritterVisibilityHook",
+      "name": "CheckCritterVisibilityHook",
+      "role": "SERVER",
+      "signature": "CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, ptr<const Critter> observer, ptr<const Critter> target)",
+      "call_sites": [
+        "Source/Server/MapManager.cpp"
+      ],
+      "stub_declarations": [
+        "class ServerEngine;",
+        "class Map;",
+        "class Critter;"
+      ],
+      "stub_definition": "CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>) { return CritterVisibilityMode::Full; }",
+      "default_behavior": "Return CritterVisibilityMode::Full.",
+      "compatibility_hashed": true,
+      "description": "Apply project visibility policy between an observer and target critter."
+    },
+    {
+      "id": "native-extension.hook.CheckItemVisibilityHook",
+      "name": "CheckItemVisibilityHook",
+      "role": "SERVER",
+      "signature": "bool CheckItemVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, ptr<const Critter> observer, ptr<const Item> item)",
+      "call_sites": [
+        "Source/Server/Critter.cpp"
+      ],
+      "stub_declarations": [
+        "class ServerEngine;",
+        "class Map;",
+        "class Critter;",
+        "class Item;"
+      ],
+      "stub_definition": "bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }",
+      "default_behavior": "Return true.",
+      "compatibility_hashed": true,
+      "description": "Apply project visibility policy between an observer critter and map item."
+    }
+  ],
+  "binding_rules": [
+    {
+      "id": "native-extension.binding.registration-order",
+      "name": "Registration order",
+      "requirement": "Call AddEngineSources after AddThirdPartyLibraries and before the RegisterEngineSources stage entrypoint.",
+      "rationale": "Project files must enter role source lists and FO_SOURCE_META_FILES before codegen and core libraries are configured."
+    },
+    {
+      "id": "native-extension.binding.namespace",
+      "name": "Engine namespace",
+      "requirement": "Declare metadata exports inside FO_BEGIN_NAMESPACE/FO_END_NAMESPACE and define them with FO_NAMESPACE.",
+      "rationale": "The same source must compile with the configured engine namespace enabled or disabled."
+    },
+    {
+      "id": "native-extension.binding.script-export",
+      "name": "Script export frontier",
+      "requirement": "Use FO_SCRIPT_API with a supported ///@ metadata tag; do not add stack-trace entry macros to exported bodies.",
+      "rationale": "Codegen parses the declaration and emits the native/script registration boundary."
+    },
+    {
+      "id": "native-extension.binding.pointer-contract",
+      "name": "Pointer contract",
+      "requirement": "Use ptr<T>/nptr<T> for engine handle borrows and the engine owning-pointer vocabulary for ownership.",
+      "rationale": "Codegen rejects raw handle pointers and nullability must agree across native and script declarations."
+    },
+    {
+      "id": "native-extension.binding.compatibility",
+      "name": "Compatibility",
+      "requirement": "Rebuild and rebake every project-side native metadata change against the pinned engine revision.",
+      "rationale": "Registered metadata and most hook presence feed generated compatibility state; binary compatibility across independent revisions is not promised."
+    },
+    {
+      "id": "native-extension.binding.dependencies",
+      "name": "Dependencies",
+      "requirement": "Declare project libraries, include paths, compile definitions, platform guards, and package payloads in the embedding project.",
+      "rationale": "AddEngineSources owns source routing only; project dependency and distribution policy is not inferred by the engine."
+    }
+  ],
+  "summary": {
+    "role_count": 5,
+    "hook_count": 8,
+    "binding_rule_count": 6,
+    "compatibility_hashed_hook_count": 7,
+    "hooks_by_role": {
+      "BAKER": 1,
+      "CLIENT": 1,
+      "COMMON": 3,
+      "SERVER": 3
+    }
+  },
+  "contract_digest": "7309539ef4c0941c34b105b6bbbe58e553bbeec9d2b609e81b23bdae63208a02"
+}
