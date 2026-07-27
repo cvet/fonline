@@ -12,11 +12,11 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> props_data;
+    vector<byte> props_data;
     set<hstring> str_hashes;
 
     auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -26,7 +26,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     proto.SetSize(msize {50, 50});
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-    vector<uint8_t> protos_data;
+    vector<byte> protos_data;
     auto writer = DataWriter(protos_data);
 
     writer.Write<uint32_t>(uint32_t {0});
@@ -49,7 +49,7 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    const vector<byte> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 
@@ -62,8 +62,8 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
     rig.AddBakedFile("MapBakerTest.fopro-bin-client", MakeMapProtoBlob(client_proto_engine, client_map_type, proto_name));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-        string message_str = string(message);
+    const vector<byte> script_blob = BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+        const string message_str = string(message);
 
         if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
             throw ScriptSystemException(message_str);
@@ -161,7 +161,7 @@ static void SkipBakedMapEntities(DataReader& reader, uint32_t count)
     }
 }
 
-static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapServerSummary
+static auto ReadBakedMapServerSummary(const vector<byte>& data) -> BakedMapServerSummary
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -179,7 +179,7 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapSe
     return summary;
 }
 
-static auto ReadBakedMapClientSummary(const vector<uint8_t>& data) -> BakedMapClientSummary
+static auto ReadBakedMapClientSummary(const vector<byte>& data) -> BakedMapClientSummary
 {
     FO_STACK_TRACE_ENTRY();
 

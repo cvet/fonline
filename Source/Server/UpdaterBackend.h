@@ -52,7 +52,7 @@ public:
     auto operator=(const UpdaterBackend&) -> UpdaterBackend& = delete;
     auto operator=(UpdaterBackend&&) -> UpdaterBackend& = delete;
 
-    [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
+    [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<byte>;
 
     void LoadFromClientResources(const GlobalSettings& settings);
     void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
@@ -61,8 +61,8 @@ private:
     struct UpdateFileData
     {
         bool InMemory {};
-        string DiskPath;
-        vector<uint8_t> MemoryData {};
+        u8string DiskPath;
+        vector<byte> MemoryData {};
         uint64_t Size {};
         uint64_t Hash {};
     };
@@ -76,9 +76,9 @@ private:
 
     vector<UpdateFileData> _updateFiles {};
     vector<UpdateFileInfo> _commonUpdateFiles {};
-    vector<uint8_t> _commonUpdateFilesDesc {};
+    vector<byte> _commonUpdateFilesDesc {};
     map<string, vector<UpdateFileInfo>> _binaryTargetUpdateFiles {};
-    map<string, vector<uint8_t>> _binaryTargetUpdateFilesDesc {};
+    map<string, vector<byte>> _binaryTargetUpdateFilesDesc {};
 };
 
 FO_END_NAMESPACE

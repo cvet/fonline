@@ -61,14 +61,14 @@ protected:
     void DisconnectImpl() override;
 
 private:
-    auto MakeOptions() const -> UdpTransportOptions;
-    void SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets);
+    [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
+    void SendPackets(udp_socket& socket, const vector<vector<byte>>& packets);
 
     UdpOrderedChannel _channel;
     std::atomic_bool _disconnectRequested {};
     std::atomic_bool _sendRequested {true};
-    vector<uint8_t> _pendingOutput {};
-    vector<uint8_t> _readyData {};
+    vector<byte> _pendingOutput {};
+    vector<byte> _readyData {};
 };
 
 class NetworkServer_UdpSockets final : public NetworkServer
@@ -100,7 +100,7 @@ private:
     std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_connectionsLocker) {MakeSeededRandomGenerator()};
     unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions FO_TSA_GUARDED_BY(_connectionsLocker) {};
     unordered_map<string, uint32_t> _endpointToSession FO_TSA_GUARDED_BY(_connectionsLocker) {};
-    vector<uint8_t> _packetBuf {};
+    vector<byte> _packetBuf {};
 };
 
 auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
@@ -122,7 +122,7 @@ NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<Serve
 {
     FO_STACK_TRACE_ENTRY();
 
-    _host = std::move(host);
+    _host = string(host);
     _port = port;
     _channel.SetSessionId(session_id);
 }
@@ -165,7 +165,7 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<vector<uint8_t>> packets;
+    vector<vector<byte>> packets;
 
     if (_disconnectRequested) {
         if (socket.can_write()) {
@@ -227,7 +227,7 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     return options;
 }
 
-void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets)
+void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const vector<vector<byte>>& packets)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -320,8 +320,8 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        auto packet_buf = make_span(_packetBuf);
-        int32_t received = _socket.receive_from(packet_buf, host, port);
+        auto packet_buf = make_byte_span(_packetBuf);
+        const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
@@ -329,7 +329,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         UdpPacketInfo packet;
         FO_STRONG_ASSERT(numeric_cast<size_t>(received) <= _packetBuf.size(), "Received byte count exceeds the packet buffer size");
-        auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
+        const const_span<byte> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;

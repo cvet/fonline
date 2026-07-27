@@ -295,7 +295,7 @@ struct InputEvent
     struct KeyDownEvent
     {
         KeyCode Code {};
-        string Text {};
+        u8string Text {};
     } KeyDown {};
 
     struct KeyUpEvent
@@ -379,7 +379,7 @@ public:
     [[nodiscard]] virtual auto GetRenderTarget() -> nptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
@@ -399,7 +399,7 @@ public:
     [[nodiscard]] virtual auto IsMouseAvailable() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto GetMousePosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto GetGamepadState() const noexcept -> GamepadState = 0;
-    [[nodiscard]] virtual auto GetClipboardText() -> const string& = 0;
+    [[nodiscard]] virtual auto GetClipboardText() -> const u8string& = 0;
     [[nodiscard]] virtual auto IsShiftDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsCtrlDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsAltDown() const noexcept -> bool = 0;
@@ -409,21 +409,26 @@ public:
     virtual void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) = 0;
     virtual void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) = 0;
     virtual void SetScreenKeyboardEnabled(bool enabled) = 0;
-    virtual void SetClipboardText(string_view text) = 0;
+    virtual void SetClipboardText(u8string_view text) = 0;
+    void SetClipboardText(string_view text)
+    {
+        const u8string utf8_text = text;
+        SetClipboardText(utf8_text);
+    }
 };
 
 class IAppAudio
 {
 public:
-    using AudioStreamCallback = function<void(uint8_t, span<uint8_t>)>;
+    using AudioStreamCallback = function<void(uint8_t, span<byte>)>;
 
     virtual ~IAppAudio() = default;
 
     [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
 
-    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
+    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool = 0;
     virtual void SetSource(AudioStreamCallback stream_callback) = 0;
-    virtual void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) = 0;
+    virtual void MixAudio(span<byte> output, const_span<byte> buf, int32_t volume) = 0;
     virtual void LockDevice() = 0;
     virtual void UnlockDevice() = 0;
 };
@@ -487,7 +492,7 @@ public:
     [[nodiscard]] auto GetOnLowMemory() noexcept -> ptr<EventObserver<>> override;
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override;
     [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return _isVirtual; }
-    [[nodiscard]] auto GetTitle() const noexcept -> string_view { return _title; }
+    [[nodiscard]] auto GetTitle() const noexcept -> u8string_view { return _title.view(); }
     [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture> { return _virtualRenderTex; }
     [[nodiscard]] auto GetDisplayRect() const noexcept -> irect32 { return _displayRect; }
 
@@ -500,7 +505,7 @@ public:
     void Blink() override;
     void AlwaysOnTop(bool enable) override;
     void Destroy() override;
-    void SetTitle(string_view title);
+    void SetTitle(u8string_view title);
     void SetDisplayRect(irect32 rect) noexcept { _displayRect = rect; }
 
     EventObserver<> OnWindowSizeChanged {};
@@ -519,7 +524,7 @@ private:
     nptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};
     bool _isVirtual {};
-    string _title {};
+    u8string _title {};
     isize32 _virtualSize {};
     isize32 _virtualScreenSize {};
     ipos32 _virtualPosition {};
@@ -544,7 +549,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
@@ -571,10 +576,12 @@ class AppInput final : public IAppInput
 public:
     static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
+    using IAppInput::SetClipboardText;
+
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
     [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override;
-    [[nodiscard]] auto GetClipboardText() -> const string& override;
+    [[nodiscard]] auto GetClipboardText() -> const u8string& override;
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
     [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }
     [[nodiscard]] auto IsAltDown() const noexcept -> bool override { return _altDown; }
@@ -584,7 +591,7 @@ public:
     void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) override;
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override;
     void SetScreenKeyboardEnabled(bool enabled) override;
-    void SetClipboardText(string_view text) override;
+    void SetClipboardText(u8string_view text) override;
 
 private:
     explicit AppInput(ptr<Application> app) :
@@ -593,7 +600,7 @@ private:
     }
 
     ptr<Application> _app;
-    string _clipboardTextStorage {};
+    u8string _clipboardTextStorage {};
     ipos32 _lastMousePos {};
     bool _shiftDown {};
     bool _ctrlDown {};
@@ -612,9 +619,9 @@ public:
 
     [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
+    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool override;
     void SetSource(AudioStreamCallback stream_callback) override;
-    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override;
+    void MixAudio(span<byte> output, const_span<byte> buf, int32_t volume) override;
     void LockDevice() override;
     void UnlockDevice() override;
 
@@ -674,7 +681,7 @@ public:
     [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
 
-    auto CreateChildWindow(isize32 size, string_view title = {}) -> ptr<AppWindow>;
+    auto CreateChildWindow(isize32 size, u8string_view title = {}) -> ptr<AppWindow>;
     void DestroyChildWindow(nptr<AppWindow> window);
     void SetActiveWindow(nptr<AppWindow> window);
     void BeginWindowRender(ptr<AppWindow> window);
@@ -691,7 +698,7 @@ public:
     void SetMainLoopCallback(void (*callback)(void*));
 #endif
 
-    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
+    static void ShowErrorMessage(u8string_view message, u8string_view traceback, bool fatal_error);
     static void ShowProgressWindow(string_view text, const ProgressWindowCallback& callback);
     static void ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32_t>& selected);
 
@@ -839,7 +846,7 @@ extern void ResetApp() noexcept;
 extern auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
 extern void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
-extern auto GetExeLogFileName() -> string;
+extern auto GetExeLogFileName() -> u8string;
 extern void ResolveUserWritablePath(GlobalSettings& settings);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 extern auto IsQuitSignalReceived() noexcept -> bool;

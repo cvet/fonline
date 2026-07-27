@@ -111,8 +111,8 @@ struct EffekseerBoundsTrailer
     float32_t BillboardRadius {};
 };
 
-void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius);
-auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTrailer;
+void AppendEffekseerBoundsTrailer(vector<byte>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius);
+auto ReadEffekseerBoundsTrailer(const_span<byte> binary) -> EffekseerBoundsTrailer;
 
 FO_END_NAMESPACE
 

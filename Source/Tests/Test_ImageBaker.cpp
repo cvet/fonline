@@ -32,74 +32,108 @@ struct BakedImageSequence
     vector<BakedImageFrame> Frames {};
 };
 
-static void AppendLe16(vector<uint8_t>& buf, uint16_t value)
+static auto MakeByteFixture(std::initializer_list<uint8_t> values) -> vector<byte>
 {
-    buf.emplace_back(numeric_cast<uint8_t>(value & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    vector<byte> bytes;
+    bytes.reserve(values.size());
+
+    for (const uint8_t value : values) {
+        bytes.emplace_back(static_cast<byte>(value));
+    }
+
+    return bytes;
 }
 
-static void AppendLeInt16(vector<uint8_t>& buf, int16_t value)
+static void AppendByte(vector<byte>& data, uint8_t value)
+{
+    data.emplace_back(static_cast<byte>(value));
+}
+
+static void SetByte(vector<byte>& data, size_t pos, uint8_t value)
+{
+    data[pos] = static_cast<byte>(value);
+}
+
+static void AppendByteValues(vector<byte>& data, std::initializer_list<uint8_t> values)
+{
+    const vector<byte> bytes = MakeByteFixture(values);
+    data.insert(data.end(), bytes.begin(), bytes.end());
+}
+
+static void AppendNumericBytes(vector<byte>& data, const vector<uint8_t>& values)
+{
+    const const_span<byte> bytes = make_byte_span(values);
+    data.insert(data.end(), bytes.begin(), bytes.end());
+}
+
+static void AppendLe16(vector<byte>& buf, uint16_t value)
+{
+    AppendByte(buf, numeric_cast<uint8_t>(value & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+}
+
+static void AppendLeInt16(vector<byte>& buf, int16_t value)
 {
     AppendLe16(buf, std::bit_cast<uint16_t>(value));
 }
 
-static void AppendLe32(vector<uint8_t>& buf, uint32_t value)
+static void AppendLe32(vector<byte>& buf, uint32_t value)
 {
-    buf.emplace_back(numeric_cast<uint8_t>(value & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>(value & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
 }
 
-static void AppendLeInt32(vector<uint8_t>& buf, int32_t value)
+static void AppendLeInt32(vector<byte>& buf, int32_t value)
 {
     AppendLe32(buf, std::bit_cast<uint32_t>(value));
 }
 
-static void AppendBe16(vector<uint8_t>& buf, uint16_t value)
+static void AppendBe16(vector<byte>& buf, uint16_t value)
 {
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>(value & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>(value & 0xFFu));
 }
 
-static void AppendBeInt16(vector<uint8_t>& buf, int16_t value)
+static void AppendBeInt16(vector<byte>& buf, int16_t value)
 {
     AppendBe16(buf, std::bit_cast<uint16_t>(value));
 }
 
-static void AppendBe32(vector<uint8_t>& buf, uint32_t value)
+static void AppendBe32(vector<byte>& buf, uint32_t value)
 {
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
-    buf.emplace_back(numeric_cast<uint8_t>(value & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    AppendByte(buf, numeric_cast<uint8_t>(value & 0xFFu));
 }
 
-static void SetBe16(vector<uint8_t>& buf, size_t pos, uint16_t value)
+static void SetBe16(vector<byte>& buf, size_t pos, uint16_t value)
 {
-    buf[pos + 0] = numeric_cast<uint8_t>((value >> 8u) & 0xFFu);
-    buf[pos + 1] = numeric_cast<uint8_t>(value & 0xFFu);
+    SetByte(buf, pos + 0, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    SetByte(buf, pos + 1, numeric_cast<uint8_t>(value & 0xFFu));
 }
 
-static void SetBeInt16(vector<uint8_t>& buf, size_t pos, int16_t value)
+static void SetBeInt16(vector<byte>& buf, size_t pos, int16_t value)
 {
     SetBe16(buf, pos, std::bit_cast<uint16_t>(value));
 }
 
-static void SetBe32(vector<uint8_t>& buf, size_t pos, uint32_t value)
+static void SetBe32(vector<byte>& buf, size_t pos, uint32_t value)
 {
-    buf[pos + 0] = numeric_cast<uint8_t>((value >> 24u) & 0xFFu);
-    buf[pos + 1] = numeric_cast<uint8_t>((value >> 16u) & 0xFFu);
-    buf[pos + 2] = numeric_cast<uint8_t>((value >> 8u) & 0xFFu);
-    buf[pos + 3] = numeric_cast<uint8_t>(value & 0xFFu);
+    SetByte(buf, pos + 0, numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
+    SetByte(buf, pos + 1, numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
+    SetByte(buf, pos + 2, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    SetByte(buf, pos + 3, numeric_cast<uint8_t>(value & 0xFFu));
 }
 
-static void SetLe32(vector<uint8_t>& buf, size_t pos, uint32_t value)
+static void SetLe32(vector<byte>& buf, size_t pos, uint32_t value)
 {
-    buf[pos + 0] = numeric_cast<uint8_t>(value & 0xFFu);
-    buf[pos + 1] = numeric_cast<uint8_t>((value >> 8u) & 0xFFu);
-    buf[pos + 2] = numeric_cast<uint8_t>((value >> 16u) & 0xFFu);
-    buf[pos + 3] = numeric_cast<uint8_t>((value >> 24u) & 0xFFu);
+    SetByte(buf, pos + 0, numeric_cast<uint8_t>(value & 0xFFu));
+    SetByte(buf, pos + 1, numeric_cast<uint8_t>((value >> 8u) & 0xFFu));
+    SetByte(buf, pos + 2, numeric_cast<uint8_t>((value >> 16u) & 0xFFu));
+    SetByte(buf, pos + 3, numeric_cast<uint8_t>((value >> 24u) & 0xFFu));
 }
 
 struct FrmFrameSpec
@@ -111,7 +145,7 @@ struct FrmFrameSpec
     vector<uint8_t> Indices {};
 };
 
-static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& frames)
+static void AppendFrmFrames(vector<byte>& data, const vector<FrmFrameSpec>& frames)
 {
     for (const auto& frame : frames) {
         AppendBe16(data, frame.Width);
@@ -119,53 +153,53 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
         AppendBe32(data, numeric_cast<uint32_t>(frame.Indices.size()));
         AppendBeInt16(data, frame.NextX);
         AppendBeInt16(data, frame.NextY);
-        data.insert(data.end(), frame.Indices.begin(), frame.Indices.end());
+        AppendNumericBytes(data, frame.Indices);
     }
 }
 
-[[nodiscard]] static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<uint8_t>
+[[nodiscard]] static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     data.reserve(18 + pixels.size());
-    data.emplace_back(0); // ID length
-    data.emplace_back(0); // No color map
-    data.emplace_back(2); // Uncompressed true-color image
+    AppendByte(data, 0); // ID length
+    AppendByte(data, 0); // No color map
+    AppendByte(data, 2); // Uncompressed true-color image
     AppendLe16(data, 0);
     AppendLe16(data, 0);
-    data.emplace_back(0);
+    AppendByte(data, 0);
     AppendLe16(data, 0);
     AppendLe16(data, 0);
     AppendLe16(data, width);
     AppendLe16(data, height);
-    data.emplace_back(pixel_depth);
-    data.emplace_back(0);
-    data.insert(data.end(), pixels.begin(), pixels.end());
+    AppendByte(data, pixel_depth);
+    AppendByte(data, 0);
+    AppendNumericBytes(data, pixels);
     return data;
 }
 
-[[nodiscard]] static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& packets) -> vector<uint8_t>
+[[nodiscard]] static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<byte>& packets) -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     data.reserve(18 + packets.size());
-    data.emplace_back(0);
-    data.emplace_back(0);
-    data.emplace_back(10); // RLE true-color image
+    AppendByte(data, 0);
+    AppendByte(data, 0);
+    AppendByte(data, 10); // RLE true-color image
     AppendLe16(data, 0);
     AppendLe16(data, 0);
-    data.emplace_back(0);
+    AppendByte(data, 0);
     AppendLe16(data, 0);
     AppendLe16(data, 0);
     AppendLe16(data, width);
     AppendLe16(data, height);
-    data.emplace_back(pixel_depth);
-    data.emplace_back(0);
+    AppendByte(data, pixel_depth);
+    AppendByte(data, 0);
     data.insert(data.end(), packets.begin(), packets.end());
     return data;
 }
 
-[[nodiscard]] static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t offs_x = 0, int16_t offs_y = 0) -> vector<uint8_t>
+[[nodiscard]] static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t offs_x = 0, int16_t offs_y = 0) -> vector<byte>
 {
-    vector<uint8_t> data(0x3E);
+    vector<byte> data(0x3E);
 
     SetBe16(data, 0x4, fps);
     SetBe16(data, 0x8, numeric_cast<uint16_t>(frames.size()));
@@ -177,7 +211,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[nodiscard]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<uint8_t>
+[[nodiscard]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<byte>
 {
     auto data = MakeFrm(fps, frames, 1, -1);
 
@@ -194,7 +228,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[nodiscard]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
+[[nodiscard]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<byte>
 {
     auto data = MakeFrm(fps, frames);
     size_t dir_pos = numeric_cast<size_t>(dir) * 2;
@@ -206,24 +240,24 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[nodiscard]] static auto MakeFrmPalette() -> vector<uint8_t>
+[[nodiscard]] static auto MakeFrmPalette() -> vector<byte>
 {
-    vector<uint8_t> palette(256 * 3);
+    vector<byte> palette(256 * 3);
 
     for (uint8_t index = 1; index <= GameSettings::MAP_DIR_COUNT; index++) {
-        uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
-        size_t palette_pos = numeric_cast<size_t>(index) * 3;
-        palette[palette_pos + 0] = color_base;
-        palette[palette_pos + 1] = numeric_cast<uint8_t>(color_base + 1);
-        palette[palette_pos + 2] = numeric_cast<uint8_t>(color_base + 2);
+        const uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
+        const size_t palette_pos = numeric_cast<size_t>(index) * 3;
+        SetByte(palette, palette_pos + 0, color_base);
+        SetByte(palette, palette_pos + 1, numeric_cast<uint8_t>(color_base + 1));
+        SetByte(palette, palette_pos + 2, numeric_cast<uint8_t>(color_base + 2));
     }
 
     return palette;
 }
 
-[[nodiscard]] static auto MakePaletteTransparencyPng() -> vector<uint8_t>
+[[nodiscard]] static auto MakePaletteTransparencyPng() -> vector<byte>
 {
-    return {
+    return MakeByteFixture({
         0x89,
         0x50,
         0x4E,
@@ -323,76 +357,76 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
         0x42,
         0x60,
         0x82,
-    };
+    });
 }
 
-[[nodiscard]] static auto MakeRix() -> vector<uint8_t>
+[[nodiscard]] static auto MakeRix() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     data.resize(0xA + 256 * 3 + 1);
-    data[4] = 1;
-    data[6] = 1;
+    SetByte(data, 4, 1);
+    SetByte(data, 6, 1);
 
-    size_t palette_index = 0xA + 1 * 3;
-    data[palette_index + 0] = 1;
-    data[palette_index + 1] = 2;
-    data[palette_index + 2] = 3;
-    data[0xA + 256 * 3] = 1;
+    const size_t palette_index = 0xA + 1 * 3;
+    SetByte(data, palette_index + 0, 1);
+    SetByte(data, palette_index + 1, 2);
+    SetByte(data, palette_index + 2, 3);
+    SetByte(data, 0xA + 256 * 3, 1);
 
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleZar() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleZar() -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0);
-    data.emplace_back(0);
+    vector<byte> data;
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0);
+    AppendByte(data, 0);
     AppendLe32(data, 1);
     AppendLe32(data, 1);
-    data.emplace_back(0);
+    AppendByte(data, 0);
     AppendLe32(data, 1);
-    data.emplace_back(4);
+    AppendByte(data, 4);
     return data;
 }
 
-[[nodiscard]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+[[nodiscard]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0x34);
-    data.emplace_back(0);
+    vector<byte> data;
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0x34);
+    AppendByte(data, 0);
     AppendLe32(data, 1);
     AppendLe32(data, 1);
-    data.emplace_back(1);
+    AppendByte(data, 1);
     AppendLe32(data, palette_count);
     return data;
 }
 
-[[nodiscard]] static auto MakePaletteZar() -> vector<uint8_t>
+[[nodiscard]] static auto MakePaletteZar() -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0x34);
-    data.emplace_back(0);
+    vector<byte> data;
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0x34);
+    AppendByte(data, 0);
     AppendLe32(data, 3);
     AppendLe32(data, 1);
-    data.emplace_back(1);
+    AppendByte(data, 1);
     AppendLe32(data, 2);
     AppendLe32(data, 0);
     AppendLe32(data, 0x00332211);
-    data.emplace_back(1);
+    AppendByte(data, 1);
 
-    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    const vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleMos() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleMos() -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'M', 'O', 'S', ' ', '\0', '\0', '\0', '\0'});
+    vector<byte> data;
+    AppendByteValues(data, {'M', 'O', 'S', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 2);
     AppendLe16(data, 1);
     AppendLe16(data, 1);
@@ -414,18 +448,18 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     }
 
     AppendLe32(data, 0);
-    data.emplace_back(1);
-    data.emplace_back(2);
+    AppendByte(data, 1);
+    AppendByte(data, 2);
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleBam() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleBam() -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
+    vector<byte> data;
+    AppendByteValues(data, {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 1);
-    data.emplace_back(1);
-    data.emplace_back(3);
+    AppendByte(data, 1);
+    AppendByte(data, 3);
     AppendLe32(data, 24);
     AppendLe32(data, 40);
     AppendLe32(data, 1064);
@@ -456,20 +490,20 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     }
 
     AppendLe16(data, 0);
-    data.emplace_back(1);
-    data.emplace_back(2);
-    data.emplace_back(3);
-    data.emplace_back(1);
+    AppendByte(data, 1);
+    AppendByte(data, 2);
+    AppendByte(data, 3);
+    AppendByte(data, 1);
     return data;
 }
 
-[[nodiscard]] static auto MakeMultiFrameBam() -> vector<uint8_t>
+[[nodiscard]] static auto MakeMultiFrameBam() -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
+    vector<byte> data;
+    AppendByteValues(data, {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 2);
-    data.emplace_back(1);
-    data.emplace_back(3);
+    AppendByte(data, 1);
+    AppendByte(data, 3);
     AppendLe32(data, 24);
     AppendLe32(data, 52);
     AppendLe32(data, 1076);
@@ -504,83 +538,83 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
 
     AppendLe16(data, 0);
     AppendLe16(data, 1);
-    data.emplace_back(1);
-    data.emplace_back(3);
-    data.emplace_back(1);
+    AppendByte(data, 1);
+    AppendByte(data, 3);
+    AppendByte(data, 1);
     return data;
 }
 
-static void AppendTilPrefix(vector<uint8_t>& data)
+static void AppendTilPrefix(vector<byte>& data)
 {
-    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', '>', '\0'});
-    data.emplace_back(0);
-    data.insert(data.end(), 11, 0);
+    AppendByteValues(data, {'<', 't', 'i', 'l', 'e', '>', '\0'});
+    AppendByte(data, 0);
+    data.insert(data.end(), 11, byte {0});
     AppendLe32(data, 1);
     AppendLe32(data, 1);
 }
 
-[[nodiscard]] static auto MakeSimpleTil() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleTil() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendTilPrefix(data);
     SetLe32(data, data.size() - 8, 3);
-    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
-    data.insert(data.end(), 3, 0);
+    AppendByteValues(data, {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+    data.insert(data.end(), 3, byte {0});
     AppendLe32(data, 1);
 
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0x34);
-    data.emplace_back(0);
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0x34);
+    AppendByte(data, 0);
     AppendLe32(data, 3);
     AppendLe32(data, 1);
-    data.emplace_back(1);
+    AppendByte(data, 1);
     AppendLe32(data, 2);
     AppendLe32(data, 0);
     AppendLe32(data, 0x00332211);
-    data.emplace_back(1);
+    AppendByte(data, 1);
 
-    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    const vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
 }
 
-[[nodiscard]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
+[[nodiscard]] static auto MakeTilWithoutTiledata() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendTilPrefix(data);
     return data;
 }
 
-[[nodiscard]] static auto MakeTilWithBadZarHeader() -> vector<uint8_t>
+[[nodiscard]] static auto MakeTilWithBadZarHeader() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendTilPrefix(data);
-    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
-    data.insert(data.end(), 3, 0);
+    AppendByteValues(data, {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+    data.insert(data.end(), 3, byte {0});
     AppendLe32(data, 1);
-    data.insert(data.end(), {'b', 'a', 'd', 'z', 'a', 'r'});
+    AppendByteValues(data, {'b', 'a', 'd', 'z', 'a', 'r'});
     return data;
 }
 
-[[nodiscard]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+[[nodiscard]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendTilPrefix(data);
-    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
-    data.insert(data.end(), 3, 0);
+    AppendByteValues(data, {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+    data.insert(data.end(), 3, byte {0});
     AppendLe32(data, 1);
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0x34);
-    data.emplace_back(0);
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0x34);
+    AppendByte(data, 0);
     AppendLe32(data, 1);
     AppendLe32(data, 1);
-    data.emplace_back(1);
+    AppendByte(data, 1);
     AppendLe32(data, palette_count);
     return data;
 }
 
-static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t height, int32_t frame_size, int32_t offset_x, int32_t offset_y)
+static void AppendArtFrameInfo(vector<byte>& data, int32_t width, int32_t height, int32_t frame_size, int32_t offset_x, int32_t offset_y)
 {
     AppendLeInt32(data, width);
     AppendLeInt32(data, height);
@@ -591,9 +625,9 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
     AppendLeInt32(data, 0);
 }
 
-[[nodiscard]] static auto MakeArtWithFrameIndices(int32_t flags, const vector<uint8_t>& indices) -> vector<uint8_t>
+[[nodiscard]] static auto MakeArtWithFrameIndices(int32_t flags, const vector<uint8_t>& indices) -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendLeInt32(data, flags);
     AppendLeInt32(data, 10); // FrameRate
     AppendLeInt32(data, 1); // RotationCount
@@ -627,18 +661,18 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
 
     AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
     AppendArtFrameInfo(data, numeric_cast<int32_t>(indices.size()), 1, numeric_cast<int32_t>(indices.size()), 5, 7);
-    data.insert(data.end(), indices.begin(), indices.end());
+    AppendNumericBytes(data, indices);
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleArt() -> vector<byte>
 {
     return MakeArtWithFrameIndices(0, {1, 2});
 }
 
-[[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<uint8_t>
+[[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendLeInt32(data, 0); // Flags
     AppendLeInt32(data, 10); // FrameRate
     AppendLeInt32(data, 1); // RotationCount
@@ -670,16 +704,16 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
     AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
     AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
     AppendArtFrameInfo(data, 3, 1, 4, 1, 2);
-    data.emplace_back(2);
-    data.emplace_back(1);
-    data.emplace_back(129);
-    data.emplace_back(2);
+    AppendByte(data, 2);
+    AppendByte(data, 1);
+    AppendByte(data, 129);
+    AppendByte(data, 2);
     return data;
 }
 
-[[nodiscard]] static auto MakeDirectionalEmptyArt() -> vector<uint8_t>
+[[nodiscard]] static auto MakeDirectionalEmptyArt() -> vector<byte>
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     AppendLeInt32(data, 0); // Flags
     AppendLeInt32(data, 5); // FrameRate
     AppendLeInt32(data, 8); // RotationCount
@@ -712,39 +746,39 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
     return data;
 }
 
-static void AppendSprPalette(vector<uint8_t>& data, uint32_t color)
+static void AppendSprPalette(vector<byte>& data, uint32_t color)
 {
     AppendLe32(data, 2);
     AppendLe32(data, 0);
     AppendLe32(data, color);
 }
 
-static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, int32_t width, int32_t height, const vector<uint8_t>& rle)
+static void AppendSprImage(vector<byte>& data, int32_t pos_x, int32_t pos_y, int32_t width, int32_t height, const vector<byte>& rle)
 {
-    data.emplace_back(1);
+    AppendByte(data, 1);
     AppendLeInt32(data, pos_x);
     AppendLeInt32(data, pos_y);
-    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
-    data.emplace_back(0x34);
-    data.emplace_back(0);
+    AppendByteValues(data, {'<', 'z', 'a', 'r', '>', '\0'});
+    AppendByte(data, 0x34);
+    AppendByte(data, 0);
     AppendLeInt32(data, width);
     AppendLeInt32(data, height);
-    data.emplace_back(0);
+    AppendByte(data, 0);
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
 }
 
-[[nodiscard]] static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<uint8_t>
+[[nodiscard]] static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<byte>
 {
-    vector<uint8_t> data;
-    data.insert(data.end(), {'<', 's', 'p', 'r', 'i', 't', 'e', '>', '\0', '\0', '\0'});
-    data.emplace_back(0); // Left dimension
-    data.emplace_back(0); // Up dimension
-    data.emplace_back(0); // Right dimension
+    vector<byte> data;
+    AppendByteValues(data, {'<', 's', 'p', 'r', 'i', 't', 'e', '>', '\0', '\0', '\0'});
+    AppendByte(data, 0); // Left dimension
+    AppendByte(data, 0); // Up dimension
+    AppendByte(data, 0); // Right dimension
     AppendLeInt32(data, 0); // Center X
     AppendLeInt32(data, 0); // Center Y
     AppendLe16(data, 0);
-    data.emplace_back(0x64);
+    AppendByte(data, 0x64);
 
     AppendLeInt32(data, 1); // Sequence count
     AppendLeInt32(data, numeric_cast<int32_t>(sequence_frames.size())); // Sequence item count
@@ -758,11 +792,11 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     }
 
     AppendLeInt32(data, 4);
-    data.insert(data.end(), {'w', 'a', 'l', 'k'});
+    AppendByteValues(data, {'w', 'a', 'l', 'k'});
     AppendLe16(data, 0); // Animation index
 
-    data.insert(data.end(), {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
-    size_t file_offset_pos = data.size();
+    AppendByteValues(data, {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
+    const size_t file_offset_pos = data.size();
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
@@ -777,44 +811,38 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
 
     SetLe32(data, file_offset_pos, numeric_cast<uint32_t>(data.size()));
 
-    data.insert(data.end(), {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '_', 'i', 'm', 'g', '>', '\0'});
-    data.emplace_back(0x31);
-    data.emplace_back(0);
+    AppendByteValues(data, {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '_', 'i', 'm', 'g', '>', '\0'});
+    AppendByte(data, 0x31);
+    AppendByte(data, 0);
 
     AppendSprPalette(data, 0x00332211);
     AppendSprPalette(data, 0x00281E14);
     AppendSprPalette(data, 0);
     AppendSprPalette(data, 0);
 
-    AppendSprImage(data, 0, 0, 3, 1, vector<uint8_t> {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
-    AppendSprImage(data, 1, 0, 2, 1, vector<uint8_t> {0x05, 1, 0x06, 1, 0x7F});
-    data.emplace_back(0);
-    data.emplace_back(0);
+    AppendSprImage(data, 0, 0, 3, 1, MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40}));
+    AppendSprImage(data, 1, 0, 2, 1, MakeByteFixture({0x05, 1, 0x06, 1, 0x7F}));
+    AppendByte(data, 0);
+    AppendByte(data, 0);
 
     return data;
 }
 
-static void ReplaceFirstTagByte(vector<uint8_t>& data, string_view tag, uint8_t replacement)
+static void ReplaceFirstTagByte(vector<byte>& data, string_view tag, uint8_t replacement)
 {
-    auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
+    const auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](byte lhs, char rhs) { return std::to_integer<uint8_t>(lhs) == numeric_cast<uint8_t>(rhs); });
     FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
-    *it = replacement;
+    *it = static_cast<byte>(replacement);
 }
 
-[[nodiscard]] static auto MakeSimpleSpr() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSimpleSpr() -> vector<byte>
 {
     return MakeSprWithSequenceFrames({0});
 }
 
-static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, const vector<uint8_t>& data, uint64_t write_time = 1)
+static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, const vector<byte>& data, uint64_t write_time = 1)
 {
-    string bytes;
-    bytes.resize(data.size());
-
-    if (!data.empty()) {
-        MemCopy(bytes.data(), data.data(), data.size());
-    }
-
+    const string bytes {span_to_string(data)};
     rig.AddSourceFile(path, bytes, write_time);
 }
 
@@ -853,7 +881,7 @@ static void SkipSpriteMesh(DataReader& reader)
     ReadSpriteMesh(reader, frame);
 }
 
-[[nodiscard]] static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
+[[nodiscard]] static auto ReadSingleFrame(const vector<byte>& baked_data) -> BakedImageFrame
 {
     DataReader reader {baked_data};
 
@@ -872,9 +900,12 @@ static void SkipSpriteMesh(DataReader& reader)
     frame.NextX = reader.Read<int16_t>();
     frame.NextY = reader.Read<int16_t>();
 
-    size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    auto frame_data = reader.ReadBytes(data_size);
-    frame.Data.assign(frame_data.begin(), frame_data.end());
+    const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+    const auto frame_data = reader.ReadBytes(data_size);
+    frame.Data.resize(frame_data.size());
+    if (!frame.Data.empty()) {
+        MemCopy(frame.Data.data(), frame_data.data(), frame_data.size());
+    }
     ReadSpriteMesh(reader, frame);
 
     CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
@@ -883,7 +914,7 @@ static void SkipSpriteMesh(DataReader& reader)
     return frame;
 }
 
-[[nodiscard]] static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedImageSequence
+[[nodiscard]] static auto ReadSingleDirSequence(const vector<byte>& baked_data) -> BakedImageSequence
 {
     DataReader reader {baked_data};
 
@@ -907,9 +938,12 @@ static void SkipSpriteMesh(DataReader& reader)
         frame.NextX = reader.Read<int16_t>();
         frame.NextY = reader.Read<int16_t>();
 
-        size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-        const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
-        frame.Data.assign(frame_data.begin(), frame_data.end());
+        const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+        const_span<byte> frame_data = reader.ReadBytes(data_size);
+        frame.Data.resize(frame_data.size());
+        if (!frame.Data.empty()) {
+            MemCopy(frame.Data.data(), frame_data.data(), frame_data.size());
+        }
         ReadSpriteMesh(reader, frame);
     }
 
@@ -927,7 +961,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     BakerTests::OverrideSetting(rig.Settings.AreaSavingsWeight, area_savings_weight);
 }
 
-[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
+[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<byte>
 {
     REQUIRE(!rows.empty());
     REQUIRE(!rows.front().empty());
@@ -1542,11 +1576,11 @@ TEST_CASE("ImageBaker")
 
         TestRig first;
         ConfigureSpriteMesh(first);
-        vector<uint8_t> first_output = BakeAlphaMask(first, mask);
+        const vector<byte> first_output = BakeAlphaMask(first, mask);
 
         TestRig second;
         ConfigureSpriteMesh(second);
-        vector<uint8_t> second_output = BakeAlphaMask(second, mask);
+        const vector<byte> second_output = BakeAlphaMask(second, mask);
 
         CHECK(first_output == second_output);
     }
@@ -1676,10 +1710,10 @@ TEST_CASE("ImageBaker")
     SECTION("BakesRleTgaWhenScanningAllFiles")
     {
         TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/rle.tga", MakeRleTga(2, 1, 24, {0x81, 255, 0, 0}), 20);
+        AddSourceBinaryFile(rig, "gfx/rle.tga", MakeRleTga(2, 1, 24, MakeByteFixture({0x81, 255, 0, 0})), 20);
         AddSourceBinaryFile(rig, "gfx/rle-raw-packets.tga",
             MakeRleTga(2, 1, 24,
-                {
+                MakeByteFixture({
                     0x00,
                     0x30,
                     0x20,
@@ -1691,7 +1725,7 @@ TEST_CASE("ImageBaker")
                     0x90,
                     0x80,
                     0x70,
-                }),
+                })),
             30);
 
         ImageBaker baker {rig.MakeContext()};
@@ -1712,9 +1746,8 @@ TEST_CASE("ImageBaker")
         CHECK(raw_packet_frame.Data == vector<uint8_t> {0x10, 0x20, 0x30, 0xFF, 0x40, 0x50, 0x60, 0xFF});
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
-        vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
+        const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(sprite_info_entries.size() == 2);
         CHECK(sprite_info_entries[0].Info.FrameCount == 1);
         CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
@@ -1822,15 +1855,15 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == dir + 1);
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
-            const_span<uint8_t> data = reader.ReadBytes(4);
-            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
-            vector<uint8_t> expected_data {
-                numeric_cast<uint8_t>(color_base * 4),
-                numeric_cast<uint8_t>((color_base + 1) * 4),
-                numeric_cast<uint8_t>((color_base + 2) * 4),
-                255,
+            const_span<byte> data = reader.ReadBytes(4);
+            const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            const vector<byte> expected_data {
+                byte {numeric_cast<uint8_t>(color_base * 4)},
+                byte {numeric_cast<uint8_t>((color_base + 1) * 4)},
+                byte {numeric_cast<uint8_t>((color_base + 2) * 4)},
+                byte {255},
             };
-            CHECK(vector<uint8_t>(data.begin(), data.end()) == expected_data);
+            CHECK(vector<byte>(data.begin(), data.end()) == expected_data);
             SkipSpriteMesh(reader);
         }
 
@@ -2235,22 +2268,26 @@ TEST_CASE("ImageBaker")
             int16_t next_x = reader.Read<int16_t>();
             int16_t next_y = reader.Read<int16_t>();
 
-            size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const_span<uint8_t> data = reader.ReadBytes(data_size);
+            const size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            const_span<byte> data = reader.ReadBytes(data_size);
+            vector<uint8_t> pixels(data.size());
+            if (!pixels.empty()) {
+                MemCopy(pixels.data(), data.data(), data.size());
+            }
 
             if (width == 3) {
                 CHECK(width == 3);
                 CHECK(height == 1);
                 CHECK(next_x == 1);
                 CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+                CHECK(pixels == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
             }
             else {
                 CHECK(width == 1);
                 CHECK(height == 1);
                 CHECK(next_x == 0);
                 CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
+                CHECK(pixels == vector<uint8_t> {0, 0, 0, 0});
             }
 
             SkipSpriteMesh(reader);
@@ -2522,10 +2559,10 @@ Frm=one.toy
 
         REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
-        CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
+        CHECK(entries.front().SourcePath == u8"gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().Info.FrameCount == 1);
         CHECK(entries.front().Info.Directions.front().Frames.front().Size == isize32 {1, 1});
@@ -2541,34 +2578,51 @@ Frm=one.toy
             .Duration = std::chrono::milliseconds {100},
             .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
         };
-        rig.AddBakedFile("SpriteInfo/TestPack.foinfo",
-            WriteSpriteInfoFile({
-                SpriteInfoFileEntry {.SourcePath = "gfx/current.tga", .ResourcePath = "gfx/current.tga", .Info = info},
-                SpriteInfoFileEntry {.SourcePath = "gfx/removed.tga", .ResourcePath = "gfx/removed.tga", .Info = info},
-            }));
+        const u8string stale_sprite_info = WriteSpriteInfoFile({
+            SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/current.tga"}, .ResourcePath = "gfx/current.tga", .Info = info},
+            SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/removed.tga"}, .ResourcePath = "gfx/removed.tga", .Info = info},
+        });
+        rig.AddBakedFile("SpriteInfo/TestPack.foinfo", stale_sprite_info.view());
 
         ImageBaker baker {rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
+        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
-        CHECK(entries.front().SourcePath == "gfx/current.tga");
+        CHECK(entries.front().SourcePath == u8"gfx/current.tga");
+    }
+
+    SECTION("SpriteInfoSourcePathPreservesUtf8")
+    {
+        const SpriteInfo info {
+            .FrameCount = 1,
+            .Duration = std::chrono::milliseconds {100},
+            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
+        };
+        const u8string source_path {u8"графика/персонаж-🌍.tga"};
+        const u8string sprite_info = WriteSpriteInfoFile({
+            SpriteInfoFileEntry {.SourcePath = source_path, .ResourcePath = "gfx/runtime.tga", .Info = info},
+        });
+
+        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info);
+        REQUIRE(entries.size() == 1);
+        CHECK(entries.front().SourcePath == source_path);
     }
 
     SECTION("InvalidTgaInputsAreReported")
     {
         TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/truncated.tga", vector<uint8_t> {0, 0, 2}, 1);
+        AddSourceBinaryFile(rig, "gfx/truncated.tga", MakeByteFixture({0, 0, 2}), 1);
         AddSourceBinaryFile(rig, "gfx/indexed.tga", [] {
             auto data = MakeRawTga(1, 1, 24, {0, 0, 0});
-            data[2] = 1;
+            data[2] = byte {1};
             return data;
         }());
         AddSourceBinaryFile(rig, "gfx/gray.tga", [] {
             auto data = MakeRawTga(1, 1, 24, {0, 0, 0});
-            data[2] = 3;
+            data[2] = byte {3};
             return data;
         }());
         AddSourceBinaryFile(rig, "gfx/bad-depth.tga", MakeRawTga(1, 1, 16, {0, 0}));
@@ -2586,7 +2640,7 @@ Frm=one.toy
     {
         TestRig rig;
         auto corrupted_png = MakePaletteTransparencyPng();
-        corrupted_png[80] ^= 0xFF;
+        corrupted_png[80] ^= byte {0xFF};
         AddSourceBinaryFile(rig, "gfx/corrupted.png", corrupted_png);
 
         ImageBaker baker {rig.MakeContext()};
@@ -2598,14 +2652,14 @@ Frm=one.toy
     SECTION("InvalidLegacyHeadersAreReported")
     {
         TestRig rig;
-        AddSourceBinaryFile(rig, "legacy/bad.zar", vector<uint8_t> {'b', 'a', 'd', 'z', 'a', 'r'});
+        AddSourceBinaryFile(rig, "legacy/bad.zar", MakeByteFixture({'b', 'a', 'd', 'z', 'a', 'r'}));
         AddSourceBinaryFile(rig, "legacy/bad-palette.zar", MakeZarWithPaletteCount(257));
-        AddSourceBinaryFile(rig, "legacy/bad.til", vector<uint8_t> {'b', 'a', 'd', 't', 'i', 'l', '\0'});
+        AddSourceBinaryFile(rig, "legacy/bad.til", MakeByteFixture({'b', 'a', 'd', 't', 'i', 'l', '\0'}));
         AddSourceBinaryFile(rig, "legacy/missing-tiledata.til", MakeTilWithoutTiledata());
         AddSourceBinaryFile(rig, "legacy/bad-zar-header.til", MakeTilWithBadZarHeader());
         AddSourceBinaryFile(rig, "legacy/bad-palette.til", MakeTilWithPaletteCount(257));
-        AddSourceBinaryFile(rig, "legacy/bad.mos", vector<uint8_t> {'b', 'a', 'd', 'm', 'o', 's', '\0', '\0'});
-        AddSourceBinaryFile(rig, "legacy/bad.bam", vector<uint8_t> {'b', 'a', 'd', 'b', 'a', 'm', '\0', '\0'});
+        AddSourceBinaryFile(rig, "legacy/bad.mos", MakeByteFixture({'b', 'a', 'd', 'm', 'o', 's', '\0', '\0'}));
+        AddSourceBinaryFile(rig, "legacy/bad.bam", MakeByteFixture({'b', 'a', 'd', 'b', 'a', 'm', '\0', '\0'}));
 
         ImageBaker baker {rig.MakeContext()};
 
@@ -2623,7 +2677,7 @@ Frm=one.toy
     SECTION("InvalidSprInputsAreReported")
     {
         TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
+        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<byte>(11));
         rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
         AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
 

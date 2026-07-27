@@ -1100,14 +1100,14 @@ FO_SCRIPT_API bool Server_Game_DbHasEntity(ptr<ServerEngine> server, ptr<ServerE
 
 // SyncScope: database lookup only; does not touch live player entity cover.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ptr<ServerEngine> server, ident_t playerId)
+FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetPlayerData(ptr<ServerEngine> server, ident_t playerId)
 {
     if (!playerId) {
         throw ScriptException("Player id arg is zero");
     }
 
-    auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
-    map<string, string> result;
+    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
+    map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
         result.emplace(key, AnyData::ValueToString(value));
@@ -1146,7 +1146,7 @@ FO_SCRIPT_API bool Server_Game_DbHasRecord(ptr<ServerEngine> server, hstring col
 
 // SyncScope: database record read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id)
+FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1155,8 +1155,8 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
         throw ScriptException("Record id arg is zero");
     }
 
-    auto doc = server->DbStorage.Get(collectionName, id);
-    map<string, string> result;
+    const auto doc = server->DbStorage.Get(collectionName, id);
+    map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
         result.emplace(key, AnyData::ValueToString(value));
@@ -1167,7 +1167,7 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
 
 // SyncScope: database record read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, string_view id)
+FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, string_view id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1176,8 +1176,8 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
         throw ScriptException("Record id arg is empty");
     }
 
-    auto doc = server->DbStorage.Get(collectionName, string(id));
-    map<string, string> result;
+    const auto doc = server->DbStorage.Get(collectionName, string(id));
+    map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
         result.emplace(key, AnyData::ValueToString(value));
@@ -1210,14 +1210,14 @@ FO_SCRIPT_API void Server_Game_DbInsertRecord(ptr<ServerEngine> server, hstring 
         if (key.empty()) {
             throw ScriptException("Record key is empty");
         }
-        if (!strvex(key).is_valid_utf8()) {
+        if (validate_utf8_text(key)) {
             throw ScriptException("Record key has invalid encoding");
         }
-        if (!strvex(value).is_valid_utf8()) {
+        if (validate_utf8_text(value)) {
             throw ScriptException("Record value has invalid encoding");
         }
 
-        doc.Emplace(key, string(value));
+        doc.Emplace(key, value);
     }
 
     server->DbStorage.Insert(collectionName, id, doc);
@@ -1247,14 +1247,14 @@ FO_SCRIPT_API void Server_Game_DbInsertRecord(ptr<ServerEngine> server, hstring 
         if (key.empty()) {
             throw ScriptException("Record key is empty");
         }
-        if (!strvex(key).is_valid_utf8()) {
+        if (validate_utf8_text(key)) {
             throw ScriptException("Record key has invalid encoding");
         }
-        if (!strvex(value).is_valid_utf8()) {
+        if (validate_utf8_text(value)) {
             throw ScriptException("Record value has invalid encoding");
         }
 
-        doc.Emplace(key, string(value));
+        doc.Emplace(key, value);
     }
 
     server->DbStorage.Insert(collectionName, string(id), doc);
@@ -1281,11 +1281,11 @@ namespace
         if (key.empty()) {
             throw ScriptException("Record key is empty");
         }
-        if (!strvex(key).is_valid_utf8()) {
+        if (validate_utf8_text(key)) {
             throw ScriptException("Record key has invalid encoding");
         }
         if constexpr (std::is_same_v<T, string_view>) {
-            if (!strvex(value).is_valid_utf8()) {
+            if (validate_utf8_text(value)) {
                 throw ScriptException("Record value has invalid encoding");
             }
         }
@@ -1300,7 +1300,7 @@ namespace
         }
 
         if constexpr (std::is_same_v<T, string_view>) {
-            server_ptr->DbStorage.Update(collectionName, id, key, string(value));
+            server_ptr->DbStorage.Update(collectionName, id, key, AnyData::Value {value});
         }
         else {
             server_ptr->DbStorage.Update(collectionName, id, key, value);

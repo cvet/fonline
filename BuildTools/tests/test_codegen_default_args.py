@@ -88,7 +88,7 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_native_text_type, arg_native_text_types = _codegen.parse_export_method_signature(
         "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
@@ -97,10 +97,40 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
     assert ret_container_element_wrapper == ""
     assert receiver_wrapper
+    assert ret_native_text_type == "string"
+    assert arg_native_text_types == ("string_view", "")
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),
     ]
+
+
+def test_parse_export_method_signature_preserves_native_utf8_types() -> None:
+    parsed = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API u8string Common_Game_TransformUtf8(ptr<BaseEngine> engine, u8string_view text)",
+        {"string", "Game"},
+        ["Game"],
+    )
+
+    _, _, _, ret, args, _, _, _, _, ret_native_text_type, arg_native_text_types = parsed
+    assert ret == "string"
+    assert [arg.arg_type for arg in args] == ["string"]
+    assert ret_native_text_type == "u8string"
+    assert arg_native_text_types == ("u8string_view",)
+
+
+def test_parse_export_method_signature_preserves_nested_native_utf8_types() -> None:
+    parsed = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API map<u8string, u8string> Common_Game_TransformUtf8Map(ptr<BaseEngine> engine, readonly_map<string, u8string> values)",
+        {"string", "Game"},
+        ["Game"],
+    )
+
+    _, _, _, ret, args, _, _, _, _, ret_native_text_type, arg_native_text_types = parsed
+    assert ret == "dict.string.string"
+    assert [arg.arg_type for arg in args] == ["dict.string.string"]
+    assert ret_native_text_type == "map<u8string,u8string>"
+    assert arg_native_text_types == ("readonly_map<string, u8string>",)
 
 
 def test_parse_method_args_normalizes_value_type_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

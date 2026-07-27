@@ -59,13 +59,13 @@ extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
 extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
 extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
-extern auto GetClientRuntimeLivePath() -> string;
-extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
-extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
-extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
-extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+extern auto GetClientRuntimeLivePath() -> u8string;
+extern auto MakeClientRuntimeStagingPath(u8string_view runtime_live_path) -> u8string;
+extern auto ResolveClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view expected_runtime_file_name, u8string_view fallback_runtime_path) -> u8string;
+extern auto ReadClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view expected_runtime_file_name) -> optional<u8string>;
+extern auto WriteClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8string_view runtime_path, u8string_view expected_runtime_file_name) -> bool;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
+extern void PromoteStagedRuntimeCompanions(u8string_view binary_dir) noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);
 extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
@@ -83,7 +83,7 @@ public:
     [[nodiscard]] auto IsFinished() const noexcept -> bool { return _fileListReceived && _filesToUpdate.empty(); }
     [[nodiscard]] auto IsAborted() const noexcept -> bool { return _aborted; }
     [[nodiscard]] auto GetResult() const noexcept -> UpdaterResult { return _result.value_or(UpdaterResult::Failed); }
-    [[nodiscard]] auto GetRuntimeLivePath() const -> string;
+    [[nodiscard]] auto GetRuntimeLivePath() const -> u8string;
 
     // One iteration of network processing + UI rendering. Returns true once the updater
     // reached a terminal state and the caller should inspect GetResult().
@@ -93,15 +93,15 @@ private:
     struct UpdateFile
     {
         int32_t Index {};
-        string Name;
+        u8string Name;
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
     };
 
-    void AddText(string_view text);
-    void Abort(string_view text);
+    void AddText(u8string_view text);
+    void Abort(u8string_view text);
     void GetNextFile();
     void RequestUpdateFile(const UpdateFile& update_file);
 
@@ -112,18 +112,18 @@ private:
     void Net_OnHashList();
     void Net_OnUpdateFileData();
 
-    auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    auto IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
 
-    static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
-    static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
+    static auto IsDataHashMatch(const_span<byte> data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
+    static auto GetDiskFileSize(u8string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
-    static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
-    static auto GetClientBinaryDir() -> string;
+    static auto ReplaceFileSafely(u8string_view temp_path, u8string_view final_path) -> bool;
+    static auto GetClientBinaryDir() -> u8string;
 
     ptr<ClientSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
-    string _binaryDir;
+    u8string _binaryDir;
     optional<UpdaterResult> _result;
     bool _binariesMode {};
     bool _aborted {};
@@ -132,8 +132,8 @@ private:
     bool _restartPrompt {};
     vector<UpdateFile> _filesToUpdate {};
     std::ofstream _tempFile {};
-    vector<uint8_t> _updateFileBuf {};
-    vector<string> _messages {};
+    vector<byte> _updateFileBuf {};
+    vector<u8string> _messages {};
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;

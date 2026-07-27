@@ -73,7 +73,7 @@ int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(args, AppInitFlags::PrebakeResources);
 
-        GetApp()->MainWindow.SetTitle("Server");
+        GetApp()->MainWindow.SetTitle(u8"Server");
 
         isize32 configured_client_size = isize32 {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
         GetApp()->MainWindow.SetSize({GetApp()->Settings.ServerWidth, GetApp()->Settings.ServerHeight});
@@ -95,10 +95,11 @@ int main(int argc, char** argv) // Handled by SDL
         mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](LogType type, string_view str, nptr<const CatchedStackTraceData> st) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](LogType type, u8string_view message, nptr<const CatchedStackTraceData> st) FO_DEFERRED {
             scoped_lock locker {log_buffer_locker};
 
-            auto lines = strex(str).split('\n');
+            const string_view message_chars = utf8_as_char_view(message);
+            auto lines = strex(message_chars).split('\n');
             log_buffer.emplace_back(std::move(lines), st ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
 
             if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.MaxServerLogLines)) {
@@ -129,8 +130,8 @@ int main(int argc, char** argv) // Handled by SDL
 
         auto start_client = [&] {
             try {
-                string title = strex("Client {}", clients.size() + 1).str();
-                isize32 client_size = configured_client_size;
+                const u8string title = FormatUtf8("Client {}", clients.size() + 1);
+                const auto client_size = configured_client_size;
 
                 if (!os_size_saved) {
                     os_size_before_first_child = GetApp()->MainWindow.GetSize();
@@ -146,7 +147,7 @@ int main(int argc, char** argv) // Handled by SDL
                     }
                 }
 
-                auto window = GetApp()->CreateChildWindow(client_size, title);
+                auto window = GetApp()->CreateChildWindow(client_size, title.view());
 
                 int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
                 auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
@@ -375,8 +376,9 @@ int main(int argc, char** argv) // Handled by SDL
                             continue;
                         }
 
-                        auto title = child->GetTitle().empty() ? strex("Window {}", i + 1).str() : child->GetTitle();
-                        string label = strex("{}###ImageHostCascade_{}", title, i).str();
+                        const u8string title = child->GetTitle().empty() ? FormatUtf8("Window {}", i + 1) : u8string {child->GetTitle()};
+                        const u8string label = u8strex("{}###ImageHostCascade_{}", title, i);
+                        const ptr<const char> label_cstr = utf8_to_c_str(label.view_nt());
 
                         auto cond = layout_init_dirty ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
                         float32_t default_w = std::min(640.0f, host_w * 0.6f);
@@ -387,7 +389,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextWindowPos(ImVec2(default_x, default_y), cond);
                         ImGui::SetNextWindowSize(ImVec2(default_w, default_h), cond);
 
-                        if (ImGui::Begin(label.c_str(), nullptr, CASCADE_FLAGS)) {
+                        if (ImGui::Begin(label_cstr.get(), nullptr, CASCADE_FLAGS)) {
                             draw_texture(child, ImGui::GetContentRegionAvail());
                         }
 
@@ -479,9 +481,9 @@ int main(int argc, char** argv) // Handled by SDL
                                     }
                                 }
 
-                                time_desc_t time = nanotime::now().desc(true);
-                                string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
-                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
+                                const auto time = nanotime::now().desc(true);
+                                const u8string log_path = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
+                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_path.view())}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
                                     log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));
@@ -590,7 +592,8 @@ int main(int argc, char** argv) // Handled by SDL
 
                     for (size_t i = 0; i < child_count; i++) {
                         if (auto child = GetApp()->GetChildWindow(i)) {
-                            string label = child->GetTitle().empty() ? strex("Client {}", i + 1).str() : string {child->GetTitle()};
+                            const u8string title = child->GetTitle().empty() ? FormatUtf8("Client {}", i + 1) : u8string {child->GetTitle()};
+                            const string label = utf8_to_char_string(title.view());
                             draw_tab(child, label);
                         }
                     }

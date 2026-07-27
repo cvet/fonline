@@ -209,28 +209,41 @@ private:
     size_t _lastUploadedIndices {};
 };
 
-static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
+static auto CopyEffectConfigBytes(string_view text) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx_content = loader(name);
+    vector<byte> data(text.size());
+
+    if (!data.empty()) {
+        MemCopy(data.data(), text.data(), data.size());
+    }
+
+    return data;
+}
+
+static auto GetNullEffectConfig(u8string_view name, const RenderEffectLoader& loader) -> vector<byte>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<byte> fofx_content = loader(name);
 
     if (!fofx_content.empty()) {
         return fofx_content;
     }
 
-    if (name.ends_with("-info")) {
-        return "[EffectInfo]\n";
+    if (u8strvex(name).ends_with(u8"-info")) {
+        return CopyEffectConfigBytes("[EffectInfo]\n");
     }
 
-    return "[Effect]\nPasses = 1\n";
+    return CopyEffectConfigBytes("[Effect]\nPasses = 1\n");
 }
 
 class Null_Effect final : public RenderEffect
 {
 public:
-    Null_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
-        RenderEffect(usage, name, [&loader](string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
+    Null_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) :
+        RenderEffect(usage, name, [&loader](u8string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
     {
         FO_STACK_TRACE_ENTRY();
     }
@@ -296,7 +309,7 @@ auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuf
     return SafeAlloc::MakeUnique<Null_DrawBuffer>(is_static);
 }
 
-auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto Null_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 

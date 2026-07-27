@@ -117,11 +117,11 @@ static auto ReadTestModelSourceQuaternionTrack(DataReader& reader) -> ModelAnima
     return track;
 }
 
-static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector<uint8_t>
+static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     DataWriter writer {data};
     writer.WriteString("LF_TEST_MODEL_SOURCE");
     writer.Write<uint32_t>(numeric_cast<uint32_t>(asset.Skeleton.Joints.size()));
@@ -251,11 +251,11 @@ static void AddTestModelSource(BakerTests::TestRig& rig, const ModelSourceAsset&
     rig.AddSourceFile(asset.FileName, WriteTestModelSourceFixture(asset), write_time);
 }
 
-static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}) -> vector<uint8_t>
+static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     DataWriter writer {data};
     WriteModelMeshHeader(writer);
     WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names);
@@ -270,11 +270,11 @@ static void AddTestModel(BakerTests::TestRig& rig, string_view file_name, string
     rig.AddBakedFile(file_name, MakeTestBakedModel(root_bone, attached_mesh, diffuse_texture, skin_bone_names), write_time);
 }
 
-static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view child_bone) -> vector<uint8_t>
+static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view child_bone) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     auto writer = DataWriter(data);
 
     WriteModelMeshHeader(writer);
@@ -311,12 +311,12 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
     return data;
 }
 
-static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
+static auto MakeTestBakedModelChain(size_t joint_count) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(joint_count != 0, "Test baked model chain requires at least one joint");
-    vector<uint8_t> data;
+    vector<byte> data;
     DataWriter writer {data};
     WriteModelMeshHeader(writer);
 
@@ -331,11 +331,11 @@ static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
     return data;
 }
 
-static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_view child_bone, float32_t child_translation_x) -> vector<uint8_t>
+static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_view child_bone, float32_t child_translation_x) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     auto writer = DataWriter(data);
 
     WriteModelMeshHeader(writer);
@@ -372,11 +372,11 @@ static void AddTestAnimationModelWithChild(BakerTests::TestRig& rig, string_view
     rig.AddBakedFile(file_name, MakeTestBakedAnimationModelWithChild(root_bone, child_bone, child_translation_x));
 }
 
-static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, string_view skin_bone) -> vector<uint8_t>
+static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, string_view skin_bone) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     auto writer = DataWriter(data);
 
     WriteModelMeshHeader(writer);
@@ -417,8 +417,8 @@ static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig) -> string
     FO_STACK_TRACE_ENTRY();
 
     vector<string> captured_messages;
-    SetLogCallback("model-info-animation-geometry-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-    auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
+    SetLogCallback("model-info-animation-geometry-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
+    const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
     CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
@@ -454,16 +454,16 @@ static auto ReadSavedModelInfoString(DataReader& reader) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32_t len = reader.Read<uint32_t>();
-    const_span<uint8_t> str_bytes = reader.ReadBytes(len);
-    return !str_bytes.empty() ? string(reinterpret_cast<const char*>(str_bytes.data()), len) : string {};
+    const uint32_t len = reader.Read<uint32_t>();
+    const_span<byte> str_bytes = reader.ReadBytes(len);
+    return string {span_to_string(str_bytes)};
 }
 
 static void ReadSavedModelInfoHeader(DataReader& reader)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+    const const_span<byte> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
     REQUIRE(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()));
     CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SCHEMA_VERSION);
     CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SUPPORTED_FLAGS);
@@ -604,7 +604,7 @@ static void ReadBakedModelMeshSummaryBone(DataReader& reader, BakedModelMeshSumm
     }
 }
 
-static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModelMeshSummary
+static auto ReadBakedModelMeshSummary(const vector<byte>& data) -> BakedModelMeshSummary
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1163,8 +1163,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/UnweightedVertex.fbx", MakeMinimalSkinnedAsciiFbx("BrokenSkin", cluster_weights), 9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-unweighted-vertex-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-unweighted-vertex-test", {}); });
+        SetLogCallback("model-mesh-unweighted-vertex-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-unweighted-vertex-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/UnweightedVertex.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1192,8 +1192,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/TooWide.fbx", MakeWideHierarchyAsciiFbx("WideNode", MODEL_ANIMATION_RIG_MAX_JOINTS), 9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-wide-hierarchy-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-wide-hierarchy-test", {}); });
+        SetLogCallback("model-mesh-wide-hierarchy-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-wide-hierarchy-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/TooWide.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1214,8 +1214,8 @@ f 1 2 3
             9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-non-finite-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-non-finite-test", {}); });
+        SetLogCallback("model-mesh-non-finite-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-non-finite-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/NonFinite.obj"), ModelMeshBakerException);
@@ -1408,12 +1408,12 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/NoAnim.fo3d") == 1);
 
-        string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
-        CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
-        CHECK(config.find("StateAnimations = 0 0\n") != string::npos);
-        CHECK(config.find("ActionAnimations = 1 3\n") != string::npos);
-        CHECK(config.find("DurationsMs = 500 250\n") != string::npos);
-        CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
+        const u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        CHECK(config.view().native_view().find(u8"[Critters/Test.fo3d]\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"StateAnimations = 0 0\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"ActionAnimations = 1 3\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"DurationsMs = 500 250\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"[Critters/NoAnim.fo3d]\n") != std::u8string_view::npos);
     }
 
     SECTION("Materializes model animation aliases with client lookup semantics")
@@ -1438,12 +1438,12 @@ ActionAnimEqual 4 6
         ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
-        CHECK(config.find("StateAnimations = 1 0 1 0\n") != string::npos);
-        CHECK(config.find("ActionAnimations = 5 5 3 3\n") != string::npos);
-        CHECK(config.find("DurationsMs = 500 500 200 200\n") != string::npos);
-        CHECK(config.find("ActionAnimations = 4") == string::npos);
-        CHECK(config.find("DurationsMs = 250") == string::npos);
+        const u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        CHECK(config.view().native_view().find(u8"StateAnimations = 1 0 1 0\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"ActionAnimations = 5 5 3 3\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"DurationsMs = 500 500 200 200\n") != std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"ActionAnimations = 4") == std::u8string_view::npos);
+        CHECK(config.view().native_view().find(u8"DurationsMs = 250") == std::u8string_view::npos);
     }
 
     SECTION("Rejects ModelAnimationInfo millisecond overflow from duration or speed")
@@ -1492,7 +1492,7 @@ ActionAnimEqual 4 6
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
-        const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
+        const vector<byte>& output = rig.Outputs.at("Critters/Test.fo3d");
         auto reader = DataReader({output.data(), output.size()});
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
@@ -2043,7 +2043,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddModelInfoMetadata(truncated_mesh_rig);
         truncated_mesh_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
         AddTestModelSource(truncated_mesh_rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
-        truncated_mesh_rig.AddBakedFile("Critters/Body.fbx", vector<uint8_t> {1, 2, 3});
+        truncated_mesh_rig.AddBakedFile("Critters/Body.fbx", vector<byte> {byte {1}, byte {2}, byte {3}});
         CHECK_THROWS_AS(BakeModelInfoFiles(truncated_mesh_rig), ModelInfoBakerException);
     }
 
@@ -2098,7 +2098,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
-        const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
+        const vector<byte>& output = rig.Outputs.at("Critters/Test.fo3d");
         auto reader = DataReader({output.data(), output.size()});
         ReadSavedModelInfoHeader(reader);
 

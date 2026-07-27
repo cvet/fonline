@@ -114,9 +114,9 @@ auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) ->
 void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32_t value);
 auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, HashResolver& hash_resolver) -> hstring;
 auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool;
-auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
-auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>;
-auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
+auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, const_span<byte> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<byte>;
+auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, const_span<byte> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
 auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> as_obj) -> PropertyRawData;
 void SetScriptTypeFastCompare(ptr<AngelScript::asITypeInfo> type, ScriptFastCompareFunc func);
 auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> ScriptFastCompareFunc;

@@ -233,8 +233,8 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
 
     if (auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
         if (auto file = _impl->Services.Resources->ReadFile(path)) {
-            const_span<uint8_t> file_data = file.GetDataSpan();
-            base_system = _impl->Context.getIOManager().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+            const_span<byte> file_data = file.GetDataSpan();
+            base_system = _impl->Context.getIOManager().loadFromBuffer("spk", make_ptr(file_data.data()).reinterpret_as<const char>().get(), numeric_cast<unsigned>(file_data.size()));
         }
 
         if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {

@@ -41,6 +41,19 @@
 
 FO_BEGIN_NAMESPACE
 
+template<typename T>
+concept PropertyRawSettable = requires(Properties& props, ptr<const Property> prop, T data) { props.SetRawData(prop, data); };
+
+template<typename T>
+concept PropertyChunkRestorable = requires(Properties& props, const vector<vector<T>>& chunks) { props.RestoreData(chunks); };
+
+static_assert(std::same_as<decltype(std::declval<const Properties&>().GetRawData(std::declval<ptr<const Property>>())), const_span<byte>>);
+static_assert(PropertyRawSettable<const_span<byte>>);
+static_assert(!PropertyRawSettable<const_span<uint8_t>>);
+static_assert(PropertyChunkRestorable<byte>);
+static_assert(!PropertyChunkRestorable<uint8_t>);
+static_assert(std::same_as<decltype(std::declval<PropertyRawData&>().Alloc(1)), ptr<byte>>);
+
 namespace
 {
     class TestNameResolver final : public NameResolver
@@ -454,12 +467,12 @@ namespace
         string _empty {};
     };
 
-    auto MakeOwnedStoreData(const Properties::StoredData& stored_data) -> vector<vector<uint8_t>>
+    auto MakeOwnedStoreData(const Properties::StoredData& stored_data) -> vector<vector<byte>>
     {
         const auto& raw_data = *stored_data.Data;
         const auto& raw_sizes = *stored_data.Sizes;
 
-        vector<vector<uint8_t>> result;
+        vector<vector<byte>> result;
         result.reserve(raw_data.size());
 
         for (size_t i = 0; i < raw_data.size(); i++) {
@@ -471,7 +484,7 @@ namespace
             }
             else {
                 REQUIRE(data);
-                auto data_span = make_const_span(data, size);
+                const const_span<byte> data_span {data.get(), size};
                 result.emplace_back(data_span.begin(), data_span.end());
             }
         }
@@ -479,16 +492,16 @@ namespace
         return result;
     }
 
-    [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
+    [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<byte>
     {
-        vector<uint8_t> result(sizeof(value));
+        vector<byte> result(sizeof(value));
         MemCopy(result.data(), &value, sizeof(value));
         return result;
     }
 
-    [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<uint8_t>
+    [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<byte>
     {
-        vector<uint8_t> result(sizeof(value));
+        vector<byte> result(sizeof(value));
         MemCopy(result.data(), &value, sizeof(value));
         return result;
     }
@@ -521,10 +534,10 @@ namespace
         Properties Proto;
         Properties PackedSource;
         Properties FullSource;
-        vector<vector<uint8_t>> PackedPublicChunks {};
-        vector<vector<uint8_t>> FullPublicChunks {};
-        vector<uint8_t> PackedAllData {};
-        vector<uint8_t> FullAllData {};
+        vector<vector<byte>> PackedPublicChunks {};
+        vector<vector<byte>> FullPublicChunks {};
+        vector<byte> PackedAllData {};
+        vector<byte> FullAllData {};
         size_t PackedPublicBytes {};
         size_t FullPublicBytes {};
         int TotalProps {};
@@ -611,7 +624,7 @@ namespace
             return ProbeStringProp;
         }
 
-        [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
+        [[nodiscard]] static auto CalcTotalBytes(const vector<vector<byte>>& chunks) -> size_t
         {
             size_t total = 0;
 
@@ -826,24 +839,24 @@ namespace
             patrols.Emplace("1", AnyData::Value {std::move(first_path)});
             patrols.Emplace("2", AnyData::Value {std::move(second_path)});
 
-            return AnyData::ValueToString(AnyData::Value {std::move(patrols)});
+            return utf8_to_char_string(AnyData::ValueToString(AnyData::Value {std::move(patrols)}));
         }
 
         static auto MakeModeSetsValue(string_view primary_name, string_view reserve_name) -> string
         {
             AnyData::Array primary_modes;
-            primary_modes.EmplaceBack(string {"ModeA"});
-            primary_modes.EmplaceBack(string {"ModeB"});
+            primary_modes.EmplaceBack(u8string {u8"ModeA"});
+            primary_modes.EmplaceBack(u8string {u8"ModeB"});
 
             AnyData::Array reserve_modes;
-            reserve_modes.EmplaceBack(string {"ModeB"});
-            reserve_modes.EmplaceBack(string {"ModeA"});
+            reserve_modes.EmplaceBack(u8string {u8"ModeB"});
+            reserve_modes.EmplaceBack(u8string {u8"ModeA"});
 
             AnyData::Dict mode_sets;
-            mode_sets.Emplace(string {primary_name}, AnyData::Value {std::move(primary_modes)});
-            mode_sets.Emplace(string {reserve_name}, AnyData::Value {std::move(reserve_modes)});
+            mode_sets.Emplace(primary_name, AnyData::Value {std::move(primary_modes)});
+            mode_sets.Emplace(reserve_name, AnyData::Value {std::move(reserve_modes)});
 
-            return AnyData::ValueToString(AnyData::Value {std::move(mode_sets)});
+            return utf8_to_char_string(AnyData::ValueToString(AnyData::Value {std::move(mode_sets)}));
         }
     };
 
@@ -858,9 +871,9 @@ namespace
         Properties Proto;
         Properties Full;
         Properties DerivedSource;
-        vector<vector<uint8_t>> DerivedPublicChunks {};
-        vector<uint8_t> FullAllData {};
-        vector<uint8_t> DerivedAllData {};
+        vector<vector<byte>> DerivedPublicChunks {};
+        vector<byte> FullAllData {};
+        vector<byte> DerivedAllData {};
 
         PropertiesPerfFixture() :
             Registrator("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
@@ -984,9 +997,9 @@ namespace
         {
             auto labels_value = []() {
                 AnyData::Dict labels;
-                labels.Emplace("-0.5", string {"low"});
-                labels.Emplace("1.25", string {"high tide"});
-                labels.Emplace("3.75", string {"fallback route"});
+                labels.Emplace("-0.5", u8string {u8"low"});
+                labels.Emplace("1.25", u8string {u8"high tide"});
+                labels.Emplace("3.75", u8string {u8"fallback route"});
                 return AnyData::Value {std::move(labels)};
             }();
 
@@ -1027,12 +1040,12 @@ namespace
 
             auto mode_sets_value = []() {
                 AnyData::Array primary_modes;
-                primary_modes.EmplaceBack(string {"ModeA"});
-                primary_modes.EmplaceBack(string {"ModeB"});
+                primary_modes.EmplaceBack(u8string {u8"ModeA"});
+                primary_modes.EmplaceBack(u8string {u8"ModeB"});
 
                 AnyData::Array reserve_modes;
-                reserve_modes.EmplaceBack(string {"ModeB"});
-                reserve_modes.EmplaceBack(string {"ModeA"});
+                reserve_modes.EmplaceBack(u8string {u8"ModeB"});
+                reserve_modes.EmplaceBack(u8string {u8"ModeA"});
 
                 AnyData::Dict mode_sets;
                 mode_sets.Emplace("primary", AnyData::Value {std::move(primary_modes)});
@@ -1040,11 +1053,11 @@ namespace
                 return AnyData::Value {std::move(mode_sets)};
             }();
 
-            Source.SetValueAsAnyProps(FloatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
-            Source.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
-            Source.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
+            Source.SetValueAsAnyProps(FloatLabelsProp->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(labels_value))});
+            Source.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(patrol_value))});
+            Source.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(mode_sets_value))});
 
-            PatrolOnlySource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            PatrolOnlySource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(patrol_value))});
 
             TextData = Source.SaveToText(nullptr);
             PatrolWaypointsValue.emplace(PropertiesSerializator::SavePropertyToValue(&Source, GetPatrolWaypointsProp(), Hashes, Resolver));
@@ -1166,7 +1179,7 @@ TEST_CASE("PropertiesOverlay")
         CHECK(derived.GetValue<bool>(flag_prop));
         CHECK(derived.GetValue<string>(name_prop) == "full-name");
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         derived.StoreAllData(all_data, str_hashes);
 
@@ -1183,7 +1196,7 @@ TEST_CASE("PropertiesOverlay")
         props.SetValue<bool>(flag_prop, false);
         props.SetValue<string>(name_prop, "override-name");
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
@@ -1213,7 +1226,7 @@ TEST_CASE("PropertiesOverlay")
         props.SetValue<int32_t>(value_prop, 77);
         props.SetValue<int32_t>(value_prop, 77);
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
@@ -1238,7 +1251,7 @@ TEST_CASE("PropertiesOverlay")
 
     SECTION("RestoreAllDataRejectsMismatchedStorageMode")
     {
-        vector<uint8_t> full_data;
+        vector<byte> full_data;
         set<hstring> str_hashes;
         proto.StoreAllData(full_data, str_hashes);
         Properties derived(&registrator, &proto);
@@ -1247,7 +1260,7 @@ TEST_CASE("PropertiesOverlay")
         Properties derived_data(&registrator, &proto);
         derived_data.SetValue<int32_t>(value_prop, 55);
 
-        vector<uint8_t> diff_data;
+        vector<byte> diff_data;
         derived_data.StoreAllData(diff_data, str_hashes);
 
         Properties full_props(&registrator);
@@ -1297,8 +1310,8 @@ TEST_CASE("PropertiesRawDataCopy")
         CHECK(passed_data.GetSize() == raw_value.size());
 
         passed_data.StoreIfPassed();
-        raw_value[0] = 0;
-        raw_value[1] = 0;
+        raw_value[0] = byte {0};
+        raw_value[1] = byte {0};
 
         CHECK(passed_data.GetAs<uint16_t>() == 0x1234);
     }
@@ -1310,7 +1323,7 @@ TEST_CASE("PropertiesRawDataCopy")
         props.SetValue<string>(name_prop, "");
 
         Properties derived(&registrator, &props);
-        auto string_bytes = [](string_view value) -> span<const uint8_t> { return {reinterpret_cast<const uint8_t*>(value.data()), value.size()}; };
+        const auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
 
         CHECK(props.GetRawDataSize(value_prop) == sizeof(uint16_t));
         CHECK(props.GetRawDataSize(flag_prop) == sizeof(bool));
@@ -1326,8 +1339,8 @@ TEST_CASE("PropertiesRawDataCopy")
         derived.SetRawData(value_prop, same_value);
         CHECK(derived.GetValue<uint16_t>(value_prop) == 0x1234);
 
-        bool same_flag_value = true;
-        derived.SetRawData(flag_prop, {reinterpret_cast<const uint8_t*>(&same_flag_value), sizeof(same_flag_value)});
+        const bool same_flag_value = true;
+        derived.SetRawData(flag_prop, make_byte_span(&same_flag_value, sizeof(same_flag_value)));
         CHECK(derived.GetValue<bool>(flag_prop));
 
         derived.SetRawData(name_prop, {});
@@ -1388,7 +1401,7 @@ TEST_CASE("PropertiesRawDataCopy")
         derived.SetValue(short_array_prop, values);
         check_natural_layout(derived);
 
-        vector<uint8_t> snapshot;
+        vector<byte> snapshot;
         set<hstring> snapshot_hashes;
         derived.StoreAllData(snapshot, snapshot_hashes);
 
@@ -1668,7 +1681,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     {
         Properties props(&registrator, &proto);
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
@@ -1709,7 +1722,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         CHECK_FALSE(target_props.GetValue<bool>(owner_flag_prop));
         CHECK(target_props.GetValue<string>(public_name_prop) == "source");
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
@@ -1744,7 +1757,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         CHECK(target_props.GetValue<bool>(owner_flag_prop));
         CHECK(target_props.GetValue<string>(public_name_prop) == "custom");
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
@@ -1770,7 +1783,7 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
     props.SetValue<bool>(flag_prop, true);
     props.SetValue<string>(name_prop, "full-roundtrip");
 
-    vector<uint8_t> all_data;
+    vector<byte> all_data;
     set<hstring> str_hashes;
     props.StoreAllData(all_data, str_hashes);
 
@@ -1796,7 +1809,7 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
         empty_string_props.SetValue<bool>(flag_prop, true);
         empty_string_props.SetValue<string>(name_prop, "");
 
-        vector<uint8_t> empty_string_data;
+        vector<byte> empty_string_data;
         set<hstring> empty_string_hashes;
         empty_string_props.StoreAllData(empty_string_data, empty_string_hashes);
 
@@ -1857,7 +1870,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
         Properties props(&registrator, &proto);
         props.SetValue<int32_t>(local_value_prop, 1);
 
-        vector<vector<uint8_t>> empty_data;
+        vector<vector<byte>> empty_data;
         props.RestoreData(empty_data);
 
         CHECK(props.GetValue<int32_t>(synced_value_prop) == 10);
@@ -1886,7 +1899,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
         client_state.SetValue<int32_t>(synced_value_prop, 99);
         client_state.SetValue<int32_t>(local_value_prop, 1);
 
-        vector<vector<uint8_t>> empty_data;
+        vector<vector<byte>> empty_data;
         client_state.RestoreData(empty_data);
 
         CHECK(client_state.GetValue<int32_t>(synced_value_prop) == 10);
@@ -1896,7 +1909,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
     SECTION("RestoreAllDataEmptySnapshotClearsUnsyncedOverride")
     {
         Properties server_snapshot(&registrator, &proto);
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         server_snapshot.StoreAllData(all_data, str_hashes);
 
@@ -1915,7 +1928,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
         server_snapshot.SetValue<int32_t>(synced_value_prop, 42);
         server_snapshot.SetValue<int32_t>(local_value_prop, 7);
 
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
         server_snapshot.StoreAllData(all_data, str_hashes);
 
@@ -1942,14 +1955,14 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     props.SetValue<int32_t>(value_prop, 10);
     props.SetValue<string>(name_prop, "valid");
 
-    uint8_t full_store_type = 0;
-    uint8_t separate_store_type = 1;
-    uint8_t invalid_store_type = 0xFE;
-    int32_t payload_value = 42;
+    const byte full_store_type {0};
+    const byte separate_store_type {1};
+    const byte invalid_store_type {0xFE};
+    const int32_t payload_value = 42;
 
     SECTION("PointerAndSizeListsMustMatch")
     {
-        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<nptr<const byte>> payload {&full_store_type};
         vector<uint32_t> sizes;
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1957,7 +1970,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("StoreTypeMarkerMustBeOneByte")
     {
-        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<nptr<const byte>> payload {&full_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(uint16_t))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1965,7 +1978,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("StoreTypeMustBeKnown")
     {
-        vector<nptr<const uint8_t>> payload {&invalid_store_type};
+        vector<nptr<const byte>> payload {&invalid_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(invalid_store_type))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1973,8 +1986,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparateIndexTableMustBeAligned")
     {
-        array<uint8_t, 1> misaligned_index_table {0};
-        vector<nptr<const uint8_t>> payload {&separate_store_type, misaligned_index_table.data()};
+        const array<byte, 1> misaligned_index_table {byte {0}};
+        vector<nptr<const byte>> payload {&separate_store_type, misaligned_index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(misaligned_index_table.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1982,8 +1995,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparatePayloadCountMustMatchIndexTable")
     {
-        auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
-        vector<nptr<const uint8_t>> payload {&separate_store_type, index_table.data()};
+        const auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
+        vector<nptr<const byte>> payload {&separate_store_type, index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(index_table.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1991,15 +2004,15 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparateIndexMustPointAtARealProperty")
     {
-        auto payload_value_data = MakeRawInt32(payload_value);
-        auto zero_index_table = MakeRawUInt16(0);
-        vector<nptr<const uint8_t>> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
+        const auto payload_value_data = MakeRawInt32(payload_value);
+        const auto zero_index_table = MakeRawUInt16(0);
+        vector<nptr<const byte>> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
         vector<uint32_t> zero_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(zero_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
         CHECK_THROWS(props.RestoreData(zero_payload, zero_sizes));
 
-        auto out_of_bounds_index_table = MakeRawUInt16(999);
-        vector<nptr<const uint8_t>> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
+        const auto out_of_bounds_index_table = MakeRawUInt16(999);
+        vector<nptr<const byte>> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
         vector<uint32_t> out_of_bounds_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(out_of_bounds_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
         CHECK_THROWS(props.RestoreData(out_of_bounds_payload, out_of_bounds_sizes));
@@ -2007,7 +2020,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("FullPayloadMustContainPodData")
     {
-        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<nptr<const byte>> payload {&full_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -2015,8 +2028,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("FullPodDataSizeMustMatchASectionBoundary")
     {
-        array<uint8_t, 1> pod_data {0};
-        vector<nptr<const uint8_t>> payload {&full_store_type, pod_data.data()};
+        const array<byte, 1> pod_data {byte {0}};
+        vector<nptr<const byte>> payload {&full_store_type, pod_data.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type)), numeric_cast<uint32_t>(pod_data.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -2061,17 +2074,17 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 
     auto whole = numeric_cast<uint32_t>(registrator.GetWholeDataSize());
 
-    vector<uint8_t> blob;
-    auto append_u32 = [&blob](uint32_t value) {
-        const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&value);
+    vector<byte> blob;
+    const auto append_u32 = [&blob](uint32_t value) {
+        const byte* bytes = reinterpret_cast<const byte*>(&value);
         blob.insert(blob.end(), bytes, bytes + sizeof(value));
     };
 
     append_u32(whole); // layout-size header — matches the registrator, so the top-level guard passes
-    blob.push_back(uint8_t {0}); // bool: full-data (no overlay) storage mode
+    blob.push_back(byte {0}); // bool: full-data (no overlay) storage mode
     append_u32(whole); // start_pos: exactly at the end of _podData — out of bounds
     append_u32(32U); // len: 32 bytes copied from the buffer end, well past the allocation
-    blob.insert(blob.end(), 32, uint8_t {0}); // the matching in-bounds source payload
+    blob.insert(blob.end(), 32, byte {0}); // the matching in-bounds source payload
     append_u32(0U); // POD record list terminator (start_pos, len) == (0, 0)
     append_u32(0U);
     append_u32(0U); // complex property count (this registrator has none)
@@ -2282,21 +2295,21 @@ TEST_CASE("PropertyRawDataStorageModes")
     SECTION("LargeAllocUsesDynamicOwnedBuffer")
     {
         PropertyRawData data;
-        array<uint8_t, PropertyRawData::LOCAL_BUF_SIZE + 8> source {};
+        array<byte, PropertyRawData::LOCAL_BUF_SIZE + 8> source {};
 
         for (size_t i = 0; i < source.size(); i++) {
-            source[i] = numeric_cast<uint8_t>(i % 251);
+            source[i] = byte {numeric_cast<uint8_t>(i % 251)};
         }
 
         data.Set(source.data(), source.size());
 
         CHECK(data.GetSize() == source.size());
 
-        auto stored = data.GetPtrAs<uint8_t>();
+        auto stored = data.GetPtrAs<byte>();
         CHECK(std::equal(source.begin(), source.end(), stored.get()));
 
-        source[0] = 255;
-        source.back() = 254;
+        source[0] = byte {255};
+        source.back() = byte {254};
         CHECK(stored[0] != source[0]);
         CHECK(stored[data.GetSize() - 1] != source.back());
     }
@@ -2319,8 +2332,8 @@ TEST_CASE("PropertiesOverlayIndexMaintenance")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    auto string_bytes = [](string_view value) -> span<const uint8_t> { return {reinterpret_cast<const uint8_t*>(value.data()), value.size()}; };
-    string large_value(5000, 'L');
+    const auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
+    const string large_value(5000, 'L');
 
     for (size_t i = 0; i < 17; i++) {
         string value = i == 0 ? large_value : strex("value-{}", i).str();
@@ -2376,7 +2389,7 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
     base.SetValue<hstring>(hash_prop, base_hash);
     base.SetValue<int64_t>(wide_prop, base_wide_value);
 
-    auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     auto check_overlay_values = [&](const Properties& props) {
         auto flag_raw_data = props.GetRawData(flag_prop);
@@ -2448,10 +2461,10 @@ TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    array<uint8_t, 1> first_data = {1};
-    array<uint8_t, 7> second_data = {2, 2, 2, 2, 2, 2, 2};
-    array<uint8_t, 5> tail_data = {3, 3, 3, 3, 3};
-    array<uint8_t, 16> growing_data = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+    const array<byte, 1> first_data = {byte {1}};
+    const array<byte, 7> second_data = {byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}};
+    const array<byte, 5> tail_data = {byte {3}, byte {3}, byte {3}, byte {3}, byte {3}};
+    const array<byte, 16> growing_data = {byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}};
 
     // Allocation order produces a 14-byte tail. Stable alignment-first repacking changes it to
     // 20 bytes, so a capacity selected only from the old tail is too small for the growing block.
@@ -2584,7 +2597,7 @@ TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
     derived.SetValue<uint32_t>(int_prop, 0x33333333);
     derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
 
-    auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     // Growing and shrinking string payloads force tail growth, garbage buildup and repacks
     for (size_t str_size : {100, 300, 50, 1000, 10, 500}) {
@@ -2740,22 +2753,22 @@ TEST_CASE("PropertiesRejectNonFiniteFloatValues")
     raw_float_data.SetAs<float32_t>(raw_float);
     CHECK_THROWS(props.SetValue(float32_prop, raw_float_data));
 
-    array<uint8_t, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
-    float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
+    array<byte, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
+    const float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
     MemCopy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_waypoint_data;
     raw_waypoint_data.Set(raw_waypoint.data(), raw_waypoint.size());
     CHECK_THROWS(props.SetValue(waypoint_prop, raw_waypoint_data));
 
-    array<uint8_t, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
+    array<byte, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
     MemCopy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_key_dict_data;
     raw_float_key_dict_data.Set(raw_float_key_dict.data(), raw_float_key_dict.size());
     CHECK_THROWS(props.SetValue(float_dict_key_prop, raw_float_key_dict_data));
 
-    array<uint8_t, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
+    array<byte, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
     MemCopy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_value_dict_data;
@@ -2777,15 +2790,15 @@ TEST_CASE("PropertiesEnumValueMigration")
     Properties props(&registrator);
 
     // Removed value name resolves through the migration rule.
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeLegacy"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {u8string {u8"ModeLegacy"}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 
     // Current value name still loads directly.
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeB"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {u8string {u8"ModeB"}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
 
     // Unknown value without a migration rule still throws.
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeNonexistent"}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {u8string {u8"ModeNonexistent"}}, hashes, resolver));
 }
 
 TEST_CASE("PropertiesNumericWidthConversions")
@@ -2808,18 +2821,18 @@ TEST_CASE("PropertiesNumericWidthConversions")
 
     Properties props(&registrator);
 
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {string {"-12"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {u8string {u8"-12"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int16_prop, AnyData::Value {float64_t {345.0}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int32_prop, AnyData::Value {string {"True"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int32_prop, AnyData::Value {u8string {u8"True"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int64_prop, AnyData::Value {true}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {string {"7"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {u8string {u8"7"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint16_prop, AnyData::Value {float64_t {1024.0}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint32_prop, AnyData::Value {string {"false"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint32_prop, AnyData::Value {u8string {u8"false"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {int64_t {2}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {float64_t {0.0}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"True"}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {string {"1.25"}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {string {"False"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {u8string {u8"True"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {u8string {u8"1.25"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {u8string {u8"False"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {true}, hashes, resolver));
 
     CHECK(props.GetValue<int8_t>(int8_prop) == -12);
@@ -2834,7 +2847,7 @@ TEST_CASE("PropertiesNumericWidthConversions")
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(0.0));
     CHECK(props.GetValue<string>(string_prop) == "true");
     CHECK(PropertiesSerializator::SavePropertyToText(&props, string_prop, hashes, resolver) == "true");
-    CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {u8string {u8"true"}});
 }
 
 TEST_CASE("PropertiesPlainDataValueAccessors")
@@ -2921,8 +2934,8 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValueAsAny(uint32_prop->GetRegIndex()) == any_t {string {"12345"}});
     CHECK(props.GetValueAsAny(enum_prop->GetRegIndex()) == any_t {string {"1"}});
     CHECK(props.GetValueAsAny(bool_prop->GetRegIndex()) == any_t {string {"true"}});
-    CHECK(strvex(props.GetValueAsAny(float32_prop->GetRegIndex())).to_float32() == Catch::Approx(13.5f));
-    CHECK(strvex(props.GetValueAsAny(float64_prop->GetRegIndex())).to_float64() == Catch::Approx(-42.25));
+    CHECK(strex(props.GetValueAsAny(float32_prop->GetRegIndex())).to_float32() == Catch::Approx(13.5f));
+    CHECK(strex(props.GetValueAsAny(float64_prop->GetRegIndex())).to_float64() == Catch::Approx(-42.25));
     CHECK(props.GetValueAsAny(fixed_hash_prop->GetRegIndex()) == any_t {string {"knife"}});
 
     props.SetValueAsIntProps(int8_prop->GetRegIndex(), -8);
@@ -2949,8 +2962,8 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(15.0f));
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-17.0));
 
-    HashStorage small_hashes {[](const_span<uint8_t> data) -> uint64_t {
-        string_view text {reinterpret_cast<const char*>(data.data()), data.size()};
+    HashStorage small_hashes {[](const_span<byte> data) -> uint64_t {
+        const string_view text = span_to_string(data);
         return text == "SmallHash" ? uint64_t {7} : HashStorage::DefaultHash(data);
     }};
     TestNameResolver small_resolver;
@@ -3104,8 +3117,8 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 
     auto labels_value = []() {
         AnyData::Dict labels;
-        labels.Emplace("-7", string {"low"});
-        labels.Emplace("12", string {"ridge line"});
+        labels.Emplace("-7", u8string {u8"low"});
+        labels.Emplace("12", u8string {u8"ridge line"});
         return AnyData::Value {std::move(labels)};
     }();
 
@@ -3132,9 +3145,9 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(labels_prop->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
-    props.SetValueAsAnyProps(flags_prop->GetRegIndex(), any_t {AnyData::ValueToString(flags_value)});
-    props.SetValueAsAnyProps(samples_prop->GetRegIndex(), any_t {AnyData::ValueToString(samples_value)});
+    props.SetValueAsAnyProps(labels_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(labels_value))});
+    props.SetValueAsAnyProps(flags_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(flags_value))});
+    props.SetValueAsAnyProps(samples_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(samples_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == labels_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, flags_prop, hashes, resolver) == flags_value);
@@ -3181,11 +3194,11 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 
     auto loot_sets_value = []() {
         AnyData::Array default_loot;
-        default_loot.EmplaceBack(string {"knife"});
-        default_loot.EmplaceBack(string {"pistol"});
+        default_loot.EmplaceBack(u8string {u8"knife"});
+        default_loot.EmplaceBack(u8string {u8"pistol"});
 
         AnyData::Array backup_loot;
-        backup_loot.EmplaceBack(string {"pistol"});
+        backup_loot.EmplaceBack(u8string {u8"pistol"});
 
         AnyData::Dict loot_sets;
         loot_sets.Emplace("default", AnyData::Value {std::move(default_loot)});
@@ -3195,13 +3208,13 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 
     Properties props(&registrator);
     props.SetValueAsAnyProps(item_prop->GetRegIndex(), any_t {string {"knife"}});
-    props.SetValueAsAnyProps(loot_sets_prop->GetRegIndex(), any_t {AnyData::ValueToString(loot_sets_value)});
+    props.SetValueAsAnyProps(loot_sets_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(loot_sets_value))});
 
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, map_prop, "", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, item_prop, "", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, item_prop, "missing_proto", hashes, resolver));
 
-    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {string {"knife"}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {u8string {u8"knife"}});
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, loot_sets_prop, hashes, resolver) == loot_sets_value);
 
     auto text_data = props.SaveToText(nullptr);
@@ -3215,10 +3228,10 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     Properties restored(&registrator);
     restored.ApplyFromText(text_data);
 
-    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, item_prop, hashes, resolver) == AnyData::Value {string {"knife"}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, item_prop, hashes, resolver) == AnyData::Value {u8string {u8"knife"}});
     CHECK(PropertiesSerializator::SavePropertyToValue(&restored, loot_sets_prop, hashes, resolver) == loot_sets_value);
 
-    vector<uint8_t> all_data;
+    vector<byte> all_data;
     set<hstring> str_hashes;
     restored.StoreAllData(all_data, str_hashes);
 
@@ -3249,13 +3262,13 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, hash_prop, AnyData::Value {int64_t {42}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {true}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64_t {99}}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"not-bool"}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {u8string {u8"not-bool"}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {int64_t {10}}, hashes, resolver));
 
     AnyData::Array invalid_numeric_values;
-    invalid_numeric_values.EmplaceBack(string {"not-a-number"});
+    invalid_numeric_values.EmplaceBack(u8string {u8"not-a-number"});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {std::move(invalid_numeric_values)}, hashes, resolver));
 
     AnyData::Array invalid_tags;
@@ -3267,7 +3280,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, labels_prop, AnyData::Value {std::move(invalid_labels)}, hashes, resolver));
 
     AnyData::Dict invalid_loot_sets;
-    invalid_loot_sets.Emplace("default", AnyData::Value {string {"knife"}});
+    invalid_loot_sets.Emplace("default", AnyData::Value {u8string {u8"knife"}});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, loot_sets_prop, AnyData::Value {std::move(invalid_loot_sets)}, hashes, resolver));
 
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
@@ -3276,11 +3289,11 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     invalid_leader_value_type.Emplace("north", AnyData::Value {true});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_value_type)}, hashes, resolver));
 
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {string {""}}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {string {"missing_proto"}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {u8string {u8""}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {u8string {u8"missing_proto"}}, hashes, resolver));
 
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, map_prop, AnyData::Value {string {""}}, hashes, resolver));
-    CHECK(PropertiesSerializator::SavePropertyToValue(&props, map_prop, hashes, resolver) == AnyData::Value {string {""}});
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, map_prop, AnyData::Value {u8string {u8""}}, hashes, resolver));
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, map_prop, hashes, resolver) == AnyData::Value {u8string {u8""}});
 
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64_t {1}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
@@ -3302,7 +3315,7 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
     Properties second(&registrator);
     second.SetValue<hstring>(hash_prop, hashes.ToHashedString("beta"));
 
-    vector<uint8_t> all_data;
+    vector<byte> all_data;
     set<hstring> str_hashes;
 
     first.StoreAllData(all_data, str_hashes);
@@ -3310,13 +3323,13 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
     CHECK_FALSE(str_hashes.contains(hashes.ToHashedString("beta")));
 
     AnyData::Array hash_values;
-    hash_values.EmplaceBack(string {"gamma"});
-    hash_values.EmplaceBack(string {""});
-    hash_values.EmplaceBack(string {"delta"});
+    hash_values.EmplaceBack(u8string {u8"gamma"});
+    hash_values.EmplaceBack(u8string {u8""});
+    hash_values.EmplaceBack(u8string {u8"delta"});
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&first, hash_array_prop, AnyData::Value {std::move(hash_values)}, hashes, resolver));
 
     AnyData::Dict hash_lookup;
-    hash_lookup.Emplace("route_alpha", string {"marker_beta"});
+    hash_lookup.Emplace("route_alpha", u8string {u8"marker_beta"});
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&first, hash_dict_prop, AnyData::Value {std::move(hash_lookup)}, hashes, resolver));
 
     first.StoreAllData(all_data, str_hashes);
@@ -3387,12 +3400,12 @@ TEST_CASE("PropertiesDictConversions")
 
     auto tags_value = []() {
         AnyData::Array mode_a_tags;
-        mode_a_tags.EmplaceBack(string {"front"});
-        mode_a_tags.EmplaceBack(string {"rear gate"});
+        mode_a_tags.EmplaceBack(u8string {u8"front"});
+        mode_a_tags.EmplaceBack(u8string {u8"rear gate"});
 
         AnyData::Array mode_b_tags;
-        mode_b_tags.EmplaceBack(string {""});
-        mode_b_tags.EmplaceBack(string {"solo"});
+        mode_b_tags.EmplaceBack(u8string {u8""});
+        mode_b_tags.EmplaceBack(u8string {u8"solo"});
 
         AnyData::Dict tags;
         tags.Emplace("ModeA", AnyData::Value {std::move(mode_a_tags)});
@@ -3402,15 +3415,15 @@ TEST_CASE("PropertiesDictConversions")
 
     auto routes_value = []() {
         AnyData::Dict routes;
-        routes.Emplace("north_route", string {"ModeB"});
-        routes.Emplace("south route", string {"ModeA"});
+        routes.Emplace("north_route", u8string {u8"ModeB"});
+        routes.Emplace("south route", u8string {u8"ModeA"});
         return AnyData::Value {std::move(routes)};
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(counters_prop->GetRegIndex(), any_t {AnyData::ValueToString(counters_value)});
-    props.SetValueAsAnyProps(tags_prop->GetRegIndex(), any_t {AnyData::ValueToString(tags_value)});
-    props.SetValueAsAnyProps(routes_prop->GetRegIndex(), any_t {AnyData::ValueToString(routes_value)});
+    props.SetValueAsAnyProps(counters_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(counters_value))});
+    props.SetValueAsAnyProps(tags_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(tags_value))});
+    props.SetValueAsAnyProps(routes_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(routes_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, counters_prop, hashes, resolver) == counters_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, tags_prop, hashes, resolver) == tags_value);
@@ -3473,13 +3486,13 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
     {
         auto raw_data = props.GetRawData(wide_dict_prop);
         REQUIRE(raw_data.size() == 32);
-        CHECK(raw_data[0] == 1);
+        CHECK(raw_data[0] == byte {1});
         CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 8) == 0x1111111111111111);
-        CHECK(raw_data[16] == 2);
+        CHECK(raw_data[16] == byte {2});
         CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 24) == -0x2222222222222222);
 
-        for (size_t pad_pos : {1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23}) {
-            CHECK(raw_data[pad_pos] == 0);
+        for (const size_t pad_pos : {1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23}) {
+            CHECK(raw_data[pad_pos] == byte {0});
         }
     }
 
@@ -3488,8 +3501,8 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
     // dict<int32, string>: the second entry key re-aligns to 4 after the odd-length string payload
     auto str_dict_value = []() {
         AnyData::Dict dict;
-        dict.Emplace("7", string {"abc"});
-        dict.Emplace("8", string {"x"});
+        dict.Emplace("7", u8string {u8"abc"});
+        dict.Emplace("8", u8string {u8"x"});
         return AnyData::Value {std::move(dict)};
     }();
 
@@ -3500,11 +3513,11 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
         REQUIRE(raw_data.size() == 21);
         CHECK(*reinterpret_cast<const int32_t*>(raw_data.data()) == 7);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 3);
-        CHECK(raw_data[8] == 'a');
+        CHECK(raw_data[8] == byte {numeric_cast<uint8_t>('a')});
         CHECK(*reinterpret_cast<const int32_t*>(raw_data.data() + 12) == 8);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 16) == 1);
-        CHECK(raw_data[20] == 'x');
-        CHECK(raw_data[11] == 0);
+        CHECK(raw_data[20] == byte {numeric_cast<uint8_t>('x')});
+        CHECK(raw_data[11] == byte {0});
     }
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, str_dict_prop, hashes, resolver) == str_dict_value);
@@ -3543,13 +3556,13 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
         REQUIRE(raw_data.size() == 18);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 2);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 1);
-        CHECK(raw_data[8] == 'a');
+        CHECK(raw_data[8] == byte {numeric_cast<uint8_t>('a')});
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 12) == 2);
-        CHECK(raw_data[16] == 'b');
-        CHECK(raw_data[17] == 'c');
-        CHECK(raw_data[9] == 0);
-        CHECK(raw_data[10] == 0);
-        CHECK(raw_data[11] == 0);
+        CHECK(raw_data[16] == byte {numeric_cast<uint8_t>('b')});
+        CHECK(raw_data[17] == byte {numeric_cast<uint8_t>('c')});
+        CHECK(raw_data[9] == byte {0});
+        CHECK(raw_data[10] == byte {0});
+        CHECK(raw_data[11] == byte {0});
     }
 
     CHECK(props.GetValue<vector<string>>(str_arr_prop) == vector<string> {"a", "bc"});
@@ -3568,15 +3581,15 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
         auto raw_data = props.GetRawData(str_key_dict_prop);
         REQUIRE(raw_data.size() == 32);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 2);
-        CHECK(raw_data[4] == 'a');
-        CHECK(raw_data[5] == 'b');
+        CHECK(raw_data[4] == byte {numeric_cast<uint8_t>('a')});
+        CHECK(raw_data[5] == byte {numeric_cast<uint8_t>('b')});
         CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 8) == 0x3333333333333333);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 16) == 1);
-        CHECK(raw_data[20] == 'c');
+        CHECK(raw_data[20] == byte {numeric_cast<uint8_t>('c')});
         CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 24) == 0x4444444444444444);
-        CHECK(raw_data[6] == 0);
-        CHECK(raw_data[7] == 0);
-        CHECK(raw_data[21] == 0);
+        CHECK(raw_data[6] == byte {0});
+        CHECK(raw_data[7] == byte {0});
+        CHECK(raw_data[21] == byte {0});
     }
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, str_key_dict_prop, hashes, resolver) == str_key_dict_value);
@@ -3584,7 +3597,7 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
     // Ref-type blob: field-size prefixes re-align to 4, non-empty field payloads to the field alignment
     auto note_only_snapshot = []() {
         AnyData::Dict fields;
-        fields.Emplace("Note", string {"hi"});
+        fields.Emplace("Note", u8string {u8"hi"});
         return AnyData::Value {std::move(fields)};
     }();
 
@@ -3598,8 +3611,8 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 0);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 8) == 0);
         CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 12) == 2);
-        CHECK(raw_data[16] == 'h');
-        CHECK(raw_data[17] == 'i');
+        CHECK(raw_data[16] == byte {numeric_cast<uint8_t>('h')});
+        CHECK(raw_data[17] == byte {numeric_cast<uint8_t>('i')});
     }
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, ref_prop, hashes, resolver) == note_only_snapshot);
@@ -3607,7 +3620,7 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
     hstring tag_hash = hashes.ToHashedString("tag-one");
     auto tags_only_snapshot = [&tag_hash]() {
         AnyData::Array tags;
-        tags.EmplaceBack(string {tag_hash.as_str()});
+        tags.EmplaceBack(tag_hash.as_str());
 
         AnyData::Dict fields;
         fields.Emplace("Tags", AnyData::Value {std::move(tags)});
@@ -3641,7 +3654,7 @@ TEST_CASE("PropertiesOverlayRepackHandlesUnevenComplexSizes")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
     derived.SetValue<uint32_t>(int_prop, 0x33333333);
@@ -3697,8 +3710,8 @@ TEST_CASE("PropertiesNumericDictConversions")
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(flags_prop->GetRegIndex(), any_t {AnyData::ValueToString(flags_value)});
-    props.SetValueAsAnyProps(checkpoints_prop->GetRegIndex(), any_t {AnyData::ValueToString(checkpoints_value)});
+    props.SetValueAsAnyProps(flags_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(flags_value))});
+    props.SetValueAsAnyProps(checkpoints_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(checkpoints_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, flags_prop, hashes, resolver) == flags_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, checkpoints_prop, hashes, resolver) == checkpoints_value);
@@ -3731,11 +3744,11 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
 
     auto mode_sets_value = []() {
         AnyData::Array primary_modes;
-        primary_modes.EmplaceBack(string {"ModeA"});
-        primary_modes.EmplaceBack(string {"ModeB"});
+        primary_modes.EmplaceBack(u8string {u8"ModeA"});
+        primary_modes.EmplaceBack(u8string {u8"ModeB"});
 
         AnyData::Array reserve_modes;
-        reserve_modes.EmplaceBack(string {"ModeB"});
+        reserve_modes.EmplaceBack(u8string {u8"ModeB"});
 
         AnyData::Dict mode_sets;
         mode_sets.Emplace("primary", AnyData::Value {std::move(primary_modes)});
@@ -3745,11 +3758,11 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
 
     auto route_tags_value = []() {
         AnyData::Array north_route_tags;
-        north_route_tags.EmplaceBack(string {"scout"});
-        north_route_tags.EmplaceBack(string {"night shift"});
+        north_route_tags.EmplaceBack(u8string {u8"scout"});
+        north_route_tags.EmplaceBack(u8string {u8"night shift"});
 
         AnyData::Array south_route_tags;
-        south_route_tags.EmplaceBack(string {"heavy"});
+        south_route_tags.EmplaceBack(u8string {u8"heavy"});
 
         AnyData::Dict route_tags;
         route_tags.Emplace("7", AnyData::Value {std::move(north_route_tags)});
@@ -3758,8 +3771,8 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
-    props.SetValueAsAnyProps(route_tags_prop->GetRegIndex(), any_t {AnyData::ValueToString(route_tags_value)});
+    props.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(mode_sets_value))});
+    props.SetValueAsAnyProps(route_tags_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(route_tags_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, mode_sets_prop, hashes, resolver) == mode_sets_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, route_tags_prop, hashes, resolver) == route_tags_value);
@@ -3793,8 +3806,8 @@ TEST_CASE("PropertiesFloatDictConversions")
 
     auto labels_value = []() {
         AnyData::Dict labels;
-        labels.Emplace("-0.5", string {"low"});
-        labels.Emplace("1.25", string {"high tide"});
+        labels.Emplace("-0.5", u8string {u8"low"});
+        labels.Emplace("1.25", u8string {u8"high tide"});
         return AnyData::Value {std::move(labels)};
     }();
 
@@ -3814,8 +3827,8 @@ TEST_CASE("PropertiesFloatDictConversions")
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(labels_prop->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
-    props.SetValueAsAnyProps(samples_prop->GetRegIndex(), any_t {AnyData::ValueToString(samples_value)});
+    props.SetValueAsAnyProps(labels_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(labels_value))});
+    props.SetValueAsAnyProps(samples_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(samples_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == labels_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, samples_prop, hashes, resolver) == samples_value);
@@ -3894,8 +3907,8 @@ TEST_CASE("PropertiesStructDictConversions")
     }();
 
     Properties props(&registrator);
-    props.SetValueAsAnyProps(leader_prop->GetRegIndex(), any_t {AnyData::ValueToString(leader_value)});
-    props.SetValueAsAnyProps(patrol_prop->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+    props.SetValueAsAnyProps(leader_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(leader_value))});
+    props.SetValueAsAnyProps(patrol_prop->GetRegIndex(), any_t {utf8_to_char_string(AnyData::ValueToString(patrol_value))});
 
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, leader_prop, hashes, resolver) == leader_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, patrol_prop, hashes, resolver) == patrol_value);
@@ -3938,16 +3951,16 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_from_array)}, hashes, resolver));
 
     AnyData::Dict invalid_leader_from_string;
-    invalid_leader_from_string.Emplace("south", AnyData::Value {string {"20 2.5"}});
+    invalid_leader_from_string.Emplace("south", AnyData::Value {u8string {u8"20 2.5"}});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_from_string)}, hashes, resolver));
 
     AnyData::Dict invalid_patrol_type;
-    invalid_patrol_type.Emplace("1", AnyData::Value {string {"not-an-array"}});
+    invalid_patrol_type.Emplace("1", AnyData::Value {u8string {u8"not-an-array"}});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, patrol_prop, AnyData::Value {std::move(invalid_patrol_type)}, hashes, resolver));
 
     AnyData::Dict invalid_patrol_shape;
     AnyData::Array malformed_path;
-    malformed_path.EmplaceBack(string {"10 1.0"});
+    malformed_path.EmplaceBack(u8string {u8"10 1.0"});
     invalid_patrol_shape.Emplace("2", AnyData::Value {std::move(malformed_path)});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, patrol_prop, AnyData::Value {std::move(invalid_patrol_shape)}, hashes, resolver));
 }
@@ -3967,8 +3980,8 @@ TEST_CASE("PropertiesRefTypeConversions")
         values.EmplaceBack(int64_t {3});
 
         AnyData::Array tags;
-        tags.EmplaceBack(string {"alpha"});
-        tags.EmplaceBack(string {"beta"});
+        tags.EmplaceBack(u8string {u8"alpha"});
+        tags.EmplaceBack(u8string {u8"beta"});
 
         AnyData::Array anchor;
         anchor.EmplaceBack(int64_t {10});
@@ -3979,7 +3992,7 @@ TEST_CASE("PropertiesRefTypeConversions")
         snapshot.Emplace("Values", AnyData::Value {std::move(values)});
         snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
         snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
-        snapshot.Emplace("Note", AnyData::Value {string {"smoke"}});
+        snapshot.Emplace("Note", AnyData::Value {u8string {u8"smoke"}});
         return AnyData::Value {std::move(snapshot)};
     }();
 
@@ -4020,7 +4033,7 @@ TEST_CASE("PropertiesNestedRefTypeConversions")
         values.EmplaceBack(int64_t {start_value + 1});
 
         AnyData::Array tags;
-        tags.EmplaceBack(string {tag});
+        tags.EmplaceBack(tag);
 
         AnyData::Array anchor;
         anchor.EmplaceBack(int64_t {start_value * 10});
@@ -4031,18 +4044,18 @@ TEST_CASE("PropertiesNestedRefTypeConversions")
         snapshot.Emplace("Values", AnyData::Value {std::move(values)});
         snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
         snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
-        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        snapshot.Emplace("Note", AnyData::Value {note});
         return AnyData::Value {std::move(snapshot)};
     };
 
     auto envelope_value = [&]() {
         AnyData::Dict backup;
-        backup.Emplace("Note", AnyData::Value {string {"tail"}});
+        backup.Emplace("Note", AnyData::Value {u8string {u8"tail"}});
 
         AnyData::Dict envelope;
         envelope.Emplace("Primary", make_snapshot(5, "alpha", "lead", true));
         envelope.Emplace("Backup", AnyData::Value {std::move(backup)});
-        envelope.Emplace("Title", AnyData::Value {string {"nested"}});
+        envelope.Emplace("Title", AnyData::Value {u8string {u8"nested"}});
         return AnyData::Value {std::move(envelope)};
     }();
 
@@ -4081,7 +4094,7 @@ TEST_CASE("PropertiesRefTypeCollectionConversions")
         values.EmplaceBack(int64_t {start_value + 1});
 
         AnyData::Array tags;
-        tags.EmplaceBack(string {tag});
+        tags.EmplaceBack(tag);
 
         AnyData::Array anchor;
         anchor.EmplaceBack(int64_t {start_value * 10});
@@ -4092,13 +4105,13 @@ TEST_CASE("PropertiesRefTypeCollectionConversions")
         snapshot.Emplace("Values", AnyData::Value {std::move(values)});
         snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
         snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
-        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        snapshot.Emplace("Note", AnyData::Value {note});
         return AnyData::Value {std::move(snapshot)};
     };
 
     auto make_sparse_snapshot = [](string_view note) {
         AnyData::Dict snapshot;
-        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        snapshot.Emplace("Note", AnyData::Value {note});
         return AnyData::Value {std::move(snapshot)};
     };
 
@@ -4166,7 +4179,7 @@ TEST_CASE("PropertiesRefTypeSerializationSkipsDefaultFields")
     auto snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Dict snapshot;
-    snapshot.Emplace("Note", AnyData::Value {string {"smoke"}});
+    snapshot.Emplace("Note", AnyData::Value {u8string {u8"smoke"}});
 
     Properties props(&registrator);
     PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(snapshot)}, hashes, resolver);
@@ -4284,7 +4297,7 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
     CHECK_FALSE(doc.Contains("Counter"));
     REQUIRE(doc.Contains("Title"));
     REQUIRE(doc.Contains("Enabled"));
-    CHECK(doc["Title"].AsString() == "shift lead");
+    CHECK(doc["Title"].AsString() == u8"shift lead");
     CHECK(doc["Enabled"].AsBool());
 }
 
@@ -4299,9 +4312,9 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 
     AnyData::Document doc;
     doc.Emplace("$version", int64_t {3});
-    doc.Emplace("_meta", string {"ignored"});
+    doc.Emplace("_meta", u8string {u8"ignored"});
     doc.Emplace("Counter", int64_t {15});
-    doc.Emplace("Title", string {"  south gate  "});
+    doc.Emplace("Title", u8string {u8"  south gate  "});
     doc.Emplace("UnknownField", int64_t {99});
 
     Properties props(&registrator);
@@ -4320,7 +4333,7 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
     auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
-    doc.Emplace("Counter", string {"wrong-type"});
+    doc.Emplace("Counter", u8string {u8"wrong-type"});
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
@@ -4369,7 +4382,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
     Properties props(&registrator);
     CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<hstring>(hash_prop) == hstring {});
-    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {string {""}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {u8string {u8""}});
     CHECK(props.GetValue<bool>(enabled_prop));
 }
 
@@ -4384,7 +4397,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
     auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
-    doc.Emplace("Values", string {"not-an-array"});
+    doc.Emplace("Values", u8string {u8"not-an-array"});
     doc.Emplace("Labels", AnyData::Value {AnyData::Array {}});
     doc.Emplace("Enabled", true);
 
@@ -4405,7 +4418,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
     auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Dict invalid_checkpoints;
-    invalid_checkpoints.Emplace("True", string {"not-an-array"});
+    invalid_checkpoints.Emplace("True", u8string {u8"not-an-array"});
 
     AnyData::Document doc;
     doc.Emplace("Checkpoints", AnyData::Value {std::move(invalid_checkpoints)});
@@ -4507,7 +4520,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("StoreAllData full snapshot")(Catch::Benchmark::Chronometer meter)
     {
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
@@ -4518,7 +4531,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("StoreAllData derived snapshot")(Catch::Benchmark::Chronometer meter)
     {
-        vector<uint8_t> all_data;
+        vector<byte> all_data;
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
@@ -4744,7 +4757,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("StoreAllData packed snapshot")(Catch::Benchmark::Chronometer meter)
             {
-                vector<uint8_t> all_data;
+                vector<byte> all_data;
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
@@ -4755,7 +4768,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("StoreAllData full snapshot")(Catch::Benchmark::Chronometer meter)
             {
-                vector<uint8_t> all_data;
+                vector<byte> all_data;
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {

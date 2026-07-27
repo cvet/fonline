@@ -468,8 +468,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
 
             if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
                 if constexpr (!FO_DEBUG) {
-                    string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
-                    WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+                    WriteLog("Script execution overrun: {} ({})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration);
                 }
             }
         }

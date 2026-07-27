@@ -596,7 +596,8 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    WriteLog("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
+    const string_view entity_name = entity != nullptr ? entity->GetName() : string_view {};
+    WriteLog("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity_name, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
         WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
@@ -819,7 +820,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
     // thread, this would form a {Engine,EntityX} <-> {EntityX,Engine} cycle. Scripts must
     // `Game.Unlock()` before any `Sync::Lock(...)` call.
     if (!_singletonLocks.empty()) {
-        throw EntitySyncException("Cannot call Sync() while holding a singleton lock (e.g. Game.Lock()) — Unlock first to avoid the per-property auto-lock deadlock");
+        throw EntitySyncException("Cannot call Sync() while holding a singleton lock (e.g. Game.Lock()); Unlock first to avoid the per-property auto-lock deadlock");
     }
 
     CurrentContext = this;
@@ -1076,7 +1077,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
 
         if (attempt + 1 >= MAX_SYNC_RETRIES) {
             ReleaseLocks();
-            throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
+            throw EntitySyncException("SyncEntities retry budget exhausted; entity reparenting raced lock acquisition repeatedly");
         }
 
         // Some entity escaped the cover during AcquireLocks: a concurrent reparent is in flight.
@@ -1109,7 +1110,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
     }
 
     if (!IsEntityAccessValid(entity, true)) {
-        throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered — its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
+        throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered - its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
     }
 
     EnsureEntitySyncedImpl(entity);

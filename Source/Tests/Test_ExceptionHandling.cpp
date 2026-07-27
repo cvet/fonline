@@ -16,11 +16,36 @@ TEST_CASE("ExceptionHandling")
         CHECK(string_view {ex.name()} == "GenericException");
         CHECK(ex.message() == "Failure happened");
         REQUIRE(ex.params().size() == 2);
-        CHECK(ex.params()[0] == "42");
-        CHECK(ex.params()[1] == "tail");
+        CHECK(ex.params()[0] == u8"42");
+        CHECK(ex.params()[1] == u8"tail");
         CHECK(string_view {ex.what()}.find("GenericException: Failure happened") != string_view::npos);
         CHECK(string_view {ex.what()}.find("- 42") != string_view::npos);
         CHECK(string_view {ex.what()}.find("- tail") != string_view::npos);
+    }
+
+    SECTION("BaseEngineExceptionAcceptsStrictTextParamsDirectly")
+    {
+        const u8string utf8_value {u8"путь/🌍"};
+        const string ascii_value {"Server"};
+        const GenericException ex {"Strict text context", utf8_value, utf8_value.view(), ascii_value, string_view {ascii_value}};
+
+        REQUIRE(ex.params().size() == 4);
+        CHECK(ex.params()[0] == utf8_value);
+        CHECK(ex.params()[1] == utf8_value);
+        CHECK(ex.params()[2] == u8"Server");
+        CHECK(ex.params()[3] == u8"Server");
+        CHECK(string_view {ex.what()}.find(utf8_as_char_view(utf8_value.view())) != string_view::npos);
+        const u8string strict_message = exception_message_utf8(ex);
+        CHECK(strict_message.view().native_view().find(utf8_value.view().native_view()) != std::u8string_view::npos);
+    }
+
+    SECTION("ExceptionMessageUtf8NormalizesInvalidNativeText")
+    {
+        std::string invalid_message {"bad native text "};
+        invalid_message.push_back(static_cast<char>(0xFF));
+        const std::runtime_error ex {invalid_message};
+
+        CHECK(exception_message_utf8(ex) == u8string {u8"Native exception message is not valid UTF-8"});
     }
 
     SECTION("FormatStackTraceListsNewestCallFirst")
@@ -58,22 +83,22 @@ TEST_CASE("ExceptionHandling")
     {
         auto prev_callback = GetExceptionCallback();
 
-        string message;
+        u8string message;
         bool has_origin = false;
         bool fatal = false;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
-            message = string(msg);
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+            message.assign(msg);
             has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
         auto callback = GetExceptionCallback();
         REQUIRE(callback);
-        CatchedStackTraceData st {std::nullopt, {}};
-        callback("Msg", st, true);
+        const CatchedStackTraceData st {std::nullopt, {}};
+        callback(u8"Msg", st, true);
 
-        CHECK(message == "Msg");
+        CHECK(message == u8"Msg");
         CHECK_FALSE(has_origin);
         CHECK(fatal);
 
@@ -95,8 +120,8 @@ TEST_CASE("ExceptionHandling")
         CHECK(string_view {ex.name()} == "ExceptionHandlingTestDerivedException");
         CHECK(ex.message() == "Derived failure");
         REQUIRE(ex.params().size() == 2);
-        CHECK(ex.params()[0] == "7");
-        CHECK(ex.params()[1] == "extra");
+        CHECK(ex.params()[0] == u8"7");
+        CHECK(ex.params()[1] == u8"extra");
         CHECK(string_view {ex.what()}.find("ExceptionHandlingTestDerivedException: Derived failure") != string_view::npos);
         CHECK(string_view {ex.what()}.find("- 7") != string_view::npos);
         CHECK(string_view {ex.what()}.find("- extra") != string_view::npos);
@@ -111,7 +136,7 @@ TEST_CASE("ExceptionHandling")
         CHECK(string_view {copy.name()} == "InvalidOperationException");
         CHECK(copy.message() == "Operation failed");
         REQUIRE(copy.params().size() == 1);
-        CHECK(copy.params()[0] == "99");
+        CHECK(copy.params()[0] == u8"99");
         CHECK(string_view {copy.what()}.find("InvalidOperationException: Operation failed") != string_view::npos);
     }
 
@@ -119,13 +144,13 @@ TEST_CASE("ExceptionHandling")
     {
         auto prev_callback = GetExceptionCallback();
 
-        string message;
+        u8string message;
         bool trace_received = false;
         bool trace_has_origin = false;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
-            message = string(msg);
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+            message.assign(msg);
             trace_received = true;
             trace_has_origin = st.Origin.has_value();
             fatal = is_fatal;
@@ -134,7 +159,7 @@ TEST_CASE("ExceptionHandling")
         GenericException ex {"Continue please"};
         ReportExceptionAndContinue(ex);
 
-        CHECK(message == ex.what());
+        CHECK(message == exception_message_utf8(ex));
         CHECK(trace_received);
         CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
@@ -152,7 +177,7 @@ TEST_CASE("ExceptionHandling")
             CHECK(string_view {ex.name()} == "VerificationException");
             CHECK(ex.message() == "Throw context");
             REQUIRE(ex.params().size() == 1);
-            CHECK(ex.params()[0] == "42");
+            CHECK(ex.params()[0] == u8"42");
             CHECK(string_view {ex.what()}.find("VerificationException: Throw context") != string_view::npos);
             CHECK(string_view {ex.what()}.find("- 42") != string_view::npos);
         }
@@ -162,9 +187,9 @@ TEST_CASE("ExceptionHandling")
     {
         auto prev_callback = GetExceptionCallback();
 
-        vector<string> messages;
+        vector<u8string> messages;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool is_fatal) {
             messages.emplace_back(msg);
             CHECK_FALSE(is_fatal);
         });
@@ -172,8 +197,8 @@ TEST_CASE("ExceptionHandling")
         FO_VERIFY_AND_CONTINUE(false, "Continue context", 42);
 
         REQUIRE(messages.size() == 1);
-        CHECK(messages[0].find("VerificationException: Continue context") != string::npos);
-        CHECK(messages[0].find("- 42") != string::npos);
+        CHECK(messages[0].view().native_view().find(u8"VerificationException: Continue context") != std::u8string_view::npos);
+        CHECK(messages[0].view().native_view().find(u8"- 42") != std::u8string_view::npos);
 
         SetExceptionCallback(std::move(prev_callback));
     }
@@ -182,9 +207,9 @@ TEST_CASE("ExceptionHandling")
     {
         auto prev_callback = GetExceptionCallback();
 
-        vector<string> messages;
+        vector<u8string> messages;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool is_fatal) {
             messages.emplace_back(msg);
             CHECK_FALSE(is_fatal);
         });
@@ -202,10 +227,10 @@ TEST_CASE("ExceptionHandling")
         CHECK(return_value_msg() == 22);
 
         REQUIRE(messages.size() == 2);
-        CHECK(messages[0].find("VerificationException: Return context") != string::npos);
-        CHECK(messages[0].find("- 42") != string::npos);
-        CHECK(messages[1].find("VerificationException: Return value context") != string::npos);
-        CHECK(messages[1].find("- 43") != string::npos);
+        CHECK(messages[0].view().native_view().find(u8"VerificationException: Return context") != std::u8string_view::npos);
+        CHECK(messages[0].view().native_view().find(u8"- 42") != std::u8string_view::npos);
+        CHECK(messages[1].view().native_view().find(u8"VerificationException: Return value context") != std::u8string_view::npos);
+        CHECK(messages[1].view().native_view().find(u8"- 43") != std::u8string_view::npos);
 
         SetExceptionCallback(std::move(prev_callback));
     }
@@ -217,7 +242,7 @@ TEST_CASE("ExceptionHandling")
         bool trace_received = false;
         bool trace_has_origin = false;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+        SetExceptionCallback([&](u8string_view, const CatchedStackTraceData& st, bool) { //
             trace_received = true;
             trace_has_origin = st.Origin.has_value();
         });
@@ -242,7 +267,7 @@ TEST_CASE("ExceptionHandling")
         bool trace_received = false;
         bool trace_has_origin = true;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+        SetExceptionCallback([&](u8string_view, const CatchedStackTraceData& st, bool) { //
             trace_received = true;
             trace_has_origin = st.Origin.has_value();
         });

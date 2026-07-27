@@ -323,13 +323,13 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
             ValidatedModelDescription validated = ValidateModelDescription(files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
 
-            vector<uint8_t> data;
+            vector<byte> data;
             DataWriter writer(data);
             writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
             writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
             writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
             description.Save(writer);
-            vector<uint8_t> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
+            const vector<byte> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
             writer.Write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
             writer.WriteBytes(animation_rig_data);
             _context->WriteData(file.GetPath(), data);
@@ -476,7 +476,8 @@ void ModelDescriptionParser::ParseFile(string_view fname, const vector<pair<stri
     _maxWriteTime = std::max(_maxWriteTime, file.GetWriteTime());
     _includeStack.emplace_back(fname);
 
-    string content = ApplyModelDescriptionReplacements(file.GetStr(), replacements);
+    const u8string strict_content = file.GetText();
+    const string content = ApplyModelDescriptionReplacements(utf8_to_char_string(strict_content.view()), replacements);
     ParseContent(file.GetPath(), content, description, state);
 
     _includeStack.pop_back();
@@ -1712,8 +1713,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         config_text += "\n";
     }
 
-    auto data = vector<uint8_t>(config_text.begin(), config_text.end());
-    ctx.WriteData(output_path, data);
+    ctx.WriteData(output_path, make_byte_span(config_text));
 
     if (ctx.Report) {
         shared_ptr<BakingReport> report = ctx.Report;

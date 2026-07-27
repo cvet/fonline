@@ -60,6 +60,8 @@ Important constants:
 - parse message IDs with `ReadMsg()`;
 - shrink/reset read buffers after processing.
 
+All transport and framing storage is an explicit byte domain. `NetBuffer::GetData()`, `NetOutBuffer::Push()`, and `NetInBuffer::AddData()` use `const_span<byte>`; the owning buffer is `vector<byte>`. TCP/UDP socket helpers, client/server transport callbacks, interthread delivery, ordered-UDP packets, compression handoff, updater payloads, native remote-call envelopes, and property snapshot chunks keep `byte` end to end. Numeric protocol fields such as message ids, packet flags, lengths, sequence numbers, encryption keys, property size/index fields, and serialized scalar `uint8_t` values remain numeric and are copied through the byte buffer. Script-visible `array<uint8>` objects likewise remain numeric and cross at the serializer boundary.
+
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
 ## Inbound hardening (untrusted client → server)
@@ -71,7 +73,7 @@ The server treats all inbound bytes as hostile. Two layers guard against resourc
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
 
-The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, and enum/hash/proto resolution. It does not impose a fixed maximum string length or element count, so absolute length/flood ceilings still live in the buffer/transport layer above.
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it consumes `const_span<byte>` and enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, and enum/hash/proto resolution. Numeric `uint8_t` property values are extracted explicitly rather than treating the hostile payload as a numeric span. The validator does not impose a fixed maximum string length or element count, so absolute length/flood ceilings still live in the buffer/transport layer above.
 
 ## Hashes
 
@@ -108,6 +110,8 @@ The public surface is transport-neutral:
 - `SendData()`;
 - `ReceiveData()`;
 - `Disconnect()`.
+
+`SendData()` consumes `const_span<byte>` and `ReceiveData()` returns `const_span<byte>`; transport implementations own receive and packet queues as `vector<byte>`. Direct `uint8_t` spans are intentionally rejected so numeric buffers cannot silently become wire payloads.
 
 Factory methods choose transport implementation:
 
@@ -237,6 +241,8 @@ Packet types:
 - acknowledgement bitmask;
 - extra value;
 - payload bytes.
+
+Packet owners and payload views use `vector<byte>` / `const_span<byte>`. The packet type and flags remain numeric `uint8_t` fields in the unchanged header layout.
 
 `UdpOrderedChannel` owns session state and reliable ordering:
 

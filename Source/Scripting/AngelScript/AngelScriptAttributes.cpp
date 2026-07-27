@@ -185,18 +185,18 @@ struct ScriptBytecodeLocation
 };
 
 static constexpr array DIRECT_CALL_BLOCKING_ATTRIBUTES {
-    string_view {"Event"},
-    string_view {"TimeEvent"},
-    string_view {"AnimCallback"},
-    string_view {"PropertyGetter"},
-    string_view {"PropertySetter"},
-    string_view {"ServerRemoteCall"},
-    string_view {"ClientRemoteCall"},
-    string_view {"AdminRemoteCall"},
-    string_view {"ItemTrigger"},
-    string_view {"ItemStatic"},
-    string_view {"ModuleInit"},
-    string_view {"InvokeEntry"},
+    "Event",
+    "TimeEvent",
+    "AnimCallback",
+    "PropertyGetter",
+    "PropertySetter",
+    "ServerRemoteCall",
+    "ClientRemoteCall",
+    "AdminRemoteCall",
+    "ItemTrigger",
+    "ItemStatic",
+    "ModuleInit",
+    "InvokeEntry",
 };
 
 static auto IsDirectCallBlockingAttribute(string_view base_name, nptr<const vector<string>> project_extras) noexcept -> bool

@@ -43,9 +43,9 @@ FO_BEGIN_NAMESPACE
 
 struct SoundManager::Sound
 {
-    vector<uint8_t> BaseBuf {};
+    vector<byte> BaseBuf {};
     size_t BaseBufLen {};
-    vector<uint8_t> ConvertedBuf {};
+    vector<byte> ConvertedBuf {};
     size_t ConvertedBufCur {};
     int32_t OriginalFormat {};
     int32_t OriginalChannels {};
@@ -92,7 +92,7 @@ SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
     _streamingPortion = 0x10000; // 64kb
 #endif
 
-    _audio->SetSource([this](uint8_t silence, span<uint8_t> output) FO_DEFERRED { ProcessSounds(silence, output); });
+    _audio->SetSource([this](uint8_t silence, span<byte> output) FO_DEFERRED { ProcessSounds(silence, output); });
     _isActive = true;
 }
 
@@ -109,7 +109,7 @@ SoundManager::~SoundManager()
     }
 }
 
-void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
+void SoundManager::ProcessSounds(uint8_t silence, span<byte> output)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -119,7 +119,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
         auto sound = it->as_ptr();
-        span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
+        span<byte> mix_buffer = span<byte> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
             int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
@@ -132,7 +132,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
     }
 }
 
-auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool
+auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<byte> output) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -320,7 +320,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
         return false;
     }
 
-    span<uint8_t> wave_format_bytes = span<uint8_t> {make_ptr(&waveformatex).reinterpret_as<uint8_t>().get(), sizeof(WaveFormatEx)}.first(wave_format_base_size);
+    span<byte> wave_format_bytes = make_byte_span(&waveformatex, sizeof(WaveFormatEx)).first(wave_format_base_size);
     reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
@@ -364,8 +364,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     }
 
     // Convert
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBufLen};
-    reader.ReadBytes(base_buf);
+    reader.ReadBytes(make_byte_span(sound->BaseBuf).first(sound->BaseBufLen));
 
     return ConvertData(sound);
 }
@@ -380,12 +379,12 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
         return false;
     }
 
-    vector<uint8_t> acm_data = file.GetData();
+    vector<byte> acm_data = file.GetData();
 
-    int32_t channels = 0;
-    int32_t freq = 0;
-    int32_t samples = 0;
-    auto acm_data_ptr = make_nptr(acm_data.data());
+    auto channels = 0;
+    auto freq = 0;
+    auto samples = 0;
+    auto acm_data_ptr = make_nptr(acm_data.data()).reinterpret_as<uint8_t>();
     FO_VERIFY_AND_THROW(acm_data.empty() || acm_data_ptr, "Non-empty ACM data has a null pointer");
     auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
     int32_t buf_size = samples * 2;
@@ -396,7 +395,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
+    span<byte> base_buf = span<byte> {sound->BaseBuf.data(), sound->BaseBuf.size()};
     FO_STRONG_ASSERT(!base_buf.empty(), "Sound data is empty");
     FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
     auto base_buf_bytes = make_nptr(base_buf.data());
@@ -430,7 +429,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
         if (bytes_read > 0) {
             FO_VERIFY_AND_THROW(output_buf != nullptr, "Ogg read output buffer is null");
-            file_context->Reader.ReadBytes(make_span(output_buf, bytes_read));
+            file_context->Reader.ReadBytes(make_byte_span(output_buf, bytes_read));
         }
 
         return bytes_read;
@@ -529,7 +528,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     int32_t result;
     int32_t decoded = 0;
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
+    span<byte> base_buf = span<byte> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
         auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
@@ -570,7 +569,7 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
     long result;
     int32_t decoded = 0;
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
+    span<byte> base_buf = span<byte> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
         auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();

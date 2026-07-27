@@ -57,7 +57,8 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    const u8string& resources_dir = IsPackaged() ? settings.ServerResources : settings.BakeOutput;
+    resources.AddPacksSource(resources_dir, settings.ServerResourceEntries);
     return resources;
 }
 
@@ -235,14 +236,19 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto exe_path = Platform::GetExePath();
-    _healthFileName = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+    const auto exe_path = Platform::GetExePath();
+    if (exe_path) {
+        _healthFileName = u8strex("{}_Health.txt", u8strvex(*exe_path).extract_file_name().erase_file_extension());
+    }
+    else {
+        _healthFileName = u8strex("{}_Health.txt", FO_DEV_NAME);
+    }
 
     if (WriteHealthFile("Starting...")) {
         _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return HealthFileJob(); }));
     }
     else {
-        WriteLog(LogType::Warning, "Can't write health file '{}'", _healthFileName);
+        WriteLog(LogType::Warning, "Can't write health file '{}'", _healthFileName.view());
     }
 
     return std::nullopt;
@@ -265,7 +271,8 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 
     string buf;
     buf.reserve(health_info.size() + 128);
-    buf += strex("{} v{}\n\n", Settings->GameName, Settings->GameVersion);
+    const u8string header = FormatUtf8("{} v{}\n\n", Settings->GameName, Settings->GameVersion);
+    buf.append(utf8_as_char_view(header.view()));
     buf += health_info;
     WriteHealthFile(buf);
 
@@ -276,7 +283,7 @@ auto ServerEngine::WriteHealthFile(string_view text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
+    std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName.view())}, std::ios::binary | std::ios::trunc};
 
     if (!health_file) {
         return false;
@@ -406,7 +413,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
         register_custom_collection(entry);
     }
 
-    DbStorage = ConnectToDataBase(Settings, Settings->DbStorage, collection_schemas, [] {
+    DbStorage = ConnectToDataBase(Settings, Settings->DbStorage.view(), collection_schemas, [] {
         FO_VERIFY_AND_THROW(IsAppInitialized(), "App is not initialized");
         GetApp()->RequestQuit(false);
     });
@@ -559,7 +566,8 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
     FO_STACK_TRACE_ENTRY();
 
     if (IsPackaged()) {
-        WriteLog("Initialize updater backend with client resources using {} storage", Settings->UpdateFilesInMemory ? "memory" : "disk");
+        const string_view storage_kind = Settings->UpdateFilesInMemory ? "memory" : "disk";
+        WriteLog("Initialize updater backend with client resources using {} storage", storage_kind);
 
         _updaterBackend.emplace();
         _updaterBackend->LoadFromClientResources(*Settings);
@@ -583,7 +591,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
         if (globals_doc.Empty()) {
             AnyData::Document doc;
-            doc.Emplace("_Name", string("Globals"));
+            doc.Emplace("_Name", u8string {u8"Globals"});
             DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
@@ -1368,7 +1376,7 @@ void ServerEngine::DrawGui()
 
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-    auto info_row = [](string_view key, string_view value) {
+    const auto info_row = [](const auto& key, const auto& value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGuiTextUnformatted(key);
@@ -1526,12 +1534,13 @@ void ServerEngine::DrawGui()
     draw_item = [&](ptr<const Item> item) {
         ImGui::PushID(make_nptr(item.get()).void_cast());
 
-        string label = strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount()).str();
+        const u8string label = u8strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount());
+        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-        if (ImGui::TreeNode(label.c_str())) {
+        if (ImGui::TreeNode(label_ptr.get())) {
             if (begin_info_table("##ItemSummary")) {
                 info_row("Id", strex("{}", item->GetId()).str());
-                info_row("Proto", strex("{}", item->GetProtoId()).str());
+                info_row("Proto", u8strex("{}", item->GetProtoId()));
                 info_row("Count", strex("{}", item->GetCount()).str());
                 info_row("Stackable", strex("{}", item->GetStackable()).str());
                 info_row("Ownership", strex("{}", item->GetOwnership()).str());
@@ -1571,14 +1580,15 @@ void ServerEngine::DrawGui()
     auto draw_critter = [&](ptr<const Critter> cr) {
         ImGui::PushID(make_nptr(cr.get()).void_cast());
 
-        string_view cond_str = cond_to_str(cr->GetCondition());
-        string label = strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str).str();
+        const string_view cond_str = cond_to_str(cr->GetCondition());
+        const u8string label = u8strex("{} ({}) [{}]", cr->GetDisplayName(), cr->GetId(), cond_str);
+        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-        if (ImGui::TreeNode(label.c_str())) {
+        if (ImGui::TreeNode(label_ptr.get())) {
             if (begin_info_table("##CritterSummary")) {
                 info_row("Id", strex("{}", cr->GetId()).str());
-                info_row("Name", cr->GetName());
-                info_row("Proto", strex("{}", cr->GetProtoId()).str());
+                info_row("Name", cr->GetDisplayName());
+                info_row("Proto", u8strex("{}", cr->GetProtoId()));
                 info_row("Map id", strex("{}", cr->GetMapId()).str());
                 info_row("Hex", strex("{}", cr->GetHex()).str());
                 info_row("Direction", strex("{}", cr->GetDir()).str());
@@ -1623,9 +1633,10 @@ void ServerEngine::DrawGui()
     auto draw_map = [&](ptr<const Map> map) {
         ImGui::PushID(make_nptr(map.get()).void_cast());
 
-        string label = strex("{} ({})", map->GetProtoId(), map->GetId()).str();
+        const u8string label = u8strex("{} ({})", map->GetProtoId(), map->GetId());
+        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-        if (ImGui::TreeNode(label.c_str())) {
+        if (ImGui::TreeNode(label_ptr.get())) {
             const_span<ptr<Critter>> critters = map->GetCritters();
             const_span<ptr<Item>> items = map->GetItems();
             const_span<ptr<StaticItem>> static_items = map->GetStaticItems();
@@ -1633,7 +1644,7 @@ void ServerEngine::DrawGui()
 
             if (begin_info_table("##MapSummary")) {
                 info_row("Id", strex("{}", map->GetId()).str());
-                info_row("Proto", strex("{}", map->GetProtoId()).str());
+                info_row("Proto", u8strex("{}", map->GetProtoId()));
                 info_row("Location id", strex("{}", map->GetLocId()).str());
                 info_row("Size", strex("{}x{}", map_size.width, map_size.height).str());
                 info_row("Work hex", strex("{}", map->GetWorkHex()).str());
@@ -1683,9 +1694,10 @@ void ServerEngine::DrawGui()
             auto player = players[i].as_ptr();
             ImGui::PushID(make_nptr(player.get()).void_cast());
 
-            string label = strex("{} ({})", player->GetName(), player->GetId()).str();
+            const u8string label = u8strex("{} ({})", player->GetDisplayName(), player->GetId());
+            const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-            if (ImGui::TreeNode(label.c_str())) {
+            if (ImGui::TreeNode(label_ptr.get())) {
                 auto controlled_critter = player->GetControlledCritter();
                 auto connection = player->GetConnection();
 
@@ -1693,7 +1705,7 @@ void ServerEngine::DrawGui()
                     auto connection_diagnostics = connection->GetDiagnostics();
 
                     info_row("Id", strex("{}", player->GetId()).str());
-                    info_row("Name", player->GetName());
+                    info_row("Name", player->GetDisplayName());
                     info_row("Logined", strex("{}", player->GetLogined()).str());
                     info_row("Host", connection->GetHost());
                     info_row("Port", strex("{}", connection->GetPort()).str());
@@ -1767,12 +1779,13 @@ void ServerEngine::DrawGui()
             auto loc = locations[i].as_ptr();
             ImGui::PushID(make_nptr(loc.get()).void_cast());
 
-            string label = strex("{} ({})", loc->GetProtoId(), loc->GetId()).str();
+            const u8string label = u8strex("{} ({})", loc->GetProtoId(), loc->GetId());
+            const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
-            if (ImGui::TreeNode(label.c_str())) {
+            if (ImGui::TreeNode(label_ptr.get())) {
                 if (begin_info_table("##LocSummary")) {
                     info_row("Id", strex("{}", loc->GetId()).str());
-                    info_row("Proto", strex("{}", loc->GetProtoId()).str());
+                    info_row("Proto", u8strex("{}", loc->GetProtoId()));
                     info_row("Name", loc->GetName());
                     info_row("Maps count", strex("{}", loc->GetMapsCount()).str());
                     ImGui::EndTable();
@@ -2047,7 +2060,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
-        WriteLog("Disconnected player {}", player->GetName());
+        WriteLog("Disconnected player {}", player->GetDisplayName());
 
         ValidateEntityAccess(player);
         ValidateEntityAccess(player->GetControlledCritter());
@@ -2158,7 +2171,7 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
     }
 }
 
-void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
+void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2279,7 +2292,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     EnsureEntitySynced(cr);
 
-    WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
+    WriteLog(LogType::Info, "Unload critter {}", cr->GetDisplayName());
 
     if (cr->IsDestroying()) {
         throw GenericException("Critter in destroying state");
@@ -2404,7 +2417,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
             return;
         }
 
-        WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
+        WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetDisplayName(), prev_cr->GetDisplayName());
         // Recreate the old chosen as an ordinary critter view. RemoveCritter clears the client's
         // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false.
         player->Send_RemoveCritter(prev_cr);
@@ -2427,7 +2440,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         throw GenericException("Critter already attached to player");
     }
 
-    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
+    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetDisplayName(), cr->GetDisplayName());
 
     player->ResetViewMap();
 
@@ -2625,8 +2638,10 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     auto updater_version = in_buf->Read<uint32_t>();
     string requested_binary_target = in_buf->Read<string>();
 
-    bool compatibility_outdated = comp_version != Settings->CompatibilityVersion;
-    bool updater_outdated = updater_version != FO_UPDATER_VERSION;
+    const auto compatibility_outdated = comp_version != Settings->CompatibilityVersion;
+    const auto updater_outdated = updater_version != FO_UPDATER_VERSION;
+    const string client_compatibility_version = string(comp_version);
+    const string binary_target = string(requested_binary_target);
 
     // Begin data encrypting
     auto in_encrypt_key = in_buf->Read<uint32_t>();
@@ -2655,7 +2670,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
         return;
     }
 
-    const_span<uint8_t> update_desc {};
+    const_span<byte> update_desc {};
 
     if (_updaterBackend) {
         auto updater_backend = make_ptr(&*_updaterBackend);
@@ -2668,10 +2683,10 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     connection->RegisterLoginProgress(GameTime.GetFrameTime());
 
     if (compatibility_outdated) {
-        WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
+        WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), client_compatibility_version, binary_target);
     }
     else {
-        WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);
+        WriteLog("Connected client {} for binary target {}", connection->GetHost(), binary_target);
         SendAllReportedHashes(player);
     }
 }
@@ -2684,14 +2699,16 @@ void ServerEngine::LoadReportedHashes()
     vector<string> loaded;
 
     for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
+        const u8string utf8_reported_string = reported_string;
+
         // Now resolvable - developers added the missing string after the report, so stop tracking and broadcasting it
-        if (Hashes.CheckHashedString(reported_string)) {
+        if (Hashes.CheckHashedString(utf8_reported_string.view())) {
             DbStorage.Delete(HashReportsCollectionName, reported_string);
             resolved_count++;
             continue;
         }
 
-        WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", reported_string);
+        WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", utf8_reported_string);
         loaded.emplace_back(reported_string);
     }
 
@@ -2782,7 +2799,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
         }
     }
 
-    WriteLog(LogType::Warning, "Client {} couldn't resolve hash {}: '{}'", connection->GetHost(), hash, reported_string);
+    WriteLog(LogType::Warning, "Client {} couldn't resolve hash {}: '{}'", connection->GetHost(), hash, hstr);
 
     // Persist so the list survives a server restart and preloads new clients immediately
     AnyData::Document doc;
@@ -2978,7 +2995,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         registered_player = true;
 
         if (player_doc.Contains("_Name")) {
-            player->SetName(AnyData::ValueToString(player_doc["_Name"]));
+            const auto player_name = AnyData::ValueToString(player_doc["_Name"]);
+            player->SetName(player_name);
         }
 
         player->SetLogined(true);
@@ -3139,12 +3157,15 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     in_buf.Unlock();
 
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
-        WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
+        WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player_name, map_id, cr_id);
         return;
     }
+
+    const string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3157,25 +3178,27 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     if (!cr) {
-        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
+
+    const u8string critter_name = cr->GetDisplayName();
 
     nptr<Critter> expected_cr = cr;
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
 
     if (speed == 0) {
-        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player_name, critter_name, cr_id, map_name);
         player->Send_Moving(cr);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player_name, critter_name, cr_id, map_name);
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
@@ -3198,7 +3221,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
     if (move_result == EventResult::StopChain) {
-        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
+        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player_name, critter_name, cr_id, map_name, speed);
         player->Send_Moving(cr);
         return;
     }
@@ -3210,7 +3233,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
-            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
+            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player_name, critter_name, cr_id, map_name, cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
             player->Send_Moving(cr);
             return;
         }
@@ -3252,7 +3275,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         }
 
         if (valid_step_count == 0) {
-            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
+            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player_name, critter_name, cr_id, map_name, cr_hex.x, cr_hex.y, multihex, steps.size());
             player->Send_Moving(cr);
             return;
         }
@@ -3274,10 +3297,10 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     if (end_hex_offset.x < -GameSettings::MAP_HEX_WIDTH / 2 || end_hex_offset.x > GameSettings::MAP_HEX_WIDTH / 2) {
-        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
+        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player_name, critter_name, cr_id, map_name, end_hex_offset.x, end_hex_offset.y);
     }
     if (end_hex_offset.y < -GameSettings::MAP_HEX_HEIGHT / 2 || end_hex_offset.y > GameSettings::MAP_HEX_HEIGHT / 2) {
-        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
+        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player_name, critter_name, cr_id, map_name, end_hex_offset.x, end_hex_offset.y);
     }
 
     int16_t clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
@@ -3310,12 +3333,15 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     in_buf.Unlock();
 
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
-        WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
+        WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player_name, map_id, cr_id);
         return;
     }
+
+    const string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3328,19 +3354,21 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     }
 
     if (!cr) {
-        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
+
+    const u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player_name, critter_name, cr_id, map_name);
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
@@ -3368,7 +3396,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
     if (move_result == EventResult::StopChain) {
-        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player_name, critter_name, cr_id, map_name);
         player->Send_Moving(cr);
         return;
     }
@@ -3413,12 +3441,15 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     in_buf.Unlock();
 
+    const u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
-        WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
+        WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player_name, map_id, cr_id);
         return;
     }
+
+    const string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3431,14 +3462,16 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     }
 
     if (!cr) {
-        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
+
+    const u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player_name, map_name, map_id, cr_id);
         return;
     }
 
@@ -3459,7 +3492,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
     if (dir_result == EventResult::StopChain) {
-        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player_name, critter_name, cr_id, map_name, dir.angle());
         player->Send_Dir(cr);
         return;
     }
@@ -3619,38 +3652,38 @@ void ServerEngine::Process_Property(ptr<Player> player)
     }
 
     if (!prop) {
-        throw GenericException("Unknown property index", player->GetName(), type, property_index);
+        throw GenericException("Unknown property index", player->GetDisplayName(), type, property_index);
     }
     if (!entity) {
-        WriteLog(LogType::Info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetName(), type, prop->GetName(), property_index, cr_id, item_id);
+        WriteLog(LogType::Info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetDisplayName(), type, prop->GetName(), property_index, cr_id, item_id);
         return;
     }
 
     if (prop->IsDisabled()) {
-        throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is disabled", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (prop->IsVirtual()) {
-        throw GenericException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is virtual", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        throw GenericException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not public sync", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (!is_public && !prop->IsSynced()) {
-        throw GenericException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not synced", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetDisplayName(), type, entity->GetName());
     }
 
     try {
-        ValidateInboundPropertyData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()}, *this);
+        ValidateInboundPropertyData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()}, *this);
     }
     catch (const ClientDataValidationException& ex) {
-        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetName(), type, entity->GetName());
+        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetDisplayName(), type, entity->GetName());
         throw;
     }
 
@@ -3718,9 +3751,9 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
 
         AnyData::Document doc;
         doc.Emplace("Time", numeric_cast<int64_t>(time.milliseconds()));
-        doc.Emplace("EntityType", string(entity->GetTypeName()));
+        doc.Emplace("EntityType", entity->GetTypeName());
         doc.Emplace("EntityId", numeric_cast<int64_t>(entry_id.underlying_value()));
-        doc.Emplace("Property", string(prop->GetName()));
+        doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
         DbStorage.Insert(HistoryCollectionName, history_id, doc);
@@ -4124,6 +4157,10 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
+    const u8string player_name = player->GetDisplayName();
+    const u8string critter_name = cr->GetDisplayName();
+    const string map_name {map->GetName()};
+
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
@@ -4132,12 +4169,12 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
     constexpr int32_t max_stop_correction_hex_distance = 4;
 
     if (!map->GetSize().is_valid_pos(client_hex)) {
-        WriteLog("Process_StopMove: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y);
+        WriteLog("Process_StopMove: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", player_name, critter_name, cr->GetId(), map_name, client_hex.x, client_hex.y);
         return false;
     }
 
     if (!GeometryHelper::NormalizeHexOffset(client_hex, client_hex_offset, map->GetSize())) {
-        WriteLog("Process_StopMove: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
+        WriteLog("Process_StopMove: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", player_name, critter_name, cr->GetId(), map_name, client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
         return false;
     }
 
@@ -4251,10 +4288,13 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
+    const u8string player_name = player->GetDisplayName();
+    const u8string critter_name = cr->GetDisplayName();
+    const string map_name {map->GetName()};
+    const int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
 
     if (direct_distance > max_hex_distance) {
-        WriteLog("Process_StopMove: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
+        WriteLog("Process_StopMove: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", player_name, critter_name, cr->GetId(), map_name, cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
         return false;
     }
 
@@ -4264,11 +4304,11 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
         return true;
     }
     if (find_result.Result != FindPathOutput::ResultType::Ok) {
-        WriteLog("Process_StopMove: stop correction pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance);
+        WriteLog("Process_StopMove: stop correction pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}", player_name, critter_name, cr->GetId(), map_name, cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance);
         return false;
     }
     if (find_result.Steps.size() > numeric_cast<size_t>(max_hex_distance)) {
-        WriteLog("Process_StopMove: stop correction path is too long, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), path {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, find_result.Steps.size(), max_hex_distance);
+        WriteLog("Process_StopMove: stop correction path is too long, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), path {}, limit {}", player_name, critter_name, cr->GetId(), map_name, cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, find_result.Steps.size(), max_hex_distance);
         return false;
     }
 
@@ -4534,7 +4574,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
         throw GenericException("Invalid remote call data size", remote_call_data_size);
     }
 
-    vector<uint8_t> remote_call_data;
+    vector<byte> remote_call_data;
     remote_call_data.resize(remote_call_data_size);
 
     in_buf->Pop(remote_call_data.data(), remote_call_data_size);

@@ -31,35 +31,57 @@
 // SOFTWARE.
 
 #include "DiskFileSystem.h"
+#include "Logging.h"
 #include "SafeArithmetics.h"
+#include "TextFormatting.h"
 
 FO_BEGIN_NAMESPACE
 
-auto fs_make_path(string_view path) -> std::u8string
+extern void LogToFile(string_view path, bool append)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_path = path;
+    LogToFile(utf8_path, append);
+}
+
+extern void LogToFile(u8string_view path, bool append)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string checked_path = u8string::FromChecked(path.native_view());
+    const std::filesystem::path native_path {fs_make_path(checked_path)};
+
+    if (!base_logging_detail::OpenLogFileNative(native_path, append)) {
+        const u8string message = FormatUtf8("Can't create log file '{}'\n", checked_path);
+        WriteBaseLog(message);
+    }
+}
+
+auto fs_make_path(u8string_view path) -> std::u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return {path.begin(), path.end()};
+    return std::u8string {path.native_view()};
 }
 
-auto fs_path_to_string(const std::filesystem::path& path) -> string
+auto fs_path_to_u8string(const std::filesystem::path& path) -> u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto u8_str = path.u8string();
-    return strex(string(u8_str.begin(), u8_str.end())).normalize_path_slashes();
+    return u8string::FromChecked(path.generic_u8string());
 }
 
-auto fs_resolve_path(string_view path) -> string
+auto fs_resolve_path(u8string_view path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
-    return !ec ? fs_path_to_string(resolved) : strex(path).normalize_path_slashes();
+    const auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
+    return !ec ? fs_path_to_u8string(resolved) : fs_path_to_u8string(std::filesystem::path {fs_make_path(path)});
 }
 
-auto fs_exists(string_view path) noexcept -> bool
+auto fs_exists(u8string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -67,7 +89,7 @@ auto fs_exists(string_view path) noexcept -> bool
     return std::filesystem::exists(std::filesystem::path {fs_make_path(path)}, ec) && !ec;
 }
 
-auto fs_is_dir(string_view path) noexcept -> bool
+auto fs_is_dir(u8string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,34 +97,49 @@ auto fs_is_dir(string_view path) noexcept -> bool
     return std::filesystem::is_directory(std::filesystem::path {fs_make_path(path)}, ec) && !ec;
 }
 
-auto fs_is_absolute_path(string_view path) noexcept -> bool
+auto fs_is_absolute_path(u8string_view path) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return !path.empty() && std::filesystem::path {fs_make_path(path)}.is_absolute();
 }
 
-auto fs_is_relative_path(string_view path) noexcept -> bool
+auto fs_is_relative_path(u8string_view path) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return path.empty() || std::filesystem::path {fs_make_path(path)}.is_relative();
 }
 
-auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string
+auto fs_combine_path(u8string_view base_path, u8string_view relative_path) -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(base_path)} / std::filesystem::path {fs_make_path(relative_path)});
+}
+
+auto fs_combine_path(u8string_view base_path, string_view ascii_relative_path) -> u8string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string relative_path = ascii_relative_path;
+    return fs_combine_path(base_path, relative_path.view());
+}
+
+auto fs_make_writable_path(u8string_view user_writable_path, u8string_view relative) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
     // Portable layout, or an already-absolute path: leave it as-is (written next to the exe / as given).
     if (user_writable_path.empty() || fs_is_absolute_path(relative)) {
-        return string(relative);
+        return u8string {relative};
     }
 
     // Installed layout: layer the relative writable path under the writable root.
-    return strex(user_writable_path).combine_path(relative).str();
+    return fs_combine_path(user_writable_path, relative);
 }
 
-auto fs_create_directories(string_view dir) noexcept -> bool
+auto fs_create_directories(u8string_view dir) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -116,7 +153,7 @@ auto fs_create_directories(string_view dir) noexcept -> bool
     return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
 
-auto fs_last_write_time(string_view path) noexcept -> uint64_t
+auto fs_last_write_time(u8string_view path) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -125,7 +162,7 @@ auto fs_last_write_time(string_view path) noexcept -> uint64_t
     return !ec ? wt.time_since_epoch().count() : 0;
 }
 
-auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
+auto fs_file_size(u8string_view path) noexcept -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -134,7 +171,7 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
-auto fs_read_file(string_view path) -> optional<string>
+auto fs_read_file_bytes(u8string_view path) -> optional<vector<byte>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -154,11 +191,12 @@ auto fs_read_file(string_view path) -> optional<string>
         return std::nullopt;
     }
 
-    string content;
+    vector<byte> content;
     content.resize(static_cast<size_t>(file_size));
 
     if (!content.empty()) {
-        file.read(content.data(), static_cast<std::streamsize>(content.size()));
+        auto content_chars = make_ptr(content.data()).reinterpret_as<char>();
+        file.read(content_chars.get(), static_cast<std::streamsize>(content.size()));
 
         if (!file || file.gcount() != static_cast<std::streamsize>(content.size())) {
             return std::nullopt;
@@ -168,11 +206,24 @@ auto fs_read_file(string_view path) -> optional<string>
     return content;
 }
 
-auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool
+auto fs_read_file_text(u8string_view path) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto existing_content = fs_read_file(path);
+    const auto bytes = fs_read_file_bytes(path);
+
+    if (!bytes) {
+        return std::nullopt;
+    }
+
+    return utf8_from_byte_span(*bytes);
+}
+
+auto fs_compare_file_bytes(u8string_view path, const_span<byte> content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto existing_content = fs_read_file_bytes(path);
 
     if (!existing_content || existing_content->size() != content.size()) {
         return false;
@@ -185,13 +236,14 @@ auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> b
     return MemCompare((*existing_content).data(), content.data(), content.size());
 }
 
-auto fs_write_file(string_view path, string_view content) -> bool
+auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string dir = strex(path).extract_dir().str();
+    const auto dir = std::filesystem::path {fs_make_path(path)}.parent_path();
+    const u8string dir_str = fs_path_to_u8string(dir);
 
-    if (!dir.empty() && !fs_create_directories(dir)) {
+    if (!dir.empty() && !fs_create_directories(dir_str.view())) {
         return false;
     }
 
@@ -202,38 +254,26 @@ auto fs_write_file(string_view path, string_view content) -> bool
     }
 
     if (!content.empty()) {
-        file.write(content.data(), static_cast<std::streamsize>(content.size()));
+        auto content_chars = make_ptr(content.data()).reinterpret_as<const char>();
+        file.write(content_chars.get(), static_cast<std::streamsize>(content.size()));
     }
 
     file.flush();
     return !!file;
 }
 
-auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
+auto fs_write_file_text(u8string_view path, u8string_view content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string dir = strex(path).extract_dir().str();
-
-    if (!dir.empty() && !fs_create_directories(dir)) {
-        return false;
+    if (content.empty()) {
+        return fs_write_file_bytes(path, {});
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
-
-    if (!file) {
-        return false;
-    }
-
-    if (!content.empty()) {
-        file.write(make_ptr(content.data()).reinterpret_as<char>().get(), static_cast<std::streamsize>(content.size()));
-    }
-
-    file.flush();
-    return !!file;
+    return fs_write_file_bytes(path, utf8_to_byte_span(content));
 }
 
-auto fs_remove_file(string_view path) noexcept -> bool
+auto fs_remove_file(u8string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -243,7 +283,7 @@ auto fs_remove_file(string_view path) noexcept -> bool
     return !std::filesystem::exists(fs_path, ec) && !ec;
 }
 
-auto fs_remove_dir_tree(string_view dir) noexcept -> bool
+auto fs_remove_dir_tree(u8string_view dir) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -253,7 +293,7 @@ auto fs_remove_dir_tree(string_view dir) noexcept -> bool
     return !std::filesystem::exists(fs_dir, ec) && !ec;
 }
 
-auto fs_touch_file(string_view path) noexcept -> bool
+auto fs_touch_file(u8string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -274,7 +314,7 @@ auto fs_touch_file(string_view path) noexcept -> bool
     return !!new_file;
 }
 
-auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool
+auto fs_rename(u8string_view from_path, u8string_view to_path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -283,14 +323,14 @@ auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool
     return !ec;
 }
 
-auto fs_open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstream
+auto fs_open_ifstream(u8string_view path, std::ios::openmode mode) -> std::ifstream
 {
     FO_STACK_TRACE_ENTRY();
 
     return std::ifstream {std::filesystem::path {fs_make_path(path)}, mode};
 }
 
-auto fs_hash_file(string_view path) -> optional<uint64_t>
+auto fs_hash_file(u8string_view path) -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -298,9 +338,9 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
-        for (size_t i = 0; i < count; ++i) {
-            hash = (hash ^ bytes[i]) * prime;
+    const auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
+        for (const byte data_byte : bytes) {
+            hash = (hash ^ std::to_integer<uint8_t>(data_byte)) * prime;
         }
         return hash;
     };
@@ -311,18 +351,17 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
         return std::nullopt;
     }
 
-    array<char, 0x10000> buf {};
+    array<byte, 0x10000> buf {};
     uint64_t hash = offset;
 
     while (stream) {
         auto read_buf = make_nptr(buf.data());
-        stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
+        stream.read(read_buf.reinterpret_as<char>().get(), numeric_cast<std::streamsize>(buf.size()));
 
         auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
-            auto hash_bytes = read_buf.reinterpret_as<const uint8_t>();
-            hash = step(hash, hash_bytes, read_size);
+            hash = step(hash, {buf.data(), read_size});
         }
 
         if (stream.bad()) {
@@ -333,7 +372,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     return hash;
 }
 
-auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
+auto fs_hash_bytes(const_span<byte> data) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -341,9 +380,9 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
-        for (size_t i = 0; i < count; ++i) {
-            hash = (hash ^ bytes[i]) * prime;
+    const auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
+        for (const byte data_byte : bytes) {
+            hash = (hash ^ std::to_integer<uint8_t>(data_byte)) * prime;
         }
         return hash;
     };
@@ -352,43 +391,45 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
         return offset;
     }
 
-    return step(offset, data.data(), data.size());
+    return step(offset, data);
 }
 
-static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
+static void RecursiveDirLook(u8string_view base_dir, u8string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto full_dir = std::filesystem::path {fs_make_path(strex(base_dir).combine_path(cur_dir))};
-    auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
+    const auto full_dir = std::filesystem::path {fs_make_path(base_dir)} / std::filesystem::path {fs_make_path(cur_dir)};
+    const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
-        auto u8_str = dir_entry.path().filename().u8string();
-        string path = string(u8_str.begin(), u8_str.end());
+        const u8string path = fs_path_to_u8string(dir_entry.path().filename());
+        const std::u8string_view path_view = path.view().native_view();
 
-        if (!path.empty() && path.front() != '.' && path.front() != '~') {
+        if (!path_view.empty() && path_view.front() != u8'.' && path_view.front() != u8'~') {
             if (dir_entry.is_directory()) {
-                if (path.front() != '_' && recursive) {
-                    RecursiveDirLook(base_dir, strex(cur_dir).combine_path(path), recursive, visitor);
+                if (path_view.front() != u8'_' && recursive) {
+                    const u8string next_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
+                    RecursiveDirLook(base_dir, next_dir.view(), recursive, visitor);
                 }
             }
             else {
                 uintmax_t file_size = dir_entry.file_size();
                 FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
-                visitor(strex(cur_dir).combine_path(path), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
+                const u8string relative_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
+                visitor(relative_path.view(), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
             }
         }
     }
 }
 
-void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor)
+void fs_iterate_dir(u8string_view dir, bool recursive, const FsFileVisitor& visitor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RecursiveDirLook(dir, "", recursive, visitor);
+    RecursiveDirLook(dir, u8"", recursive, visitor);
 }
 
-auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
+auto stream_read_exact(std::istream& stream, span<byte> buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

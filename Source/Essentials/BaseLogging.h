@@ -38,10 +38,14 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void LogToFile(string_view path, bool append = false);
+namespace base_logging_detail
+{
+    [[nodiscard]] extern auto OpenLogFileNative(const std::filesystem::path& path, bool append) -> bool;
+}
+
 extern void SetAsyncLogWriting(bool enabled);
 extern void SuspendAsyncLogWriting() noexcept;
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
+extern void WriteBaseLogBytes(const_span<byte> message, const CatchedStackTraceData* st = nullptr) noexcept;
 extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
 
 FO_END_NAMESPACE

@@ -47,7 +47,8 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    const u8string& resources_dir = IsPackaged() ? settings.ClientResources : settings.BakeOutput;
+    resources.AddPacksSource(resources_dir, settings.ClientResourceEntries);
     return resources;
 }
 
@@ -492,18 +493,9 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
     }
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
-        auto key_code = ev.KeyDown.Code;
+        KeyCode key_code = ev.KeyDown.Code;
         // Windows turns Alt+numpad into an OS text-input event whose payload can be a bare C0 control character.
-        string key_text;
-        key_text.reserve(ev.KeyDown.Text.length());
-
-        for (char ch : ev.KeyDown.Text) {
-            uint8_t code = static_cast<uint8_t>(ch);
-
-            if (code >= 0x20 && code != 0x7F) {
-                key_text += ch;
-            }
-        }
+        u8string key_text = u8strex(ev.KeyDown.Text).erase_ascii_control_chars().str();
 
         // Text event that carried nothing but control characters has no payload left to deliver
         if (key_code != KeyCode::Text || !key_text.empty() || ev.KeyDown.Text.empty()) {
@@ -612,7 +604,7 @@ void ClientEngine::Net_OnDisconnect()
     OnDisconnected.Fire();
 }
 
-void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
+void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -748,7 +740,7 @@ void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, 
     }
 
     _conn.OutBuf->Write(prop->GetRegIndex());
-    _conn.OutBuf->Push(prop_raw_data);
+    _conn.OutBuf->Push(make_byte_span(prop_raw_data));
     _conn.OutBuf->EndMsg();
 }
 
@@ -758,7 +750,7 @@ void ClientEngine::Net_OnInitData()
 
     auto data_size = _conn.InBuf->Read<uint32_t>();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     data.resize(data_size);
 
     _conn.InBuf->Pop(data.data(), data_size);
@@ -772,12 +764,14 @@ void ClientEngine::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        resources.AddDirSource(Settings->ClientResources, false, true, true);
+        const u8string client_resources = Settings->ClientResources;
+        resources.AddDirSource(client_resources, false, true, true);
 
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below.
-            resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
+            const u8string writable_resources = fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources);
+            resources.AddDirSource(writable_resources, false, true, true);
         }
 
         auto reader = DataReader(data);
@@ -1982,11 +1976,11 @@ void ClientEngine::ReceiveCustomEntities(nptr<Entity> holder)
     }
 }
 
-auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>
+auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<byte>>& data) -> ptr<CustomEntityView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
+    hstring type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
@@ -2866,7 +2860,7 @@ void ClientEngine::ProcessVideo()
     }
 }
 
-void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath)
+void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
 {
     FO_STACK_TRACE_ENTRY();
 

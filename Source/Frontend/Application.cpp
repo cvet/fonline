@@ -59,7 +59,7 @@ struct Application::Context
     unique_del_nptr<SDL_AudioStream> AudioStream {};
     SDL_AudioSpec AudioSpec {};
     AppAudio::AudioStreamCallback AudioStreamWriter {};
-    vector<uint8_t> AudioStreamBuf {};
+    vector<byte> AudioStreamBuf {};
     unordered_map<SDL_Keycode, KeyCode> KeysMap {MakeInputKeyMap()};
     unordered_map<int32_t, MouseButton> MouseButtonsMap {MakeMouseButtonMap()};
 };
@@ -345,7 +345,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
     SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
-    SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
+    const ptr<const char> app_name = utf8_to_c_str(Settings.GameName.view_nt());
+    SDL_SetHint(SDL_HINT_APP_NAME, app_name.get());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
     if (Settings.NullRenderer) {
@@ -400,7 +401,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     MemFill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
 
                     if (app->_ctx->AudioStreamWriter) {
-                        span<uint8_t> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
+                        span<byte> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
                         app->_ctx->AudioStreamWriter(silence, audio_stream_span);
                     }
 
@@ -633,8 +634,20 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     }
 
-    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().c_str(); };
-    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED {
+        const u8string& text = GetApp()->Input.GetClipboardText();
+        return return_utf8_c_str(text.view_nt());
+    };
+    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED {
+        if (text != nullptr) {
+            const size_t text_size = std::char_traits<char>::length(text) + 1;
+            const u8string utf8_text = utf8_from_terminated_char_span(const_span<char> {text, text_size});
+            GetApp()->Input.SetClipboardText(utf8_text);
+        }
+        else {
+            GetApp()->Input.SetClipboardText(u8"");
+        }
+    };
     platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
@@ -656,9 +669,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
 
     // Default effect
+    const u8string& base_resources = IsPackaged() ? Settings.ClientResources : Settings.BakeOutput;
     FileSystem base_fs;
-    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
-    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
+    base_fs.AddPackSource(base_resources.view(), u8"Embedded", true);
+    base_fs.AddPackSource(base_resources.view(), u8"Core", true);
     LoadImGuiEffect(base_fs);
 
     _imguiDrawBuf = active_renderer->CreateDrawBuffer(false);
@@ -730,10 +744,10 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         auto active_renderer = GetActiveRenderer(_ctx);
-        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
-            auto file = resources.ReadFile(path);
+        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](u8string_view path) -> vector<byte> {
+            const auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
-            return file.GetStr();
+            return file.GetData();
         });
     }
 }
@@ -749,7 +763,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppWindow>
+auto Application::CreateChildWindow(isize32 size, u8string_view title) -> ptr<AppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -762,7 +776,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
-    window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
+    window->_title = title.empty() ? FormatUtf8("Window {}", _childWindows.size() + 1) : u8string {title};
 
     _allWindows.emplace_back(window);
     _childWindows.emplace_back(std::move(window));
@@ -1173,7 +1187,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
     }
 
-    auto window_title = make_ptr(Settings.GameName.c_str());
+    const ptr<const char> window_title = utf8_to_c_str(Settings.GameName.view_nt());
     SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, window_title.get());
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
@@ -1956,7 +1970,8 @@ void Application::BeginFrame()
                                 SDL_free(data.get());
                             }
                         });
-                        paste_ev.Text = string {clipboard_text.get()};
+                        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+                        paste_ev.Text = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
                     }
                     else {
                         paste_ev.Text = {};
@@ -1998,7 +2013,8 @@ void Application::BeginFrame()
         case SDL_EVENT_TEXT_INPUT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            ev1.Text = sdl_event.text.text;
+            const size_t text_size = std::char_traits<char>::length(sdl_event.text.text) + 1;
+            ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.text.text, text_size});
 
             if (!imgui_capture_keyboard) {
                 _ctx->EventsQueue.emplace_back(ev1);
@@ -2016,15 +2032,21 @@ void Application::BeginFrame()
         case SDL_EVENT_DROP_TEXT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            ev1.Text = sdl_event.drop.data;
+            const size_t text_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
+            ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.drop.data, text_size});
             _ctx->EventsQueue.emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
             _ctx->EventsQueue.emplace_back(ev2);
         } break;
         case SDL_EVENT_DROP_FILE: {
-            if (auto file_size = fs_file_size(sdl_event.drop.data)) {
-                std::ifstream file {fs_open_ifstream(sdl_event.drop.data)};
+            FO_VERIFY_AND_THROW(sdl_event.drop.data != nullptr, "SDL file-drop event does not contain a path");
+            const size_t drop_path_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
+            const const_span<char> drop_path_storage {sdl_event.drop.data, drop_path_size};
+            const u8string drop_path = utf8_from_terminated_char_span(drop_path_storage);
+
+            if (const auto file_size = fs_file_size(drop_path.view())) {
+                std::ifstream file {fs_open_ifstream(drop_path.view())};
 
                 if (!file) {
                     break;
@@ -2042,9 +2064,10 @@ void Application::BeginFrame()
 
                 if (size == 0 || (file.read(buf, static_cast<std::streamsize>(size)) && file.gcount() == static_cast<std::streamsize>(size))) {
                     buf[size] = 0;
+                    const u8string file_text = utf8_from_char_span(const_span<char> {buf, size});
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
-                    ev1.Text = strex("{}\n{}{}", sdl_event.drop.data, buf, stripped ? "..." : "");
+                    ev1.Text = u8strex(u8"{}\n{}{}", drop_path, file_text, stripped ? "..." : "");
                     _ctx->EventsQueue.emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
@@ -2696,15 +2719,15 @@ void AppWindow::AlwaysOnTop(bool enable)
     SDL_SetWindowAlwaysOnTop(sdl_window.get(), enable);
 }
 
-void AppWindow::SetTitle(string_view title)
+void AppWindow::SetTitle(u8string_view title)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _title = string {title};
+    _title = u8string {title};
 
     // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
     if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
-        auto title_ptr = make_ptr(_title.c_str());
+        const ptr<const char> title_ptr = utf8_to_c_str(_title.view_nt());
         auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
         SDL_SetWindowTitle(sdl_window.get(), title_ptr.get());
@@ -2830,7 +2853,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return active_renderer->CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3007,17 +3030,17 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
     }
 }
 
-void AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    string clipboard_text = string(text);
-    auto clipboard_text_ptr = make_ptr(clipboard_text.c_str());
+    const u8string clipboard_text {text};
+    ptr<const char> clipboard_text_ptr = utf8_to_c_str(clipboard_text.view_nt());
     SDL_SetClipboardText(clipboard_text_ptr.get());
     WebRelated::SyncClipboardToSystem(text);
 }
 
-auto AppInput::GetClipboardText() -> const string&
+auto AppInput::GetClipboardText() -> const u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3029,7 +3052,8 @@ auto AppInput::GetClipboardText() -> const string&
                 SDL_free(data.get());
             }
         });
-        _clipboardTextStorage = string {clipboard_text.get()};
+        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+        _clipboardTextStorage = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
     }
     else {
         _clipboardTextStorage = {};
@@ -3056,7 +3080,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3075,7 +3099,9 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         nptr<uint8_t> dst_data {};
         int32_t dst_len {};
 
-        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, dst_data.get_pp(), &dst_len)) {
+        nptr<const byte> source_data = buf.data();
+
+        if (!SDL_ConvertAudioSamples(&spec, source_data.reinterpret_as<uint8_t>().get(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, dst_data.get_pp(), &dst_len)) {
             return false;
         }
 
@@ -3099,15 +3125,17 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     return true;
 }
 
-void AppAudio::MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume)
+void AppAudio::MixAudio(span<byte> output, const_span<byte> buf, int32_t volume)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
     FO_VERIFY_AND_THROW(output.size() == buf.size(), "Mix audio output and buffer sizes mismatch", output.size(), buf.size());
 
-    float32_t volume_01 = numeric_cast<float32_t>(std::clamp(volume, 0, 100)) / 100.0f;
-    SDL_MixAudio(output.data(), buf.data(), _app->_ctx->AudioSpec.format, numeric_cast<Uint32>(output.size()), volume_01);
+    const float32_t volume_01 = numeric_cast<float32_t>(std::clamp(volume, 0, 100)) / 100.0f;
+    nptr<byte> output_data = output.data();
+    nptr<const byte> source_data = buf.data();
+    SDL_MixAudio(output_data.reinterpret_as<uint8_t>().get(), source_data.reinterpret_as<uint8_t>().get(), _app->_ctx->AudioSpec.format, numeric_cast<Uint32>(output.size()), volume_01);
 }
 
 void AppAudio::LockDevice()
@@ -3130,7 +3158,7 @@ void AppAudio::UnlockDevice()
     SDL_UnlockAudioStream(audio_stream.get());
 }
 
-void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
+void Application::ShowErrorMessage(u8string_view message, u8string_view traceback, bool fatal_error)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3140,31 +3168,33 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
 
     SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
-    string_view title = fatal_error ? "Fatal Error" : "Error";
+    constexpr u8string_view fatal_error_title = u8"Fatal Error";
+    constexpr u8string_view error_title = u8"Error";
+    const u8string_view title = fatal_error ? fatal_error_title : error_title;
 
 #if FO_WEB || FO_ANDROID || FO_IOS
 
 #if FO_WEB
-    const auto web_message = traceback.empty() ? string(message) : strex("{}\n\n{}", message, traceback);
+    const u8string web_message = traceback.empty() ? u8string(message) : u8strex(u8"{}\n\n{}", message, traceback);
     WebRelated::ShowError(title, web_message);
 #else
-    const string title_text = string(title);
-    const string message_text = string(message);
-    auto title_ptr = make_ptr(title_text.c_str());
-    auto message_ptr = make_ptr(message_text.c_str());
+    const u8string title_text {title};
+    const u8string message_text {message};
+    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    const ptr<const char> message_ptr = utf8_to_c_str(message_text.view_nt());
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title_ptr.get(), message_ptr.get(), nullptr);
 #endif
 
 #else
-    string title_text = string(title);
-    string verb_message = string(message);
+    const u8string title_text {title};
+    auto verb_message = u8string(message);
 
     if (!traceback.empty()) {
-        verb_message += strex("\n\n{}", traceback);
+        verb_message = u8strex(u8"{}\n\n{}", message, traceback);
     }
 
     static mutex ignore_entries_locker;
-    static unordered_set<string> ignore_entries FO_TSA_GUARDED_BY(ignore_entries_locker);
+    static set<u8string> ignore_entries FO_TSA_GUARDED_BY(ignore_entries_locker);
 
     if (!fatal_error) {
         scoped_lock locker {ignore_entries_locker};
@@ -3202,8 +3232,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    auto title_ptr = make_ptr(title_text.c_str());
-    auto message_ptr = make_ptr(verb_message.c_str());
+    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    const ptr<const char> message_ptr = utf8_to_c_str(verb_message.view_nt());
     data.title = title_ptr.get();
     data.message = message_ptr.get();
     data.numbuttons = fatal_error ? 2 : 4;

@@ -89,18 +89,18 @@ public:
 };
 
 static auto IsModelAnimationArchiveKindValid(ModelAnimationArchiveKind kind) noexcept -> bool;
-static auto GetModelAnimationArchiveContext(const ModelAnimationArchiveMetadata& metadata) -> string;
+static auto GetModelAnimationArchiveContext(const ModelAnimationArchiveMetadata& metadata) -> u8string;
 static void ValidateModelAnimationArchiveMetadata(const ModelAnimationArchiveMetadata& metadata);
 static auto GetModelAnimationArchiveWireSize(const ModelAnimationArchiveMetadata& metadata, size_t payload_size) -> size_t;
 template<typename T>
-static void AppendModelAnimationArchiveLittleEndian(vector<uint8_t>& data, T value);
-static void AppendModelAnimationArchiveBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
-static void AppendModelAnimationArchiveString(vector<uint8_t>& data, string_view value, string_view field_name, const ModelAnimationArchiveMetadata& metadata);
-static auto ReadModelAnimationArchiveBytes(const_span<uint8_t> data, size_t& read_pos, size_t size, string_view field_name, string_view context) -> const_span<uint8_t>;
+static void AppendModelAnimationArchiveLittleEndian(vector<byte>& data, T value);
+static void AppendModelAnimationArchiveBytes(vector<byte>& data, const_span<byte> bytes);
+static void AppendModelAnimationArchiveString(vector<byte>& data, string_view value, string_view field_name, const ModelAnimationArchiveMetadata& metadata);
+static auto ReadModelAnimationArchiveBytes(const_span<byte> data, size_t& read_pos, size_t size, string_view field_name, const u8string& context) -> const_span<byte>;
 template<typename T>
-static auto ReadModelAnimationArchiveLittleEndian(const_span<uint8_t> data, size_t& read_pos, string_view field_name, string_view context) -> T;
-static auto ReadModelAnimationArchiveString(const_span<uint8_t> data, size_t& read_pos, string_view field_name, string_view context) -> string;
-static auto HashModelAnimationArchivePayload(const_span<uint8_t> payload) noexcept -> uint64_t;
+static auto ReadModelAnimationArchiveLittleEndian(const_span<byte> data, size_t& read_pos, string_view field_name, const u8string& context) -> T;
+static auto ReadModelAnimationArchiveString(const_span<byte> data, size_t& read_pos, string_view field_name, const u8string& context) -> string;
+static auto HashModelAnimationArchivePayload(const_span<byte> payload) noexcept -> uint64_t;
 
 void InitializeModelAnimationMemory() noexcept
 {
@@ -111,7 +111,7 @@ void InitializeModelAnimationMemory() noexcept
     ignore_unused(previous_allocator);
 }
 
-auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>
+auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<byte> payload) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -121,9 +121,9 @@ auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, c
         throw ModelAnimationArchiveException("Can't write an LF model animation archive with an empty payload", GetModelAnimationArchiveContext(metadata));
     }
 
-    uint64_t payload_length = numeric_cast<uint64_t>(payload.size());
-    size_t wire_size = GetModelAnimationArchiveWireSize(metadata, payload.size());
-    vector<uint8_t> data;
+    const uint64_t payload_length = numeric_cast<uint64_t>(payload.size());
+    const size_t wire_size = GetModelAnimationArchiveWireSize(metadata, payload.size());
+    vector<byte> data;
 
     if (wire_size > data.max_size()) {
         throw ModelAnimationArchiveException("LF model animation archive is too large for a byte vector", GetModelAnimationArchiveContext(metadata), wire_size);
@@ -147,15 +147,15 @@ auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, c
     return data;
 }
 
-auto ReadModelAnimationArchive(const_span<uint8_t> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive
+auto ReadModelAnimationArchive(const_span<byte> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive
 {
     FO_STACK_TRACE_ENTRY();
 
     ValidateModelAnimationArchiveMetadata(expected_metadata);
-    string context = GetModelAnimationArchiveContext(expected_metadata);
+    const u8string context = GetModelAnimationArchiveContext(expected_metadata);
     size_t read_pos = 0;
 
-    const_span<uint8_t> magic = ReadModelAnimationArchiveBytes(data, read_pos, MODEL_ANIMATION_ARCHIVE_MAGIC.size(), "magic", context);
+    const const_span<byte> magic = ReadModelAnimationArchiveBytes(data, read_pos, MODEL_ANIMATION_ARCHIVE_MAGIC.size(), "magic", context);
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_ANIMATION_ARCHIVE_MAGIC.begin())) {
         throw ModelAnimationArchiveException("Invalid LF model animation archive magic; expected 'LFOZZARC'", context);
@@ -243,8 +243,8 @@ auto ReadModelAnimationArchive(const_span<uint8_t> data, const ModelAnimationArc
         throw ModelAnimationArchiveException("LF model animation archive has trailing bytes after its payload", context, remaining_size - expected_payload_size, expected_payload_size);
     }
 
-    const_span<uint8_t> payload = ReadModelAnimationArchiveBytes(data, read_pos, expected_payload_size, "payload", context);
-    uint64_t actual_payload_hash = HashModelAnimationArchivePayload(payload);
+    const const_span<byte> payload = ReadModelAnimationArchiveBytes(data, read_pos, expected_payload_size, "payload", context);
+    const uint64_t actual_payload_hash = HashModelAnimationArchivePayload(payload);
 
     if (archive.PayloadHash != actual_payload_hash) {
         throw ModelAnimationArchiveException("LF model animation archive payload hash mismatch (stored vs computed)", context, archive.PayloadHash, actual_payload_hash);
@@ -268,18 +268,31 @@ static auto IsModelAnimationArchiveKindValid(ModelAnimationArchiveKind kind) noe
     }
 }
 
-static auto GetModelAnimationArchiveContext(const ModelAnimationArchiveMetadata& metadata) -> string
+static auto GetModelAnimationArchiveContext(const ModelAnimationArchiveMetadata& metadata) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("'{}#{}'", metadata.SourceAsset, metadata.ObjectName);
+    return u8strex("'{}#{}'", metadata.SourceAsset, metadata.ObjectName);
 }
 
 static void ValidateModelAnimationArchiveMetadata(const ModelAnimationArchiveMetadata& metadata)
 {
     FO_STACK_TRACE_ENTRY();
 
-    string context = GetModelAnimationArchiveContext(metadata);
+    if (metadata.SourceAsset.empty()) {
+        throw ModelAnimationArchiveException("LF model animation archive metadata has an empty source asset");
+    }
+    if (validate_utf8_text(metadata.SourceAsset) || metadata.SourceAsset.find('\0') != string::npos) {
+        throw ModelAnimationArchiveException("LF model animation archive metadata has a source asset that is not valid UTF-8 or contains an embedded NUL");
+    }
+    if (metadata.ObjectName.empty()) {
+        throw ModelAnimationArchiveException("LF model animation archive metadata has an empty object name");
+    }
+    if (validate_utf8_text(metadata.ObjectName) || metadata.ObjectName.find('\0') != string::npos) {
+        throw ModelAnimationArchiveException("LF model animation archive metadata has an object name that is not valid UTF-8 or contains an embedded NUL");
+    }
+
+    const u8string context = GetModelAnimationArchiveContext(metadata);
 
     if (!IsModelAnimationArchiveKindValid(metadata.Kind)) {
         throw ModelAnimationArchiveException("Invalid LF model animation archive payload kind", context, static_cast<uint16_t>(metadata.Kind));
@@ -295,18 +308,6 @@ static void ValidateModelAnimationArchiveMetadata(const ModelAnimationArchiveMet
     }
     if (metadata.CacheSignature == 0) {
         throw ModelAnimationArchiveException("LF model animation archive metadata has an empty cache signature", context);
-    }
-    if (metadata.SourceAsset.empty()) {
-        throw ModelAnimationArchiveException("LF model animation archive metadata has an empty source asset", context);
-    }
-    if (!strvex(metadata.SourceAsset).is_valid_utf8() || metadata.SourceAsset.find('\0') != string::npos) {
-        throw ModelAnimationArchiveException("LF model animation archive metadata has a source asset that is not valid UTF-8 or contains an embedded NUL", context);
-    }
-    if (metadata.ObjectName.empty()) {
-        throw ModelAnimationArchiveException("LF model animation archive metadata has an empty object name", context);
-    }
-    if (!strvex(metadata.ObjectName).is_valid_utf8() || metadata.ObjectName.find('\0') != string::npos) {
-        throw ModelAnimationArchiveException("LF model animation archive metadata has an object name that is not valid UTF-8 or contains an embedded NUL", context);
     }
 }
 
@@ -330,25 +331,25 @@ static auto GetModelAnimationArchiveWireSize(const ModelAnimationArchiveMetadata
 }
 
 template<typename T>
-static void AppendModelAnimationArchiveLittleEndian(vector<uint8_t>& data, T value)
+static void AppendModelAnimationArchiveLittleEndian(vector<byte>& data, T value)
 {
     FO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_unsigned_v<T>);
 
     for (size_t i = 0; i < sizeof(T); i++) {
-        data.emplace_back(static_cast<uint8_t>((value >> (i * 8)) & static_cast<T>(0xFF)));
+        data.emplace_back(byte {static_cast<uint8_t>((value >> (i * 8)) & static_cast<T>(0xFF))});
     }
 }
 
-static void AppendModelAnimationArchiveBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
+static void AppendModelAnimationArchiveBytes(vector<byte>& data, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
     data.insert(data.end(), bytes.begin(), bytes.end());
 }
 
-static void AppendModelAnimationArchiveString(vector<uint8_t>& data, string_view value, string_view field_name, const ModelAnimationArchiveMetadata& metadata)
+static void AppendModelAnimationArchiveString(vector<byte>& data, string_view value, string_view field_name, const ModelAnimationArchiveMetadata& metadata)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -359,11 +360,11 @@ static void AppendModelAnimationArchiveString(vector<uint8_t>& data, string_view
     AppendModelAnimationArchiveLittleEndian(data, static_cast<uint32_t>(value.size()));
 
     for (char value_char : value) {
-        data.emplace_back(static_cast<uint8_t>(value_char));
+        data.emplace_back(byte {static_cast<uint8_t>(value_char)});
     }
 }
 
-static auto ReadModelAnimationArchiveBytes(const_span<uint8_t> data, size_t& read_pos, size_t size, string_view field_name, string_view context) -> const_span<uint8_t>
+static auto ReadModelAnimationArchiveBytes(const_span<byte> data, size_t& read_pos, size_t size, string_view field_name, const u8string& context) -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -374,53 +375,53 @@ static auto ReadModelAnimationArchiveBytes(const_span<uint8_t> data, size_t& rea
         throw ModelAnimationArchiveException("Truncated LF model animation archive while reading a field (need vs remain)", context, field_name, size, remaining_size);
     }
 
-    const_span<uint8_t> bytes = data.subspan(read_pos, size);
+    const const_span<byte> bytes = data.subspan(read_pos, size);
     read_pos += size;
     return bytes;
 }
 
 template<typename T>
-static auto ReadModelAnimationArchiveLittleEndian(const_span<uint8_t> data, size_t& read_pos, string_view field_name, string_view context) -> T
+static auto ReadModelAnimationArchiveLittleEndian(const_span<byte> data, size_t& read_pos, string_view field_name, const u8string& context) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_unsigned_v<T>);
-    const_span<uint8_t> bytes = ReadModelAnimationArchiveBytes(data, read_pos, sizeof(T), field_name, context);
+    const const_span<byte> bytes = ReadModelAnimationArchiveBytes(data, read_pos, sizeof(T), field_name, context);
     T value = 0;
 
     for (size_t i = 0; i < sizeof(T); i++) {
-        value |= static_cast<T>(bytes[i]) << (i * 8);
+        value |= static_cast<T>(std::to_integer<uint8_t>(bytes[i])) << (i * 8);
     }
 
     return value;
 }
 
-static auto ReadModelAnimationArchiveString(const_span<uint8_t> data, size_t& read_pos, string_view field_name, string_view context) -> string
+static auto ReadModelAnimationArchiveString(const_span<byte> data, size_t& read_pos, string_view field_name, const u8string& context) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t string_read_pos = read_pos;
-    uint32_t size = ReadModelAnimationArchiveLittleEndian<uint32_t>(data, string_read_pos, strex("{} length", field_name), context);
-    const_span<uint8_t> bytes = ReadModelAnimationArchiveBytes(data, string_read_pos, size, field_name, context);
+    const uint32_t size = ReadModelAnimationArchiveLittleEndian<uint32_t>(data, string_read_pos, strex("{} length", field_name), context);
+    const const_span<byte> bytes = ReadModelAnimationArchiveBytes(data, string_read_pos, size, field_name, context);
     string value;
     value.reserve(size);
 
-    for (uint8_t value_byte : bytes) {
-        value.push_back(static_cast<char>(value_byte));
+    for (byte value_byte : bytes) {
+        value.push_back(static_cast<char>(std::to_integer<uint8_t>(value_byte)));
     }
 
     read_pos = string_read_pos;
     return value;
 }
 
-static auto HashModelAnimationArchivePayload(const_span<uint8_t> payload) noexcept -> uint64_t
+static auto HashModelAnimationArchivePayload(const_span<byte> payload) noexcept -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     uint64_t hash = MODEL_ANIMATION_ARCHIVE_HASH_OFFSET;
 
-    for (uint8_t value : payload) {
-        hash ^= value;
+    for (byte value : payload) {
+        hash ^= std::to_integer<uint8_t>(value);
         hash *= MODEL_ANIMATION_ARCHIVE_HASH_PRIME;
     }
 
@@ -434,24 +435,24 @@ static constexpr size_t MODEL_ANIMATION_RIG_MIN_ARCHIVE_MANIFEST_SIZE = sizeof(u
 
 static void ValidateModelAnimationRigData(const ModelAnimationRigData& rig, string_view context);
 static void ValidateModelAnimationRigArchiveData(const ModelAnimationRigArchiveData& archive, ModelAnimationArchiveKind kind, uint64_t rig_signature, uint64_t cache_signature, string_view context);
-static void AppendModelAnimationRigArchiveData(vector<uint8_t>& data, const ModelAnimationRigArchiveData& archive, string_view context);
-static auto ReadModelAnimationRigArchiveData(const_span<uint8_t> data, size_t& read_pos, ModelAnimationArchiveKind kind, uint64_t rig_signature, uint64_t cache_signature, string_view context) -> ModelAnimationRigArchiveData;
+static void AppendModelAnimationRigArchiveData(vector<byte>& data, const ModelAnimationRigArchiveData& archive, string_view context);
+static auto ReadModelAnimationRigArchiveData(const_span<byte> data, size_t& read_pos, ModelAnimationArchiveKind kind, uint64_t rig_signature, uint64_t cache_signature, string_view context) -> ModelAnimationRigArchiveData;
 template<typename T>
-static void AppendModelAnimationRigDataLittleEndian(vector<uint8_t>& data, T value);
-static void AppendModelAnimationRigDataBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
-static void AppendModelAnimationRigDataString(vector<uint8_t>& data, string_view value, string_view field, string_view context);
+static void AppendModelAnimationRigDataLittleEndian(vector<byte>& data, T value);
+static void AppendModelAnimationRigDataBytes(vector<byte>& data, const_span<byte> bytes);
+static void AppendModelAnimationRigDataString(vector<byte>& data, string_view value, string_view field, string_view context);
 template<typename T>
-static auto ReadModelAnimationRigDataLittleEndian(const_span<uint8_t> data, size_t& read_pos, string_view field, string_view context) -> T;
-static auto ReadModelAnimationRigDataBytes(const_span<uint8_t> data, size_t& read_pos, size_t size, string_view field, string_view context) -> const_span<uint8_t>;
-static auto ReadModelAnimationRigDataString(const_span<uint8_t> data, size_t& read_pos, string_view field, string_view context) -> string;
+static auto ReadModelAnimationRigDataLittleEndian(const_span<byte> data, size_t& read_pos, string_view field, string_view context) -> T;
+static auto ReadModelAnimationRigDataBytes(const_span<byte> data, size_t& read_pos, size_t size, string_view field, string_view context) -> const_span<byte>;
+static auto ReadModelAnimationRigDataString(const_span<byte> data, size_t& read_pos, string_view field, string_view context) -> string;
 
-auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<uint8_t>
+auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     ValidateModelAnimationJointRemap(remap, context);
-    size_t wire_size = MODEL_ANIMATION_JOINT_REMAP_MAGIC.size() + sizeof(uint16_t) * 2 + sizeof(uint32_t) * 4 + remap.SourceToCanonicalJointIndices.size() * sizeof(uint32_t) + remap.CanonicalJointPresent.size() + remap.NearestSampleTimes.size() * sizeof(uint32_t);
-    vector<uint8_t> result;
+    const size_t wire_size = MODEL_ANIMATION_JOINT_REMAP_MAGIC.size() + sizeof(uint16_t) * 2 + sizeof(uint32_t) * 4 + remap.SourceToCanonicalJointIndices.size() * sizeof(uint32_t) + remap.CanonicalJointPresent.size() + remap.NearestSampleTimes.size() * sizeof(uint32_t);
+    vector<byte> result;
     result.reserve(wire_size);
     AppendModelAnimationRigDataBytes(result, {MODEL_ANIMATION_JOINT_REMAP_MAGIC.data(), MODEL_ANIMATION_JOINT_REMAP_MAGIC.size()});
     AppendModelAnimationRigDataLittleEndian(result, MODEL_ANIMATION_JOINT_REMAP_SCHEMA_VERSION);
@@ -465,7 +466,7 @@ auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap,
         AppendModelAnimationRigDataLittleEndian(result, canonical_index);
     }
 
-    AppendModelAnimationRigDataBytes(result, remap.CanonicalJointPresent);
+    AppendModelAnimationRigDataBytes(result, make_byte_span(remap.CanonicalJointPresent));
 
     for (float32_t time : remap.NearestSampleTimes) {
         AppendModelAnimationRigDataLittleEndian(result, std::bit_cast<uint32_t>(time));
@@ -475,12 +476,12 @@ auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap,
     return result;
 }
 
-auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_view context) -> ModelAnimationJointRemap
+auto ReadModelAnimationJointRemapPayload(const_span<byte> payload, string_view context) -> ModelAnimationJointRemap
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t read_pos = 0;
-    const_span<uint8_t> magic = ReadModelAnimationRigDataBytes(payload, read_pos, MODEL_ANIMATION_JOINT_REMAP_MAGIC.size(), "magic", context);
+    const const_span<byte> magic = ReadModelAnimationRigDataBytes(payload, read_pos, MODEL_ANIMATION_JOINT_REMAP_MAGIC.size(), "magic", context);
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_ANIMATION_JOINT_REMAP_MAGIC.begin())) {
         throw ModelAnimationRigDataException("Invalid animation joint-remap magic", context);
@@ -521,8 +522,8 @@ auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_vie
         result.SourceToCanonicalJointIndices.emplace_back(ReadModelAnimationRigDataLittleEndian<uint32_t>(payload, read_pos, "source-to-canonical index", context));
     }
 
-    const_span<uint8_t> presence = ReadModelAnimationRigDataBytes(payload, read_pos, result.CanonicalJointCount, "canonical presence mask", context);
-    result.CanonicalJointPresent.assign(presence.begin(), presence.end());
+    const const_span<byte> presence = ReadModelAnimationRigDataBytes(payload, read_pos, result.CanonicalJointCount, "canonical presence mask", context);
+    result.CanonicalJointPresent = vec_transform(presence, [](byte value) { return std::to_integer<uint8_t>(value); });
     result.NearestSampleTimes.reserve(nearest_time_count);
 
     for (uint32_t i = 0; i < nearest_time_count; i++) {
@@ -597,12 +598,12 @@ void ValidateModelAnimationJointRemap(const ModelAnimationJointRemap& remap, str
     }
 }
 
-auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<uint8_t>
+auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     ValidateModelAnimationRigData(rig, context);
-    vector<uint8_t> result;
+    vector<byte> result;
     result.reserve(1024);
     AppendModelAnimationRigDataBytes(result, {MODEL_ANIMATION_RIG_DATA_MAGIC.data(), MODEL_ANIMATION_RIG_DATA_MAGIC.size()});
     AppendModelAnimationRigDataLittleEndian(result, MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION);
@@ -636,12 +637,12 @@ auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view co
     return result;
 }
 
-auto ReadModelAnimationRigData(const_span<uint8_t> data, string_view context) -> ModelAnimationRigData
+auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> ModelAnimationRigData
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t read_pos = 0;
-    const_span<uint8_t> magic = ReadModelAnimationRigDataBytes(data, read_pos, MODEL_ANIMATION_RIG_DATA_MAGIC.size(), "magic", context);
+    const const_span<byte> magic = ReadModelAnimationRigDataBytes(data, read_pos, MODEL_ANIMATION_RIG_DATA_MAGIC.size(), "magic", context);
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_ANIMATION_RIG_DATA_MAGIC.begin())) {
         throw ModelAnimationRigDataException("Invalid animation rig-data magic; expected 'LFOZZRIG'", context);
@@ -818,7 +819,7 @@ static void ValidateModelAnimationRigArchiveData(const ModelAnimationRigArchiveD
     if (archive.Metadata.SourceAsset.size() > std::numeric_limits<uint32_t>::max() || archive.Metadata.ObjectName.size() > std::numeric_limits<uint32_t>::max()) {
         throw ModelAnimationRigDataException("Animation rig archive has a source/object identity that exceeds the wire limit", context);
     }
-    if (!strvex(archive.Metadata.SourceAsset).is_valid_utf8() || archive.Metadata.SourceAsset.find('\0') != string::npos || !strvex(archive.Metadata.ObjectName).is_valid_utf8() || archive.Metadata.ObjectName.find('\0') != string::npos) {
+    if (validate_utf8_text(archive.Metadata.SourceAsset) || archive.Metadata.SourceAsset.find('\0') != string::npos || validate_utf8_text(archive.Metadata.ObjectName) || archive.Metadata.ObjectName.find('\0') != string::npos) {
         throw ModelAnimationRigDataException("Animation rig archive has an invalid UTF-8 or embedded-NUL identity", context);
     }
     if (archive.Payload.empty() || archive.Payload.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
@@ -826,11 +827,11 @@ static void ValidateModelAnimationRigArchiveData(const ModelAnimationRigArchiveD
     }
 }
 
-static void AppendModelAnimationRigArchiveData(vector<uint8_t>& data, const ModelAnimationRigArchiveData& archive, string_view context)
+static void AppendModelAnimationRigArchiveData(vector<byte>& data, const ModelAnimationRigArchiveData& archive, string_view context)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> archive_data = WriteModelAnimationArchive(archive.Metadata, archive.Payload);
+    const vector<byte> archive_data = WriteModelAnimationArchive(archive.Metadata, archive.Payload);
 
     if (archive_data.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
         throw ModelAnimationRigDataException("Animation rig archive exceeds the runtime wire-size limit", context, archive_data.size());
@@ -843,7 +844,7 @@ static void AppendModelAnimationRigArchiveData(vector<uint8_t>& data, const Mode
     AppendModelAnimationRigDataBytes(data, archive_data);
 }
 
-static auto ReadModelAnimationRigArchiveData(const_span<uint8_t> data, size_t& read_pos, ModelAnimationArchiveKind kind, uint64_t rig_signature, uint64_t cache_signature, string_view context) -> ModelAnimationRigArchiveData
+static auto ReadModelAnimationRigArchiveData(const_span<byte> data, size_t& read_pos, ModelAnimationArchiveKind kind, uint64_t rig_signature, uint64_t cache_signature, string_view context) -> ModelAnimationRigArchiveData
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -864,31 +865,31 @@ static auto ReadModelAnimationRigArchiveData(const_span<uint8_t> data, size_t& r
         throw ModelAnimationRigDataException("Animation rig archive is too large for this platform", context, archive_size);
     }
 
-    const_span<uint8_t> archive_bytes = ReadModelAnimationRigDataBytes(data, read_pos, static_cast<size_t>(archive_size), "archive bytes", context);
+    const const_span<byte> archive_bytes = ReadModelAnimationRigDataBytes(data, read_pos, static_cast<size_t>(archive_size), "archive bytes", context);
     ModelAnimationArchive archive = ReadModelAnimationArchive(archive_bytes, expected_metadata);
     return ModelAnimationRigArchiveData {std::move(archive.Metadata), std::move(archive.Payload)};
 }
 
 template<typename T>
-static void AppendModelAnimationRigDataLittleEndian(vector<uint8_t>& data, T value)
+static void AppendModelAnimationRigDataLittleEndian(vector<byte>& data, T value)
 {
     FO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_unsigned_v<T>);
 
     for (size_t i = 0; i < sizeof(T); i++) {
-        data.emplace_back(static_cast<uint8_t>((value >> (i * 8)) & static_cast<T>(0xFF)));
+        data.emplace_back(byte {static_cast<uint8_t>((value >> (i * 8)) & static_cast<T>(0xFF))});
     }
 }
 
-static void AppendModelAnimationRigDataBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
+static void AppendModelAnimationRigDataBytes(vector<byte>& data, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
     data.insert(data.end(), bytes.begin(), bytes.end());
 }
 
-static void AppendModelAnimationRigDataString(vector<uint8_t>& data, string_view value, string_view field, string_view context)
+static void AppendModelAnimationRigDataString(vector<byte>& data, string_view value, string_view field, string_view context)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -899,27 +900,27 @@ static void AppendModelAnimationRigDataString(vector<uint8_t>& data, string_view
     AppendModelAnimationRigDataLittleEndian(data, static_cast<uint32_t>(value.size()));
 
     for (char value_char : value) {
-        data.emplace_back(static_cast<uint8_t>(value_char));
+        data.emplace_back(byte {static_cast<uint8_t>(value_char)});
     }
 }
 
 template<typename T>
-static auto ReadModelAnimationRigDataLittleEndian(const_span<uint8_t> data, size_t& read_pos, string_view field, string_view context) -> T
+static auto ReadModelAnimationRigDataLittleEndian(const_span<byte> data, size_t& read_pos, string_view field, string_view context) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_unsigned_v<T>);
-    const_span<uint8_t> bytes = ReadModelAnimationRigDataBytes(data, read_pos, sizeof(T), field, context);
+    const const_span<byte> bytes = ReadModelAnimationRigDataBytes(data, read_pos, sizeof(T), field, context);
     T result = 0;
 
     for (size_t i = 0; i < sizeof(T); i++) {
-        result |= static_cast<T>(bytes[i]) << (i * 8);
+        result |= static_cast<T>(std::to_integer<uint8_t>(bytes[i])) << (i * 8);
     }
 
     return result;
 }
 
-static auto ReadModelAnimationRigDataBytes(const_span<uint8_t> data, size_t& read_pos, size_t size, string_view field, string_view context) -> const_span<uint8_t>
+static auto ReadModelAnimationRigDataBytes(const_span<byte> data, size_t& read_pos, size_t size, string_view field, string_view context) -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -927,23 +928,23 @@ static auto ReadModelAnimationRigDataBytes(const_span<uint8_t> data, size_t& rea
         throw ModelAnimationRigDataException("Truncated animation data while reading a field (need vs remain)", field, context, size, read_pos <= data.size() ? data.size() - read_pos : 0);
     }
 
-    const_span<uint8_t> result = data.subspan(read_pos, size);
+    const const_span<byte> result = data.subspan(read_pos, size);
     read_pos += size;
     return result;
 }
 
-static auto ReadModelAnimationRigDataString(const_span<uint8_t> data, size_t& read_pos, string_view field, string_view context) -> string
+static auto ReadModelAnimationRigDataString(const_span<byte> data, size_t& read_pos, string_view field, string_view context) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t string_read_pos = read_pos;
-    uint32_t size = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, string_read_pos, strex("{} length", field), context);
-    const_span<uint8_t> bytes = ReadModelAnimationRigDataBytes(data, string_read_pos, size, field, context);
+    const uint32_t size = ReadModelAnimationRigDataLittleEndian<uint32_t>(data, string_read_pos, strex("{} length", field), context);
+    const const_span<byte> bytes = ReadModelAnimationRigDataBytes(data, string_read_pos, size, field, context);
     string result;
     result.reserve(size);
 
-    for (uint8_t value : bytes) {
-        result.push_back(static_cast<char>(value));
+    for (byte value : bytes) {
+        result.push_back(static_cast<char>(std::to_integer<uint8_t>(value)));
     }
 
     read_pos = string_read_pos;

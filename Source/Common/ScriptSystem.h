@@ -91,10 +91,10 @@ public:
     auto operator=(DynamicRefTypeInstance&&) -> DynamicRefTypeInstance& = delete;
     ~DynamicRefTypeInstance() noexcept;
 
-    [[nodiscard]] auto GetRawData(ptr<const Property> prop) const -> span<const uint8_t>;
-    [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>;
+    [[nodiscard]] auto GetRawData(ptr<const Property> prop) const -> const_span<byte>;
+    [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<byte>;
 
-    void LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data);
+    void LoadFromRawData(const BaseTypeDesc& base_type, const_span<byte> raw_data);
     void SetValue(ptr<const Property> prop, PropertyRawData& prop_data);
 
 private:
@@ -103,7 +103,7 @@ private:
 
     ptr<const PropertyRegistrator> _registrator;
     optional<Properties> _props {};
-    vector<uint8_t> _cachedRawData {};
+    vector<byte> _cachedRawData {};
     bool _cachedRawDataDirty {};
 };
 
@@ -136,6 +136,67 @@ struct FuncCallData
     nptr<void> RetData {};
 };
 
+namespace NativeScriptText
+{
+    template<typename T>
+    inline constexpr bool IsString = std::same_as<std::remove_cvref_t<T>, string> || std::same_as<std::remove_cvref_t<T>, string_view> || std::same_as<std::remove_cvref_t<T>, string_view_nt>;
+
+    template<typename T>
+    inline constexpr bool IsUtf8 = std::same_as<std::remove_cvref_t<T>, u8string> || std::same_as<std::remove_cvref_t<T>, u8string_view> || std::same_as<std::remove_cvref_t<T>, u8string_view_nt> || std::same_as<std::remove_cvref_t<T>, u8strex> || std::same_as<std::remove_cvref_t<T>, u8strvex>;
+
+    template<typename T>
+    inline constexpr bool IsStrict = IsString<T> || IsUtf8<T>;
+
+    template<typename T>
+    inline constexpr bool IsStrictOwner = std::same_as<std::remove_cvref_t<T>, string> || std::same_as<std::remove_cvref_t<T>, u8string>;
+
+    template<typename T>
+    [[nodiscard]] auto ToScriptString(const T& value) -> string
+    {
+        static_assert(IsStrict<T>);
+
+        if constexpr (std::same_as<std::remove_cvref_t<T>, string>) {
+            return value;
+        }
+        else if constexpr (std::same_as<std::remove_cvref_t<T>, string_view>) {
+            return string {value};
+        }
+        else if constexpr (std::same_as<std::remove_cvref_t<T>, string_view_nt>) {
+            return string {value};
+        }
+        else if constexpr (std::same_as<std::remove_cvref_t<T>, u8string>) {
+            return utf8_to_char_string(value);
+        }
+        else if constexpr (std::same_as<std::remove_cvref_t<T>, u8string_view>) {
+            const u8string checked_value {value};
+            return utf8_to_char_string(checked_value);
+        }
+        else if constexpr (std::same_as<std::remove_cvref_t<T>, u8string_view_nt>) {
+            const u8string checked_value {value.view()};
+            (void)checked_value.view_nt();
+            return utf8_to_char_string(checked_value);
+        }
+        else {
+            return utf8_to_char_string(static_cast<u8string_view>(value));
+        }
+    }
+
+    template<typename T>
+    [[nodiscard]] auto FromScriptString(string_view value) -> T
+    {
+        static_assert(IsStrictOwner<T>);
+
+        const u8string utf8_value = utf8_from_char_span(const_span<char> {value.data(), value.size()});
+
+        if constexpr (std::same_as<T, string>) {
+            return utf8_to_string(utf8_value);
+        }
+        else {
+            return utf8_value;
+        }
+    }
+}
+
 namespace NativeDataProvider
 {
     class ArrayDataProxy
@@ -144,36 +205,71 @@ namespace NativeDataProvider
         // Mutable array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(T& cont)
         {
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
-            _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
+
+            if constexpr (NativeScriptText::IsStrictOwner<typename T::value_type>) {
+                _scriptStrings.reserve(cont.size());
+                _ptrs.reserve(cont.size());
+
+                for (const auto& value : cont) {
+                    _scriptStrings.emplace_back(NativeScriptText::ToScriptString(value));
+                    _ptrs.emplace_back(make_ptr(&_scriptStrings.back()).void_cast());
+                }
+
+                _addCallback = [&](ptr<void> value) FO_DEFERRED {
+                    const string& script_value = *cast_from_void<const string*>(value.get());
+                    cont.emplace_back(NativeScriptText::FromScriptString<typename T::value_type>(script_value));
+                };
+            }
+            else {
+                _ptrs = to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
+                    auto element = make_ptr(&e).void_cast();
+                    return element;
+                }));
+                _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
+            }
         }
 
         // Const array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(const T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(const T& cont)
         {
+            if constexpr (NativeScriptText::IsStrictOwner<typename T::value_type>) {
+                _scriptStrings.reserve(cont.size());
+                _ptrs.reserve(cont.size());
+
+                for (const auto& value : cont) {
+                    _scriptStrings.emplace_back(NativeScriptText::ToScriptString(value));
+                    _ptrs.emplace_back(make_ptr(&_scriptStrings.back()).void_cast());
+                }
+            }
+            else {
+                _ptrs = to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
+                    auto element = make_ptr(&e).void_cast();
+                    return element;
+                }));
+            }
+
             _clearCallback = [&]() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [&](ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
         auto Size() const noexcept -> size_t { return _ptrs.size(); }
         auto Get(size_t index) const noexcept -> ptr<void> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
+        void Clear()
+        {
+            _ptrs.clear();
+            _scriptStrings.clear();
+            _clearCallback();
+        }
         void Add(ptr<void> value) { _addCallback(value), _ptrs.emplace_back(value); }
 
     private:
         vector<ptr<void>> _ptrs;
+        vector<string> _scriptStrings {};
         function<void()> _clearCallback {};
         function<void(ptr<void>)> _addCallback {};
     };
@@ -184,35 +280,115 @@ namespace NativeDataProvider
         // Mutable dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(T& cont)
         {
+            _ptrs.reserve(cont.size());
+            _scriptKeys.reserve(cont.size());
+            _scriptValues.reserve(cont.size());
+
+            for (auto& [key, value] : cont) {
+                const ptr<void> key_ptr = [&]() -> ptr<void> {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
+                        _scriptKeys.emplace_back(NativeScriptText::ToScriptString(key));
+                        return make_ptr(&_scriptKeys.back()).void_cast();
+                    }
+                    else {
+                        return make_ptr(&key).void_cast();
+                    }
+                }();
+                const ptr<void> value_ptr = [&]() -> ptr<void> {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::mapped_type>) {
+                        _scriptValues.emplace_back(NativeScriptText::ToScriptString(value));
+                        return make_ptr(&_scriptValues.back()).void_cast();
+                    }
+                    else {
+                        return make_ptr(&value).void_cast();
+                    }
+                }();
+
+                _ptrs.emplace_back(key_ptr, value_ptr);
+            }
+
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
-            _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
+            _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED {
+                const auto native_key = [&]() -> typename T::key_type {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
+                        const string& script_key = *cast_from_void<const string*>(key.get());
+                        return NativeScriptText::FromScriptString<typename T::key_type>(script_key);
+                    }
+                    else {
+                        return *cast_from_void<const typename T::key_type*>(key.get());
+                    }
+                }();
+                auto native_value = [&]() -> typename T::mapped_type {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::mapped_type>) {
+                        const string& script_value = *cast_from_void<const string*>(value.get());
+                        return NativeScriptText::FromScriptString<typename T::mapped_type>(script_value);
+                    }
+                    else {
+                        return *cast_from_void<const typename T::mapped_type*>(value.get());
+                    }
+                }();
+                cont.emplace(std::move(native_key), std::move(native_value));
+            };
         }
 
         // Const dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(const T& cont)
         {
+            _ptrs.reserve(cont.size());
+            _scriptKeys.reserve(cont.size());
+            _scriptValues.reserve(cont.size());
+
+            for (const auto& [key, value] : cont) {
+                const ptr<void> key_ptr = [&]() -> ptr<void> {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
+                        _scriptKeys.emplace_back(NativeScriptText::ToScriptString(key));
+                        return make_ptr(&_scriptKeys.back()).void_cast();
+                    }
+                    else {
+                        return make_ptr(&key).void_cast();
+                    }
+                }();
+                const ptr<void> value_ptr = [&]() -> ptr<void> {
+                    if constexpr (NativeScriptText::IsStrictOwner<typename T::mapped_type>) {
+                        _scriptValues.emplace_back(NativeScriptText::ToScriptString(value));
+                        return make_ptr(&_scriptValues.back()).void_cast();
+                    }
+                    else {
+                        return make_ptr(&value).void_cast();
+                    }
+                }();
+
+                _ptrs.emplace_back(key_ptr, value_ptr);
+            }
+
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
         auto Size() const noexcept -> size_t { return _ptrs.size(); }
         auto Get(size_t index) const noexcept -> pair<ptr<void>, ptr<void>> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
+        void Clear()
+        {
+            _ptrs.clear();
+            _scriptKeys.clear();
+            _scriptValues.clear();
+            _clearCallback();
+        }
         void Add(ptr<void> key, ptr<void> value) { _addCallback(key, value), _ptrs.emplace_back(key, value); }
 
     private:
         vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        vector<string> _scriptKeys {};
+        vector<string> _scriptValues {};
         function<void()> _clearCallback {};
         function<void(ptr<void>, ptr<void>)> _addCallback {};
     };
 
-    using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, nptr<Entity>>;
+    using StorageEntryType = variant<int32_t, string, ArrayDataProxy, DictDataProxy, nptr<Entity>>;
 
     struct NativeDataAccessor final : DataAccessor
     {
@@ -242,6 +418,9 @@ namespace NativeDataProvider
         else if constexpr (map_collection<raw_t>) {
             return make_ptr(&temp_storage.emplace<DictDataProxy>(arg)).void_cast();
         }
+        else if constexpr (NativeScriptText::IsStrict<raw_t>) {
+            return make_ptr(&temp_storage.emplace<string>(NativeScriptText::ToScriptString(arg))).void_cast();
+        }
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
@@ -257,6 +436,19 @@ namespace NativeDataProvider
         }
         else {
             return make_ptr(&arg).void_cast();
+        }
+    }
+
+    template<typename T>
+    static void DenormalizeArg(T& arg, StorageEntryType& temp_storage)
+    {
+        using raw_t = std::remove_cvref_t<T>;
+
+        if constexpr (NativeScriptText::IsStrictOwner<raw_t>) {
+            arg = NativeScriptText::FromScriptString<raw_t>(std::get<string>(temp_storage));
+        }
+        else {
+            ignore_unused(arg, temp_storage);
         }
     }
 }
@@ -408,6 +600,7 @@ public:
 
             try {
                 _func->Call(call);
+                NativeDataProvider::DenormalizeArg(_ret, temp_storage[storage_index]);
                 return true;
             }
             catch (const std::exception& ex) {
@@ -533,6 +726,40 @@ namespace NativeDataCaller
         static constexpr size_t arity = sizeof...(Args);
     };
 
+    template<typename T>
+    struct NativeCallTempType
+    {
+        using raw_t = std::remove_cvref_t<T>;
+        using type = std::conditional_t<std::same_as<raw_t, string_view> || std::same_as<raw_t, string_view_nt>, string, std::conditional_t<std::same_as<raw_t, u8string_view> || std::same_as<raw_t, u8string_view_nt>, u8string, raw_t>>;
+    };
+
+    template<typename T>
+    using native_call_temp_t = typename NativeCallTempType<T>::type;
+
+    template<typename T>
+    [[nodiscard]] auto ReadScriptValue(ptr<void> data) -> T
+    {
+        if constexpr (NativeScriptText::IsStrictOwner<T>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            return NativeScriptText::FromScriptString<T>(script_value);
+        }
+        else {
+            return *cast_from_void<const T*>(data.get());
+        }
+    }
+
+    template<typename T, typename Callback>
+    void PassScriptValue(T& value, Callback&& callback)
+    {
+        if constexpr (NativeScriptText::IsStrictOwner<T>) {
+            string script_value = NativeScriptText::ToScriptString(value);
+            callback(make_ptr(&script_value).void_cast());
+        }
+        else {
+            callback(make_ptr(&value).void_cast());
+        }
+    }
+
     template<typename T, typename U>
     auto ConvertArg(ptr<void> data, const DataAccessor& accessor, U& temp) -> T
     {
@@ -544,7 +771,7 @@ namespace NativeDataCaller
             v.reserve(size);
 
             for (size_t i = 0; i < size; i++) {
-                v.emplace_back(*cast_from_void<const typename raw_t::value_type*>(accessor.GetArrayElement(data, i).get()));
+                v.emplace_back(ReadScriptValue<typename raw_t::value_type>(accessor.GetArrayElement(data, i)));
             }
 
             return v;
@@ -554,8 +781,8 @@ namespace NativeDataCaller
             size_t size = accessor.GetDictSize(data);
 
             for (size_t i = 0; i < size; i++) {
-                auto kv = accessor.GetDictElement(data, i);
-                m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+                const auto kv = accessor.GetDictElement(data, i);
+                m.emplace(ReadScriptValue<typename raw_t::key_type>(kv.first), ReadScriptValue<typename raw_t::mapped_type>(kv.second));
             }
 
             return m;
@@ -564,8 +791,33 @@ namespace NativeDataCaller
             auto callback = accessor.GetCallback(data);
             return T(std::move(callback));
         }
-        else if constexpr (std::is_same_v<raw_t, string_view>) {
-            return temp.emplace(*cast_from_void<string*>(data.get()));
+        else if constexpr (std::same_as<raw_t, string>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            return temp.emplace(NativeScriptText::FromScriptString<string>(script_value));
+        }
+        else if constexpr (std::same_as<raw_t, string_view>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            auto& strict_value = temp.emplace(NativeScriptText::FromScriptString<string>(script_value));
+            return string_view {strict_value};
+        }
+        else if constexpr (std::same_as<raw_t, string_view_nt>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            auto& strict_value = temp.emplace(NativeScriptText::FromScriptString<string>(script_value));
+            return string_view_nt_from_span(const_span<char> {strict_value.data(), strict_value.size() + 1});
+        }
+        else if constexpr (std::same_as<raw_t, u8string>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            return temp.emplace(NativeScriptText::FromScriptString<u8string>(script_value));
+        }
+        else if constexpr (std::same_as<raw_t, u8string_view>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            auto& strict_value = temp.emplace(NativeScriptText::FromScriptString<u8string>(script_value));
+            return strict_value.view();
+        }
+        else if constexpr (std::same_as<raw_t, u8string_view_nt>) {
+            const string& script_value = *cast_from_void<const string*>(data.get());
+            auto& strict_value = temp.emplace(NativeScriptText::FromScriptString<u8string>(script_value));
+            return strict_value.view_nt();
         }
         else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
             using elem_t = typename raw_t::element_type;
@@ -608,7 +860,7 @@ namespace NativeDataCaller
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {
-                    accessor.AddArrayElement(data, make_nptr(&e).void_cast());
+                    PassScriptValue(e, [&](ptr<void> script_value) { accessor.AddArrayElement(data, script_value); });
                 }
             }
             else if constexpr (map_collection<raw_t>) {
@@ -616,8 +868,12 @@ namespace NativeDataCaller
                 accessor.ClearDict(data);
 
                 for (auto& e : v) {
-                    accessor.AddDictElement(data, make_nptr(&e.first).void_cast(), make_nptr(&e.second).void_cast());
+                    PassScriptValue(e.first, [&](ptr<void> script_key) { PassScriptValue(e.second, [&](ptr<void> script_value) { accessor.AddDictElement(data, script_key, script_value); }); });
                 }
+            }
+            else if constexpr (NativeScriptText::IsStrict<raw_t>) {
+                FO_VERIFY_AND_THROW(temp.has_value(), "Optional strict string value is not set");
+                *cast_from_void<string*>(data.get()) = NativeScriptText::ToScriptString(temp.value());
             }
             else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
                 using elem_t = typename raw_t::element_type;
@@ -644,12 +900,12 @@ namespace NativeDataCaller
     template<typename R, typename... Args, size_t... I>
     auto NativeCallImpl(R (*fn)(Args...), FuncCallData& call, std::index_sequence<I...> /**/)
     {
-        tuple<optional<std::remove_cvref_t<Args>>...> temp_data;
+        tuple<optional<native_call_temp_t<Args>>...> temp_data;
         ptr<const DataAccessor> accessor = call.Accessor;
 
         if constexpr (!std::is_void_v<R>) {
             R&& r = fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
-            optional<std::remove_cvref_t<R>> temp_r = std::move(r);
+            optional<native_call_temp_t<R>> temp_r {std::move(r)};
             ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData, *accessor, temp_r);
         }
         else {

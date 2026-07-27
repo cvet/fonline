@@ -349,6 +349,14 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 - `FontManager` loads fonts and formats/draws text, including inline color tags.
 - `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen render targets.
 
+Effect resource names remain strict UTF-8 from `EffectManager` through
+`IAppRender`, `RenderEffect`, every renderer backend, and `RenderEffectLoader`.
+The manager keeps an ASCII overload for ordinary technical literals, which
+promote into the UTF-8 path without caller-side adapters. Parsed effect
+configuration values such as blend functions and depth modes are technical
+ASCII tokens and cross that narrower boundary only through the checked
+`utf8_to_string()` conversion.
+
 For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
@@ -439,6 +447,12 @@ sampling rectangle is not the source sprite silhouette.
 ### Fonts and Inline Color Tags
 
 `FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
+
+Font layout, line splitting, measurement, and drawing accept `u8string_view` and keep their mutable
+layout storage as `char8_t`. ASCII overloads forward into the same pipeline for technical or
+literal-only callers. The only narrowing inside inline-tag parsing is the checked conversion of an
+already verified ASCII hexadecimal color token; ordinary rendered text is never exposed as a
+`char` view.
 
 `Game.BindFont(font, path, defaultScale = 1.0)` can downscale the bound font slot. The scale is applied once at bind time: glyph bitmaps are re-rasterized in place inside the font's atlas region with an area-average filter, and every metric (advances, offsets, line height, space width) is rounded to integers at the target size. The runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) therefore always works in plain integer pixel coordinates — a scaled font behaves exactly like a font authored at the smaller size, with no fractional glyph positions. The scale must be in `(0..1]`; upscaling a bitmap font is rejected — author a bigger font asset for larger text.
 

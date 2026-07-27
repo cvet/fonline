@@ -37,6 +37,23 @@
 
 FO_BEGIN_NAMESPACE
 
+static_assert(std::same_as<byte, std::byte>);
+static_assert(!std::same_as<byte, uint8_t>);
+
+template<typename T>
+concept CanMakeByteSpan = requires(T&& value) { make_byte_span(std::forward<T>(value)); };
+
+template<typename T>
+concept CanMakeSizedByteSpan = requires(T&& value) { make_byte_span(std::forward<T>(value), sizeof(uint32_t)); };
+
+static_assert(std::same_as<decltype(make_byte_span(std::declval<vector<uint32_t>&>())), span<byte>>);
+static_assert(std::same_as<decltype(make_byte_span(std::declval<const vector<uint32_t>&>())), const_span<byte>>);
+static_assert(CanMakeByteSpan<vector<uint32_t>&>);
+static_assert(CanMakeByteSpan<string_view>);
+static_assert(!CanMakeByteSpan<vector<uint32_t>>);
+static_assert(CanMakeSizedByteSpan<unique_ptr<uint32_t>&>);
+static_assert(!CanMakeSizedByteSpan<unique_ptr<uint32_t>>);
+
 namespace
 {
     class TestBase
@@ -68,6 +85,24 @@ namespace
 
 TEST_CASE("CommonHelpers")
 {
+    SECTION("ByteSpansKeepBinaryDataDistinctFromNumericBytes")
+    {
+        array<uint32_t, 2> values = {0x01020304u, 0xA0B0C0D0u};
+        span<byte> bytes = make_byte_span(values);
+        CHECK(bytes.size() == values.size() * sizeof(uint32_t));
+
+        const auto& const_values = values;
+        const_span<byte> const_bytes = make_byte_span(const_values);
+        CHECK(const_bytes.data() == bytes.data());
+        CHECK(const_bytes.size() == bytes.size());
+
+        array<byte, 3> raw = {byte {0x01}, byte {0x7F}, byte {0xFF}};
+        span<byte> raw_bytes = make_byte_span(raw);
+        CHECK(std::to_integer<uint8_t>(raw_bytes[0]) == 0x01);
+        CHECK(std::to_integer<uint8_t>(raw_bytes[1]) == 0x7F);
+        CHECK(std::to_integer<uint8_t>(raw_bytes[2]) == 0xFF);
+    }
+
     SECTION("SafeCall")
     {
         bool called = false;

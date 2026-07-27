@@ -56,11 +56,11 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     GetApp()->LoadImGuiEffect(Resources);
 
-    MapsFileSys.AddDirSource("", false, true, true);
+    MapsFileSys.AddDirSource(u8"", false, true, true);
 
     for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir, true, true, true);
+            MapsFileSys.AddDirSource(dir.view(), true, true, true);
         }
     }
 
@@ -166,16 +166,17 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
     // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
     if (!Settings->NullRenderer) {
-        auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
+        const string imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
         if (!imgui_ini.empty()) {
-            ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
+            ImGui::LoadIniSettingsFromMemory(imgui_ini.data(), imgui_ini.size());
             ImGui::GetIO().WantSaveIniSettings = false;
         }
     }
 
     // Load console history
-    string history_str = Cache.GetString("mapper_console.txt");
+    const u8string history_text = Cache.GetText("mapper_console.txt");
+    const string history_str = utf8_to_char_string(history_text.view());
     ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
     while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->ConsoleHistorySize) {
@@ -322,7 +323,7 @@ void MapperEngine::MapperMainLoop()
         size_t ini_size = 0;
 
         if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size)); ini_data) {
-            _uiSettings.SetString(MAPPER_IMGUI_SETTINGS_KEY, string_view(ini_data.get(), ini_size));
+            _uiSettings.SetString(MAPPER_IMGUI_SETTINGS_KEY, string_view {ini_data.get(), ini_size});
         }
 
         io.WantSaveIniSettings = false;
@@ -854,7 +855,7 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     }
 }
 
-void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text)
+void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, u8string_view key_text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1189,7 +1190,7 @@ auto MapperEngine::ExecuteRedo() -> bool
     return true;
 }
 
-auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
+auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1351,7 +1352,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
     return nullptr;
 }
 
-auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool
+auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const u8string& map_text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2306,7 +2307,7 @@ void MapperEngine::DrawMapListWindowImGui()
             }
 
             File map_file = File::Load(map_file_header);
-            auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+            auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetText());
             MapBrowserNames.insert(MapBrowserNames.end(), std::make_move_iterator(declared_maps.begin()), std::make_move_iterator(declared_maps.end()));
         }
 
@@ -2845,13 +2846,15 @@ void MapperEngine::DrawInspectorImGui()
                                 bool current_value = false;
 
                                 try {
-                                    current_value = AnyData::ParseValue(field_values[field_index], false, false, AnyData::ValueType::Bool).AsBool();
+                                    const u8string utf8_value = field_values[field_index];
+                                    current_value = AnyData::ParseValue(utf8_value.view(), false, false, AnyData::ValueType::Bool).AsBool();
                                 }
                                 catch (const std::exception&) {
                                 }
 
                                 if (ImGui::Checkbox("##field", &current_value)) {
-                                    field_values[field_index] = AnyData::ValueToString(AnyData::Value {current_value});
+                                    const auto utf8_value = AnyData::ValueToString(AnyData::Value {current_value});
+                                    field_values[field_index] = utf8_to_string(utf8_value.view());
                                     struct_changed = true;
                                     commit_requested = true;
                                 }
@@ -2967,7 +2970,8 @@ void MapperEngine::DrawInspectorImGui()
 
                                 switch (GetInspectorValueType(prop)) {
                                 case AnyData::ValueType::Int64: {
-                                    string value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    const auto utf8_value = AnyData::ValueToString(entries[entry_index]);
+                                    auto value_buf = utf8_to_string(utf8_value.view());
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
@@ -2976,7 +2980,8 @@ void MapperEngine::DrawInspectorImGui()
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
                                         try {
-                                            int64_t entry_value = AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Int64).AsInt64();
+                                            const u8string utf8_value_buf = value_buf;
+                                            auto entry_value = AnyData::ParseValue(utf8_value_buf.view(), false, false, AnyData::ValueType::Int64).AsInt64();
                                             if (!prop->IsBaseTypeSignedInt() && entry_value < 0) {
                                                 entry_value = 0;
                                             }
@@ -2992,7 +2997,8 @@ void MapperEngine::DrawInspectorImGui()
                                     break;
                                 }
                                 case AnyData::ValueType::Float64: {
-                                    string value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    const auto utf8_value = AnyData::ValueToString(entries[entry_index]);
+                                    auto value_buf = utf8_to_string(utf8_value.view());
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
@@ -3001,7 +3007,8 @@ void MapperEngine::DrawInspectorImGui()
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
                                         try {
-                                            entries[entry_index] = AnyData::Value {AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Float64).AsDouble()};
+                                            const u8string utf8_value_buf = value_buf;
+                                            entries[entry_index] = AnyData::Value {AnyData::ParseValue(utf8_value_buf.view(), false, false, AnyData::ValueType::Float64).AsDouble()};
                                             array_changed = true;
                                         }
                                         catch (const std::exception&) {
@@ -3022,7 +3029,7 @@ void MapperEngine::DrawInspectorImGui()
                                     break;
                                 }
                                 case AnyData::ValueType::String: {
-                                    string string_buf = string(entries[entry_index].AsString());
+                                    auto string_buf = utf8_to_char_string(entries[entry_index].AsString());
                                     if (string_buf.capacity() < 512) {
                                         string_buf.reserve(512);
                                     }
@@ -3030,7 +3037,7 @@ void MapperEngine::DrawInspectorImGui()
                                     bool value_submitted = ImGuiInputTextString("##ArrayValue", string_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
                                     if (value_submitted || value_deactivated) {
-                                        entries[entry_index] = AnyData::Value {std::move(string_buf)};
+                                        entries[entry_index] = AnyData::Value {utf8_from_char_span(const_span<char> {string_buf.data(), string_buf.size()})};
                                         array_changed = true;
                                     }
                                     commit_requested |= value_submitted || value_deactivated;
@@ -3091,7 +3098,8 @@ void MapperEngine::DrawInspectorImGui()
                             focus_consumed = true;
                         }
                         if (ImGui::Checkbox("##value", &current_value)) {
-                            InspectorSelectedLineValue = AnyData::ValueToString(AnyData::Value {current_value});
+                            const auto utf8_value = AnyData::ValueToString(AnyData::Value {current_value});
+                            InspectorSelectedLineValue = utf8_to_string(utf8_value.view());
                             commit_requested = true;
                         }
                     }
@@ -5892,7 +5900,8 @@ void MapperEngine::ConsoleSubmitCommand()
     for (const auto& str : ConsoleHistory) {
         history_str += str + "\n";
     }
-    Cache.SetString("mapper_console.txt", history_str);
+    const u8string history_text = history_str;
+    Cache.SetText("mapper_console.txt", history_text.view());
 
     bool process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
     AddMess(ConsoleStr);
@@ -5952,8 +5961,8 @@ void MapperEngine::ParseCommand(string_view command)
     }
     // Run script
     else if (command[0] == '#') {
-        string before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
-        string command_str = string(command.substr(1));
+        const auto before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
+        const auto command_str = string(command.substr(1));
         istringstream icmd(command_str);
         string func_name;
 
@@ -5977,7 +5986,7 @@ void MapperEngine::ParseCommand(string_view command)
         }
 
         if (!before_snapshot.empty()) {
-            string after_snapshot = CaptureMapSnapshot(GetCurMap());
+            const auto after_snapshot = CaptureMapSnapshot(GetCurMap());
             if (before_snapshot != after_snapshot) {
                 auto cur_map = GetCurMap();
                 FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -6095,7 +6104,7 @@ void MapperEngine::ParseCommand(string_view command)
                 }
 
                 File map_file = File::Load(map_file_header);
-                auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+                auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetText());
 
                 for (const auto& map_name : declared_maps) {
                     if (auto map = LoadMap(map_name)) {
@@ -6109,7 +6118,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "reverse-light" && _curMap) {
-            string before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
 
@@ -6126,7 +6135,7 @@ void MapperEngine::ParseCommand(string_view command)
             SetMapDirty(GetCurMap());
 
             if (!before_snapshot.empty()) {
-                string after_snapshot = CaptureMapSnapshot(GetCurMap());
+                const auto after_snapshot = CaptureMapSnapshot(GetCurMap());
                 if (before_snapshot != after_snapshot) {
                     string map_name = string(cur_map->GetName());
                     PushUndoOp(GetCurMap(), UndoOp {"Reverse lights", [map_name, before_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name, after_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
@@ -6134,7 +6143,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "merge-items" && _curMap) {
-            string before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
             MergeItemsToMultihexMeshes(cur_map);
@@ -6143,7 +6152,7 @@ void MapperEngine::ParseCommand(string_view command)
             SetMapDirty(GetCurMap());
 
             if (!before_snapshot.empty()) {
-                string after_snapshot = CaptureMapSnapshot(GetCurMap());
+                const auto after_snapshot = CaptureMapSnapshot(GetCurMap());
                 if (before_snapshot != after_snapshot) {
                     string map_name = string(cur_map->GetName());
                     PushUndoOp(GetCurMap(), UndoOp {"Merge items", [map_name, before_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name, after_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
@@ -6151,7 +6160,7 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "break-items" && _curMap) {
-            string before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : u8string {};
             auto cur_map = GetCurMap();
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
             BreakItemsMultihexMeshes(cur_map);
@@ -6160,7 +6169,7 @@ void MapperEngine::ParseCommand(string_view command)
             SetMapDirty(GetCurMap());
 
             if (!before_snapshot.empty()) {
-                string after_snapshot = CaptureMapSnapshot(GetCurMap());
+                const auto after_snapshot = CaptureMapSnapshot(GetCurMap());
                 if (before_snapshot != after_snapshot) {
                     string map_name = string(cur_map->GetName());
                     PushUndoOp(GetCurMap(), UndoOp {"Break items", [map_name, before_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name, after_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
@@ -6177,27 +6186,27 @@ auto MapperEngine::IsProtoFileExtension(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string ext = strex(path).get_file_extension();
+    const string ext = strex(path).get_file_extension();
     return std::ranges::find(Settings->ProtoFileExtensions, ext) != Settings->ProtoFileExtensions.end();
 }
 
-auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>
+auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const u8string& map_text) -> nptr<MapView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto map_data = ConfigFile(map_text, ConfigFileOption::SkipNestedSections);
+    ConfigFile map_data(map_text, ConfigFileOption::SkipNestedSections);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name, file_name);
     }
 
-    string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
-    auto anchor_sections = map_data.GetSections("ProtoMap");
-    nptr<const map<string_view, string_view>> found_anchor_section;
+    const string file_stem = strex(file_name).extract_file_name().erase_file_extension();
+    const auto anchor_sections = map_data.GetSections("ProtoMap");
+    nptr<const ConfigKeyValueMap> found_anchor_section;
 
     for (const auto& anchor_kv : anchor_sections) {
-        auto anchor_name_it = anchor_kv->find("$Name");
-        bool anchor_matched = anchor_name_it != anchor_kv->end() ? anchor_name_it->second == map_name : file_stem == map_name;
+        const auto anchor_name_it = anchor_kv->find("$Name");
+        const bool anchor_matched = anchor_name_it != anchor_kv->end() ? utf8_to_string(anchor_name_it->second) == map_name : file_stem == map_name;
 
         if (anchor_matched) {
             found_anchor_section = anchor_kv;
@@ -6210,11 +6219,12 @@ auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, 
     }
 
     const auto& proto_map_section = *found_anchor_section;
+    const auto char_proto_map_section = utf8_map_as_char_views(proto_map_section);
     map<string, string> proto_map_header_extra_fields;
 
     for (const auto& [key, value] : proto_map_section) {
         if (key.starts_with("$Text")) {
-            proto_map_header_extra_fields.emplace(string {key}, string {value});
+            proto_map_header_extra_fields.emplace(string {key}, utf8_to_char_string(value));
         }
     }
 
@@ -6222,7 +6232,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, 
     FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
 
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
-    pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
+    pmap->GetPropertiesForEdit()->ApplyFromText(char_proto_map_section);
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
     new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
@@ -6265,7 +6275,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
     string resolved_map_name;
 
     auto resolve_declared_map = [&](const File& candidate) -> bool {
-        auto declared_maps = MapLoader::EnumerateMaps(candidate.GetPath(), candidate.GetStr());
+        auto declared_maps = MapLoader::EnumerateMaps(candidate.GetPath(), candidate.GetText());
 
         if (std::ranges::find(declared_maps, string {map_name}) != declared_maps.end()) {
             resolved_map_name = string {map_name};
@@ -6318,7 +6328,8 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
         return nullptr;
     }
 
-    return LoadMapFromText(resolved_map_name, map_file.GetPath(), map_file.GetStr());
+    const u8string map_text = map_file.GetText();
+    return LoadMapFromText(resolved_map_name, map_file.GetPath(), map_text);
 }
 
 void MapperEngine::ShowMap(ptr<MapView> map)
@@ -6419,9 +6430,11 @@ void MapperEngine::ResetCurrentMapChanges()
 // Rebuilds a multi-map map-file content with one map's sections replaced by freshly saved text.
 // Sections of other maps are preserved byte-exact; the saved map's block lands at the position
 // of its first original section.
-static auto SpliceMapIntoFomapContent(string_view file_stem, const string& original_content, string_view map_name, string_view map_content) -> string
+static auto SpliceMapIntoFomapContent(string_view file_stem, const u8string& original_content, string_view map_name, u8string_view map_content) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view original_view = original_content.view().native_view();
 
     // Locate section runs: each starts at its [..] header line and spans up to the next header
     struct FomapSectionRange
@@ -6435,24 +6448,27 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
 
     size_t line_begin = 0;
 
-    while (line_begin < original_content.length()) {
-        size_t line_end = original_content.find('\n', line_begin);
+    while (line_begin < original_view.size()) {
+        size_t line_end = original_view.find(u8'\n', line_begin);
 
-        if (line_end == string::npos) {
-            line_end = original_content.length();
+        if (line_end == std::u8string_view::npos) {
+            line_end = original_view.size();
         }
 
-        string_view line = strvex(string_view(original_content).substr(line_begin, line_end - line_begin)).trim();
+        const auto line_source = u8string_view::FromChecked(original_view.substr(line_begin, line_end - line_begin));
+        const u8string_view line = u8strvex(line_source).trim();
 
-        if (!line.empty() && line.front() == '[') {
-            size_t name_end = line.find(']');
+        if (!line.empty() && line.native_view().front() == u8'[') {
+            const size_t name_end = line.native_view().find(u8']');
 
-            if (name_end != string_view::npos) {
+            if (name_end != std::u8string_view::npos) {
                 if (!section_ranges.empty()) {
                     section_ranges.back().End = line_begin;
                 }
 
-                section_ranges.emplace_back(FomapSectionRange {line_begin, original_content.length(), string(strvex(line.substr(1, name_end - 1)).trim())});
+                const auto raw_name = u8string_view::FromChecked(line.native_view().substr(1, name_end - 1));
+                const u8string_view trimmed_name = u8strvex(raw_name).trim();
+                section_ranges.emplace_back(FomapSectionRange {line_begin, original_view.size(), utf8_to_string(trimmed_name)});
             }
         }
 
@@ -6464,19 +6480,22 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
         size_t anchor_line_begin = range.Start;
 
         while (anchor_line_begin < range.End) {
-            size_t anchor_line_end = original_content.find('\n', anchor_line_begin);
+            size_t anchor_line_end = original_view.find(u8'\n', anchor_line_begin);
 
-            if (anchor_line_end == string::npos || anchor_line_end > range.End) {
+            if (anchor_line_end == std::u8string_view::npos || anchor_line_end > range.End) {
                 anchor_line_end = range.End;
             }
 
-            string_view anchor_line = strvex(string_view(original_content).substr(anchor_line_begin, anchor_line_end - anchor_line_begin)).trim();
+            const auto raw_anchor_line = u8string_view::FromChecked(original_view.substr(anchor_line_begin, anchor_line_end - anchor_line_begin));
+            const u8string_view anchor_line = u8strvex(raw_anchor_line).trim();
 
-            if (strvex(anchor_line).starts_with("$Name")) {
-                string_view name_value = strvex(anchor_line.substr("$Name"_len)).trim();
+            if (u8strvex(anchor_line).starts_with(u8"$Name")) {
+                const auto raw_name_value = u8string_view::FromChecked(anchor_line.native_view().substr("$Name"_len));
+                const u8string_view name_value = u8strvex(raw_name_value).trim();
 
-                if (!name_value.empty() && name_value.front() == '=') {
-                    return string(strvex(name_value.substr(1)).trim());
+                if (!name_value.empty() && name_value.native_view().front() == u8'=') {
+                    const auto raw_anchor_name = u8string_view::FromChecked(name_value.native_view().substr(1));
+                    return utf8_to_string(u8strvex(raw_anchor_name).trim());
                 }
             }
 
@@ -6486,11 +6505,11 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
         return string(file_stem);
     };
 
-    string result;
-    result.reserve(original_content.length() + map_content.length());
+    u8string result;
+    result.reserve(original_view.size() + map_content.size());
 
     if (!section_ranges.empty()) {
-        result.append(original_content, 0, section_ranges.front().Start);
+        result.append(u8string_view::FromChecked(original_view.substr(0, section_ranges.front().Start)));
     }
     else {
         result.append(original_content);
@@ -6520,7 +6539,7 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
             }
         }
         else {
-            result.append(original_content, range.Start, range.End - range.Start);
+            result.append(u8string_view::FromChecked(original_view.substr(range.Start, range.End - range.Start)));
         }
     }
 
@@ -6548,22 +6567,21 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     });
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper save requested for a map that is not tracked as loaded", map->GetName(), custom_name, LoadedMaps.size());
 
-    string fomap_name = !custom_name.empty() ? string(custom_name) : string(map->GetProto()->GetName());
+    const string fomap_name = !custom_name.empty() ? string(custom_name) : string(map->GetProto()->GetName());
     FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a map name for saving", map->GetName(), custom_name, map->GetProto()->GetName());
 
-    string fomap_content = map->SaveToText(fomap_name);
-
-    string fomap_path;
-    string final_content;
-    auto map_files = MapsFileSys.FilterFiles("");
+    const u8string fomap_content = map->SaveToText(fomap_name);
+    u8string fomap_path;
+    u8string final_content;
+    const auto map_files = MapsFileSys.FilterFiles("");
 
     // One pass over map containers: find the file that already declares this map, remember the
     // original map's file (save-as locality) and the first container (extension/dir reference)
-    string original_map_name = string(map->GetProto()->GetName());
+    const string original_map_name = string(map->GetProto()->GetName());
     File declaring_file;
     vector<string> declaring_file_maps;
-    string original_declaring_path;
-    string first_container_path;
+    u8string original_declaring_path;
+    u8string first_container_path;
 
     for (const auto& file_header : map_files) {
         if (!IsProtoFileExtension(file_header.GetPath())) {
@@ -6571,7 +6589,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
         }
 
         File candidate_file = File::Load(file_header);
-        auto declared_maps = MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetStr());
+        auto declared_maps = MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetText());
 
         if (declared_maps.empty()) {
             continue;
@@ -6600,7 +6618,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
             final_content = fomap_content;
         }
         else {
-            final_content = SpliceMapIntoFomapContent(declaring_file.GetNameNoExt(), declaring_file.GetStr(), fomap_name, fomap_content);
+            final_content = SpliceMapIntoFomapContent(declaring_file.GetNameNoExt(), declaring_file.GetText(), fomap_name, fomap_content);
         }
     }
     else {
@@ -6608,34 +6626,28 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
 
         // A brand-new map lands beside the original map's file, else beside any map container,
         // keeping that file's extension; with no containers at all the first configured
-        // extension names the new file
+        // extension names the new file.
         if (!original_declaring_path.empty()) {
-            fomap_path = strex(original_declaring_path).change_file_name(fomap_name);
+            fomap_path = u8strex(original_declaring_path).change_file_name(fomap_name);
         }
         else if (!first_container_path.empty()) {
-            fomap_path = strex(first_container_path).change_file_name(fomap_name);
+            fomap_path = u8strex(first_container_path).change_file_name(fomap_name);
         }
         else {
             FO_VERIFY_AND_THROW(!Settings->ProtoFileExtensions.empty(), "No proto file extensions are configured");
-            fomap_path = strex("{}.{}", fomap_name, Settings->ProtoFileExtensions.front()).format_path();
+            fomap_path = u8strex("{}.{}", fomap_name, Settings->ProtoFileExtensions.front()).format_path();
         }
     }
 
-    string dir = strex(fomap_path).extract_dir().str();
+    const u8string dir = u8strex(fomap_path).extract_dir();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
-        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create the map output directory", dir, fomap_path, fomap_name);
+        const auto dir_ok = fs_create_directories(dir);
+        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create .fomap output directory", dir, fomap_path, fomap_name);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open the map file for writing", fomap_path, fomap_name, final_content.size());
-
-    if (!final_content.empty()) {
-        fomap_file.write(final_content.data(), static_cast<std::streamsize>(final_content.size()));
-    }
-
-    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write the map file content", fomap_path, fomap_name, final_content.size());
+    const auto write_ok = fs_write_file_text(fomap_path, final_content);
+    FO_VERIFY_AND_THROW(write_ok, "Mapper failed to write the map file content", fomap_path, fomap_name, final_content.size());
 
     MapBrowserNamesStale = true;
 
@@ -6663,23 +6675,23 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     });
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Map to save is not in the loaded maps list");
 
-    string fomap_content = map->SaveToText(name);
+    const u8string fomap_content = map->SaveToText(name);
 
     // Resolve the on-disk Maps root from an existing map container's disk path, then write the
     // new map under <MapsRoot>/<sub_dir>/<name>.<ext> with the reference container's extension.
     // The AI authoring loop targets a checked-in Maps/Generated/ area, so this avoids SaveMap's
     // "first file's directory" fallback that could scatter generated maps next to unrelated content.
-    auto map_files = MapsFileSys.FilterFiles("");
-    string reference_map_path;
+    const auto map_files = MapsFileSys.FilterFiles("");
+    u8string reference_map_path;
 
     for (const auto& file_header : map_files) {
         if (!IsProtoFileExtension(file_header.GetPath())) {
             continue;
         }
 
-        File candidate_file = File::Load(file_header);
+        const File candidate_file = File::Load(file_header);
 
-        if (!MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetStr()).empty()) {
+        if (!MapLoader::EnumerateMaps(candidate_file.GetPath(), candidate_file.GetText()).empty()) {
             reference_map_path = candidate_file.GetDiskPath();
             break;
         }
@@ -6687,33 +6699,27 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
 
     FO_VERIFY_AND_THROW(!reference_map_path.empty(), "No map container found to resolve the maps root directory");
 
-    string reference_map_ext = strex(reference_map_path).get_file_extension().str();
-    string maps_root = strex(reference_map_path).extract_dir().str();
-    std::ranges::replace(maps_root, '\\', '/');
+    const u8string reference_map_ext = u8strex(reference_map_path).get_file_extension();
+    u8string maps_root = u8strex(reference_map_path).extract_dir().normalize_path_slashes();
+    const std::u8string_view maps_root_view = maps_root.view().native_view();
 
-    if (auto pos = maps_root.rfind("/Maps/"); pos != string::npos) {
-        maps_root = maps_root.substr(0, pos + 5); // keep ".../Maps"
+    if (const size_t pos = maps_root_view.rfind(u8"/Maps/"); pos != std::u8string_view::npos) {
+        maps_root.assign(u8string_view::FromChecked(maps_root_view.substr(0, pos + 5))); // keep ".../Maps"
     }
     // else: best-effort fallback keeps the reference file's directory (incl. a path already ending in /Maps)
 
-    string target_dir = !sub_dir.empty() ? strex("{}/{}", maps_root, sub_dir).str() : maps_root;
-    string fomap_path = strex("{}/{}.{}", target_dir, name, reference_map_ext).format_path().str();
+    const u8string target_dir = !sub_dir.empty() ? u8strex("{}/{}", maps_root, sub_dir) : maps_root;
+    const u8string fomap_path = u8strex("{}/{}.{}", target_dir, name, reference_map_ext).format_path();
 
-    string dir = strex(fomap_path).extract_dir().str();
+    const u8string dir = u8strex(fomap_path).extract_dir();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        const bool dir_ok = fs_create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Unable to create the target map directory", dir);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(fomap_file, "Unable to open the fomap file for writing", fomap_path);
-
-    if (!fomap_content.empty()) {
-        fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
-    }
-
-    FO_VERIFY_AND_THROW(fomap_file, "Unable to write the fomap file", fomap_path);
+    const bool write_ok = fs_write_file_text(fomap_path, fomap_content);
+    FO_VERIFY_AND_THROW(write_ok, "Unable to write the fomap file", fomap_path);
 
     MapBrowserNamesStale = true;
 
@@ -6763,7 +6769,7 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
-    string before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : string {};
+    const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : u8string {};
 
     int32_t corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     int32_t corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
@@ -6780,7 +6786,7 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
 
     SetMapDirty(map);
 
-    string after_snapshot = CaptureMapSnapshot(map);
+    const auto after_snapshot = CaptureMapSnapshot(map);
 
     if (!before_snapshot.empty() && before_snapshot != after_snapshot) {
         PushUndoOp(map, UndoOp {"Resize map", [map_name = string(map->GetName()), before_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(map->GetName()), after_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
@@ -6903,10 +6909,12 @@ auto MapperEngine::ContainsCaseInsensitive(string_view text, string_view filter)
         return true;
     }
 
-    string lower_text = strex(text).lower_utf8();
-    string lower_filter = strex(filter).lower_utf8();
+    auto lower_text = u8strex(u8string {text});
+    auto lower_filter = u8strex(u8string {filter});
+    lower_text.lower();
+    lower_filter.lower();
 
-    return lower_text.find(lower_filter) != string::npos;
+    return lower_text.strv().native_view().find(lower_filter.strv().native_view()) != std::u8string_view::npos;
 }
 
 auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>
@@ -6969,7 +6977,8 @@ auto MapperEngine::ParseInspectorValue(ptr<const Property> prop, string_view tex
     FO_STACK_TRACE_ENTRY();
 
     try {
-        return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
+        const u8string utf8_text = text;
+        return AnyData::ParseValue(utf8_text, false, prop->IsArray(), GetInspectorValueType(prop));
     }
     catch (const std::exception&) {
         return std::nullopt;
@@ -6988,7 +6997,7 @@ auto MapperEngine::MakeDefaultInspectorArrayElement(ptr<const Property> prop) co
     case AnyData::ValueType::Bool:
         return AnyData::Value {false};
     case AnyData::ValueType::String:
-        return AnyData::Value {string {}};
+        return AnyData::Value {u8string {}};
     default:
         FO_UNREACHABLE_PLACE();
     }
@@ -7005,7 +7014,7 @@ auto MapperEngine::SerializeInspectorArray(vector<AnyData::Value> entries) const
         value_arr.EmplaceBack(std::move(entry));
     }
 
-    return AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
+    return utf8_to_char_string(AnyData::ValueToString(AnyData::Value {std::move(value_arr)}));
 }
 
 auto MapperEngine::SerializeInspectorStringArray(const vector<string>& entries) const -> string
@@ -7016,7 +7025,7 @@ auto MapperEngine::SerializeInspectorStringArray(const vector<string>& entries) 
     values.reserve(entries.size());
 
     for (const auto& entry : entries) {
-        values.emplace_back(string {entry});
+        values.emplace_back(entry);
     }
 
     return SerializeInspectorArray(std::move(values));
@@ -7042,9 +7051,12 @@ auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) cons
         return nullptr;
     }
 
-    auto decode_char = [str](size_t char_pos, size_t& char_len) {
+    const auto decode_char = [str](size_t char_pos, size_t& char_len) {
         char_len = utf8::DecodeStrNtLen(&str[char_pos]);
-        utf8::Decode(&str[char_pos], char_len);
+
+        if (char_len != 0) {
+            (void)utf8::Decode(&str[char_pos], char_len);
+        }
     };
 
     size_t pos = 0;
@@ -7117,7 +7129,7 @@ auto MapperEngine::ParseInspectorStructFields(const StructLayoutDesc& layout, st
     FO_STACK_TRACE_ENTRY();
 
     try {
-        string text_str = string {text};
+        const auto text_str = string {text};
         auto token_pos = make_nptr(text_str.c_str());
         string token;
         vector<string> fields;
@@ -7143,7 +7155,8 @@ auto MapperEngine::ParseInspectorStringEntries(string_view text) const -> option
     FO_STACK_TRACE_ENTRY();
 
     try {
-        auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
+        const u8string utf8_text = text;
+        const auto parsed = AnyData::ParseValue(utf8_text, false, true, AnyData::ValueType::String);
         if (parsed.Type() != AnyData::ValueType::Array) {
             return std::nullopt;
         }
@@ -7152,7 +7165,7 @@ auto MapperEngine::ParseInspectorStringEntries(string_view text) const -> option
         entries.reserve(parsed.AsArray().Size());
 
         for (const auto& entry : parsed.AsArray()) {
-            entries.emplace_back(entry.AsString());
+            entries.emplace_back(utf8_to_char_string(entry.AsString()));
         }
 
         return entries;
@@ -7262,17 +7275,17 @@ void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    string cfg_user;
+    u8string cfg_user;
 
     if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
+        auto config = ConfigFile(cache.GetText(LOCAL_CONFIG_NAME));
         const auto& sections = config.GetSections();
         bool wrote_root_key = false;
         bool has_root_section = false;
 
         for (const auto& [section_name, key_values] : *sections) {
             if (!section_name.empty()) {
-                cfg_user += strex("[{}]\n", section_name);
+                cfg_user.append(u8strex("[{}]\n", section_name));
             }
             else {
                 has_root_section = true;
@@ -7280,33 +7293,33 @@ void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, 
 
             for (const auto& [entry_key, entry_value] : key_values) {
                 if (section_name.empty() && entry_key == key) {
-                    cfg_user += strex("{} = {}\n", key, value);
+                    cfg_user.append(u8strex("{} = {}\n", key, value));
                     wrote_root_key = true;
                 }
                 else {
-                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                    cfg_user.append(u8strex("{} = {}\n", entry_key, entry_value));
                 }
             }
 
             if (section_name.empty() && !wrote_root_key) {
-                cfg_user += strex("{} = {}\n", key, value);
+                cfg_user.append(u8strex("{} = {}\n", key, value));
                 wrote_root_key = true;
             }
 
             if (!section_name.empty()) {
-                cfg_user += "\n";
+                cfg_user.append("\n");
             }
         }
 
         if (!has_root_section) {
-            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
+            cfg_user = u8strex("{} = {}\n{}", key, value, cfg_user);
         }
     }
     else {
-        cfg_user = strex("{} = {}\n", key, value);
+        cfg_user = u8strex("{} = {}\n", key, value);
     }
 
-    cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    cache.SetText(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 FO_END_NAMESPACE

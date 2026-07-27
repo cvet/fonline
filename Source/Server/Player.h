@@ -67,7 +67,8 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Player"; }
+    [[nodiscard]] auto GetDisplayName() const -> u8string override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
@@ -79,6 +80,7 @@ public:
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
 
     void SetName(string_view name);
+    void SetName(u8string_view name);
     void SetControlledCritter(nptr<Critter> cr);
     void DetachCritter();
     void SwapConnection(ptr<Player> other) noexcept;
@@ -103,11 +105,11 @@ public:
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
     void Send_HashList(const_span<string> hash_strings);
-    void Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data);
+    void Send_RemoteCall(hstring rpc_name, const_span<byte> rpc_data);
     void Send_Ping(bool answer);
     void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key);
-    void Send_InitData(const_span<uint8_t> update_desc);
-    void Send_UpdateFileData(const_span<uint8_t> update_data);
+    void Send_InitData(const_span<byte> update_desc);
+    void Send_UpdateFileData(const_span<byte> update_data);
     void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item);
     void Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
@@ -140,7 +142,7 @@ private:
     // hold it (the GetConnection getters, the cross-object SwapConnection swap of other->_connection) reach it
     // under the cooperative entity cover — which also excludes SwapConnection — and are FO_TSA_NO_ANALYSIS.
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    string _name {"(Unlogined)"};
+    u8string _displayName {"(Unlogined)"};
     // Non-owning back-pointer to the controlled critter, atomic so the lock-free broadcast fan-out can read it
     // for the is_chosen identity compare (subject == controlled critter) without the recipient's entity lock.
     // Published under the player's cover (SetControlledCritter); also the Player->Critter sync-widen anchor.

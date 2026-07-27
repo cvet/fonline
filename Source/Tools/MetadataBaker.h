@@ -69,6 +69,13 @@ private:
         vector<string_view> Tokens {};
     };
 
+    struct Utf8CodeGenTagDesc
+    {
+        string SourceFile {};
+        size_t LineNumber {};
+        vector<u8string_view> Tokens {};
+    };
+
     struct RefTypeFieldState
     {
         string Name {};
@@ -92,12 +99,15 @@ private:
         unordered_map<string, RefTypeState> RefTypes {};
         vector<string> RefTypeRegistrationOrder {};
         vector<unique_ptr<string>> NormalizedLines {};
+        vector<unique_ptr<u8string>> Utf8NormalizedLines {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
+        vector<Utf8CodeGenTagDesc> MigrationRuleTags {};
+        vector<vector<u8string>> MigrationRuleResultTags {};
         string_view Target {};
     };
 
-    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>;
+    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<byte>;
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
     void ParseFixedType(TagsParsingContext& ctx) const;

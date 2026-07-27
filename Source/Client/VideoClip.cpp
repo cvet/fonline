@@ -55,7 +55,7 @@ struct VideoClip::Impl
     bool Stopped {};
     bool Paused {};
     bool Looped {};
-    vector<uint8_t> RawVideoData {};
+    vector<byte> RawVideoData {};
     size_t ReadPos {};
     unique_del_nptr<th_dec_ctx> DecoderContext {};
     TheoraInfo VideoInfo {};
@@ -75,7 +75,7 @@ struct VideoClip::Impl
 
 VideoClip::VideoClip(VideoClip&&) noexcept = default;
 
-VideoClip::VideoClip(vector<uint8_t> video_data) :
+VideoClip::VideoClip(vector<byte> video_data) :
     _impl {SafeAlloc::MakeUnique<Impl>()}
 {
     FO_STACK_TRACE_ENTRY();

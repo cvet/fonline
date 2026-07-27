@@ -47,13 +47,23 @@ constexpr size_t AsyncQueueDropLimit = 100000;
 static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
-static void WriteSync(string_view message) noexcept;
+static void WriteSync(const_span<byte> message) noexcept;
+static void WriteConsole(const_span<byte> message) noexcept;
+static void WriteAscii(string_view message) noexcept;
+static auto CombineWithStackTrace(const_span<byte> message, const CatchedStackTraceData& st) -> std::vector<byte>;
+static auto FormatDropNotice(size_t dropped_count) -> std::vector<byte>;
+static void AppendAscii(std::vector<byte>& output, string_view text);
+static void AppendDecimal(std::vector<byte>& output, size_t value);
+static auto BytesForStream(const_span<byte> message) noexcept -> string_view;
+static auto ToStreamSize(size_t size) noexcept -> std::streamsize;
 static void FlushLogAtExit();
 
 struct BaseLoggingData
 {
     BaseLoggingData()
     {
+        FO_NO_STACK_TRACE_ENTRY();
+
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         int32_t result = std::at_quick_exit(FlushLogAtExit);
         ignore_unused(result);
@@ -66,11 +76,16 @@ struct BaseLoggingData
 #endif
     }
 
-    ~BaseLoggingData() { StopAsyncWorker(); }
+    ~BaseLoggingData()
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        StopAsyncWorker();
+    }
 
     struct AsyncEntry
     {
-        std::string Message {};
+        std::vector<byte> Message {};
         std::optional<CatchedStackTraceData> StackTrace {};
     };
 
@@ -86,36 +101,30 @@ struct BaseLoggingData
 };
 FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
 
-extern void LogToFile(string_view path, bool append)
+extern auto base_logging_detail::OpenLogFileNative(const std::filesystem::path& path, bool append) -> bool
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (build_condition<FO_WEB>()) {
-        return;
+        return true;
     }
 
-    bool open_failed = false;
+    std::scoped_lock locker {BaseLogging->LogLocker};
 
-    {
-        std::scoped_lock locker {BaseLogging->LogLocker};
-
-        if (BaseLogging->LogFileHandle.is_open()) {
-            BaseLogging->LogFileHandle.close();
-        }
-
-        std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
-        BaseLogging->LogFileHandle.open(std::string(path), open_mode);
-
-        if (!BaseLogging->LogFileHandle) {
-            open_failed = true;
-        }
+    if (BaseLogging->LogFileHandle.is_open()) {
+        BaseLogging->LogFileHandle.close();
     }
 
-    if (open_failed) {
-        WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
-    }
+    std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+    BaseLogging->LogFileHandle.open(path, open_mode);
+
+    return !!BaseLogging->LogFileHandle;
 }
 
 extern void SetAsyncLogWriting(bool enabled)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (build_condition<FO_WEB>()) {
         return;
     }
@@ -130,22 +139,26 @@ extern void SetAsyncLogWriting(bool enabled)
 
 extern void SuspendAsyncLogWriting() noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (BaseLogging != nullptr) {
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
     }
 }
 
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
+extern void WriteBaseLogBytes(const_span<byte> message, const CatchedStackTraceData* st) noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     try {
         if (BaseLogging == nullptr) {
-            std::cout << message;
+            WriteConsole(message);
 
             if (st != nullptr) {
-                std::cout << FormatStackTrace(*st) << "\n";
+                const std::vector<byte> combined = CombineWithStackTrace({}, *st);
+                WriteConsole(combined);
             }
 
-            std::cout.flush();
             return;
         }
 
@@ -163,7 +176,7 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
                     }
                     else {
                         BaseLoggingData::AsyncEntry entry;
-                        entry.Message.assign(message);
+                        entry.Message.assign(message.begin(), message.end());
 
                         if (st != nullptr) {
                             entry.StackTrace = *st;
@@ -185,11 +198,7 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
         }
 
         if (st != nullptr) {
-            std::string combined;
-            combined.reserve(message.size() + 256);
-            combined.append(message);
-            combined.append(FormatStackTrace(*st));
-            combined.append("\n");
+            const std::vector<byte> combined = CombineWithStackTrace(message, *st);
             WriteSync(combined);
         }
         else {
@@ -203,6 +212,8 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
 
 static void StartAsyncWorker()
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (BaseLogging->AsyncWorker.joinable()) {
         return;
     }
@@ -219,6 +230,8 @@ static void StartAsyncWorker()
 
 static void StopAsyncWorker() noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (!BaseLogging->AsyncWorker.joinable()) {
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
         return;
@@ -243,6 +256,8 @@ static void StopAsyncWorker() noexcept
 
 static void AsyncWorkerLoop() noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     try {
         std::deque<BaseLoggingData::AsyncEntry> drained;
         size_t drained_drop_count = 0;
@@ -267,11 +282,7 @@ static void AsyncWorkerLoop() noexcept
             for (const auto& entry : drained) {
                 if (entry.StackTrace.has_value()) {
                     try {
-                        std::string combined;
-                        combined.reserve(entry.Message.size() + 256);
-                        combined.append(entry.Message);
-                        combined.append(FormatStackTrace(entry.StackTrace.value()));
-                        combined.append("\n");
+                        const std::vector<byte> combined = CombineWithStackTrace(entry.Message, entry.StackTrace.value());
                         WriteSync(combined);
                     }
                     catch (...) {
@@ -285,11 +296,7 @@ static void AsyncWorkerLoop() noexcept
             }
 
             if (drained_drop_count != 0) {
-                std::string drop_notice = "Dropped ";
-                drop_notice += std::to_string(drained_drop_count);
-                drop_notice += " log messages due to high volume (queue limit ";
-                drop_notice += std::to_string(AsyncQueueDropLimit);
-                drop_notice += ")\n";
+                const std::vector<byte> drop_notice = FormatDropNotice(drained_drop_count);
                 WriteSync(drop_notice);
             }
 
@@ -302,18 +309,28 @@ static void AsyncWorkerLoop() noexcept
     }
 }
 
-static void WriteSync(string_view message) noexcept
+static void WriteSync(const_span<byte> message) noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     try {
         std::scoped_lock locker {BaseLogging->LogLocker};
+        const string_view stream_message = BytesForStream(message);
 
         if (BaseLogging->LogFileHandle) {
             BaseLogging->LogFileHandle.seekp(0, std::ios::end);
-            BaseLogging->LogFileHandle << message;
+
+            if (!stream_message.empty()) {
+                BaseLogging->LogFileHandle.write(stream_message.data(), ToStreamSize(stream_message.size()));
+            }
+
             BaseLogging->LogFileHandle.flush();
         }
 
-        std::cout << message;
+        if (!stream_message.empty()) {
+            std::cout.write(stream_message.data(), ToStreamSize(stream_message.size()));
+        }
+
         std::cout.flush();
     }
     catch (...) {
@@ -321,8 +338,104 @@ static void WriteSync(string_view message) noexcept
     }
 }
 
+static void WriteConsole(const_span<byte> message) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        const string_view stream_message = BytesForStream(message);
+
+        if (!stream_message.empty()) {
+            std::cout.write(stream_message.data(), ToStreamSize(stream_message.size()));
+        }
+
+        std::cout.flush();
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static void WriteAscii(string_view message) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    WriteBaseLogBytes(std::as_bytes(const_span<char> {message.data(), message.size()}));
+}
+
+static auto CombineWithStackTrace(const_span<byte> message, const CatchedStackTraceData& st) -> std::vector<byte>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const std::string formatted_stack = FormatStackTrace(st);
+    const const_span<byte> stack_bytes = std::as_bytes(const_span<char> {formatted_stack.data(), formatted_stack.size()});
+
+    std::vector<byte> combined;
+    combined.reserve(message.size() + stack_bytes.size() + 1);
+    combined.insert(combined.end(), message.begin(), message.end());
+    combined.insert(combined.end(), stack_bytes.begin(), stack_bytes.end());
+    combined.emplace_back(byte {0x0A});
+    return combined;
+}
+
+static auto FormatDropNotice(size_t dropped_count) -> std::vector<byte>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    std::vector<byte> result;
+    result.reserve(96);
+    AppendAscii(result, "Dropped ");
+    AppendDecimal(result, dropped_count);
+    AppendAscii(result, " log messages due to high volume (queue limit ");
+    AppendDecimal(result, AsyncQueueDropLimit);
+    AppendAscii(result, ")\n");
+    return result;
+}
+
+static void AppendAscii(std::vector<byte>& output, string_view text)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const const_span<byte> bytes = std::as_bytes(const_span<char> {text.data(), text.size()});
+    output.insert(output.end(), bytes.begin(), bytes.end());
+}
+
+static void AppendDecimal(std::vector<byte>& output, size_t value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char buffer[32] = {};
+    const auto [end, error] = std::to_chars(std::begin(buffer), std::end(buffer), value);
+    assert(error == std::errc {});
+    const size_t length = static_cast<size_t>(end - buffer);
+    AppendAscii(output, string_view {buffer, length});
+}
+
+static auto BytesForStream(const_span<byte> message) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (message.empty()) {
+        return {};
+    }
+
+    return string_view {std::bit_cast<const char*>(message.data()), message.size()};
+}
+
+static auto ToStreamSize(size_t size) noexcept -> std::streamsize
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // BaseLogging precedes SafeArithmetics in the Essentials DAG. Standard contiguous containers cannot
+    // reach a size above PTRDIFF_MAX, which is also representable by streamsize on supported targets.
+    assert(size <= static_cast<size_t>(std::numeric_limits<std::streamsize>::max()));
+    return static_cast<std::streamsize>(size);
+}
+
 static void FlushLogAtExit()
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (BaseLogging != nullptr) {
         StopAsyncWorker();
 
@@ -343,12 +456,13 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
     char itoa_buf[64] = {};
 
     if (st.NativeTruncated) {
-        WriteBaseLog("Stack trace (most recent call first, truncated at ");
-        WriteBaseLog(ItoA(static_cast<int64_t>(STACK_TRACE_MAX_NATIVE_FRAMES), itoa_buf, 10));
-        WriteBaseLog(" frames):\n");
+        WriteAscii("Stack trace (most recent call first, truncated at ");
+        const string_view frame_count = ItoA(static_cast<int64_t>(STACK_TRACE_MAX_NATIVE_FRAMES), itoa_buf, 10);
+        WriteAscii(frame_count);
+        WriteAscii(" frames):\n");
     }
     else {
-        WriteBaseLog("Stack trace (most recent call first):\n");
+        WriteAscii("Stack trace (most recent call first):\n");
     }
 
     bool resolution_succeeded = false;
@@ -357,10 +471,10 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
         auto resolved = ResolveStackTrace(st);
 
         for (const auto& frame : resolved) {
-            WriteBaseLog("- [");
-            WriteBaseLog(frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native");
-            WriteBaseLog("] ");
-            WriteBaseLog(frame.Function);
+            WriteAscii("- [");
+            WriteAscii(frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native");
+            WriteAscii("] ");
+            WriteBaseLogBytes(std::as_bytes(const_span<char> {frame.Function.data(), frame.Function.size()}));
 
             if (!frame.File.empty()) {
                 std::string_view file_name {frame.File};
@@ -369,14 +483,15 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
                     file_name = file_name.substr(pos + 1);
                 }
 
-                WriteBaseLog(" (");
-                WriteBaseLog(file_name);
-                WriteBaseLog(" line ");
-                WriteBaseLog(ItoA(static_cast<int64_t>(frame.Line), itoa_buf, 10));
-                WriteBaseLog(")");
+                WriteAscii(" (");
+                WriteBaseLogBytes(std::as_bytes(const_span<char> {file_name.data(), file_name.size()}));
+                WriteAscii(" line ");
+                const string_view line_number = ItoA(static_cast<int64_t>(frame.Line), itoa_buf, 10);
+                WriteAscii(line_number);
+                WriteAscii(")");
             }
 
-            WriteBaseLog("\n");
+            WriteAscii("\n");
         }
 
         resolution_succeeded = true;
@@ -389,22 +504,23 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
         if (st.ScriptLayers) {
             for (const auto& layer : *st.ScriptLayers) {
                 for (const auto& frame : layer.ScriptFrames) {
-                    WriteBaseLog("- [Script] ");
-                    WriteBaseLog(frame.Function);
-                    WriteBaseLog("\n");
+                    WriteAscii("- [Script] ");
+                    WriteBaseLogBytes(std::as_bytes(const_span<char> {frame.Function.data(), frame.Function.size()}));
+                    WriteAscii("\n");
                 }
             }
         }
 
         for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
-            WriteBaseLog("- [Native] 0x");
-            NativeStackFrameAddress addr = st.NativeFrames[i];
-            WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
-            WriteBaseLog("\n");
+            WriteAscii("- [Native] 0x");
+            const NativeStackFrameAddress addr = st.NativeFrames[i];
+            const string_view address = ItoA(static_cast<int64_t>(addr), itoa_buf, 16);
+            WriteAscii(address);
+            WriteAscii("\n");
         }
     }
 
-    WriteBaseLog("\n");
+    WriteAscii("\n");
 }
 
 FO_END_NAMESPACE

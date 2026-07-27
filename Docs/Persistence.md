@@ -21,7 +21,7 @@ Do not put live credentials, production connection strings, or host-specific rec
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - debug UI: `DrawGui()`.
 
-`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
+`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback. `Server.DbStorage` and the connection-info API are strict UTF-8: backend selectors (`Memory`, `JSON`, `DbUnQLite`, `Mongo`) are ASCII protocol tokens, while JSON/UnQLite storage directories and Mongo URI/database text retain validated UTF-8 until their filesystem or C-driver boundary. Connection options remain space-delimited, so individual path/URI/name arguments cannot contain an unescaped space.
 
 ## Collections and keys
 
@@ -125,9 +125,9 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 ## Backend-specific notes
 
-- JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
-- UnQLite backend: enabled only when the build has `FO_HAVE_UNQLITE`.
-- Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; BSON conversion helpers live in the shared header/source.
+- JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths; its storage directory is strict UTF-8.
+- UnQLite backend: enabled only when the build has `FO_HAVE_UNQLITE`; its storage directory stays strict UTF-8 through path construction and crosses `unqlite_open()` through the explicit UTF-8 C-string adapter.
+- Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; its URI and database name are strict UTF-8 and cross the C driver through explicit terminated adapters, while BSON conversion helpers live in the shared header/source.
 - Memory backend: useful for tests and non-durable runtime paths.
 
 `DocumentToBson()` and `BsonToDocument()` convert between `AnyData::Document` and BSON for Mongo-backed storage. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.

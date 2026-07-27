@@ -683,19 +683,19 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, string_view langName, TextPackKey textKey)
+FO_SCRIPT_API u8string Client_Game_GetText(ptr<ClientEngine> client, string_view langName, TextPackKey textKey)
 {
-    return string(client->GetLangPack(langName).GetText(textKey));
+    return u8string {client->GetLangPack(langName).GetText(textKey)};
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)
+FO_SCRIPT_API u8string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)
 {
     if (skipCount < 0) {
         throw ScriptException("Skip count arg must not be negative", skipCount);
     }
 
-    return string(client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount)));
+    return u8string {client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount))};
 }
 
 ///@ ExportMethod
@@ -711,19 +711,20 @@ FO_SCRIPT_API bool Client_Game_IsTextPresent(ptr<ClientEngine> client, TextPackK
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_view text, string_view from, string_view to)
+FO_SCRIPT_API u8string Client_Game_ReplaceText(ptr<ClientEngine> client, u8string_view text, u8string_view from, u8string_view to)
 {
     ignore_unused(client);
 
-    return strex(text).replace(from, to);
+    return u8strex(text).replace(from, to);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_view text, string_view from, int64_t to)
+FO_SCRIPT_API u8string Client_Game_ReplaceText(ptr<ClientEngine> client, u8string_view text, u8string_view from, int64_t to)
 {
     ignore_unused(client);
 
-    return strex(text).replace(from, strex("{}", to));
+    const u8string replacement = u8strex("{}", to);
+    return u8strex(text).replace(from, replacement);
 }
 
 ///@ ExportMethod
@@ -758,7 +759,7 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
+FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
 {
     client->SetEffect(effectType, effectSubtype, effectPath);
 }
@@ -867,29 +868,34 @@ FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, string_view text = "")
+FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, u8string_view text = u8"")
 {
     if (key == KeyCode::None) {
         return;
     }
 
-    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, string(text)}});
+    u8string key_text {text};
+
+    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, key_text}});
     client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key}});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
+FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, KeyCode key1, KeyCode key2, u8string_view key1Text, u8string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {
         return;
     }
 
+    u8string key1_text {key1Text};
+    u8string key2_text {key2Text};
+
     if (key1 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key1, string(key1Text)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key1, key1_text}});
     }
 
     if (key2 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key2, string(key2Text)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key2, key2_text}});
         client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key2}});
     }
 
@@ -899,7 +905,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, u8string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
 }
@@ -911,7 +917,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, u8string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
 }
@@ -923,7 +929,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, u8string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
 }
@@ -1057,7 +1063,7 @@ FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, u8string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
 {
     if (!client->FontMngr.GetTextInfo(size, text, format, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", format.Font);
@@ -1176,7 +1182,7 @@ FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ptr<ClientEngine> client, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
+FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, u8string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1527,7 +1533,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_view filePath)
+FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, u8string_view filePath)
 {
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");
@@ -1565,51 +1571,54 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    string path = strex(filePath).format_path().str();
-    string dir = strex(path).extract_dir().str();
+    const u8string path = u8strex(filePath).format_path();
+    const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs_create_directories(dir.view())) {
             throw ScriptException("Can't create directory for screenshot", filePath);
         }
     }
 
-    WriteSimpleTga(path, size, std::move(pixels));
+    WriteSimpleTga(path.view(), size, std::move(pixels));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
+FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, u8string_view filePath, u8string_view text)
 {
     ignore_unused(client);
 
-    string path = strex(filePath).format_path().str();
-    string dir = strex(path).extract_dir().str();
+    const u8string path = u8strex(filePath).format_path();
+    const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs_create_directories(dir.view())) {
             throw ScriptException("Can't open file for writing", filePath);
         }
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs_make_path(path.view())}, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }
 
     if (!text.empty()) {
-        file.write(text.data(), static_cast<std::streamsize>(text.size()));
+        const const_span<char> text_chars = utf8_to_char_span(text);
+        file.write(text_chars.data(), static_cast<std::streamsize>(text_chars.size()));
     }
 
     if (!file) {
-        throw ScriptException("Can't write file", filePath, text.length());
+        throw ScriptException("Can't write file", filePath, text.size());
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_view name, readonly_vector<uint8_t> data)
 {
-    client->Cache.SetData(name, data);
+    vector<byte> cache_data(data.size());
+    MemCopy(cache_data.data(), data.data(), data.size());
+    client->Cache.SetBytes(name, cache_data);
 }
 
 ///@ ExportMethod
@@ -1619,27 +1628,35 @@ FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_vie
         throw ScriptException("Negative data size", dataSize);
     }
 
-    vector<uint8_t> data_copy = to_vector(data);
-    data_copy.resize(dataSize);
-    client->Cache.SetData(name, data_copy);
+    vector<byte> cache_data(numeric_cast<size_t>(dataSize));
+    const size_t copy_size = std::min(cache_data.size(), data.size());
+
+    if (copy_size != 0) {
+        MemCopy(cache_data.data(), data.data(), copy_size);
+    }
+
+    client->Cache.SetBytes(name, cache_data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<uint8_t> Client_Game_GetCacheData(ptr<ClientEngine> client, string_view name)
 {
-    return client->Cache.GetData(name);
+    const vector<byte> cache_data = client->Cache.GetBytes(name);
+    vector<uint8_t> data(cache_data.size());
+    MemCopy(data.data(), cache_data.data(), cache_data.size());
+    return data;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetCacheText(ptr<ClientEngine> client, string_view name, string_view str)
+FO_SCRIPT_API void Client_Game_SetCacheText(ptr<ClientEngine> client, string_view name, u8string_view str)
 {
-    client->Cache.SetString(name, str);
+    client->Cache.SetText(name, str);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetCacheText(ptr<ClientEngine> client, string_view name)
+FO_SCRIPT_API u8string Client_Game_GetCacheText(ptr<ClientEngine> client, string_view name)
 {
-    return client->Cache.GetString(name);
+    return client->Cache.GetText(name);
 }
 
 ///@ ExportMethod
@@ -1663,7 +1680,8 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", key, value);
     }
 
-    client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    const u8string config_text = cfg_user;
+    client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
 }
 
 ///@ ExportMethod
@@ -1675,7 +1693,8 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
-    client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    const u8string config_text = cfg_user;
+    client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
 }
 
 ///@ ExportMethod

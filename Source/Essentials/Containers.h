@@ -35,15 +35,75 @@
 
 #include "BasicCore.h"
 #include "MemorySystem.h"
+#include "TextConversions.h"
 
 FO_BEGIN_NAMESPACE
 
 // Basic types with safe allocator
-using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
 using wstring = std::basic_string<wchar_t, std::char_traits<wchar_t>, SafeAllocator<wchar_t>>;
 using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 using ostringstream = std::basic_ostringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 using stringstream = std::basic_stringstream<char, std::char_traits<char>, SafeAllocator<char>>;
+
+class u8istringstream final
+{
+public:
+    explicit u8istringstream(string_view input);
+    explicit u8istringstream(u8string_view input);
+
+    auto operator>>(string& value) -> u8istringstream&;
+    auto operator>>(u8string& value) -> u8istringstream&;
+
+    template<typename T>
+        requires(std::is_arithmetic_v<T> && !std::same_as<T, char> && !std::same_as<T, char8_t> && !std::same_as<T, wchar_t>)
+    auto operator>>(T& value) -> u8istringstream&
+    {
+        const auto token = ReadToken();
+
+        if (!token) {
+            return *this;
+        }
+
+        if (validate_ascii_text(token->native_view())) {
+            _fail = true;
+            return *this;
+        }
+
+        const string token_chars = utf8_to_string(*token);
+        istringstream token_stream {token_chars};
+        token_stream >> value;
+
+        if (token_stream.fail()) {
+            _fail = true;
+        }
+        else {
+            char trailing {};
+            if (token_stream >> trailing) {
+                _fail = true;
+            }
+        }
+
+        return *this;
+    }
+
+    [[nodiscard]] auto eof() const noexcept -> bool;
+    [[nodiscard]] auto fail() const noexcept -> bool;
+    explicit operator bool() const noexcept;
+    void clear() noexcept;
+
+private:
+    [[nodiscard]] auto ReadToken() -> optional<u8string_view>;
+    auto ReadLine(u8string& line, char8_t delimiter) -> bool;
+
+    u8string _input;
+    size_t _position {};
+    bool _eof {};
+    bool _fail {};
+
+    friend auto getline(u8istringstream& input, u8string& line, char8_t delimiter) -> u8istringstream&;
+};
+
+auto getline(u8istringstream& input, u8string& line, char8_t delimiter = u8'\n') -> u8istringstream&;
 
 template<typename T>
 using list = std::list<T, SafeAllocator<T>>;
@@ -75,6 +135,9 @@ template<typename T, unsigned InlineCapacity>
 using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
 template<typename T>
 using vector = std::vector<T, SafeAllocator<T>>;
+
+// Bridge for native APIs that still exchange UTF-8 through char-based string-view maps.
+[[nodiscard]] auto utf8_map_as_char_views(const map<string_view, u8string_view>& values) -> map<string_view, string_view>;
 
 // Template helpers
 template<typename T>

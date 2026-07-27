@@ -53,7 +53,7 @@ static constexpr frect32 EffekseerFixtureAtlasRect {0.125f, 0.25f, 0.5f, 0.375f}
 
 struct CapturedEffekseerDraw final
 {
-    string EffectName {};
+    u8string EffectName {};
     vector<Vertex2D> Vertices {};
     vector<vindex_t> Indices {};
     RenderPrimitiveType PrimitiveType {};
@@ -69,7 +69,7 @@ struct EffekseerDrawCapture final
 class CapturingRenderEffect final : public RenderEffect
 {
 public:
-    CapturingRenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture);
+    CapturingRenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture);
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override;
 
@@ -85,7 +85,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
@@ -115,7 +115,7 @@ class EffekseerRuntimeTestRig final
 {
 public:
     explicit EffekseerRuntimeTestRig(bool provide_texture = true);
-    EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture = true);
+    EffekseerRuntimeTestRig(string_view effect_path, vector<byte> effect_data, bool provide_texture = true);
 
     [[nodiscard]] auto CreateSystem() -> unique_ptr<ParticleRuntimeSystem>;
     [[nodiscard]] auto CreateManagedSystem() -> optional<ParticleSystem>;
@@ -147,7 +147,7 @@ EffekseerRuntimeTestSettings::EffekseerRuntimeTestSettings() :
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
 
-CapturingRenderEffect::CapturingRenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture) :
+CapturingRenderEffect::CapturingRenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture) :
     RenderEffect(usage, name, loader),
     _capture {std::move(capture)}
 {
@@ -211,7 +211,7 @@ auto CapturingAppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDr
     return _renderer.CreateDrawBuffer(is_static);
 }
 
-auto CapturingAppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto CapturingAppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -289,7 +289,7 @@ auto CapturingAppRender::GetDraws() const -> const vector<CapturedEffekseerDraw>
     return _capture->Draws;
 }
 
-static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& source, string_view effect_path, vector<uint8_t> effect_data)
+static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& source, string_view effect_path, vector<byte> effect_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -307,7 +307,7 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
     source.AddFile("Effects/Particles_ColorAdd.fofx-1-info", effect_info);
 }
 
-static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<uint8_t> effect_data) -> FileSystem
+static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<byte> effect_data) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -325,7 +325,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(bool provide_texture) :
     FO_STACK_TRACE_ENTRY();
 }
 
-EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture) :
+EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<byte> effect_data, bool provide_texture) :
     _effectPath {effect_path},
     _resources {MakeEffekseerRuntimeTestResources(effect_path, std::move(effect_data))},
     _render {SafeAlloc::MakeUnique<CapturingAppRender>(&_settings)},
@@ -476,7 +476,7 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
 
     REQUIRE(draws.size() == 1);
     const CapturedEffekseerDraw& draw = draws.front();
-    CHECK(draw.EffectName == "Effects/Particles_ColorAdd.fofx");
+    CHECK(draw.EffectName == u8"Effects/Particles_ColorAdd.fofx");
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     CHECK(draw.HasMainTexture);
     CHECK(draw.HasProjection);
@@ -745,7 +745,7 @@ TEST_CASE("Effekseer particle runtime honors cooked sprite Z-sort modes", "[part
     CheckEffekseerMultiInstanceTopology(none_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(normal_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(reverse_draws, instance_count);
-    CHECK(normal_draws.front().EffectName == "Effects/Particles_ColorMul.fofx");
+    CHECK(normal_draws.front().EffectName == u8"Effects/Particles_ColorMul.fofx");
 
     vector<float32_t> none_depths = GetEffekseerQuadDepths(none_draws);
     vector<float32_t> normal_depths = GetEffekseerQuadDepths(normal_draws);

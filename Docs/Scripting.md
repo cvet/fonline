@@ -73,7 +73,7 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 `InitAngelScriptScripting()` in `Source/Scripting/AngelScript/AngelScriptScripting.cpp` prepares the AngelScript runtime, creates an `AngelScriptBackend`, registers it at `ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX`, and loads binary scripts from resources.
 
-`CompileAngelScript()` is the compiler-side entry point used by tools/tests. It creates a standalone `ScriptSystem`, registers metadata, compiles text script files, and returns bytecode.
+`CompileAngelScript()` is the compiler-side entry point used by tools/tests. It creates a standalone `ScriptSystem`, registers metadata, compiles text script files, and returns the bytecode container as `vector<byte>`.
 
 `AngelScriptBackend` owns the concrete engine instance and module lifecycle:
 
@@ -86,7 +86,10 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+Script-visible `string` and `any` text is UTF-8. The current AngelScript ABI still stores `any_t` in its character container, so `any_t(u8string_view)` is the single native bridge that preserves the validated UTF-8 bytes when strict engine text enters that ABI. Callers pass `u8string` directly; they must not narrow script values through `utf8_to_string()` (which is the UTF-8-to-ASCII conversion) or add local character-view adapters.
+
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
+If a native callback throws, `ScriptGenericCall()` releases and clears any ref-type return object it created, but leaves value-type return storage to the AngelScript VM: value types live inline in the VM-owned return slot and are destroyed by normal VM unwinding. Treating that inline slot as an owned script object causes a double cleanup and heap corruption. Regression coverage includes the invalid-scalar `Game.EncodeUtf8()` path in `Test_CommonScriptMethods.cpp`, whose native return type is `string`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
 value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
 (`Critter@&`). Every AngelScript-side producer follows this contract: `ScriptGenericCall()` (classifying by the
@@ -144,6 +147,10 @@ Use [EntityModel.md](EntityModel.md) for entity/property/prototype ownership and
 ## Remote calls and event callbacks
 
 `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp` registers remote caller object types such as `RemoteCaller` and `CritterRemoteCaller`. Remote-call declarations are metadata-backed, and runtime handling is split by side:
+
+- the native serialized envelope is `vector<byte>` / `span<byte>` from `DataWriter` through the network layer and inbound validation;
+- script primitive fields and `array<uint8>` objects remain numeric values and cross the native byte envelope only in the serializer/deserializer;
+- internal AngelScript array/dictionary/remote-call scratch storage and ref-type property cache blobs use `byte`; a typed script primitive is reinterpreted only at the exact VM field or return slot that owns that numeric value;
 
 - server-side command processing validates client-originated remote calls before invoking server script handlers;
 - client-side runtime receives server-originated remote calls and dispatches client script handlers;

@@ -51,7 +51,7 @@ class Properties;
 class ScriptSystem;
 
 using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<uint8_t>)>;
+using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<byte>)>;
 
 struct BakingContext
 {
@@ -87,7 +87,7 @@ public:
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
     [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->Report != nullptr; }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
+    [[nodiscard]] auto ValidateProperties(const Properties& props, u8string_view context, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
     void AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count = 1) const;
@@ -128,10 +128,10 @@ public:
     ~BakerDataSource() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
+    [[nodiscard]] auto GetPackName() const -> u8string_view override { return u8"Baker"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
     auto Reindex() -> bool override;
@@ -145,12 +145,12 @@ private:
         vector<unique_ptr<BaseBaker>> Bakers {};
     };
 
-    [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
+    [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> u8string;
+    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<u8string>;
     [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
-    void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);
+    void WriteData(string_view res_pack_name, string_view path, const_span<byte> data);
 
     ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};

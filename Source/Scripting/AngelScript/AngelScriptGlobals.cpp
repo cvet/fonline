@@ -376,7 +376,13 @@ static void Setting_GetEngineValue(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     auto value = GetGenericAuxiliaryAs<const T>(gen);
-    new (gen->GetAddressOfReturnLocation()) T(*value);
+
+    if constexpr (NativeScriptText::IsStrictOwner<T>) {
+        new (gen->GetAddressOfReturnLocation()) string(NativeScriptText::ToScriptString(*value));
+    }
+    else {
+        new (gen->GetAddressOfReturnLocation()) T(*value);
+    }
 }
 
 template<typename T>
@@ -385,8 +391,15 @@ static void Setting_SetEngineValue(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     auto value = GetGenericAuxiliaryAs<T>(gen);
-    auto new_value = GetGenericAddressArgAs<const T>(gen, 0);
-    *value = *new_value;
+
+    if constexpr (NativeScriptText::IsStrictOwner<T>) {
+        auto new_value = GetGenericAddressArgAs<const string>(gen, 0);
+        *value = NativeScriptText::FromScriptString<T>(*new_value);
+    }
+    else {
+        auto new_value = GetGenericAddressArgAs<const T>(gen, 0);
+        *value = *new_value;
+    }
 }
 
 template<typename T>
@@ -455,6 +468,12 @@ struct SettingScalarTypeNames<string>
     static constexpr string_view ScalarName {"string"};
     static constexpr string_view ArrayName {"array<string>"};
 };
+template<>
+struct SettingScalarTypeNames<u8string>
+{
+    static constexpr string_view ScalarName {"string"};
+    static constexpr string_view ArrayName {"array<string>"};
+};
 
 template<typename>
 struct IsVectorSetting : std::false_type
@@ -478,8 +497,14 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
 
     // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
     for (size_t i = 0; i < vec->size(); i++) {
-        T value = (*vec)[i];
-        arr->InsertLast(make_nptr(&value).void_cast());
+        if constexpr (NativeScriptText::IsStrictOwner<T>) {
+            string value = NativeScriptText::ToScriptString((*vec)[i]);
+            arr->InsertLast(make_nptr(&value).void_cast());
+        }
+        else {
+            T value = (*vec)[i];
+            arr->InsertLast(make_nptr(&value).void_cast());
+        }
     }
 
     ReturnGenericScriptArray(gen, std::move(arr));
@@ -741,9 +766,10 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Enum helpers
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        const string enum_name_ascii = utf8_to_string(u8strex("{}", enum_name));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name_ascii, enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
     }
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "int ParseGenericEnum(string enumName, string valueName)", FO_SCRIPT_FUNC_THIS(Game_ParseGenericEnum), FO_SCRIPT_FUNC_THIS_CONV));
@@ -752,9 +778,10 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     for (const auto& type_name : meta->GetEntityTypes() | std::views::keys) {
         auto registrator = meta->GetPropertyRegistrator(type_name);
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator for entity type");
+        const string registrator_type_name = utf8_to_string(u8strex("{}", registrator->GetTypeName()));
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
+            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator_type_name).c_str());
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
@@ -762,8 +789,8 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
                 enums_arr->InsertLast(make_nptr(&e).void_cast());
             }
 
-            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
+            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator_type_name).c_str()));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator_type_name, group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is

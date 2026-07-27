@@ -67,16 +67,13 @@ FO_SCRIPT_API void Server_Player_HardDisconnect(ptr<Player> self)
 
 // SyncScope: requires self; mutates player name only.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
+FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, u8string_view name)
 {
     if (name.empty()) {
         throw ScriptException("Player name arg is empty");
     }
-    if (strvex(name).trim() != name) {
+    if (u8strvex(name).trim() != name) {
         throw ScriptException("Wrong player name (trimmed space)");
-    }
-    if (!strvex(name).is_valid_utf8()) {
-        throw ScriptException("Wrong player name encoding");
     }
 
     self->SetName(name);

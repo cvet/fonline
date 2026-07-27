@@ -42,6 +42,18 @@ namespace
 {
     static std::atomic_uint16_t TestClientPort {48000};
 
+    [[nodiscard]] auto Bytes(std::initializer_list<uint8_t> values) -> vector<byte>
+    {
+        vector<byte> result;
+        result.reserve(values.size());
+
+        for (const uint8_t value : values) {
+            result.emplace_back(byte {value});
+        }
+
+        return result;
+    }
+
     class ThrowingNetworkClientConnection final : public NetworkClientConnection
     {
     public:
@@ -80,7 +92,7 @@ namespace
             return true;
         }
 
-        auto SendDataImpl(const_span<uint8_t> buf) -> size_t override
+        auto SendDataImpl(const_span<byte> buf) -> size_t override
         {
             if (_throwOnSend) {
                 throw std::runtime_error("send failure");
@@ -89,7 +101,7 @@ namespace
             return buf.size();
         }
 
-        auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override
+        auto ReceiveDataImpl(vector<byte>& buf) -> size_t override
         {
             if (_throwOnReceive) {
                 throw std::runtime_error("receive failure");
@@ -99,7 +111,7 @@ namespace
                 return 0;
             }
 
-            buf[0] = uint8_t {42};
+            buf[0] = byte {42};
             return 1;
         }
 
@@ -137,13 +149,13 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
-    vector<uint8_t> server_received;
+    vector<byte> server_received;
     size_t client_disconnect_count = 0;
 
     InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
-        return [&](const_span<uint8_t> buf) {
+        return [&](const_span<byte> buf) {
             if (buf.empty()) {
                 client_disconnect_count++;
             }
@@ -163,16 +175,16 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
     CHECK(conn->CheckStatus(true));
     CHECK_FALSE(conn->CheckStatus(false));
 
-    vector<uint8_t> incoming_data {1, 2, 3};
+    const vector<byte> incoming_data = Bytes({1, 2, 3});
     server_send_to_client(incoming_data);
 
     CHECK(conn->CheckStatus(false));
 
-    auto recv_data = conn->ReceiveData();
-    CHECK(vector<uint8_t>(recv_data.begin(), recv_data.end()) == incoming_data);
+    const auto recv_data = conn->ReceiveData();
+    CHECK(vector<byte>(recv_data.begin(), recv_data.end()) == incoming_data);
     CHECK(conn->GetBytesReceived() == incoming_data.size());
 
-    vector<uint8_t> outgoing_data {4, 5, 6, 7};
+    const vector<byte> outgoing_data = Bytes({4, 5, 6, 7});
     CHECK(conn->SendData(outgoing_data) == outgoing_data.size());
     CHECK(server_received == outgoing_data);
     CHECK(conn->GetBytesSend() == outgoing_data.size());
@@ -201,7 +213,7 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
     InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
-        return [](const_span<uint8_t>) { };
+        return [](const_span<byte>) { };
     });
 
     auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
@@ -230,7 +242,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
-        return [&](const_span<uint8_t> buf) {
+        return [&](const_span<byte> buf) {
             if (buf.empty()) {
                 client_disconnect_count++;
             }
@@ -245,7 +257,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     client.Connect();
     REQUIRE(server_send_to_client);
 
-    vector<uint8_t> invalid = {0x00, 0x00};
+    const vector<byte> invalid = {byte {0x00}, byte {0x00}};
     server_send_to_client(invalid);
 
     CHECK_NOTHROW(client.Process());
@@ -276,7 +288,7 @@ TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")
         conn.SetConnectedState();
         conn.ThrowOnSend();
 
-        CHECK_THROWS(conn.SendData(vector<uint8_t> {7, 8, 9}));
+        CHECK_THROWS(conn.SendData(Bytes({7, 8, 9})));
         CHECK_FALSE(conn.IsConnecting());
         CHECK_FALSE(conn.IsConnected());
         CHECK(conn.GetDisconnectCount() == 1);

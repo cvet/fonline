@@ -95,29 +95,12 @@ static void ServerEntry()
 }
 
 #if FO_WINDOWS
-static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
+static VOID WINAPI FOServiceStart(DWORD argc, LPWSTR* argv)
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        size_t arg_count = numeric_cast<size_t>(argc);
-        auto service_argv = make_nptr(argv);
-        FO_VERIFY_AND_THROW(arg_count == 0 || service_argv, "Service argument vector is null with a non-zero argument count");
-
-        static std::vector<std::string> args_holder;
-        static vector<CommandLineArg> args;
-        args_holder.resize(arg_count);
-        args.resize(arg_count);
-
-        for (size_t i = 0; i < arg_count; ++i) {
-            nptr<const wchar_t> service_arg = service_argv[i];
-            FO_VERIFY_AND_THROW(service_arg, "Service argument string is null");
-            args_holder[i] = strex().parse_wide_char(service_arg.get());
-
-            args[i] = args_holder[i].data();
-        }
-
-        CommandLineArgs service_args {args};
+        const CommandLineArgs service_args {numeric_cast<int32_t>(argc), argv};
         InitApp(service_args, AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
@@ -177,7 +160,7 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
             // Start
-            constexpr SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
+            constexpr SERVICE_TABLE_ENTRYW dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
         else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
@@ -231,7 +214,7 @@ int main(int argc, char** argv)
             // Change executable path, if changed
             if (service != nullptr) {
                 // ReSharper disable once CppLocalVariableMayBeConst
-                alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] = {};
+                alignas(QUERY_SERVICE_CONFIGW) byte service_cfg_buf[8192] = {};
                 auto service_cfg_storage = make_ptr(service_cfg_buf);
                 auto service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();
 

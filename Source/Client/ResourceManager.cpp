@@ -100,7 +100,7 @@ void ResourceManager::IndexFiles()
         }
     }
 
-    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
+    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName.view(), AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
 
     if (!any_spr) {
         any_spr = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
@@ -112,7 +112,7 @@ void ResourceManager::IndexFiles()
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
     FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Critter dummy animation frames are null");
 
-    _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName, AtlasType::MapSprites, true) : nullptr;
+    _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName.view(), AtlasType::MapSprites, true) : nullptr;
 
     if (!_itemHexDummyAnim) {
         _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
@@ -147,7 +147,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
-    return HashStorage::DefaultHash(make_span(parts, sizeof(parts)));
+    return HashStorage::DefaultHash(make_byte_span(parts));
 }
 
 static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> hstring::hash_t
@@ -155,7 +155,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t a
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
-    return HashStorage::DefaultHash(make_span(parts, sizeof(parts)));
+    return HashStorage::DefaultHash(make_byte_span(parts));
 }
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>

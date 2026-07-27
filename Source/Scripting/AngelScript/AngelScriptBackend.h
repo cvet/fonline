@@ -72,7 +72,7 @@ public:
     void SetMessageCallback(function<void(string_view)> message_callback);
     void SendMessage(string_view message) const;
     void LoadBinaryScripts(const FileSystem& resources);
-    auto CompileTextScripts(const vector<File>& files) -> vector<uint8_t>;
+    auto CompileTextScripts(const vector<File>& files) -> vector<byte>;
     void BindRequiredStuff();
     void AddCleanupCallback(function<void()> callback);
     void AddPostCleanupCallback(function<void()> callback);

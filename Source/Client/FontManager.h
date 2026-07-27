@@ -99,17 +99,22 @@ public:
     auto operator=(FontManager&&) noexcept = delete;
     ~FontManager() = default;
 
+    [[nodiscard]] auto GetLinesCount(isize32 size, u8string_view str, FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, u8string_view str, FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetLineHeight(FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetTextInfo(isize32 size, u8string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
     [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
     void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale = 1.0f);
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
+    void DrawText(irect32 rect, u8string_view str, ucolor color, TextFormat format);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
-    auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
+    auto SplitLines(irect32 rect, u8string_view str, FontType num_font) -> vector<u8string>;
+    auto SplitLines(irect32 rect, string_view str, FontType num_font) -> vector<u8string>;
     void ClearFonts();
     void FrameUpdate();
 
@@ -148,10 +153,12 @@ private:
 
     struct FontFormatInfo
     {
+        using mutable_u8string = std::basic_string<char8_t, std::char_traits<char8_t>, SafeAllocator<char8_t>>;
+
         TextFormat Format {};
         nptr<const FontData> CurFont {};
         irect32 Rect {};
-        string Text {};
+        mutable_u8string Text {};
         int32_t LinesAll {1};
         int32_t LinesInRect {};
         int32_t CurX {};
@@ -162,7 +169,7 @@ private:
         vector<int32_t> LineSpaceWidth {};
         int32_t ColorOffset {};
         ucolor Color {Color::TextDefault};
-        vector<string> Lines {};
+        vector<u8string> Lines {};
         uint64_t LastUsedFrame {};
     };
 
@@ -174,11 +181,11 @@ private:
     static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
     [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
-    [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
-    [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
-    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
+    [[nodiscard]] static auto IsInlineColorHex(u8string_view value) -> bool;
+    [[nodiscard]] static auto ParseInlineColorTag(u8string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
+    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, u8string_view str) const -> ptr<const FontFormatInfo>;
 
-    static constexpr string_view InlineColorTagPrefix = "@color";
+    static constexpr u8string_view InlineColorTagPrefix = u8"@color";
 
     ptr<SpriteManager> _sprMngr;
     vector<optional<FontData>> _allFonts {};

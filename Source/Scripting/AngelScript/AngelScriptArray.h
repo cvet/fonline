@@ -158,7 +158,7 @@ private:
     int32_t _subTypeId;
     int32_t _elementSize {};
     nptr<ScriptArrayTypeData> _subTypeData {};
-    vector<uint8_t> _buffer {};
+    vector<byte> _buffer {};
     mutable std::atomic<int32_t> _refCount {1};
     mutable std::atomic<bool> _gcFlag {};
 };

@@ -546,6 +546,13 @@ auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_w
     return LoadSprite(_hashResolver->ToHashedString(path), atlas_type, no_warn_if_not_exists);
 }
 
+auto SpriteManager::LoadSprite(u8string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return LoadSprite(_hashResolver->ToHashedString(path), atlas_type, no_warn_if_not_exists);
+}
+
 auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();

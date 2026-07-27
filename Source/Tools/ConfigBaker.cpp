@@ -82,12 +82,13 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
         auto bake_config = [&](string_view sub_config) -> bool {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
-            string config_path = _context->Settings->GetAppliedConfigs().front();
-            string_view config_name = strvex(config_path).extract_file_name();
-            string config_dir = strex(config_path).extract_dir();
+            const u8string config_path = _context->Settings->GetAppliedConfigs().front();
+            const std::filesystem::path native_config_path {fs_make_path(config_path.view())};
+            const u8string config_name = fs_path_to_u8string(native_config_path.filename());
+            const u8string config_dir = fs_path_to_u8string(native_config_path.parent_path());
 
             auto maincfg = GlobalSettings(true);
-            maincfg.ApplyConfigAtPath(config_name, config_dir);
+            maincfg.ApplyConfigAtPath(config_name.view(), config_dir.view());
 
             if (!sub_config.empty()) {
                 maincfg.ApplySubConfigSection(sub_config);
@@ -105,21 +106,31 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 client_settings.emplace(name);
             }
 
-            string server_config_content;
+            u8string server_config_content;
             server_config_content.reserve(0x4000);
-            string client_config_content;
+            u8string client_config_content;
             client_config_content.reserve(0x4000);
 
             int32_t settings_errors = 0;
 
             for (auto&& [key, value] : config_settings) {
-                bool is_server_setting = server_settings.count(key) != 0;
-                bool is_client_setting = client_settings.count(key) != 0;
-                bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
-
+                const auto is_server_setting = server_settings.count(key) != 0;
+                const auto is_client_setting = client_settings.count(key) != 0;
+                const string_view value_chars = utf8_as_char_view(value.view());
+                const strvex value_ext {value_chars};
+                const bool skip_write = value.empty() || value.view() == u8"0" || strex(value_chars).lower() == "false";
+                u8string_view shortened_value = value.view();
+                if (value_ext.is_explicit_bool()) {
+                    if (value_ext.to_bool()) {
+                        shortened_value = u8"1";
+                    }
+                    else {
+                        shortened_value = u8"0";
+                    }
+                }
                 if (!skip_write) {
-                    server_config_content += strex("{}={}\n", key, shortened_value);
+                    const u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
+                    server_config_content.append(line.view());
                 }
 
                 if (is_server_setting) {
@@ -128,14 +139,15 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
                 if (is_client_setting) {
                     if (!skip_write) {
-                        client_config_content += strex("{}={}\n", key, shortened_value);
+                        const u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
+                        client_config_content.append(line.view());
                     }
 
                     client_settings.erase(key);
                 }
 
                 if (!is_server_setting && !is_client_setting) {
-                    WriteLog("Unknown setting {} = {}", key, value);
+                    WriteLog("Unknown setting {} = {}", key, value.view());
                 }
             }
 
@@ -149,13 +161,13 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             }
 
             if (settings_errors == 0) {
-                auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
-                    string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-                    _context->WriteData(cfg_name, make_const_span(cfg_content));
+                const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, u8string_view cfg_content) {
+                    const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
+                    _context->WriteData(cfg_name, utf8_to_byte_span(cfg_content));
                 };
 
-                write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content);
-                write_config(!sub_config.empty() ? sub_config : "(Root)", "client", client_config_content);
+                write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content.view());
+                write_config(!sub_config.empty() ? sub_config : "(Root)", "client", client_config_content.view());
                 return true;
             }
 

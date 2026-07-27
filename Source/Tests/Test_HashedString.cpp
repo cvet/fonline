@@ -37,6 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static_assert(std::is_invocable_r_v<uint64_t, decltype(&HashStorage::DefaultHash), const_span<byte>>);
+static_assert(!std::is_invocable_v<decltype(&HashStorage::DefaultHash), const_span<uint8_t>>);
+
 TEST_CASE("HashedString")
 {
     SECTION("EmptyHash")
@@ -54,13 +57,32 @@ TEST_CASE("HashedString")
         hstring hs = storage.ToHashedString("EssentialsTest");
         CHECK(static_cast<bool>(hs));
         CHECK(hs.as_hash() != 0);
+        CHECK(hs.as_hash() == 0xA06F3F92F40B8974ULL);
         CHECK(hs.as_uint64() == hs.as_hash());
-        CHECK(hs.as_hash() == HashStorage::DefaultHash(make_const_span(hs.as_str())));
+        CHECK(hs.as_hash() == HashStorage::DefaultHash(make_byte_span(hs.as_str())));
         CHECK(hs.as_str() == "EssentialsTest");
 
         hstring resolved = storage.ResolveHash(hs.as_hash());
         CHECK(resolved == hs);
         CHECK(resolved.as_str() == "EssentialsTest");
+    }
+
+    SECTION("RawByteGolden")
+    {
+        const vector<byte> bytes {byte {0x00}, byte {0x80}, byte {0xFF}};
+        CHECK(HashStorage::DefaultHash(bytes) == 0xD4769C76A82E82B0ULL);
+    }
+
+    SECTION("Utf8StorageRoundtrip")
+    {
+        HashStorage storage {};
+        const u8string resource_path {u8"Ресурсы/заставка-🌍.png"};
+
+        const hstring hashed_path = storage.ToHashedString(resource_path.view());
+
+        CHECK(hashed_path.as_hash() == HashStorage::DefaultHash(utf8_to_byte_span(resource_path.view())));
+        CHECK(storage.CheckHashedString(resource_path.view()));
+        CHECK(storage.ResolveHash(hashed_path.as_hash()) == hashed_path);
     }
 
     SECTION("IdempotentInsertion")

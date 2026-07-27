@@ -85,7 +85,7 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
+    friend auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, u8string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 public:
     using Collection = DataBaseCollection;
@@ -120,7 +120,7 @@ private:
     unique_nptr<DataBaseImpl> _impl {};
 };
 
-extern auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
+extern auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, u8string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 class DataBaseImpl
 {
@@ -130,14 +130,14 @@ public:
     public:
         using FdType = int;
 
-        explicit RecoveryLogHandle(string path);
+        explicit RecoveryLogHandle(u8string path);
         RecoveryLogHandle(const RecoveryLogHandle&) = delete;
         RecoveryLogHandle(RecoveryLogHandle&&) noexcept = delete;
         auto operator=(const RecoveryLogHandle&) = delete;
         auto operator=(RecoveryLogHandle&&) noexcept = delete;
         ~RecoveryLogHandle() noexcept;
 
-        [[nodiscard]] auto GetPath() const noexcept -> string_view { return _path; }
+        [[nodiscard]] auto GetPath() const noexcept -> u8string_view { return _path.view(); }
         [[nodiscard]] auto GetLinesCount() const noexcept -> size_t { return _content.size(); }
         [[nodiscard]] auto GetTextSize() const noexcept -> size_t { return _textSize; }
         [[nodiscard]] auto GetContent() const noexcept -> const_span<string> { return _content; }
@@ -148,7 +148,7 @@ public:
     private:
         auto Read() noexcept -> optional<string>;
 
-        string _path;
+        u8string _path;
         FdType _fd {-1};
         size_t _textSize {};
         vector<string> _content {};
@@ -250,12 +250,12 @@ private:
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };
 
-auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
+auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, u8string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #if FO_HAVE_UNQLITE
-auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
+auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, u8string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #endif
 #if FO_HAVE_MONGO
-auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
+auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, u8string_view uri, u8string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #endif
 auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 

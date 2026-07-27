@@ -181,7 +181,7 @@ void NetworkServerConnection::Disconnect()
 }
 
 // ReSharper disable once CppMemberFunctionMayBeConst
-auto NetworkServerConnection::SendCallback() -> const_span<uint8_t>
+auto NetworkServerConnection::SendCallback() -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -192,7 +192,7 @@ auto NetworkServerConnection::SendCallback() -> const_span<uint8_t>
     return _sendCallback();
 }
 
-void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
+void NetworkServerConnection::ReceiveCallback(const_span<byte> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -214,7 +214,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _host = "Dummy";
+        _host = string {"Dummy"};
 
         if (state == NetworkServer::DummyConnectionState::Disconnected) {
             Disconnect();

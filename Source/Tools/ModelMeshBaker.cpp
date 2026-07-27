@@ -45,17 +45,17 @@
 extern "C" void* ufbx_malloc(size_t size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
-    ptr<uint8_t> bytes = allocator.allocate(size);
+    constexpr SafeAllocator<byte> allocator;
+    ptr<byte> bytes = allocator.allocate(size);
     return bytes.get();
 }
 
 extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
-    ptr<uint8_t> new_ptr = allocator.allocate(new_size);
-    auto old_data = make_nptr(memory).reinterpret_as<uint8_t>();
+    constexpr SafeAllocator<byte> allocator;
+    ptr<byte> new_ptr = allocator.allocate(new_size);
+    auto old_data = make_nptr(memory).reinterpret_as<byte>();
 
     if (size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
         FO_STRONG_ASSERT(old_data, "Reallocation requested a copy but the previous block pointer is null");
@@ -69,8 +69,8 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(make_nptr(ptr).reinterpret_as<uint8_t>().get(), old_size);
+    constexpr SafeAllocator<byte> allocator;
+    allocator.deallocate(make_nptr(ptr).reinterpret_as<byte>().get(), old_size);
 }
 
 FO_BEGIN_NAMESPACE
@@ -232,7 +232,7 @@ static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContex
 static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bone_count, const FbxValidationContext& context);
 static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name);
 
-auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
+auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -246,7 +246,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     opts.normalize_tangents = true;
 
     ufbx_error fbx_error;
-    const_span<uint8_t> file_data = file.GetDataSpan();
+    const_span<byte> file_data = file.GetDataSpan();
     auto file_data_bytes = make_nptr(file_data.data());
     FO_VERIFY_AND_THROW(file_data.empty() || file_data_bytes, "Non-empty FBX file data has a null buffer pointer");
     auto fbx_scene = make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error));
@@ -266,7 +266,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     ConvertFbxMeshes(mesh_data.RootBone, mesh_data.RootBone, fbx_scene->root_node, fname);
 
     // Write data
-    vector<uint8_t> data;
+    vector<byte> data;
     auto writer = DataWriter(data);
 
     WriteModelMeshData(writer, mesh_data, fname);
@@ -519,11 +519,11 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
                     skin_bone = FindBakedModelBone(root_bone, skin_bone_name);
 
                     if (!skin_bone) {
-                        WriteLog("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
+                        WriteLog("Skin bone '{}' for mesh '{}' not found", skin_bone_name, string_view {fbx_node->name.data, fbx_node->name.length});
                     }
                 }
                 else {
-                    WriteLog("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
+                    WriteLog("Empty skin bone in fbx cluster for mesh '{}' not found", string_view {fbx_node->name.data, fbx_node->name.length});
                 }
 
                 if (!skin_bone) {

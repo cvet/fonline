@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto GetRequiredSpriteInfoValue(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> string_view
+static auto GetRequiredSpriteInfoValue(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -45,11 +45,12 @@ static auto GetRequiredSpriteInfoValue(const map<string_view, string_view>& valu
     return it->second;
 }
 
-static auto ParseSpriteInfoIntValues(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> vector<int32_t>
+static auto ParseSpriteInfoIntValues(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> vector<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string_view> tokens = strvex(GetRequiredSpriteInfoValue(values, file_name, section_name, key)).split(' ');
+    const string ascii_values = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, key));
+    const vector<string_view> tokens = strvex(ascii_values).split(' ');
     vector<int32_t> result;
     result.reserve(tokens.size());
 
@@ -65,7 +66,7 @@ static auto ParseSpriteInfoIntValues(const map<string_view, string_view>& values
     return result;
 }
 
-static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> int32_t
+static auto ParseSpriteInfoScalar(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -74,13 +75,13 @@ static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, s
     return parsed_values.front();
 }
 
-auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>
+auto ReadSpriteInfoFile(string_view file_name, u8string content) -> vector<SpriteInfoFileEntry>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto config = ConfigFile(string(content));
+    auto config = ConfigFile(std::move(content));
     vector<SpriteInfoFileEntry> result;
-    set<string> source_paths;
+    set<u8string> source_paths;
     set<string> resource_paths;
 
     for (const auto& [section_name, values] : *config.GetSections()) {
@@ -90,7 +91,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         }
 
         SpriteInfoFileEntry entry;
-        entry.SourcePath = GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath");
+        entry.SourcePath = u8string {GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath")};
         entry.ResourcePath = section_name;
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty(), "Sprite info source path is empty", file_name, section_name);
         FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);
@@ -152,7 +153,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
     return result;
 }
 
-auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
+auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -160,14 +161,14 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
     std::iota(entry_order.begin(), entry_order.end(), size_t {});
     std::sort(entry_order.begin(), entry_order.end(), [&entries](size_t left, size_t right) { return entries[left].ResourcePath < entries[right].ResourcePath; });
 
-    set<string_view> source_paths;
+    set<u8string_view> source_paths;
     set<string_view> resource_paths;
-    string result;
+    u8string result;
 
     for (size_t entry_index : entry_order) {
         const SpriteInfoFileEntry& entry = entries[entry_index];
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty() && !entry.ResourcePath.empty(), "Sprite info file entry contains an empty path", entry.SourcePath, entry.ResourcePath);
-        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
+        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath.view()).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
         FO_VERIFY_AND_THROW(resource_paths.emplace(entry.ResourcePath).second, "Sprite info file contains a duplicate resource path", entry.ResourcePath);
         FO_VERIFY_AND_THROW(entry.Info.FrameCount != 0, "Sprite info file entry contains no frames", entry.ResourcePath);
         FO_VERIFY_AND_THROW(!entry.Info.Directions.empty(), "Sprite info file entry contains no directions", entry.ResourcePath);
@@ -212,9 +213,10 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
             }
         }
 
-        int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
-        int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
-        result += strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
+        const int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
+        const int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
+        const u8string entry_text = u8strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
+        result.append(entry_text.view());
     }
 
     FO_VERIFY_AND_THROW(!result.empty(), "Cannot write an empty sprite info resource");
@@ -230,14 +232,14 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
     FO_STACK_TRACE_ENTRY();
 
     if (!resources.IsFileExists(MODEL_ANIMATION_INFO_FILE_NAME)) {
-        WriteLog(LogType::Info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
+        WriteLog(LogType::Info, "Model animation info document '{}' is not present", string_view(MODEL_ANIMATION_INFO_FILE_NAME));
         return {};
     }
 
     File info_file = resources.ReadFile(MODEL_ANIMATION_INFO_FILE_NAME);
     FO_VERIFY_AND_THROW(info_file, "Model animation info resource is not readable", MODEL_ANIMATION_INFO_FILE_NAME);
 
-    auto config = ConfigFile(info_file.GetStr());
+    auto config = ConfigFile(info_file.GetText());
     unordered_map<hstring, ModelAnimationInfo> model_anim_infos;
     constexpr array<string_view, 12> model_bounds_keys {
         "ModelBoundsMinX",
@@ -281,13 +283,14 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
             FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation info section is missing a required bounds key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
         }
 
-        auto get_value = [&key_values, section_name](string_view key) -> string_view {
-            auto it = key_values.find(key);
+        const auto get_value = [&key_values, section_name](string_view key) -> u8string_view {
+            const auto it = key_values.find(key);
             FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             return it->second;
         };
-        auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
-            vector<string_view> tokens = strvex(get_value(key)).split(' ');
+        const auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
+            const string ascii_values = utf8_to_string(get_value(key));
+            const vector<string_view> tokens = strvex(ascii_values).split(' ');
             vector<int32_t> values;
             values.reserve(tokens.size());
 
@@ -302,8 +305,9 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
 
             return values;
         };
-        auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
-            vector<string_view> tokens = strvex(get_value(key)).split(' ');
+        const auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
+            const string ascii_values = utf8_to_string(get_value(key));
+            const vector<string_view> tokens = strvex(ascii_values).split(' ');
             vector<float32_t> values;
             values.reserve(tokens.size());
 
@@ -426,7 +430,7 @@ auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver)
         File info_file = File::Load(file_header);
         FO_VERIFY_AND_THROW(info_file, "Sprite info resource is not readable", file_header.GetPath());
 
-        vector<SpriteInfoFileEntry> sprite_entries = ReadSpriteInfoFile(info_file.GetPath(), info_file.GetStr());
+        vector<SpriteInfoFileEntry> sprite_entries = ReadSpriteInfoFile(info_file.GetPath(), info_file.GetText());
 
         for (SpriteInfoFileEntry& sprite_entry : sprite_entries) {
             hstring resource_name = hash_resolver.ToHashedString(sprite_entry.ResourcePath);

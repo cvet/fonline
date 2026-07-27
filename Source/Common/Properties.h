@@ -75,7 +75,7 @@ public:
         return *GetPtr().reinterpret_as<T>();
     }
 
-    auto Alloc(size_t size) -> ptr<uint8_t>;
+    auto Alloc(size_t size) -> ptr<byte>;
     void Set(nptr<const void> value, size_t size)
     {
         auto data = Alloc(size);
@@ -93,7 +93,7 @@ public:
         MemCopy(target, &value, sizeof(T));
     }
 
-    void Pass(span<const uint8_t> value);
+    void Pass(const_span<byte> value);
     void Pass(nptr<const void> value, size_t size);
     void StoreIfPassed();
 
@@ -101,10 +101,10 @@ private:
     // Keep the over-aligned local buffer as the first member: placed at offset 0 the alignas is
     // satisfied without inserting any padding, so the struct's alignment matches its natural pointer
     // alignment and MSVC's C4324 (padding added due to alignment specifier) does not fire.
-    alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
+    alignas(std::max_align_t) byte _localBuf[LOCAL_BUF_SIZE] {};
     size_t _dataSize {};
     bool _useDynamic {};
-    unique_arr_ptr<uint8_t> _dynamicBuf {};
+    unique_arr_ptr<byte> _dynamicBuf {};
     nptr<void> _passedPtr {};
 };
 
@@ -276,7 +276,7 @@ class Properties final
 public:
     struct StoreDataCache
     {
-        vector<nptr<const uint8_t>> Data {};
+        vector<nptr<const byte>> Data {};
         vector<uint32_t> Sizes {};
         vector<uint16_t> PropertyIndices {};
         uint32_t Revision {};
@@ -284,7 +284,7 @@ public:
 
     struct StoredData
     {
-        ptr<const vector<nptr<const uint8_t>>> Data;
+        ptr<const vector<nptr<const byte>>> Data;
         ptr<const vector<uint32_t>> Sizes;
     };
 
@@ -309,7 +309,7 @@ public:
     [[nodiscard]] auto HasBaseProperties() const noexcept -> bool { return !!_baseProps; }
     [[nodiscard]] auto GetBaseProperties() const noexcept -> nptr<const Properties> { return _baseProps; }
     [[nodiscard]] auto Copy() const noexcept -> Properties;
-    [[nodiscard]] auto GetRawData(ptr<const Property> prop) const noexcept -> span<const uint8_t>;
+    [[nodiscard]] auto GetRawData(ptr<const Property> prop) const noexcept -> const_span<byte>;
     [[nodiscard]] auto GetRawDataSize(ptr<const Property> prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(ptr<const Property> prop) const -> int32_t;
     [[nodiscard]] auto GetPlainDataValueAsAny(ptr<const Property> prop) const -> any_t;
@@ -326,13 +326,13 @@ public:
     void ApplyFromText(const map<string, string>& key_values);
     void ApplyFromText(const map<string_view, string_view>& key_values);
     void ApplyPropertyFromText(ptr<const Property> prop, string_view text);
-    void StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashes) const;
-    void RestoreAllData(const vector<uint8_t>& all_data);
+    void StoreAllData(vector<byte>& all_data, set<hstring>& str_hashes) const;
+    void RestoreAllData(const vector<byte>& all_data);
     auto StoreData(bool with_protected) const -> StoredData;
-    void RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes);
-    void RestoreData(const vector<vector<uint8_t>>& all_data);
+    void RestoreData(const vector<nptr<const byte>>& all_data, const vector<uint32_t>& all_data_sizes);
+    void RestoreData(const vector<vector<byte>>& all_data);
     void CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept;
-    void SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept;
+    void SetRawData(ptr<const Property> prop, const_span<byte> raw_data) noexcept;
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value);
     void SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& value);
@@ -409,18 +409,18 @@ private:
     auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
     void ReleaseOverlayEntryIndex() noexcept;
     auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
-    auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
-    static void ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data);
+    auto IsRawDataEqual(ptr<const Property> prop, const_span<byte> raw_data) const noexcept -> bool;
+    static void ValidateFiniteRawData(ptr<const Property> prop, const_span<byte> raw_data);
 
     ptr<const PropertyRegistrator> _registrator;
     nptr<const Properties> _baseProps {};
 
-    unique_arr_ptr<uint8_t> _podData {};
-    unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};
+    unique_arr_ptr<byte> _podData {};
+    unique_arr_ptr<pair<unique_arr_ptr<byte>, size_t>> _complexData {};
 
     small_vector<OverlayEntry, 16> _overlayEntries {};
     vector<int32_t> _overlayEntryIndex {};
-    unique_arr_ptr<uint8_t> _overlayData {};
+    unique_arr_ptr<byte> _overlayData {};
     size_t _overlayDataSize {};
     size_t _overlayDataCapacity {};
     size_t _overlayGarbageSize {};
@@ -610,7 +610,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         prop_data.Pass(GetRawData(prop));
     }
 
-    span<const uint8_t> data = {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
+    const const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
 
     T result;
 
@@ -738,7 +738,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
         return {};
     }
 
-    span<const uint8_t> data = {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
+    const const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
 
     T result;
 
@@ -805,8 +805,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
-    auto new_value_ptr = make_ptr(&new_value);
-    ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
+    const auto new_value_ptr = make_ptr(&new_value);
+    ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<byte>().get(), sizeof(T)});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -842,11 +842,11 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                     setter(_entity, prop, prop_data);
                 }
 
-                ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-                SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                ValidateFiniteRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
+                SetRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
             }
             else {
-                SetRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
+                SetRawData(prop, {new_value_ptr.template reinterpret_as<byte>().get(), sizeof(T)});
             }
 
             if (_entity) {
@@ -897,11 +897,11 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                     setter(_entity, prop, prop_data);
                 }
 
-                SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                SetRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
             }
             else {
-                auto new_value_hash_ptr = make_ptr(&new_value_hash);
-                SetRawData(prop, {new_value_hash_ptr.template reinterpret_as<uint8_t>().get(), sizeof(hstring::hash_t)});
+                const auto new_value_hash_ptr = make_ptr(&new_value_hash);
+                SetRawData(prop, {new_value_hash_ptr.template reinterpret_as<byte>().get(), sizeof(hstring::hash_t)});
             }
 
             if (_entity) {
@@ -945,10 +945,10 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
                 setter(_entity, prop, prop_data);
             }
 
-            SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            SetRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
         }
         else {
-            SetRawData(prop, make_const_span(new_value));
+            SetRawData(prop, make_byte_span(new_value));
         }
 
         if (_entity) {
@@ -1026,7 +1026,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         }
     }
 
-    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -1045,10 +1045,10 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             }
 
             // Setters can rewrite the raw payload, so the mutated data must pass validation again
-            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
         }
 
-        SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+        SetRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
 
         if (_entity) {
             for (const auto& setter : prop->_postSetters) {

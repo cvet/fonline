@@ -66,7 +66,7 @@ auto DynamicRefTypeInstance::GetProps() const noexcept -> ptr<const Properties>
     return &*_props;
 }
 
-void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
+void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, const_span<byte> raw_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -85,7 +85,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
         auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
         FO_VERIFY_AND_THROW(field_prop, "Field property is null");
-        span<const uint8_t> field_raw_data {};
+        const_span<byte> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
             data_pos = align_up(data_pos, sizeof(uint32_t));
@@ -94,7 +94,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            uint32_t field_size = span_read_object<uint32_t>(raw_data, data_pos);
+            const uint32_t field_size = span_read_object<uint32_t>(make_byte_span(raw_data), data_pos);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
                 throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
@@ -110,7 +110,8 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            field_raw_data = span_read_bytes(raw_data, data_pos, field_data_size);
+            const_span<byte> field_bytes = span_read_bytes(make_byte_span(raw_data), data_pos, field_data_size);
+            field_raw_data = field_bytes;
         }
 
         if (!field_raw_data.empty()) {
@@ -126,7 +127,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     _cachedRawDataDirty = false;
 }
 
-auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> span<const uint8_t>
+auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -146,7 +147,7 @@ void DynamicRefTypeInstance::SetValue(ptr<const Property> prop, PropertyRawData&
     _cachedRawDataDirty = true;
 }
 
-auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>
+auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -158,7 +159,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
     if (_cachedRawDataDirty) {
-        vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
+        vector<const_span<byte>> field_raw_entries(fields_registrator->GetPropertiesCount());
         vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
         size_t last_non_default_field = 0;
 
@@ -171,8 +172,8 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
             if (!is_default && field_prop->IsPlainData()) {
                 is_default = true;
 
-                for (auto byte : field_raw_data) {
-                    if (byte != 0) {
+                for (const byte raw_byte : field_raw_data) {
+                    if (raw_byte != byte {0}) {
                         is_default = false;
                         break;
                     }
@@ -204,8 +205,8 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
                 }
             }
 
-            _cachedRawData.assign(data_size, 0);
-            auto raw_buffer = make_span(_cachedRawData);
+            _cachedRawData.assign(data_size, byte {0});
+            auto raw_buffer = make_byte_span(_cachedRawData);
             size_t data_pos = 0;
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
@@ -216,7 +217,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
                 if (field_size != 0) {
                     auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
                     data_pos = align_up(data_pos, field_prop->GetDataAlignment());
-                    span_write_bytes(raw_buffer, data_pos, field_raw_entries[i]);
+                    span_write_bytes(raw_buffer, data_pos, make_byte_span(field_raw_entries[i]));
                 }
             }
 

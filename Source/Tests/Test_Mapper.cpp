@@ -66,13 +66,13 @@ namespace
         // The MapperEngine ctor reads GetResourcePacks() to seed the map file system. The maps in these
         // tests are supplied directly via LoadMapFromText, so a single named pack with no input dirs is
         // enough to keep construction from throwing "No information about resource packs found".
-        auto pack_config = ConfigFile("[ResourcePack]\nName = MapperMergeTestPack\n");
-        settings.ApplyConfigFile(pack_config, "");
+        auto pack_config = ConfigFile(u8string {u8"[ResourcePack]\nName = MapperMergeTestPack\n"});
+        settings.ApplyConfigFile(pack_config, u8string_view {});
 
         return settings;
     }
 
-    static auto MakeMapperScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeMapperScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerMapperEngine compiler_engine {metadata_resources};
 

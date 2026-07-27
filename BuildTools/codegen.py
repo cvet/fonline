@@ -139,6 +139,8 @@ class ExportMethodTag:
     ret_wrapper: bool = False
     ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
+    ret_native_text_type: str = ''
+    arg_native_text_types: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -869,7 +871,26 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool]:
+def native_text_type_override(type_text: str) -> str:
+    normalized_type = type_text.strip()
+    base_type = normalized_type.removeprefix('const ').removesuffix('&').strip()
+    if base_type in {'string', 'string_view', 'string_view_nt', 'u8string', 'u8string_view', 'u8string_view_nt'}:
+        return normalized_type
+
+    identifiers = set(re.findall(r'[A-Za-z_][A-Za-z0-9_]*', base_type))
+    return normalized_type if identifiers.intersection({'u8string', 'u8string_view', 'u8string_view_nt'}) else ''
+
+
+def argument_native_text_type_override(arg_text: str) -> str:
+    default_separator = find_cpp_top_level_char(arg_text, '=')
+    declaration = arg_text[:default_separator].rstrip() if default_separator != -1 else arg_text.rstrip()
+    separator = declaration.rfind(' ')
+    assert separator != -1, 'Invalid argument declaration: ' + arg_text
+    type_text, _, _ = strip_pointer_wrapper(declaration[:separator].rstrip())
+    return native_text_type_override(type_text)
+
+
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool, str, tuple[str, ...]]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = find_matching_cpp_paren(tag_context, brace_open_pos)
@@ -885,6 +906,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     if is_validated_pointer_meta_type(ret):
         assert ret_wrapper, 'Raw pointer script ABI return value is not supported; use ptr<T> or nptr<T>: ' + raw_ret_type_text
     ret_nullable = ret_wrapper_nullable if ret_wrapper else False
+    ret_native_text_type = native_text_type_override(ret_type_text)
 
     function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
@@ -904,7 +926,11 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
         _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
         assert receiver_wrapper, 'Raw pointer script ABI receiver is not supported; use ptr<T> or nptr<T>: ' + receiver_args[0]
 
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper
+    result_args = parse_method_args(function_args, valid_types, skip_first_arg=True)
+    arg_native_text_types = tuple(argument_native_text_type_override(arg) for arg in receiver_args[1:])
+    assert len(result_args) == len(arg_native_text_types)
+
+    return target, entity, name, ret, result_args, ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper, ret_native_text_type, arg_native_text_types
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -953,7 +979,14 @@ def parse_settings_entry(line: str, valid_types: set[str]) -> SettingsEntry:
     setting_comment = [line[line.find('//') + 2:].strip()] if line.find('//') != -1 else []
     setting_type = line[:line.find('(')]
     assert setting_type in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + setting_type
-    setting_args = [token.strip().strip('"') for token in line[line.find('(') + 1:line.find(')')].split(',')]
+    setting_args = []
+    for token in line[line.find('(') + 1:line.find(')')].split(','):
+        normalized_token = token.strip()
+        if normalized_token.startswith('u8"') and normalized_token.endswith('"'):
+            normalized_token = normalized_token[3:-1]
+        else:
+            normalized_token = normalized_token.strip('"')
+        setting_args.append(normalized_token)
     assert len(setting_args) >= 3, 'Invalid setting args count'
     return SettingsEntry(
         'fix' if setting_type == 'FIXED_SETTING' else 'var',
@@ -1140,7 +1173,8 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_r
         'int8_t': 'int8', 'uint8_t': 'uint8', 'int16_t': 'int16', 'uint16_t': 'uint16',
         'int32_t': 'int32', 'uint32_t': 'uint32', 'int64_t': 'int64', 'uint64_t': 'uint64',
         'float32_t': 'float32', 'float64_t': 'float64', 'bool': 'bool', 'void': 'void',
-        'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
+        'string_view': 'string', 'string_view_nt': 'string', 'string': 'string',
+        'u8string_view': 'string', 'u8string_view_nt': 'string', 'u8string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
     # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
     # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
@@ -1458,9 +1492,9 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_native_text_type, arg_native_text_types = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper, ret_native_text_type=ret_native_text_type, arg_native_text_types=arg_native_text_types))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper.
@@ -1819,8 +1853,14 @@ def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, t
     return MethodRegistrationInfo(
         function_name=method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name,
         engine_entity_type_extern=wrap_handle_engine_type(engine_entity_type_extern, False),
-        return_type=apply_container_element_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity', wrap_handles=True, nullable=method_tag.ret_nullable), method_tag.ret_container_element_wrapper),
+        return_type=method_tag.ret_native_text_type or apply_container_element_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity', wrap_handles=True, nullable=method_tag.ret_nullable), method_tag.ret_container_element_wrapper),
     )
+
+
+def method_arg_to_engine_type(arg: MethodArg, native_text_type: str, target: str) -> str:
+    if native_text_type:
+        return native_text_type
+    return apply_container_element_wrapper(meta_type_to_engine_type(arg.arg_type, target, True, self_entity='Entity', wrap_handles=True, nullable=arg.nullable), arg.container_element_wrapper)
 
 
 def resolve_engine_entity_type(entity_name: str, target: str) -> str:
@@ -2237,7 +2277,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
             registration_info = resolve_method_registration_info(entity, method_tag, target)
             if not is_stub:
                 extern_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ');')
+                    ', '.join([method_arg_to_engine_type(p, native_text_type, method_tag.target) for p, native_text_type in zip(method_tag.args, method_tag.arg_native_text_types, strict=True)]) + ');')
 
             resolved_args = ', '.join(make_arg_desc_initializer(p, 'meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")') for p in method_tag.args)
             method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
@@ -2253,7 +2293,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                    ', '.join([method_arg_to_engine_type(p, native_text_type, method_tag.target) for p, native_text_type in zip(method_tag.args, method_tag.arg_native_text_types, strict=True)]) + ')>(&' + registration_info.function_name + ')>(call);')
                 if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:

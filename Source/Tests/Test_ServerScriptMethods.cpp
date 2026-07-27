@@ -59,7 +59,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -2073,7 +2073,8 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        unlogined.SetName("ScriptPlayerNameOk");
+        unlogined.SetName("\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D");
+        if (unlogined.Name != "\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D") return -5;
         return 0;
     }
 
@@ -2775,9 +2776,9 @@ namespace ScriptMethodsTest
             });
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
+    static auto MakeEmptyMapBlob() -> vector<byte>
     {
-        vector<uint8_t> map_data;
+        vector<byte> map_data;
         auto writer = DataWriter(map_data);
 
         writer.Write<uint32_t>(uint32_t {0}); // hashes_count
@@ -2787,16 +2788,16 @@ namespace ScriptMethodsTest
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -2813,16 +2814,16 @@ namespace ScriptMethodsTest
         return protos_data;
     }
 
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -3352,14 +3353,15 @@ TEST_CASE("ServerMiscScriptOperations")
         auto func = server->FindFunc<void>(get_func(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
-        string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
+        const auto prev_callback = GetExceptionCallback();
+        u8string message;
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
-        INFO(message);
-        CHECK(message.find(expected_message) != string::npos);
+        const u8string expected_message_utf8 = expected_message;
+        INFO(utf8_to_char_string(message));
+        CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos);
     };
 
     SECTION("DatabaseQueries")
@@ -3430,19 +3432,19 @@ TEST_CASE("ServerMiscScriptOperations")
         run_throwing_func("ScriptMethodsTest::TestDatabaseInsertStringDuplicateThrows", "Record already exists");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateEmptyCollectionThrows", "Collection name arg is empty");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateZeroIdThrows", "Record id arg is zero");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidKeyEncodingThrows", "Record key has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidValueEncodingThrows", "Record value has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidStringKeyEncodingThrows", "Record key has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidStringValueEncodingThrows", "Record value has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidKeyEncodingThrows", "Record key has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidValueEncodingThrows", "Record value has invalid encoding");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidKeyEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidValueEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidStringKeyEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidStringValueEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidKeyEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidValueEncodingThrows", "UTF-8 scalar is out of range");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateNonFiniteFloatThrows", "Record float value is not finite");
         run_throwing_func("ScriptMethodsTest::TestAnyCastFloat32OverflowThrows", "Invalid cast from any (floating point value is not finite)");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateEmptyStringCollectionThrows", "Collection name arg is empty");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateMissingStringRecordThrows", "Record not found");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateEmptyStringKeyThrows", "Record key is empty");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidStringKeyEncodingThrows", "Record key has invalid encoding");
-        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidStringValueEncodingThrows", "Record value has invalid encoding");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidStringKeyEncodingThrows", "UTF-8 scalar is out of range");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidStringValueEncodingThrows", "UTF-8 scalar is out of range");
     }
 
     SECTION("DatabaseHasRecordZeroIdThrows")
@@ -3557,7 +3559,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
         REQUIRE(methods_func.Call(methods_player));
         CHECK(methods_func.GetResult() == 0);
-        CHECK(methods_player->GetName() == "ScriptPlayerMethods");
+        CHECK(methods_player->GetDisplayName() == u8"ScriptPlayerMethods");
         CHECK(methods_player->GetConnection()->IsGracefulDisconnected());
         CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
 
@@ -3576,7 +3578,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
         REQUIRE(name_validation_func.Call(name_player));
         CHECK(name_validation_func.GetResult() == 0);
-        CHECK(name_player->GetName() == "ScriptPlayerNameOk");
+        CHECK(name_player->GetDisplayName() == u8"Игрок 🌍");
 
         auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);

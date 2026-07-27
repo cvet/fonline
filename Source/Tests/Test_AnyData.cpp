@@ -42,78 +42,94 @@ TEST_CASE("AnyData")
     SECTION("Int 1")
     {
         AnyData::Value val = numeric_cast<int64_t>(1234);
-        CHECK(AnyData::ValueToString(val) == "1234");
+        CHECK(AnyData::ValueToString(val) == u8"1234");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Int64));
     }
 
     SECTION("Float 1")
     {
         AnyData::Value val = 0.0f;
-        CHECK(AnyData::ValueToString(val) == "0");
+        CHECK(AnyData::ValueToString(val) == u8"0");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 2")
     {
         AnyData::Value val = 0.999999;
-        CHECK(AnyData::ValueToString(val) == "0.999999");
+        CHECK(AnyData::ValueToString(val) == u8"0.999999");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 3")
     {
         AnyData::Value val = 100000000.0;
-        CHECK(AnyData::ValueToString(val) == "100000000");
+        CHECK(AnyData::ValueToString(val) == u8"100000000");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Bool True")
     {
         AnyData::Value val = true;
-        CHECK(AnyData::ValueToString(val) == "True");
+        CHECK(AnyData::ValueToString(val) == u8"True");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Bool));
     }
 
     SECTION("Bool False")
     {
         AnyData::Value val = false;
-        CHECK(AnyData::ValueToString(val) == "False");
+        CHECK(AnyData::ValueToString(val) == u8"False");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Bool));
     }
 
     SECTION("String 1")
     {
-        AnyData::Value val = string("ABCD");
-        CHECK(AnyData::ValueToString(val) == "ABCD");
+        AnyData::Value val = u8string(u8"ABCD");
+        CHECK(AnyData::ValueToString(val) == u8"ABCD");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 2")
     {
-        AnyData::Value val = string("AB   C D");
-        CHECK(AnyData::ValueToString(val) == "AB   C D");
+        AnyData::Value val = u8string(u8"AB   C D");
+        CHECK(AnyData::ValueToString(val) == u8"AB   C D");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 3")
     {
-        AnyData::Value val = string("   AB   C D");
-        CHECK(AnyData::ValueToString(val) == "\"   AB   C D\"");
+        AnyData::Value val = u8string(u8"   AB   C D");
+        CHECK(AnyData::ValueToString(val) == u8"\"   AB   C D\"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 4")
     {
-        AnyData::Value val = string("ABCD ");
-        CHECK(AnyData::ValueToString(val) == "\"ABCD \"");
+        AnyData::Value val = u8string(u8"ABCD ");
+        CHECK(AnyData::ValueToString(val) == u8"\"ABCD \"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 5")
     {
-        AnyData::Value val = string("\tABCD");
-        CHECK(AnyData::ValueToString(val) == "\"\tABCD\"");
+        AnyData::Value val = u8string(u8"\tABCD");
+        CHECK(AnyData::ValueToString(val) == u8"\"\tABCD\"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
+    }
+
+    SECTION("Utf8StringAndDictKeyRoundTrip")
+    {
+        const u8string text {u8"Привет, 🌍"};
+        const auto encoded_text = AnyData::ValueToString(AnyData::Value {text});
+        CHECK(AnyData::ParseValue(encoded_text, false, false, AnyData::ValueType::String).AsString() == text.view());
+
+        AnyData::Dict dict;
+        const u8string key {u8"ключ-🔑"};
+        const u8string value {u8"значение-📌"};
+        dict.Emplace(key, value);
+
+        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        const auto parsed_dict = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
+        CHECK(parsed_dict.AsDict()[key].AsString() == value.view());
     }
 
     SECTION("Array of ints")
@@ -123,17 +139,17 @@ TEST_CASE("AnyData")
         arr.EmplaceBack(numeric_cast<int64_t>(2));
         arr.EmplaceBack(numeric_cast<int64_t>(3));
         arr.EmplaceBack(numeric_cast<int64_t>(4));
-        CHECK(AnyData::ValueToString(arr.Copy()) == "1 2 3 4");
+        CHECK(AnyData::ValueToString(arr.Copy()) == u8"1 2 3 4");
         CHECK(arr == AnyData::ParseValue(AnyData::ValueToString(arr.Copy()), false, true, AnyData::ValueType::Int64).AsArray());
     }
 
     SECTION("Array of strings")
     {
         AnyData::Array arr;
-        arr.EmplaceBack(string("one"));
-        arr.EmplaceBack(string("two"));
-        arr.EmplaceBack(string("three"));
-        CHECK(AnyData::ValueToString(arr.Copy()) == "one two three");
+        arr.EmplaceBack(u8string(u8"one"));
+        arr.EmplaceBack(u8string(u8"two"));
+        arr.EmplaceBack(u8string(u8"three"));
+        CHECK(AnyData::ValueToString(arr.Copy()) == u8"one two three");
         CHECK(arr == AnyData::ParseValue(AnyData::ValueToString(arr.Copy()), false, true, AnyData::ValueType::String).AsArray());
     }
 
@@ -143,17 +159,17 @@ TEST_CASE("AnyData")
         dict.Emplace("key1", numeric_cast<int64_t>(1));
         dict.Emplace("key2", numeric_cast<int64_t>(2));
         dict.Emplace("key3", numeric_cast<int64_t>(3));
-        CHECK(AnyData::ValueToString(dict.Copy()) == "key1 1 key2 2 key3 3");
+        CHECK(AnyData::ValueToString(dict.Copy()) == u8"key1 1 key2 2 key3 3");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, false, AnyData::ValueType::Int64).AsDict());
     }
 
     SECTION("Dict with strings")
     {
         AnyData::Dict dict;
-        dict.Emplace("key1", string("value 1"));
-        dict.Emplace("key2", string(" value 2 "));
-        dict.Emplace("key3", string("value3"));
-        CHECK(AnyData::ValueToString(dict.Copy()) == "key1 \"value 1\" key2 \" value 2 \" key3 value3");
+        dict.Emplace("key1", u8string(u8"value 1"));
+        dict.Emplace("key2", u8string(u8" value 2 "));
+        dict.Emplace("key3", u8string(u8"value3"));
+        CHECK(AnyData::ValueToString(dict.Copy()) == u8"key1 \"value 1\" key2 \" value 2 \" key3 value3");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, false, AnyData::ValueType::String).AsDict());
     }
 
@@ -166,25 +182,25 @@ TEST_CASE("AnyData")
         AnyData::Dict dict;
         dict.Emplace("key1", std::move(arr1));
 
-        CHECK(AnyData::ValueToString(dict.Copy()) == "key1 \"1 2 3\"");
+        CHECK(AnyData::ValueToString(dict.Copy()) == u8"key1 \"1 2 3\"");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, true, AnyData::ValueType::Int64).AsDict());
     }
 
     SECTION("Dict of array 2")
     {
         AnyData::Array arr1;
-        arr1.EmplaceBack(string("one 1"));
-        arr1.EmplaceBack(string("two 2"));
-        arr1.EmplaceBack(string(" three 3 "));
+        arr1.EmplaceBack(u8string(u8"one 1"));
+        arr1.EmplaceBack(u8string(u8"two 2"));
+        arr1.EmplaceBack(u8string(u8" three 3 "));
         AnyData::Array arr2;
-        arr2.EmplaceBack(string("1"));
-        arr2.EmplaceBack(string("2"));
-        arr2.EmplaceBack(string("3"));
+        arr2.EmplaceBack(u8string(u8"1"));
+        arr2.EmplaceBack(u8string(u8"2"));
+        arr2.EmplaceBack(u8string(u8"3"));
         AnyData::Dict dict;
         dict.Emplace("key1", std::move(arr1));
         dict.Emplace("key2", std::move(arr2));
 
-        CHECK(AnyData::ValueToString(dict.Copy()) == "key1 \"\\\"one 1\\\" \\\"two 2\\\" \\\" three 3 \\\"\" key2 \"1 2 3\"");
+        CHECK(AnyData::ValueToString(dict.Copy()) == u8"key1 \"\\\"one 1\\\" \\\"two 2\\\" \\\" three 3 \\\"\" key2 \"1 2 3\"");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, true, AnyData::ValueType::String).AsDict());
     }
 
@@ -207,8 +223,8 @@ TEST_CASE("AnyData")
 
     SECTION("EmptyContainersParsing")
     {
-        auto parsed_arr_value = AnyData::ParseValue("", false, true, AnyData::ValueType::String);
-        auto parsed_dict_value = AnyData::ParseValue("", true, false, AnyData::ValueType::Int64);
+        const auto parsed_arr_value = AnyData::ParseValue(u8"", false, true, AnyData::ValueType::String);
+        const auto parsed_dict_value = AnyData::ParseValue(u8"", true, false, AnyData::ValueType::Int64);
         const auto& parsed_arr = parsed_arr_value.AsArray();
         const auto& parsed_dict = parsed_dict_value.AsDict();
 
@@ -218,23 +234,23 @@ TEST_CASE("AnyData")
 
     SECTION("InvalidBoolRejected")
     {
-        CHECK_THROWS_AS((AnyData::ParseValue("Enabled", false, false, AnyData::ValueType::Bool)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("foo", false, true, AnyData::ValueType::Bool)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("key Enabled", true, false, AnyData::ValueType::Bool)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("2", false, false, AnyData::ValueType::Bool)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("-1", false, false, AnyData::ValueType::Bool)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("0.5", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"Enabled", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"foo", false, true, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key Enabled", true, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"2", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"-1", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"0.5", false, false, AnyData::ValueType::Bool)), AnyDataException);
     }
 
     SECTION("InvalidNumbersRejected")
     {
-        CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Int64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Float64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("1 two 3", false, true, AnyData::ValueType::Int64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("key NaNish", true, false, AnyData::ValueType::Float64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("nan", false, false, AnyData::ValueType::Float64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("1 inf 3", false, true, AnyData::ValueType::Float64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("key -inf", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"abc", false, false, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"abc", false, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"1 two 3", false, true, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key NaNish", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"nan", false, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"1 inf 3", false, true, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key -inf", true, false, AnyData::ValueType::Float64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::numeric_limits<float64_t>::quiet_NaN()})), AnyDataException);
 
         AnyData::Array non_finite_values;
@@ -245,95 +261,95 @@ TEST_CASE("AnyData")
 
     SECTION("BoolAcceptsNumbersAndExplicitLiterals")
     {
-        CHECK(AnyData::ParseValue("True", false, false, AnyData::ValueType::Bool).AsBool());
-        CHECK(!AnyData::ParseValue("False", false, false, AnyData::ValueType::Bool).AsBool());
-        CHECK(AnyData::ParseValue("1", false, false, AnyData::ValueType::Bool).AsBool());
-        CHECK(!AnyData::ParseValue("0", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(AnyData::ParseValue(u8"True", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(!AnyData::ParseValue(u8"False", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(AnyData::ParseValue(u8"1", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(!AnyData::ParseValue(u8"0", false, false, AnyData::ValueType::Bool).AsBool());
     }
 
     SECTION("MalformedDictRejected")
     {
-        CHECK_THROWS_AS((AnyData::ParseValue("key_only", true, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key_only", true, false, AnyData::ValueType::String)), AnyDataException);
     }
 
     SECTION("MalformedQuotedTokenRejected")
     {
-        CHECK_THROWS_AS((AnyData::ParseValue("\"unterminated", false, false, AnyData::ValueType::String)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("key \"unterminated", true, false, AnyData::ValueType::String)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("\"1 2", false, true, AnyData::ValueType::Int64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("\"quoted\"tail", false, false, AnyData::ValueType::String)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("\"key with space\"tail value", true, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"\"unterminated", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key \"unterminated", true, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"\"1 2", false, true, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"\"quoted\"tail", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"\"key with space\"tail value", true, false, AnyData::ValueType::String)), AnyDataException);
     }
 
     SECTION("DanglingEscapeRejected")
     {
-        CHECK_THROWS_AS((AnyData::ParseValue("abc\\", false, false, AnyData::ValueType::String)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("one two\\", false, true, AnyData::ValueType::String)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("key value\\", true, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"abc\\", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"one two\\", false, true, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"key value\\", true, false, AnyData::ValueType::String)), AnyDataException);
     }
 
     SECTION("WhitespaceTrimmedForTypedScalars")
     {
-        CHECK(AnyData::ParseValue("  -42\t", false, false, AnyData::ValueType::Int64).AsInt64() == -42);
-        CHECK(AnyData::ParseValue("\t3.5 ", false, false, AnyData::ValueType::Float64).AsDouble() == 3.5);
-        CHECK(AnyData::ParseValue("  true\t", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(AnyData::ParseValue(u8"  -42\t", false, false, AnyData::ValueType::Int64).AsInt64() == -42);
+        CHECK(AnyData::ParseValue(u8"\t3.5 ", false, false, AnyData::ValueType::Float64).AsDouble() == 3.5);
+        CHECK(AnyData::ParseValue(u8"  true\t", false, false, AnyData::ValueType::Bool).AsBool());
     }
 
     SECTION("QuotedStringsRoundTripInContainers")
     {
         AnyData::Array arr;
-        arr.EmplaceBack(string(" spaced value "));
-        arr.EmplaceBack(string("quote \" value"));
+        arr.EmplaceBack(u8string(u8" spaced value "));
+        arr.EmplaceBack(u8string(u8"quote \" value"));
 
-        string encoded_arr = AnyData::ValueToString(arr.Copy());
+        u8string encoded_arr = AnyData::ValueToString(arr.Copy());
         CHECK(arr == AnyData::ParseValue(encoded_arr, false, true, AnyData::ValueType::String).AsArray());
 
         AnyData::Dict dict;
-        dict.Emplace("key space", string("value with spaces"));
-        dict.Emplace("key_quote", string("value \"quote\""));
+        dict.Emplace("key space", u8string(u8"value with spaces"));
+        dict.Emplace("key_quote", u8string(u8"value \"quote\""));
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
     SECTION("CarriageReturnIsStripped")
     {
-        string text {"line1\rline2\nline3"};
-        string normalized_text {"line1line2\nline3"};
-        string encoded = AnyData::ValueToString(AnyData::Value {text});
+        const u8string text {u8"line1\rline2\nline3"};
+        const u8string normalized_text {u8"line1line2\nline3"};
+        const auto encoded = AnyData::ValueToString(AnyData::Value {text});
 
-        CHECK(StringEscaping::CodeString(text) == "\"line1line2\\nline3\"");
-        CHECK(StringEscaping::DecodeString("\"line1\\rline2\\nline3\"") == normalized_text);
+        CHECK(StringEscaping::CodeString(text.view()) == u8"\"line1line2\\nline3\"");
+        CHECK(StringEscaping::DecodeString(u8"\"line1\\rline2\\nline3\"") == normalized_text);
         CHECK(encoded == normalized_text);
-        CHECK(AnyData::ParseValue(encoded, false, false, AnyData::ValueType::String).AsString() == normalized_text);
+        CHECK(AnyData::ParseValue(encoded, false, false, AnyData::ValueType::String).AsString() == normalized_text.view());
 
         AnyData::Dict dict;
-        dict.Emplace("payload", string {"head\r\ntail"});
+        dict.Emplace("payload", u8string {u8"head\r\ntail"});
 
         AnyData::Dict normalized_dict;
-        normalized_dict.Emplace("payload", string {"head\ntail"});
+        normalized_dict.Emplace("payload", u8string {u8"head\ntail"});
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(normalized_dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
     SECTION("DictKeysAreDecodedAndDuplicateKeysRejected")
     {
         AnyData::Dict dict;
-        dict.Emplace("key \"quoted\"", string("value1"));
-        dict.Emplace("path\\segment", string("value2"));
+        dict.Emplace("key \"quoted\"", u8string(u8"value1"));
+        dict.Emplace("path\\segment", u8string(u8"value2"));
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        u8string encoded_dict = AnyData::ValueToString(dict.Copy());
         auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
         const auto& parsed_dict = parsed_value.AsDict();
 
         CHECK(parsed_dict.Contains("key \"quoted\""));
         CHECK(parsed_dict.Contains("path\\segment"));
-        CHECK(parsed_dict["key \"quoted\""].AsString() == "value1");
-        CHECK(parsed_dict["path\\segment"].AsString() == "value2");
+        CHECK(parsed_dict["key \"quoted\""].AsString() == u8"value1");
+        CHECK(parsed_dict["path\\segment"].AsString() == u8"value2");
 
-        CHECK_THROWS_AS((AnyData::ParseValue("dup 1 dup 2", true, false, AnyData::ValueType::Int64)), AnyDataException);
-        CHECK_THROWS_AS((AnyData::ParseValue("dup \"1 2\" dup \"3 4\"", true, true, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"dup 1 dup 2", true, false, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue(u8"dup \"1 2\" dup \"3 4\"", true, true, AnyData::ValueType::Int64)), AnyDataException);
     }
 }
 

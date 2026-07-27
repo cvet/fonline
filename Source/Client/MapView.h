@@ -205,7 +205,7 @@ public:
 
     void EnableMapperMode();
     void SetScrollCheck(bool enabled);
-    void LoadFromFile(string_view map_name, string_view file_name, const string& str);
+    void LoadFromFile(string_view map_name, string_view file_name, const u8string& str);
     void LoadStaticData();
     void Process();
 
@@ -250,7 +250,7 @@ public:
     void InstantScrollTo(mpos center_hex);
 
     // Critters
-    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<CritterHexView>;
+    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<byte>>& data, bool fade_in) -> ptr<CritterHexView>;
     auto AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Properties> props, ident_t id = {}) -> ptr<CritterHexView>;
     auto GetCritter(ident_t id) -> nptr<CritterHexView>;
     auto GetNonDeadCritter(mpos hex) -> nptr<CritterHexView>;
@@ -264,7 +264,7 @@ public:
     void DestroyCritter(ptr<CritterHexView> cr);
 
     // Items
-    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<ItemHexView>;
+    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<byte>>& data, bool fade_in) -> ptr<ItemHexView>;
     auto AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props, ident_t id = {}) -> ptr<ItemHexView>;
     auto AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ptr<ItemHexView>;
     auto AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>;
@@ -307,7 +307,7 @@ public:
     void ClearIgnorePids();
 
     void SetHeaderExtraFields(map<string, string> fields);
-    auto SaveToText(string_view save_name) const -> string;
+    auto SaveToText(string_view save_name) const -> u8string;
 
 private:
     struct TransparentEggInfo

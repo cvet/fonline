@@ -53,6 +53,7 @@ CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCr
     });
 
     _name = strex("{}_{}", proto->GetName(), id);
+    _displayName = _name;
 
 #if FO_ENABLE_3D
     if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {
@@ -81,11 +82,11 @@ void CritterView::OnDestroySelf()
     _invItems.clear();
 }
 
-void CritterView::SetName(string_view name)
+void CritterView::SetName(u8string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _name = name;
+    _displayName.assign(name);
 }
 
 auto CritterView::IsAttachedCritter(ident_t cr_id) const noexcept -> bool
@@ -117,7 +118,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
     return AddRawInvItem(item);
 }
 
-auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
+auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<byte>>& props_data) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 

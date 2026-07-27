@@ -285,7 +285,7 @@ auto Entity::StoreData(bool with_protected) const -> Properties::StoredData
     return _props.StoreData(with_protected);
 }
 
-void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
+void Entity::RestoreData(const vector<vector<byte>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 

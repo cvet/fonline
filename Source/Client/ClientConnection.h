@@ -105,7 +105,7 @@ private:
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
     StreamDecompressor _decompressor {};
-    vector<uint8_t> _unpackedReceivedBuf {};
+    vector<byte> _unpackedReceivedBuf {};
     size_t _bytesSend {};
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};

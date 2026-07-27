@@ -69,12 +69,12 @@ Player::~Player()
     }
 }
 
-auto Player::GetName() const noexcept -> string_view
+auto Player::GetDisplayName() const -> u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _name;
+    return _displayName;
 }
 
 auto Player::GetControlledCritter() noexcept -> nptr<Critter>
@@ -138,7 +138,15 @@ void Player::SetName(string_view name)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    _name = name;
+    _displayName.assign(name);
+}
+
+void Player::SetName(u8string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    _displayName.assign(name);
 }
 
 void Player::SetControlledCritter(nptr<Critter> cr)
@@ -471,7 +479,7 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
     }
 
     out_buf->Write(prop->GetRegIndex());
-    out_buf->Push(prop_raw_data);
+    out_buf->Push(make_byte_span(prop_raw_data));
 }
 
 void Player::Send_Moving(ptr<const Critter> from_cr)
@@ -728,7 +736,7 @@ void Player::Send_HashList(const_span<string> hash_strings)
     }
 }
 
-void Player::Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data)
+void Player::Send_RemoteCall(hstring rpc_name, const_span<byte> rpc_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -781,7 +789,7 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
     }
 }
 
-void Player::Send_InitData(const_span<uint8_t> update_desc)
+void Player::Send_InitData(const_span<byte> update_desc)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -805,7 +813,7 @@ void Player::Send_InitData(const_span<uint8_t> update_desc)
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
 
-void Player::Send_UpdateFileData(const_span<uint8_t> update_data)
+void Player::Send_UpdateFileData(const_span<byte> update_data)
 {
     FO_STACK_TRACE_ENTRY();
 

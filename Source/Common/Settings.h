@@ -34,18 +34,17 @@
 #pragma once
 
 #include "Common.h"
+#include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(SettingsException);
 
-class ConfigFile;
-
 struct ResourcePackInfo
 {
     string Name {};
-    vector<string> InputDirs {};
-    vector<string> InputFiles {};
+    vector<u8string> InputDirs {};
+    vector<u8string> InputFiles {};
     vector<string> IncludePatterns {};
     vector<string> ExcludePatterns {};
     bool ServerOnly {};
@@ -57,8 +56,8 @@ struct ResourcePackInfo
 struct SubConfigInfo
 {
     string Name {};
-    string ConfigDir {};
-    map<string, string> Settings {};
+    u8string ConfigDir {};
+    map<string, u8string> Settings {};
 };
 
 struct BaseSettings
@@ -72,12 +71,12 @@ public:
 
     [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
-    [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
+    [[nodiscard]] auto GetAppliedConfigs() const -> const_span<u8string> { return _appliedConfigs; }
 
 protected:
     vector<ResourcePackInfo> _resourcePacks {};
     vector<SubConfigInfo> _subConfigs {};
-    vector<string> _appliedConfigs {};
+    vector<u8string> _appliedConfigs {};
     unordered_set<string> _appliedSettings {};
 };
 
@@ -106,10 +105,10 @@ public:
 
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
     [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
-    [[nodiscard]] auto Save() const -> map<string, string>;
+    [[nodiscard]] auto Save() const -> map<string, u8string>;
 
-    void ApplyConfigAtPath(string_view config_name, string_view config_dir);
-    void ApplyConfigFile(ConfigFile& config, string_view config_dir);
+    void ApplyConfigAtPath(u8string_view config_name, u8string_view config_dir);
+    void ApplyConfigFile(ConfigFile& config, u8string_view config_dir);
     void ApplyCommandLine(::fo::CommandLineArgs args);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
@@ -121,9 +120,9 @@ public:
 
 private:
     bool IsSecretSettingName(string_view name) const;
-    void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
-    void AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir);
-    void AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir);
+    void SetValue(string_view setting_name, u8string_view setting_value, u8string_view config_dir = {});
+    void AddResourcePacks(const vector<ptr<ConfigKeyValueMap>>& res_packs, u8string_view config_dir);
+    void AddSubConfigs(const vector<ptr<ConfigKeyValueMap>>& sub_configs, u8string_view config_dir);
 
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};

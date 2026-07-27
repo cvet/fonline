@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ModelAnimationArchiveException);
 
 // Stable schema-1 wire identifier; preserve its bytes for baked-resource compatibility.
-inline constexpr array<uint8_t, 8> MODEL_ANIMATION_ARCHIVE_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'A', 'R', 'C'};
+inline constexpr array<byte, 8> MODEL_ANIMATION_ARCHIVE_MAGIC {byte {'L'}, byte {'F'}, byte {'O'}, byte {'Z'}, byte {'Z'}, byte {'A'}, byte {'R'}, byte {'C'}};
 inline constexpr uint16_t MODEL_ANIMATION_ARCHIVE_SCHEMA_VERSION = 1;
 inline constexpr uint32_t MODEL_ANIMATION_ARCHIVE_SUPPORTED_FLAGS = 0;
 inline constexpr string_view MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION = "6cbdc790123aa4731d82e255df187b3a8a808256";
@@ -70,14 +70,14 @@ struct ModelAnimationArchive
     string PayloadRevision {};
     ModelAnimationArchiveMetadata Metadata {};
     uint64_t PayloadHash {};
-    vector<uint8_t> Payload {};
+    vector<byte> Payload {};
 };
 
 // Wire order: magic[8], schema:u16, kind:u16, flags:u32, rig/source/cache signatures:u64,
 // revision/source/object as u32 byte length + validated UTF-8 bytes, payload length:u64, FNV-1a hash:u64,
 // then the opaque payload. Every integer is encoded field-by-field in little-endian order.
-[[nodiscard]] auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationArchive(const_span<uint8_t> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive;
+[[nodiscard]] auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<byte> payload) -> vector<byte>;
+[[nodiscard]] auto ReadModelAnimationArchive(const_span<byte> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive;
 
 // Installs the engine allocation policy for the private model-animation codec.
 // Call before constructing, loading, or baking any codec-owned object.
@@ -85,12 +85,12 @@ void InitializeModelAnimationMemory() noexcept;
 
 FO_DECLARE_EXCEPTION(ModelAnimationRigDataException);
 
-inline constexpr array<uint8_t, 8> MODEL_DESCRIPTION_MAGIC {'L', 'F', 'M', 'O', 'D', 'I', 'N', 'F'};
+inline constexpr array<byte, 8> MODEL_DESCRIPTION_MAGIC {byte {'L'}, byte {'F'}, byte {'M'}, byte {'O'}, byte {'D'}, byte {'I'}, byte {'N'}, byte {'F'}};
 inline constexpr uint16_t MODEL_DESCRIPTION_SCHEMA_VERSION = 1;
 inline constexpr uint16_t MODEL_DESCRIPTION_SUPPORTED_FLAGS = 0;
 
 // Stable schema-1 wire identifiers; preserve their bytes for baked-resource compatibility.
-inline constexpr array<uint8_t, 8> MODEL_ANIMATION_RIG_DATA_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'R', 'I', 'G'};
+inline constexpr array<byte, 8> MODEL_ANIMATION_RIG_DATA_MAGIC {byte {'L'}, byte {'F'}, byte {'O'}, byte {'Z'}, byte {'Z'}, byte {'R'}, byte {'I'}, byte {'G'}};
 inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION = 1;
 inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SUPPORTED_FLAGS = 0;
 inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_JOINTS = 1024;
@@ -99,7 +99,7 @@ inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_BINDINGS = std::numeric_limits
 inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE = 1.0e-4f;
 inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE = 1.0e-4f;
 
-inline constexpr array<uint8_t, 8> MODEL_ANIMATION_JOINT_REMAP_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'J', 'R', 'M'};
+inline constexpr array<byte, 8> MODEL_ANIMATION_JOINT_REMAP_MAGIC {byte {'L'}, byte {'F'}, byte {'O'}, byte {'Z'}, byte {'Z'}, byte {'J'}, byte {'R'}, byte {'M'}};
 inline constexpr uint16_t MODEL_ANIMATION_JOINT_REMAP_SCHEMA_VERSION = 1;
 
 struct ModelAnimationJointRemap
@@ -114,7 +114,7 @@ struct ModelAnimationJointRemap
 struct ModelAnimationRigArchiveData
 {
     ModelAnimationArchiveMetadata Metadata {};
-    vector<uint8_t> Payload {};
+    vector<byte> Payload {};
 };
 
 struct ModelAnimationRigClipData
@@ -144,16 +144,16 @@ struct ModelAnimationRigData
 // Joint-remap wire order: magic[8], schema:u16, reserved:u16, duration:f32 bits,
 // canonical/source/nearest counts:u32, source-to-canonical indices:u32[],
 // canonical presence bytes, then nearest sample times as f32 bits.
-[[nodiscard]] auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_view context) -> ModelAnimationJointRemap;
+[[nodiscard]] auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<byte>;
+[[nodiscard]] auto ReadModelAnimationJointRemapPayload(const_span<byte> payload, string_view context) -> ModelAnimationJointRemap;
 void ValidateModelAnimationJointRemap(const ModelAnimationJointRemap& remap, string_view context);
 
 // Rig-data wire order: magic[8], schema:u16, flags:u16, rig/cache signatures:u64,
 // clip/binding counts:u32, skeleton and base-remap archive manifests, sorted clip
 // archive manifests, then sorted state/action bindings. An archive manifest stores
 // caller-owned source signature and identities before its length-prefixed LF archive.
-[[nodiscard]] auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationRigData(const_span<uint8_t> data, string_view context) -> ModelAnimationRigData;
+[[nodiscard]] auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<byte>;
+[[nodiscard]] auto ReadModelAnimationRigData(const_span<byte> data, string_view context) -> ModelAnimationRigData;
 
 FO_END_NAMESPACE
 

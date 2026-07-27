@@ -55,6 +55,7 @@ public:
     ~CritterView() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
+    [[nodiscard]] auto GetDisplayName() const -> u8string override { return _displayName; }
     [[nodiscard]] auto IsAlive() const noexcept -> bool { return GetCondition() == CritterCondition::Alive; }
     [[nodiscard]] auto IsKnockout() const noexcept -> bool { return GetCondition() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const noexcept -> bool { return GetCondition() == CritterCondition::Dead; }
@@ -68,11 +69,11 @@ public:
     [[nodiscard]] auto IsAttachedCritter(ident_t cr_id) const noexcept -> bool;
 
     auto AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, nptr<const Properties> props) -> ptr<ItemView>;
-    auto AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>;
+    auto AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<byte>>& props_data) -> ptr<ItemView>;
     auto AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>;
     void DeleteInvItem(ptr<ItemView> item);
     void DeleteAllInvItems();
-    void SetName(string_view name);
+    void SetName(u8string_view name);
     void SetAttachedCritters(vector<ident_t> attached_critters);
 
 protected:
@@ -80,6 +81,7 @@ protected:
 
     vector<refcount_ptr<ItemView>> _invItems {};
     vector<ident_t> _attachedCritters {};
+    u8string _displayName {};
 };
 
 FO_END_NAMESPACE

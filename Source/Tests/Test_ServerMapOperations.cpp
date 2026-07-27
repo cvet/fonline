@@ -55,7 +55,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -4716,9 +4716,9 @@ namespace MapOpsTest
             });
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
+    static auto MakeEmptyMapBlob() -> vector<byte>
     {
-        vector<uint8_t> map_data;
+        vector<byte> map_data;
         auto writer = DataWriter(map_data);
         writer.Write<uint32_t>(uint32_t {0}); // hashes_count
         writer.Write<uint32_t>(uint32_t {0}); // cr_count
@@ -4726,9 +4726,9 @@ namespace MapOpsTest
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -4738,7 +4738,7 @@ namespace MapOpsTest
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -4757,9 +4757,9 @@ namespace MapOpsTest
         return protos_data;
     }
 
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<byte>
     {
-        vector<uint8_t> props_data;
+        vector<byte> props_data;
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
@@ -4769,7 +4769,7 @@ namespace MapOpsTest
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<byte> protos_data;
         auto writer = DataWriter(protos_data);
 
         writer.Write<uint32_t>(uint32_t {0});
@@ -4788,7 +4788,7 @@ namespace MapOpsTest
         return protos_data;
     }
 
-    static auto MakeStaticItemProtoBlob(EngineMetadata& proto_engine, hstring type_name, bool set_hidden) -> vector<uint8_t>
+    static auto MakeStaticItemProtoBlob(EngineMetadata& proto_engine, hstring type_name, bool set_hidden) -> vector<byte>
     {
         return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, type_name,
             {
@@ -4809,7 +4809,7 @@ namespace MapOpsTest
             });
     }
 
-    static auto MakeStaticMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
+    static auto MakeStaticMapBlob(const vector<byte>& metadata_blob, const vector<byte>& critter_blob, const vector<byte>& server_item_blob, const vector<byte>& client_item_blob, const vector<byte>& server_map_blob, const vector<byte>& client_map_blob) -> vector<byte>
     {
         BakerTests::TestRig rig;
         rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
@@ -4822,8 +4822,8 @@ namespace MapOpsTest
 
 #if FO_ANGELSCRIPT_SCRIPTING
         BakerServerEngine script_engine {rig.BakedFiles};
-        vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-            string message_str = string(message);
+        const vector<byte> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            const string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
@@ -4969,12 +4969,13 @@ namespace MapOpsTest
     { \
         auto func = server->FindFunc<void>(get_func(func_name)); \
         REQUIRE(func); \
-        auto prev_callback = GetExceptionCallback(); \
-        string message; \
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
+        const auto prev_callback = GetExceptionCallback(); \
+        u8string message; \
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); }); \
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
         CHECK_FALSE(func.Call()); \
-        CHECK(message.find(expected_message) != string::npos); \
+        const u8string expected_message_utf8 {expected_message}; \
+        CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos); \
     }
 
 TEST_CASE("MapItemOperations")

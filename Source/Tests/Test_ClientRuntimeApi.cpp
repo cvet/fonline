@@ -39,14 +39,16 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto PromoteExpectedRuntime(string_view runtime_path) -> bool
+static_assert(std::same_as<decltype(GetCurrentClientRuntimeLibraryName()), string>);
+
+static auto PromoteExpectedRuntime(u8string_view runtime_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return runtime_path == "runtime";
+    return runtime_path == u8"runtime";
 }
 
-static auto FailUnexpectedRuntimePromotion(string_view) -> bool
+static auto FailUnexpectedRuntimePromotion(u8string_view) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -198,14 +200,14 @@ TEST_CASE("ClientRuntimeApi")
     {
         // Both helpers depend on Platform::GetExePath, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended.
-        string live = GetClientRuntimeLivePath();
-        string staging = MakeClientRuntimeStagingPath(live);
+        u8string live = GetClientRuntimeLivePath();
+        u8string staging = MakeClientRuntimeStagingPath(live);
 
         CHECK_FALSE(live.empty());
         CHECK_FALSE(staging.empty());
         CHECK(staging.size() > live.size());
-        CHECK(string_view(staging).starts_with(live));
-        CHECK_FALSE(string_view(staging).ends_with(live));
+        CHECK(u8strvex(staging).starts_with(live));
+        CHECK_FALSE(u8strvex(staging).ends_with(live));
     }
 
     SECTION("CurrentRuntimeLibraryNameIsNonEmpty")
@@ -220,49 +222,58 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("InstalledRuntimeBootstrapRoundTrip")
     {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs_path_to_string(base);
-        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
+        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+        const u8string temp_dir = fs_path_to_u8string(base);
+        const u8string runtime_file_name = FormatUtf8("Runtime{}", GetClientRuntimeLibraryExtension());
+        const u8string runtime_path_source = fs_path_to_u8string(base / std::filesystem::path {fs_make_path(runtime_file_name)});
+        const u8string runtime_path = fs_resolve_path(runtime_path_source);
+        const u8string bootstrap_path_source = fs_path_to_u8string(base / "selector" / "runtime.path");
+        const u8string bootstrap_path = fs_resolve_path(bootstrap_path_source);
         ignore_unused(fs_remove_dir_tree(temp_dir));
 
         REQUIRE(WriteClientRuntimeBootstrapTarget(bootstrap_path, runtime_path, runtime_file_name));
 
-        optional<string> restored_path = ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name);
+        const optional<u8string> restored_path = ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name);
         REQUIRE(restored_path.has_value());
         CHECK(restored_path.value() == runtime_path);
 
-        string fallback_path = fs_resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
+        const u8string fallback_path_source = fs_path_to_u8string(base / "BaseRuntime");
+        const u8string fallback_path = fs_resolve_path(fallback_path_source);
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == fallback_path);
 
-        REQUIRE(fs_write_file(MakeClientRuntimeStagingPath(runtime_path), "staged"));
+        const u8string staging_path = MakeClientRuntimeStagingPath(runtime_path);
+        REQUIRE(fs_write_file_text(staging_path, u8"staged"));
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == runtime_path);
 
-        REQUIRE(fs_write_file(runtime_path, "live"));
-        REQUIRE(fs_remove_file(MakeClientRuntimeStagingPath(runtime_path)));
+        REQUIRE(fs_write_file_text(runtime_path, u8"live"));
+        REQUIRE(fs_remove_file(staging_path));
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == runtime_path);
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("InstalledRuntimeBootstrapRejectsUnsafeTargets")
     {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs_path_to_string(base);
-        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("runtime.path").str());
+        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+        const u8string temp_dir = fs_path_to_u8string(base);
+        const u8string runtime_file_name = FormatUtf8("Runtime{}", GetClientRuntimeLibraryExtension());
+        const u8string bootstrap_path_source = fs_path_to_u8string(base / "runtime.path");
+        const u8string bootstrap_path = fs_resolve_path(bootstrap_path_source);
         ignore_unused(fs_remove_dir_tree(temp_dir));
 
-        CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, "relative/Runtime.dll", runtime_file_name));
+        CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, u8"relative/Runtime.dll", runtime_file_name));
 
-        string wrong_runtime_path = fs_resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
+        const u8string wrong_runtime_path_source = fs_path_to_u8string(base / "OtherRuntime.dll");
+        const u8string wrong_runtime_path = fs_resolve_path(wrong_runtime_path_source);
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, wrong_runtime_path, runtime_file_name));
 
-        string valid_runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        REQUIRE(fs_write_file(bootstrap_path, strex("{}\n{}", valid_runtime_path, valid_runtime_path).str()));
+        const u8string valid_runtime_path_source = fs_path_to_u8string(base / std::filesystem::path {fs_make_path(runtime_file_name)});
+        const u8string valid_runtime_path = fs_resolve_path(valid_runtime_path_source);
+        const u8string duplicate_selector = FormatUtf8("{}\n{}", valid_runtime_path, valid_runtime_path);
+        REQUIRE(fs_write_file_text(bootstrap_path, duplicate_selector));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
 
-        REQUIRE(fs_write_file(bootstrap_path, string(4097, 'x')));
+        const u8string oversized_selector = u8string::FromChecked(std::u8string(4097, u8'x'));
+        REQUIRE(fs_write_file_text(bootstrap_path, oversized_selector));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
         CHECK(fs_remove_dir_tree(temp_dir));
     }

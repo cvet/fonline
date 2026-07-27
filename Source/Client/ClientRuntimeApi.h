@@ -67,12 +67,12 @@ struct ClientRuntimeResult
 struct ClientRuntimeHostResult
 {
     ClientRuntimeResult Result {};
-    string RequestedRuntimePath {};
+    u8string RequestedRuntimePath {};
     string RequestedCompatibilityVersion {};
     string LoadedBuildHash {};
 };
 
-using ClientRuntimeHostPromoteFunc = bool (*)(string_view);
+using ClientRuntimeHostPromoteFunc = bool (*)(u8string_view);
 using ClientRuntimeRunFunc = void (*)(int32_t argc, char** argv, ClientRuntimeResult* result) noexcept;
 
 struct ClientRuntimeExports

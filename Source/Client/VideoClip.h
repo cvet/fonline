@@ -42,7 +42,7 @@ FO_DECLARE_EXCEPTION(VideoClipException);
 class VideoClip
 {
 public:
-    explicit VideoClip(vector<uint8_t> video_data);
+    explicit VideoClip(vector<byte> video_data);
     VideoClip(const VideoClip&) = delete;
     VideoClip(VideoClip&&) noexcept;
     auto operator=(const VideoClip&) = delete;

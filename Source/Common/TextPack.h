@@ -89,7 +89,7 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
         const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
-        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes));
+        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_byte_span(hashes));
     }
 };
 template<>
@@ -115,26 +115,23 @@ public:
     auto operator=(TextPack&&) noexcept -> TextPack& = default;
     ~TextPack() = default;
 
-    [[nodiscard]] auto GetText(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> string_view;
+    [[nodiscard]] auto GetText(TextPackKey key) const -> u8string_view;
+    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> u8string_view;
     [[nodiscard]] auto GetTextCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto IsTextPresent(TextPackKey key) const -> bool;
-    [[nodiscard]] auto GetStr(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> string_view;
-    [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
-    [[nodiscard]] auto GetBinaryData() const -> vector<uint8_t>;
+    [[nodiscard]] auto GetBinaryData() const -> vector<byte>;
 
-    auto LoadFromBinaryData(const vector<uint8_t>& data, string_view collection = {}) -> bool;
-    auto LoadFromString(const string& str, string_view collection = {}) -> bool;
-    void LoadFromMap(const map<string, string>& kv, string_view collection = {});
+    auto LoadFromBinaryData(const_span<byte> data, string_view collection = {}) -> bool;
+    auto LoadFromText(u8string_view text, string_view collection = {}) -> bool;
+    void LoadFromTextMap(const map<string, u8string>& kv, string_view collection = {});
     void LoadFromResources(FileSystem& resources, string_view language = {});
-    void AddStr(TextPackKey key, string_view str);
-    void AddStr(TextPackKey key, string&& str);
-    void EraseStr(TextPackKey key);
+    void AddText(TextPackKey key, u8string_view text);
+    void AddText(TextPackKey key, u8string&& text);
+    void EraseText(TextPackKey key);
     void Merge(const TextPack& other);
-    void FixStr(const TextPack& base_pack);
+    void FixText(const TextPack& base_pack);
     void Clear();
 
     static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
@@ -147,9 +144,8 @@ private:
     auto ReadKeyPart(DataReader& reader) -> hstring;
 
     ptr<HashResolver> _hashResolver;
-    multimap<TextPackKey, string> _strData {};
-    string _emptyStr {};
-    mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    multimap<TextPackKey, u8string> _textData {};
+    u8string _emptyText {};
 };
 
 FO_END_NAMESPACE

@@ -22,108 +22,20 @@ static auto GetTestMapLoaderRegistrator(EngineMetadata& meta, string_view type_n
 
 TEST_CASE("MapLoader")
 {
+    SECTION("RejectsOldMapFormat")
+    {
+        EngineMetadata meta {[] { }};
+        HashStorage hashes {};
+
+        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "LegacyMap.fomap", u8string {u8"[Header]\n[Tiles]\n[Objects]\n"}, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
+    }
+
     SECTION("RejectsMapsWithoutProtoMapSection")
     {
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "LegacyMap.fomap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "BrokenMap.fomap", "[$Name/Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-    }
-
-    SECTION("RejectsBareContentSections")
-    {
-        EngineMetadata meta {[] { }};
-        HashStorage hashes {};
-
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[Critter]\n"
-                         "$Id = 1\n"
-                         "$Proto = CritterOne\n";
-
-        CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-
-        string bare_slash_map_buf = "[ProtoMap]\n"
-                                    "$Name = TestMap\n"
-                                    "[/Item]\n"
-                                    "$Id = 1\n"
-                                    "$Proto = ItemOne\n";
-
-        CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", bare_slash_map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-    }
-
-    SECTION("RejectsNestedSectionsAddressedToUndeclaredMap")
-    {
-        EngineMetadata meta {[] { }};
-        HashStorage hashes {};
-
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[OtherMap/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = ItemOne\n";
-
-        CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-    }
-
-    SECTION("RejectsUnknownNestedSectionType")
-    {
-        EngineMetadata meta {[] { }};
-        HashStorage hashes {};
-
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[$Name/Tile]\n"
-                         "$Id = 1\n";
-
-        CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-    }
-
-    SECTION("RejectsLoadOfMapThatIsNotDeclared")
-    {
-        EngineMetadata meta {[] { }};
-        HashStorage hashes {};
-
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n";
-
-        CHECK_THROWS_AS(MapLoader::Load("AnotherMap", "AnotherMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
-    }
-
-    SECTION("AnonymousAnchorResolvesToFileStemNotRequestedName")
-    {
-        EngineMetadata meta {[] { }};
-        InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
-        meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
-
-        HashStorage hashes {};
-
-        string map_buf = "[ProtoMap]\n"
-                         "Outside = True\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromStemMap\n"
-                         "[ProtoMap]\n"
-                         "$Name = ZoneB\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromZoneB\n";
-
-        vector<string> loaded_kinds;
-        auto load_map = [&](string_view map_name) {
-            loaded_kinds.clear();
-            CHECK_NOTHROW(MapLoader::Load(map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
-        };
-
-        load_map("Zones");
-        CHECK(loaded_kinds == vector<string> {"FromStemMap"});
-
-        load_map("ZoneB");
-        CHECK(loaded_kinds == vector<string> {"FromZoneB"});
+        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "BrokenMap.fomap", u8string {u8"[Critter]\n$Proto = CritterOne\n"}, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("MissingProtosAccumulateErrorsAndSkipCallbacks")

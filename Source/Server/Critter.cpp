@@ -241,12 +241,19 @@ auto Critter::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
+    return _proto->GetName();
+}
 
+auto Critter::GetDisplayName() const -> u8string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
     if (auto player = _player.load(std::memory_order_acquire)) {
-        return player->GetName();
+        return player->GetDisplayName();
     }
 
-    return _proto->GetName();
+    return GetName();
 }
 
 auto Critter::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>

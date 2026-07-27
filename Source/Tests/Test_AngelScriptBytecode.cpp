@@ -383,7 +383,7 @@ namespace
             int32_t line = ctx->GetExceptionLineNumber(&column, section.get_pp());
             nptr<const asIScriptFunction> exception_func = ctx->GetExceptionFunction();
             nptr<const char> exception_text = ctx->GetExceptionString();
-            string_view exception_decl = exception_func ? string_view {exception_func->GetDeclaration()} : string_view {"<unknown>"};
+            const string_view exception_decl = exception_func ? string_view {exception_func->GetDeclaration()} : "<unknown>";
 
             FAIL("Execute failed: result=" << exec_result << ", section=" << (section ? section.get() : "<unknown>") << ", line=" << line << ", column=" << column << ", function=" << exception_decl << ", exception=" << (exception_text ? exception_text.get() : "<none>") << ", first_observed=" << state.FirstObservedId << ", last_observed=" << state.LastObservedId);
         }
@@ -570,7 +570,7 @@ void RunScenario()
     Lookup lk = Lookup();
     lk.Fallback = 100;
 
-    // Method call: this + PtrSizedVal ref + int ref Ã¢â€ â€™ GETREF offset bug scenario
+    // Method call: this + PtrSizedVal ref + int ref -> GETREF offset bug scenario
     PtrSizedVal key1 = CreatePtrSizedVal(42);
     int r1 = lk.Get(key1, 10);
     ObserveResource(r1);  // 42 + 10 = 52
@@ -597,7 +597,7 @@ void RunScenario()
     // Chain: use result of one lookup as default for the next
     PtrSizedVal key5 = CreatePtrSizedVal(100);
     int chained = lk.Get(key5, lk.Get(key1, 0));
-    ObserveResource(chained);  // key5==Fallback Ã¢â€ â€™ defVal = lk.Get(key1, 0) = 42+0 = 42
+    ObserveResource(chained);  // key5==Fallback -> defVal = lk.Get(key1, 0) = 42+0 = 42
 }
 )";
 
@@ -1989,7 +1989,7 @@ void GuardedReadAfterEarlyReturn()
         engine->SetUserData(&state);
 
         // Run guarded reads; neither should throw.
-        for (string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
+        for (const string_view decl : {"void GuardedReadInThenBranch()", "void GuardedReadAfterEarlyReturn()"}) {
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
@@ -2069,7 +2069,7 @@ void NarrowsCompoundOrAfterReturn()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
+        for (const string_view decl : {"void NarrowsCompoundAnd()", "void NarrowsCompoundOrAfterReturn()"}) {
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
@@ -2112,9 +2112,9 @@ void NarrowsCompoundOrAfterReturn()
             {
                 Resource? g = GetMaybe();
                 if (g != null) {
-                    Resource a = g;            // OK â€" narrowed.
+                    Resource a = g;            // OK -- narrowed.
                     g = GetMaybe();            // Reassign: drops narrowing.
-                    Resource b = g;            // Must fail â€" g is `Resource?` again.
+                    Resource b = g;            // Must fail -- g is `Resource?` again.
                 }
             }
         )",
@@ -2229,7 +2229,7 @@ void NullAssignToNarrowedRefParam()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
+        for (const string_view decl : {"void NullAssignToNarrowedLocal()", "void NullAssignToCompoundNarrowedLocal()", "void NullAssignToNarrowedRefParam()"}) {
             state.LastObservedId = 0;
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
@@ -2279,7 +2279,7 @@ void NullAssignToNarrowedRefParam()
             {
                 Resource? g = GetMaybe();
                 if (g != null && Flag() || g != null) {
-                    Resource x = g; // Must fail â€" mixed shape is conservative.
+                    Resource x = g; // Must fail -- mixed shape is conservative.
                 }
             }
         )",
@@ -2308,7 +2308,7 @@ void NullAssignToNarrowedRefParam()
         static constexpr string_view IdentityScript = R"(
 class Node { int Tag; Node(int t) { Tag = t; } }
 
-// Same handle assigned both sides â€" must compare equal.
+// Same handle assigned both sides -- must compare equal.
 void SameHandle()
 {
     Node n = Node(7);
@@ -2317,7 +2317,7 @@ void SameHandle()
     ObserveResource(m != n ? 0 : 2);
 }
 
-// Two freshly-constructed Node instances â€" must compare unequal even
+// Two freshly-constructed Node instances -- must compare unequal even
 // though their `Tag` fields are identical (no opEquals registered).
 void DistinctHandles()
 {
@@ -2341,7 +2341,7 @@ void DistinctHandles()
         engine->SetUserData(&state);
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles.
-        for (string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
+        for (const string_view decl : {"void SameHandle()", "void DistinctHandles()"}) {
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
@@ -2383,7 +2383,7 @@ void TagsEqual()
 {
     Tagged a = Tagged(7);
     Tagged b = Tagged(7);   // Distinct handles, same tag.
-    // opEquals matches â€" `==` should be true.
+    // opEquals matches -- `==` should be true.
     ObserveResource(a == b ? 11 : 0);
     ObserveResource(a != b ? 0 : 12);
 }
@@ -2409,7 +2409,7 @@ void TagsDiffer()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
+        for (const string_view decl : {"void TagsEqual()", "void TagsDiffer()"}) {
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
@@ -2475,7 +2475,7 @@ void NullableParameter()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
+        for (const string_view decl : {"void NullableReturn()", "void NullableParameter()"}) {
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();

@@ -70,7 +70,8 @@ void MapManager::LoadFromResources()
             ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header_copy);
-            auto reader = DataReader(map_file.GetDataSpan());
+            const const_span<byte> map_data = map_file.GetDataSpan();
+            auto reader = DataReader(map_data);
 
             auto map_size = map_proto->GetSize();
             auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
@@ -92,7 +93,7 @@ void MapManager::LoadFromResources()
 
             // Read entities
             {
-                vector<uint8_t> props_data;
+                vector<byte> props_data;
 
                 // Read critters
                 {
@@ -114,8 +115,7 @@ void MapManager::LoadFromResources()
                         auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
-                        span<uint8_t> props_data_span = props_data;
-                        reader.ReadBytes(props_data_span);
+                        reader.ReadBytes(props_data);
                         cr_props.RestoreAllData(props_data);
 
                         auto cr_props_ptr = make_nptr(&cr_props);
@@ -126,7 +126,7 @@ void MapManager::LoadFromResources()
 
                         // Checks
                         if (auto hex = cr->GetHex(); !map_size.is_valid_pos(hex)) {
-                            throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetName(), hex);
+                            throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetDisplayName(), hex);
                         }
                     }
                 }
@@ -155,8 +155,7 @@ void MapManager::LoadFromResources()
                         auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
-                        span<uint8_t> props_data_span = props_data;
-                        reader.ReadBytes(props_data_span);
+                        reader.ReadBytes(props_data);
                         item_props.RestoreAllData(props_data);
 
                         auto item_props_ptr = make_nptr(&item_props);
@@ -446,7 +445,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     {
         ScopedSyncContext create_scope;
 
-        for (auto map_pid : map_pids) {
+        for (const hstring& map_pid : map_pids) {
             auto map_proto = _engine->GetProtoMap(map_pid);
 
             if (!map_proto) {

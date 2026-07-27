@@ -68,14 +68,15 @@ void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
     }
 }
 
-RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
+RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) :
     _name {name},
     _usage {usage}
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx_content = loader(name);
-    auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
+    const vector<byte> fofx_data = loader(name);
+    const u8string fofx_content = utf8_from_byte_span(fofx_data);
+    const auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
     int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
@@ -186,27 +187,30 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         throw GenericException("Unknown depth func type", s);
     };
 
-    string_view blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
-    string_view blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
-    string_view depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
-    string_view depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
+    u8string_view blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", u8"SrcAlpha InvSrcAlpha");
+    u8string_view blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", u8"FuncAdd");
+    u8string_view depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", u8"True");
+    u8string_view depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", u8"Always");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
         string pass_str = strex("_Pass{}", pass + 1);
 
-        string blend_func_value {fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)};
+        string blend_func_value = utf8_to_string(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default));
         auto blend_func = strvex(blend_func_value).split(' ');
         FO_VERIFY_AND_THROW(blend_func.size() == 2, "FOFX blend function must contain source and destination factors", name, pass + 1, blend_func.size(), blend_func_value);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
-        _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
+        string blend_equation_value = utf8_to_string(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
+        _blendEquation[pass] = get_blend_equation(blend_equation_value);
 
-        _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
-        _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
+        _depthWrite[pass] = u8strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        string depth_func_value = utf8_to_string(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
+        _depthFunc[pass] = get_depth_func(depth_func_value);
 
-        auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
-        auto pass_info = ConfigFile(std::move(pass_info_content));
+        const vector<byte> pass_info_data = loader(u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1));
+        const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
+        const auto pass_info = ConfigFile(std::move(pass_info_content));
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);

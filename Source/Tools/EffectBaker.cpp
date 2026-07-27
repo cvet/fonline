@@ -92,11 +92,12 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     // Collect files
     vector<File> filtered_files;
 
-    auto check_file = [&](const File& file) -> bool {
-        string_view path = file.GetPath();
-        auto fofx = ConfigFile(file.GetStr());
-        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
-        uint64_t write_time = file.GetWriteTime();
+    const auto check_file = [&](const File& file) -> bool {
+        const string_view path = file.GetPath();
+        const u8string config_name = path;
+        const auto fofx = ConfigFile(file.GetText());
+        const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
+        const auto write_time = file.GetWriteTime();
 
         for (int32_t pass = 1; pass <= passes; pass++) {
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
@@ -173,9 +174,9 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     for (auto& file_ : filtered_files) {
         string task_name = strex("BakeEffect-{}", file_.GetPath()).str();
         file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
-            string_view path = file.GetPath();
-            string content = file.GetStr();
-            BakeShaderProgram(path, content);
+            const string_view path = file.GetPath();
+            const u8string content = file.GetText();
+            BakeShaderProgram(path, content.view());
         }));
     }
 
@@ -196,11 +197,12 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     }
 }
 
-void EffectBaker::BakeShaderProgram(string_view fname, string_view content) const
+void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx = ConfigFile(string(content), ConfigFileOption::CollectContent);
+    const u8string config_name = fname;
+    auto fofx = ConfigFile(u8string {content}, ConfigFileOption::CollectContent);
 
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
@@ -208,30 +210,32 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 
     constexpr bool old_code_profile = false;
 
-    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
-    string shader_common_content = string(fofx.GetSectionContent("ShaderCommon"));
-    int32_t shader_version = fofx.GetAsInt("Effect", "Version", 310);
-    string shader_version_str = strex("#version {} es\n", shader_version).str();
+    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
+    const u8string shader_common_content {fofx.GetSectionContent("ShaderCommon")};
+    const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
+    const auto shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
     string shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
     const auto shader_defines = strex("precision highp float;\n").str();
 #endif
-    string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
-    string shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
+    constexpr string_view_nt old_profile_shader_defines {"#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor"};
+    constexpr string_view_nt empty_shader_defines {""};
+    const string_view_nt shader_defines_ex = old_code_profile ? old_profile_shader_defines : empty_shader_defines;
+    const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
-    for (int32_t pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = string(fofx.GetSectionContent(strex("VertexShader Pass{}", pass)));
+    for (auto pass = 1; pass <= passes; pass++) {
+        u8string vertex_pass_content {fofx.GetSectionContent(strex("VertexShader Pass{}", pass))};
         if (vertex_pass_content.empty()) {
-            vertex_pass_content = string(fofx.GetSectionContent("VertexShader"));
+            vertex_pass_content.assign(fofx.GetSectionContent("VertexShader"));
         }
         if (vertex_pass_content.empty()) {
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = string(fofx.GetSectionContent(strex("FragmentShader Pass{}", pass)));
+        u8string fragment_pass_content {fofx.GetSectionContent(strex("FragmentShader Pass{}", pass))};
         if (fragment_pass_content.empty()) {
-            fragment_pass_content = string(fofx.GetSectionContent("FragmentShader"));
+            fragment_pass_content.assign(fofx.GetSectionContent("FragmentShader"));
         }
         if (fragment_pass_content.empty()) {
             throw EffectBakerException("No content for fragment shader", fname, pass);
@@ -246,8 +250,8 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         auto shader_defines_text = make_ptr(shader_defines.c_str());
         auto shader_defines_ex_text = make_nptr(shader_defines_ex.c_str());
         auto shader_defines_ex2_text = make_ptr(shader_defines_ex2.c_str());
-        auto shader_common_text = make_ptr(shader_common_content.c_str());
-        auto vertex_pass_text = make_ptr(vertex_pass_content.c_str());
+        const ptr<const char> shader_common_text = utf8_to_c_str(shader_common_content.view_nt());
+        const ptr<const char> vertex_pass_text = utf8_to_c_str(vertex_pass_content.view_nt());
         const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -259,7 +263,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        auto fragment_pass_text = make_ptr(fragment_pass_content.c_str());
+        const ptr<const char> fragment_pass_text = utf8_to_c_str(fragment_pass_content.view_nt());
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -369,10 +373,10 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         BakeShaderStage(strex("{}.fofx-{}-vert", fname_wo_ext, pass), *vertex_intermediate, vert_sdl_slots, true);
         BakeShaderStage(strex("{}.fofx-{}-frag", fname_wo_ext, pass), *fragment_intermediate, frag_sdl_slots, false);
 
-        _context->WriteData(strex("{}.fofx-{}-info", fname_wo_ext, pass), vector<uint8_t>(program_info.begin(), program_info.end()));
+        _context->WriteData(strex("{}.fofx-{}-info", fname_wo_ext, pass), make_byte_span(program_info));
     }
 
-    _context->WriteData(fname, vector<uint8_t>(content.begin(), content.end()));
+    _context->WriteData(fname, utf8_to_byte_span(content));
 }
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const
@@ -399,24 +403,24 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // SPIR-V (native Vulkan renderer)
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
-        vector<uint8_t> data(spirv.size() * sizeof(uint32_t));
+        vector<byte> data(spirv.size() * sizeof(uint32_t));
 
         if (!data.empty()) {
             MemCopy(data.data(), spirv.data(), data.size());
         }
 
-        _context->WriteData(strex("{}-spv", fname_wo_ext), data);
+        _context->WriteData(strex("{}-spv", fname_wo_ext), make_byte_span(data));
     };
 
     // SPIR-V (SDL_GPU Vulkan driver)
     auto make_spirv_sdl = [this, &fname_wo_ext, &sdl_spirv]() {
-        vector<uint8_t> data(sdl_spirv.size() * sizeof(uint32_t));
+        vector<byte> data(sdl_spirv.size() * sizeof(uint32_t));
 
         if (!data.empty()) {
             MemCopy(data.data(), sdl_spirv.data(), data.size());
         }
 
-        _context->WriteData(strex("{}-spv_sdl", fname_wo_ext), data);
+        _context->WriteData(strex("{}-spv_sdl", fname_wo_ext), make_byte_span(data));
     };
 
     // SPIR-V to GLSL
@@ -428,7 +432,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-glsl", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        _context->WriteData(strex("{}-glsl", fname_wo_ext), make_byte_span(source));
     };
 
     // SPIR-V to GLSL ES
@@ -440,7 +444,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-glsl_es", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        _context->WriteData(strex("{}-glsl_es", fname_wo_ext), make_byte_span(source));
     };
 
     // SPIR-V to HLSL
@@ -450,7 +454,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.shader_model = 40;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-hlsl", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        _context->WriteData(strex("{}-hlsl", fname_wo_ext), make_byte_span(source));
     };
 
     // SPIR-V to Metal macOS (SDL_GPU Metal driver)
@@ -461,7 +465,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_msl_options(options);
         ApplySdlMslResourceBindings(compiler, sdl_slots, is_vertex);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-msl_mac", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        _context->WriteData(strex("{}-msl_mac", fname_wo_ext), make_byte_span(source));
     };
 
     // SPIR-V to Metal iOS (SDL_GPU Metal driver)
@@ -472,7 +476,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_msl_options(options);
         ApplySdlMslResourceBindings(compiler, sdl_slots, is_vertex);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-msl_ios", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        _context->WriteData(strex("{}-msl_ios", fname_wo_ext), make_byte_span(source));
     };
 
     // Make all asynchronously

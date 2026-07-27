@@ -36,6 +36,18 @@
 
 FO_BEGIN_NAMESPACE
 
+template<typename T>
+concept NetOutPushable = requires(NetOutBuffer& buffer, T data) { buffer.Push(data); };
+
+template<typename T>
+concept NetInAddable = requires(NetInBuffer& buffer, T data) { buffer.AddData(data); };
+
+static_assert(std::same_as<decltype(std::declval<NetBuffer&>().GetData()), const_span<byte>>);
+static_assert(NetOutPushable<const_span<byte>>);
+static_assert(!NetOutPushable<const_span<uint8_t>>);
+static_assert(NetInAddable<const_span<byte>>);
+static_assert(!NetInAddable<const_span<uint8_t>>);
+
 TEST_CASE("NetBuffer")
 {
     SECTION("PrimitiveAndStringRoundtrip")
@@ -98,6 +110,22 @@ TEST_CASE("NetBuffer")
         in_buf.ShrinkReadBuf();
         CHECK(in_buf.GetDataSize() == 0);
         CHECK(in_buf.GetReadPos() == 0);
+    }
+
+    SECTION("UnencryptedMessageFramingKeepsExactWireBytes")
+    {
+        NetOutBuffer out_buf {8};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.EndMsg();
+
+        if constexpr (std::endian::native == std::endian::little) {
+            const array<byte, 9> golden = {byte {0x22}, byte {0x94}, byte {0x1E}, byte {0x01}, byte {0x09}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x0F}};
+            CHECK(std::ranges::equal(out_buf.GetData(), golden));
+        }
+        else {
+            const array<byte, 9> golden = {byte {0x01}, byte {0x1E}, byte {0x94}, byte {0x22}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x09}, byte {0x0F}};
+            CHECK(std::ranges::equal(out_buf.GetData(), golden));
+        }
     }
 
     SECTION("EncryptionRoundtripPreservesPayload")
@@ -175,8 +203,8 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidSignatureThrows")
     {
         NetInBuffer in_buf {8};
-        uint32_t invalid_signature = 0xDEADBEEF;
-        in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_signature), sizeof(invalid_signature)});
+        const uint32_t invalid_signature = 0xDEADBEEF;
+        in_buf.AddData({reinterpret_cast<const byte*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
     }
@@ -187,8 +215,8 @@ TEST_CASE("NetBuffer")
         uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
         uint32_t invalid_len = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1;
 
-        in_buf.AddData({reinterpret_cast<const uint8_t*>(&signature), sizeof(signature)});
-        in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_len), sizeof(invalid_len)});
+        in_buf.AddData({reinterpret_cast<const byte*>(&signature), sizeof(signature)});
+        in_buf.AddData({reinterpret_cast<const byte*>(&invalid_len), sizeof(invalid_len)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
         CHECK(in_buf.GetDataSize() == 0);
@@ -200,8 +228,8 @@ TEST_CASE("NetBuffer")
         // A client-declared string length larger than the bytes actually buffered must be rejected
         // before the resize, so a tiny message cannot amplify into a multi-GB allocation
         NetInBuffer in_buf {8};
-        uint32_t bogus_len = 0xFFFFFFFF;
-        in_buf.AddData({reinterpret_cast<const uint8_t*>(&bogus_len), sizeof(bogus_len)});
+        const uint32_t bogus_len = 0xFFFFFFFF;
+        in_buf.AddData({reinterpret_cast<const byte*>(&bogus_len), sizeof(bogus_len)});
 
         CHECK_THROWS_AS(in_buf.Read<string>(), NetBufferException);
         CHECK(in_buf.GetDataSize() == 0);
@@ -254,8 +282,8 @@ TEST_CASE("NetBufferAdversarial")
             out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
             out.Write<uint16_t>(static_cast<uint16_t>(variant));
             out.EndMsg();
-            auto data = out.GetData();
-            return vector<uint8_t> {data.begin(), data.end()};
+            const auto data = out.GetData();
+            return vector<byte> {data.begin(), data.end()};
         };
 
         uint32_t rng = 0x1234567;
@@ -274,7 +302,7 @@ TEST_CASE("NetBufferAdversarial")
             if (iter % 8 != 0 && !frame.empty()) {
                 int32_t flips = static_cast<int32_t>(next() % 3) + 1;
                 for (int f = 0; f < flips; f++) {
-                    frame[next() % frame.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
+                    frame[next() % frame.size()] ^= byte {static_cast<uint8_t>(1U << (next() % 8))};
                 }
             }
 
@@ -307,10 +335,10 @@ TEST_CASE("NetBufferAdversarial")
     // before allocating, and a well-formed blob must round-trip.
     SECTION("PropsDataWireRoundtripAndCorruption")
     {
-        vector<uint8_t> a {1, 2, 3, 4};
-        vector<uint8_t> b {};
-        vector<uint8_t> c {9, 9, 9};
-        vector<nptr<const uint8_t>> ptrs {a.data(), b.data(), c.data()};
+        const vector<byte> a {byte {1}, byte {2}, byte {3}, byte {4}};
+        const vector<byte> b {};
+        const vector<byte> c {byte {9}, byte {9}, byte {9}};
+        vector<nptr<const byte>> ptrs {a.data(), b.data(), c.data()};
         vector<uint32_t> sizes {static_cast<uint32_t>(a.size()), static_cast<uint32_t>(b.size()), static_cast<uint32_t>(c.size())};
 
         NetOutBuffer out {16};
@@ -319,7 +347,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer in {16};
         in.AddData(out.GetData());
 
-        vector<vector<uint8_t>> read_back;
+        vector<vector<byte>> read_back;
         in.ReadPropsData(read_back);
         REQUIRE(read_back.size() == 3);
         CHECK(read_back[0] == a);
@@ -334,7 +362,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer bad_in {16};
         bad_in.AddData(bad.GetData());
 
-        vector<vector<uint8_t>> bad_out;
+        vector<vector<byte>> bad_out;
         CHECK_THROWS_AS(bad_in.ReadPropsData(bad_out), NetBufferException);
         CHECK(bad_in.GetDataSize() == 0); // buffer reset on rejection
 
@@ -346,7 +374,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer bad2_in {16};
         bad2_in.AddData(bad2.GetData());
 
-        vector<vector<uint8_t>> bad2_out;
+        vector<vector<byte>> bad2_out;
         CHECK_THROWS_AS(bad2_in.ReadPropsData(bad2_out), NetBufferException);
     }
 }

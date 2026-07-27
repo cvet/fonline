@@ -90,11 +90,11 @@ TEST_CASE("EntityProtos")
 
         CHECK(item_proto.GetProtoId() == knife_pid);
         CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
-        CHECK(item_proto.GetName() == string_view {"Knife"});
+        CHECK(item_proto.GetName() == "Knife");
 
         CHECK(critter_proto.GetProtoId() == raider_pid);
         CHECK(critter_proto.GetTypeName() == meta.Hashes.ToHashedString("Critter"));
-        CHECK(critter_proto.GetName() == string_view {"Raider"});
+        CHECK(critter_proto.GetName() == "Raider");
     }
 
     SECTION("CustomProtoExposesCustomTypeIdentity")
@@ -110,7 +110,7 @@ TEST_CASE("EntityProtos")
 
         CHECK(proto.GetProtoId() == custom_pid);
         CHECK(proto.GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
-        CHECK(proto.GetName() == string_view {"TestProto"});
+        CHECK(proto.GetName() == "TestProto");
     }
 
     SECTION("EntityWithProtoKeepsProtoAlive")
@@ -133,7 +133,7 @@ TEST_CASE("EntityProtos")
 
         auto held_proto = holder->GetProto();
         CHECK(holder->GetProtoId() == custom_pid);
-        CHECK(held_proto->GetName() == string_view {"HeldProto"});
+        CHECK(held_proto->GetName() == "HeldProto");
         CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
     }
 

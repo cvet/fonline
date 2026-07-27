@@ -212,14 +212,14 @@ public:
     void RecordSharedSpriteMeshFrames(string_view pack_name, string_view baker_name, uint64_t count);
     void Complete(bool success, string_view failure_message);
     [[nodiscard]] auto IsFullRebuild() const -> bool;
-    [[nodiscard]] auto Serialize() const -> string;
+    [[nodiscard]] auto Serialize() const -> u8string;
 
 private:
     [[nodiscard]] auto GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&;
     [[nodiscard]] auto GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&;
 
     mutable mutex _locker {};
-    string _bakeOutput {};
+    u8string _bakeOutput {};
     bool _forceRequested {};
     bool _singleThread {};
     bool _fullRebuild {};
@@ -233,7 +233,7 @@ private:
     map<string, BakingReportBakerStats> _aggregateBakers {};
 };
 
-[[nodiscard]] auto GetBakingReportPath(string_view bake_output) -> string;
-[[nodiscard]] auto GetFullBakingReportPath(string_view bake_output) -> string;
+[[nodiscard]] auto GetBakingReportPath(u8string_view bake_output) -> u8string;
+[[nodiscard]] auto GetFullBakingReportPath(u8string_view bake_output) -> u8string;
 
 FO_END_NAMESPACE

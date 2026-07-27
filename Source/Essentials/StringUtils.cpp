@@ -34,6 +34,7 @@
 #include "StringUtils.h"
 #include "GlobalData.h"
 #include "StackTrace.h"
+#include "TextConversions.h"
 #include "UcsTables.inc"
 
 #if FO_WINDOWS
@@ -51,15 +52,68 @@ struct StrGlobalData
 };
 FO_GLOBAL_DATA(StrGlobalData, StrData);
 
-strex::operator string&&() noexcept
+auto is_uri_scheme_letter(char value) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
+}
+
+auto is_uri_scheme_tail_character(char value) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return is_uri_scheme_letter(value) || (value >= '0' && value <= '9') || value == '+' || value == '-' || value == '.';
+}
+
+auto parse_uri_scheme(string_view value) noexcept -> optional<string_view>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (value.empty() || !is_uri_scheme_letter(value.front())) {
+        return std::nullopt;
+    }
+
+    for (const char code_unit : value.substr(1)) {
+        if (!is_uri_scheme_tail_character(code_unit)) {
+            return std::nullopt;
+        }
+    }
+
+    return value;
+}
+
+strex::operator string&&()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto issue = validate_ascii_text(_sv)) {
+        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+    }
 
     own_storage();
 
     _sv = {};
 
     return std::move(_s);
+}
+
+strex::operator string() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto issue = validate_ascii_text(_sv)) {
+        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+    }
+
+    return string(_sv);
+}
+
+strex::operator u8string() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return u8string {_sv};
 }
 
 auto strex::str() noexcept -> string&&
@@ -138,42 +192,6 @@ auto strvex::compare_ignore_case(string_view other) const noexcept -> bool
     return true;
 }
 
-auto strvex::compare_ignore_case_utf8(string_view other) const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_sv.length() != other.length()) {
-        return false;
-    }
-
-    if (_sv.empty()) {
-        return true;
-    }
-
-    for (size_t i = 0; i < _sv.length();) {
-        size_t length = _sv.length() - i;
-        auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
-        size_t other_length = other.length() - i;
-        auto other_pos = make_ptr(other.data() + i);
-        uint32_t other_ucs = utf8::Decode(other_pos, other_length);
-
-        if (!utf8::IsValid(ucs) || !utf8::IsValid(other_ucs)) {
-            return false;
-        }
-        if (length != other_length) {
-            return false;
-        }
-        if (utf8::Lower(ucs) != utf8::Lower(other_ucs)) {
-            return false;
-        }
-
-        i += length;
-    }
-
-    return true;
-}
-
 auto strvex::starts_with(char r) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -200,42 +218,6 @@ auto strvex::ends_with(string_view r) const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= r.length() && _sv.ends_with(r);
-}
-
-auto strvex::is_valid_utf8() const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_sv.empty()) {
-        return true;
-    }
-
-    for (size_t i = 0; i < _sv.length();) {
-        size_t length = _sv.length() - i;
-        auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
-
-        if (!utf8::IsValid(ucs)) {
-            return false;
-        }
-
-        i += length;
-    }
-
-    return true;
-}
-
-auto strvex::length_utf8() const noexcept -> size_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    size_t length = 0;
-
-    for (size_t i = 0; i < _sv.length(); i++) {
-        length += (_sv[i] & 0xC0) != 0x80 ? 1u : 0u;
-    }
-
-    return length;
 }
 
 auto strvex::substring_until(char separator) noexcept -> strvex&
@@ -526,60 +508,6 @@ auto strex::upper() noexcept -> strex&
     own_storage();
 
     std::ranges::transform(_s, _s.begin(), toupper);
-
-    return *this;
-}
-
-auto strex::lower_utf8() noexcept -> strex&
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    own_storage();
-
-    for (size_t i = 0; i < _s.length();) {
-        size_t length = _s.length() - i;
-        auto text_begin = make_ptr(_s.c_str());
-        ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
-
-        ucs = utf8::Lower(ucs);
-
-        char buf[4];
-        size_t new_length = utf8::Encode(ucs, buf);
-
-        _s.replace(i, length, buf, new_length);
-
-        i += new_length;
-    }
-
-    _sv = _s;
-
-    return *this;
-}
-
-auto strex::upper_utf8() noexcept -> strex&
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    own_storage();
-
-    for (size_t i = 0; i < _s.length();) {
-        size_t length = _s.length() - i;
-        auto text_begin = make_ptr(_s.c_str());
-        ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
-
-        ucs = utf8::Upper(ucs);
-
-        char buf[4];
-        size_t new_length = utf8::Encode(ucs, buf);
-
-        _s.replace(i, length, buf, new_length);
-
-        i += new_length;
-    }
-
-    _sv = _s;
 
     return *this;
 }
@@ -1242,43 +1170,832 @@ auto strex::normalize_line_endings() noexcept -> strex&
     return *this;
 }
 
-#if FO_WINDOWS
-auto strex::parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&
+u8strex::operator u8string&&()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    own_storage();
+    _sv = {};
+    return std::move(_s);
+}
+
+auto u8strex::str() -> u8string&&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    own_storage();
+    _sv = {};
+    return std::move(_s);
+}
+
+void u8strex::own_storage()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string_view storage_view = _s;
+
+    if (_sv.data() == storage_view.data() && _sv.size() == storage_view.size()) {
+        return;
+    }
+
+    u8string owned {_sv};
+    _s = std::move(owned);
+    _sv = _s;
+}
+
+auto u8strvex::length() const noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    own_storage();
+    return _sv.size();
+}
 
-    size_t wide_len = ::wcslen(str.get());
+auto u8strvex::empty() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
-    if (wide_len > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        _sv = _s;
-        return *this;
+    return _sv.empty();
+}
+
+auto u8strvex::compare_ignore_case(u8string_view other) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view left = _sv.native_view();
+    const std::u8string_view right = other.native_view();
+
+    if (left.size() != right.size()) {
+        return false;
     }
 
-    int32_t len = static_cast<int32_t>(wide_len);
+    for (size_t i = 0; i < left.size();) {
+        size_t left_length = left.size() - i;
+        const auto left_ucs = utf8::Decode(make_ptr(left.data()).offset(i), left_length);
+        size_t right_length = right.size() - i;
+        const auto right_ucs = utf8::Decode(make_ptr(right.data()).offset(i), right_length);
+        FO_BASIC_STRONG_ASSERT(left_ucs.has_value());
+        FO_BASIC_STRONG_ASSERT(right_ucs.has_value());
 
-    if (len != 0) {
-        int32_t output_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, nullptr, 0, nullptr, nullptr);
+        if (left_length != right_length || utf8::Lower(*left_ucs) != utf8::Lower(*right_ucs)) {
+            return false;
+        }
 
-        if (output_size > 0) {
-            auto mem = make_nptr(_malloca(static_cast<size_t>(output_size)));
-            auto buf = mem.reinterpret_as<char>();
+        i += left_length;
+    }
 
-            if (buf) {
-                int32_t written_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, buf.get(), output_size, nullptr, nullptr);
+    return true;
+}
 
-                if (written_size > 0) {
-                    _s += string(buf.get(), written_size);
-                }
+auto u8strvex::starts_with(char8_t value) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_sv.empty() && _sv.native_view().front() == value;
+}
+
+auto u8strvex::starts_with(u8string_view value) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _sv.native_view().starts_with(value.native_view());
+}
+
+auto u8strvex::ends_with(char8_t value) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_sv.empty() && _sv.native_view().back() == value;
+}
+
+auto u8strvex::ends_with(u8string_view value) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _sv.native_view().ends_with(value.native_view());
+}
+
+auto u8strvex::length_utf8() const noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    size_t length = 0;
+
+    for (const char8_t code_unit : _sv.native_view()) {
+        length += (static_cast<uint8_t>(code_unit) & 0xC0) != 0x80 ? 1u : 0u;
+    }
+
+    return length;
+}
+
+auto u8strvex::is_number() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).is_number();
+}
+
+auto u8strvex::is_non_finite_number() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).is_non_finite_number();
+}
+
+auto u8strvex::is_explicit_bool() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).is_explicit_bool();
+}
+
+auto u8strvex::to_int32() const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_int32();
+}
+
+auto u8strvex::to_uint32() const -> uint32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_uint32();
+}
+
+auto u8strvex::to_int64() const -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_int64();
+}
+
+auto u8strvex::to_float32() const -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_float32();
+}
+
+auto u8strvex::to_float64() const -> float64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_float64();
+}
+
+auto u8strvex::to_bool() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(utf8_to_string(_sv)).to_bool();
+}
+
+auto u8strvex::split(char8_t delimiter) const -> vector<u8string_view>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    vector<u8string_view> result;
+
+    for (size_t pos = 0;;) {
+        const size_t end_pos = source.find(delimiter, pos);
+        u8string_view entry = u8string_view::FromChecked(source.substr(pos, end_pos != std::u8string_view::npos ? end_pos - pos : std::u8string_view::npos));
+
+        if (!entry.empty()) {
+            entry = u8strvex(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(entry);
             }
+        }
 
-            _freea(buf.get());
+        if (end_pos == std::u8string_view::npos) {
+            break;
+        }
+
+        pos = end_pos + 1;
+    }
+
+    return result;
+}
+
+auto u8strvex::tokenize() const noexcept -> vector<u8string_view>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    vector<u8string_view> result;
+
+    const u8string_view trimmed_text = u8strvex(_sv).trim();
+    const std::u8string_view text = trimmed_text.native_view();
+    size_t cur_tok_pos = 0;
+    size_t cur_tok_len = 0;
+
+    const auto flush_tok_if_exists = [&]() noexcept {
+        if (cur_tok_len != 0) {
+            result.emplace_back(u8string_view::FromChecked(text.substr(cur_tok_pos, cur_tok_len)));
+            cur_tok_pos += cur_tok_len;
+            cur_tok_len = 0;
+        }
+    };
+
+    for (const char8_t value : text) {
+        const bool is_ascii = value <= char8_t {0x7F};
+        const char ascii_value = static_cast<char>(value);
+
+        if (is_ascii && StrData->TokSym.contains(ascii_value)) {
+            flush_tok_if_exists();
+            cur_tok_len++;
+            flush_tok_if_exists();
+        }
+        else if (is_ascii && (ascii_value == ' ' || ascii_value == '\t' || ascii_value == '\r' || ascii_value == '\n' || ascii_value == '\\')) {
+            flush_tok_if_exists();
+            cur_tok_pos++;
+        }
+        else {
+            cur_tok_len++;
         }
     }
 
-    _sv = _s;
+    flush_tok_if_exists();
+    return result;
+}
 
+auto u8strex::split(char8_t delimiter) const -> vector<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const vector<u8string_view> views = u8strvex::split(delimiter);
+    vector<u8string> result;
+    result.reserve(views.size());
+
+    for (const u8string_view view : views) {
+        result.emplace_back(view);
+    }
+
+    return result;
+}
+
+auto u8strex::tokenize() const -> vector<u8string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const vector<u8string_view> views = u8strvex::tokenize();
+    vector<u8string> result;
+    result.reserve(views.size());
+
+    for (const u8string_view view : views) {
+        result.emplace_back(view);
+    }
+
+    return result;
+}
+
+auto u8strvex::substring_until(char8_t separator) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find(separator);
+
+    if (pos != std::u8string_view::npos) {
+        _sv = u8string_view::FromChecked(source.substr(0, pos));
+    }
+
+    return *this;
+}
+
+auto u8strex::substring_until(char8_t separator) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::substring_until(separator);
+    return *this;
+}
+
+auto u8strvex::substring_until(u8string_view separator) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find(separator.native_view());
+
+    if (pos != std::u8string_view::npos) {
+        _sv = u8string_view::FromChecked(source.substr(0, pos));
+    }
+
+    return *this;
+}
+
+auto u8strex::substring_until(u8string_view separator) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::substring_until(separator);
+    return *this;
+}
+
+auto u8strvex::substring_after(char8_t separator) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find(separator);
+    _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(pos + 1)) : u8string_view {};
+    return *this;
+}
+
+auto u8strex::substring_after(char8_t separator) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::substring_after(separator);
+    return *this;
+}
+
+auto u8strvex::substring_after(u8string_view separator) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find(separator.native_view());
+    _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(pos + separator.size())) : u8string_view {};
+    return *this;
+}
+
+auto u8strex::substring_after(u8string_view separator) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::substring_after(separator);
+    return *this;
+}
+
+auto u8strvex::trim() -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return trim(u8" \n\r\t");
+}
+
+auto u8strex::trim() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::trim();
+    return *this;
+}
+
+auto u8strvex::trim(u8string_view chars) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ltrim(chars);
+    rtrim(chars);
+    return *this;
+}
+
+auto u8strex::trim(u8string_view chars) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::trim(chars);
+    return *this;
+}
+
+auto u8strvex::ltrim(u8string_view chars) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const std::u8string_view trim_chars = chars.native_view();
+    const auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
+        for (size_t i = 0; i < trim_chars.size();) {
+            size_t length = trim_chars.size() - i;
+            const auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
+            FO_BASIC_STRONG_ASSERT(code_point.has_value());
+
+            if (*code_point == value) {
+                return true;
+            }
+
+            i += length;
+        }
+
+        return false;
+    };
+
+    size_t pos = 0;
+    while (pos < source.size()) {
+        size_t length = source.size() - pos;
+        const auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
+        FO_BASIC_STRONG_ASSERT(code_point.has_value());
+
+        if (!contains_trim_char(*code_point)) {
+            break;
+        }
+
+        pos += length;
+    }
+
+    _sv = u8string_view::FromChecked(source.substr(pos));
+    return *this;
+}
+
+auto u8strex::ltrim(u8string_view chars) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::ltrim(chars);
+    return *this;
+}
+
+auto u8strvex::rtrim(u8string_view chars) -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const std::u8string_view trim_chars = chars.native_view();
+    const auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
+        for (size_t i = 0; i < trim_chars.size();) {
+            size_t length = trim_chars.size() - i;
+            const auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
+            FO_BASIC_STRONG_ASSERT(code_point.has_value());
+
+            if (*code_point == value) {
+                return true;
+            }
+
+            i += length;
+        }
+
+        return false;
+    };
+
+    size_t end_pos = 0;
+    for (size_t pos = 0; pos < source.size();) {
+        size_t length = source.size() - pos;
+        const auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
+        FO_BASIC_STRONG_ASSERT(code_point.has_value());
+
+        if (!contains_trim_char(*code_point)) {
+            end_pos = pos + length;
+        }
+
+        pos += length;
+    }
+
+    _sv = u8string_view::FromChecked(source.substr(0, end_pos));
+    return *this;
+}
+
+auto u8strex::rtrim(u8string_view chars) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::rtrim(chars);
+    return *this;
+}
+
+auto u8strex::erase(char8_t what) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([what](auto& storage) { std::erase(storage, what); });
+    return *this;
+}
+
+auto u8strex::erase(char8_t begin, char8_t end) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([begin, end](auto& storage) {
+        while (true) {
+            const size_t begin_pos = storage.find(begin);
+
+            if (begin_pos == storage.npos) {
+                break;
+            }
+
+            const size_t end_pos = storage.find(end, begin_pos + 1);
+
+            if (end_pos == storage.npos) {
+                break;
+            }
+
+            storage.erase(begin_pos, end_pos - begin_pos + 1);
+        }
+    });
+    return *this;
+}
+
+auto u8strex::erase_ascii_control_chars() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([](auto& storage) {
+        std::erase_if(storage, [](char8_t ch) {
+            const uint8_t code = static_cast<uint8_t>(ch);
+            return code < 0x20 || code == 0x7F;
+        });
+    });
+    return *this;
+}
+
+auto u8strex::replace(char8_t from, char8_t to) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([from, to](auto& storage) { std::ranges::replace(storage, from, to); });
+    return *this;
+}
+
+auto u8strex::replace(char8_t from1, char8_t from2, char8_t to) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const char8_t from[] = {from1, from2, u8'\0'};
+    const char8_t replacement[] = {to, u8'\0'};
+    return replace(u8string_view::FromChecked(std::u8string_view {from, 2}), u8string_view::FromChecked(std::u8string_view {replacement, 1}));
+}
+
+auto u8strex::replace(u8string_view from, u8string_view to) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view from_view = from.native_view();
+    const std::u8string_view to_view = to.native_view();
+
+    if (from_view.empty()) {
+        return *this;
+    }
+
+    mutate_storage([from_view, to_view](auto& storage) {
+        size_t pos = storage.find(from_view);
+
+        while (pos != storage.npos) {
+            storage.replace(pos, from_view.size(), to_view);
+            pos = storage.find(from_view, pos + to_view.size());
+        }
+    });
+    return *this;
+}
+
+auto u8strex::lower() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([](auto& storage) {
+        for (size_t i = 0; i < storage.size();) {
+            size_t length = storage.size() - i;
+            const auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
+            FO_BASIC_STRONG_ASSERT(decoded.has_value());
+
+            char8_t encoded[4];
+            const auto encoded_length = utf8::Encode(utf8::Lower(*decoded), encoded);
+            FO_BASIC_STRONG_ASSERT(encoded_length.has_value());
+            storage.replace(i, length, encoded, *encoded_length);
+            i += *encoded_length;
+        }
+    });
+    return *this;
+}
+
+auto u8strex::upper() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mutate_storage([](auto& storage) {
+        for (size_t i = 0; i < storage.size();) {
+            size_t length = storage.size() - i;
+            const auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
+            FO_BASIC_STRONG_ASSERT(decoded.has_value());
+
+            char8_t encoded[4];
+            const auto encoded_length = utf8::Encode(utf8::Upper(*decoded), encoded);
+            FO_BASIC_STRONG_ASSERT(encoded_length.has_value());
+            storage.replace(i, length, encoded, *encoded_length);
+            i += *encoded_length;
+        }
+    });
+    return *this;
+}
+
+auto u8strex::format_path() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    trim();
+    normalize_path_slashes();
+
+    mutate_storage([](auto& storage) {
+        while (storage.size() >= 2 && storage[0] == u8'.' && storage[1] == u8'/') {
+            storage.erase(0, 2);
+        }
+
+        uint32_t back_count = 0;
+
+        while (storage.size() >= 3 && storage[0] == u8'.' && storage[1] == u8'.' && storage[2] == u8'/') {
+            back_count++;
+            storage.erase(0, 3);
+        }
+
+        while (true) {
+            const size_t pos = storage.find(u8"/./");
+
+            if (pos == storage.npos) {
+                break;
+            }
+
+            storage.replace(pos, 3, u8"/");
+        }
+
+        while (true) {
+            const size_t pos = storage.find(u8"/../");
+
+            if (pos == storage.npos || pos == 0) {
+                break;
+            }
+
+            const size_t previous = storage.rfind(u8'/', pos - 1);
+
+            if (previous == storage.npos) {
+                storage.erase(0, pos + 4);
+            }
+            else {
+                storage.erase(previous + 1, pos - previous + 3);
+            }
+        }
+
+        for (uint32_t i = 0; i < back_count; i++) {
+            storage.insert(0, u8"../");
+        }
+    });
+    return *this;
+}
+
+auto u8strex::extract_dir() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    format_path();
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find_last_of(u8'/');
+    _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(0, pos)) : u8string_view {};
+    return *this;
+}
+
+auto u8strvex::extract_file_name() -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t pos = source.find_last_of(u8"/\\");
+
+    if (pos != std::u8string_view::npos) {
+        _sv = u8string_view::FromChecked(source.substr(pos + 1));
+    }
+
+    return *this;
+}
+
+auto u8strex::extract_file_name() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::extract_file_name();
+    return *this;
+}
+
+auto u8strex::get_file_extension() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t dot = source.find_last_of(u8'.');
+    _sv = dot != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(dot + 1)) : u8string_view {};
+    return lower();
+}
+
+auto u8strvex::erase_file_extension() -> u8strvex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::u8string_view source = _sv.native_view();
+    const size_t dot = source.find_last_of(u8'.');
+
+    if (dot != std::u8string_view::npos) {
+        _sv = u8string_view::FromChecked(source.substr(0, dot));
+    }
+
+    return *this;
+}
+
+auto u8strex::erase_file_extension() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8strvex::erase_file_extension();
+    return *this;
+}
+
+auto u8strex::change_file_name(u8string_view new_name) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string extension = u8strex(_sv).get_file_extension();
+
+    if (!extension.empty()) {
+        const u8string name_with_extension = u8strex(u8"{}.{}", new_name, extension);
+        _s = u8strex(_sv).extract_dir().combine_path(name_with_extension);
+    }
+    else {
+        _s = u8strex(_sv).extract_dir().combine_path(new_name);
+    }
+
+    _sv = _s;
+    return *this;
+}
+
+auto u8strex::change_file_name(string_view new_name) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_name = new_name;
+    return change_file_name(utf8_name);
+}
+
+auto u8strex::change_file_extension(u8string_view new_ext) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    erase_file_extension();
+    own_storage();
+    _s.append(".");
+    _s.append(new_ext);
+    _sv = _s;
+    return *this;
+}
+
+auto u8strex::change_file_extension(string_view new_ext) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_ext = new_ext;
+    return change_file_extension(utf8_ext);
+}
+
+auto u8strex::combine_path(u8string_view path) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (path.empty()) {
+        return *this;
+    }
+
+    own_storage();
+    const std::u8string_view path_view = path.native_view();
+
+    if (!_s.empty() && _s.view().native_view().back() != u8'/' && path_view.front() != u8'/') {
+        _s.append("/");
+    }
+
+    _s.append(path);
+    _sv = _s;
+    return format_path();
+}
+
+auto u8strex::combine_path(string_view path) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const u8string utf8_path = path;
+    return combine_path(utf8_path);
+}
+
+auto u8strex::normalize_path_slashes() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return replace(u8'\\', u8'/');
+}
+
+auto u8strex::normalize_line_endings() -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    replace(u8'\r', u8'\n', u8'\n');
+    replace(u8'\r', u8'\n');
+    return *this;
+}
+
+#if FO_WINDOWS
+auto u8strex::parse_wide_char(ptr<const wchar_t> str) -> u8strex&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    own_storage();
+    _s.append(utf16_to_utf8(wide_to_utf16(std::wstring_view {str.get()})));
+    _sv = _s;
     return *this;
 }
 
@@ -1315,18 +2032,22 @@ auto strex::to_wide_char() const noexcept -> wstring
 
     return result;
 }
+
+auto u8strex::to_wide_char() const -> wstring
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return utf16_to_wide(utf8_to_utf16(_sv));
+}
 #endif
 
 // ReSharper restore CppInconsistentNaming
-
-// 0xFFFD - Unicode REPLACEMENT CHARACTER
-static constexpr uint32_t UNICODE_BAD_CHAR = 0xFFFD;
 
 auto utf8::IsValid(uint32_t ucs) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
+    return ucs <= 0x10FFFF && (ucs < 0xD800 || ucs > 0xDFFF);
 }
 
 auto utf8::DecodeStrNtLen(ptr<const char> str) noexcept -> size_t
@@ -1354,22 +2075,27 @@ auto utf8::DecodeStrNtLen(ptr<const char> str) noexcept -> size_t
     return length;
 }
 
-auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
+auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> optional<uint32_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (length == 0) {
-        return UNICODE_BAD_CHAR;
+        return std::nullopt;
     }
 
-    auto make_result = [&length](uint32_t ch, size_t ch_lenght) noexcept -> uint32_t {
-        length = ch_lenght;
+    const auto make_result = [&length](uint32_t ch, size_t ch_length) noexcept -> optional<uint32_t> {
+        length = ch_length;
+
+        if (!utf8::IsValid(ch)) {
+            return std::nullopt;
+        }
+
         return ch;
     };
 
-    auto make_error = [&length]() noexcept -> uint32_t {
+    const auto make_error = [&length]() noexcept -> optional<uint32_t> {
         length = 1;
-        return UNICODE_BAD_CHAR;
+        return std::nullopt;
     };
 
     auto bytes = str.reinterpret_as<const uint8_t>();
@@ -1458,9 +2184,20 @@ auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
     return make_error();
 }
 
-auto utf8::Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
+auto utf8::Decode(ptr<const char8_t> str, size_t& length) noexcept -> optional<uint32_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    return Decode(str.reinterpret_as<const char>(), length);
+}
+
+auto utf8::Encode(uint32_t ucs, char (&buf)[4]) noexcept -> optional<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!IsValid(ucs)) {
+        return std::nullopt;
+    }
 
     if (ucs < 0x000080u) {
         buf[0] = static_cast<char>(ucs);
@@ -1480,20 +2217,28 @@ auto utf8::Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
         return 3;
     }
 
-    if (ucs <= 0x0010ffffu) {
-        buf[0] = static_cast<char>(0xf0 | (ucs >> 18));
-        buf[1] = static_cast<char>(0x80 | ((ucs >> 12) & 0x3F));
-        buf[2] = static_cast<char>(0x80 | ((ucs >> 6) & 0x3F));
-        buf[3] = static_cast<char>(0x80 | (ucs & 0x3F));
-        return 4;
+    buf[0] = static_cast<char>(0xf0 | (ucs >> 18));
+    buf[1] = static_cast<char>(0x80 | ((ucs >> 12) & 0x3F));
+    buf[2] = static_cast<char>(0x80 | ((ucs >> 6) & 0x3F));
+    buf[3] = static_cast<char>(0x80 | (ucs & 0x3F));
+
+    return 4;
+}
+
+auto utf8::Encode(uint32_t ucs, char8_t (&buf)[4]) noexcept -> optional<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char char_buf[4];
+    const auto length = Encode(ucs, char_buf);
+
+    if (length) {
+        for (size_t i = 0; i < *length; i++) {
+            buf[i] = static_cast<char8_t>(static_cast<unsigned char>(char_buf[i]));
+        }
     }
 
-    // Encode 0xFFFD
-    buf[0] = static_cast<char>(0xef);
-    buf[1] = static_cast<char>(0xbf);
-    buf[2] = static_cast<char>(0xbd);
-
-    return 3;
+    return length;
 }
 
 auto utf8::Lower(uint32_t ucs) noexcept -> uint32_t

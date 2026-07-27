@@ -110,11 +110,11 @@ static auto Type_Equals(const T& self, const U& other) -> bool
     return self == other;
 }
 
-static auto GetMutableStructFieldStorage(ptr<void> obj, size_t offset) noexcept -> ptr<uint8_t>
+static auto GetMutableStructFieldStorage(ptr<void> obj, size_t offset) noexcept -> ptr<byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto bytes = obj.reinterpret_as<uint8_t>();
+    auto bytes = obj.reinterpret_as<byte>();
     return bytes.offset(offset);
 }
 
@@ -205,16 +205,16 @@ static void GenericType_GetStr(AngelScript::asIScriptGeneric* gen)
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
 
-    string str;
+    u8string str;
     VisitBaseTypePrimitive(obj.get(), *type, [&str](auto&& v) {
         if (!str.empty()) {
-            str += " ";
+            str.append(" ");
         }
 
-        str += strex("{}", v);
+        str.append(u8strex("{}", v));
     });
 
-    new (gen->GetAddressOfReturnLocation()) string(std::move(str));
+    new (gen->GetAddressOfReturnLocation()) string(NativeScriptText::ToScriptString(str));
 }
 
 static void GenericType_AnyConv(AngelScript::asIScriptGeneric* gen)
@@ -224,16 +224,16 @@ static void GenericType_AnyConv(AngelScript::asIScriptGeneric* gen)
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
 
-    any_t str;
+    u8string str;
     VisitBaseTypePrimitive(obj.get(), *type, [&str](auto&& v) {
         if (!str.empty()) {
-            str += " ";
+            str.append(" ");
         }
 
-        str += strex("{}", v);
+        str.append(u8strex("{}", v));
     });
 
-    new (gen->GetAddressOfReturnLocation()) any_t(std::move(str));
+    new (gen->GetAddressOfReturnLocation()) any_t(str);
 }
 
 static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
@@ -719,7 +719,8 @@ static auto Any_ConvFrom(const T& self) -> any_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return any_t(strex("{}", self).str());
+    const u8string value = u8strex("{}", self);
+    return any_t(value);
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint32_t rgba)
@@ -1148,10 +1149,10 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
             continue;
         }
 
-        string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? string_view {"@"} : (prop->IsBaseTypeProtoReference() ? string_view {"@+"} : string_view {});
-        string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? string_view {"@?+"} : string_view {"@+"}) : handle_str;
-        string decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-        string decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+        const string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : string_view {});
+        const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
 
         string host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
 

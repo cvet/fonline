@@ -203,7 +203,7 @@ namespace ParticleTests
                                                        "0000000010000000000000000000b443000000000000004000000000000000000000803f00000000000000000000003f00000000ffffff0000000000"
                                                        "ffffffff00000000ffffff00000000000000000000000000";
 
-    inline auto DecodeHexBytes(string_view hex) -> vector<uint8_t>
+    inline auto DecodeHexBytes(string_view hex) -> vector<byte>
     {
         FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex fixture must contain complete bytes", hex.size());
 
@@ -219,44 +219,44 @@ namespace ParticleTests
             return 0;
         };
 
-        vector<uint8_t> result;
+        vector<byte> result;
         result.reserve(hex.size() / 2);
 
         for (size_t offset = 0; offset < hex.size(); offset += 2) {
-            result.emplace_back(numeric_cast<uint8_t>((decode_nibble(hex[offset]) << 4) | decode_nibble(hex[offset + 1])));
+            result.emplace_back(static_cast<byte>((decode_nibble(hex[offset]) << 4) | decode_nibble(hex[offset + 1])));
         }
 
         return result;
     }
 
-    inline auto MakeSimpleSpriteFixedYAxisEffect() -> vector<uint8_t>
+    inline auto MakeSimpleSpriteFixedYAxisEffect() -> vector<byte>
     {
         constexpr size_t texture_wrap_offset = 306;
 
-        vector<uint8_t> result = DecodeHexBytes(SimpleSpriteFixedYAxisEffectHex);
-        FO_VERIFY_AND_THROW(result.size() > texture_wrap_offset && result[texture_wrap_offset] == 0, "Effekseer test fixture layout changed");
+        vector<byte> result = DecodeHexBytes(SimpleSpriteFixedYAxisEffectHex);
+        FO_VERIFY_AND_THROW(result.size() > texture_wrap_offset && result[texture_wrap_offset] == byte {0}, "Effekseer test fixture layout changed");
 
         // The upstream fixture requests Repeat. FOnline atlases require Clamp, so this mirrors the
         // one-field authoring patch documented for the production runtime-smoke copy.
-        result[texture_wrap_offset] = 1;
+        result[texture_wrap_offset] = byte {1};
         return result;
     }
 
-    inline auto MakeZSortSpriteEffect(int32_t z_sort) -> vector<uint8_t>
+    inline auto MakeZSortSpriteEffect(int32_t z_sort) -> vector<byte>
     {
         constexpr size_t fixture_size = 870;
         constexpr size_t z_sort_offset = 550;
 
         FO_VERIFY_AND_THROW(z_sort >= 0 && z_sort <= 2, "Effekseer Z-sort fixture mode is invalid", z_sort);
 
-        vector<uint8_t> result = DecodeHexBytes(ZSortSpriteEffectHex);
-        FO_VERIFY_AND_THROW(result.size() == fixture_size && result[z_sort_offset] == 1 && result[z_sort_offset + 1] == 0 && result[z_sort_offset + 2] == 0 && result[z_sort_offset + 3] == 0, "Effekseer Z-sort fixture layout changed");
+        vector<byte> result = DecodeHexBytes(ZSortSpriteEffectHex);
+        FO_VERIFY_AND_THROW(result.size() == fixture_size && result[z_sort_offset] == byte {1} && result[z_sort_offset + 1] == byte {0} && result[z_sort_offset + 2] == byte {0} && result[z_sort_offset + 3] == byte {0}, "Effekseer Z-sort fixture layout changed");
 
-        result[z_sort_offset] = numeric_cast<uint8_t>(z_sort);
+        result[z_sort_offset] = static_cast<byte>(z_sort);
         return result;
     }
 
-    inline auto MakeModernRingEffect(int32_t max_generation = 1, int32_t z_sort = 0) -> vector<uint8_t>
+    inline auto MakeModernRingEffect(int32_t max_generation = 1, int32_t z_sort = 0) -> vector<byte>
     {
         constexpr size_t fixture_size = 924;
         constexpr size_t max_generation_offset = 156;
@@ -265,16 +265,16 @@ namespace ParticleTests
         FO_VERIFY_AND_THROW(max_generation > 0 && max_generation <= 4000, "Effekseer Ring fixture generation count is invalid", max_generation);
         FO_VERIFY_AND_THROW(z_sort >= 0 && z_sort <= 2, "Effekseer Ring fixture Z-sort mode is invalid", z_sort);
 
-        vector<uint8_t> result = DecodeHexBytes(ModernRingEffectHex);
-        FO_VERIFY_AND_THROW(result.size() == fixture_size && result[max_generation_offset] == 0xa0 && result[max_generation_offset + 1] == 0x0f && result[max_generation_offset + 2] == 0 && result[max_generation_offset + 3] == 0, "Effekseer Ring fixture layout changed");
-        FO_VERIFY_AND_THROW(result[z_sort_offset - 8] == 0 && result[z_sort_offset - 7] == 0 && result[z_sort_offset - 6] == 0x80 && result[z_sort_offset - 5] == 0x3f && result[z_sort_offset - 4] == 0xff && result[z_sort_offset - 3] == 0xff && result[z_sort_offset - 2] == 0x7f && result[z_sort_offset - 1] == 0x7f && result[z_sort_offset] == 0 && result[z_sort_offset + 1] == 0 && result[z_sort_offset + 2] == 0 && result[z_sort_offset + 3] == 0, "Effekseer Ring fixture depth layout changed");
+        vector<byte> result = DecodeHexBytes(ModernRingEffectHex);
+        FO_VERIFY_AND_THROW(result.size() == fixture_size && result[max_generation_offset] == byte {0xa0} && result[max_generation_offset + 1] == byte {0x0f} && result[max_generation_offset + 2] == byte {0} && result[max_generation_offset + 3] == byte {0}, "Effekseer Ring fixture layout changed");
+        FO_VERIFY_AND_THROW(result[z_sort_offset - 8] == byte {0} && result[z_sort_offset - 7] == byte {0} && result[z_sort_offset - 6] == byte {0x80} && result[z_sort_offset - 5] == byte {0x3f} && result[z_sort_offset - 4] == byte {0xff} && result[z_sort_offset - 3] == byte {0xff} && result[z_sort_offset - 2] == byte {0x7f} && result[z_sort_offset - 1] == byte {0x7f} && result[z_sort_offset] == byte {0} && result[z_sort_offset + 1] == byte {0} && result[z_sort_offset + 2] == byte {0} && result[z_sort_offset + 3] == byte {0}, "Effekseer Ring fixture depth layout changed");
 
         uint32_t encoded_generation = numeric_cast<uint32_t>(max_generation);
-        result[max_generation_offset] = numeric_cast<uint8_t>(encoded_generation & 0xff);
-        result[max_generation_offset + 1] = numeric_cast<uint8_t>((encoded_generation >> 8) & 0xff);
-        result[max_generation_offset + 2] = numeric_cast<uint8_t>((encoded_generation >> 16) & 0xff);
-        result[max_generation_offset + 3] = numeric_cast<uint8_t>((encoded_generation >> 24) & 0xff);
-        result[z_sort_offset] = numeric_cast<uint8_t>(z_sort);
+        result[max_generation_offset] = static_cast<byte>(encoded_generation & 0xff);
+        result[max_generation_offset + 1] = static_cast<byte>((encoded_generation >> 8) & 0xff);
+        result[max_generation_offset + 2] = static_cast<byte>((encoded_generation >> 16) & 0xff);
+        result[max_generation_offset + 3] = static_cast<byte>((encoded_generation >> 24) & 0xff);
+        result[z_sort_offset] = static_cast<byte>(z_sort);
         return result;
     }
 }

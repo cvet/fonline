@@ -264,11 +264,11 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
         (void)reader.GetLEInt16();
         (void)reader.GetLEInt16();
 
-        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
+        const_span<byte> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
         FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
 
         auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        nptr<const uint8_t> data_ptr = data.data();
+        nptr<const byte> data_ptr = data.data();
         const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
@@ -636,7 +636,8 @@ auto SparkParticleEditor::SaveChanges() -> bool
     nptr<const SPK::IO::Saver> saver = base_system->getContext().getIOManager().getSaver("xml");
     FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
-    std::string path {file.GetDiskPath()};
+    const u8string disk_path = file.GetDiskPath();
+    const std::string path {utf8_to_c_str(disk_path.view_nt()).get()};
 
     if (!saver->save(path, base_system.get(), path)) {
         _saveError = strex("Failed to save particle source '{}'", _assetPath);

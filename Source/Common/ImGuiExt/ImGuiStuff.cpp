@@ -49,8 +49,8 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     ignore_unused(user_data);
 
-    constexpr SafeAllocator<uint8_t> allocator;
-    ptr<uint8_t> bytes = allocator.allocate(sz);
+    constexpr SafeAllocator<byte> allocator;
+    ptr<byte> bytes = allocator.allocate(sz);
     return bytes.get();
 }
 
@@ -60,13 +60,13 @@ static void ImGuiFree(void* raw_mem, void* user_data)
 
     ignore_unused(user_data);
 
-    auto bytes = cast_from_void<uint8_t*>(raw_mem);
+    auto bytes = cast_from_void<byte*>(raw_mem);
 
     if (!bytes) {
         return;
     }
 
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr SafeAllocator<byte> allocator;
     allocator.deallocate(bytes.get(), 0);
 }
 

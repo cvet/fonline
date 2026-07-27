@@ -165,6 +165,10 @@ events to it.
 `BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans.
 `BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
 
+Physical input/output roots and resolved output filenames are owned as strict
+`u8string`; logical resource names stay in the mounted-resource name domain and
+cross to a filesystem path only through the strict path construction helpers.
+
 ## Master bake report
 
 Every `MasterBaker::BakeAll()` attempt with a non-empty `BakeOutput` regenerates
@@ -642,6 +646,12 @@ must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.
+
+Input file ownership and parser cursors stay in the raw `byte` domain, including
+PNG/TGA data and embedded SPR/ZAR RLE streams. A numeric byte is extracted
+explicitly only when the file format interprets it as a control value, palette
+index, or channel. Decoded RGBA pixel and palette buffers remain `uint8_t`
+because their elements are numeric color values rather than arbitrary storage.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 

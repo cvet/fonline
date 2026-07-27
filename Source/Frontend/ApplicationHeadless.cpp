@@ -117,7 +117,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     ignore_unused(resources);
 }
 
-auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppWindow>
+auto Application::CreateChildWindow(isize32 size, u8string_view title) -> ptr<AppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -130,7 +130,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
-    window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
+    window->_title = title.empty() ? FormatUtf8("Window {}", _childWindows.size() + 1) : u8string {title};
 
     auto window_ptr = window.as_ptr();
     _allWindows.emplace_back(window_ptr);
@@ -661,11 +661,11 @@ void AppWindow::AlwaysOnTop(bool enable)
     ResolveWindowStub()->AlwaysOnTop = enable;
 }
 
-void AppWindow::SetTitle(string_view title)
+void AppWindow::SetTitle(u8string_view title)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _title = string {title};
+    _title = u8string {title};
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -758,7 +758,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -851,14 +851,14 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
     ignore_unused(enabled);
 }
 
-void AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(text);
 }
 
-auto AppInput::GetClipboardText() -> const string&
+auto AppInput::GetClipboardText() -> const u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -881,7 +881,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<byte>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -895,7 +895,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     return true;
 }
 
-void AppAudio::MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume)
+void AppAudio::MixAudio(span<byte> output, const_span<byte> buf, int32_t volume)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -920,7 +920,7 @@ void AppAudio::UnlockDevice()
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
-void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
+void Application::ShowErrorMessage(u8string_view message, u8string_view traceback, bool fatal_error)
 {
     FO_STACK_TRACE_ENTRY();
 

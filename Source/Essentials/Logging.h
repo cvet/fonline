@@ -37,7 +37,8 @@
 #include "BasicCore.h"
 #include "SmartPointers.h"
 #include "StackTrace.h"
-#include "StringUtils.h"
+#include "TextFormatting.h"
+#include "TextTypes.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -49,26 +50,89 @@ enum class LogType : uint8_t
     Error,
 };
 
-using LogFunc = function<void(LogType, string_view, nptr<const CatchedStackTraceData>)>;
+using LogFunc = function<void(LogType, u8string_view, nptr<const CatchedStackTraceData>)>;
+
+// Write strict UTF-8 directly to the base logger
+extern void WriteBaseLog(u8string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
+inline void WriteBaseLog(const u8string& message, nptr<const CatchedStackTraceData> st = nullptr) noexcept
+{
+    WriteBaseLog(message.view(), st);
+}
 
 // Write formatted text
-extern void WriteLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
+extern void WriteLogMessage(LogType type, u8string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
 
-template<typename... Args>
-void WriteLog(std::format_string<Args...>&& format, Args&&... args) noexcept
+namespace logging_detail
 {
-    WriteLogMessage(LogType::Info, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
+    template<typename... Args>
+    void write_formatted_log(LogType type, format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
+    {
+        try {
+            const u8string message = FormatUtf8(format, std::forward<Args>(args)...);
+            WriteLogMessage(type, message);
+        }
+        catch (...) {
+            BreakIntoDebugger();
+            WriteLogMessage(type, u8"Log message rejected: invalid UTF-8 or formatting arguments");
+        }
+    }
+
+    template<typename... Args>
+    void write_formatted_log(LogType type, u8format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
+    {
+        try {
+            const u8string message = FormatUtf8(format, std::forward<Args>(args)...);
+            WriteLogMessage(type, message);
+        }
+        catch (...) {
+            BreakIntoDebugger();
+            WriteLogMessage(type, u8"Log message rejected: invalid UTF-8 or formatting arguments");
+        }
+    }
 }
 
 template<typename... Args>
-void WriteLog(LogType type, std::format_string<Args...>&& format, Args&&... args) noexcept
+void WriteLog(format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
 {
-    WriteLogMessage(type, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
+    logging_detail::write_formatted_log(LogType::Info, format, std::forward<Args>(args)...);
 }
 
-inline void WriteLog(string_view str) noexcept
+template<typename... Args>
+void WriteLog(LogType type, format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
 {
-    WriteLogMessage(LogType::Info, strex(strex::safe_format, "{}", str));
+    logging_detail::write_formatted_log(type, format, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void WriteLog(u8format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
+{
+    logging_detail::write_formatted_log(LogType::Info, format, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void WriteLog(LogType type, u8format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
+{
+    logging_detail::write_formatted_log(type, format, std::forward<Args>(args)...);
+}
+
+inline void WriteLog(u8string_view str) noexcept
+{
+    WriteLogMessage(LogType::Info, str);
+}
+
+inline void WriteLog(LogType type, u8string_view str) noexcept
+{
+    WriteLogMessage(type, str);
+}
+
+inline void WriteLog(const u8string& str) noexcept
+{
+    WriteLogMessage(LogType::Info, str.view());
+}
+
+inline void WriteLog(LogType type, const u8string& str) noexcept
+{
+    WriteLogMessage(type, str.view());
 }
 
 // Control

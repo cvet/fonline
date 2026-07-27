@@ -22,14 +22,14 @@ public:
     auto operator=(const DbUnQLite&) = delete;
     auto operator=(DbUnQLite&&) noexcept = delete;
 
-    explicit DbUnQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
+    explicit DbUnQLite(ptr<DataBaseSettings> db_settings, u8string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
         _openFlags {UNQLITE_OPEN_CREATE | (db_settings->UnQLiteOmitJournaling ? UNQLITE_OPEN_OMIT_JOURNALING : 0)}
     {
         FO_STACK_TRACE_ENTRY();
 
-        fs_create_directories(storage_dir);
+        (void)fs_create_directories(_storageDir.view());
         ValidateStorage();
         StartCommitThread();
     }
@@ -62,9 +62,10 @@ protected:
 
         if (it == _collections.end()) {
             nptr<unqlite> db;
-            string db_path = strex("{}/{}.unqlite", _storageDir, collection_name);
-            auto db_path_ptr = make_ptr(db_path.c_str());
-            int32_t r = unqlite_open(db.get_pp(), db_path_ptr.get(), _openFlags);
+            const string collection_name_text = string(collection_name.as_str());
+            const u8string db_path = FormatUtf8("{}/{}.unqlite", _storageDir, collection_name_text);
+            const ptr<const char> db_path_ptr = utf8_to_c_str(db_path.view_nt());
+            const auto r = unqlite_open(db.get_pp(), db_path_ptr.get(), _openFlags);
 
             if (r != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
@@ -103,19 +104,19 @@ protected:
         vector<DataBaseKey> ids;
 
         while (unqlite_kv_cursor_valid_entry(cursor.get()) != 0) {
-            vector<uint8_t> key_data;
-            void* key_data_user_data = make_ptr(&key_data).void_cast();
+            vector<byte> key_data;
+            auto key_data_user_data = make_ptr(&key_data).void_cast();
 
             auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor.get(),
                 [](const void* output, unsigned output_len, void* user_data) {
-                    nptr<vector<uint8_t>> result = cast_from_void<vector<uint8_t>*>(user_data);
+                    nptr<vector<byte>> result = cast_from_void<vector<byte>*>(user_data);
                     FO_VERIFY_AND_THROW(result, "Missing key callback user data");
-                    auto output_data = cast_from_void<const uint8_t*>(output);
+                    auto output_data = cast_from_void<const byte*>(output);
 
                     if (output_len != 0) {
                         FO_VERIFY_AND_THROW(output_data, "Missing key callback output data");
-                        auto output_bytes = make_const_span(output_data, output_len);
+                        const const_span<byte> output_bytes {output_data.get(), output_len};
                         result->assign(output_bytes.begin(), output_bytes.end());
                     }
                     else {
@@ -269,7 +270,7 @@ protected:
     }
 
 private:
-    static auto MakeUnQLiteKey(const DataBaseKey& key, DataBaseKeyType key_type) -> vector<uint8_t>
+    static auto MakeUnQLiteKey(const DataBaseKey& key, DataBaseKeyType key_type) -> vector<byte>
     {
         if (key_type == DataBaseKeyType::IntId) {
             nptr<const ident_t> numeric_key = std::get_if<ident_t>(&key);
@@ -280,17 +281,18 @@ private:
 
             static_assert(sizeof(ident_t) == sizeof(int64_t));
 
-            vector<uint8_t> result(sizeof(int64_t));
-            int64_t value = numeric_key->underlying_value();
+            vector<byte> result(sizeof(int64_t));
+            const int64_t value = numeric_key->underlying_value();
             MemCopy(result.data(), &value, sizeof(value));
             return result;
         }
 
-        auto key_str = std::get<string>(key);
-        return vector<uint8_t>(key_str.begin(), key_str.end());
+        const string key_str = std::get<string>(key);
+        const const_span<byte> key_bytes = make_byte_span(key_str);
+        return {key_bytes.begin(), key_bytes.end()};
     }
 
-    static auto ParseUnQLiteKey(const_span<uint8_t> key_data, DataBaseKeyType key_type) -> DataBaseKey
+    static auto ParseUnQLiteKey(const_span<byte> key_data, DataBaseKeyType key_type) -> DataBaseKey
     {
         if (key_type == DataBaseKeyType::IntId) {
             if (key_data.size() != sizeof(int64_t)) {
@@ -335,11 +337,11 @@ private:
         FO_STACK_TRACE_ENTRY();
 
         nptr<unqlite> ping_db;
-        string ping_db_path = strex("{}/Ping.unqlite", _storageDir);
-        auto ping_db_path_ptr = make_ptr(ping_db_path.c_str());
+        const u8string ping_db_path = FormatUtf8("{}/Ping.unqlite", _storageDir);
+        const ptr<const char> ping_db_path_ptr = utf8_to_c_str(ping_db_path.view_nt());
 
         if (unqlite_open(ping_db.get_pp(), ping_db_path_ptr.get(), _openFlags) != UNQLITE_OK) {
-            throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
+            throw DataBaseException("DbUnQLite Can't open db", ping_db_path.view());
         }
 
         FO_VERIFY_AND_THROW(ping_db, "Opened ping database handle is null");
@@ -348,11 +350,11 @@ private:
 
         if (unqlite_kv_store(ping_db.get(), &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
             unqlite_close(ping_db.get());
-            throw DataBaseException("DbUnQLite Can't write to db", ping_db_path);
+            throw DataBaseException("DbUnQLite Can't write to db", ping_db_path.view());
         }
 
         unqlite_close(ping_db.get());
-        fs_remove_file(ping_db_path);
+        (void)fs_remove_file(ping_db_path.view());
     }
 
     void CommitCollection(ptr<unqlite> db) const
@@ -416,13 +418,13 @@ private:
         return doc;
     }
 
-    string _storageDir {};
+    u8string _storageDir {};
     int32_t _openFlags {};
     mutable mutex _storageLocker {};
     unordered_map<hstring, ptr<unqlite>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
-auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, u8string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     return SafeAlloc::MakeUnique<DbUnQLite>(db_settings, storage_dir, std::move(panic_callback));
 }

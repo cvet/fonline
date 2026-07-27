@@ -112,11 +112,12 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     hstring location_type_name = engine.Hashes.ToHashedString("Location");
 
     // Collect data
-    unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
+    unordered_map<hstring, unordered_map<hstring, map<string, u8string>>> all_file_protos;
 
     for (const auto& file : filtered_files) {
-        // Nested ($Name/...-addressed) sections carry map content, never proto declarations
-        auto fopro = ConfigFile(file.GetStr(), ConfigFileOption::SkipNestedSections);
+        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
+        const auto fopro_options = is_fomap ? ConfigFileOption::SkipNestedSections : ConfigFileOption::None;
+        auto fopro = ConfigFile(file.GetText(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
@@ -150,13 +151,13 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
             }
 
-            map<string, string> section_kv;
+            map<string, u8string> section_kv;
 
             for (const auto& [key, value] : section_kv_view) {
-                section_kv.emplace(string(key), string(value));
+                section_kv.emplace(string(key), value);
             }
 
-            auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
+            const string name = section_kv.count("$Name") != 0 ? utf8_to_string(section_kv.at("$Name")) : string {file.GetNameNoExt()};
             hstring pid = engine.Hashes.ToHashedString(name);
             pid = engine.CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
@@ -173,7 +174,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     // Process data
     unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> all_proto_texts;
 
-    auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
+    auto insert_map_values = [](const map<string, u8string>& from_kv, map<string, u8string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
             FO_VERIFY_AND_THROW(!key.empty(), "Prototype text key/value map contains an empty key while merging inherited text", value);
 
@@ -191,10 +192,10 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             string_view base_name = pid.as_str();
             FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
-            map<string, string> proto_kv;
+            map<string, u8string> proto_kv;
 
-            function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
-                auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
+            function<void(string_view, const map<string, u8string>&)> fill_parent_recursive = [&](string_view name, const map<string, u8string>& cur_kv) {
+                const string parent_name_line = cur_kv.count("$Parent") != 0 ? utf8_to_string(cur_kv.at("$Parent")) : string {};
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
                     hstring parent_pid = engine.Hashes.ToHashedString(parent_name);
@@ -252,7 +253,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
                 auto& lang_packs_map = all_proto_texts[type_name][pid];
                 lang_packs_map.try_emplace(lang, &engine.Hashes);
-                lang_packs_map.at(lang).AddStr(text_key, StringEscaping::DecodeString(value));
+                lang_packs_map.at(lang).AddText(text_key, StringEscaping::DecodeString(value));
             }
         }
     }

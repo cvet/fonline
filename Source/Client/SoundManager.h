@@ -65,8 +65,8 @@ private:
     auto LoadWav(ptr<Sound> sound, string_view fname) -> bool;
     auto LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -> bool;
     auto LoadOgg(ptr<Sound> sound, string_view fname) -> bool;
-    void ProcessSounds(uint8_t silence, span<uint8_t> output);
-    auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool;
+    void ProcessSounds(uint8_t silence, span<byte> output);
+    auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<byte> output) -> bool;
     auto StreamOgg(ptr<Sound> sound) -> bool;
     auto ConvertData(ptr<Sound> sound) -> bool;
 
@@ -76,7 +76,7 @@ private:
     bool _isActive {};
     int32_t _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
-    vector<uint8_t> _outputBuf {};
+    vector<byte> _outputBuf {};
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
 };
 

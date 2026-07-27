@@ -101,9 +101,9 @@ struct ModelAnimationClipArtifact
     string ClipName {};
     ModelAnimationJointRemap JointRemap {};
     ModelAnimationArchiveMetadata AnimationMetadata {};
-    vector<uint8_t> AnimationArchive {};
+    vector<byte> AnimationArchive {};
     ModelAnimationArchiveMetadata JointRemapMetadata {};
-    vector<uint8_t> JointRemapArchive {};
+    vector<byte> JointRemapArchive {};
 };
 
 struct ModelAnimationRigArtifacts
@@ -112,9 +112,9 @@ struct ModelAnimationRigArtifacts
     uint64_t CacheSignature {};
     ModelAnimationJointRemap BaseJointRemap {};
     ModelAnimationArchiveMetadata SkeletonMetadata {};
-    vector<uint8_t> SkeletonArchive {};
+    vector<byte> SkeletonArchive {};
     ModelAnimationArchiveMetadata BaseJointRemapMetadata {};
-    vector<uint8_t> BaseJointRemapArchive {};
+    vector<byte> BaseJointRemapArchive {};
     vector<ModelAnimationClipArtifact> Clips {};
 };
 

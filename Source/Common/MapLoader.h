@@ -52,8 +52,8 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
-    static auto EnumerateMaps(string_view file_name, const string& buf) -> vector<string>;
+    static void Load(string_view name, string_view file_name, const u8string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
+    [[nodiscard]] static auto EnumerateMaps(string_view file_name, const u8string& buf) -> vector<string>;
 };
 
 FO_END_NAMESPACE

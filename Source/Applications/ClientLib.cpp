@@ -55,7 +55,7 @@ struct ClientAppData
     refcount_nptr<ClientEngine> Client {};
     bool ResourcesSynced {};
     bool ReloadRequested {};
-    string StagedRuntimePath;
+    u8string StagedRuntimePath;
     optional<Updater> ResourceUpdater {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
@@ -76,10 +76,11 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+    const string_view exports_pointer_status = raw_exports ? "set" : "null";
+    WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports_pointer_status, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
-        WriteLog("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
+        WriteLog("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports_pointer_status);
         return false;
     }
 
@@ -138,10 +139,11 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
                 WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
                 runtime_result->ResultKind = ClientRuntimeResultKind::ReloadRequested;
                 runtime_result->Success = true;
-                runtime_result->RequestedRuntimePath = Data->StagedRuntimePath.c_str();
+                runtime_result->RequestedRuntimePath = utf8_to_c_str(Data->StagedRuntimePath.view_nt()).get();
             }
             else {
-                WriteLog("Client runtime DLL: returning shutdown, success {}", quit_success ? "yes" : "no");
+                const string_view quit_status = quit_success ? "yes" : "no";
+                WriteLog("Client runtime DLL: returning shutdown, success {}", quit_status);
                 runtime_result->Success = quit_success;
             }
         }
@@ -174,7 +176,9 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         result_success = runtime_result->Success;
     }
 
-    WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, runtime_result ? "set" : "null", result_success ? "yes" : "no");
+    const string_view result_pointer_status = runtime_result ? "set" : "null";
+    const string_view result_status = result_success ? "yes" : "no";
+    WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, result_pointer_status, result_status);
 }
 
 static auto GetClient() -> ptr<ClientEngine>
@@ -230,7 +234,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); request that exact path.
-                    string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    u8string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {

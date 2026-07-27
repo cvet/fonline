@@ -13,9 +13,9 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeDynamicMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
+static auto MakeDynamicMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<byte>
 {
-    vector<uint8_t> metadata;
+    vector<byte> metadata;
     auto writer = DataWriter(metadata);
 
     writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
@@ -44,13 +44,19 @@ static auto LoadOutputTextPack(const BakerTests::TestRig& rig, string_view path,
     REQUIRE(it != rig.Outputs.end());
 
     TextPack pack(&hashes);
-    REQUIRE(pack.LoadFromBinaryData(it->second));
+    REQUIRE(pack.LoadFromBinaryData(make_byte_span(it->second)));
     return pack;
 }
 
 static auto MakeTextKey(HashStorage& hashes, string_view pack_name, string_view proto_name, string_view key2 = {}, string_view key3 = {}) -> TextPackKey
 {
     return TextPackKey::FromPack(hashes, pack_name, proto_name, key2, key3);
+}
+
+template<size_t Size>
+static auto TextEquals(u8string_view value, const char8_t (&expected)[Size]) -> bool
+{
+    return value.native_view() == std::u8string_view {expected, Size - 1};
 }
 
 TEST_CASE("ProtoTextBaker")
@@ -95,7 +101,7 @@ $Text engl Name = Ignored
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
         local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
-        local_rig.AddSourceFile("Items/TextItems.fopro", R"([ProtoItem]
+        local_rig.AddSourceFile("Items/TextItems.fopro", u8R"([ProtoItem]
 $Name = BaseItem
 $Text engl Name = Base item name
 $Text engl Desc = Base item description
@@ -105,7 +111,7 @@ $Name = ChildItem
 $Parent = BaseItem
 $Text engl Desc = Child item description
 $Text engl Long = Line\nBreak
-$Text russ Desc = Child item ru
+$Text russ Desc = Дочернее описание
 $Text span Name = Nombre ignorado
 )");
         local_rig.AddSourceFile("Critters/TextCritter.fopro", R"([ProtoCritter]
@@ -140,17 +146,17 @@ $Text engl Name = Custom gizmo name
         auto protos_engl = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.engl.fotxt-bin", hashes);
         auto protos_russ = LoadOutputTextPack(local_rig, "ProtoTextPack.Protos.russ.fotxt-bin", hashes);
 
-        CHECK(items_engl.GetStr(MakeTextKey(hashes, "Items", "BaseItem", "Name"), 0) == "Base item name");
-        CHECK(items_engl.GetStr(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0) == "Base item name");
-        CHECK(items_engl.GetStr(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0) == "Child item description");
-        CHECK(items_engl.GetStr(MakeTextKey(hashes, "Items", "ChildItem", "Long"), 0) == "Line\nBreak");
-        CHECK(items_russ.GetStr(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0) == "Base item name");
-        CHECK(items_russ.GetStr(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0) == "Child item ru");
-        CHECK(critters_engl.GetStr(MakeTextKey(hashes, "Critters", "TextCritter", "Name"), 0) == "Critter name");
-        CHECK(maps_engl.GetStr(MakeTextKey(hashes, "Maps", "TextMap", "Name"), 0) == "Map name");
-        CHECK(locations_engl.GetStr(MakeTextKey(hashes, "Locations", "TextLocation", "Name"), 0) == "Location name");
-        CHECK(protos_engl.GetStr(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0) == "Custom gizmo name");
-        CHECK(protos_russ.GetStr(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0) == "Custom gizmo name");
+        CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "BaseItem", "Name"), 0), u8"Base item name"));
+        CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0), u8"Base item name"));
+        CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0), u8"Child item description"));
+        CHECK(TextEquals(items_engl.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Long"), 0), u8"Line\nBreak"));
+        CHECK(TextEquals(items_russ.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Name"), 0), u8"Base item name"));
+        CHECK(TextEquals(items_russ.GetText(MakeTextKey(hashes, "Items", "ChildItem", "Desc"), 0), u8"Дочернее описание"));
+        CHECK(TextEquals(critters_engl.GetText(MakeTextKey(hashes, "Critters", "TextCritter", "Name"), 0), u8"Critter name"));
+        CHECK(TextEquals(maps_engl.GetText(MakeTextKey(hashes, "Maps", "TextMap", "Name"), 0), u8"Map name"));
+        CHECK(TextEquals(locations_engl.GetText(MakeTextKey(hashes, "Locations", "TextLocation", "Name"), 0), u8"Location name"));
+        CHECK(TextEquals(protos_engl.GetText(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0), u8"Custom gizmo name"));
+        CHECK(TextEquals(protos_russ.GetText(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0), u8"Custom gizmo name"));
     }
 
     SECTION("AcceptsFixedTypeSections")

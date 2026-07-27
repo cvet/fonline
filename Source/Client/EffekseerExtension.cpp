@@ -1735,7 +1735,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    const_span<uint8_t> data = file.GetDataSpan();
+    const_span<byte> data = file.GetDataSpan();
 
     if (data.size() < 4) {
         LogEffekseerRejection(path, "binary is truncated");
@@ -1745,7 +1745,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
     constexpr string_view expected_magic = "SKFE";
 
     for (size_t index = 0; index < expected_magic.size(); index++) {
-        if (data[index] != numeric_cast<uint8_t>(expected_magic[index])) {
+        if (data[index] != static_cast<byte>(expected_magic[index])) {
             LogEffekseerRejection(path, "binary magic does not match the file extension");
             return {};
         }
@@ -1790,24 +1790,24 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_FLOATS = 7; // position box min/max, then the billboard radius
 static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_SIZE = EFFEKSEER_BOUNDS_TRAILER_FLOATS * sizeof(float32_t) + 2 * sizeof(uint32_t);
 
-static void WriteLittleEndianUint32(vector<uint8_t>& out, uint32_t value)
+static void WriteLittleEndianUint32(vector<byte>& out, uint32_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    out.push_back(numeric_cast<uint8_t>(value & 0xFFu));
-    out.push_back(numeric_cast<uint8_t>((value >> 8) & 0xFFu));
-    out.push_back(numeric_cast<uint8_t>((value >> 16) & 0xFFu));
-    out.push_back(numeric_cast<uint8_t>((value >> 24) & 0xFFu));
+    out.push_back(static_cast<byte>(value & 0xFFu));
+    out.push_back(static_cast<byte>((value >> 8) & 0xFFu));
+    out.push_back(static_cast<byte>((value >> 16) & 0xFFu));
+    out.push_back(static_cast<byte>((value >> 24) & 0xFFu));
 }
 
-static auto ReadLittleEndianUint32(const_span<uint8_t> data, size_t offset) -> uint32_t
+static auto ReadLittleEndianUint32(const_span<byte> data, size_t offset) -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return uint32_t {data[offset]} | (uint32_t {data[offset + 1]} << 8) | (uint32_t {data[offset + 2]} << 16) | (uint32_t {data[offset + 3]} << 24);
+    return std::to_integer<uint32_t>(data[offset]) | (std::to_integer<uint32_t>(data[offset + 1]) << 8) | (std::to_integer<uint32_t>(data[offset + 2]) << 16) | (std::to_integer<uint32_t>(data[offset + 3]) << 24);
 }
 
-void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius)
+void AppendEffekseerBoundsTrailer(vector<byte>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1822,7 +1822,7 @@ void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bound
     WriteLittleEndianUint32(binary, EFFEKSEER_BOUNDS_TRAILER_MAGIC);
 }
 
-auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTrailer
+auto ReadEffekseerBoundsTrailer(const_span<byte> binary) -> EffekseerBoundsTrailer
 {
     FO_STACK_TRACE_ENTRY();
 

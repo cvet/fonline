@@ -43,7 +43,7 @@ static constexpr float32_t Pi = 3.14159265358979323846f;
 struct XmlNode final
 {
     string Name {};
-    string Text {};
+    u8string Text {};
     vector<XmlNode> Children {};
 };
 
@@ -54,35 +54,35 @@ public:
     void WriteUInt16(uint16_t value);
     void WriteInt32(int32_t value);
     void WriteFloat(float32_t value);
-    void WriteBytes(const_span<uint8_t> value);
+    void WriteBytes(const_span<byte> value);
     void WriteSized(const BinaryWriter& value);
-    void WriteUtf16(string_view value);
-    [[nodiscard]] auto MoveData() -> vector<uint8_t>;
-    [[nodiscard]] auto GetData() const noexcept -> const vector<uint8_t>&;
+    void WriteUtf16(u8string_view value);
+    [[nodiscard]] auto MoveData() -> vector<byte>;
+    [[nodiscard]] auto GetData() const noexcept -> const vector<byte>&;
 
 private:
-    vector<uint8_t> _data {};
+    vector<byte> _data {};
 };
 
 struct CompilerContext final
 {
-    string ProjectDirectory {};
+    u8string ProjectDirectory {};
     vector<nptr<const XmlNode>> ExportedNodes {};
     map<nptr<const XmlNode>, int32_t> RenderIndices {};
-    map<string, int32_t> ColorTextures {};
-    map<string, int32_t> NormalTextures {};
-    map<string, int32_t> DistortionTextures {};
-    map<string, int32_t> Waves {};
-    map<string, int32_t> Models {};
-    map<string, int32_t> Curves {};
-    set<string> Dependencies {};
+    map<u8string, int32_t> ColorTextures {};
+    map<u8string, int32_t> NormalTextures {};
+    map<u8string, int32_t> DistortionTextures {};
+    map<u8string, int32_t> Waves {};
+    map<u8string, int32_t> Models {};
+    map<u8string, int32_t> Curves {};
+    set<u8string> Dependencies {};
 };
 
-[[nodiscard]] static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode;
-[[nodiscard]] static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext;
-[[nodiscard]] static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput;
+[[nodiscard]] static auto ParseXmlProject(u8string_view project_path, u8string_view xml) -> XmlNode;
+[[nodiscard]] static auto CreateCompilerContext(u8string_view project_path, const XmlNode& project) -> CompilerContext;
+[[nodiscard]] static auto CompileProject(u8string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput;
 
-auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput
+auto CompileEffekseerProject(u8string_view project_path, const_span<byte> project_data) -> EffekseerCompilerOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -90,12 +90,12 @@ auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> proje
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
+    const u8string xml = utf8_from_byte_span(project_data);
     XmlNode project = ParseXmlProject(project_path, xml);
     return CompileProject(project_path, project);
 }
 
-auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_t> project_data) -> vector<string>
+auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte> project_data) -> vector<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -103,71 +103,77 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    string_view xml {ptr<const uint8_t> {project_data.data()}.reinterpret_as<const char>().get(), project_data.size()};
+    const u8string xml = utf8_from_byte_span(project_data);
     XmlNode project = ParseXmlProject(project_path, xml);
     CompilerContext context = CreateCompilerContext(project_path, project);
-    return vector<string> {context.Dependencies.begin(), context.Dependencies.end()};
+    return vector<u8string> {context.Dependencies.begin(), context.Dependencies.end()};
 }
 
-[[nodiscard]] static auto IsXmlSpace(char ch) noexcept -> bool
+[[nodiscard]] static auto IsXmlSpace(char8_t ch) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
 }
 
-[[nodiscard]] static auto TrimXmlText(string_view value) -> string
+[[nodiscard]] static auto TrimXmlText(u8string_view value) -> u8string_view
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     size_t begin = 0;
     size_t end = value.size();
 
-    while (begin < end && IsXmlSpace(value[begin])) {
+    const std::u8string_view native_value = value.native_view();
+
+    while (begin < end && IsXmlSpace(native_value[begin])) {
         ++begin;
     }
-    while (end > begin && IsXmlSpace(value[end - 1])) {
+    while (end > begin && IsXmlSpace(native_value[end - 1])) {
         --end;
     }
 
-    return string {value.substr(begin, end - begin)};
+    return u8string_view::FromChecked(native_value.substr(begin, end - begin));
 }
 
-[[nodiscard]] static auto DecodeXmlText(string_view value, string_view project_path) -> string
+[[nodiscard]] static auto DecodeXmlText(u8string_view value, u8string_view project_path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    string result;
+    u8string result;
     result.reserve(value.size());
+    const std::u8string_view native_value = value.native_view();
 
     for (size_t pos = 0; pos < value.size();) {
-        if (value[pos] != '&') {
-            result.push_back(value[pos++]);
+        if (native_value[pos] != u8'&') {
+            const size_t entity_begin = native_value.find(u8'&', pos);
+            const size_t text_end = entity_begin != std::u8string_view::npos ? entity_begin : native_value.size();
+            result.append(u8string_view::FromChecked(native_value.substr(pos, text_end - pos)));
+            pos = text_end;
             continue;
         }
 
-        size_t end = value.find(';', pos + 1);
+        const size_t end = native_value.find(u8';', pos + 1);
 
-        if (end == string_view::npos) {
+        if (end == std::u8string_view::npos) {
             throw EffekseerCompilerException("Effekseer project contains an unterminated XML entity", project_path);
         }
 
-        string_view entity = value.substr(pos + 1, end - pos - 1);
+        const u8string_view entity = u8string_view::FromChecked(native_value.substr(pos + 1, end - pos - 1));
 
-        if (entity == "amp") {
-            result.push_back('&');
+        if (entity == u8"amp") {
+            result.append("&");
         }
-        else if (entity == "lt") {
-            result.push_back('<');
+        else if (entity == u8"lt") {
+            result.append("<");
         }
-        else if (entity == "gt") {
-            result.push_back('>');
+        else if (entity == u8"gt") {
+            result.append(">");
         }
-        else if (entity == "quot") {
-            result.push_back('"');
+        else if (entity == u8"quot") {
+            result.append("\"");
         }
-        else if (entity == "apos") {
-            result.push_back('\'');
+        else if (entity == u8"apos") {
+            result.append("'");
         }
         else {
             throw EffekseerCompilerException("Effekseer project contains an unsupported XML entity", project_path, entity);
@@ -182,7 +188,7 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
 class XmlParser final
 {
 public:
-    XmlParser(string_view project_path, string_view xml) :
+    XmlParser(u8string_view project_path, u8string_view xml) :
         _projectPath(project_path),
         _xml(xml)
     {
@@ -193,16 +199,16 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (_xml.starts_with("\xEF\xBB\xBF")) {
+        if (_xml.native_view().starts_with(u8"\uFEFF")) {
             _position = 3;
         }
 
         SkipSpace();
 
-        if (StartsWith("<?xml")) {
-            size_t declaration_end = _xml.find("?>", _position + 5);
+        if (StartsWith(u8"<?xml")) {
+            const size_t declaration_end = _xml.native_view().find(u8"?>", _position + 5);
 
-            if (declaration_end == string_view::npos) {
+            if (declaration_end == std::u8string_view::npos) {
                 Fail("Effekseer project has an unterminated XML declaration");
             }
 
@@ -235,16 +241,16 @@ private:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        while (_position < _xml.size() && IsXmlSpace(_xml[_position])) {
+        while (_position < _xml.size() && IsXmlSpace(_xml.native_view()[_position])) {
             ++_position;
         }
     }
 
-    [[nodiscard]] auto StartsWith(string_view value) const noexcept -> bool
+    [[nodiscard]] auto StartsWith(u8string_view value) const noexcept -> bool
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _xml.substr(_position).starts_with(value);
+        return _xml.native_view().substr(_position).starts_with(value.native_view());
     }
 
     [[nodiscard]] auto ParseName() -> string
@@ -254,8 +260,8 @@ private:
         size_t begin = _position;
 
         while (_position < _xml.size()) {
-            char ch = _xml[_position];
-            bool valid = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_';
+            const char8_t ch = _xml.native_view()[_position];
+            const bool valid = (ch >= u8'A' && ch <= u8'Z') || (ch >= u8'a' && ch <= u8'z') || (ch >= u8'0' && ch <= u8'9') || ch == u8'_';
 
             if (!valid) {
                 break;
@@ -268,14 +274,14 @@ private:
             Fail("Effekseer project contains an invalid XML element name");
         }
 
-        return string {_xml.substr(begin, _position - begin)};
+        return utf8_to_string(u8string_view::FromChecked(_xml.native_view().substr(begin, _position - begin)));
     }
 
     [[nodiscard]] auto ParseElement() -> XmlNode
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (_position >= _xml.size() || _xml[_position] != '<' || StartsWith("</") || StartsWith("<!") || StartsWith("<?")) {
+        if (_position >= _xml.size() || _xml.native_view()[_position] != u8'<' || StartsWith(u8"</") || StartsWith(u8"<!") || StartsWith(u8"<?")) {
             Fail("Effekseer project contains invalid XML markup");
         }
 
@@ -285,28 +291,28 @@ private:
         node.Name = ParseName();
         SkipSpace();
 
-        if (StartsWith("/>")) {
+        if (StartsWith(u8"/>")) {
             _position += 2;
             return node;
         }
-        if (_position >= _xml.size() || _xml[_position] != '>') {
+        if (_position >= _xml.size() || _xml.native_view()[_position] != u8'>') {
             Fail("Effekseer project XML attributes are unsupported");
         }
 
         ++_position;
 
-        string text;
+        u8string text;
 
         while (true) {
             if (_position >= _xml.size()) {
                 Fail("Effekseer project has an unterminated XML element");
             }
-            if (StartsWith("</")) {
+            if (StartsWith(u8"</")) {
                 _position += 2;
                 string closing_name = ParseName();
                 SkipSpace();
 
-                if (_position >= _xml.size() || _xml[_position] != '>') {
+                if (_position >= _xml.size() || _xml.native_view()[_position] != u8'>') {
                     Fail("Effekseer project has an invalid XML closing element");
                 }
 
@@ -319,7 +325,7 @@ private:
                 node.Text = DecodeXmlText(TrimXmlText(text), _projectPath);
                 return node;
             }
-            if (_xml[_position] == '<') {
+            if (_xml.native_view()[_position] == u8'<') {
                 if (!TrimXmlText(text).empty()) {
                     Fail("Effekseer project XML elements cannot mix text and children");
                 }
@@ -329,16 +335,19 @@ private:
                 continue;
             }
 
-            text.push_back(_xml[_position++]);
+            const size_t markup_begin = _xml.native_view().find(u8'<', _position);
+            const size_t text_end = markup_begin != std::u8string_view::npos ? markup_begin : _xml.size();
+            text.append(u8string_view::FromChecked(_xml.native_view().substr(_position, text_end - _position)));
+            _position = text_end;
         }
     }
 
-    string _projectPath;
-    string_view _xml;
+    u8string _projectPath;
+    u8string_view _xml;
     size_t _position {};
 };
 
-[[nodiscard]] static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode
+[[nodiscard]] static auto ParseXmlProject(u8string_view project_path, u8string_view xml) -> XmlNode
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -377,12 +386,17 @@ private:
     return node;
 }
 
-[[nodiscard]] static auto Text(nptr<const XmlNode> node, string_view path, string_view default_value = {}) -> string_view
+[[nodiscard]] static auto Text(nptr<const XmlNode> node, string_view path) -> u8string_view
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     nptr<const XmlNode> value = Find(node, path);
-    return value ? string_view {value->Text} : default_value;
+
+    if (!value) {
+        return {};
+    }
+
+    return value->Text;
 }
 
 [[nodiscard]] static auto IntValue(nptr<const XmlNode> node, string_view path, int32_t default_value = 0) -> int32_t
@@ -395,9 +409,10 @@ private:
         return default_value;
     }
 
+    const string ascii_value = utf8_to_string(value->Text);
     int32_t result {};
-    const char* begin = value->Text.data();
-    const char* end = begin + value->Text.size();
+    const char* begin = ascii_value.data();
+    const char* end = begin + ascii_value.size();
     const auto [parse_end, error] = std::from_chars(begin, end, result);
 
     if (error != std::errc {} || parse_end != end) {
@@ -417,9 +432,10 @@ private:
         return default_value;
     }
 
+    const string ascii_value = utf8_to_string(value->Text);
     float32_t result {};
-    const char* begin = value->Text.data();
-    const char* end = begin + value->Text.size();
+    const char* begin = ascii_value.data();
+    const char* end = begin + ascii_value.size();
     const auto [parse_end, error] = std::from_chars(begin, end, result, std::chars_format::general);
 
     if (error != std::errc {} || parse_end != end || !std::isfinite(result)) {
@@ -438,10 +454,10 @@ private:
     if (!value) {
         return default_value;
     }
-    if (value->Text == "True" || value->Text == "true") {
+    if (value->Text == u8"True" || value->Text == u8"true") {
         return true;
     }
-    if (value->Text == "False" || value->Text == "false") {
+    if (value->Text == u8"False" || value->Text == u8"false") {
         return false;
     }
 
@@ -452,15 +468,15 @@ void BinaryWriter::WriteUInt8(uint8_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _data.emplace_back(value);
+    _data.emplace_back(static_cast<byte>(value));
 }
 
 void BinaryWriter::WriteUInt16(uint16_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _data.emplace_back(numeric_cast<uint8_t>(value & 0xffU));
-    _data.emplace_back(numeric_cast<uint8_t>((value >> 8U) & 0xffU));
+    _data.emplace_back(static_cast<byte>(value & 0xffU));
+    _data.emplace_back(static_cast<byte>((value >> 8U) & 0xffU));
 }
 
 void BinaryWriter::WriteInt32(int32_t value)
@@ -468,10 +484,10 @@ void BinaryWriter::WriteInt32(int32_t value)
     FO_NO_STACK_TRACE_ENTRY();
 
     uint32_t encoded = std::bit_cast<uint32_t>(value);
-    _data.emplace_back(numeric_cast<uint8_t>(encoded & 0xffU));
-    _data.emplace_back(numeric_cast<uint8_t>((encoded >> 8U) & 0xffU));
-    _data.emplace_back(numeric_cast<uint8_t>((encoded >> 16U) & 0xffU));
-    _data.emplace_back(numeric_cast<uint8_t>((encoded >> 24U) & 0xffU));
+    _data.emplace_back(static_cast<byte>(encoded & 0xffU));
+    _data.emplace_back(static_cast<byte>((encoded >> 8U) & 0xffU));
+    _data.emplace_back(static_cast<byte>((encoded >> 16U) & 0xffU));
+    _data.emplace_back(static_cast<byte>((encoded >> 24U) & 0xffU));
 }
 
 void BinaryWriter::WriteFloat(float32_t value)
@@ -481,7 +497,7 @@ void BinaryWriter::WriteFloat(float32_t value)
     WriteInt32(std::bit_cast<int32_t>(value));
 }
 
-void BinaryWriter::WriteBytes(const_span<uint8_t> value)
+void BinaryWriter::WriteBytes(const_span<byte> value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -496,29 +512,29 @@ void BinaryWriter::WriteSized(const BinaryWriter& value)
     WriteBytes(value.GetData());
 }
 
-void BinaryWriter::WriteUtf16(string_view value)
+void BinaryWriter::WriteUtf16(u8string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Decode the UTF-8 input directly rather than through a platform wide string: strex::to_wide_char is
+    // Decode the UTF-8 input directly rather than through a platform wide string: u8strex::to_wide_char is
     // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way.
     vector<uint16_t> units;
-    units.reserve(value.length());
+    units.reserve(value.size());
 
-    for (size_t i = 0; i < value.length();) {
-        size_t length = value.length() - i;
+    for (size_t i = 0; i < value.size();) {
+        size_t length = value.size() - i;
         auto text_pos = make_ptr(value.data() + i);
-        uint32_t codepoint = utf8::Decode(text_pos, length);
+        const optional<uint32_t> codepoint = utf8::Decode(text_pos, length);
 
-        if (!utf8::IsValid(codepoint)) {
+        if (!codepoint || !utf8::IsValid(*codepoint)) {
             throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
         }
 
-        if (codepoint > 0xffffU) {
+        if (*codepoint > 0xffffU) {
             throw EffekseerCompilerException("Effekseer dependency path contains a non-BMP character", value);
         }
 
-        units.emplace_back(numeric_cast<uint16_t>(codepoint));
+        units.emplace_back(numeric_cast<uint16_t>(*codepoint));
         i += length;
     }
 
@@ -531,14 +547,14 @@ void BinaryWriter::WriteUtf16(string_view value)
     WriteUInt16(0);
 }
 
-auto BinaryWriter::MoveData() -> vector<uint8_t>
+auto BinaryWriter::MoveData() -> vector<byte>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return std::move(_data);
 }
 
-auto BinaryWriter::GetData() const noexcept -> const vector<uint8_t>&
+auto BinaryWriter::GetData() const noexcept -> const vector<byte>&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1070,7 +1086,7 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
     }
 }
 
-[[nodiscard]] static auto ChangeDependencyExtension(string_view path, string_view ext) -> string
+[[nodiscard]] static auto ChangeDependencyExtension(u8string_view path, string_view ext) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1078,17 +1094,16 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
         return {};
     }
 
-    string normalized = strex(path).normalize_path_slashes();
-    return strex(normalized).change_file_extension(ext);
+    return u8strex(path).normalize_path_slashes().change_file_extension(ext);
 }
 
-static void AssignResourceIndices(const set<string>& resources, map<string, int32_t>& indices)
+static void AssignResourceIndices(const set<u8string>& resources, map<u8string, int32_t>& indices)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     int32_t index = 0;
 
-    for (const string& resource : resources) {
+    for (const u8string& resource : resources) {
         indices.emplace(resource, index++);
     }
 }
@@ -1097,12 +1112,12 @@ static void CollectResources(CompilerContext& context)
 {
     FO_STACK_TRACE_ENTRY();
 
-    set<string> color_textures;
-    set<string> normal_textures;
-    set<string> distortion_textures;
-    set<string> waves;
-    set<string> models;
-    set<string> curves;
+    set<u8string> color_textures;
+    set<u8string> normal_textures;
+    set<u8string> distortion_textures;
+    set<u8string> waves;
+    set<u8string> models;
+    set<u8string> curves;
 
     for (nptr<const XmlNode> node : context.ExportedNodes) {
         nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
@@ -1111,8 +1126,8 @@ static void CollectResources(CompilerContext& context)
         bool rendered = IsRenderedNode(node);
 
         if (rendered) {
-            string color_path {Text(renderer, "ColorTexture")};
-            string normal_path {Text(renderer, "NormalTexture")};
+            u8string color_path {Text(renderer, "ColorTexture")};
+            u8string normal_path {Text(renderer, "NormalTexture")};
 
             if (!color_path.empty()) {
                 if (material == 6) {
@@ -1127,14 +1142,14 @@ static void CollectResources(CompilerContext& context)
             }
 
             if (NodeDrawingType(node) == 5) {
-                string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
+                u8string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
 
                 if (!model_path.empty()) {
                     models.emplace(model_path);
                 }
             }
             if (IntValue(Find(node, "SoundValues"), "Type", 0) == 1) {
-                string wave_path {Text(Find(node, "SoundValues"), "Sound/Wave")};
+                u8string wave_path {Text(Find(node, "SoundValues"), "Sound/Wave")};
 
                 if (!wave_path.empty()) {
                     waves.emplace(wave_path);
@@ -1145,14 +1160,14 @@ static void CollectResources(CompilerContext& context)
         nptr<const XmlNode> generation = Find(node, "GenerationLocationValues");
 
         if (IntValue(generation, "Type", 0) == 2) {
-            string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
+            u8string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
 
             if (!model_path.empty()) {
                 models.emplace(model_path);
             }
         }
         if (IntValue(Find(node, "LocationValues"), "Type", 0) == 4) {
-            string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
+            u8string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
 
             if (!curve_path.empty()) {
                 curves.emplace(curve_path);
@@ -1167,7 +1182,7 @@ static void CollectResources(CompilerContext& context)
     AssignResourceIndices(models, context.Models);
     AssignResourceIndices(curves, context.Curves);
 
-    for (ptr<const map<string, int32_t>> table : {&context.ColorTextures, &context.NormalTextures, &context.DistortionTextures, &context.Waves, &context.Models, &context.Curves}) {
+    for (ptr<const map<u8string, int32_t>> table : {&context.ColorTextures, &context.NormalTextures, &context.DistortionTextures, &context.Waves, &context.Models, &context.Curves}) {
         for (const auto& [path, index] : *table) {
             ignore_unused(index);
             context.Dependencies.emplace(path);
@@ -1175,7 +1190,7 @@ static void CollectResources(CompilerContext& context)
     }
 }
 
-static void WriteResourceTable(BinaryWriter& writer, const map<string, int32_t>& resources)
+static void WriteResourceTable(BinaryWriter& writer, const map<u8string, int32_t>& resources)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1283,7 +1298,7 @@ static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, 
         writer.WriteSized(data);
     }
     else if (type == 4) {
-        string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
+        u8string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
         writer.WriteInt32(path.empty() || !context.Curves.contains(path) ? -1 : context.Curves.at(path));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/Scale", 1.0f));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/MoveSpeed", 1.0f));
@@ -1494,7 +1509,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
         writer.WriteInt32(reference_type);
 
         if (reference_type == 0) {
-            string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+            u8string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
             writer.WriteInt32(!model_path.empty() && context.Models.contains(model_path) ? context.Models.at(model_path) : -1);
         }
         else if (reference_type == 1) {
@@ -1530,47 +1545,49 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
 }
 
-[[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, string_view path) -> string
+[[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, u8string_view path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(strex(path).normalize_path_slashes())}).lexically_normal();
-    return fs_path_to_string(resolved);
+    const u8string normalized_path = u8strex(path).normalize_path_slashes();
+    const std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(normalized_path)}).lexically_normal();
+    return fs_path_to_u8string(resolved);
 }
 
-[[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
+[[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, u8string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    optional<string> bytes = fs_read_file(ResolveDependencyPath(context, path));
+    const u8string resolved_path = ResolveDependencyPath(context, path);
+    optional<vector<byte>> bytes = fs_read_file_bytes(resolved_path);
 
     if (!bytes || bytes->size() < 18) {
         return std::nullopt;
     }
 
-    ptr<const uint8_t> data = ptr<const char> {bytes->data()}.reinterpret_as<const uint8_t>();
-    constexpr std::array<uint8_t, 8> signature {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+    const ptr<const byte> data = bytes->data();
+    constexpr std::array<byte, 8> signature {byte {0x89}, byte {'P'}, byte {'N'}, byte {'G'}, byte {0x0d}, byte {0x0a}, byte {0x1a}, byte {0x0a}};
     uint32_t width = 0;
     uint32_t height = 0;
 
-    if (bytes->size() >= 24 && std::ranges::equal(signature, make_const_span(data, signature.size()))) {
-        width = (numeric_cast<uint32_t>(data[16]) << 24U) | (numeric_cast<uint32_t>(data[17]) << 16U) | (numeric_cast<uint32_t>(data[18]) << 8U) | numeric_cast<uint32_t>(data[19]);
-        height = (numeric_cast<uint32_t>(data[20]) << 24U) | (numeric_cast<uint32_t>(data[21]) << 16U) | (numeric_cast<uint32_t>(data[22]) << 8U) | numeric_cast<uint32_t>(data[23]);
+    if (bytes->size() >= 24 && std::ranges::equal(signature, const_span<byte> {data.get(), signature.size()})) {
+        width = (std::to_integer<uint32_t>(data[16]) << 24U) | (std::to_integer<uint32_t>(data[17]) << 16U) | (std::to_integer<uint32_t>(data[18]) << 8U) | std::to_integer<uint32_t>(data[19]);
+        height = (std::to_integer<uint32_t>(data[20]) << 24U) | (std::to_integer<uint32_t>(data[21]) << 16U) | (std::to_integer<uint32_t>(data[22]) << 8U) | std::to_integer<uint32_t>(data[23]);
     }
-    else if (bytes->size() >= 20 && data[0] == uint8_t {'D'} && data[1] == uint8_t {'D'} && data[2] == uint8_t {'S'}) {
-        width = numeric_cast<uint32_t>(data[16]) | (numeric_cast<uint32_t>(data[17]) << 8U) | (numeric_cast<uint32_t>(data[18]) << 16U) | (numeric_cast<uint32_t>(data[19]) << 24U);
-        height = numeric_cast<uint32_t>(data[12]) | (numeric_cast<uint32_t>(data[13]) << 8U) | (numeric_cast<uint32_t>(data[14]) << 16U) | (numeric_cast<uint32_t>(data[15]) << 24U);
+    else if (bytes->size() >= 20 && data[0] == byte {'D'} && data[1] == byte {'D'} && data[2] == byte {'S'}) {
+        width = std::to_integer<uint32_t>(data[16]) | (std::to_integer<uint32_t>(data[17]) << 8U) | (std::to_integer<uint32_t>(data[18]) << 16U) | (std::to_integer<uint32_t>(data[19]) << 24U);
+        height = std::to_integer<uint32_t>(data[12]) | (std::to_integer<uint32_t>(data[13]) << 8U) | (std::to_integer<uint32_t>(data[14]) << 16U) | (std::to_integer<uint32_t>(data[15]) << 24U);
     }
     else {
         constexpr string_view tga_footer {"TRUEVISION-XFILE.\0", 18};
-        bool has_tga_footer = bytes->size() >= tga_footer.size() && string_view {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()} == tga_footer;
+        const bool has_tga_footer = bytes->size() >= tga_footer.size() && std::ranges::equal(const_span<byte> {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()}, string_to_byte_span(tga_footer));
 
-        if (strex(path).get_file_extension() != "tga" && !has_tga_footer) {
+        if (u8strex(path).get_file_extension() != u8"tga" && !has_tga_footer) {
             return std::nullopt;
         }
 
-        width = numeric_cast<uint32_t>(data[12]) | (numeric_cast<uint32_t>(data[13]) << 8U);
-        height = numeric_cast<uint32_t>(data[14]) | (numeric_cast<uint32_t>(data[15]) << 8U);
+        width = std::to_integer<uint32_t>(data[12]) | (std::to_integer<uint32_t>(data[13]) << 8U);
+        height = std::to_integer<uint32_t>(data[14]) | (std::to_integer<uint32_t>(data[15]) << 8U);
     }
 
     if (width == 0 || height == 0) {
@@ -1580,15 +1597,15 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     return std::make_pair(numeric_cast<float32_t>(width), numeric_cast<float32_t>(height));
 }
 
-[[nodiscard]] static auto TextureIndex(const CompilerContext& context, string_view path, const map<string, int32_t>& indices) -> int32_t
+[[nodiscard]] static auto TextureIndex(const CompilerContext& context, u8string_view path, const map<u8string, int32_t>& indices) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto it = indices.find(string {path});
+    auto it = indices.find(u8string {path});
     return it != indices.end() && ReadTextureSize(context, path) ? it->second : -1;
 }
 
-static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, const CompilerContext& context, string_view texture_path)
+static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, const CompilerContext& context, u8string_view texture_path)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1644,8 +1661,8 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 
     nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
     int32_t material = IntValue(renderer, "Material", 0);
-    string color_path {Text(renderer, "ColorTexture")};
-    string normal_path {Text(renderer, "NormalTexture")};
+    u8string color_path {Text(renderer, "ColorTexture")};
+    u8string normal_path {Text(renderer, "NormalTexture")};
     writer.WriteInt32(material);
 
     if (material == 0 || material == 7) {
@@ -2152,7 +2169,7 @@ static void WriteModelRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
 
     if (reference_type == 0) {
         writer.WriteFloat(1.0f);
-        string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+        u8string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
         writer.WriteInt32(!path.empty() && context.Models.contains(path) ? context.Models.at(path) : -1);
     }
     else if (reference_type == 1) {
@@ -2232,7 +2249,7 @@ static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, con
     }
 
     nptr<const XmlNode> sound = Find(values, "Sound");
-    string wave {Text(sound, "Wave")};
+    u8string wave {Text(sound, "Wave")};
     writer.WriteInt32(!wave.empty() && context.Waves.contains(wave) ? context.Waves.at(wave) : -1);
     WriteRandomFloat(writer, Find(sound, "Volume"), 1.0f);
     WriteRandomFloat(writer, Find(sound, "Pitch"), 0.0f);
@@ -2402,7 +2419,7 @@ static void BuildRenderIndices(CompilerContext& context)
     }
 }
 
-static void ValidateSupportedFeatures(const CompilerContext& context, string_view project_path)
+static void ValidateSupportedFeatures(const CompilerContext& context, u8string_view project_path)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2422,11 +2439,11 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     }
 }
 
-[[nodiscard]] static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext
+[[nodiscard]] static auto CreateCompilerContext(u8string_view project_path, const XmlNode& project) -> CompilerContext
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Text(&project, "ToolVersion") != "1.80.5" || IntValue(&project, "Version", -1) != 3) {
+    if (Text(&project, "ToolVersion") != u8"1.80.5" || IntValue(&project, "Version", -1) != 3) {
         throw EffekseerCompilerException("Effekseer project must be normalized with Editor 1.80.5 and project version 3", project_path, Text(&project, "ToolVersion"), Text(&project, "Version"));
     }
 
@@ -2443,7 +2460,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     }
 
     CompilerContext context;
-    context.ProjectDirectory = fs_path_to_string(std::filesystem::path {fs_make_path(project_path)}.parent_path());
+    context.ProjectDirectory = fs_path_to_u8string(std::filesystem::path {fs_make_path(project_path)}.parent_path());
     nptr<const XmlNode> root = Find(&project, "Root");
 
     if (!root) {
@@ -2457,7 +2474,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     return context;
 }
 
-[[nodiscard]] static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput
+[[nodiscard]] static auto CompileProject(u8string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2465,7 +2482,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     nptr<const XmlNode> root = Find(&project, "Root");
 
     BinaryWriter writer;
-    constexpr std::array<uint8_t, 4> magic {'S', 'K', 'F', 'E'};
+    constexpr std::array<byte, 4> magic {byte {'S'}, byte {'K'}, byte {'F'}, byte {'E'}};
     writer.WriteBytes(magic);
     writer.WriteInt32(EffekseerBinaryVersion);
     WriteResourceTable(writer, context.ColorTextures);

@@ -76,8 +76,8 @@ public:
     auto can_write(timespan timeout = {}) const noexcept -> bool;
     auto set_nodelay(bool enabled) noexcept -> bool;
     auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed.
-    auto send(const_span<uint8_t> data) noexcept -> int32_t;
-    auto receive(span<uint8_t> data) noexcept -> int32_t;
+    auto send(const_span<byte> data) noexcept -> int32_t;
+    auto receive(span<byte> data) noexcept -> int32_t;
     void close() noexcept;
 
 private:
@@ -124,8 +124,8 @@ public:
     auto can_read(timespan timeout = {}) const noexcept -> bool;
     auto can_write(timespan timeout = {}) const noexcept -> bool;
     auto set_broadcast(bool enabled) noexcept -> bool;
-    auto send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t;
-    auto receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t;
+    auto send_to(string_view host, uint16_t port, const_span<byte> data) noexcept -> int32_t;
+    auto receive_from(span<byte> data, string& out_host, uint16_t& out_port) noexcept -> int32_t;
     void close() noexcept;
 
 private:

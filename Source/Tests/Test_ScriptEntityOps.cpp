@@ -55,7 +55,7 @@ namespace
         return settings;
     }
 
-    static auto MakeEntityOpsMetadataBlob() -> vector<uint8_t>
+    static auto MakeEntityOpsMetadataBlob() -> vector<byte>
     {
         return BakerTests::MakeMetadataBlob({
             {"Entity", {{"CoverageTarget"}, {"CoverageLeaf"}, {"CoverageProtoTarget", "HasAbstract", "HasProtos", "HasStatics"}}},
@@ -86,7 +86,7 @@ namespace
         });
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -1908,7 +1908,7 @@ namespace EntityOps
         return resources;
     }
 
-    static auto MakeConstGlobalMismatchScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeConstGlobalMismatchScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -2007,26 +2007,27 @@ namespace EntityOps
 #define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
     REQUIRE(func); \
-    auto prev_callback = GetExceptionCallback(); \
-    string message; \
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
+    const auto prev_callback = GetExceptionCallback(); \
+    u8string message; \
+    SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); }); \
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
-    INFO(message); \
-    CHECK(message.find(expected_message) != string::npos)
+    const u8string expected_message_utf8 {expected_message}; \
+    INFO(utf8_to_char_string(message)); \
+    CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos)
 
 TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
 {
     auto settings = MakeSettings();
-    string message;
+    u8string message;
     std::mutex message_locker;
 
-    auto prev_callback = GetExceptionCallback();
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) {
-        std::scoped_lock locker(message_locker);
+    const auto prev_callback = GetExceptionCallback();
+    SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) {
+        const std::scoped_lock locker(message_locker);
 
-        message += msg;
-        message += '\n';
+        message.append(msg);
+        message.append("\n");
     });
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
@@ -2052,14 +2053,14 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
     server->Shutdown();
     server_shutdown = true;
 
-    string message_snapshot;
+    u8string message_snapshot;
     {
         std::scoped_lock locker(message_locker);
         message_snapshot = message;
     }
 
-    INFO(message_snapshot);
-    CHECK(message_snapshot.find("SetConstGlobalVar: type mismatch between target and value") != string::npos);
+    INFO(utf8_to_char_string(message_snapshot));
+    CHECK(message_snapshot.view().native_view().find(u8"SetConstGlobalVar: type mismatch between target and value") != std::u8string_view::npos);
 }
 
 TEST_CASE("EntityBaseOperations")

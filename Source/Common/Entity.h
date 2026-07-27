@@ -187,6 +187,7 @@ public:
     auto operator=(Entity&&) noexcept = delete;
 
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
+    [[nodiscard]] virtual auto GetDisplayName() const -> u8string { return GetName(); }
     [[nodiscard]] virtual auto GetId() const noexcept -> ident_t { return {}; }
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
@@ -211,7 +212,7 @@ public:
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     auto StoreData(bool with_protected) const -> Properties::StoredData;
-    void RestoreData(const vector<vector<uint8_t>>& props_data);
+    void RestoreData(const vector<vector<byte>>& props_data);
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetValueAsInt(ptr<const Property> prop, int32_t value);
     void SetValueAsInt(int32_t prop_index, int32_t value);

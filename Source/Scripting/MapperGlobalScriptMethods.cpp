@@ -309,24 +309,24 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
     int32_t corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     int32_t corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
-    string map_text = strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
-        corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
-                          .str();
+    const u8string map_text = u8strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
+        corrected_width, corrected_height, corrected_width / 2, corrected_height / 2);
 
     return mapper->LoadMapFromText(name, name, map_text);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, string_view text)
+FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, u8string_view text)
 {
     if (name.empty()) {
         throw ScriptException("Map name is empty");
     }
-    if (text.find("[ProtoMap]") == string_view::npos) {
+    if (text.native_view().find(u8"[ProtoMap]") == std::u8string_view::npos) {
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return mapper->LoadMapFromText(name, name, string(text));
+    const u8string map_text {text};
+    return mapper->LoadMapFromText(name, name, map_text);
 }
 
 ///@ ExportMethod
@@ -411,7 +411,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
         }
 
         File map_file = File::Load(map_file_header);
-        auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+        auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetText());
         names.insert(names.end(), std::make_move_iterator(declared_maps.begin()), std::make_move_iterator(declared_maps.end()));
     }
 
@@ -862,7 +862,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, string_view filePath)
+FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, u8string_view filePath)
 {
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");

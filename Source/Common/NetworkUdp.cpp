@@ -39,17 +39,17 @@ constexpr uint32_t UDP_PACKET_MAGIC = 0x31445055;
 constexpr uint16_t UDP_PACKET_VERSION = 1;
 constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
 
-static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<uint8_t> payload) -> vector<uint8_t>
+static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<byte> payload) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8_t> data;
+    vector<byte> data;
     data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
 
     auto append_scalar = [&data](auto scalar) {
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
-        array<uint8_t, sizeof(scalar)> scalar_bytes {};
-        auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
+        array<byte, sizeof(scalar)> scalar_bytes {};
+        auto source = make_ptr(&scalar).template reinterpret_as<const byte>();
         MemCopy(scalar_bytes.data(), source, sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
     };
@@ -143,7 +143,7 @@ auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
     return false;
 }
 
-auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vector<uint8_t>>& packets, nanotime now) -> size_t
+auto UdpOrderedChannel::PrepareOutput(const_span<byte> new_data, vector<vector<byte>>& packets, nanotime now) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -241,12 +241,12 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
     }
 
     if (_receivedPackets.count(packet.Sequence) == 0) {
-        _receivedPackets.emplace(packet.Sequence, vector<uint8_t>(packet.Payload.begin(), packet.Payload.end()));
+        _receivedPackets.emplace(packet.Sequence, vector<byte>(packet.Payload.begin(), packet.Payload.end()));
         RebuildAckBits();
     }
 }
 
-auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
+auto UdpOrderedChannel::ExtractReadyData(vector<byte>& data) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -255,7 +255,7 @@ auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
     return data.size();
 }
 
-auto UdpOrderedChannel::MakeDisconnectPacket() const -> vector<uint8_t>
+auto UdpOrderedChannel::MakeDisconnectPacket() const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -278,14 +278,14 @@ void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ac
     }
 }
 
-void UdpOrderedChannel::EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const
+void UdpOrderedChannel::EmitPendingPacket(const PendingPacket& packet, vector<vector<byte>>& packets) const
 {
     FO_STACK_TRACE_ENTRY();
 
     packets.emplace_back(MakePacket(UdpPacketType::Payload, packet.Sequence, packet.Payload));
 }
 
-void UdpOrderedChannel::EmitAckPacket(vector<vector<uint8_t>>& packets) const
+void UdpOrderedChannel::EmitAckPacket(vector<vector<byte>>& packets) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -311,7 +311,7 @@ void UdpOrderedChannel::RebuildAckBits() noexcept
     }
 }
 
-void UdpOrderedChannel::QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const
+void UdpOrderedChannel::QueueTailRedundancy(vector<vector<byte>>& packets, uint32_t first_new_sequence) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -343,28 +343,28 @@ auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_seq
     return diff < 32U && (ack_bits & (1U << diff)) != 0;
 }
 
-auto UdpOrderedChannel::MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value) const -> vector<uint8_t>
+auto UdpOrderedChannel::MakePacket(UdpPacketType type, uint32_t sequence, const_span<byte> payload, uint32_t value) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     return MakeRawPacket(type, _sessionId, sequence, _nextIncomingSequence != 0 ? _nextIncomingSequence - 1 : 0U, _ackBits, value, payload);
 }
 
-auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>
+auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     return MakeRawPacket(UdpPacketType::Connect, 0, 0, 0, 0, client_salt, {});
 }
 
-auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>
+auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
     return MakeRawPacket(UdpPacketType::Accept, session_id, 0, 0, 0, client_salt, {});
 }
 
-auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
+auto TryParseUdpPacket(const_span<byte> data, UdpPacketInfo& packet) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -385,7 +385,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         }
 
         auto scalar_ptr = make_ptr(&scalar);
-        auto target = scalar_ptr.template reinterpret_as<uint8_t>();
+        auto target = scalar_ptr.template reinterpret_as<byte>();
         auto source = make_ptr(data.data() + pos);
         MemCopy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);

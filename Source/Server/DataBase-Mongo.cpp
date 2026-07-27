@@ -21,7 +21,7 @@ public:
     auto operator=(const DbMongo&) = delete;
     auto operator=(DbMongo&&) noexcept = delete;
 
-    explicit DbMongo(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) :
+    explicit DbMongo(ptr<DataBaseSettings> db_settings, u8string_view uri, u8string_view db_name, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _escapeDot {db_settings->MongoEscapeChar.empty() ? '\0' : db_settings->MongoEscapeChar.front()}
     {
@@ -38,8 +38,8 @@ public:
         auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });
 
         bson_error_t error;
-        string uri_text = string(uri);
-        auto uri_ptr = make_ptr(uri_text.c_str());
+        const u8string uri_text {uri};
+        const ptr<const char> uri_ptr = utf8_to_c_str(uri_text.view_nt());
         auto mongo_uri = make_nptr(mongoc_uri_new_with_error(uri_ptr.get(), &error));
 
         if (!mongo_uri) {
@@ -58,8 +58,8 @@ public:
         mongoc_uri_destroy(mongo_uri.get());
         mongoc_client_set_appname(client.get(), FO_DEV_NAME);
 
-        string db_name_text = string(db_name);
-        auto db_name_ptr = make_ptr(db_name_text.c_str());
+        const u8string db_name_text {db_name};
+        const ptr<const char> db_name_ptr = utf8_to_c_str(db_name_text.view_nt());
         auto database = make_nptr(mongoc_client_get_database(client.get(), db_name_ptr.get()));
 
         if (!database) {
@@ -497,7 +497,7 @@ private:
     char _escapeDot {};
 };
 
-auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, u8string_view uri, u8string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }

@@ -55,7 +55,7 @@ public:
 
     [[nodiscard]] auto GetNameNoExt() const -> string_view;
     [[nodiscard]] auto GetPath() const -> string_view;
-    [[nodiscard]] auto GetDiskPath() const -> string;
+    [[nodiscard]] auto GetDiskPath() const -> u8string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64_t;
     [[nodiscard]] auto GetDataSource() const -> ptr<const DataSource>;
@@ -72,18 +72,18 @@ protected:
 class FileReader final
 {
 public:
-    explicit FileReader(const_span<uint8_t> buf);
+    explicit FileReader(const_span<byte> buf);
     FileReader(const FileReader&) = delete;
     FileReader(FileReader&&) noexcept = default;
     auto operator=(const FileReader&) = delete;
     auto operator=(FileReader&&) noexcept -> FileReader& = default;
     ~FileReader() = default;
 
-    [[nodiscard]] auto GetStr() const -> string;
-    [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
+    [[nodiscard]] auto GetText() const -> u8string;
+    [[nodiscard]] auto GetData() const -> vector<byte>;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<byte>;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
+    [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<byte>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
@@ -100,8 +100,8 @@ public:
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
-    void CopyData(span<uint8_t> buf);
-    void ReadBytes(span<uint8_t> out);
+    void CopyData(span<byte> buf);
+    void ReadBytes(span<byte> out);
     void SetCurPos(size_t pos);
     void GoForward(size_t offs);
     void GoBack(size_t offs);
@@ -110,19 +110,19 @@ public:
         requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
     void ReadObject(T& out)
     {
-        CopyData(make_span(&out, sizeof(T)));
+        CopyData(make_byte_span(&out, sizeof(T)));
     }
     template<typename T>
         requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
     void ReadObjectArray(span<T> out)
     {
         if (!out.empty()) {
-            CopyData(make_span(out.data(), out.size() * sizeof(T)));
+            CopyData(make_byte_span(out.data(), out.size() * sizeof(T)));
         }
     }
 
 private:
-    const_span<uint8_t> _buf;
+    const_span<byte> _buf;
     size_t _curPos {};
 };
 
@@ -130,22 +130,22 @@ class File final : public FileHeader
 {
 public:
     File() noexcept = default;
-    explicit File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf);
+    explicit File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const byte>&& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
     auto operator=(File&&) noexcept -> File& = default;
     ~File() = default;
 
-    [[nodiscard]] auto GetStr() const -> string;
-    [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
+    [[nodiscard]] auto GetText() const -> u8string;
+    [[nodiscard]] auto GetData() const -> vector<byte>;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<byte>;
     [[nodiscard]] auto GetReader() const -> FileReader;
 
     static auto Load(const FileHeader& fh) -> File;
 
 protected:
-    unique_del_nptr<const uint8_t> _fileBuf {};
+    unique_del_nptr<const byte> _fileBuf {};
 };
 
 class FileCollection final
@@ -189,13 +189,15 @@ public:
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool recursive = true) const -> FileCollection;
     [[nodiscard]] auto FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection;
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool;
+    [[nodiscard]] auto IsFileExists(u8string_view path) const -> bool;
     [[nodiscard]] auto ReadFile(string_view path) const -> File;
-    [[nodiscard]] auto ReadFileText(string_view path) const -> string;
+    [[nodiscard]] auto ReadFile(u8string_view path) const -> File;
+    [[nodiscard]] auto ReadFileText(string_view path) const -> u8string;
     [[nodiscard]] auto ReadFileHeader(string_view path) const -> FileHeader;
 
-    void AddDirSource(string_view dir, bool recursive = false, bool non_cached = false, bool maybe_not_available = false);
-    void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
-    void AddPacksSource(string_view dir, const vector<string>& packs);
+    void AddDirSource(u8string_view dir, bool recursive = false, bool non_cached = false, bool maybe_not_available = false);
+    void AddPackSource(u8string_view dir, u8string_view pack, bool maybe_not_available = false);
+    void AddPacksSource(u8string_view dir, const vector<string>& packs);
     void AddCustomSource(unique_ptr<DataSource> data_source);
     auto ReindexDataSources() -> bool;
     void CleanDataSources();

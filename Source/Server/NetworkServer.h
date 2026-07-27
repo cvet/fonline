@@ -49,8 +49,8 @@ extern auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
 class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    using AsyncSendCallback = function<const_span<uint8_t>()>;
-    using AsyncReceiveCallback = function<void(const_span<uint8_t>)>;
+    using AsyncSendCallback = function<const_span<byte>()>;
+    using AsyncReceiveCallback = function<void(const_span<byte>)>;
     using DisconnectCallback = function<void()>;
 
     NetworkServerConnection(const NetworkServerConnection&) = delete;
@@ -73,8 +73,8 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback() -> const_span<uint8_t>;
-    void ReceiveCallback(const_span<uint8_t> buf);
+    auto SendCallback() -> const_span<byte>;
+    void ReceiveCallback(const_span<byte> buf);
 
     ptr<ServerNetworkSettings> _settings;
     string _host {};
@@ -85,7 +85,7 @@ private:
     std::atomic_bool _sendCallbackSet {};
     mutex _receiveLocker {};
     AsyncReceiveCallback _receiveCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
-    vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
+    vector<byte> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
     DisconnectCallback _disconnectCallback {};
     std::atomic_bool _disconnectCallbackSet {};
     std::atomic_bool _isDisconnected {};

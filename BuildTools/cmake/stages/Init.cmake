@@ -447,6 +447,7 @@ if(WIN32)
 	endif()
 
 	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
+	AppendList(FO_COMMON_SYSTEM_LIBS "shell32")
 
 	if(NOT FO_HEADLESS_ONLY)
 		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")

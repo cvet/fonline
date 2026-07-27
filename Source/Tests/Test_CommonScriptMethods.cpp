@@ -59,7 +59,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<byte>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -231,7 +231,41 @@ namespace CommonMethods
         if (cp2 != 0x0410) return -5;
         if (len2 < 2) return -6;
 
+        // U+FFFD is a valid Unicode scalar, not a decoder error sentinel.
+        string replacement = Game.EncodeUtf8(0xFFFD);
+        int len3 = 0;
+        uint cp3 = Game.DecodeUtf8(replacement, len3);
+        if (cp3 != 0xFFFD) return -7;
+        if (len3 != 3) return -8;
+
         return 0;
+    }
+
+    void TestDecodeInvalidUtf8Throws()
+    {
+        string malformed;
+        malformed.rawResize(1);
+        malformed.rawSet(0, 0xFF);
+
+        int length = 0;
+        Game.DecodeUtf8(malformed, length);
+    }
+
+    void TestDecodeNonScalarUtf8Throws()
+    {
+        string surrogate;
+        surrogate.rawResize(3);
+        surrogate.rawSet(0, 0xED);
+        surrogate.rawSet(1, 0xA0);
+        surrogate.rawSet(2, 0x80);
+
+        int length = 0;
+        Game.DecodeUtf8(surrogate, length);
+    }
+
+    void TestEncodeInvalidUnicodeScalarThrows()
+    {
+        Game.EncodeUtf8(0xD800);
     }
 
     // ========== Time Packing ==========
@@ -1720,7 +1754,7 @@ namespace CommonMethods
         writer.WriteStringBytes(token);
     }
 
-    static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
+    static auto MakeCommonMethodsMetadataBlob() -> vector<byte>
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1734,7 +1768,7 @@ namespace CommonMethods
             {"RouteNote", "Text", "string", "0"},
         };
 
-        vector<uint8_t> metadata;
+        vector<byte> metadata;
         auto writer = DataWriter(metadata);
 
         writer.Write<uint16_t>(uint16_t {2});
@@ -1906,13 +1940,14 @@ BoundsMaxZ = 3.5
 #define RUN_CM_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
     REQUIRE(func); \
-    auto prev_callback = GetExceptionCallback(); \
-    string message; \
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
+    const auto prev_callback = GetExceptionCallback(); \
+    u8string message; \
+    SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); }); \
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
-    INFO(message); \
-    CHECK(message.find(expected_message) != string::npos)
+    const u8string expected_message_utf8 {expected_message}; \
+    INFO(utf8_to_char_string(message)); \
+    CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos)
 
 // ========== Geometry Tests ==========
 
@@ -1997,6 +2032,21 @@ TEST_CASE("Utf8EncodeDecodeOps")
     SECTION("EncodeDecodeUtf8")
     {
         RUN_CM_FUNC("TestEncodeDecodeUtf8");
+    }
+
+    SECTION("DecodeInvalidUtf8Throws")
+    {
+        RUN_CM_FUNC_THROWS("TestDecodeInvalidUtf8Throws", "UTF-8 scalar is out of range");
+    }
+
+    SECTION("DecodeNonScalarUtf8Throws")
+    {
+        RUN_CM_FUNC_THROWS("TestDecodeNonScalarUtf8Throws", "UTF-8 sequence encodes a surrogate scalar");
+    }
+
+    SECTION("EncodeInvalidUnicodeScalarThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestEncodeInvalidUnicodeScalarThrows", "Invalid Unicode scalar value");
     }
 }
 

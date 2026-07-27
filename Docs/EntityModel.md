@@ -46,7 +46,7 @@ For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](G
 
 Important accessors and mutation paths include:
 
-- identity/type: `GetName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
+- identity/type: `GetName()`, `GetDisplayName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
 - property access: `GetProperties()`, `GetPropertiesForEdit()`, `GetValueAsInt()`, `GetValueAsAny()`, `SetValueAsInt()`, `SetValueAsAny()`;
 - raw data snapshots: `StoreData()`, `RestoreData()`, `SetValueFromData()`;
 - lifecycle state: `IsDestroying()`, `IsDestroyed()`, `MarkAsDestroying()`, `MarkAsDestroyed()`;
@@ -54,6 +54,13 @@ Important accessors and mutation paths include:
 - event dispatch: `SubscribeEvent()`, `UnsubscribeEvent()`, `FireEvent()`.
 
 Do not bypass `Properties` when changing entity state. Property callbacks, overlay data, sync flags, persistence flags, and script-visible accessors depend on the property layer seeing the mutation.
+
+`GetName()` is the ASCII technical identity used for engine diagnostics and authored entity/prototype
+names. `GetDisplayName()` is the UTF-8 presentation identity exposed by script `Entity.Name`. Most
+entities implicitly promote their technical name, while player-backed server critters and client
+critter views override it with their `u8string` player/display name. Code that renders or logs a
+player-visible identity uses `GetDisplayName()`; code that selects a technical type, prototype, or
+hash uses `GetName()`.
 
 ## Generated property wrappers
 
@@ -82,6 +89,8 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
+
+Property backing storage is an explicit binary domain. `PropertyRawData`, `Properties::GetRawData()` / `SetRawData()`, snapshot chunks passed to `RestoreData()`, overlay/POD/complex owners, and `PropertiesSerializator` cursors use `byte`, `vector<byte>`, and byte spans. Numeric property leaves—including scalar `uint8_t`, enum storage, array elements, and serialized size/index fields—remain numeric values and cross the backing byte storage through typed reads/writes. A numeric `uint8_t` container cannot bind directly to a raw property API.
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
@@ -186,6 +195,8 @@ Entity state is serialized through property data, not by hand-copying entity fie
 - raw binary property snapshots: `Entity::StoreData()` / `RestoreData()` and `Properties::StoreData()` / `RestoreData()`;
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
 - text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
+
+The raw snapshot chunks are `vector<vector<byte>>` end to end through `Entity`, client staging, network property blocks, and restore validation. This is a native type separation only: the byte layout, alignment, size prefixes, property indices, persistence data, and wire representation are unchanged.
 
 When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
 

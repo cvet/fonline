@@ -36,15 +36,18 @@
 #include "GlobalData.h"
 #include "Platform.h"
 #include "StackTrace.h"
+#include "StringUtils.h"
+#include "TextConversions.h"
+#include "TextFormatting.h"
 #include "TimeRelated.h"
 #include "WorkThread.h"
 
 FO_BEGIN_NAMESPACE
 
-static void EmitLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st);
+static void EmitLogMessage(LogType type, u8string_view message, nptr<const CatchedStackTraceData> st);
 static void FlushLogMessageRepeatsLocked();
-static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool;
-static void RememberLastLogMessage(LogType type, string_view message) noexcept;
+static auto IsSameAsLastLogMessage(LogType type, u8string_view message) -> bool;
+static void RememberLastLogMessage(LogType type, u8string_view message) noexcept;
 static void ClearLastLogMessage() noexcept;
 static void FlushLogAtExit();
 
@@ -68,43 +71,52 @@ struct LoggingData
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
     optional<LogType> LastLogType {};
-    string LastLogMessage {};
+    u8string LastLogMessage {};
     uint64_t SameLogMessageCount {};
     bool TagsDisabled {};
 };
 FO_GLOBAL_DATA(LoggingData, Logging);
 
-extern void WriteLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st) noexcept
+extern void WriteBaseLog(u8string_view message, nptr<const CatchedStackTraceData> st) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (validate_utf8_text(message.native_view())) {
+        const u8string_view rejected {u8"Base log message rejected: invalid UTF-8\n"};
+        WriteBaseLogBytes(utf8_to_byte_span(rejected), st ? st.get() : nullptr);
+        return;
+    }
+
+    WriteBaseLogBytes(utf8_to_byte_span(message), st ? st.get() : nullptr);
+}
+
+extern void WriteLogMessage(LogType type, u8string_view message, nptr<const CatchedStackTraceData> st) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        if (Logging == nullptr) {
-            string result;
-            result.reserve(message.length() + 1);
-            result += message;
-            result += '\n';
+        const u8string checked_message = u8string::FromChecked(message.native_view());
 
-            if (st) {
-                WriteBaseLog(result, st.get());
-            }
-            else {
-                WriteBaseLog(result);
-            }
+        if (Logging == nullptr) {
+            u8string result;
+            result.reserve(checked_message.size() + 1);
+            result.append(checked_message.view());
+            result.append("\n");
+            WriteBaseLog(result.view(), st);
 
             return;
         }
 
         std::scoped_lock locker {Logging->Locker};
 
-        if (IsSameAsLastLogMessage(type, message)) {
+        if (IsSameAsLastLogMessage(type, checked_message.view())) {
             Logging->SameLogMessageCount++;
             return;
         }
 
         FlushLogMessageRepeatsLocked();
-        EmitLogMessage(type, message, st);
-        RememberLastLogMessage(type, message);
+        EmitLogMessage(type, checked_message.view(), st);
+        RememberLastLogMessage(type, checked_message.view());
     }
     catch (...) {
         BreakIntoDebugger();
@@ -115,15 +127,17 @@ extern void SetLogCallback(string_view key, LogFunc callback)
 {
     FO_STACK_TRACE_ENTRY();
 
+    const string checked_key {key};
+
     std::scoped_lock locker {Logging->Locker};
 
     FlushLogMessageRepeatsLocked();
 
-    if (!key.empty()) {
-        std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
+    if (!checked_key.empty()) {
+        std::erase_if(Logging->LogFunctions, [&checked_key](const auto& e) { return e.first == checked_key; });
 
         if (callback) {
-            Logging->LogFunctions.emplace_back(key, std::move(callback));
+            Logging->LogFunctions.emplace_back(checked_key, std::move(callback));
         }
     }
     else {
@@ -142,33 +156,33 @@ extern void LogDisableTags()
     Logging->TagsDisabled = true;
 }
 
-static void EmitLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st)
+static void EmitLogMessage(LogType type, u8string_view message, nptr<const CatchedStackTraceData> st)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Make message
-    string result;
-    result.reserve(message.length() + 64);
+    u8string result;
+    result.reserve(message.size() + 64);
 
     if (!Logging->TagsDisabled) {
-        time_desc_t time = nanotime::now().desc(true);
-        result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
-        result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
+        const time_desc_t time = nanotime::now().desc(true);
+        const string date_tag = strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
+        const string time_tag = strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
+        result.append(date_tag);
+        result.append(time_tag);
 
-        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
-            result += strex("[{}] ", get_this_thread_name());
+        if (const std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
+            const string_view thread_name = get_this_thread_name();
+            const u8string thread_name_utf8 = thread_name;
+            const u8string thread_tag = FormatUtf8("[{}] ", thread_name_utf8);
+            result.append(thread_tag.view());
         }
     }
 
-    result += message;
-    result += '\n';
+    result.append(message);
+    result.append("\n");
 
-    if (st) {
-        WriteBaseLog(result, st.get());
-    }
-    else {
-        WriteBaseLog(result);
-    }
+    WriteBaseLog(result.view(), st);
 
     if (!Logging->LogFunctions.empty()) {
         if (Logging->LogFunctionsInProcess) {
@@ -179,17 +193,17 @@ static void EmitLogMessage(LogType type, string_view message, nptr<const Catched
         auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
         for (const auto& func : Logging->LogFunctions | std::views::values) {
-            func(type, result, st);
+            func(type, result.view(), st);
         }
     }
 
     if constexpr (FO_DEBUG) {
-        Platform::InfoLog(result);
+        Platform::InfoLog(result.view_nt());
     }
 
 #if FO_TRACY
-    auto tracy_message = make_ptr(result.c_str());
-    TracyMessage(tracy_message.get(), result.length());
+    const const_span<char> tracy_message = utf8_to_char_span(result.view());
+    TracyMessage(tracy_message.data(), tracy_message.size());
 #endif
 }
 
@@ -210,16 +224,16 @@ static void FlushLogMessageRepeatsLocked()
         return;
     }
 
-    string repeat_message;
+    u8string repeat_message;
 
     if (same_message_count == 1) {
-        repeat_message = "...and 1 more same message";
+        repeat_message = u8string {u8"...and 1 more same message"};
     }
     else {
-        repeat_message = strex("...and {} more same messages", same_message_count);
+        repeat_message = FormatUtf8("...and {} more same messages", same_message_count);
     }
 
-    EmitLogMessage(*last_log_type, repeat_message, nullptr);
+    EmitLogMessage(*last_log_type, repeat_message.view(), nullptr);
 }
 
 static void FlushLogAtExit()
@@ -233,14 +247,14 @@ static void FlushLogAtExit()
     }
 }
 
-static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool
+static auto IsSameAsLastLogMessage(LogType type, u8string_view message) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return Logging->LastLogType.has_value() && *Logging->LastLogType == type && string_view {Logging->LastLogMessage} == message;
+    return Logging->LastLogType.has_value() && *Logging->LastLogType == type && Logging->LastLogMessage.view() == message;
 }
 
-static void RememberLastLogMessage(LogType type, string_view message) noexcept
+static void RememberLastLogMessage(LogType type, u8string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

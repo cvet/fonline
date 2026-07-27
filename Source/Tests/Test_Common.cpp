@@ -36,9 +36,41 @@
 #include "Common.h"
 #include "DataSerialization.h"
 #include "FileSystem.h"
+#include "ScriptSystem.h"
 #include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
+
+namespace
+{
+    auto EchoUtf8View(u8string_view value) -> u8string_view
+    {
+        return value;
+    }
+
+    auto EchoAsciiView(string_view value) -> string
+    {
+        return string {value};
+    }
+
+    void ReplaceUtf8Value(u8string& value)
+    {
+        value = u8string {u8"замена 🌍"};
+    }
+
+    void ReplaceUtf8Array(vector<u8string>& values)
+    {
+        values.clear();
+        values.emplace_back(u8"первый");
+        values.emplace_back(u8"второй 🚀");
+    }
+
+    void ReplaceUtf8Dict(map<u8string, u8string>& values)
+    {
+        values.clear();
+        values.emplace(u8string {u8"ключ"}, u8string {u8"значение 🌍"});
+    }
+}
 
 TEST_CASE("CommonEvents")
 {
@@ -131,7 +163,8 @@ TEST_CASE("CommonUtilities")
         pixels.emplace_back(ucolor {1, 2, 3, 4});
         pixels.emplace_back(ucolor {5, 6, 7, 8});
 
-        WriteSimpleTga(string(file_path.string()), image_size, pixels);
+        const u8string file_path_utf8 = fs_path_to_u8string(file_path);
+        WriteSimpleTga(file_path_utf8.view(), image_size, pixels);
 
         REQUIRE(std::filesystem::exists(file_path));
         CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
@@ -139,21 +172,19 @@ TEST_CASE("CommonUtilities")
         std::ifstream input(file_path, std::ios::binary);
         REQUIRE(input);
 
-        std::array<uint8_t, 18> header {};
-        input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
+        std::array<byte, 18> header {};
+        REQUIRE(stream_read_exact(input, header));
 
-        CHECK(header[2] == 2);
-        CHECK(header[12] == 2);
-        CHECK(header[13] == 0);
-        CHECK(header[14] == 1);
-        CHECK(header[15] == 0);
-        CHECK(header[16] == 32);
-        CHECK(header[17] == 0x20);
+        CHECK(header[2] == byte {2});
+        CHECK(header[12] == byte {2});
+        CHECK(header[13] == byte {0});
+        CHECK(header[14] == byte {1});
+        CHECK(header[15] == byte {0});
+        CHECK(header[16] == byte {32});
+        CHECK(header[17] == byte {0x20});
 
         std::array<uint32_t, 2> stored_pixels {};
-        input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
+        REQUIRE(stream_read_exact(input, make_byte_span(stored_pixels)));
 
         // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
         auto to_bgra = [](ucolor c) -> uint32_t {
@@ -173,7 +204,7 @@ TEST_CASE("CommonUtilities")
 
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
 {
-    vector<uint8_t> data;
+    vector<byte> data;
     DataWriter writer {data};
     vector<ucolor> pixels {ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}};
 
@@ -212,11 +243,11 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     writer.Write<uint16_t>(uint16_t {0});
     writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
-    vector<uint8_t> containing_data {0xAA, 0xBB, 0xCC};
+    vector<byte> containing_data {byte {0xAA}, byte {0xBB}, byte {0xCC}};
     containing_data.insert(containing_data.end(), data.begin(), data.end());
-    containing_data.insert(containing_data.end(), {0xDD, 0xEE});
-    const_span<uint8_t> resource_data = const_span<uint8_t> {containing_data}.subspan(3, data.size());
-    SpriteResourceData resource = ReadSpriteResource(resource_data);
+    containing_data.insert(containing_data.end(), {byte {0xDD}, byte {0xEE}});
+    const const_span<byte> resource_data = const_span<byte> {containing_data}.subspan(3, data.size());
+    const SpriteResourceData resource = ReadSpriteResource(resource_data);
 
     REQUIRE(resource.Animation.Sprite.has_value());
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
@@ -291,6 +322,160 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
             ucolor {},
             ucolor {},
         });
+}
+
+TEST_CASE("NativeScriptStrictTextBridge")
+{
+    SECTION("AnyPreservesUtf8Text")
+    {
+        const any_t value {u8"Привет 🌍"};
+
+        CHECK(NativeScriptText::FromScriptString<u8string>(value) == u8"Привет 🌍");
+    }
+
+    SECTION("NativeCallerPreservesUtf8ViewAndReturnValue")
+    {
+        string script_value = utf8_to_char_string(u8"Привет 🌍");
+        string script_result;
+        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        FuncCallData call {
+            .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
+            .ArgsData = args,
+            .RetData = make_ptr(&script_result).void_cast(),
+        };
+
+        NativeDataCaller::NativeCall<&EchoUtf8View>(call);
+
+        CHECK(script_result == script_value);
+    }
+
+    SECTION("NativeCallerRejectsUnicodeForAsciiArgument")
+    {
+        string script_value = utf8_to_char_string(u8"Не ASCII");
+        string script_result;
+        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        FuncCallData call {
+            .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
+            .ArgsData = args,
+            .RetData = make_ptr(&script_result).void_cast(),
+        };
+
+        CHECK_THROWS_AS(NativeDataCaller::NativeCall<&EchoAsciiView>(call), TextValidationException);
+    }
+
+    SECTION("NativeProviderRevalidatesBorrowedStrictViews")
+    {
+        std::u8string backing = u8"valid";
+        const auto strict_view = u8string_view::TryFrom(backing);
+        REQUIRE(strict_view.has_value());
+        backing[0] = static_cast<char8_t>(0xFF);
+
+        CHECK_THROWS_AS((void)NativeScriptText::ToScriptString(*strict_view), TextValidationException);
+    }
+
+    SECTION("NativeCallerWritesBackMutableUtf8Value")
+    {
+        string script_value = "initial";
+        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        FuncCallData call {
+            .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
+            .ArgsData = args,
+        };
+
+        NativeDataCaller::NativeCall<&ReplaceUtf8Value>(call);
+
+        CHECK(script_value == utf8_to_char_string(u8"замена 🌍"));
+    }
+
+    SECTION("NativeCallerConvertsMutableUtf8Array")
+    {
+        vector<u8string> script_values {u8string {u8"old"}, u8string {u8"старое"}};
+        NativeDataProvider::StorageEntryType storage;
+        const array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
+        FuncCallData call {
+            .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
+            .ArgsData = args,
+        };
+
+        NativeDataCaller::NativeCall<&ReplaceUtf8Array>(call);
+
+        REQUIRE(script_values.size() == 2);
+        CHECK(script_values[0] == u8"первый");
+        CHECK(script_values[1] == u8"второй 🚀");
+    }
+
+    SECTION("NativeCallerConvertsMutableUtf8Dict")
+    {
+        map<u8string, u8string> script_values {{u8string {u8"old"}, u8string {u8"value"}}};
+        NativeDataProvider::StorageEntryType storage;
+        const array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
+        FuncCallData call {
+            .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
+            .ArgsData = args,
+        };
+
+        NativeDataCaller::NativeCall<&ReplaceUtf8Dict>(call);
+
+        REQUIRE(script_values.size() == 1);
+        CHECK(script_values.begin()->first == u8"ключ");
+        CHECK(script_values.begin()->second == u8"значение 🌍");
+    }
+
+    SECTION("NativeProviderConvertsStrictArgumentsAndReturnValue")
+    {
+        ScriptFuncDesc desc;
+        desc.Call = [](FuncCallData& call) {
+            const string& input = *cast_from_void<const string*>(call.ArgsData[0].get());
+            nptr<string> output_ptr = cast_from_void<string*>(call.RetData.as_ptr());
+            string& output = *output_ptr;
+            output = input + " / script";
+        };
+        ScriptFunc<u8string, u8string_view> func {make_ptr(&desc)};
+
+        REQUIRE(func.Call(u8"привет 🌍"));
+
+        const u8string result = func.GetResult();
+        CHECK(result.view() == u8"привет 🌍 / script");
+    }
+
+    SECTION("NativeProviderConvertsUtf8ArrayReturnValue")
+    {
+        ScriptFuncDesc desc;
+        desc.Call = [](FuncCallData& call) {
+            string first = utf8_to_char_string(u8"один");
+            string second = utf8_to_char_string(u8"два 🌍");
+            call.Accessor->ClearArray(call.RetData.as_ptr());
+            call.Accessor->AddArrayElement(call.RetData.as_ptr(), make_ptr(&first).void_cast());
+            call.Accessor->AddArrayElement(call.RetData.as_ptr(), make_ptr(&second).void_cast());
+        };
+        ScriptFunc<vector<u8string>> func {make_ptr(&desc)};
+
+        REQUIRE(func.Call());
+
+        const vector<u8string> result = func.GetResult();
+        REQUIRE(result.size() == 2);
+        CHECK(result[0].view() == u8"один");
+        CHECK(result[1].view() == u8"два 🌍");
+    }
+
+    SECTION("NativeProviderConvertsUtf8DictReturnValue")
+    {
+        ScriptFuncDesc desc;
+        desc.Call = [](FuncCallData& call) {
+            string key = utf8_to_char_string(u8"ключ");
+            string value = utf8_to_char_string(u8"значение 🌍");
+            call.Accessor->ClearDict(call.RetData.as_ptr());
+            call.Accessor->AddDictElement(call.RetData.as_ptr(), make_ptr(&key).void_cast(), make_ptr(&value).void_cast());
+        };
+        ScriptFunc<map<u8string, u8string>> func {make_ptr(&desc)};
+
+        REQUIRE(func.Call());
+
+        const map<u8string, u8string> result = func.GetResult();
+        REQUIRE(result.size() == 1);
+        CHECK(result.begin()->first.view() == u8"ключ");
+        CHECK(result.begin()->second.view() == u8"значение 🌍");
+    }
 }
 
 FO_END_NAMESPACE

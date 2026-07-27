@@ -138,7 +138,7 @@ void AnimationViewer::LoadSettings()
 
     // Re-open the last previewed critter, but only if that prototype still exists (content may have changed since
     // the last run), so a stale id never surfaces as a selection error on startup.
-    auto last_proto = _settings.GetString("SelectedProto");
+    string last_proto = _settings.GetString("SelectedProto");
 
     if (!last_proto.empty()) {
         for (const auto& [proto_id, proto] : _engine->GetProtoCritters()) {
@@ -824,7 +824,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
 
     // View rect / name point live in the sprite's view size, which the map
     // renderer positions bottom-centred inside the frame (MapSprite::GetViewRect).
-    if (const auto view_size = _previewSprite->GetViewSize(); view_size.has_value() && (_drawViewRect || _drawNameLevel)) {
+    if (auto view_size = _previewSprite->GetViewSize(); view_size.has_value() && (_drawViewRect || _drawNameLevel)) {
         irect32 view_local = {
             sprite_size.width / 2 - view_size->width / 2 + view_size->x,
             sprite_size.height - view_size->height + view_size->y,
@@ -852,7 +852,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             auto model = model_spr->GetModel();
 
             for (const auto& bone : _enabledBones) {
-                if (const auto bone_pos = model->GetBoneSpritePos(bone); bone_pos.has_value()) {
+                if (auto bone_pos = model->GetBoneSpritePos(bone); bone_pos.has_value()) {
                     add_cross(to_screen(*bone_pos), BoneColor(bone));
                 }
             }
@@ -959,7 +959,7 @@ auto AnimationViewer::BoneColor(hstring bone_name) -> ucolor
 
     // FNV-1a over the raw bytes; static_cast is the byte reinterpretation a hash
     // wants (numeric_cast would throw on the high-bit bytes of non-ASCII names).
-    for (const char c : name) {
+    for (char c : name) {
         hash = (hash ^ static_cast<uint8_t>(c)) * 16777619u;
     }
 
@@ -972,8 +972,8 @@ auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterAct
 
     bool state_failed = false;
     bool action_failed = false;
-    auto state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
-    auto action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
+    string_view state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
+    string_view action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
 
     // Unnamed values still deserve a row: authored content may use a raw value
     // the enum does not spell out, and hiding it would misreport coverage.
