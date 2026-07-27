@@ -499,6 +499,7 @@ private:
 
 auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, u8string_view uri, u8string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
+    InitializeBsonMemory();
     return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
 

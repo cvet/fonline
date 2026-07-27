@@ -177,7 +177,7 @@ OZZ_INLINE SimdFloat4 Load2PtrU(const float* _f) {
 
 OZZ_INLINE SimdFloat4 Load3PtrU(const float* _f) {
   assert(!(reinterpret_cast<uintptr_t>(_f) & 0x3) && "Invalid alignment");
-  const SimdFloat4 ret = {_f[0], _f[1], _f[2]};
+  const SimdFloat4 ret = {_f[0], _f[1], _f[2], 0.f};  // (FOnline Patch) match the SIMD path and keep clang-cl /W4 clean.
   return ret;
 }
 

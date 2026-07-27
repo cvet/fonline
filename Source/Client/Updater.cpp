@@ -746,9 +746,11 @@ auto Updater::IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_siz
     };
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
-    const auto local_mtime = fs_last_write_time(file_path);
-    const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(file_path)}.filename());
-    const u8string cache_key = u8strex("{}.hash", file_name);
+    uint64_t local_mtime = fs_last_write_time(file_path);
+
+    // Keyed by the whole path: two same-named files in different directories would otherwise share one
+    // entry, and a size plus write-time collision would answer this check with the other file's hash.
+    u8string cache_key = u8strex("{}-{:016x}.hash", u8strvex(file_path).extract_file_name(), hashing::hash<std::u8string_view> {}(file_path.native_view()));
 
     if (_cache.HasEntry(cache_key)) {
         const auto data = _cache.GetBytes(cache_key);

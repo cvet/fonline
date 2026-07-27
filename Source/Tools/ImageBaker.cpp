@@ -2715,11 +2715,28 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
     return collection;
 }
 
+static auto PngMalloc(png_structp png_ptr, png_alloc_size_t size) -> png_voidp
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(png_ptr);
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static void PngFree(png_structp png_ptr, png_voidp mem)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(png_ptr);
+    SafeAlloc::FreeRaw(mem);
+}
+
 static auto PngLoad(ptr<const byte> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto png_ptr = make_nptr(png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr));
+    // Created through the _2 form so libpng allocates from the engine memory system rather than the CRT heap
+    auto png_ptr = make_nptr(png_create_read_struct_2(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr, nullptr, &PngMalloc, &PngFree));
     FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
     nptr<png_info> info_ptr;
 

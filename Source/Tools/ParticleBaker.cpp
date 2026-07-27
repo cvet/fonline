@@ -304,6 +304,8 @@ static void ValidateEffekseerRuntimeBinary(string_view path, const_span<byte> fi
 {
     FO_STACK_TRACE_ENTRY();
 
+    InitializeEffekseerMemory();
+
     constexpr size_t magic_size = 4;
 
     if (file_data.size() < magic_size) {
@@ -566,14 +568,14 @@ void ParticleBaker::BakeSparkFile(const File& file) const
     }
 
     // Save to SPARK binary format
-    std::ostringstream oss(std::ios::binary);
+    ostringstream oss(std::ios::binary);
 
     if (!_sparkContext->getIOManager().save("spk", oss, system)) {
         throw ParticleBakerException("Failed to save SPARK particle binary", source_path);
     }
 
-    const std::string str = oss.str();
-    const const_span<byte> serialized = make_byte_span(str);
+    string str = oss.str();
+    const_span<byte> serialized = make_byte_span(str);
     vector<byte> binary(serialized.begin(), serialized.end());
 
     _context->WriteData(output_path, binary);

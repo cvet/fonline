@@ -18,7 +18,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
     FO_STACK_TRACE_ENTRY();
 
     const u8string temp_dir = MakeTempCacheDir(temp_dir_name);
-    const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+    const bool removed_before = fs_remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
     {
@@ -43,7 +43,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
         };
         const vector<byte> binary_payload {byte {0x00}, byte {0x80}, byte {0xFF}};
 
-        cache.SetText("text-to-bytes", unicode_text.view());
+        cache.SetText("text-to-bytes", unicode_text);
         CHECK(cache.HasEntry("text-to-bytes"));
         CHECK(cache.GetText("text-to-bytes") == unicode_text);
         CHECK(cache.GetBytes("text-to-bytes") == unicode_bytes);
@@ -89,7 +89,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
         CHECK_FALSE(cache.HasEntry("stale-new"));
 
         const u8string original_text {u8"original"};
-        cache.SetText("stale-existing", original_text.view());
+        cache.SetText("stale-existing", original_text);
         CHECK_THROWS_AS(cache.SetText("stale-existing", stale_view), TextValidationException);
         CHECK(cache.GetText("stale-existing") == original_text);
 
@@ -107,7 +107,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
         CHECK(cache.GetBytes("to-remove").empty());
     }
 
-    CHECK(fs_remove_dir_tree(temp_dir.view()));
+    CHECK(fs_remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("CacheStorage")
@@ -117,47 +117,40 @@ TEST_CASE("CacheStorage")
         CheckCacheStorageContract("cache_storage_file_contract");
     }
 
-#if FO_HAVE_UNQLITE
-    SECTION("StrictTextAndBytesContractWithUnqliteBackend")
-    {
-        CheckCacheStorageContract("cache_storage_unqlite_contract");
-    }
-#endif
-
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
         const u8string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
         const u8string payload {u8"payload"};
-        cache.SetText("dir\\nested/file.txt", payload.view());
+        cache.SetText("dir\\nested/file.txt", payload);
 
         CHECK(cache.HasEntry("dir\\nested/file.txt"));
         CHECK(cache.GetText("dir\\nested/file.txt") == payload);
-        const u8string nested_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_dir.view())} / std::filesystem::path {u8"dir_nested_file.txt"});
-        CHECK(fs_exists(nested_file.view()));
+        const u8string nested_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_dir)} / std::filesystem::path {u8"dir_nested_file.txt"});
+        CHECK(fs_exists(nested_file));
 
-        CHECK(fs_remove_dir_tree(temp_dir.view()));
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("MoveConstructionPreservesAccess")
     {
         const u8string temp_dir = MakeTempCacheDir("cache_storage_move");
-        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};
         const u8string value {u8"value"};
-        original.SetText("name", value.view());
+        original.SetText("name", value);
 
         CacheStorage moved {std::move(original)};
 
         CHECK(moved.HasEntry("name"));
         CHECK(moved.GetText("name") == value);
 
-        CHECK(fs_remove_dir_tree(temp_dir.view()));
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 }
 

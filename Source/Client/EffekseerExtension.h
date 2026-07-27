@@ -41,6 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
+void InitializeEffekseerMemory() noexcept;
+
 class EffekseerParticleRuntimeBackend;
 
 class EffekseerParticleRuntimeSystem final : public ParticleRuntimeSystem

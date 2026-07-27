@@ -475,10 +475,10 @@ auto strex::replace(string_view from, string_view to) noexcept -> strex&
 
     auto pos = _sv.find(from);
 
-    if (pos != std::string::npos) {
+    if (pos != string::npos) {
         own_storage();
 
-        while (pos != std::string::npos) {
+        while (pos != string::npos) {
             _s.replace(pos, from.length(), to);
             pos += to.length();
             pos = _s.find(from, pos);

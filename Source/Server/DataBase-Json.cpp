@@ -286,6 +286,7 @@ private:
 
 auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, u8string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
+    InitializeBsonMemory();
     return SafeAlloc::MakeUnique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 

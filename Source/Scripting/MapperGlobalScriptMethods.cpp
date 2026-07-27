@@ -868,7 +868,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, u8
         throw ScriptException("Screenshot file path is empty");
     }
 
-    auto map = RequireCurMapperMap(mapper);
+    (void)RequireCurMapperMap(mapper);
 
     // The mapper's main window paints into the swap-chain backbuffer (no virtual RT) but
     // SpriteManager keeps an intermediate _rtMain that holds the full frame just before it

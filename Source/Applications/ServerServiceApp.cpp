@@ -158,12 +158,12 @@ int main(int argc, char** argv)
         InitApp(args, AppInitFlags::PrebakeResources);
 
 #if FO_WINDOWS
-        if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
+        if (std::wstring_view(::GetCommandLineW()).find(L"--server-service-start") != std::wstring_view::npos) {
             // Start
             constexpr SERVICE_TABLE_ENTRYW dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
-        else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
+        else if (std::wstring_view(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring_view::npos) {
             // Delete
             SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
@@ -208,7 +208,7 @@ int main(int argc, char** argv)
             constexpr DWORD buf_len = 4096 * 2;
             wchar_t buf[buf_len];
             ::GetModuleFileNameW(nullptr, buf, buf_len);
-            auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
+            wstring path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
             auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed

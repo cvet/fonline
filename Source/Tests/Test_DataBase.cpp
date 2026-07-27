@@ -35,9 +35,9 @@
 #include "DataBase.h"
 #include "DiskFileSystem.h"
 
-#if FO_HAVE_UNQLITE
+#if FO_HAVE_SQLITE
 FO_DISABLE_WARNINGS_PUSH()
-#include <unqlite.h>
+#include "sqlite3.h"
 FO_DISABLE_WARNINGS_POP()
 #endif
 
@@ -499,24 +499,40 @@ namespace
         CHECK(committed_content->empty());
     }
 
-#if FO_HAVE_UNQLITE
-    void StoreRawUnQLiteRecord(const std::filesystem::path& db_path, const vector<byte>& key_data, string_view value)
+#if FO_HAVE_SQLITE
+    // Writes straight into the storage file, bypassing the backend, so the key-validation paths can be
+    // exercised against data the backend would never have produced itself.
+    void StoreRawSQLiteRecord(const std::filesystem::path& storage_dir, string_view collection_name, const vector<byte>& key_data, string_view value)
     {
         FO_STACK_TRACE_ENTRY();
 
-        const u8string parent_path = fs_path_to_u8string(db_path.parent_path());
-        const u8string db_path_utf8 = fs_path_to_u8string(db_path);
-        const ptr<const char> db_path_cstr = utf8_to_c_str(db_path_utf8.view_nt());
+        // Goes through the engine initializer rather than sqlite3_initialize directly: sqlite3_config
+        // only applies before initialization, so initializing here would silently lose the engine
+        // allocator for the backend created later in the test.
+        InitializeSQLiteRuntime();
 
-        REQUIRE(fs_create_directories(parent_path.view()));
+        u8string storage_dir_utf8 = fs_path_to_u8string(storage_dir);
+        REQUIRE(fs_create_directories(storage_dir_utf8));
 
-        unqlite* db = nullptr;
-        REQUIRE(unqlite_open(&db, db_path_cstr.get(), UNQLITE_OPEN_CREATE) == UNQLITE_OK);
+        u8string db_path = fs_path_to_u8string(storage_dir / "Storage.sqlite");
+        ptr<const char> db_path_cstr = utf8_to_c_str(db_path.view_nt());
+        sqlite3* db = nullptr;
+        REQUIRE(sqlite3_open_v2(db_path_cstr.get(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr) == SQLITE_OK);
 
-        auto close_db = scope_exit([&]() noexcept { unqlite_close(db); });
+        auto close_db = scope_exit([&]() noexcept { (void)sqlite3_close(db); });
 
-        REQUIRE(unqlite_kv_store(db, key_data.data(), numeric_cast<int>(key_data.size()), value.data(), numeric_cast<unqlite_int64>(value.size())) == UNQLITE_OK);
-        REQUIRE(unqlite_commit(db) == UNQLITE_OK);
+        string create_sql = strex(R"(CREATE TABLE IF NOT EXISTS "{}" (key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL) WITHOUT ROWID)", collection_name).str();
+        REQUIRE(sqlite3_exec(db, create_sql.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK);
+
+        string insert_sql = strex(R"(INSERT OR REPLACE INTO "{}" (key, value) VALUES (?, ?))", collection_name).str();
+        sqlite3_stmt* stmt = nullptr;
+        REQUIRE(sqlite3_prepare_v2(db, insert_sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK);
+
+        auto finalize_stmt = scope_exit([&]() noexcept { (void)sqlite3_finalize(stmt); });
+
+        REQUIRE(sqlite3_bind_blob(stmt, 1, key_data.data(), numeric_cast<int32_t>(key_data.size()), SQLITE_TRANSIENT) == SQLITE_OK);
+        REQUIRE(sqlite3_bind_blob(stmt, 2, value.data(), numeric_cast<int32_t>(value.size()), SQLITE_TRANSIENT) == SQLITE_OK);
+        REQUIRE(sqlite3_step(stmt) == SQLITE_DONE);
     }
 #endif
 } // namespace
@@ -1684,20 +1700,20 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     CHECK(db.GetDbRequestsPerMinute() >= 1);
 }
 
-#if FO_HAVE_UNQLITE
-TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
+#if FO_HAVE_SQLITE
+TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
-    const u8string storage_root = fs_path_to_u8string(*storage_dir_scope.Dir());
-    const u8string storage_dir = FormatUtf8(u8"{}/хранилище-🌍", storage_root.view());
-    const auto collection = hashes.ToHashedString("test_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
-    const auto first_id = ident_t {1001};
-    const auto second_id = ident_t {1002};
-    const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
-    auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-roundtrip"};
+    u8string storage_root = fs_path_to_u8string(*storage_dir_scope.Dir());
+    u8string storage_dir = u8strex(u8"{}/хранилище-🌍", storage_root);
+    hstring collection = hashes.ToHashedString("test_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
+    ident_t first_id = ident_t {1001};
+    ident_t second_id = ident_t {1002};
+    u8string connection_info = u8strex("DbSQLite {}", storage_dir);
+    auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1735,28 +1751,28 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    const u8string collection_path = FormatUtf8("{}/test_collection.unqlite", storage_dir.view());
-    CHECK(fs_exists(collection_path.view()));
+    u8string storage_path = u8strex("{}/Storage.sqlite", storage_dir);
+    CHECK(fs_exists(storage_path));
 }
 
-TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
+TEST_CASE("SQLiteDataBasePersistsDocumentsAcrossReconnects")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-reconnect"};
-    const auto storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
-    const auto int_collection = hashes.ToHashedString("test_collection");
-    const auto string_collection = hashes.ToHashedString("test_string_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-reconnect"};
+    u8string storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.ToHashedString("test_collection");
+    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
     };
-    const auto int_id = ident_t {1001};
-    const DataBaseKey string_id {utf8_to_char_string(u8"steam:user/Привет")};
-    const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
+    ident_t int_id = ident_t {1001};
+    DataBaseKey string_id {string("steam:user-123")};
+    u8string connection_info = u8strex("DbSQLite {}", storage_dir);
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         db.StartCommitChanges();
         db.Insert(int_collection, int_id, MakeDoc({{"value", 1}}));
@@ -1768,7 +1784,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         auto int_ids = db.GetAllIntIds(int_collection);
         REQUIRE(int_ids.size() == 1);
@@ -1793,7 +1809,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         CHECK_FALSE(db.Valid(int_collection, int_id));
         CHECK(db.GetAllIntIds(int_collection).empty());
@@ -1804,25 +1820,25 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 }
 
-TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
+TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-corrupted-keys"};
-    const auto storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
-    const auto int_collection = hashes.ToHashedString("test_collection");
-    const auto string_collection = hashes.ToHashedString("test_string_collection");
-    const auto collection_schemas = DataBaseCollectionSchemas {
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-corrupted-keys"};
+    u8string storage_dir = fs_path_to_u8string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.ToHashedString("test_collection");
+    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
     };
 
     SECTION("Invalid numeric key size")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<byte> {byte {1}, byte {2}, byte {3}}, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_collection", vector<byte> {byte {1}, byte {2}, byte {3}}, "payload");
 
-        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        u8string connection_info = u8strex("DbSQLite {}", storage_dir);
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
@@ -1830,20 +1846,20 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
     SECTION("Invalid numeric key value")
     {
         vector<byte> zero_key(sizeof(int64_t));
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_collection", zero_key, "payload");
 
-        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        u8string connection_info = u8strex("DbSQLite {}", storage_dir);
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
 
     SECTION("Invalid encoded string key")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<byte> {byte {'b'}, byte {'a'}, byte {'d'}}, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_string_collection", vector<byte> {byte {'b'}, byte {'a'}, byte {'d'}}, "payload");
 
-        const u8string connection_info = FormatUtf8("DbUnQLite {}", storage_dir.view());
-        auto db = ConnectToDataBase(&settings, connection_info.view(), collection_schemas, {});
+        u8string connection_info = u8strex("DbSQLite {}", storage_dir);
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
     }

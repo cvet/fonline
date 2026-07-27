@@ -90,6 +90,67 @@ static auto MakeCommittedOpLogPath(u8string_view path) -> u8string
     return u8string::FromChecked(result);
 }
 
+// The bson allocator vtable below supplies aligned_alloc, but bson releases those blocks through the
+// plain free member — it never records the alignment. That pairing is only sound while every
+// allocation, aligned or not, ends up in the same release path, which holds under rpmalloc: both
+// SafeAlloc::FreeRaw and SafeAlloc::FreeAlignedRaw reach rpfree. Without rpmalloc the Windows
+// aligned path is _aligned_malloc/_aligned_free, so freeing an aligned block through the unaligned
+// callback would be silent heap corruption rather than a build error. Leaving aligned_alloc out is
+// not an escape either: bson then substitutes _aligned_alloc_as_malloc and drops the requested
+// alignment, which mongoc-array and mongoc-ts-pool rely on.
+static_assert(FO_HAVE_RPMALLOC, "BSON-backed database storage requires rpmalloc because bson releases aligned blocks through its unaligned free callback");
+
+static auto BsonMalloc(size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::CallocRaw(num, size).get();
+}
+
+static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::ReallocRaw(mem, size).get();
+}
+
+static void BsonFree(void* mem) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SafeAlloc::FreeRaw(mem);
+}
+
+static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+}
+
+void InitializeBsonMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        bson_mem_vtable_t vtable {};
+        vtable.malloc = &BsonMalloc;
+        vtable.calloc = &BsonCalloc;
+        vtable.realloc = &BsonRealloc;
+        vtable.free = &BsonFree;
+        vtable.aligned_alloc = &BsonAlignedAlloc;
+        bson_mem_set_vtable(&vtable);
+    });
+}
+
 DataBase::DataBase() = default;
 
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -1402,9 +1463,9 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, u8string_view connecti
         if (options.front().native_view() == u8"JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
         }
-#if FO_HAVE_UNQLITE
-        if (options.front().native_view() == u8"DbUnQLite" && options.size() == 2) {
-            return finish_connect(CreateUnQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#if FO_HAVE_SQLITE
+        if (options.front().native_view() == u8"DbSQLite" && options.size() == 2) {
+            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #endif
 #if FO_HAVE_MONGO

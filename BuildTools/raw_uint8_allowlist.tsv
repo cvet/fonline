@@ -14,6 +14,7 @@ Source/Common/Settings.inc	1	42c3b4efee560e4a2d59f71951167ab6c29300ab4150c0aae46
 Source/Scripting/AngelScript/AngelScriptBackend.cpp	2	ef8a320a5f631de48bba0a42b68df1482e88962c2863b231272a54f0dc785d31	fixed preprocessor LineNumberTranslator vector<uint8_t> ABI
 Source/Scripting/ClientGlobalScriptMethods.cpp	4	b5b117169d59bf63d5b5dda23b791fd7c9a1e8ce8a71a928aa87676643735d14	AngelScript uint8[] cache-data ABI converted to byte at the native boundary
 Source/Tests/Test_ClientDataValidation.cpp	1	dc21bf2b04e44f9ee7e95b8b9f79453cdc60c51441fb2200c5b82180606aaee8	compile-time gates proving numeric uint8_t containers cannot enter raw-byte APIs
+Source/Tests/Test_Containers.cpp	1	d7766e5dd07a00521128e43e17aa93d571b53d34f16603a4b261b9924f79dafe	numeric uint8_t formatter test values
 Source/Tests/Test_DataSerialization.cpp	2	416efe6e539ddc7742f22e6c198a9d3648ab41cc7e9cad82c96ffffb254db3a1	compile-time gates proving numeric uint8_t containers cannot enter raw-byte APIs
 Source/Tests/Test_FileSystem.cpp	1	c0b2da7d595f6fffff610594b5bd90a57fe8c1969c7f870c3354569ffdaacef0	compile-time gate proving numeric uint8_t spans cannot enter raw-byte APIs
 Source/Tests/Test_Geometry.cpp	3	1bec8c09644998d0ec1b39b613399e3455bb61facafa46546f6453f2aeddff86	numeric multihex direction and run-length test values

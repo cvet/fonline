@@ -44,9 +44,8 @@ FO_BEGIN_NAMESPACE
 
 // Thread-local name slot. Backs `set_this_thread_name` / `get_this_thread_name`; populated
 // lazily with a numeric default the first time the slot is read on a thread that never set
-// itself. Same allocator/layout as before the move from WorkThread — only the symbol's home
-// is different.
-static thread_local std::string ThreadName;
+// itself.
+static thread_local string ThreadName;
 
 struct ThreadingData
 {
@@ -64,7 +63,7 @@ struct Pool
 {
     std::mutex Locker {};
     std::condition_variable WorkSignal {};
-    std::deque<PoolTask> Pending {};
+    deque<PoolTask> Pending {};
     vector<std::thread> Workers {};
     size_t IdleCount {};
     size_t MaxWorkers {};

@@ -75,7 +75,8 @@ namespace exception_detail
             return u8string {static_cast<u8string_view>(value)};
         }
         else {
-            const std::string formatted = std::format("{}", std::forward<T>(value));
+            string formatted;
+            (void)std::format_to(std::back_inserter(formatted), "{}", std::forward<T>(value));
             return utf8_from_char_span(formatted);
         }
     }
@@ -139,7 +140,8 @@ public:
     {
         try {
             _message = message;
-            _params = {exception_detail::format_exception_arg(std::forward<Args>(args))...};
+            _params.reserve(sizeof...(Args));
+            (_params.emplace_back(exception_detail::format_exception_arg(std::forward<Args>(args))), ...);
 
             _utf8Message.assign(_name);
             _utf8Message.append(": ");
