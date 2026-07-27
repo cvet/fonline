@@ -78,7 +78,7 @@ private:
 
     asio::ip::tcp::socket _socket;
     std::atomic_bool _writePending {};
-    std::vector<byte> _inBufData {};
+    vector<byte> _inBufData {};
 };
 
 class NetworkServer_Asio : public NetworkServer
