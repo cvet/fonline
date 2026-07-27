@@ -592,6 +592,9 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
         model->StartMeshGeneration();
         return;
     }
+
+#else
+    ignore_unused(looped, instant);
 #endif
 
     auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.ToHashedString(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));

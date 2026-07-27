@@ -673,4 +673,45 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
     }
 }
 
+// Regression: MapperEngine::LoadMap resolves a map file located by a directory-qualified path (the
+// form the render/preview tooling passes, e.g. "Gambell/NewGambell_Center") and never lets a
+// same-stem sibling of another type (the map's NewGambell_Center.foloc location file) shadow the
+// .fomap during file discovery. Nearly every location map in the project ships such a .foloc sibling,
+// so the shadowing broke headless map loading for most maps.
+TEST_CASE("MapperLoadMapResolvesNameAndPath")
+{
+    auto settings = MakeMapperTestSettings();
+
+    // Mirror the project's proto-extension order (LastFrontier.fomain), where .foloc precedes .fomap.
+    // That ordering is what let a same-stem location file shadow the map file during discovery.
+    BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
+
+    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    // A single-map .fomap and a same-stem .foloc live side by side under a subdirectory, mirroring the
+    // real content layout. The .foloc must not shadow the .fomap for either lookup form.
+    auto maps_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps");
+    maps_source->AddFile("Gambell/ShadowedMap.foloc", "[ProtoLocation]\n$Name = ShadowedMap\nMapProtos = ShadowedMap\n");
+    maps_source->AddFile("Gambell/ShadowedMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
+    mapper->MapsFileSys.AddCustomSource(std::move(maps_source));
+
+    hstring expected_proto = mapper->Hashes.ToHashedString("ShadowedMap");
+
+    SECTION("Loads by directory-qualified path despite a same-stem location sibling")
+    {
+        auto map = mapper->LoadMap("Gambell/ShadowedMap");
+        REQUIRE(map != nullptr);
+        CHECK(map->GetProtoId() == expected_proto);
+    }
+
+    SECTION("Loads by bare declared map name")
+    {
+        auto map = mapper->LoadMap("ShadowedMap");
+        REQUIRE(map != nullptr);
+        CHECK(map->GetProtoId() == expected_proto);
+    }
+}
+
 FO_END_NAMESPACE
