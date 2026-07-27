@@ -953,6 +953,13 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    return NormalizeHexOffset(hex, hex_offset, map_size, {});
+}
+
+auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size, const function<bool(mpos)>& is_movable) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
     ipos32 world_pos = GetHexPos(hex) + ipos32(hex_offset);
     ipos32 normalized_offset;
     ipos32 normalized_raw_hex = GetHexPosCoord(world_pos, &normalized_offset);
@@ -961,7 +968,17 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
         return false;
     }
 
-    hex = map_size.from_raw_pos(normalized_raw_hex);
+    mpos normalized_hex = map_size.from_raw_pos(normalized_raw_hex);
+
+    // Re-deriving the hex from a pixel position can round onto a hex its owner could never walk to.
+    // A caller that relocates a live critter passes the predicate so the rounding cannot seat it
+    // inside a wall: keeping the accumulated offset is always better than adopting an illegal hex,
+    // because a position the other side refuses to path to can never be reconciled again.
+    if (is_movable && normalized_hex != hex && !is_movable(normalized_hex)) {
+        return false;
+    }
+
+    hex = normalized_hex;
     hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
     return true;
 }
