@@ -131,25 +131,7 @@ void CritterHexView::StopMoving()
     // hex the sprite has actually reached, keeping only the sub-hex remainder. Because
     // GetHexPos(hex) + offset is invariant under this re-split, the sprite does not visually jump; the
     // logical hex just catches up to where the sprite already is.
-    auto offset = GetHexOffset();
-
-    if (offset.x != 0 || offset.y != 0) {
-        ipos32 base_pos = GeometryHelper::GetHexPos(GetHex());
-        ipos32 residual {};
-        ipos32 raw_hex = GeometryHelper::GetHexPosCoord(ipos32 {base_pos.x + offset.x, base_pos.y + offset.y}, &residual);
-        auto map_size = _map->GetSize();
-
-        if (map_size.is_valid_pos(raw_hex)) {
-            mpos snapped_hex = map_size.from_raw_pos(raw_hex);
-
-            if (snapped_hex != GetHex()) {
-                _map->MoveCritter(this, snapped_hex, false);
-            }
-
-            SetHexOffset(ipos16 {numeric_cast<int16_t>(residual.x), numeric_cast<int16_t>(residual.y)});
-            RefreshOffs();
-        }
-    }
+    NormalizeHexOffset();
 }
 
 void CritterHexView::MoveAttachedCritters()
@@ -692,7 +674,13 @@ void CritterHexView::NormalizeHexOffset()
     mpos hex = GetHex();
     ipos16 hex_offset = GetHexOffset();
 
-    if (!GeometryHelper::NormalizeHexOffset(hex, hex_offset, GetMap()->GetSize())) {
+    // Never let the rounding seat us on a blocked hex: the server reconciles a move request by
+    // pathing to the hex we report, and an unwalkable one fails that path, so every later request is
+    // rejected and resynced instead. Declining leaves the offset in place, which the sprite already
+    // draws at the same spot.
+    auto is_movable = [this](mpos check_hex) { return !GetMap()->GetField(check_hex).MoveBlocked; };
+
+    if (!GeometryHelper::NormalizeHexOffset(hex, hex_offset, GetMap()->GetSize(), is_movable)) {
         return;
     }
 

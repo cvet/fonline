@@ -660,4 +660,80 @@ TEST_CASE("GetHexScreenRow")
     }
 }
 
+TEST_CASE("NormalizeHexOffset")
+{
+    constexpr msize MAP_SIZE {200, 200};
+    constexpr mpos START_HEX {100, 100};
+
+    // An offset of one whole hex step: normalization must move the logical hex by exactly that step.
+    const auto offset_to_neighbour = [](mpos from_hex, mpos to_hex) -> ipos16 {
+        ipos32 delta = GeometryHelper::GetHexPos(to_hex) - GeometryHelper::GetHexPos(from_hex);
+        return {numeric_cast<int16_t>(delta.x), numeric_cast<int16_t>(delta.y)};
+    };
+
+    mpos neighbour_hex = START_HEX;
+    REQUIRE(GeometryHelper::MoveHexByDir(neighbour_hex, mdir(hdir::East), MAP_SIZE));
+    REQUIRE(neighbour_hex != START_HEX);
+
+    SECTION("Crossing into a neighbour normalizes when every hex is movable")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [](mpos) { return true; }));
+        CHECK(hex == neighbour_hex);
+        CHECK(hex_offset == ipos16 {});
+    }
+
+    SECTION("A blocked target hex leaves the position untouched")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+        const ipos16 original_offset = hex_offset;
+
+        // This is the production defect: the rounding lands on a hex the critter could never walk
+        // onto, and adopting it makes the server's move reconciliation fail for good.
+        const auto reject_neighbour = [neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; };
+
+        CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, reject_neighbour));
+        CHECK(hex == START_HEX);
+        CHECK(hex_offset == original_offset);
+    }
+
+    SECTION("A sub-hex offset that stays inside the current hex ignores passability")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset {1, 1};
+
+        // The predicate is consulted only when the hex actually changes, so a critter already
+        // standing on a blocked hex can still renormalize its own offset.
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [](mpos) { return false; }));
+        CHECK(hex == START_HEX);
+        CHECK(hex_offset == ipos16 {1, 1});
+    }
+
+    SECTION("The predicate-free overload keeps normalizing regardless of passability")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE));
+        CHECK(hex == neighbour_hex);
+    }
+
+    SECTION("Positions outside the map are refused before the predicate runs")
+    {
+        mpos hex {0, 0};
+        ipos16 hex_offset {-32000, -32000};
+        bool predicate_called = false;
+
+        CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [&predicate_called](mpos) {
+            predicate_called = true;
+            return true;
+        }));
+        CHECK_FALSE(predicate_called);
+        CHECK(hex == mpos {0, 0});
+    }
+}
+
 FO_END_NAMESPACE
