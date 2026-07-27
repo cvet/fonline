@@ -1611,6 +1611,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             continue;
         }
 #endif
+        size_t depth_slot = ResolveDepthVariantSlot(pass);
 
         if (GL_HAS(uniform_buffer_object)) {
             size_t bind_block_index = 0;
@@ -1691,7 +1692,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
 
-        bool depth_write = GetDepthWrite(pass);
+        bool depth_write = GetDepthVariantWrite(depth_slot);
 
         if (!depth_write) {
             GL(glDepthMask(GL_FALSE));
@@ -1701,7 +1702,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             _usage == EffectUsage::Model ||
 #endif
             _usage == EffectUsage::QuadSprite) {
-            GL(glDepthFunc(ConvertDepthFunc(GetDepthFunc(pass))));
+            GL(glDepthFunc(ConvertDepthFunc(GetDepthVariantFunc(pass, depth_slot))));
         }
 
         if constexpr (sizeof(vindex_t) == 2) {

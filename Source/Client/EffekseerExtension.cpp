@@ -129,6 +129,124 @@ static auto ToUtf16(string_view value) -> vector<char16_t>
     return result;
 }
 
+auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static_assert(sizeof(Effekseer::Model::Vertex) == 68);
+    static_assert(sizeof(Effekseer::Model::Face) == 12);
+
+    if (data.size() > EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX) {
+        return strex("payload size {} exceeds the {} byte resource budget", data.size(), EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX).str();
+    }
+
+    size_t offset = 0;
+    const auto read_int32 = [&data, &offset](int32_t& value) -> bool {
+        if (offset > data.size() || data.size() - offset < sizeof(uint32_t)) {
+            return false;
+        }
+
+        uint32_t encoded = uint32_t {data[offset]} | (uint32_t {data[offset + 1]} << 8) | (uint32_t {data[offset + 2]} << 16) | (uint32_t {data[offset + 3]} << 24);
+        value = std::bit_cast<int32_t>(encoded);
+        offset += sizeof(uint32_t);
+        return true;
+    };
+    const auto skip_array = [&data, &offset](int32_t count, size_t element_size) -> bool {
+        if (count < 0 || offset > data.size()) {
+            return false;
+        }
+
+        size_t array_count = numeric_cast<size_t>(count);
+
+        if (element_size != 0 && array_count > (data.size() - offset) / element_size) {
+            return false;
+        }
+
+        offset += array_count * element_size;
+        return true;
+    };
+
+    int32_t version = 0;
+
+    if (!read_int32(version)) {
+        return "header is truncated";
+    }
+    if (version < 0 || version > Effekseer::Model::LatestVersion) {
+        return strex("version {} is unsupported", version).str();
+    }
+    if ((version == 2 || version >= 5) && !skip_array(1, sizeof(int32_t))) {
+        return "scale field is truncated";
+    }
+
+    int32_t model_count = 0;
+
+    if (!read_int32(model_count)) {
+        return "model count is truncated";
+    }
+    if (model_count <= 0) {
+        return strex("model count {} is invalid", model_count).str();
+    }
+
+    int32_t frame_count = 1;
+
+    if (version >= 5 && !read_int32(frame_count)) {
+        return "frame count is truncated";
+    }
+    if (frame_count <= 0) {
+        return strex("frame count {} is invalid", frame_count).str();
+    }
+    if (frame_count > EFFEKSEER_MODEL_FRAME_COUNT_MAX) {
+        return strex("frame count {} exceeds the {} frame resource budget", frame_count, EFFEKSEER_MODEL_FRAME_COUNT_MAX).str();
+    }
+
+    const size_t legacy_vertex_size = sizeof(Effekseer::Vector3D) * 4 + sizeof(Effekseer::Vector2D) + (version >= 1 ? sizeof(Effekseer::Color) : 0);
+    const size_t vertex_size = version >= 6 ? sizeof(Effekseer::Model::Vertex) : legacy_vertex_size;
+
+    for (int32_t frame = 0; frame < frame_count; frame++) {
+        int32_t vertex_count = 0;
+
+        if (!read_int32(vertex_count)) {
+            return strex("frame {} vertex count is truncated", frame).str();
+        }
+        if (vertex_count < 0) {
+            return strex("frame {} vertex count {} is invalid", frame, vertex_count).str();
+        }
+        if (vertex_count > EFFEKSEER_MODEL_VERTEX_COUNT_MAX) {
+            return strex("frame {} vertex count {} exceeds the {} vertex resource budget", frame, vertex_count, EFFEKSEER_MODEL_VERTEX_COUNT_MAX).str();
+        }
+        if (!skip_array(vertex_count, vertex_size)) {
+            return strex("frame {} vertex data is truncated", frame).str();
+        }
+
+        int32_t face_count = 0;
+
+        if (!read_int32(face_count)) {
+            return strex("frame {} face count is truncated", frame).str();
+        }
+        if (face_count < 0) {
+            return strex("frame {} face count {} is invalid", frame, face_count).str();
+        }
+        if (face_count > EFFEKSEER_MODEL_FACE_COUNT_MAX) {
+            return strex("frame {} face count {} exceeds the {} face resource budget", frame, face_count, EFFEKSEER_MODEL_FACE_COUNT_MAX).str();
+        }
+
+        for (int32_t face = 0; face < face_count; face++) {
+            for (size_t corner = 0; corner < 3; corner++) {
+                int32_t vertex_index = 0;
+
+                if (!read_int32(vertex_index)) {
+                    return strex("frame {} face data is truncated", frame).str();
+                }
+                if (vertex_index < 0 || vertex_index >= vertex_count) {
+                    return strex("frame {} face {} vertex index {} is out of range for {} vertices", frame, face, vertex_index, vertex_count).str();
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
 static auto ToEffekseerMatrix43(const mat44& matrix) -> Effekseer::Matrix43
 {
     FO_STACK_TRACE_ENTRY();
@@ -250,8 +368,8 @@ private:
     ParticleTextureLoader _textureLoader;
 };
 
-// Effekseer's own core parses the .efkmodel payload, so the loader only has to hand it the baked bytes. Models are
-// raw-copied resources, which keeps their vertex data identical to what the Editor exported.
+// Models are raw-copied resources, which keeps their vertex data identical to what the Editor exported. Effekseer's
+// parser does not bounds-check the payload itself, so validate it before the third-party constructor reads any count.
 class FOnlineEffekseerModelLoader final : public Effekseer::ModelLoader
 {
 public:
@@ -277,6 +395,10 @@ public:
 
         if (data.empty() || data.size() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
             WriteLog(LogType::Warning, "Effekseer model '{}' has an unusable size", model_path, data.size());
+            return nullptr;
+        }
+        if (optional<string> error = ValidateEffekseerModelPayload(data)) {
+            WriteLog(LogType::Warning, "Effekseer model '{}' is invalid: {}", model_path, *error);
             return nullptr;
         }
 
@@ -1233,10 +1355,14 @@ private:
             return;
         }
 
-        // Without a scene to refract there is nothing to draw: an offscreen atlas has no background behind it.
-        nptr<const RenderTexture> background = _sceneBackgroundProvider ? _sceneBackgroundProvider() : nullptr;
+        // Without a scene to refract there is nothing to draw. A direct-scene model has one auxiliary atlas refresh
+        // before its actual draw; skip only that explicitly deferred preview without poisoning the live attachment.
+        ParticleSceneBackgroundResult background = _sceneBackgroundProvider ? _sceneBackgroundProvider() : ParticleSceneBackgroundResult {};
 
-        if (!background) {
+        if (background.State == ParticleSceneBackgroundState::Deferred) {
+            return;
+        }
+        if (background.State != ParticleSceneBackgroundState::Available || !background.Texture) {
             system->Fail("distortion nodes need a scene background, which this draw target has none of");
             return;
         }
@@ -1300,14 +1426,14 @@ private:
         effect->ProjBuf = RenderEffect::ProjBuffer();
         MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
-        effect->BackgroundTex = background;
+        effect->BackgroundTex = background.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[2] = _node->DistortionIntensity;
         // The snapshot keeps whatever orientation its source render target has, so the shader flips the screen-space
         // lookup for a flipped one instead of the copy being re-oriented.
-        effect->ParticleSamplingBuf->ParticleSampling[3] = background->FlippedHeight ? 1.0f : 0.0f;
+        effect->ParticleSamplingBuf->ParticleSampling[3] = background.Texture->FlippedHeight ? 1.0f : 0.0f;
 
         // The fragment addresses the raw emitter coordinate inside this rectangle.
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
@@ -2965,6 +3091,12 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
     if (effect->GetNormalImageCount() != 0 || effect->GetWaveCount() != 0 || effect->GetMaterialCount() != 0 || effect->GetCurveCount() != 0 || effect->GetProceduralModelCount() != 0) {
         LogEffekseerRejection(path, "normal textures, sounds, custom materials, and external curves are unsupported");
         return false;
+    }
+    for (int32_t model_index = 0; model_index < effect->GetModelCount(); model_index++) {
+        if (!effect->GetModel(model_index)) {
+            LogEffekseerRejection(path, "model resource failed validation or loading");
+            return false;
+        }
     }
     return ValidateEffectNode(path, effect->GetRoot(), effect);
 }

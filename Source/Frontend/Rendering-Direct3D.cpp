@@ -858,11 +858,17 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
         }
 
-        // Create one rasterizer state per cull mode, so a draw selects the mode it asks for
+        // Create one rasterizer state per cull mode the effect can resolve to.
         for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+            CullModeType cull_mode_type = static_cast<CullModeType>(cull_mode);
+
+            if (!d3d_effect->IsCullModeUsed(cull_mode_type)) {
+                continue;
+            }
+
             D3D11_RASTERIZER_DESC rasterizer_desc = {};
             rasterizer_desc.FillMode = D3D11_FILL_SOLID;
-            rasterizer_desc.CullMode = ConvertCullMode(static_cast<CullModeType>(cull_mode));
+            rasterizer_desc.CullMode = ConvertCullMode(cull_mode_type);
             rasterizer_desc.FrontCounterClockwise = TRUE;
             rasterizer_desc.DepthClipEnable = TRUE;
             rasterizer_desc.ScissorEnable = TRUE;
@@ -1642,7 +1648,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
         constexpr float32_t blend_factor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
         _ctx->D3DDeviceContext->OMSetBlendState(DisableBlending ? nullptr : BlendState[pass].get(), blend_factor, 0xFFFFFFFF);
-        _ctx->D3DDeviceContext->OMSetDepthStencilState(DepthStencilState[pass][GetDepthVariantSlot(pass)].get(), 0);
+        _ctx->D3DDeviceContext->OMSetDepthStencilState(DepthStencilState[pass][ResolveDepthVariantSlot(pass)].get(), 0);
 
         _ctx->D3DDeviceContext->RSSetState(RasterizerState[static_cast<size_t>(ResolveCullMode())][pass].get());
         _ctx->D3DDeviceContext->RSSetScissorRects(1, _ctx->ScissorEnabled ? &_ctx->ScissorRect : &_ctx->DisabledScissorRect);

@@ -1399,11 +1399,11 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Bind pipeline for current pass — pick the variant that matches the current
         // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
         size_t blend_variant = DisableBlending ? 1 : 0;
-        size_t depth_slot = GetDepthVariantSlot(pass);
+        size_t depth_slot = ResolveDepthVariantSlot(pass);
         size_t cull_variant = static_cast<size_t>(ResolveCullMode());
-        if (Pipeline[pass][prim_index][blend_variant][depth_slot][cull_variant] != VK_NULL_HANDLE) {
-            vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass][prim_index][blend_variant][depth_slot][cull_variant]);
-        }
+        VkPipeline pipeline = Pipeline[pass][prim_index][blend_variant][depth_slot][cull_variant];
+        FO_VERIFY_AND_THROW(pipeline != VK_NULL_HANDLE, "Vulkan pipeline variant is not created", _name, pass + 1, prim_index, blend_variant, depth_slot, cull_variant);
+        vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         // Allocate descriptor sets for this draw call
         VkDescriptorSet texture_set = VK_NULL_HANDLE;

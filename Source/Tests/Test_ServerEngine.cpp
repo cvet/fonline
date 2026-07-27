@@ -101,9 +101,11 @@ namespace
 
     // A SUSTAINED state-mutex hold is an impossible state for a covered target (it can only be produced
     // synthetically, as here): the retry loop absorbs transient windows, so an unending one exhausts the
-    // livelock valve and throws. Returns how long the give-up took, so the caller can assert the wait is
-    // bounded and self-terminating rather than rescued by the watchdog.
-    static auto ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock) -> std::chrono::steady_clock::duration
+    // livelock valve and throws. Asserts that the give-up is the retry budget's own and not the watchdog's
+    // rescue, by requiring the contention to still be held when the throw lands. A wall-clock budget cannot
+    // state that: the budget is a count of attempts whose back-off sleeps are stretched by the platform's
+    // timer granularity, so on a loaded machine an absolute deadline measures the scheduler, not the code.
+    static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -137,14 +139,16 @@ namespace
             release_state.store(true, std::memory_order_release);
         }};
 
-        const auto ensure_begin = std::chrono::steady_clock::now();
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
-        const auto ensure_elapsed = std::chrono::steady_clock::now() - ensure_begin;
+
+        // Read before the test releases the contention itself, so this reflects only the watchdog.
+        const bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
         state_owner.join();
         contention_watchdog.join();
-        return ensure_elapsed;
+
+        CHECK_FALSE(rescued_by_watchdog);
     }
 
     // The realistic counterpart: a foreign thread that holds the state mutex only for the microsecond-to-
@@ -1644,15 +1648,18 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         release_child.store(true, std::memory_order_release);
     }};
-    const auto ensure_begin = std::chrono::steady_clock::now();
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
-    const auto ensure_elapsed = std::chrono::steady_clock::now() - ensure_begin;
+
+    // Read before the test releases the contention itself, so this reflects only the watchdog.
+    const bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
     ensure_finished.store(true, std::memory_order_release);
     release_child.store(true, std::memory_order_release);
     child_owner.join();
     contention_watchdog.join();
-    // Bounded and self-terminating: it gave up on its own retry budget, well before the watchdog released.
-    CHECK(ensure_elapsed < std::chrono::seconds {5});
+
+    // Bounded and self-terminating: it gave up on its own retry budget while the child lock was still held,
+    // rather than being rescued by the watchdog letting go.
+    CHECK_FALSE(rescued_by_watchdog);
     CHECK(ctx.ValidateAccess(map));
     const auto retained_cover = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
@@ -1666,8 +1673,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
         REQUIRE(target_lock);
-        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
+        ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
         const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
@@ -1685,8 +1691,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         REQUIRE(target_lock);
         REQUIRE(intermediate_lock);
         REQUIRE(target_lock != intermediate_lock);
-        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, intermediate_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
+        ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, intermediate_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
@@ -1708,8 +1713,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         REQUIRE(target_lock != intermediate_lock);
         auto first_lock = target_lock < intermediate_lock ? target_lock : intermediate_lock;
         auto second_lock = target_lock < intermediate_lock ? intermediate_lock : target_lock;
-        const auto ensure_state_mutex_elapsed = ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
-        CHECK(ensure_state_mutex_elapsed < std::chrono::seconds {5});
+        ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         const bool first_state_mutex_free = first_lock->TryLockStateMutex();

@@ -38,6 +38,9 @@
 #include "EffekseerCompiler.h"
 #include "EffekseerExtension.h"
 #include "FileSystem.h"
+#if FO_ENABLE_3D
+#include "ModelManager.h"
+#endif
 #include "Rendering.h"
 #include "Test_BakerHelpers.h"
 #include "Test_ParticleFixtures.h"
@@ -74,6 +77,13 @@ struct CapturedEffekseerDraw final
 struct EffekseerDrawCapture final
 {
     vector<CapturedEffekseerDraw> Draws {};
+};
+
+enum class TestSceneBackgroundMode : uint8_t
+{
+    Available,
+    Deferred,
+    Unavailable,
 };
 
 class CapturingRenderEffect final : public RenderEffect
@@ -135,9 +145,13 @@ public:
     [[nodiscard]] auto TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>;
     [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
     [[nodiscard]] auto GetTextureRequests() const -> const vector<string>&;
+    [[nodiscard]] auto GetSceneBackground() const -> nptr<const RenderTexture>;
+    void SetSceneBackgroundMode(TestSceneBackgroundMode mode);
     void ClearDraws();
 
 private:
+    [[nodiscard]] auto ProvideSceneBackground() const -> ParticleSceneBackgroundResult;
+
     EffekseerRuntimeTestSettings _settings {};
     string _effectPath;
     FileSystem _resources;
@@ -147,6 +161,7 @@ private:
     unique_ptr<RenderTexture> _sceneBackground;
     vector<string> _textureRequests {};
     bool _provideTexture {};
+    TestSceneBackgroundMode _sceneBackgroundMode {TestSceneBackgroundMode::Available};
     unique_ptr<GameTimer> _gameTimer;
     unique_ptr<ParticleManager> _particleManager;
     unique_ptr<EffekseerParticleRuntimeBackend> _backend;
@@ -403,7 +418,8 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
     _sceneBackground {_render->CreateTexture({16, 16}, true, false)},
     _provideTexture {provide_texture},
     _gameTimer {SafeAlloc::MakeUnique<GameTimer>(&_settings)},
-    _particleManager {SafeAlloc::MakeUnique<ParticleManager>(&_settings, _effectManager.as_ptr(), _render.as_ptr(), &_resources, _gameTimer.as_ptr(),
+    _particleManager {SafeAlloc::MakeUnique<ParticleManager>(
+        &_settings, _effectManager.as_ptr(), _render.as_ptr(), &_resources, _gameTimer.as_ptr(),
         [this](string_view path) -> pair<nptr<RenderTexture>, frect32> {
             _textureRequests.emplace_back(path);
 
@@ -412,7 +428,8 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
             }
 
             return {_texture.as_nptr(), EffekseerFixtureAtlasRect};
-        })},
+        },
+        [this]() { return ProvideSceneBackground(); })},
     _backend {SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(ParticleRuntimeServices {
         .EffectMngr = _effectManager.as_ptr(),
         .Render = _render.as_ptr(),
@@ -428,7 +445,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
         },
         // A refracting draw needs a scene to refract; the rig stands in for the sprite manager's snapshot with a
         // texture of its own, so a distortion effect is measured on its renderer rather than on a missing background.
-        .SceneBackgroundProvider = [this]() -> nptr<const RenderTexture> { return _sceneBackground.as_nptr(); },
+        .SceneBackgroundProvider = [this]() { return ProvideSceneBackground(); },
         .Settings = &_settings,
     })}
 {
@@ -477,6 +494,36 @@ auto EffekseerRuntimeTestRig::GetTextureRequests() const -> const vector<string>
     FO_STACK_TRACE_ENTRY();
 
     return _textureRequests;
+}
+
+auto EffekseerRuntimeTestRig::GetSceneBackground() const -> nptr<const RenderTexture>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _sceneBackground.as_nptr();
+}
+
+void EffekseerRuntimeTestRig::SetSceneBackgroundMode(TestSceneBackgroundMode mode)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _sceneBackgroundMode = mode;
+}
+
+auto EffekseerRuntimeTestRig::ProvideSceneBackground() const -> ParticleSceneBackgroundResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (_sceneBackgroundMode) {
+    case TestSceneBackgroundMode::Available:
+        return {.State = ParticleSceneBackgroundState::Available, .Texture = _sceneBackground.as_nptr()};
+    case TestSceneBackgroundMode::Deferred:
+        return {.State = ParticleSceneBackgroundState::Deferred};
+    case TestSceneBackgroundMode::Unavailable:
+        return {};
+    }
+
+    throw GenericException("Unexpected test scene-background mode");
 }
 
 void EffekseerRuntimeTestRig::ClearDraws()
@@ -1144,16 +1191,32 @@ TEST_CASE("Effekseer particle runtime builds track strip geometry", "[particle][
 
 // A model node draws its mesh once per instance, so the fixture pairs a compiled project with the .efkmodel payload it
 // references - four vertices, two faces, a distinct red channel per corner so the vertex mapping is visible.
-static auto MakeModelFixtureRig(int32_t culling) -> unique_ptr<EffekseerRuntimeTestRig>
+static auto MakeModelFixtureRig(int32_t culling, vector<uint8_t> model_payload) -> unique_ptr<EffekseerRuntimeTestRig>
 {
     FO_STACK_TRACE_ENTRY();
 
     string project = ParticleTests::MakeModelProject(culling);
     EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Mesh.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
     map<string, vector<uint8_t>> dependencies;
-    dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", ParticleTests::MakeFixtureModelPayload());
+    dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", std::move(model_payload));
 
     return SafeAlloc::MakeUnique<EffekseerRuntimeTestRig>(EffekseerModelFixturePath, std::move(compiled.Binary), dependencies);
+}
+
+static auto MakeModelFixtureRig(int32_t culling) -> unique_ptr<EffekseerRuntimeTestRig>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakeModelFixtureRig(culling, ParticleTests::MakeFixtureModelPayload());
+}
+
+TEST_CASE("Effekseer particle runtime rejects malformed model payloads", "[particle][effekseer-runtime]")
+{
+    vector<uint8_t> truncated = ParticleTests::MakeFixtureModelPayload();
+    truncated.resize(5 * sizeof(int32_t));
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelFixtureRig(2, std::move(truncated));
+
+    CHECK_FALSE(rig->CanCreateSystem());
 }
 
 TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effekseer-runtime]")
@@ -1327,6 +1390,64 @@ TEST_CASE("Effekseer particle runtime refracts the scene through distortion node
         }
     }
 }
+
+TEST_CASE("Effekseer direct-model distortion survives its atlas preview", "[particle][effekseer-runtime]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Respawn(5501);
+    REQUIRE(system->IsActive());
+
+    for (int32_t frame = 0; frame < 4; frame++) {
+        system->Update(1.0f / 60.0f);
+    }
+
+    // ModelDirectDraw keeps one auxiliary atlas frame for preview/hit testing. The ModelManager provider marks only
+    // that offscreen draw as deferred, so its live distortion attachment must remain available for the scene replay.
+    rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Deferred);
+    rig->ClearDraws();
+    system->Draw();
+    CHECK(system->IsActive());
+    CHECK(rig->GetDraws().empty());
+
+    rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Available);
+    system->Draw();
+    REQUIRE(system->IsActive());
+    REQUIRE(rig->GetDraws().size() == 1);
+    CHECK(rig->GetDraws().front().HasBackgroundTexture);
+
+    // The deferred state is explicit. A normal runtime with no scene background retains the fail-closed contract.
+    rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Unavailable);
+    system->Draw();
+    CHECK_FALSE(system->IsActive());
+}
+
+#if FO_ENABLE_3D
+TEST_CASE("Model particle background policy defers atlas preview then supplies scene replay", "[particle][effekseer-runtime]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
+    int32_t provider_calls = 0;
+    ParticleSceneBackgroundProvider provider = [&provider_calls, &rig]() -> ParticleSceneBackgroundResult {
+        provider_calls++;
+        return {.State = ParticleSceneBackgroundState::Available, .Texture = rig->GetSceneBackground()};
+    };
+
+    ParticleSceneBackgroundResult atlas_preview = ResolveModelParticleSceneBackground(false, true, provider);
+    CHECK(atlas_preview.State == ParticleSceneBackgroundState::Deferred);
+    CHECK(provider_calls == 0);
+
+    ParticleSceneBackgroundResult scene_replay = ResolveModelParticleSceneBackground(true, true, provider);
+    CHECK(scene_replay.State == ParticleSceneBackgroundState::Available);
+    CHECK(scene_replay.Texture == rig->GetSceneBackground());
+    CHECK(provider_calls == 1);
+
+    CHECK(ResolveModelParticleSceneBackground(false, false, provider).State == ParticleSceneBackgroundState::Unavailable);
+    CHECK(ResolveModelParticleSceneBackground(false, true, {}).State == ParticleSceneBackgroundState::Unavailable);
+    CHECK(ResolveModelParticleSceneBackground(true, true, {}).State == ParticleSceneBackgroundState::Unavailable);
+}
+#endif
 
 TEST_CASE("Effekseer particle runtime picks the distortion blend the node asks for", "[particle][effekseer-runtime]")
 {

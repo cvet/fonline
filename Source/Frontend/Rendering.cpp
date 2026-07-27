@@ -324,17 +324,21 @@ auto RenderEffect::GetDepthFunc(size_t pass) const noexcept -> DepthFuncType
     return _depthFunc[pass];
 }
 
-auto RenderEffect::GetDepthVariantSlot(size_t pass) const noexcept -> size_t
+auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(pass < _passCount, "Depth variant pass is outside the effect's pass range", _name, pass + 1, _passCount);
 
     // The slot encodes the resolved state rather than the requested variant, so an effect that declares no variants
-    // always lands on the single slot its own state built and needs no special case in the draw path.
+    // can still use an equivalent requested state when it lands on the single slot the effect built.
     size_t slot = GetDepthWrite(pass) ? 1 : 0;
 
     if (GetDepthFunc(pass) == DepthFuncType::Always) {
         slot += 2;
     }
+
+    FO_VERIFY_AND_THROW(IsDepthVariantSlotUsed(pass, slot), "Draw asks for a depth state the effect did not build", _name, pass + 1, static_cast<int32_t>(DepthVariant), slot);
 
     return slot;
 }

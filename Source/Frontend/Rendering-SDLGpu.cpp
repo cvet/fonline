@@ -1421,7 +1421,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t depth_slot = GetDepthVariantSlot(pass);
+    size_t depth_slot = ResolveDepthVariantSlot(pass);
     CullModeType cull_mode = ResolveCullMode();
     uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (static_cast<uint32_t>(cull_mode) << 8) | (numeric_cast<uint32_t>(depth_slot) << 10);
 

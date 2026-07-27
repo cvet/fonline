@@ -17,7 +17,6 @@ BlendFunc = SrcAlpha One
 DepthWrite = False
 DepthFunc = LessEqual
 DepthVariants = True
-CullVariants = True
 
 [VertexShader]
 layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
@@ -62,6 +61,7 @@ layout(location = 3) in vec4 ClipTangent;
 layout(location = 4) in vec4 ClipBinormal;
 
 layout(location = 0) out vec4 FragColor;
+const float AlphaDepthCutoff = 1.0 / 255.0;
 
 void main(void)
 {
@@ -83,4 +83,8 @@ void main(void)
     vec2 background_uv = displaced * 0.5 + 0.5;
     background_uv.y = mix(background_uv.y, 1.0 - background_uv.y, ParticleSampling.w);
     FragColor = vec4(texture(BackgroundTex, clamp(background_uv, 0.0, 1.0)).rgb, displacement.w * Color.w);
+
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
+    }
 }

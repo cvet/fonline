@@ -2569,7 +2569,7 @@ void ModelInstance::RefreshConfigurationLayout()
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
     optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
-    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds());
+    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds(), post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor);
     optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
 
     if (!lighting_layout || !view_layout) {
@@ -2706,7 +2706,12 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 
     _drawProj = proj;
     _directSceneDraw = true;
-    auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+    bool previous_manager_direct_scene = _modelMngr->_directSceneDraw;
+    _modelMngr->_directSceneDraw = true;
+    auto restore_direct_scene = scope_exit([this, previous_manager_direct_scene]() noexcept {
+        _directSceneDraw = false;
+        _modelMngr->_directSceneDraw = previous_manager_direct_scene;
+    });
 
     Pose(scale, true);
     DrawPosed(true);

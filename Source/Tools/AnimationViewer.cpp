@@ -1053,8 +1053,9 @@ auto AnimationViewer::AttachKey(const ModelAttachPoint& point) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The resource plus its bone identifies an attachment across frames; a live index would shift as effects finish.
-    return strex("{}@{}", point.Name, point.BoneName).str();
+    // Keep the key stable when live attachment indices shift as effects finish, but distinguish repeated uses of the
+    // same resource on one bone at different authored offsets.
+    return strex("{}@{}@{}@{}:{}:{}", static_cast<int32_t>(point.Kind), point.Name, point.BoneName, std::bit_cast<uint32_t>(point.Move.x), std::bit_cast<uint32_t>(point.Move.y), std::bit_cast<uint32_t>(point.Move.z)).str();
 }
 #endif
 

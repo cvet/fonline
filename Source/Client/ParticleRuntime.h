@@ -45,10 +45,26 @@ class RenderTexture;
 struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
-// Hands out a copy of the scene as it was before the current draw, for content that refracts what is behind it. Returns
-// nothing where there is no scene to refract, such as an offscreen atlas. Called only by a draw that needs it, so the
-// copy it triggers is never paid for by an ordinary particle.
-using ParticleSceneBackgroundProvider = function<nptr<const RenderTexture>()>;
+
+enum class ParticleSceneBackgroundState : uint8_t
+{
+    Unavailable,
+    Available,
+    Deferred,
+};
+
+struct ParticleSceneBackgroundResult
+{
+    ParticleSceneBackgroundState State {};
+    nptr<const RenderTexture> Texture {};
+};
+
+// Hands out a copy of the scene as it was before the current draw, for content that refracts what is behind it. A hard
+// Unavailable result means there is no scene to refract and fails the particle closed. Deferred is narrower: a
+// direct-scene owner is performing an auxiliary offscreen preview, so this draw is skipped without retiring the
+// particle and the later scene draw can ask again. Called only by a draw that needs it, so an ordinary particle never
+// pays for the copy.
+using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
 
 // Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
 // position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas

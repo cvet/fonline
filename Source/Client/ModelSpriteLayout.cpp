@@ -112,20 +112,29 @@ auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float3
     };
 }
 
-auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds) -> ModelBounds3D
+auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor) -> ModelBounds3D
 {
     FO_STACK_TRACE_ENTRY();
 
     // The view box anchors names and UI, so it is the model's stable idle silhouette rather than the pose of the moment:
     // a raised weapon or a swung arm must not push the name up, and a box derived from the live pose would drift.
     // A pose that puts the critter *lower* is the one case that must be followed - a corpse or a prone body would
-    // otherwise wear its name at standing height, far above itself. Both inputs are baked per clip, so the choice is
-    // fixed for a given animation and never accumulates.
+    // otherwise wear its name at standing height, far above itself. Compare the projected tops after the same base
+    // transforms as the eventual view layout: imported models may rotate their source Y away from screen-up, so raw
+    // model-space Max.y is not a height. Both inputs are baked per clip, so the choice is fixed for a given animation
+    // and never accumulates.
     if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
         return idle_bounds;
     }
 
-    return active_animation_bounds->Max.y < idle_bounds.Max.y ? *active_animation_bounds : idle_bounds;
+    optional<ModelSpriteLayout> idle_layout = CalculateModelSpriteLayout(idle_bounds, post_direction_transform, pre_direction_transform, projection_factor, false);
+    optional<ModelSpriteLayout> active_layout = CalculateModelSpriteLayout(*active_animation_bounds, post_direction_transform, pre_direction_transform, projection_factor, false);
+
+    if (!idle_layout || !active_layout) {
+        return idle_bounds;
+    }
+
+    return active_layout->ViewRect.y > idle_layout->ViewRect.y ? *active_animation_bounds : idle_bounds;
 }
 
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>

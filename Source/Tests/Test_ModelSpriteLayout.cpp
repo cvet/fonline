@@ -77,13 +77,41 @@ TEST_CASE("ModelSpriteViewBoundsFollowALowerPoseButNeverAHigherOne", "[model]")
     const ModelBounds3D idle_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
     const ModelBounds3D lying_bounds = {.Min = {-0.9f, 0.0f, -0.3f}, .Max = {0.9f, 0.4f, 0.3f}};
     const ModelBounds3D overhead_bounds = {.Min = {-0.6f, 0.0f, -0.4f}, .Max = {0.6f, 2.6f, 0.4f}};
+    const mat44 identity {1.0f};
+    constexpr float32_t projection_factor = 32.0f;
 
-    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds).Max.y == lying_bounds.Max.y);
-    CHECK(SelectModelViewBounds(idle_bounds, overhead_bounds).Max.y == idle_bounds.Max.y);
-    CHECK(SelectModelViewBounds(idle_bounds, std::nullopt).Max.y == idle_bounds.Max.y);
+    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, identity, projection_factor).Max.y == lying_bounds.Max.y);
+    CHECK(SelectModelViewBounds(idle_bounds, overhead_bounds, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
+    CHECK(SelectModelViewBounds(idle_bounds, std::nullopt, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
 
     // The lying pose is wider than the standing one, so the whole box - not just its top - has to come from it.
-    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds).Min.x == lying_bounds.Min.x);
+    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, identity, projection_factor).Min.x == lying_bounds.Min.x);
+}
+
+TEST_CASE("ModelSpriteViewBoundsCompareHeightAfterTheModelBaseRotation", "[model]")
+{
+    // Several production models import with RotX +/-90, making source Z - not source Y - the screen-up axis. The
+    // active box deliberately has a taller raw Y than idle, so a raw Max.y comparison would keep idle in both cases.
+    const mat44 identity {1.0f};
+    constexpr float32_t projection_factor = 32.0f;
+
+    SECTION("Positive quarter turn")
+    {
+        const ModelBounds3D idle_bounds = {.Min = {-0.3f, -0.25f, -1.8f}, .Max = {0.3f, 0.25f, 0.0f}};
+        const ModelBounds3D lying_bounds = {.Min = {-0.9f, -0.3f, -0.4f}, .Max = {0.9f, 0.3f, 0.0f}};
+        const mat44 base_rotation = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+
+        CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, base_rotation, projection_factor).Min.x == lying_bounds.Min.x);
+    }
+
+    SECTION("Negative quarter turn")
+    {
+        const ModelBounds3D idle_bounds = {.Min = {-0.3f, -0.25f, 0.0f}, .Max = {0.3f, 0.25f, 1.8f}};
+        const ModelBounds3D lying_bounds = {.Min = {-0.9f, -0.3f, 0.0f}, .Max = {0.9f, 0.3f, 0.4f}};
+        const mat44 base_rotation = glm::rotate(mat44 {1.0f}, -90.0f * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+
+        CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, base_rotation, projection_factor).Min.x == lying_bounds.Min.x);
+    }
 }
 
 FO_END_NAMESPACE

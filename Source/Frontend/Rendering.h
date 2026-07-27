@@ -461,14 +461,14 @@ public:
     // missing object would drop the draw or fall back to a different mode instead of reporting the mismatch.
     [[nodiscard]] auto ResolveCullMode() const -> CullModeType;
 
-    // Depth state the current draw resolves to, and the variant slot that state lives in. An effect without declared
-    // variants only ever resolves to its own slot, so the slot is a valid index for every effect.
+    // Depth state the current draw resolves to, and the variant slot that state lives in. ResolveDepthVariantSlot
+    // rejects a state the effect did not build, keeping device-object and immediate-state backends consistent.
     [[nodiscard]] auto GetDepthWrite(size_t pass) const noexcept -> bool;
     [[nodiscard]] auto GetDepthFunc(size_t pass) const noexcept -> DepthFuncType;
-    [[nodiscard]] auto GetDepthVariantSlot(size_t pass) const noexcept -> size_t;
+    [[nodiscard]] auto ResolveDepthVariantSlot(size_t pass) const -> size_t;
 
     // Backends that bake depth state into a device object build one per used slot and index it at draw time with
-    // GetDepthVariantSlot. A slot is used only when the effect declares variants or the slot is the effect's own.
+    // ResolveDepthVariantSlot. A slot is used only when the effect declares variants or the slot is the effect's own.
     [[nodiscard]] auto IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexcept -> bool;
     [[nodiscard]] auto GetDepthVariantWrite(size_t slot) const noexcept -> bool;
     [[nodiscard]] auto GetDepthVariantFunc(size_t pass, size_t slot) const noexcept -> DepthFuncType;
