@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Client.h"
 #include "Server.h"
@@ -63,20 +64,50 @@ int main(int argc, char** argv)
 
         {
             auto server_settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+            refcount_nptr<ServerEngine> server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;
 
+            AdminServerHost admin_host("ServerHeadlessAdminHost",
+                AdminServerHostCallbacks {
+                    .GetServer = [&server]() -> ServerEngine* { return server.get(); },
+                    .StartServer =
+                        [&server]() {
+                            if (!server) {
+                                auto server_settings = make_ptr(&GetApp()->Settings);
+                                server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+                            }
+                        },
+                    .StopServer =
+                        [&server]() {
+                            if (server) {
+                                server->Shutdown();
+                                server.reset();
+                            }
+                        },
+                    .RestartServer =
+                        [&server]() {
+                            if (server) {
+                                server->Shutdown();
+                                server.reset();
+                            }
+
+                            auto server_settings = make_ptr(&GetApp()->Settings);
+                            server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+                        },
+                });
+
             if (GetApp()->Settings.AutoStartClientOnServer != 0) {
-                ServerWithClientsLoop(server, client_settings, clients);
+                ServerWithClientsLoop(server.as_ptr(), client_settings, clients);
             }
             else {
-                while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
+                while (!GetApp()->IsQuitRequested() && (!server || !server->IsStartingError())) {
+                    admin_host.Tick();
                     std::this_thread::sleep_for(std::chrono::milliseconds {10});
                 }
             }
 
-            if (server->IsStartingError()) {
+            if (server && server->IsStartingError()) {
                 WriteLog(LogType::Error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
@@ -86,7 +117,10 @@ int main(int argc, char** argv)
             }
 
             client_settings.clear();
-            server->Shutdown();
+
+            if (server) {
+                server->Shutdown();
+            }
         }
 
         ExitApp(GetApp()->GetRequestedQuitSuccess());

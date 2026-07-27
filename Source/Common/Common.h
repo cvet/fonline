@@ -341,6 +341,9 @@ static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
 static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
+static constexpr uint16_t ADMIN_DISCOVERY_PROTOCOL_VERSION = 1;
+static constexpr string_view ADMIN_DISCOVERY_PROBE = "lf-admin-discover-v1";
+static constexpr string_view ADMIN_DISCOVERY_RESPONSE_PREFIX = "lf-admin-server-v1";
 
 // Property type in network interaction
 enum class NetProperty : uint8_t

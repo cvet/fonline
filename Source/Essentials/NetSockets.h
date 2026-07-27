@@ -102,6 +102,7 @@ public:
     auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
     auto can_accept(timespan timeout = {}) const noexcept -> bool;
     auto accept() noexcept -> tcp_socket;
+    auto accept(string& out_host, uint16_t& out_port) noexcept -> tcp_socket;
     void close() noexcept;
 
 private:
