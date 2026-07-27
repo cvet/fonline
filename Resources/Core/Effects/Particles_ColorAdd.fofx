@@ -7,6 +7,7 @@
 BlendFunc = SrcAlpha One
 DepthWrite = False
 DepthFunc = LessEqual
+DepthVariants = True
 
 [VertexShader]
 layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
@@ -26,6 +27,8 @@ void main(void)
 }
 
 [FragmentShader]
+layout(set = 0, binding = 1, std140) uniform ParticleSamplingBuf { vec4 ParticleSampling; };
+layout(set = 0, binding = 2, std140) uniform MainTexBuf { vec4 MainTexSize; };
 layout(set = 1, binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec4 Color;
@@ -35,5 +38,6 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = Color * texture(MainTex, TexCoord);
+    vec2 snapped = (floor(TexCoord * MainTexSize.xy) + 0.5) * MainTexSize.zw;
+    FragColor = Color * texture(MainTex, mix(TexCoord, snapped, ParticleSampling.x));
 }

@@ -158,6 +158,7 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 - `EffectUsage` — effect category used when loading/compiling effects.
 - `RenderPrimitiveType` — primitive topology used by draw buffers.
 - `BlendFuncType` and `BlendEquationType` — blend-state configuration read from effect config.
+- `DepthVariantType` and `EFFECT_DEPTH_VARIANTS` — the per-draw depth-state variant slot (see below).
 - `Vertex2D` and `Vertex3D` — vertex layouts used by sprite and model paths. For primitive batches uploaded through `SpriteManager::DrawPoints`, `PosX/PosY` are the draw-area-local pixel coordinates (with the `draw_area` scroll offset subtracted), and `TexU/TexV` carry `PrimitivePoint::TexUV + draw_area.xy` — that is, `DrawPoints` adds the draw-area top-left to whatever the caller authored. The intended idiom for world-stable per-fragment effects (dither, noise, gradient mapping) is to author the **same constant** `TexUV` on every vertex of a primitive batch — the absolute map-origin-anchored pixel position of the screen-anchor hex `_screenRawHex`. The fragment shader then reconstructs each fragment's true absolute world pixel position as `gl_FragCoord.xy + InTexCoord`. Because every vertex carries the same constant, varying interpolation is degenerate (no barycentric rounding can crawl the noise), and the rasterizer's per-pixel `gl_FragCoord` provides the spatial variation. This is robust against camera scroll, camera zoom, fan-triangle deformation from smooth sprite movement, and the `from_hex.x` parity sensitivity of `GeometryHelper::GetHexOffset` on offset-row hexagonal grids. `MapView::LightFanToPrimitves` authors it via `GeometryHelper::GetHexOffset(mpos(0, 0), _screenRawHex)`. `Primitive_Light.fofx` consumes it (`worldPixel = gl_FragCoord.xy + InTexCoord`) to jitter the light's edge taper with world-stable noise; other primitive shaders ignore `InTexCoord` and are unaffected. The light fan also carries the **normalized radial distance** in `PrimitivePoint::PointPosZ` (`LightFanToPrimitves`' `rim_dell`: 0 at the center, ~1 at the rim) → `InPosition.z`; `Primitive_Light.fofx` reads it as `Rim` and `smoothstep`s the outer band (`EdgeTaperStart`..1.0) to zero so brightness rises gently *from zero* at the rim instead of ending in a hard constant-slope edge (which is very visible when the light moves).
 - `RenderTexture` — backend texture/render-target resource.
 - `RenderDrawBuffer` — vertex/index storage uploaded to the backend.
@@ -224,6 +225,30 @@ fixed anchor. The view rectangle deliberately excludes
 the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
+
+The view rectangle may never *grow* past that baked view bound. The live pose and
+attached child models are excluded on purpose. A pose-derived box would have to be
+accumulated (a frame layout may not shrink mid-animation), and accumulation makes it
+grow frame after frame — root motion alone sweeps it across a whole clip — until the
+name floats far above the critter. An attachment cannot contribute either: for a
+child linked by matching bone names, its own bound is an unposed extent that says
+nothing about where its skinned geometry lands. A critter whose silhouette needs the
+name higher is served by the prototype's authored `NameOffset`. The drawing frame,
+in contrast, *does* take attachments and *does* grow monotonically — it has to cover
+whatever is actually rasterized. So the view rectangle stays inside the frame by
+construction: the baked view bound is the idle subset of the model bound the frame
+starts from.
+
+It does follow the animation **downwards**, which `SelectModelViewBounds` decides: when
+the active clip's baked box tops out lower than the idle box after the same model-base
+transform and projection used by the layout, that clip's box is taken whole. Comparing
+in projected space matters for imported models with `RotX = +/-90`, where source Z
+rather than source Y is screen-up. A corpse or a prone body would otherwise wear its
+name at standing height, far above itself; a lying pose is also wider than a standing
+one, so its top alone would not do. The asymmetry is the point — a raised weapon or an
+overhead swing tops out *higher* and is ignored, so names never rise with a swing. Both
+inputs are baked per clip, so the result is constant for a given animation and cannot
+drift within it.
 
 The automatic logical frame owns the reusable 2x scratch render target. After
 the pose is evaluated, the client combines its per-animation prediction with an
@@ -509,13 +534,38 @@ Effects carry per-pass depth state parsed from the `.fofx` `[Effect]` block:
 
 - `DepthWrite` (default `True`) → `RenderEffect::_depthWrite[pass]` (depth write mask).
 - `DepthFunc` (default `Always`) → `RenderEffect::_depthFunc[pass]` (`DepthFuncType`: `Always`/`Never`/`Less`/`LessEqual`/`Equal`/`GreaterEqual`/`Greater`/`NotEqual`). Both `Rendering-OpenGL.cpp` and `Rendering-Direct3D.cpp` translate it (`ConvertDepthFunc`) and the backends diverge in NDC-Z (`[-1,1]` GL/GL-ES vs `[0,1]` D3D), so depth-dependent effects must be validated on both.
+- `DepthVariants` (default `False`) → `RenderEffect::_depthVariants`. Opting in lets a **single draw** pick a depth state other than the declared one, through the `RenderEffect::DepthVariant` input field (`DepthVariantType`: `FromEffect`/`TestWrite`/`TestNoWrite`/`NoTestWrite`/`NoTestNoWrite`, where `Test` reuses the effect's own `DepthFunc` and `NoTest` replaces it with `Always`). This exists because transparent geometry can carry per-item depth intent that is orthogonal to the shader — a particle system stores a depth-test and a depth-write flag per emitter node — and encoding that as separate effect files multiplies with every other shader feature.
+
+  The resolved state is addressed by a **slot** (`ResolveDepthVariantSlot`, `EFFECT_DEPTH_VARIANTS` = 4) so the backends can keep depth state in pre-built device objects: `Rendering-Direct3D.cpp` builds one `ID3D11DepthStencilState` per used slot, `Rendering-Vulkan.cpp` one pipeline per `(pass, primitive, blend, slot)`, `Rendering-SDLGpu.cpp` folds the slot into its lazy pipeline-cache key, and `Rendering-OpenGL.cpp` simply issues the resolved state. The resolver rejects a draw whose resolved slot was not built, so an unsupported override cannot silently disable depth in Direct3D, reuse a stale Vulkan pipeline, or diverge from the immediate OpenGL state. Because the slot encodes the *resolved* state rather than the requested variant, an effect that declares no variants can still use an equivalent requested state when it lands on the one slot its own state built. `RenderEffect::CanBatch` compares `DepthVariant`, so draws that resolve differently are not merged.
+
+## The scene background snapshot
+
+Content that refracts what is behind it cannot read the render target it is drawing into, so `SpriteManager::AcquireSceneBackground()` copies the current target into a target-sized render target of its own and hands back that texture. The copy is **lazy and at most once per direct-draw replay**: `DrawSprites` invalidates the snapshot before replaying its direct-draw sprites, and the copy happens only when a draw actually asks, so a frame with nothing refracting never pays for it. The blit is opaque — a refracting draw wants the colours behind it, not another blend of them.
+
+A refracting effect reads the copy through `RenderEffect::BackgroundTex`, the second-texture slot alongside `MainTex` and `IndoorMaskTex`, bound the same way in all four backends and declared in a shader as `BackgroundTex`. The snapshot keeps whatever orientation its source target has, so the shader flips the screen-space lookup for a flipped one rather than the copy being re-oriented.
+
+Particle runtimes reach it through `ParticleRuntimeServices::SceneBackgroundProvider`, a callback pulled at the draw that needs it rather than a value pushed into every `Setup`. An `Unavailable` result means there is no scene to refract — an ordinary offscreen atlas, for instance — and the runtime fails closed instead of refracting an empty target. `Deferred` is reserved for an auxiliary preview of a system that has a later direct-scene draw: that one draw skips the distortion node without retiring the system, and the scene draw asks the provider again.
+
+Model-attached particle runtimes receive the same provider only while
+`ModelInstance::DrawInScene` is active. A direct model still refreshes one auxiliary
+atlas frame for preview and hit testing; when `Render.ModelDirectDraw` is enabled, that
+offscreen refresh returns `Deferred`, so the distortion attachment survives and samples
+the current scene snapshot during the subsequent direct replay. A normal atlas-rendered
+model returns `Unavailable` and keeps the fail-closed contract because it has no later
+scene draw.
+
+## Per-draw face culling
+
+Which faces a draw discards is a property of the **draw**, not of the effect's usage: `RenderEffect::CullMode` (`CullModeType`: `None`/`Back`/`Front`, zero-initialised to `None`) is set by the caller, and `RenderEffect::CanBatch` compares it so draws that cull differently are not merged. 3D models set `Back` (or `None` when the model disables culling); a particle runtime whose format stores a culling mode per emitter node — Effekseer has `Front`, `Back` and `Double` — sets the matching mode per draw.
+
+Backends that bake the rasterizer state into a device object build one per mode the effect can be drawn with, so an effect declares `CullVariants = True` in its `[Effect]` block to pay for them: `Rendering-Direct3D.cpp` builds one `ID3D11RasterizerState` per mode, `Rendering-Vulkan.cpp` one pipeline per `(pass, primitive, blend, depth slot, cull mode)`, `Rendering-SDLGpu.cpp` folds the mode into its lazy pipeline-cache key, and `Rendering-OpenGL.cpp` issues `glCullFace` directly. `RenderEffect::ResolveCullMode()` is the single choke point: it throws when a draw asks for a mode the effect never built, because a backend that quietly skipped the missing object would drop the draw (Vulkan) or fall back to a different mode (Direct3D) instead of reporting the mismatch. Counter-clockwise is the front face on every backend.
 
 The map render target (`MapView::_rtMap`) is created `with_depth`, giving the world one shared depth buffer. `EffectUsage::QuadSprite` and `EffectUsage::Model` effects participate in it (depth state is a hardware no-op on targets without a depth attachment — UI, light, flush-to-screen):
 
 - Screen-space quads (GUI, fonts, render-target blits, and non-map sprite effects) initialize `Vertex2D::PosZ` to `0.0f`; map sprites may start from the same atlas data, but `SpriteManager` overwrites their Z before flushing them into `_rtMap`.
 - Standing map sprites (`Item`/`Critter`) **write** the shared depth buffer but do **not** test it (`DepthFunc = Always` in `2D_Default.fofx` / `2D_WithoutEgg.fofx`): the write is what lets direct-draw particles / 3D models occlude against sprites, while sprite-vs-sprite occlusion is decided purely by the painter order. That is exact rather than approximate, because every standing sprite's depth plane shares one gradient (`ProjectMapYToVerticalDepth`): parallel planes never intersect, so "which sprite is in front" is a whole-sprite fact, and ordering by the anchor depth reproduces a per-pixel `LessEqual` result pixel for pixel — without the interpolation noise that made *coincident* planes (hexes on the same screen row) flip the winner per pixel row and show up as horizontal z-fighting stripes on far rows of large maps. This is why `MapSpriteList::MakeDrawOrderPos` sorts standing sprites by `GeometryHelper::GetHexScreenRow` (the row of `GetHexPos().y`, i.e. the equivalence class of equal ground depth — hexes related by +2X/−1Y) instead of the hex row: the hex row disagrees with depth order (e.g. `hy−1, hx+4` is nearer yet sorts earlier) and would make the painter order wrong for overlapping large scenery. Pinned by `Source/Tests/Test_Geometry.cpp` (`GetHexScreenRow`). The trade-off is that a *flat* depth-writing layer no longer clips a standing sprite per pixel (their planes do intersect): a flattened corpse drawn in an earlier layer is covered by any overlapping standing sprite regardless of depth. Their per-vertex depth is the vertical-billboard proxy (`get_map_sprite_proj` → `GetHexWorldPos`/`ProjectWorldToMap`, anchored on the sprite root; the `MapView::InitView` view layout reproduces `GetHexPos.y` exactly, so the rendered screen position and the depth basis agree). **The depth/sort anchor is the object's LOGICAL root, not the bitmap bottom-center.** For an item the proto `Offset` is the bottom-center→root vector (a tree's trunk): it still positions the bitmap through `MapSprite::_pSprOffset` (so the visual, lighting and `MeasureMapBorders` are unchanged), but it is *also* kept as a separate static root offset (`HexView::_rootOffset` → `MapSprite::_pRootOffset`) that the depth proxy subtracts — in `GetMapRootOffset()` for `sprite_proj.z` and from `scene_pos_y` for the per-vertex reference — so a tall sprite anchors on its trunk instead of `Offset` pixels below it. Without this, the tree's depth anchored at the bitmap bottom (too far south/near) and it wrongly occluded a critter standing in front of it. Critters carry no proto `Offset` (their root comes from the sprite anchor), so their `_rootOffset` is zero. They are the **only** map sprite layer that participates in the depth buffer; every flat/background layer (floor tiles, roofs, flat ground overlays) is painter-only and depth-inert — neither writes nor tests (see below). `MapSprite` receives critter/item `Elevation`; positive elevation shifts the sprite upward in screen Y and increases the same world-Z depth. `MapSprite::HexOffset` plus runtime sprite/tweak offsets are projected along the ground plane before depth is computed, so sub-hex movement changes both screen position and 3D depth continuously; viewport-only `field.Offset` is not part of world depth. The intrinsic `Sprite::Offset` is different: it defines which pixel inside the atlas quad is the logical root on the ground, so vertical depth and direct-to-scene anchors use that root instead of assuming the bitmap's lower center. Floor tile layers (`DrawOrderType::Tile..Tile4`) and flat ground overlays (`FlatItemPreLight`/`HexGrid` pre-light, and `DeadCritter`/`FlatItemAfterLight` post-light — the layers below `NormalBegin`) are upright background sprites: they keep their atlas-provided screen-space XY/UV and **never touch the shared depth buffer**. Entity sprites choose the no-depth effect at the entity level: tiles and roofs resolve `Effects.Tile` / `Effects.Roof`; flat items resolve `Effects.Flat` (`ItemHexView::Init`, by `GetDrawFlatten()`) — all three → `2D_NoDepth.fofx`. Script-created `MapSpriteHolder` sprites have no entity-level effect handle, so `MapView` supplies the pass default effect to `SpriteManager::DrawSprites` from the draw-order segment before batching: `Tile..PreLight` → `Effects.Tile`, `AfterLight..FlatEnd` → `Effects.Flat`, `Roof..RoofParticles` → `Effects.Roof`, and normal layers → `Effects.Generic`. Item draw order is decided by `GetDrawFlatten()`, never by `IsScenery`/`IsWall`: upright → `Item` (the default), flat → `FlatItemPreLight` if `GetStatic()` (drawn pre-light) else `FlatItemAfterLight` (post-light). The former `Scenery`/`Item` (and `FlatScenery`/`FlatItem`) layers were merged, so upright items on one hex no longer force scenery behind items by class — they draw in **add order** (the `MapSprite::_globalPos` tiebreaker once `_drawOrderPos` ties on the merged layer + hex). (Dead critters drawn flattened keep `Effects.Critter` and still write depth, but since standing sprites no longer depth-test, a corpse cannot clip a standing sprite — it is covered by draw order.) All of these (`DepthWrite = False` + `DepthFunc = Always`) are drawn before the standing sprites and fully painter-sorted, so they cannot z-fight (coplanar layers), seam (abutting sprites), or clip a standing sprite's feet / a 3D model — they need no per-vertex depth, no ground-plane projection, and no per-layer bias. Standing sprite layers (`Item`, `Critter`) keep atlas XY/UV but write per-vertex `PosZ` through `GeometryHelper::ProjectMapYToVerticalDepth`, so they behave like vertical planes standing on their ground anchor; they carry no draw-order depth bias, because one would pull the vertical plane toward the camera and move the particle-occlusion line off the logical root point. The only remaining depth-bias user is the direct-draw path (particles / 3D models replayed at the end of each sprite pass): `SpriteManager` divides a half-pixel depth budget (`MAP_LAYER_DEPTH_BIAS`) by `DrawOrderType::Last + 1` and gives each direct-draw sprite a single such step above its world depth, keeping it below the subpixel snapping threshold (see *Direct-to-scene sprites*). Both `Core` and `Embedded` `2D_Default.fofx` must project the full `InPosition.xyz`; if an override flattens to `InPosition.xy, 0.0`, particles have no useful scene depth to test against. `2D_Default.fofx` and `2D_WithoutEgg.fofx` discard fragments whose final alpha is at or below `1/255` (after egg alpha), so fully transparent sprite texels do not populate the depth buffer and clip in-scene particles behind the empty parts of the atlas quad.
 - Roof tiles (`IsRoofTile`) are ordinary floor tiles given a fixed positive `Elevation` (`Geometry.MapRoofElevation`): the projection raises their screen position onto the building's wall tops (the engine still auto-hides the roof group whose `RoofNum` the camera is inside). A roof is just a tile lifted in screen Y — the flat tile/roof sub-hex XY anchor now lives on the `BaseTile` prototype's `Offset`, not on the former per-side `Geometry.MapTileOffs*`/`MapRoofOffs*` settings (removed); the roof-particle and mapper tile-preview paths read the same `Elevation` instead of the old 2D roof offset. The **roof draw-order range (`Roof..Last`) is rendered as a separate trailing pass** (`MapView::DrawSpritesWithFog` splits at `below_roof = Roof-1` and draws `[Roof..Last]` last, via `DrawFoggedSpriteRange`): everything below it — including the direct-draw 3D models / in-scene particles each sprite pass replays at its end — is drawn first. Like floor tiles, roofs do not touch the depth buffer (`Effects.Roof` → `2D_NoDepth.fofx`, `DepthWrite = False` + `DepthFunc = Always`): being drawn last and never depth-tested, the roof layer always paints on top of the building regardless of the scene depth buffer, and being depth-write-free it never clips anything drawn after it.
-- Particle effects (`Particles_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other.
+- Particle effects (`Particles_*.fofx`) declare `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other. The colour variants (`Particles_Color*.fofx`) additionally declare `DepthVariants = True`, because a particle runtime whose format stores depth-test/depth-write per emitter node selects the matching variant per draw. All colour and distortion `*Atlas` fragments discard final alpha at or below `1/255`, so a node that opts into depth writing cannot turn transparent or filter-fringe atlas texels into invisible occluders. They also read `ParticleSamplingBuf`, whose `.x` snaps the sampled coordinate to the texel centre: filtering is a per-atlas property here (`Render.AtlasLinearFiltration` applies to every atlas) but a per-node one in particle formats, and a bilinear fetch at a texel centre returns exactly that texel, so a node can get true point sampling from a linearly filtered atlas without a second atlas. The `*Atlas` variants additionally read `SpriteBorderBuf` and address the whole coordinate inside that atlas sub-rectangle, tiling or clamping as `ParticleSamplingBuf.y` says: neither a hardware wrap mode nor hardware clamping can serve a shared atlas, because both would reach into neighbouring entries. A runtime whose format supplies raw per-node coordinates therefore draws through the `*Atlas` variants exclusively; the non-atlas variants are for SPARK, which supplies final atlas coordinates and explicitly binds the neutral sampling buffer before every draw.
 - Model effects (`3D_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = True`: direct-to-scene models write real mesh depth into `_rtMap`, so particles and later direct geometry can test against the model surface instead of the old model atlas quad.
 - `OnRenderMap_AfterSpritesAndFog` fires after the sprite/fog map pass and before the map target is flushed. Scripts that need entity debug markers should iterate the relevant visible `Item`/`Critter` objects, combine `Map.GetHexMapPos(entity.Hex)`, `entity.GetSpriteOffset()`, and `entity.Elevation`, then subtract the event draw-area origin; this keeps selection/filtering in scripts without depending on transient sprite instances.
 - **Entity contours/outlines are script-driven, not native.** There is no engine contour pass; an embedding-project script (Last Frontier: `ContourPipeline.fos`, compiled for `CLIENT` and `MAPPER`) keeps a cache of entities whose `Contour` colour property is non-zero and, on `OnRenderMap_AfterSprites`, draws each via `Map.DrawEntitySprite(entity, contourEffectSubtype, colour, padding)` (a dilated silhouette in the contour effect, then the sprite on top so only the rim shows). The mapper's selection outline uses the same path — it sets the selected entity's `Contour` property (the property is registered for the mapper because `Client` entity registration includes the mapper target) rather than any native call.
@@ -531,7 +581,7 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 
 `ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
 
-Live render bounds and rebasing of already emitted particles are backend capabilities behind the same facade. SPARK provides both for model-attached effects; Effekseer currently reports no live bounds and treats rebasing as a no-op, so its model-attached effects use the advertised canvas/fallback envelope and must not rely on lingering particles remaining world-stable across scratch-frame reallocations.
+Live render bounds and rebasing of already emitted particles are backend capabilities behind the same facade. Both backends report live bounds from their baked extent (SPARK through the `.spk` `bounds` attribute, Effekseer through the `.efk` bounds trailer). Rebasing of already emitted particles is SPARK-only, because it emits in world space; Effekseer composes instance transforms with the effect root matrix, so it treats rebasing as a no-op and needs none.
 
 Seeded respawn is deterministic per particle-system instance in both bundled
 runtimes. Effekseer applies the seed to its manager handle. Each
@@ -560,10 +610,13 @@ not graphics backends: FOnline copies callback values, builds its own
 normal renderer abstraction. This keeps Mapper and game preview on one path and
 requires no Direct3D/OpenGL/Vulkan/SDL GPU code from Effekseer.
 
-The Sprite and Ring callback collectors fail closed on malformed callback
+The callback collectors fail closed on malformed callback
 topology. They enforce both the fixed supported-instance hard limit and the
-exact instance count declared by `BeginRendering`; subsequent `Rendering`
-calls cannot append more instances than that declaration. Ring packets copy
+exact instance count declared by `BeginRendering` (`BeginRenderingGroup` for the
+strip families, whose geometry is per instance group rather than per node);
+subsequent `Rendering` calls cannot append more instances than that declaration,
+and a strip additionally requires its instances to arrive in chain order, because
+the band is stitched by instance index. Ring packets copy
 the evaluated outer/center/inner shape and color values, reproduce the upstream
 eight-vertex/twelve-index segment topology and angular fades, and preserve
 Z-sort order while splitting large geometry at 64,000 vertices for 16-bit index
@@ -575,6 +628,27 @@ vectors in place: the snapshots embed `alignas(16)` Effekseer SIMD members, and
 rejects. The stable order over the permutation keeps the draw order
 deterministic.
 
+**Distortion nodes** refract the scene instead of drawing their own colour: the red and green channels of their texture are a displacement in the *particle's own plane*, and the fragment samples the background snapshot at the displaced position, keeping the texture's alpha so the particle's shape still masks the refraction. Reproducing that faithfully needs the plane per vertex — a rotated or freely oriented particle has its own, and deriving it from screen axes would rotate the refraction wrongly — so these draws use the model vertex layout, which already carries a tangent and a bitangent, rather than widening the 2D vertex. The displacement intensity and the background's orientation travel in the reserved `ParticleSamplingBuf` channels. Only the sprite family refracts; the other families reject the material when the effect loads, so an effect that cannot be drawn is never accepted and then seen to vanish.
+
+**Model nodes** draw a mesh per instance instead of a generated shape. The `.efkmodel` payload is loaded through an `Effekseer::ModelLoader` implementation, but the vendored parser trusts its byte counts and face indices, so the engine first validates the complete payload and enforces structural budgets (64 MiB, 4096 frames, 64000 vertices and 21333 faces per frame). Only then does the core parse it. The renderer folds each instance's transform into the mesh vertices, exactly as the other families bake their geometry into world space. That keeps model particles on the same frontend draw-buffer path, atlas addressing and batching as every other particle draw; the node's culling mode travels as the draw's `CullMode`, and an animated mesh selects its frame by the instance time modulo the frame count.
+
+**Ribbon and Track (strips)** share one geometry builder, because they differ only
+in how a single cross-section of the band is produced: the builder turns a chain of
+per-instance width triples (left edge, centre, right edge, with the colours at them)
+into two quad strips meeting on the centre line, stretches the texture along the
+whole chain, resolves the colour texture, publishes the atlas addressing flags, and
+chunks against the same vertex budget the Ring path uses. A Ribbon transforms the two
+authored edge offsets by the instance matrix, or - when the node is viewpoint
+dependent - spreads them around the emitter's own up axis so the band keeps facing
+the camera. A Track centres each cross-section on its instance, spreads it across the
+direction of travel (averaged at interior joints so the band does not kink), and
+interpolates width and colour from the head and tail values toward the middle ones.
+Sub-parameters the builder does not implement - spline smoothing, tiled strip UVs,
+trail smoothing, view offset, left-handed strips, non-Default track materials, and
+Z-sorting, which would reorder the instances the chain is stitched from - are
+rejected before a vertex is built. Note that a ribbon's `Positions[2]`/`[3]` are read
+only by the spline path and arrive uninitialised, so nothing may validate them.
+
 `Source/Tests/Test_EffekseerParticleRuntime.cpp` carries self-contained cooked
 fixtures that exercise the real Effekseer callback-to-FOnline-draw-buffer path
 without a stock Effekseer graphics backend. The legacy fixture verifies
@@ -585,19 +659,23 @@ additionally verifies that cooked `None`, `NormalOrder`, and `ReverseOrder`
 Sprite Z-sort modes reach the callback and produce the expected quad depth
 order. A modern SKFE/1810 upstream TestData fixture verifies deterministic Ring
 topology, radii, UVs and index order, all three Ring Z-sort modes, and chunking
-across the 64,000-vertex safety budget that prevents 16-bit index overflow.
+across the 64,000-vertex safety budget that prevents 16-bit index overflow. The
+strip fixtures are compiled from project source inside the test instead of cooked,
+because a strip only becomes geometry once several instances of one group are alive
+together; they pin the two-quads-per-segment structure, the shared centre line, chain
+continuity, the stretched UV assignment, the band width, and the viewpoint-dependent
+orientation.
 
-The initial callback adapter accepts one Default-material color texture. Ring
-nodes may omit it and then draw against a renderer-owned white pixel so their
-vertex colors still match Effekseer. For an authored texture, its requested
-Linear/Nearest mode must match the loaded FOnline atlas texture, and the sampler
-must request `Clamp`; `Repeat` and `Mirror` are rejected regardless of the UV
-values. Every textured callback UV rectangle must also stay inside `[0,1]`
-instead of silently sampling neighboring atlas content. Per-effect
-sub-rectangle wrapping is a separate renderer capability. Modern editor exports
-may retain a non-zero distortion-intensity value while the Default material has
-distortion disabled; that dormant value is ignored, while an active distortion
-material still fails the capability gate.
+The initial callback adapter accepts one Default-material color texture. Any node
+may omit it and then draw against a renderer-owned white pixel so
+their vertex colors still match Effekseer. `Clamp` and `Repeat` wrapping are both
+accepted and resolved in the shader against the published atlas sub-rectangle,
+for any UV value; only `Mirror` is rejected. A node's requested Linear/Nearest
+mode need not match the atlas: `Nearest` from a linearly filtered atlas is served
+by snapping to the texel centre per draw. Modern editor exports may retain a
+non-zero distortion-intensity value while the Default material has distortion
+disabled; that dormant value is ignored, while an active distortion material
+still fails the capability gate.
 
 Effekseer sprites always use the scene type. Direct-scene prewarm is queued
 until the first `DrawInScene` after `Setup` has supplied the current map
@@ -610,7 +688,7 @@ forced first-tick path used by ordinary scheduled simulation.
 
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
-`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 

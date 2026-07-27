@@ -797,6 +797,7 @@ namespace SPK::FO
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_runtime->_impl->ViewProjectionMatrix);
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        _effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         _effect->MainTex = _texture;
 
         spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
