@@ -49,8 +49,6 @@ namespace Preprocessor
 {
     class Context;
     class Lexem;
-    // Mirrors the typedef in ThirdParty/AngelScript/preprocessor/preprocessor.h and must stay
-    // character-for-character the same type; it is the library's container, not one of ours
     using LexemList = std::list<Lexem>;
     class LineNumberTranslator;
 }
