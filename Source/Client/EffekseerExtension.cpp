@@ -53,6 +53,51 @@ constexpr float32_t EFFEKSEER_PREWARM_SECONDS = 1.0f;
 
 struct EffekseerRuntimeState;
 
+static auto EffekseerMalloc(uint32_t size) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static void EffekseerFree(void* mem, uint32_t size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(size);
+    SafeAlloc::FreeRaw(mem);
+}
+
+static auto EffekseerAlignedMalloc(uint32_t size, uint32_t alignment) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+}
+
+static void EffekseerAlignedFree(void* mem, uint32_t size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Effekseer hands back the size but not the alignment, which is why the aligned tier releases a block
+    // without needing it
+    ignore_unused(size);
+    SafeAlloc::FreeAlignedRaw(mem);
+}
+
+void InitializeEffekseerMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        Effekseer::SetMallocFunc(&EffekseerMalloc);
+        Effekseer::SetFreeFunc(&EffekseerFree);
+        Effekseer::SetAlignedMallocFunc(&EffekseerAlignedMalloc);
+        Effekseer::SetAlignedFreeFunc(&EffekseerAlignedFree);
+    });
+}
+
 static void LogEffekseerRejection(string_view path, string_view reason)
 {
     FO_STACK_TRACE_ENTRY();
@@ -898,15 +943,15 @@ public:
     FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding, ParticleSceneBackgroundProvider scene_background_provider) :
         _binding {std::move(binding)},
         _sceneBackgroundProvider {std::move(scene_background_provider)},
-        _effectMngr {effect_mngr},
-        _render {render},
-        _settings {settings},
         _particleEffects {effect_mngr},
         _drawBuffer {render->CreateDrawBuffer(false)},
 #if FO_ENABLE_3D
         _distortionDrawBuffer {render->CreateDrawBuffer(false)},
 #endif
-        _whiteTexture {render->CreateTexture({1, 1}, true, false)}
+        _whiteTexture {render->CreateTexture({1, 1}, true, false)},
+        _effectMngr {effect_mngr},
+        _render {render},
+        _settings {settings}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1298,11 +1343,11 @@ class FOnlineEffekseerRingRenderer final : public Effekseer::RingRenderer
 public:
     FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
+        _particleEffects {effect_mngr},
+        _drawBuffer {render->CreateDrawBuffer(false)},
         _effectMngr {effect_mngr},
         _render {render},
         _settings {settings},
-        _particleEffects {effect_mngr},
-        _drawBuffer {render->CreateDrawBuffer(false)},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
         FO_STACK_TRACE_ENTRY();
@@ -2484,11 +2529,11 @@ class FOnlineEffekseerModelRenderer final : public Effekseer::ModelRenderer
 public:
     FOnlineEffekseerModelRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
+        _particleEffects {effect_mngr},
+        _drawBuffer {render->CreateDrawBuffer(false)},
         _effectMngr {effect_mngr},
         _render {render},
         _settings {settings},
-        _particleEffects {effect_mngr},
-        _drawBuffer {render->CreateDrawBuffer(false)},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
         FO_STACK_TRACE_ENTRY();

@@ -304,32 +304,34 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *const_cast<std::remove_cvref_t<decltype(settings.MonitorHeight)>*>(&settings.MonitorHeight) = display_mode->h;
 }
 
+// Routed through the SafeAlloc raw tier rather than the bare Mem* primitives so SDL gets the same
+// out-of-memory handling as ImGui, AngelScript, zlib and ozz instead of silently receiving null
 static auto SdlMemMalloc(size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemMalloc(size).get();
+    return SafeAlloc::MallocRaw(size).get();
 }
 
 static auto SdlMemCalloc(size_t num, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemCalloc(num, size).get();
+    return SafeAlloc::CallocRaw(num, size).get();
 }
 
 static auto SdlMemRealloc(void* mem, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemRealloc(mem, size).get();
+    return SafeAlloc::ReallocRaw(mem, size).get();
 }
 
 static void SdlMemFree(void* mem) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    MemFree(mem);
+    SafeAlloc::FreeRaw(mem);
 }
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :

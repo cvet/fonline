@@ -340,7 +340,6 @@ FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
 FIXED_SETTING(int32_t, DataBase, PanicOpLogSizeThreshold, 10000000); // Pending database changes file size threshold in bytes after which panic is triggered
 FIXED_SETTING(int32_t, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdown timeout in milliseconds after database panic callback before forced termination
-FIXED_SETTING(bool, DataBase, UnQLiteOmitJournaling, true); // If true, UnQLite opens collections without journaling
 FIXED_SETTING(int32_t, DataBase, JsonIndent, 4); // JSON backend indentation, 0 for compact output
 FIXED_SETTING(string, DataBase, MongoEscapeChar, ":"); // Single character used to replace dots in Mongo document keys
 FIXED_SETTING(vector<string>, DataBase, CustomCollections); // Space-separated user-defined database collections in format CollectionName:Int or CollectionName:Str

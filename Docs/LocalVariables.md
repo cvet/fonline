@@ -117,7 +117,12 @@ carries no project-specific tooling.
 
 Last Frontier ships the analyzer as `Tools/ExplicitLocalTypes` and
 `Tools/LocalVariableValidator` and gates it with the nightly/dispatch
-`local-variable-analysis` job over engine `Source` (via `--engine-root Engine`)
-and project `SourceExt`; `--mode check` (explicit types) and `--mode
-full-enforcement` (`redundant-local-const`, `use-after-move`) fail on any
-remaining debt.
+`local-variable-analysis` job over engine `Source` (via `--engine-root Engine`);
+`--mode check` (explicit types) and `--mode full-enforcement`
+(`redundant-local-const`, `use-after-move`) fail on any remaining debt.
+
+Both the `clang-query` and the `clang-tidy` binary must be present on the host
+running the gate, and the compile database has to be usable for a real parse:
+generated headers reachable from the engine's common include chain must exist
+before the analyzers run, or every translation unit fails on a missing include
+long before any rule is evaluated.

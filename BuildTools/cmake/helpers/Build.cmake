@@ -55,9 +55,8 @@ function(DisableLibWarnings)
 			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
 			#
 			# -fsanitize=alignment is excluded for the same reason — but ONLY genuine third-party packing remains here:
-			#   * unqlite (the embedded KV DB) is the dominant case: its pager/allocator casts byte buffers to structs
-			#     (Page/lhcell/SyMemBlock/...) at 4-byte-aligned addresses by design (~2.2k UBSan sites); fixing it would
-			#     mean rewriting a 50k-line vendored amalgamation, which we do not own.
+			#   * SQLite (the embedded DB) casts page-cache bytes to its own record/page structs by design; fixing it
+			#     would mean rewriting a vendored amalgamation we do not own.
 			#   * AngelScript packs pointer-sized asPWORD operands into its asDWORD[] (4-byte) bytecode buffer at 4-byte
 			#     slots by design (asBC_PTRARG/asBC_QWORDARG = `*(asPWORD*)((asDWORD*)bc+1)`, plus the serializer's
 			#     WriteByteCode/ReadByteCode pointer operands), ~136 sites — upstream bytecode encoding, not our patches.
