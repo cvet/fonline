@@ -730,13 +730,14 @@ static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexc
     return owner;
 }
 
-// Bounded back-off between SyncEntities verify-after-acquire retries. A failed verify means a
-// concurrent reparent (e.g. MapManager::Transfer) moved a requested entity out of the cover we
-// just acquired; recomputing immediately re-races the same in-flight transfer, the busy-spin that
-// exhausts the retry budget under sustained map-transfer churn. The first attempts only yield (the
-// transfer usually completes within a scheduler slice), later attempts add a short, capped sleep so
-// a longer transfer window can settle. Mirrors the stage-1 non-parking back-off in AcquireLocks and
-// keeps the common single-retry case latency-free. Called with no locks held.
+// Bounded back-off between synchronization retries. A failed SyncEntities verify means a concurrent
+// reparent (e.g. MapManager::Transfer) moved a requested entity out of the cover we just acquired;
+// recomputing immediately re-races the same in-flight transfer and can exhaust the retry budget under
+// sustained map-transfer churn. EnsureEntitySyncedImpl uses the same pacing only after rolling back
+// every transient state-mutex acquisition; it intentionally retains the caller's existing exclusive
+// cover while the foreign non-blocking pass completes, which cannot form a wait-for cycle. The first
+// attempts only yield (the contending operation usually completes within a scheduler slice), then add
+// a short capped sleep. SyncEntities calls this with no entity locks held.
 static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();

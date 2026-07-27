@@ -35,6 +35,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "ExceptionHandling.h"
+#include "Sha256.h"
 #include "SmartPointers.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
@@ -56,6 +57,7 @@ auto fs_create_directories(string_view dir) noexcept -> bool;
 auto fs_last_write_time(string_view path) noexcept -> uint64_t;
 auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
 auto fs_hash_file(string_view path) -> optional<uint64_t>;
+auto fs_sha256_file(string_view path) -> optional<Sha256Digest>;
 auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
 auto fs_read_file(string_view path) -> optional<string>;
 auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;

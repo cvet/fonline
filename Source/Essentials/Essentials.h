@@ -61,6 +61,7 @@
 #include "ExceptionHandling.h"
 #include "Threading.h"
 #include "SafeArithmetics.h"
+#include "Sha256.h"
 #include "DataSerialization.h"
 #include "HashedString.h"
 #include "StrongType.h"

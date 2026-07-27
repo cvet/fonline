@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "ContentUpdater.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
 
@@ -120,6 +121,8 @@ public:
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
+    [[nodiscard]] auto GetContentUpdateFeedbackSessionId() const noexcept -> uint64_t { return _contentUpdateSourceReportReplayGuard.GetSessionId(); }
+    [[nodiscard]] auto ConsumeContentUpdateSourceReportToken(const ContentUpdateSourceReportToken& token) -> bool;
 
     void SetDataArrivedCallback(DataArrivedCallback callback);
     void MarkHandshakeComplete() noexcept;
@@ -129,6 +132,7 @@ public:
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
+    void SetContentUpdateFeedbackSessionId(uint64_t session_id);
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
@@ -170,6 +174,7 @@ private:
     StreamCompressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
+    ContentUpdateSourceReportReplayGuard _contentUpdateSourceReportReplayGuard {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
 };
