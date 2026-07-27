@@ -92,12 +92,12 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     // Collect files
     vector<File> filtered_files;
 
-    const auto check_file = [&](const File& file) -> bool {
-        const string_view path = file.GetPath();
-        const u8string config_name = path;
-        const auto fofx = ConfigFile(file.GetText());
-        const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-        const auto write_time = file.GetWriteTime();
+    auto check_file = [&](const File& file) -> bool {
+        string_view path = file.GetPath();
+        u8string config_name = path;
+        auto fofx = ConfigFile(file.GetText());
+        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+        uint64_t write_time = file.GetWriteTime();
 
         for (int32_t pass = 1; pass <= passes; pass++) {
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
@@ -174,8 +174,8 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     for (auto& file_ : filtered_files) {
         string task_name = strex("BakeEffect-{}", file_.GetPath()).str();
         file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
-            const string_view path = file.GetPath();
-            const u8string content = file.GetText();
+            string_view path = file.GetPath();
+            u8string content = file.GetText();
             BakeShaderProgram(path, content.view());
         }));
     }
@@ -201,7 +201,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string config_name = fname;
+    u8string config_name = fname;
     auto fofx = ConfigFile(u8string {content}, ConfigFileOption::CollectContent);
 
     if (!fofx.HasSection("Effect")) {
@@ -210,21 +210,21 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
 
     constexpr bool old_code_profile = false;
 
-    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-    const u8string shader_common_content {fofx.GetSectionContent("ShaderCommon")};
-    const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
-    const auto shader_version_str = strex("#version {} es\n", shader_version).str();
+    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+    u8string shader_common_content {fofx.GetSectionContent("ShaderCommon")};
+    int32_t shader_version = fofx.GetAsInt("Effect", "Version", 310);
+    string shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
     string shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
-    const auto shader_defines = strex("precision highp float;\n").str();
+    string shader_defines = strex("precision highp float;\n").str();
 #endif
     constexpr string_view_nt old_profile_shader_defines {"#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor"};
     constexpr string_view_nt empty_shader_defines {""};
-    const string_view_nt shader_defines_ex = old_code_profile ? old_profile_shader_defines : empty_shader_defines;
-    const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
+    string_view_nt shader_defines_ex = old_code_profile ? old_profile_shader_defines : empty_shader_defines;
+    string shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
-    for (auto pass = 1; pass <= passes; pass++) {
+    for (int32_t pass = 1; pass <= passes; pass++) {
         u8string vertex_pass_content {fofx.GetSectionContent(strex("VertexShader Pass{}", pass))};
         if (vertex_pass_content.empty()) {
             vertex_pass_content.assign(fofx.GetSectionContent("VertexShader"));
@@ -250,8 +250,8 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
         auto shader_defines_text = make_ptr(shader_defines.c_str());
         auto shader_defines_ex_text = make_nptr(shader_defines_ex.c_str());
         auto shader_defines_ex2_text = make_ptr(shader_defines_ex2.c_str());
-        const ptr<const char> shader_common_text = utf8_to_c_str(shader_common_content.view_nt());
-        const ptr<const char> vertex_pass_text = utf8_to_c_str(vertex_pass_content.view_nt());
+        ptr<const char> shader_common_text = utf8_to_c_str(shader_common_content.view_nt());
+        ptr<const char> vertex_pass_text = utf8_to_c_str(vertex_pass_content.view_nt());
         const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -263,7 +263,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
         frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        const ptr<const char> fragment_pass_text = utf8_to_c_str(fragment_pass_content.view_nt());
+        ptr<const char> fragment_pass_text = utf8_to_c_str(fragment_pass_content.view_nt());
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -298,6 +298,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
     }
                 CHECK_TEX("MainTex");
                 CHECK_TEX("IndoorMaskTex");
+                CHECK_TEX("BackgroundTex");
 #if FO_ENABLE_3D
                 for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
                     CHECK_TEX(strex("ModelTex{}", j).strv());
@@ -323,6 +324,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, u8string_view content) co
             CHECK_BUF(MainTexBuf);
             CHECK_BUF(EggBuf);
             CHECK_BUF(SpriteBorderBuf);
+            CHECK_BUF(ParticleSamplingBuf);
             CHECK_BUF(TimeBuf);
             CHECK_BUF(RandomValueBuf);
             CHECK_BUF(ScriptValueBuf);

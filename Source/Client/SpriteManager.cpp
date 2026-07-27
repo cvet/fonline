@@ -473,6 +473,39 @@ void SpriteManager::DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, npt
     DrawTexture(rt->GetTexture(), alpha_blend, region_from, region_to, rt->GetCustomDrawEffect());
 }
 
+auto SpriteManager::AcquireSceneBackground() -> nptr<const RenderTexture>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<RenderTarget> current_rt = _rtMngr.GetCurrentRenderTarget();
+
+    if (!current_rt) {
+        return nullptr;
+    }
+
+    if (_sceneBackgroundValid && _rtSceneBackground && _rtSceneBackground->GetSize() == current_rt->GetSize()) {
+        return _rtSceneBackground->GetTexture();
+    }
+
+    if (!_rtSceneBackground) {
+        _rtSceneBackground = _rtMngr.CreateRenderTarget(false, current_rt->GetSize(), true);
+    }
+    else if (_rtSceneBackground->GetSize() != current_rt->GetSize()) {
+        _rtMngr.ResizeRenderTarget(_rtSceneBackground.as_ptr(), current_rt->GetSize());
+    }
+
+    // Reading the target that is currently bound is not allowed, so the scene is copied out of it first. The copy is a
+    // plain opaque blit: the refracting draw wants the colours behind it, not another blend of them.
+    _rtMngr.PushRenderTarget(_rtSceneBackground.as_ptr());
+    _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
+    DrawRenderTarget(current_rt.as_ptr(), false);
+    Flush();
+    _rtMngr.PopRenderTarget();
+
+    _sceneBackgroundValid = true;
+    return _rtSceneBackground->GetTexture();
+}
+
 void SpriteManager::PushScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1313,6 +1346,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     }
 
     Flush();
+
+    // Anything drawn after this point sees the scene as it is now, so a snapshot taken during an earlier replay is
+    // stale for this one.
+    _sceneBackgroundValid = false;
 
     for (const auto& dd : _directDrawSprites) {
         dd.Spr->DrawInScene(dd.ScenePos, dd.Depth);

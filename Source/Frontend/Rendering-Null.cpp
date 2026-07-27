@@ -267,6 +267,19 @@ public:
         FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Null renderer draw references more vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices.size(), start_index, draw_indices);
 #endif
 
+        // Nothing is rasterized here, but the depth state is still resolved so a headless run holds the same contract as
+        // a device-object backend: a draw asking for a state the effect never built must fail in tests too, not only
+        // where a pipeline or a depth-stencil object happens to be missing.
+        for (size_t pass = 0; pass < _passCount; pass++) {
+#if FO_ENABLE_3D
+            if (DisableShadow && _isShadow[pass]) {
+                continue;
+            }
+#endif
+
+            (void)ResolveDepthVariantSlot(pass);
+        }
+
         if (_needMainTex) {
             if (!custom_tex) {
                 custom_tex = MainTex;

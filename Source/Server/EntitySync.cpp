@@ -510,8 +510,8 @@ bool EntityLock::IsEnsureOpCompatible(bool is_exclusive) const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
-    const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
+    auto this_thread = std::this_thread::get_id();
+    auto owner_thread = _ownerThread.load(std::memory_order_acquire);
 
     if (is_exclusive) {
         return owner_thread == this_thread || (owner_thread == std::thread::id {} && _sharedHolders.empty() && !HasForeignDescendantHolder(this_thread));
@@ -524,8 +524,8 @@ void EntityLock::CommitEnsureOp(bool is_exclusive) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
-    const auto owner_thread = _ownerThread.load(std::memory_order_relaxed);
+    auto this_thread = std::this_thread::get_id();
+    auto owner_thread = _ownerThread.load(std::memory_order_relaxed);
 
     if (is_exclusive) {
         if (owner_thread == this_thread) {
@@ -596,7 +596,7 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    const string_view entity_name = entity != nullptr ? entity->GetName() : string_view {};
+    string_view entity_name = entity != nullptr ? entity->GetName() : string_view {};
     WriteLog("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity_name, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
@@ -1213,8 +1213,8 @@ void FO_TSA_NO_ANALYSIS SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> en
     // those with bounded back-off, so the acquisition is mandatory and lands sooner or later. It throws only
     // when the entity is not actually covered — a contract violation, the caller must `Game.Sync` its subtree
     // in advance — or the covered-cover invariant is corrupt; that is never ordinary contention. An ordinary
-    // native call must propagate the failure rather than retry the same target; a script may prepare and
-    // revalidate a new invocation explicitly.
+    // native call must propagate a failure after this bounded internal batch rather than retry the whole
+    // operation; a script may prepare and revalidate a new invocation explicitly.
     //
     // The acquisition is one all-or-nothing transaction, scoped so every state mutex is released as soon as
     // the ownership commit is done and never held across this context's own bookkeeping below.
@@ -1596,8 +1596,8 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
     //     then parked HOLDING that descendant until the root was released — livelocking any root-
     //     exclusive operation (location destroy) that tried to expand onto the descendant. Now the
     //     exclusive-root invariant is strict: whoever holds an entity's lock exclusively owns the
-    //     whole subtree outright, and `EnsureEntitySynced` either succeeds in its single transient
-    //     try-window or fails immediately without changing the caller's cover.
+    //     whole subtree outright, and `EnsureEntitySynced` absorbs bounded transient try-windows
+    //     without changing the caller's cover.
     // Progress: parked waiters are FIFO per lock and every re-park re-uses the operation's original
     // ticket (allocated once below), so a waiter that loses a re-try race re-enters each queue ahead
     // of later-arriving operations.

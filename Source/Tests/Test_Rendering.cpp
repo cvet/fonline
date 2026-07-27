@@ -54,6 +54,15 @@ MainTexBuf = 1
 ProjBuf = 2
 )";
         }
+        else if (name == u8"Effects/Test_DepthVariants.fofx") {
+            content = R"([Effect]
+Passes = 1
+DepthVariants = True
+)";
+        }
+        else if (name == u8"Effects/Test_DepthVariants.fofx-1-info") {
+            content = "[EffectInfo]\n";
+        }
         else {
             throw GenericException("Unexpected test effect request", name);
         }
@@ -112,6 +121,22 @@ TEST_CASE("NullRenderer")
         auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Тест_Рендера.fofx", MakeTestEffectLoader());
 
         CHECK(effect->GetName() == u8"Effects/Тест_Рендера.fofx");
+    }
+
+    SECTION("DepthVariantRequiresBuiltState")
+    {
+        auto dbuf = renderer.CreateDrawBuffer(false);
+        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
+
+        CHECK(fixed_effect->ResolveDepthVariantSlot(0) == 3);
+
+        fixed_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK_THROWS_WITH(fixed_effect->DrawBuffer(dbuf), Catch::Matchers::ContainsSubstring("depth state the effect did not build"));
+
+        variant_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK(variant_effect->ResolveDepthVariantSlot(0) == 2);
+        CHECK_NOTHROW(variant_effect->DrawBuffer(dbuf));
     }
 }
 

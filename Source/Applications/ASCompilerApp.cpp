@@ -75,27 +75,27 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, true);
             }
 
-            const auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {
-                const u8string pack_name = res_pack.Name;
-                const u8string relative_path = path;
-                const std::filesystem::path native_output_path = std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput.view())} / std::filesystem::path {fs_make_path(pack_name.view())} / std::filesystem::path {fs_make_path(relative_path.view())};
-                const u8string output_path = fs_path_to_u8string(native_output_path);
-                const u8string dir = fs_path_to_u8string(native_output_path.parent_path());
+            auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {
+                u8string pack_name = res_pack.Name;
+                u8string relative_path = path;
+                std::filesystem::path native_output_path = std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput)} / std::filesystem::path {fs_make_path(pack_name)} / std::filesystem::path {fs_make_path(relative_path)};
+                u8string output_path = fs_path_to_u8string(native_output_path);
+                u8string dir = fs_path_to_u8string(native_output_path.parent_path());
 
                 if (!dir.empty()) {
-                    const auto dir_ok = fs_create_directories(dir.view());
-                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create metadata output directory", dir.view(), output_path.view(), res_pack.Name);
+                    bool dir_ok = fs_create_directories(dir);
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create metadata output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {native_output_path, std::ios::binary | std::ios::trunc};
-                FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path.view(), res_pack.Name, path, data.size());
+                FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
                     auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
-                FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path.view(), res_pack.Name, path, data.size());
+                FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
                 return BakingWriteResult::Changed;
             };
 
@@ -105,8 +105,8 @@ int main(int argc, char** argv)
 
             try {
                 metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
-                const u8string pack_name = res_pack.Name;
-                const u8string metadata_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput.view())} / std::filesystem::path {fs_make_path(pack_name.view())});
+                u8string pack_name = res_pack.Name;
+                u8string metadata_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput)} / std::filesystem::path {fs_make_path(pack_name)});
                 metadata_files.AddDirSource(metadata_dir, false);
             }
             catch (const MetadataBakerException& ex) {
@@ -142,27 +142,27 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, true);
             }
 
-            const auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {
-                const u8string pack_name = res_pack.Name;
-                const u8string relative_path = path;
-                const std::filesystem::path native_output_path = std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput.view())} / std::filesystem::path {fs_make_path(pack_name.view())} / std::filesystem::path {fs_make_path(relative_path.view())};
-                const u8string output_path = fs_path_to_u8string(native_output_path);
-                const u8string dir = fs_path_to_u8string(native_output_path.parent_path());
+            auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {
+                u8string pack_name = res_pack.Name;
+                u8string relative_path = path;
+                std::filesystem::path native_output_path = std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput)} / std::filesystem::path {fs_make_path(pack_name)} / std::filesystem::path {fs_make_path(relative_path)};
+                u8string output_path = fs_path_to_u8string(native_output_path);
+                u8string dir = fs_path_to_u8string(native_output_path.parent_path());
 
                 if (!dir.empty()) {
-                    const auto dir_ok = fs_create_directories(dir.view());
-                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create AngelScript output directory", dir.view(), output_path.view(), res_pack.Name);
+                    bool dir_ok = fs_create_directories(dir);
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create AngelScript output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {native_output_path, std::ios::binary | std::ios::trunc};
-                FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path.view(), res_pack.Name, path, data.size());
+                FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
                     auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
-                FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path.view(), res_pack.Name, path, data.size());
+                FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
                 return BakingWriteResult::Changed;
             };
 

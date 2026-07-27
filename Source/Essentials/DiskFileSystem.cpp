@@ -123,7 +123,7 @@ auto fs_combine_path(u8string_view base_path, string_view ascii_relative_path) -
     FO_STACK_TRACE_ENTRY();
 
     const u8string relative_path = ascii_relative_path;
-    return fs_combine_path(base_path, relative_path.view());
+    return fs_combine_path(base_path, relative_path);
 }
 
 auto fs_make_writable_path(u8string_view user_writable_path, u8string_view relative) -> u8string

@@ -74,9 +74,9 @@ RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEf
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<byte> fofx_data = loader(name);
-    const u8string fofx_content = utf8_from_byte_span(fofx_data);
-    const auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
+    vector<byte> fofx_data = loader(name);
+    u8string fofx_content = utf8_from_byte_span(fofx_data);
+    auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
     int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
@@ -192,6 +192,11 @@ RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEf
     u8string_view depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", u8"True");
     u8string_view depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", u8"Always");
 
+    // Opting in builds the alternative depth-state variants so a draw can select one; without it the effect only ever
+    // uses the state declared here and costs exactly what it did before.
+    _depthVariants = u8strvex(fofx.GetAsStr("Effect", "DepthVariants", u8"False")).to_bool();
+    _cullVariants = u8strvex(fofx.GetAsStr("Effect", "CullVariants", u8"False")).to_bool();
+
     for (size_t pass = 0; pass < _passCount; pass++) {
         string pass_str = strex("_Pass{}", pass + 1);
 
@@ -208,15 +213,17 @@ RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEf
         string depth_func_value = utf8_to_string(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
         _depthFunc[pass] = get_depth_func(depth_func_value);
 
-        const vector<byte> pass_info_data = loader(u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1));
-        const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
-        const auto pass_info = ConfigFile(std::move(pass_info_content));
+        vector<byte> pass_info_data = loader(u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1));
+        u8string pass_info_content = utf8_from_byte_span(pass_info_data);
+        auto pass_info = ConfigFile(std::move(pass_info_content));
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
         _posIndoorMaskTex[pass] = pass_info.GetAsInt("EffectInfo", "IndoorMaskTex", -1);
         _needIndoorMaskTex |= _posIndoorMaskTex[pass] != -1;
+        _posBackgroundTex[pass] = pass_info.GetAsInt("EffectInfo", "BackgroundTex", -1);
+        _needBackgroundTex |= _posBackgroundTex[pass] != -1;
         _posEggBuf[pass] = pass_info.GetAsInt("EffectInfo", "EggBuf", -1);
         _needEggBuf |= _posEggBuf[pass] != -1;
         _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
@@ -225,6 +232,8 @@ RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEf
         _needMainTexBuf |= _posMainTexBuf[pass] != -1;
         _posSpriteBorderBuf[pass] = pass_info.GetAsInt("EffectInfo", "SpriteBorderBuf", -1);
         _needSpriteBorderBuf |= _posSpriteBorderBuf[pass] != -1;
+        _posParticleSamplingBuf[pass] = pass_info.GetAsInt("EffectInfo", "ParticleSamplingBuf", -1);
+        _needParticleSamplingBuf |= _posParticleSamplingBuf[pass] != -1;
         _posTimeBuf[pass] = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
         _needTimeBuf |= _posTimeBuf[pass] != -1;
         _posRandomValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);
@@ -265,8 +274,108 @@ auto RenderEffect::CanBatch(ptr<const RenderEffect> other) const -> bool
     if (MainTex != other->MainTex) {
         return false;
     }
+    if (DepthVariant != other->DepthVariant) {
+        return false;
+    }
+    if (CullMode != other->CullMode) {
+        return false;
+    }
 
     return true;
+}
+
+auto RenderEffect::ResolveCullMode() const -> CullModeType
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(IsCullModeUsed(CullMode), "Draw asks for a cull mode the effect did not build", _name, static_cast<int32_t>(CullMode));
+
+    return CullMode;
+}
+
+auto RenderEffect::GetDepthWrite(size_t pass) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (DepthVariant) {
+    case DepthVariantType::TestWrite:
+    case DepthVariantType::NoTestWrite:
+        return true;
+    case DepthVariantType::TestNoWrite:
+    case DepthVariantType::NoTestNoWrite:
+        return false;
+    case DepthVariantType::FromEffect:
+        break;
+    }
+
+    return _depthWrite[pass];
+}
+
+auto RenderEffect::GetDepthFunc(size_t pass) const noexcept -> DepthFuncType
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (DepthVariant) {
+    case DepthVariantType::NoTestWrite:
+    case DepthVariantType::NoTestNoWrite:
+        return DepthFuncType::Always;
+    case DepthVariantType::TestWrite:
+    case DepthVariantType::TestNoWrite:
+    case DepthVariantType::FromEffect:
+        break;
+    }
+
+    return _depthFunc[pass];
+}
+
+auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(pass < _passCount, "Depth variant pass is outside the effect's pass range", _name, pass + 1, _passCount);
+
+    // The slot encodes the resolved state rather than the requested variant, so an effect that declares no variants
+    // can still use an equivalent requested state when it lands on the single slot the effect built.
+    size_t slot = GetDepthWrite(pass) ? 1 : 0;
+
+    if (GetDepthFunc(pass) == DepthFuncType::Always) {
+        slot += 2;
+    }
+
+    FO_VERIFY_AND_THROW(IsDepthVariantSlotUsed(pass, slot), "Draw asks for a depth state the effect did not build", _name, pass + 1, static_cast<int32_t>(DepthVariant), slot);
+
+    return slot;
+}
+
+auto RenderEffect::IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_depthVariants) {
+        return true;
+    }
+
+    size_t own_slot = _depthWrite[pass] ? 1 : 0;
+
+    if (_depthFunc[pass] == DepthFuncType::Always) {
+        own_slot += 2;
+    }
+
+    return slot == own_slot;
+}
+
+auto RenderEffect::GetDepthVariantWrite(size_t slot) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return (slot & 1) != 0;
+}
+
+auto RenderEffect::GetDepthVariantFunc(size_t pass, size_t slot) const noexcept -> DepthFuncType
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return (slot & 2) != 0 ? DepthFuncType::Always : _depthFunc[pass];
 }
 
 FO_END_NAMESPACE

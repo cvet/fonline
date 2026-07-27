@@ -62,6 +62,8 @@ static constexpr ucolor ROOT_CROSSHAIR_COLOR = {100, 200, 220, 110};
 static constexpr ucolor NAME_POINT_COLOR = {255, 220, 40, 230}; // where the name would sit
 static constexpr ucolor RENDER_RECT_COLOR = {90, 220, 90, 200}; // full sprite frame
 static constexpr ucolor VIEW_RECT_COLOR = {235, 90, 220, 200}; // visual (view) rect
+static constexpr ucolor PARTICLE_ATTACH_COLOR = {80, 220, 235, 230}; // where an attached particle effect emits from
+static constexpr ucolor MODEL_ATTACH_COLOR = {240, 175, 70, 230}; // where a bone-attached child model hangs
 static constexpr int32_t OVERLAY_CROSS_HALF = 5; // marker cross arm length, screen pixels
 
 // Distinct bright colours cycled by bone-name hash so a bone's tree entry and
@@ -410,6 +412,7 @@ void AnimationViewer::SelectCritter(hstring proto_id)
     _selectionError.clear();
     _animations.clear();
     _enabledBones.clear();
+    _enabledAttachments.clear();
     _appliedModelScale = 0.0f;
     _pan = {};
     _protoNameOffset = 0;
@@ -847,13 +850,23 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     }
 
 #if FO_ENABLE_3D
-    if (!_enabledBones.empty()) {
+    if (!_enabledBones.empty() || !_enabledAttachments.empty()) {
         if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
             auto model = model_spr->GetModel();
 
             for (const auto& bone : _enabledBones) {
                 if (auto bone_pos = model->GetBoneSpritePos(bone); bone_pos.has_value()) {
                     add_cross(to_screen(*bone_pos), BoneColor(bone));
+                }
+            }
+
+            // A ticked attachment is marked where it actually ends up - its bone displaced by the authored offset - so
+            // the offset can be read off the preview instead of inferred from where the smoke or the weapon looks to be.
+            if (!_enabledAttachments.empty()) {
+                for (const auto& point : model->GetAttachPoints()) {
+                    if (point.SpritePos.has_value() && _enabledAttachments.count(AttachKey(point)) != 0) {
+                        add_cross(to_screen(*point.SpritePos), point.Kind == ModelAttachKind::Particle ? PARTICLE_ATTACH_COLOR : MODEL_ATTACH_COLOR);
+                    }
                 }
             }
         }
@@ -885,30 +898,44 @@ void AnimationViewer::DrawHierarchy()
         return;
     }
 
-    auto root_bone = model_spr->GetModel()->GetInformation()->GetRootBone();
+    auto model = model_spr->GetModel();
+    auto root_bone = model->GetInformation()->GetRootBone();
 
-    ImGui::TextDisabled("Tick a bone to mark it in the preview");
+    ImGui::TextDisabled("Tick a bone or attachment to mark it in the preview");
 
-    if (!_enabledBones.empty()) {
+    if (!_enabledBones.empty() || !_enabledAttachments.empty()) {
         ImGui::SameLine();
         if (ImGui::SmallButton("Clear")) {
             _enabledBones.clear();
+            _enabledAttachments.clear();
         }
     }
 
-    DrawHierarchyNode(root_bone);
+    // Attachments are listed as sub-nodes of the bone they connect to, so the tree shows what actually hangs where
+    // instead of a global toggle that gives no clue which bone an effect or a weapon belongs to.
+    vector<ModelAttachPoint> attach_points = model->GetAttachPoints();
+
+    DrawHierarchyNode(root_bone, attach_points);
 #else
     ImGui::TextUnformatted("3D models only");
 #endif
 }
 
 #if FO_ENABLE_3D
-void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone)
+void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points)
 {
     FO_STACK_TRACE_ENTRY();
 
     hstring name = bone->Name;
     string name_str = string(name);
+    bool has_attachments = false;
+
+    for (const ModelAttachPoint& point : attach_points) {
+        if (point.ParentIndex < 0 && point.BoneName == name) {
+            has_attachments = true;
+            break;
+        }
+    }
 
     ImGui::PushID(bone.get());
 
@@ -931,22 +958,104 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone)
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
 
-    if (bone->Children.empty()) {
+    if (bone->Children.empty() && !has_attachments) {
         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
     }
 
     bool open = ImGui::TreeNodeEx(name_str.c_str(), flags);
     ImGui::PopStyleColor();
 
-    if (open && !bone->Children.empty()) {
+    if (open && (!bone->Children.empty() || has_attachments)) {
+        // Attachments first: they belong to this bone, while the child bones continue the skeleton below it.
+        for (size_t i = 0; i != attach_points.size(); ++i) {
+            if (attach_points[i].ParentIndex < 0 && attach_points[i].BoneName == name) {
+                DrawAttachNode(attach_points, numeric_cast<int32_t>(i));
+            }
+        }
+
         for (const auto& child : bone->Children) {
-            DrawHierarchyNode(child.as_ptr());
+            DrawHierarchyNode(child.as_ptr(), attach_points);
         }
 
         ImGui::TreePop();
     }
 
     ImGui::PopID();
+}
+
+void AnimationViewer::DrawAttachNode(const vector<ModelAttachPoint>& attach_points, int32_t index)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ModelAttachPoint& point = attach_points[numeric_cast<size_t>(index)];
+    bool particle = point.Kind == ModelAttachKind::Particle;
+    string key = AttachKey(point);
+    bool has_children = false;
+
+    for (const ModelAttachPoint& other : attach_points) {
+        if (other.ParentIndex == index) {
+            has_children = true;
+            break;
+        }
+    }
+
+    ImGui::PushID(index);
+
+    bool enabled = _enabledAttachments.count(key) != 0;
+
+    if (ImGui::Checkbox("##pt", &enabled)) {
+        if (enabled) {
+            _enabledAttachments.insert(key);
+        }
+        else {
+            _enabledAttachments.erase(key);
+        }
+    }
+
+    ImGui::SameLine();
+
+    // Colour the label with the marker colour the preview uses for this kind so tree and cross match.
+    ucolor color = particle ? PARTICLE_ATTACH_COLOR : MODEL_ATTACH_COLOR;
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(color.comp.r, color.comp.g, color.comp.b, 255));
+
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
+
+    if (!has_children) {
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    }
+
+    bool open = ImGui::TreeNodeEx(point.Name.c_str(), flags);
+    ImGui::PopStyleColor();
+
+    if (ImGui::IsItemHovered()) {
+        if (point.SpritePos.has_value()) {
+            ImGui::SetTooltip("%s on %s\nauthored move %.3g %.3g %.3g\nsprite pixel %d,%d", particle ? "particle effect" : "child model", string(point.BoneName).c_str(), point.Move.x, point.Move.y, point.Move.z, point.SpritePos->x, point.SpritePos->y);
+        }
+        else {
+            ImGui::SetTooltip("%s on %s\nauthored move %.3g %.3g %.3g\nno frame to project into yet", particle ? "particle effect" : "child model", string(point.BoneName).c_str(), point.Move.x, point.Move.y, point.Move.z);
+        }
+    }
+
+    if (open && has_children) {
+        for (size_t i = 0; i != attach_points.size(); ++i) {
+            if (attach_points[i].ParentIndex == index) {
+                DrawAttachNode(attach_points, numeric_cast<int32_t>(i));
+            }
+        }
+
+        ImGui::TreePop();
+    }
+
+    ImGui::PopID();
+}
+
+auto AnimationViewer::AttachKey(const ModelAttachPoint& point) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Keep the key stable when live attachment indices shift as effects finish, but distinguish repeated uses of the
+    // same resource on one bone at different authored offsets.
+    return strex("{}@{}@{}@{}:{}:{}", static_cast<int32_t>(point.Kind), point.Name, point.BoneName.as_str(), std::bit_cast<uint32_t>(point.Move.x), std::bit_cast<uint32_t>(point.Move.y), std::bit_cast<uint32_t>(point.Move.z)).str();
 }
 #endif
 

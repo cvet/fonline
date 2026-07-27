@@ -435,7 +435,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 
     if (auto target_joint = FindPoseJoint(bone_name); target_joint) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle});
+            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
         }
     }
 }
@@ -596,7 +596,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
-                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY, link.ChildName, link.LinkBone});
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -2478,26 +2478,7 @@ void ModelInstance::RefreshFrameLayout()
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
-    optional<ModelBounds3D> active_bounds;
-    auto include_active_tracks = [this, &active_bounds](const optional<ModelAnimationController>& controller) {
-        if (!controller) {
-            return;
-        }
-
-        for (int32_t track = 0; track < 2; track++) {
-            ModelAnimationController::TrackState state = controller->GetTrackState(track);
-
-            if (!state.Enabled || state.ClipIndex < 0 || numeric_cast<size_t>(state.ClipIndex) >= _modelInfo->_animationBounds.size() || !_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)]) {
-                continue;
-            }
-
-            const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
-            FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
-        }
-    };
-    include_active_tracks(_bodyAnimController);
-    include_active_tracks(_moveAnimController);
-
+    optional<ModelBounds3D> active_bounds = CollectActiveAnimationBounds();
     const ModelBounds3D& draw_bounds = active_bounds ? *active_bounds : _modelInfo->_modelBounds;
     optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
@@ -2547,15 +2528,13 @@ void ModelInstance::RefreshConfigurationLayout()
     }
 
     optional<ModelBounds3D> current_model_bounds;
-    optional<ModelBounds3D> current_view_bounds;
     auto include_model_tree = [&](ptr<const ModelInstance> model, const auto& recurse) noexcept -> bool {
         bool has_visible_mesh = std::ranges::any_of(model->_allMeshes, [](const auto& mesh) noexcept { return !mesh->Disabled; });
 
         if (has_visible_mesh) {
             mat44 relative_transform = root_inverse * model->_parentMatrix;
-            const ModelBounds3D& model_view_bounds = model == this ? model->_modelInfo->_viewBounds : model->_modelInfo->_modelBounds;
 
-            if (!IncludeTransformedModelBounds(current_model_bounds, model->_modelInfo->_modelBounds, relative_transform) || !IncludeTransformedModelBounds(current_view_bounds, model_view_bounds, relative_transform)) {
+            if (!IncludeTransformedModelBounds(current_model_bounds, model->_modelInfo->_modelBounds, relative_transform)) {
                 return false;
             }
         }
@@ -2573,24 +2552,25 @@ void ModelInstance::RefreshConfigurationLayout()
         return;
     }
 
-    if (!current_model_bounds || !current_view_bounds) {
+    if (!current_model_bounds) {
         current_model_bounds = _modelInfo->_modelBounds;
-        current_view_bounds = _modelInfo->_viewBounds;
     }
 
-    if (_configurationLayoutRevision != _combinedMeshGenerationRevision || !_configurationModelBounds || !_configurationViewBounds) {
+    // The drawing frame must cover everything the configuration rasterizes, attachments included, and must not shrink
+    // mid-animation - the frame-sizing pass would then chase a moving target - so it grows until the meshes change.
+    if (_configurationLayoutRevision != _combinedMeshGenerationRevision || !_configurationModelBounds) {
         _configurationModelBounds = *current_model_bounds;
-        _configurationViewBounds = *current_view_bounds;
         _configurationLayoutRevision = _combinedMeshGenerationRevision;
     }
-    else if (!IncludeModelBounds(_configurationModelBounds, *current_model_bounds) || !IncludeModelBounds(_configurationViewBounds, *current_view_bounds)) {
+    else if (!IncludeModelBounds(_configurationModelBounds, *current_model_bounds)) {
         return;
     }
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
     optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
-    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(*_configurationViewBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds(), post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor);
+    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
 
     if (!lighting_layout || !view_layout) {
         return;
@@ -2726,7 +2706,12 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 
     _drawProj = proj;
     _directSceneDraw = true;
-    auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+    bool previous_manager_direct_scene = _modelMngr->_directSceneDraw;
+    _modelMngr->_directSceneDraw = true;
+    auto restore_direct_scene = scope_exit([this, previous_manager_direct_scene]() noexcept {
+        _directSceneDraw = false;
+        _modelMngr->_directSceneDraw = previous_manager_direct_scene;
+    });
 
     Pose(scale, true);
     DrawPosed(true);
@@ -2746,7 +2731,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     float32_t dt = 0.0f;
 
     if (advance_animation) {
-        auto time = GetTime();
+        nanotime time = GetTime();
 
         // Full-resolution delta: truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
         // viewer running at a very high frame rate the animation never accumulates time and looks frozen until a
@@ -2855,7 +2840,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         anim_buf->AnimAbsoluteTime[0] = _animPosTime;
     }
 
-    effect->DisableCulling = _disableCulling;
+    effect->CullMode = _disableCulling ? CullModeType::None : CullModeType::Back;
     effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
@@ -2893,12 +2878,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
     glm::decompose(binding->Owner->GetWorldMatrix(binding->JointIndex), scale, rot, pos, skew, perspective);
 
-    auto p = Convert3dTo2d(pos);
+    ipos32 p = Convert3dTo2d(pos);
     // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
     // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction.
     int32_t frame_height = _frameSize.height / FRAME_SCALE;
-    auto x = p.x - _framePivot.x;
-    auto y = -(p.y - (frame_height - _framePivot.y));
+    int32_t x = p.x - _framePivot.x;
+    int32_t y = -(p.y - (frame_height - _framePivot.y));
 
     return ipos32 {x, y};
 }
@@ -2912,6 +2897,87 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
     if (!binding) {
         return std::nullopt;
     }
+
+    FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
+    const mat44& world = binding->Owner->GetWorldMatrix(binding->JointIndex);
+
+    return ProjectWorldToSpritePos(vec3 {world[3][0], world[3][1], world[3][2]});
+}
+
+auto ModelInstance::GetAttachPoints() const -> vector<ModelAttachPoint>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ModelAttachPoint> points;
+
+    CollectAttachPoints(this, -1, points);
+
+    return points;
+}
+
+void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Every point in the hierarchy is projected through the projector - the root model, the only one that owns a frame.
+    for (const auto& model_particle : _modelParticles) {
+        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+        const mat44& bone_world = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
+        mat44 attach_world = bone_world * glm::translate(mat44 {1.0f}, model_particle.Move);
+        optional<ipos32> sprite_pos = projector->ProjectWorldToSpritePos(vec3 {attach_world[3][0], attach_world[3][1], attach_world[3][2]});
+
+        points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Particle, .Name = model_particle.EffectName, .BoneName = model_particle.BoneName, .Move = model_particle.Move, .SpritePos = sprite_pos, .ParentIndex = parent_index});
+    }
+
+    for (const auto& child : _children) {
+        int32_t child_parent_index = parent_index;
+
+        if (child->_linkJoints.empty()) {
+            const mat44& attach_world = child->_parentMatrix;
+            optional<ipos32> sprite_pos = projector->ProjectWorldToSpritePos(vec3 {attach_world[3][0], attach_world[3][1], attach_world[3][2]});
+            const ModelAnimationData& link = child->_animLink;
+
+            points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Model, .Name = link.ChildName, .BoneName = link.LinkBone, .Move = vec3 {link.MoveX, link.MoveY, link.MoveZ}, .SpritePos = sprite_pos, .ParentIndex = parent_index});
+            child_parent_index = numeric_cast<int32_t>(points.size()) - 1;
+        }
+
+        child->CollectAttachPoints(projector, child_parent_index, points);
+    }
+}
+
+auto ModelInstance::CollectActiveAnimationBounds() const -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<ModelBounds3D> active_bounds;
+    auto include_active_tracks = [this, &active_bounds](const optional<ModelAnimationController>& controller) {
+        if (!controller) {
+            return;
+        }
+
+        for (int32_t track = 0; track < 2; track++) {
+            ModelAnimationController::TrackState state = controller->GetTrackState(track);
+
+            if (!state.Enabled || state.ClipIndex < 0 || numeric_cast<size_t>(state.ClipIndex) >= _modelInfo->_animationBounds.size() || !_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)]) {
+                continue;
+            }
+
+            const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
+            FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
+        }
+    };
+
+    include_active_tracks(_bodyAnimController);
+    include_active_tracks(_moveAnimController);
+
+    return active_bounds;
+}
+
+auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (_frameSize.width <= 0 || _frameSize.height <= 0 || _frameSize.width % FRAME_SCALE != 0 || _frameSize.height % FRAME_SCALE != 0) {
         return std::nullopt;
     }
@@ -2922,15 +2988,11 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
         return std::nullopt;
     }
 
-    FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
-    const mat44& world = binding->Owner->GetWorldMatrix(binding->JointIndex);
-    vec3 bone_world = {world[3][0], world[3][1], world[3][2]};
-
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     mat44 identity {1.0f};
     vec3 projected {};
 
-    if (!ProjectPoint(bone_world, identity, _frameProj, viewport, projected) || !std::isfinite(projected.x) || !std::isfinite(projected.y)) {
+    if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected) || !std::isfinite(projected.x) || !std::isfinite(projected.y)) {
         return std::nullopt;
     }
 

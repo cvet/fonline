@@ -57,6 +57,24 @@ struct ModelParticleSystem
     uint32_t JointIndex {};
     vec3 Move {};
     float32_t Rot {};
+    string EffectName {};
+    hstring BoneName {};
+};
+
+enum class ModelAttachKind : uint8_t
+{
+    Particle,
+    Model,
+};
+
+struct ModelAttachPoint
+{
+    ModelAttachKind Kind {};
+    string Name {};
+    hstring BoneName {};
+    vec3 Move {};
+    optional<ipos32> SpritePos {};
+    int32_t ParentIndex {-1};
 };
 
 class ModelInstance final
@@ -96,6 +114,7 @@ public:
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
+    [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
@@ -160,20 +179,22 @@ private:
         nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
-    [[nodiscard]] auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
-    [[nodiscard]] auto CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool;
-    [[nodiscard]] auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
-    [[nodiscard]] auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
-    [[nodiscard]] auto GetSpeed() const -> float32_t;
-    [[nodiscard]] auto GetMovementSpeed() const -> float32_t;
-    [[nodiscard]] auto GetTime() const -> nanotime;
-    [[nodiscard]] auto FindPoseJoint(hstring bone_name) const noexcept -> optional<PoseJointBinding>;
-    [[nodiscard]] auto GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t;
-    [[nodiscard]] auto GetWorldMatrix(uint32_t joint_index) const -> const mat44&;
-    [[nodiscard]] auto GetProceduralJointRotationAngle(uint32_t joint_index) const noexcept -> optional<float32_t>;
-    [[nodiscard]] auto FillAnimationProceduralRotations(array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS>& procedural_rotations) const -> size_t;
-    [[nodiscard]] auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
-
+    auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
+    auto CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool;
+    auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
+    auto ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>;
+    void CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const;
+    auto CollectActiveAnimationBounds() const -> optional<ModelBounds3D>;
+    auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
+    auto GetSpeed() const -> float32_t;
+    auto GetMovementSpeed() const -> float32_t;
+    auto GetTime() const -> nanotime;
+    auto FindPoseJoint(hstring bone_name) const noexcept -> optional<PoseJointBinding>;
+    auto GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t;
+    auto GetWorldMatrix(uint32_t joint_index) const -> const mat44&;
+    auto GetProceduralJointRotationAngle(uint32_t joint_index) const noexcept -> optional<float32_t>;
+    auto FillAnimationProceduralRotations(array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS>& procedural_rotations) const -> size_t;
+    auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
     void GenerateCombinedMeshes();
     void InvalidateCombinedMeshes() noexcept;
     void FillCombinedMeshes(ptr<const ModelInstance> cur);

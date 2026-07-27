@@ -66,11 +66,15 @@ inline void LogToFile(const u8strex& path, bool append = false)
 
 // Filesystem helpers
 auto fs_make_path(u8string_view path) -> std::u8string;
+inline auto fs_make_path(u8string&& path) -> std::u8string
+{
+    return fs_make_path(path);
+}
 auto fs_path_to_u8string(const std::filesystem::path& path) -> u8string;
 auto fs_resolve_path(u8string_view path) -> u8string;
-inline auto fs_resolve_path(const u8string& path) -> u8string
+inline auto fs_resolve_path(u8string&& path) -> u8string
 {
-    return fs_resolve_path(path.view());
+    return fs_resolve_path(path);
 }
 auto fs_exists(u8string_view path) noexcept -> bool;
 auto fs_is_dir(u8string_view path) noexcept -> bool;
@@ -85,6 +89,10 @@ auto fs_file_size(u8string_view path) noexcept -> optional<uint64_t>;
 auto fs_hash_file(u8string_view path) -> optional<uint64_t>;
 auto fs_hash_bytes(const_span<byte> data) noexcept -> uint64_t;
 auto fs_read_file_bytes(u8string_view path) -> optional<vector<byte>>;
+inline auto fs_read_file_bytes(u8string&& path) -> optional<vector<byte>>
+{
+    return fs_read_file_bytes(path);
+}
 auto fs_read_file_text(u8string_view path) -> optional<u8string>;
 auto fs_compare_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool;

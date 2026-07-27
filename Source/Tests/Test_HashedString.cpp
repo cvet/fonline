@@ -216,7 +216,8 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        storage.ToHashedString("registered_value");
+        hstring registered_value = storage.ToHashedString("registered_value");
+        CHECK(registered_value);
         CHECK(storage.CheckHashedString("registered_value"));
 
         // An unregistered string is reported missing and must NOT be inserted

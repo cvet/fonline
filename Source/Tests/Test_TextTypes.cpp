@@ -66,7 +66,7 @@ static_assert(std::convertible_to<const u8string&, u8string_view>);
 static_assert(!std::convertible_to<u8string, u8string_view>);
 static_assert(!std::convertible_to<const u8string, u8string_view>);
 static_assert(requires(u8string& value) { value = "ASCII"; });
-static_assert(!std::convertible_to<const char*, u8string>);
+static_assert(std::convertible_to<const char*, u8string>);
 static_assert(!std::convertible_to<u8string, string>);
 static_assert(std::constructible_from<string, string_view>);
 static_assert(std::convertible_to<decltype("ASCII"), string_view>);

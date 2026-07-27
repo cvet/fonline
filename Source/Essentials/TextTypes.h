@@ -377,6 +377,10 @@ public:
     }
 
     explicit u8string(u8string_view value);
+    u8string(const char* value) : // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
+        u8string {string_view {value}}
+    {
+    }
     u8string(string_view value); // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
     template<typename Traits, typename Allocator>
     u8string(const std::basic_string<char, Traits, Allocator>& value) : // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
@@ -387,11 +391,7 @@ public:
     u8string(u8string&& other) noexcept;
     auto operator=(const u8string&) -> u8string& = default;
     auto operator=(u8string&& other) noexcept -> u8string&;
-    template<size_t N>
-    auto operator=(const char (&literal)[N]) -> u8string&
-    {
-        return assign(CheckedAsciiLiteral(literal));
-    }
+    auto operator=(const char* value) -> u8string& { return assign(string_view {value}); }
     ~u8string() = default;
 
     [[nodiscard]] static auto FromChecked(std::u8string_view value) -> u8string;
@@ -440,23 +440,6 @@ public:
 
 private:
     using storage_type = std::basic_string<char8_t, std::char_traits<char8_t>, SafeAllocator<char8_t>>;
-
-    template<size_t N>
-    [[nodiscard]] static auto CheckedAsciiLiteral(const char (&literal)[N]) -> string_view
-    {
-        static_assert(N > 0);
-
-        if (literal[N - 1] != 0) {
-            throw TextValidationException(TextEncoding::Ascii, TextValidationError::MissingTerminator, N - 1);
-        }
-
-        const string_view value {literal, N - 1};
-        if (const auto issue = validate_ascii_text(value)) {
-            throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
-        }
-
-        return value;
-    }
 
     template<size_t N>
     [[nodiscard]] static auto CheckedLiteral(const char8_t (&literal)[N]) -> u8string_view

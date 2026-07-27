@@ -342,8 +342,13 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
-    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
-        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); })}
+    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(
+        settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
+        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED {
+            nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
+            return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
+        })}
 {
     FO_STACK_TRACE_ENTRY();
 }

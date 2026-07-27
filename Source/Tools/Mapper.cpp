@@ -5901,7 +5901,7 @@ void MapperEngine::ConsoleSubmitCommand()
         history_str += str + "\n";
     }
     const u8string history_text = history_str;
-    Cache.SetText("mapper_console.txt", history_text.view());
+    Cache.SetText("mapper_console.txt", history_text);
 
     bool process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
     AddMess(ConsoleStr);

@@ -277,6 +277,324 @@ namespace ParticleTests
         result[z_sort_offset] = static_cast<byte>(z_sort);
         return result;
     }
+
+    // Two minimal strip projects, authored here rather than cooked, because a strip is only geometry once several
+    // instances of one group are alive at the same time: four generations one frame apart, each living long enough to
+    // still be there, moving along +Y so the band has a length and a direction of travel. The Ribbon flavour takes its
+    // viewpoint-dependent flag as a parameter, since that is the one strip sub-parameter the sample corpus exercises
+    // both ways. Both are untextured - the compiler only assigns a colour texture index when it can read the image file
+    // itself, which a compiled-in-memory fixture has no way to offer - so they draw their vertex colours through the
+    // renderer's white pixel, the same configuration the corpus uses for most of its tracks.
+    inline constexpr string_view StripProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>4</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <LocationValues>
+          <Type>2</Type>
+          <Easing>
+            <End>
+              <Y>
+                <Center>4</Center>
+                <Max>4</Max>
+                <Min>4</Min>
+              </Y>
+            </End>
+          </Easing>
+        </LocationValues>
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+{}
+        </DrawingValues>
+        <Name>Strip</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    inline auto MakeSimpleRibbonProject(bool viewpoint_dependent) -> string
+    {
+        return strex(strex::dynamic_format, StripProjectTemplate, strex("          <Type>3</Type>\n          <Ribbon>\n            <ViewpointDependent>{}</ViewpointDependent>\n          </Ribbon>", viewpoint_dependent ? "True" : "False").str()).str();
+    }
+
+    inline auto MakeSimpleTrackProject() -> string
+    {
+        return strex(strex::dynamic_format, StripProjectTemplate, "          <Type>6</Type>\n          <TrailSmoothing>0</TrailSmoothing>\n          <Track />").str();
+    }
+
+    // A model project and the mesh it references. The mesh is written here in Effekseer's own version-6 model layout
+    // (version, scale, model count, frame count, then per frame the vertices and the faces indexing them) so the whole
+    // fixture stays self-contained: one unit quad, two faces, distinct vertex colours per corner.
+    inline constexpr string_view ModelProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>2</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>5</Type>
+          <Model>
+            <Model>Model/Fixture.efkmodel</Model>
+            <Billboard>2</Billboard>
+            <Culling>{}</Culling>
+          </Model>
+        </DrawingValues>
+        <Name>Mesh</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    // Effekseer culling: 0 = discard front faces, 1 = discard back faces, 2 = draw both.
+    inline auto MakeModelProject(int32_t culling) -> string
+    {
+        FO_VERIFY_AND_THROW(culling >= 0 && culling <= 2, "Effekseer model fixture culling mode is invalid", culling);
+
+        return strex(strex::dynamic_format, ModelProjectTemplate, culling).str();
+    }
+
+    inline auto MakeFixtureModelPayload() -> vector<byte>
+    {
+        vector<byte> result;
+
+        auto write_int32 = [&result](int32_t value) {
+            for (size_t byte_index = 0; byte_index < sizeof(int32_t); byte_index++) {
+                result.emplace_back(static_cast<byte>(numeric_cast<uint8_t>((numeric_cast<uint32_t>(value) >> (byte_index * 8)) & 0xff)));
+            }
+        };
+        auto write_float = [&result](float32_t value) {
+            array<byte, sizeof(float32_t)> bytes {};
+            MemCopy(bytes.data(), &value, sizeof(float32_t));
+
+            for (byte value_byte : bytes) {
+                result.emplace_back(value_byte);
+            }
+        };
+        auto write_vertex = [&write_float, &result](float32_t x, float32_t y, float32_t u, float32_t v, uint8_t red) {
+            write_float(x);
+            write_float(y);
+            write_float(0.0f);
+            // Normal, binormal and tangent are part of the layout but the renderer draws unlit meshes.
+            for (size_t axis = 0; axis < 9; axis++) {
+                write_float(axis % 3 == 2 ? 1.0f : 0.0f);
+            }
+
+            write_float(u);
+            write_float(v);
+            write_float(0.0f);
+            write_float(0.0f);
+            result.emplace_back(static_cast<byte>(red));
+            result.emplace_back(byte {255});
+            result.emplace_back(byte {255});
+            result.emplace_back(byte {255});
+        };
+
+        write_int32(6); // version
+        write_int32(1); // scale
+        write_int32(1); // model count
+        write_int32(1); // frame count
+        write_int32(4); // vertex count
+        write_vertex(-0.5f, -0.5f, 0.0f, 1.0f, 10);
+        write_vertex(0.5f, -0.5f, 1.0f, 1.0f, 20);
+        write_vertex(-0.5f, 0.5f, 0.0f, 0.0f, 30);
+        write_vertex(0.5f, 0.5f, 1.0f, 0.0f, 40);
+        write_int32(2); // face count
+        write_int32(0);
+        write_int32(1);
+        write_int32(2);
+        write_int32(2);
+        write_int32(1);
+        write_int32(3);
+
+        return result;
+    }
+
+    // A sprite project whose material refracts the scene instead of drawing its own colour. The compiler only assigns a
+    // texture index for an image it can measure, so the fixture is compiled from a directory holding the referenced
+    // file; MakeFixtureImageHeader writes just enough of a PNG for that measurement.
+    inline constexpr string_view DistortionProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>2</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <Material>6</Material>
+          <ColorTexture>Texture/Distortion.png</ColorTexture>
+          <DistortionIntensity>{}</DistortionIntensity>
+          <AlphaBlend>{}</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>2</Type>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Name>Refraction</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    inline auto MakeDistortionProject(float32_t intensity, int32_t alpha_blend) -> string
+    {
+        return strex(strex::dynamic_format, DistortionProjectTemplate, intensity, alpha_blend).str();
+    }
+
+    // The Effekseer compiler reads an image only to learn its size, from the PNG signature and the first header chunk.
+    inline auto MakeFixtureImageHeader(int32_t width, int32_t height) -> vector<byte>
+    {
+        FO_VERIFY_AND_THROW(width > 0 && height > 0, "Fixture image size is invalid", width, height);
+
+        vector<byte> result {byte {0x89}, byte {'P'}, byte {'N'}, byte {'G'}, byte {0x0d}, byte {0x0a}, byte {0x1a}, byte {0x0a}};
+        result.insert(result.end(), 8, byte {}); // chunk length and type, unread by the size probe
+
+        for (int32_t value : {width, height}) {
+            for (size_t byte = 0; byte < sizeof(int32_t); byte++) {
+                result.emplace_back(static_cast<std::byte>(numeric_cast<uint8_t>((numeric_cast<uint32_t>(value) >> ((sizeof(int32_t) - 1 - byte) * 8)) & 0xff)));
+            }
+        }
+
+        return result;
+    }
 }
 
 FO_END_NAMESPACE

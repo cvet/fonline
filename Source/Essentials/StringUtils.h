@@ -416,12 +416,6 @@ public:
     {
         _sv = _s;
     }
-    template<size_t N>
-    explicit u8strex(const char (&literal)[N]) :
-        u8strex {string_view {literal, N - 1}}
-    {
-        static_assert(N > 0);
-    }
     explicit u8strex(u8string&& s) noexcept :
         u8strvex {},
         _s {std::move(s)}

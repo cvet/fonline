@@ -2073,8 +2073,8 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        unlogined.SetName("\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D");
-        if (unlogined.Name != "\xD0\x98\xD0\xB3\xD1\x80\xD0\xBE\xD0\xBA \xF0\x9F\x8C\x8D") return -5;
+        unlogined.SetName("Игрок 🌍");
+        if (unlogined.Name != "Игрок 🌍") return -5;
         return 0;
     }
 

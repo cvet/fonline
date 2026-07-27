@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 struct ModelBone;
+struct ModelAttachPoint;
 #endif
 
 ///
@@ -98,7 +99,9 @@ private:
     void DrawAnimationList();
     void DrawHierarchy();
 #if FO_ENABLE_3D
-    void DrawHierarchyNode(ptr<const ModelBone> bone);
+    void DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points);
+    void DrawAttachNode(const vector<ModelAttachPoint>& attach_points, int32_t index);
+    static auto AttachKey(const ModelAttachPoint& point) -> string;
 #endif
 
     void LoadSettings();
@@ -114,7 +117,7 @@ private:
     void DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale);
 
     auto MakeAnimationLabel(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> string;
-    [[nodiscard]] static auto BoneColor(hstring bone_name) -> ucolor;
+    static auto BoneColor(hstring bone_name) -> ucolor;
 
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
@@ -161,6 +164,7 @@ private:
     bool _drawRenderRect {};
     bool _drawViewRect {};
     unordered_set<hstring> _enabledBones {}; // bones whose position marker is shown
+    unordered_set<string> _enabledAttachments {}; // attachments whose point marker is shown, keyed by AttachKey
 };
 
 FO_END_NAMESPACE

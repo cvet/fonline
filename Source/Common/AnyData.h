@@ -160,42 +160,18 @@ public:
         [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
         [[nodiscard]] auto operator[](u8string_view key) const -> const Value& { return _value.at(u8string {key}); }
         [[nodiscard]] auto operator[](const u8string& key) const -> const Value& { return _value.at(key); }
-        [[nodiscard]] auto operator[](string_view key) const -> const Value& { return _value.at(u8string {key}); }
-        template<typename Traits, typename Allocator>
-        [[nodiscard]] auto operator[](const std::basic_string<char, Traits, Allocator>& key) const -> const Value&
-        {
-            return operator[](string_view {key.data(), key.size()});
-        }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
         [[nodiscard]] auto Contains(u8string_view key) const -> bool { return _value.count(u8string {key}) != 0; }
         [[nodiscard]] auto Contains(const u8string& key) const noexcept -> bool { return _value.count(key) != 0; }
-        [[nodiscard]] auto Contains(string_view key) const -> bool { return _value.count(u8string {key}) != 0; }
-        template<typename Traits, typename Allocator>
-        [[nodiscard]] auto Contains(const std::basic_string<char, Traits, Allocator>& key) const -> bool
-        {
-            return Contains(string_view {key.data(), key.size()});
-        }
         [[nodiscard]] auto Copy() const -> Dict;
 
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
         [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
         void Emplace(u8string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
-        void Emplace(string_view key, Value value) noexcept { _value.emplace(u8string {key}, std::move(value)); }
-        template<typename Traits, typename Allocator>
-        void Emplace(const std::basic_string<char, Traits, Allocator>& key, Value value) noexcept
-        {
-            Emplace(string_view {key.data(), key.size()}, std::move(value));
-        }
         void Assign(u8string_view key, Value value) noexcept { _value.insert_or_assign(u8string {key}, std::move(value)); }
         void Assign(const u8string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
-        void Assign(string_view key, Value value) noexcept { _value.insert_or_assign(u8string {key}, std::move(value)); }
-        template<typename Traits, typename Allocator>
-        void Assign(const std::basic_string<char, Traits, Allocator>& key, Value value) noexcept
-        {
-            Assign(string_view {key.data(), key.size()}, std::move(value));
-        }
 
     private:
         map<u8string, Value> _value {};

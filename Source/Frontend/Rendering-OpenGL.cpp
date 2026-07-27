@@ -88,6 +88,7 @@ FO_BEGIN_NAMESPACE
     X(glCompileShader, PFNGLCOMPILESHADERPROC); \
     X(glCreateProgram, PFNGLCREATEPROGRAMPROC); \
     X(glCreateShader, PFNGLCREATESHADERPROC); \
+    X(glCullFace, PFNGLCULLFACEPROC); \
     X(glDeleteBuffers, PFNGLDELETEBUFFERSPROC); \
     X(glDeleteFramebuffers, PFNGLDELETEFRAMEBUFFERSPROC); \
     X(glDeleteFramebuffersEXT, PFNGLDELETEFRAMEBUFFERSEXTPROC); \
@@ -855,6 +856,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
             bind_ubo_block("ProjBuf", opengl_effect->_posProjBuf[pass]);
             bind_ubo_block("MainTexBuf", opengl_effect->_posMainTexBuf[pass]);
             bind_ubo_block("SpriteBorderBuf", opengl_effect->_posSpriteBorderBuf[pass]);
+            bind_ubo_block("ParticleSamplingBuf", opengl_effect->_posParticleSamplingBuf[pass]);
             bind_ubo_block("TimeBuf", opengl_effect->_posTimeBuf[pass]);
             bind_ubo_block("RandomValueBuf", opengl_effect->_posRandomValueBuf[pass]);
             bind_ubo_block("ScriptValueBuf", opengl_effect->_posScriptValueBuf[pass]);
@@ -1454,15 +1456,18 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 #if FO_ENABLE_3D
     if (_usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
-
-        if (!DisableCulling) {
-            GL(glEnable(GL_CULL_FACE));
-        }
     }
 #endif
 
     if (_usage == EffectUsage::QuadSprite) {
         GL(glEnable(GL_DEPTH_TEST));
+    }
+
+    CullModeType cull_mode = ResolveCullMode();
+
+    if (cull_mode != CullModeType::None) {
+        GL(glEnable(GL_CULL_FACE));
+        GL(glCullFace(cull_mode == CullModeType::Front ? GL_FRONT : GL_BACK));
     }
 
     if (opengl_dbuf->VertexArrObj != 0) {
@@ -1495,6 +1500,9 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }
+    if (_needParticleSamplingBuf && !ParticleSamplingBuf.has_value()) {
+        ParticleSamplingBuf = ParticleSamplingBuffer();
+    }
     if (_needSpriteBorderBuf && !SpriteBorderBuf.has_value()) {
         SpriteBorderBuf = SpriteBorderBuffer();
     }
@@ -1522,7 +1530,9 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 #endif
 
-    constexpr size_t max_uniform_blocks = 11;
+    // One slot per standard uniform block the gather below walks, used or not: the counter advances for every
+    // block so the indices stay stable across draws that declare different subsets.
+    constexpr size_t max_uniform_blocks = 12;
     size_t block_offsets[max_uniform_blocks] = {};
     size_t block_sizes[max_uniform_blocks] = {};
 
@@ -1557,6 +1567,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         gather_block(_needMainTexBuf, MainTexBuf, true);
         gather_block(_needEggBuf, EggBuf, true);
         gather_block(_needSpriteBorderBuf, SpriteBorderBuf, true);
+        gather_block(_needParticleSamplingBuf, ParticleSamplingBuf, true);
         gather_block(_needTimeBuf, TimeBuf, true);
         gather_block(_needRandomValueBuf, RandomValueBuf, true);
         gather_block(_needScriptValueBuf, ScriptValueBuf, false);
@@ -1602,6 +1613,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             continue;
         }
 #endif
+        size_t depth_slot = ResolveDepthVariantSlot(pass);
 
         if (GL_HAS(uniform_buffer_object)) {
             size_t bind_block_index = 0;
@@ -1619,6 +1631,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             bind_block(_posMainTexBuf[pass]);
             bind_block(_posEggBuf[pass]);
             bind_block(_posSpriteBorderBuf[pass]);
+            bind_block(_posParticleSamplingBuf[pass]);
             bind_block(_posTimeBuf[pass]);
             bind_block(_posRandomValueBuf[pass]);
             bind_block(_posScriptValueBuf[pass]);
@@ -1648,6 +1661,16 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             GL(glActiveTexture(GL_TEXTURE0));
         }
 
+        if (_posBackgroundTex[pass] != -1) {
+            nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(background_tex_source, "OpenGL dummy texture is not created");
+            auto background_tex = background_tex_source.dyn_cast<const OpenGL_Texture>();
+            FO_VERIFY_AND_THROW(background_tex, "OpenGL background texture is not of the expected backend type");
+            GL(glActiveTexture(GL_TEXTURE0 + _posBackgroundTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, background_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
+        }
+
 #if FO_ENABLE_3D
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1670,7 +1693,10 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
-        if (!_depthWrite[pass]) {
+
+        bool depth_write = GetDepthVariantWrite(depth_slot);
+
+        if (!depth_write) {
             GL(glDepthMask(GL_FALSE));
         }
         if (
@@ -1678,7 +1704,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             _usage == EffectUsage::Model ||
 #endif
             _usage == EffectUsage::QuadSprite) {
-            GL(glDepthFunc(ConvertDepthFunc(_depthFunc[pass])));
+            GL(glDepthFunc(ConvertDepthFunc(GetDepthVariantFunc(pass, depth_slot))));
         }
 
         if constexpr (sizeof(vindex_t) == 2) {
@@ -1694,7 +1720,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(GL_FUNC_ADD));
         }
-        if (!_depthWrite[pass]) {
+        if (!depth_write) {
             GL(glDepthMask(GL_TRUE));
         }
 
@@ -1714,6 +1740,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             unbind_block(_posMainTexBuf[pass]);
             unbind_block(_posEggBuf[pass]);
             unbind_block(_posSpriteBorderBuf[pass]);
+            unbind_block(_posParticleSamplingBuf[pass]);
             unbind_block(_posTimeBuf[pass]);
             unbind_block(_posRandomValueBuf[pass]);
             unbind_block(_posScriptValueBuf[pass]);
@@ -1745,12 +1772,13 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     if (_usage == EffectUsage::Model) {
         GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
         GL(glDisable(GL_DEPTH_TEST));
-
-        if (!DisableCulling) {
-            GL(glDisable(GL_CULL_FACE));
-        }
     }
 #endif
+
+    if (CullMode != CullModeType::None) {
+        GL(glCullFace(GL_BACK)); // Restore the default culled face
+        GL(glDisable(GL_CULL_FACE));
+    }
 
     if (_usage == EffectUsage::QuadSprite) {
         GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
