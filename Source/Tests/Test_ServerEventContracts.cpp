@@ -177,8 +177,7 @@ namespace
             path = parent_path;
         }
 
-        FAIL("Unable to locate engine root");
-        return {};
+        throw GenericException("Unable to locate engine root");
     }
 
     [[nodiscard]] static auto ReadSourceFile(const std::filesystem::path& path) -> string
