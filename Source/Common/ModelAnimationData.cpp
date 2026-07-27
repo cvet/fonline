@@ -42,12 +42,6 @@ FO_BEGIN_NAMESPACE
 static constexpr uint64_t MODEL_ANIMATION_ARCHIVE_HASH_OFFSET = 14695981039346656037ULL;
 static constexpr uint64_t MODEL_ANIMATION_ARCHIVE_HASH_PRIME = 1099511628211ULL;
 
-struct ModelAnimationAllocationHeader
-{
-    uintptr_t AllocationAddress {};
-    size_t AllocationSize {};
-};
-
 class ModelAnimationAllocator final : public ozz::memory::Allocator
 {
 public:
@@ -55,36 +49,14 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        constexpr size_t max_size = std::numeric_limits<size_t>::max();
-
-        if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
-            ReportBadAlloc("Model animation allocator received invalid alignment", "byte", 1, size);
-            ReportAndExit("Model animation allocation alignment is invalid");
-        }
-        if (alignment - 1 > max_size - sizeof(ModelAnimationAllocationHeader) || size > max_size - sizeof(ModelAnimationAllocationHeader) - (alignment - 1)) {
-            ReportBadAlloc("Model animation allocator size overflow", "byte", 1, size);
-            ReportAndExit("Model animation allocation size overflow");
-        }
-
-        size_t allocation_size = size + sizeof(ModelAnimationAllocationHeader) + alignment - 1;
-        constexpr SafeAllocator<uint8_t> allocator;
-        ptr<uint8_t> allocation {allocator.allocate(allocation_size)};
-        uintptr_t aligned_address = align_up(allocation.as_uintptr() + sizeof(ModelAnimationAllocationHeader), static_cast<uintptr_t>(alignment));
-        ptr<ModelAnimationAllocationHeader> header {reinterpret_cast<ModelAnimationAllocationHeader*>(aligned_address - sizeof(ModelAnimationAllocationHeader))};
-        header->AllocationAddress = allocation.as_uintptr();
-        header->AllocationSize = allocation_size;
-        return reinterpret_cast<void*>(aligned_address);
+        return SafeAlloc::MallocAlignedRaw(size, alignment).get();
     }
 
     void Deallocate(void* block) override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        if (block != nullptr) {
-            ptr<ModelAnimationAllocationHeader> header {reinterpret_cast<ModelAnimationAllocationHeader*>(reinterpret_cast<uintptr_t>(block) - sizeof(ModelAnimationAllocationHeader))};
-            constexpr SafeAllocator<uint8_t> allocator;
-            allocator.deallocate(reinterpret_cast<uint8_t*>(header->AllocationAddress), header->AllocationSize);
-        }
+        SafeAlloc::FreeAlignedRaw(block);
     }
 };
 

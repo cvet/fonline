@@ -948,7 +948,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
                 input_write_time = _outputFiles.at(string(path));
                 uint64_t output_write_time = fs_last_write_time(output_path);
-                FO_VERIFY_AND_THROW(input_write_time < output_write_time, "Baked output file is not newer than the newest source input", path, output_path, input_write_time, output_write_time);
+                FO_VERIFY_AND_THROW(input_write_time <= output_write_time, "Baked output file is older than the newest source input", path, output_path, input_write_time, output_write_time);
             }
 
             return accept_output_path(output_path);

@@ -431,7 +431,7 @@ private:
     using ReturnValueCleanerStorage = std::conditional_t<std::is_same_v<TRet, void>, std::nullptr_t, ScriptFuncDesc::ReturnValueCleanerType>;
 
     unique_del_nptr<ScriptFuncDesc> _func {};
-    [[no_unique_address]] ReturnValueCleanerStorage _returnValueCleaner {};
+    FO_NO_UNIQUE_ADDRESS ReturnValueCleanerStorage _returnValueCleaner {};
     std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
 };
 

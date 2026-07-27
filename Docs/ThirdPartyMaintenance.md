@@ -100,6 +100,20 @@ For a new engine dependency:
 - register any `find_package()` interception needed to prevent accidental host
   library use;
 - mark local vendored-file edits as `(FOnline Patch)`;
+- **check whether the library exposes an allocator hook, and either wire it to
+  `SafeAlloc` or record why not.** Libraries that allocate through C `malloc`
+  land in the CRT heap rather than rpmalloc, outside the engine
+  out-of-memory contract and invisible to allocator statistics and Tracy. Hooks
+  come in several shapes — a runtime setter (`SDL_SetMemoryFunctions`,
+  `asSetGlobalMemoryFunctions`, `Effekseer::SetMallocFunc`), a struct passed at
+  init (`png_create_read_struct_2`, `bson_mem_set_vtable`), or a compile-time
+  symbol the consumer defines (`UFBX_EXTERNAL_MALLOC`). Read the hook's
+  *implementation*, not just its declaration: LibreSSL still exports
+  `CRYPTO_set_mem_functions`, but its body is an inert `return 0;`. Check also
+  whether a vtable is copied or retained by pointer, and whether an aligned
+  allocation is released through the same free callback as an unaligned one —
+  both have bitten this codebase. See
+  [Essentials.md](Essentials.md#third-party-allocators);
 - validate at least one configure/build path that consumes the dependency.
 
 ## Pruning Notes

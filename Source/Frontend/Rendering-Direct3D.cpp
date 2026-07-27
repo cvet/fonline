@@ -1473,7 +1473,6 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
         auto cbuffer_dst = make_nptr(cbuffer_resource.pData);
         FO_VERIFY_AND_THROW(cbuffer_dst, "Mapped subresource data pointer is null");
-        using BufferType = std::remove_cvref_t<decltype(buf)>;
 
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
