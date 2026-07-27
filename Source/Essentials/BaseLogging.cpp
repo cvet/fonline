@@ -48,6 +48,13 @@ static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
 static void WriteSync(string_view message) noexcept;
+static void RotateLogIfOversizedLocked() noexcept;
+static auto CopyAndTruncateLogLocked(const std::string& rotated_path) noexcept -> bool;
+static auto ReopenLogFileLocked(std::ios::openmode mode) noexcept -> bool;
+static void WriteRotationNoticeLocked(const std::string& rotated_path) noexcept;
+static void DisableLogRotationLocked() noexcept;
+static void DeleteRotatedLogParts(const std::string& path) noexcept;
+static auto IsNullLogDevicePath(string_view path) noexcept -> bool;
 static void FlushLogAtExit();
 
 struct BaseLoggingData
@@ -76,6 +83,12 @@ struct BaseLoggingData
 
     std::mutex LogLocker {};
     std::ofstream LogFileHandle {};
+    std::string LogFilePath {};
+    bool LogFileIsNullDevice {};
+    bool LogFileAppendMode {};
+    size_t MaxLogFileSize {};
+    size_t LogRotationCounter {};
+    bool LogRotationFailed {};
     std::atomic_bool AsyncEnabled {};
     std::mutex AsyncQueueMutex {};
     std::condition_variable AsyncSignal {};
@@ -86,32 +99,61 @@ struct BaseLoggingData
 };
 FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
 
-extern void LogToFile(string_view path, bool append)
+extern void LogToFile(string_view path, bool append, bool cleanup_rotated_parts)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (build_condition<FO_WEB>()) {
         return;
     }
 
     bool open_failed = false;
+    std::string new_log_path {path};
+    bool new_log_is_null_device = IsNullLogDevicePath(new_log_path);
 
     {
         std::scoped_lock locker {BaseLogging->LogLocker};
 
-        if (BaseLogging->LogFileHandle.is_open()) {
-            BaseLogging->LogFileHandle.close();
-        }
-
         std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
-        BaseLogging->LogFileHandle.open(std::string(path), open_mode);
+        std::ofstream new_log_file {new_log_path, open_mode};
 
-        if (!BaseLogging->LogFileHandle) {
+        if (!new_log_file) {
             open_failed = true;
+        }
+        else {
+            if (BaseLogging->LogFileHandle.is_open()) {
+                BaseLogging->LogFileHandle.close();
+            }
+
+            BaseLogging->LogFileHandle = std::move(new_log_file);
+            BaseLogging->LogFilePath = std::move(new_log_path);
+            BaseLogging->LogFileIsNullDevice = new_log_is_null_device;
+            BaseLogging->LogFileAppendMode = append;
+            BaseLogging->LogRotationCounter = 0;
+            BaseLogging->LogRotationFailed = false;
+
+            // Cleanup happens only after the replacement log opened successfully. A writable-path
+            // client switch still appends the current run's handoff lines, but explicitly removes
+            // numbered parts retained from the previous run.
+            if (!new_log_is_null_device && (!append || cleanup_rotated_parts)) {
+                DeleteRotatedLogParts(BaseLogging->LogFilePath);
+            }
         }
     }
 
     if (open_failed) {
         WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
     }
+}
+
+extern void SetMaxLogFileSize(size_t size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker {BaseLogging->LogLocker};
+
+    BaseLogging->MaxLogFileSize = size;
+    BaseLogging->LogRotationFailed = false;
 }
 
 extern void SetAsyncLogWriting(bool enabled)
@@ -304,6 +346,8 @@ static void AsyncWorkerLoop() noexcept
 
 static void WriteSync(string_view message) noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     try {
         std::scoped_lock locker {BaseLogging->LogLocker};
 
@@ -311,6 +355,8 @@ static void WriteSync(string_view message) noexcept
             BaseLogging->LogFileHandle.seekp(0, std::ios::end);
             BaseLogging->LogFileHandle << message;
             BaseLogging->LogFileHandle.flush();
+
+            RotateLogIfOversizedLocked();
         }
 
         std::cout << message;
@@ -319,6 +365,233 @@ static void WriteSync(string_view message) noexcept
     catch (...) {
         BreakIntoDebugger();
     }
+}
+
+static void RotateLogIfOversizedLocked() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        if (BaseLogging->MaxLogFileSize == 0 || BaseLogging->LogRotationFailed) {
+            return;
+        }
+
+        if (BaseLogging->LogFileIsNullDevice) {
+            return;
+        }
+
+        std::streamoff log_size = static_cast<std::streamoff>(BaseLogging->LogFileHandle.tellp());
+
+        if (log_size < 0 || std::cmp_less_equal(log_size, BaseLogging->MaxLogFileSize)) {
+            return;
+        }
+
+        // Pick the first free numbered part
+        std::string rotated_path;
+        std::error_code exists_error;
+
+        do {
+            BaseLogging->LogRotationCounter++;
+            rotated_path = BaseLogging->LogFilePath;
+            rotated_path += '.';
+            rotated_path += std::to_string(BaseLogging->LogRotationCounter);
+        } while (std::filesystem::exists(rotated_path, exists_error));
+
+        // Append mode is used for the synchronous client host/runtime handoff. Truncate the active
+        // file in place so the host's already open handle remains attached to the canonical path.
+        if (BaseLogging->LogFileAppendMode) {
+            if (CopyAndTruncateLogLocked(rotated_path)) {
+                WriteRotationNoticeLocked(rotated_path);
+            }
+            else {
+                DisableLogRotationLocked();
+            }
+            return;
+        }
+
+        BaseLogging->LogFileHandle.close();
+
+        std::error_code rename_error;
+        std::filesystem::rename(BaseLogging->LogFilePath, rotated_path, rename_error);
+
+        if (rename_error) {
+            (void)ReopenLogFileLocked(std::ios::app);
+            DisableLogRotationLocked();
+            return;
+        }
+
+        if (!ReopenLogFileLocked(std::ios::trunc)) {
+            std::error_code remove_error;
+            (void)std::filesystem::remove(BaseLogging->LogFilePath, remove_error);
+
+            std::error_code rollback_error;
+            std::filesystem::rename(rotated_path, BaseLogging->LogFilePath, rollback_error);
+
+            if (!rollback_error) {
+                (void)ReopenLogFileLocked(std::ios::app);
+            }
+
+            DisableLogRotationLocked();
+            return;
+        }
+
+        WriteRotationNoticeLocked(rotated_path);
+    }
+    catch (...) {
+        DisableLogRotationLocked();
+        BreakIntoDebugger();
+    }
+}
+
+static auto CopyAndTruncateLogLocked(const std::string& rotated_path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::error_code copy_error;
+        (void)std::filesystem::copy_file(BaseLogging->LogFilePath, rotated_path, copy_error);
+
+        if (copy_error) {
+            return false;
+        }
+
+        std::error_code truncate_error;
+        std::filesystem::resize_file(BaseLogging->LogFilePath, 0, truncate_error);
+
+        if (truncate_error) {
+            return false;
+        }
+
+        BaseLogging->LogFileHandle.clear();
+        BaseLogging->LogFileHandle.seekp(0, std::ios::end);
+        return !!BaseLogging->LogFileHandle;
+    }
+    catch (...) {
+        BreakIntoDebugger();
+        return false;
+    }
+}
+
+static auto ReopenLogFileLocked(std::ios::openmode mode) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        if (BaseLogging->LogFileHandle.is_open()) {
+            BaseLogging->LogFileHandle.close();
+        }
+
+        BaseLogging->LogFileHandle.clear();
+        BaseLogging->LogFileHandle.open(BaseLogging->LogFilePath, std::ios::out | std::ios::binary | mode);
+        return !!BaseLogging->LogFileHandle;
+    }
+    catch (...) {
+        BreakIntoDebugger();
+        return false;
+    }
+}
+
+static void WriteRotationNoticeLocked(const std::string& rotated_path) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::string notice = "Log rotated, previous part: '";
+        notice += rotated_path;
+        notice += "'\n";
+        BaseLogging->LogFileHandle << notice;
+        BaseLogging->LogFileHandle.flush();
+
+        if (!BaseLogging->LogFileHandle) {
+            DisableLogRotationLocked();
+        }
+    }
+    catch (...) {
+        DisableLogRotationLocked();
+        BreakIntoDebugger();
+    }
+}
+
+static void DisableLogRotationLocked() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    BaseLogging->LogRotationFailed = true;
+
+    constexpr string_view notice = "Log rotation failed, further file rotation is disabled\n";
+
+    try {
+        if (BaseLogging->LogFileHandle.is_open() && !BaseLogging->LogFileHandle) {
+            BaseLogging->LogFileHandle.clear();
+            BaseLogging->LogFileHandle.seekp(0, std::ios::end);
+        }
+
+        if (BaseLogging->LogFileHandle) {
+            BaseLogging->LogFileHandle << notice;
+            BaseLogging->LogFileHandle.flush();
+        }
+
+        std::cout << notice;
+        std::cout.flush();
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static void DeleteRotatedLogParts(const std::string& path) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::filesystem::path log_path {path};
+        std::string prefix = log_path.filename().string() + ".";
+
+        std::filesystem::path log_dir = log_path.parent_path();
+
+        if (log_dir.empty()) {
+            log_dir = ".";
+        }
+
+        std::error_code iterate_error;
+
+        for (std::filesystem::directory_iterator dir_it {log_dir, iterate_error}; !iterate_error && dir_it != std::filesystem::directory_iterator {}; dir_it.increment(iterate_error)) {
+            std::error_code file_type_error;
+
+            if (!dir_it->is_regular_file(file_type_error)) {
+                continue;
+            }
+
+            std::string file_name = dir_it->path().filename().string();
+
+            if (file_name.size() <= prefix.size() || file_name.compare(0, prefix.size(), prefix) != 0) {
+                continue;
+            }
+
+            std::string_view part_index = std::string_view {file_name}.substr(prefix.size());
+
+            if (!std::ranges::all_of(part_index, [](char ch) { return ch >= '0' && ch <= '9'; })) {
+                continue;
+            }
+
+            std::error_code remove_error;
+            (void)std::filesystem::remove(dir_it->path(), remove_error);
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static auto IsNullLogDevicePath(string_view path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return path.size() == 3 && (path[0] == 'N' || path[0] == 'n') && (path[1] == 'U' || path[1] == 'u') && (path[2] == 'L' || path[2] == 'l');
+#else
+    return path == "/dev/null";
+#endif
 }
 
 static void FlushLogAtExit()
