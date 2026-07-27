@@ -72,7 +72,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir.view(), true);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {
@@ -107,7 +107,7 @@ int main(int argc, char** argv)
                 metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
                 const u8string pack_name = res_pack.Name;
                 const u8string metadata_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(GetApp()->Settings.BakeOutput.view())} / std::filesystem::path {fs_make_path(pack_name.view())});
-                metadata_files.AddDirSource(metadata_dir.view(), false);
+                metadata_files.AddDirSource(metadata_dir, false);
             }
             catch (const MetadataBakerException& ex) {
                 const_span<u8string> params = ex.params();
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir.view(), true);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<byte> data) FO_DEFERRED {

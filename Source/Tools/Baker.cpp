@@ -371,10 +371,10 @@ void MasterBaker::BakeAllInternal()
         pack_bake_context->PackName = res_pack.Name;
         pack_bake_context->OutputDir = output_dir;
         pack_bake_context->Report = pack_report;
-        pack_bake_context->PackBakedFiles.AddDirSource(output_dir.view(), true, true, true);
+        pack_bake_context->PackBakedFiles.AddDirSource(output_dir, true, true, true);
 
         for (const auto& input_dir : res_pack.InputDirs) {
-            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir.view(), true);
+            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
         }
         for (const auto& input_file : res_pack.InputFiles) {
             const std::filesystem::path native_input_file {fs_make_path(input_file.view())};
@@ -568,7 +568,7 @@ void MasterBaker::BakeAllInternal()
 
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->OutputAdded && bake_context->FirstBake) {
-                baking_output.AddDirSource(bake_context->OutputDir.view(), true, true);
+                baking_output.AddDirSource(bake_context->OutputDir, true, true);
                 bake_context->OutputAdded = true;
             }
             if (bake_context->BakedFiles != 0) {
@@ -791,7 +791,7 @@ auto BakerDataSource::Reindex() -> bool
         // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
         // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
         for (const auto& dir : res_pack.InputDirs) {
-            res_entry.InputDir.AddDirSource(dir.view(), true);
+            res_entry.InputDir.AddDirSource(dir, true);
         }
         for (const auto& path : res_pack.InputFiles) {
             const std::filesystem::path native_path {fs_make_path(path.view())};

@@ -77,7 +77,7 @@ TEST_CASE("FileSystem")
         REQUIRE(fs_write_file_text(root_file_path.view(), u8"root"));
 
         FileSystem fs;
-        fs.AddDirSource(temp_dir.view(), true);
+        fs.AddDirSource(temp_dir, true);
 
         CHECK(fs.IsFileExists("texts/a.txt"));
         CHECK_FALSE(fs.IsFileExists("missing.txt"));
@@ -202,7 +202,7 @@ TEST_CASE("FileSystem")
         REQUIRE(fs_write_file_text(entry_path.view(), u8"one"));
 
         FileSystem fs;
-        fs.AddDirSource(temp_dir.view(), true);
+        fs.AddDirSource(temp_dir, true);
 
         FileCollection files = fs.GetAllFiles();
         REQUIRE(files.GetFilesCount() == 1);

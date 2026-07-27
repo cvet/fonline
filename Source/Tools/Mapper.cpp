@@ -60,7 +60,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir.view(), true, true, true);
+            MapsFileSys.AddDirSource(dir, true, true, true);
         }
     }
 
