@@ -39,8 +39,6 @@
 #include "SafeArithmetics.h"
 #include "StackTrace.h"
 
-#include <source_location>
-
 FO_BEGIN_NAMESPACE
 
 namespace diagnostics
@@ -578,13 +576,7 @@ namespace diagnostics
             return;
         }
 
-        try {
-            _statistics->add(elapsed());
-        }
-        catch (...) {
-            WriteLog("[{}] scoped duration aggregation failed", diagnostic_log_prefix);
-            BreakIntoDebugger();
-        }
+        safe_call([this] { _statistics->add(elapsed()); });
     }
 
     auto scoped_duration::elapsed() const noexcept -> timespan
@@ -846,14 +838,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         cancel();
-
-        try {
-            _worker.join();
-        }
-        catch (...) {
-            WriteLog("[{}] watchdog join failed", diagnostic_log_prefix);
-            BreakIntoDebugger();
-        }
+        safe_call([this] { _worker.join(); });
     }
 
     auto timeout_watchdog::expired() const noexcept -> bool
@@ -868,7 +853,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         uint8_t expected = state::active;
-        ignore_unused(_state->status.compare_exchange_strong(expected, state::cancelled, std::memory_order_acq_rel));
+        (void)_state->status.compare_exchange_strong(expected, state::cancelled, std::memory_order_acq_rel);
     }
 
     void timeout_watchdog::run(shared_ptr<state> watchdog_state) noexcept
@@ -897,16 +882,10 @@ namespace diagnostics
         WriteLog("[{}] watchdog {} expired", diagnostic_log_prefix, watchdog_state->name);
 
         if (watchdog_state->on_timeout) {
-            try {
-                watchdog_state->on_timeout();
-            }
-            catch (...) {
-                WriteLog("[{}] watchdog {} callback failed", diagnostic_log_prefix, watchdog_state->name);
-                BreakIntoDebugger();
-            }
+            safe_call(watchdog_state->on_timeout);
         }
 
-        ignore_unused(debug_break_if(watchdog_state->break_into_debugger));
+        (void)debug_break_if(watchdog_state->break_into_debugger);
     }
 
     event_history::event_history(string_view name, size_t capacity) :

@@ -91,7 +91,7 @@ TEST_CASE("Diagnostics")
     {
         constexpr const char* environment_name = "FO_UNIT_TEST_DIAGNOSTICS_TRIGGER";
 
-#if defined(_WIN32)
+#if FO_WINDOWS
         REQUIRE(_putenv_s(environment_name, "payload") == 0);
 #else
         REQUIRE(setenv(environment_name, "payload", 1) == 0);
@@ -108,7 +108,7 @@ TEST_CASE("Diagnostics")
         trigger.reset();
         CHECK(trigger.consume() == optional<string> {"payload"});
 
-#if defined(_WIN32)
+#if FO_WINDOWS
         REQUIRE(_putenv_s(environment_name, "") == 0);
 #else
         REQUIRE(unsetenv(environment_name) == 0);
@@ -208,7 +208,7 @@ TEST_CASE("Diagnostics")
         CHECK(delta.private_memory_bytes == -50);
 
         diagnostics::scoped_memory_delta memory_scope {"memory-scope", std::numeric_limits<size_t>::max()};
-        ignore_unused(memory_scope.delta());
+        (void)memory_scope.delta();
         memory_scope.cancel();
 
         diagnostics::fault_injector fault {"packet", 2, 2};

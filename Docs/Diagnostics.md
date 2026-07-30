@@ -55,7 +55,7 @@ Packet and external-listener example:
 diagnostics::hex_checkpoint("incoming-login", packet);
 
 static diagnostics::udp_sender diagnostic_output {"127.0.0.1", 43020};
-ignore_unused(diagnostic_output.send_bytes(packet));
+(void)diagnostic_output.send_bytes(packet);
 ```
 
 `udp_sender` starts the platform socket layer and binds an ephemeral local UDP socket when constructed. It never opens a listener or retries; `is_ready()` and the returned byte count make setup and send failures visible. A send is one datagram, so keep each payload below the practical path MTU when packet boundaries matter.
@@ -80,11 +80,11 @@ Fault and capture example:
 static diagnostics::fault_injector packet_fault {"login-packet", 5};
 static diagnostics::pcap_writer packet_capture {"Workspace/login.pcap", diagnostics::pcap_link_user0};
 
-ignore_unused(packet_capture.write_packet(packet));
+(void)packet_capture.write_packet(packet);
 
 if (packet_fault.hit()) {
     diagnostics::inject_delay(std::chrono::milliseconds {250});
-    ignore_unused(diagnostics::corrupt_bytes(packet, 0, 1));
+    (void)diagnostics::corrupt_bytes(packet, 0, 1);
 }
 ```
 
