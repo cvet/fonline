@@ -94,7 +94,7 @@ private:
     ptr<const entry> _entry {&_zeroEntry};
 #if UINTPTR_MAX == UINT32_MAX
     // hstring participates in fixed value-type layouts whose slots are hash-sized.
-    uint32_t _padding {};
+    [[maybe_unused]] uint32_t _padding {};
 #endif
 };
 static_assert(sizeof(hstring::hash_t) == 8);

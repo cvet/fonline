@@ -139,20 +139,22 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         auto service_argv = make_nptr(argv);
         FO_VERIFY_AND_THROW(arg_count == 0 || service_argv, "Service argument vector is null with a non-zero argument count");
 
-        static std::vector<std::string> args_holder;
-        static vector<CommandLineArg> args;
-        args_holder.resize(arg_count);
-        args.resize(arg_count);
+        vector<string> arg_storage(arg_count);
 
         for (size_t i = 0; i < arg_count; ++i) {
-            nptr<const wchar_t> service_arg = service_argv[i];
+            auto service_arg = make_nptr(service_argv[i]);
             FO_VERIFY_AND_THROW(service_arg, "Service argument string is null");
-            args_holder[i] = strex().parse_wide_char(service_arg.get());
-
-            args[i] = args_holder[i].data();
+            arg_storage[i] = strex().parse_wide_char(service_arg);
         }
 
-        CommandLineArgs service_args {args};
+        vector<CommandLineArg> arg_pointers;
+        arg_pointers.reserve(arg_count);
+
+        for (string& arg : arg_storage) {
+            arg_pointers.emplace_back(arg.data());
+        }
+
+        CommandLineArgs service_args {arg_pointers};
         InitApp(service_args, AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
@@ -210,12 +212,12 @@ int main(int argc, char** argv)
         InitApp(args, AppInitFlags::PrebakeResources);
 
 #if FO_WINDOWS
-        if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
+        if (std::wstring_view(::GetCommandLineW()).find(L"--server-service-start") != std::wstring_view::npos) {
             // Start
             constexpr SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
-        else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
+        else if (std::wstring_view(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring_view::npos) {
             // Delete
             SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
@@ -260,7 +262,7 @@ int main(int argc, char** argv)
             constexpr DWORD buf_len = 4096 * 2;
             wchar_t buf[buf_len];
             ::GetModuleFileNameW(nullptr, buf, buf_len);
-            auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
+            wstring path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
             auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed

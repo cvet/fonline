@@ -119,7 +119,7 @@ public:
     void StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id);
     void ProcessTimeEvents();
     void ClearTimeEvents();
-    void CancelAllForEntity(ptr<Entity> entity);
+    void CancelAllForEntity(ptr<Entity> entity) noexcept;
     auto CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>;
     auto FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent;
     void PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result);

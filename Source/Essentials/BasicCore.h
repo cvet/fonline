@@ -72,6 +72,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <deque>
 #include <filesystem>
@@ -80,6 +81,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <list>
 #include <map>
@@ -174,6 +176,13 @@
 #else
 #define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
 #define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
+// Empty member storage optimization
+#if defined(_MSC_VER)
+#define FO_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define FO_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // Force inline helper

@@ -371,7 +371,12 @@ rpmalloc_clz(uintptr_t x) {
 #if defined(_M_ARM64)
 	return (size_t)_CountLeadingZeros64(x);  // __lzcnt64 is x86-only
 #else
-	return (size_t)__lzcnt64(x);
+	/* (FOnline Patch) __lzcnt64 emits the LZCNT instruction, which needs ABM/BMI1 support: on an
+	   older x64 CPU without it the encoding silently decodes as BSR and returns the bit index
+	   instead of a leading-zero count, corrupting every size-class computation. _BitScanReverse64
+	   is available on every x64 CPU, so the shipped client stays correct on pre-Haswell hardware. */
+	unsigned long msb;
+	return _BitScanReverse64(&msb, (unsigned __int64)x) ? (size_t)(63 - msb) : (size_t)64;
 #endif
 #else
 	return (size_t)__builtin_clzll(x);
@@ -381,7 +386,12 @@ rpmalloc_clz(uintptr_t x) {
 #if defined(_M_ARM64) || defined(_M_ARM)
 	return (size_t)_CountLeadingZeros((unsigned long)x);  // __lzcnt32 is x86-only
 #else
-	return (size_t)__lzcnt32(x);
+	/* (FOnline Patch) MSVC has no __lzcnt32 intrinsic (only __lzcnt/__lzcnt16/__lzcnt64), so the
+	   upstream 32-bit x86 branch compiled into a call to a nonexistent ___lzcnt32 and failed to link.
+	   _BitScanReverse is the portable MSVC equivalent and, unlike the LZCNT family, needs no ABM
+	   support - which the 32-bit Win7 target cannot assume. */
+	unsigned long msb;
+	return _BitScanReverse(&msb, (unsigned long)x) ? (size_t)(31 - msb) : (size_t)32;
 #endif
 #else
 	return (size_t)__builtin_clzl(x);
@@ -2669,6 +2679,11 @@ rpmalloc_linker_reference(void) {
 //////
 
 static void
+#if defined(_WIN32)
+// (FOnline Patch) FlsAlloc expects a PFLS_CALLBACK_FUNCTION, which is __stdcall. On x64 there is only one
+// calling convention so the default __cdecl happens to bind, but the 32-bit MSVC target rejects it (C2440).
+NTAPI
+#endif
 rpmalloc_thread_destructor(void* value) {
 	// If this is called on main thread assume it means rpmalloc_finalize
 	// has not been called and shutdown is forced (through _exit) or unclean

@@ -56,7 +56,7 @@ void MapManager::LoadFromResources()
     FO_STACK_TRACE_ENTRY();
 
     auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
-    std::vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
+    vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     for (const auto& map_file_header : map_files) {
         hstring map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
@@ -1182,7 +1182,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
-            for (ptr<Critter> group_cr : *global_cr_group) {
+            for (ptr<Critter> group_cr : global_cr_group->GetMembers()) {
                 group_cr->Send_AddCritter(cr);
             }
 
@@ -1201,10 +1201,10 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
             cr->SetGlobalMapTripId(trip_id);
 
-            cr_group = SafeAlloc::MakeShared<vector<ptr<Critter>>>();
+            cr_group = SafeAlloc::MakeShared<GlobalMapGroup>();
         }
 
-        vec_add_unique_value(*cr_group, cr);
+        cr_group->AddMember(cr);
     }
 }
 
@@ -1301,9 +1301,9 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
         cr->SetGlobalMapTripId({});
         auto& cr_group = cr->GetRawGlobalMapGroup();
-        vec_remove_unique_value(*cr_group, cr);
+        cr_group->RemoveMember(cr);
 
-        for (ptr<Critter> group_cr : *cr_group) {
+        for (ptr<Critter> group_cr : cr_group->GetMembers()) {
             group_cr->Send_RemoveCritter(cr);
         }
 

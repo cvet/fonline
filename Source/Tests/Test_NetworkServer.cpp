@@ -328,11 +328,31 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
     BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
 
-    auto server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    // Walk to a port this host really has free before provoking the double-bind on purpose. The
+    // counter is per-process, but several unit-test processes share a CI machine whenever workflows
+    // run in parallel, so they walk the identical sequence and the *first* bind can fail with the
+    // very "Address already in use" this test means to trigger deliberately with the second one.
+    uint16_t port = 0;
+    unique_nptr<NetworkServer> server;
+    string startup_error;
+
+    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+        port = TestServerPort.fetch_add(1);
+        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+
+        try {
+            server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+        }
+        catch (const std::exception& ex) {
+            startup_error = ex.what();
+        }
+    }
+
+    CAPTURE(startup_error);
+    REQUIRE(server);
+
     auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 
     string error_message;
@@ -343,6 +363,8 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     catch (const std::exception& ex) {
         error_message = ex.what();
     }
+
+    CAPTURE(error_message);
 
     REQUIRE_FALSE(error_message.empty());
     CHECK(error_message.find("Address already in use") != string::npos);
@@ -361,25 +383,42 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
     BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
 
     mutex state_mutex;
     shared_ptr<NetworkServerConnection> accepted_conn;
     vector<uint8_t> received;
 
-    auto server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
-        conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
-            [&](const_span<uint8_t> buf) {
-                scoped_lock lock {state_mutex};
-                received.insert(received.end(), buf.begin(), buf.end());
-            },
-            []() {});
+    // Same host-shared port hazard as the address-in-use case above: advance until a bind lands
+    // instead of failing the transport test over a port another process happens to hold.
+    uint16_t port = 0;
+    unique_nptr<NetworkServer> server;
+    string startup_error;
 
-        scoped_lock lock {state_mutex};
-        accepted_conn = std::move(conn);
-    });
+    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+        port = TestServerPort.fetch_add(1);
+        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+
+        try {
+            server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
+                    [&](const_span<uint8_t> buf) {
+                        scoped_lock lock {state_mutex};
+                        received.insert(received.end(), buf.begin(), buf.end());
+                    },
+                    []() {});
+
+                scoped_lock lock {state_mutex};
+                accepted_conn = std::move(conn);
+            });
+        }
+        catch (const std::exception& ex) {
+            startup_error = ex.what();
+        }
+    }
+
+    CAPTURE(startup_error);
+    REQUIRE(server);
 
     auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 

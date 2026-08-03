@@ -52,6 +52,8 @@ class ModelHierarchy;
 class ModelInformation;
 class ModelInstance;
 
+auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_model_draw, const ParticleSceneBackgroundProvider& scene_background_provider) -> ParticleSceneBackgroundResult;
+
 class ModelManager final
 {
     friend class ModelInstance;
@@ -62,7 +64,7 @@ public:
     using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider = {});
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -87,6 +89,8 @@ private:
     ptr<GameTimer> _gameTime;
     ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
+    ParticleSceneBackgroundProvider _sceneBackgroundProvider;
+    bool _directSceneDraw {};
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone>> _loadedModels {};

@@ -113,12 +113,12 @@ private:
     unique_nptr<RenderTexture> _renderTarget {};
     isize32 _renderTargetSize {};
     float32_t _zoom {1.0f};
-    float32_t _appliedScale {};  // effect scale currently pushed into the particle system (viewer zoom)
-    fpos32 _pan {};  // camera pan offset (screen px), held-RMB drag
+    float32_t _appliedScale {}; // effect scale currently pushed into the particle system (viewer zoom)
+    fpos32 _pan {}; // camera pan offset (screen px), held-RMB drag
     float32_t _dirAngle {};
     int32_t _seed {};
-    bool _looped {true};    // restart the effect when a finite burst ends
-    bool _prewarm {true};   // warm the system on play so it opens mid-effect
+    bool _looped {true}; // restart the effect when a finite burst ends
+    bool _prewarm {true}; // warm the system on play so it opens mid-effect
 
     // Diagnostic overlays, all opt-in (off by default).
     bool _drawRoot {};

@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 struct ModelBone;
+struct ModelAttachPoint;
 #endif
 
 ///
@@ -98,7 +99,9 @@ private:
     void DrawAnimationList();
     void DrawHierarchy();
 #if FO_ENABLE_3D
-    void DrawHierarchyNode(ptr<const ModelBone> bone);
+    void DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points);
+    void DrawAttachNode(const vector<ModelAttachPoint>& attach_points, int32_t index);
+    static auto AttachKey(const ModelAttachPoint& point) -> string;
 #endif
 
     void LoadSettings();
@@ -114,7 +117,7 @@ private:
     void DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale);
 
     auto MakeAnimationLabel(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> string;
-    [[nodiscard]] static auto BoneColor(hstring bone_name) -> ucolor;
+    static auto BoneColor(hstring bone_name) -> ucolor;
 
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
@@ -134,7 +137,7 @@ private:
     isize32 _renderTargetSize {};
     vector<AnimationEntry> _animations {};
     vector<int32_t> _modelLayers {};
-    int32_t _protoNameOffset {};  // per-critter NameOffset from the selected proto
+    int32_t _protoNameOffset {}; // per-critter NameOffset from the selected proto
     int32_t _playingIndex {-1};
     bool _looped {true};
     // Facing is an angle (degrees), the same currency the engine uses: a sprite
@@ -143,7 +146,7 @@ private:
     // Held-LMB drag over the preview turns it left/right.
     float32_t _dirAngle {210.0f};
     float32_t _zoom {1.0f};
-    fpos32 _pan {};  // camera pan offset (screen px), held-RMB drag
+    fpos32 _pan {}; // camera pan offset (screen px), held-RMB drag
 
     // Direct draw renders a 3D model straight into the scene (real geometry +
     // depth) instead of through the cached atlas sprite. Off by default.
@@ -160,7 +163,8 @@ private:
     bool _drawNameLevel {};
     bool _drawRenderRect {};
     bool _drawViewRect {};
-    unordered_set<hstring> _enabledBones {};  // bones whose position marker is shown
+    unordered_set<hstring> _enabledBones {}; // bones whose position marker is shown
+    unordered_set<string> _enabledAttachments {}; // attachments whose point marker is shown, keyed by AttachKey
 };
 
 FO_END_NAMESPACE

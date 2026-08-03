@@ -540,18 +540,35 @@ if(FO_BUILD_SERVER_LIB)
     endif()
 endif()
 
-# Unqlite
-if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
-    StatusMessage("+ Unqlite")
-    SetValue(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
-    AddSubdirectory("${FO_UNQLITE_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-    AddIncludeDirectories("${FO_UNQLITE_DIR}")
-    AppendList(FO_COMMON_LIBS unqlite)
-    DisableLibWarnings(unqlite)
-    TargetCompileDefinitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=1)
+# SQLite
+if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ SQLite")
+    SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
+    SetValue(FO_SQLITE_SOURCE
+        "${FO_SQLITE_DIR}/sqlite3.c"
+        "${FO_SQLITE_DIR}/sqlite3.h")
+    AddStaticThirdPartyLibrary(sqlite
+        SOURCE_LIST FO_SQLITE_SOURCE
+        INCLUDE_DIRS "${FO_SQLITE_DIR}")
+    AddIncludeDirectories("${FO_SQLITE_DIR}")
+    AppendList(FO_SERVER_LIBS sqlite)
+    DisableLibWarnings(sqlite)
+    # Serialized threading mode: the engine already serializes access per connection, and this keeps
+    # SQLite's own mutexes available for the shared allocator the engine installs.
+    # The omitted subsystems are ones a key-value store never reaches; leaving them in would only
+    # grow the binary and the attack surface.
+    TargetCompileDefinitions(sqlite PRIVATE
+        "SQLITE_THREADSAFE=1"
+        "SQLITE_DEFAULT_MEMSTATUS=0"
+        "SQLITE_OMIT_LOAD_EXTENSION"
+        "SQLITE_OMIT_DEPRECATED"
+        "SQLITE_OMIT_SHARED_CACHE"
+        "SQLITE_OMIT_AUTOINIT"
+        "SQLITE_DQS=0"
+        "SQLITE_USE_URI=0")
+    AddCompileDefinitionsList(FO_HAVE_SQLITE=1)
 else()
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=0)
+    AddCompileDefinitionsList(FO_HAVE_SQLITE=0)
 endif()
 
 # Dear ImGui

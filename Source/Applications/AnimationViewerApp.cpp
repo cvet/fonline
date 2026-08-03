@@ -43,9 +43,9 @@
 
 #include "Common.h"
 
+#include "AnimationViewer.h"
 #include "Application.h"
 #include "Baker.h"
-#include "AnimationViewer.h"
 #include "Client.h"
 #include "Settings.h"
 #include "WebRelated.h"

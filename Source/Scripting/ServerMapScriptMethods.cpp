@@ -759,6 +759,18 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, Critter
     return critters;
 }
 
+// SyncScope: requires self; returns the map's current spectator Players. A spectator is an independent Player
+// root that neither the map nor its location cover includes, so a caller that destroys this map or its location
+// must cover every returned Player first and re-read this list to prove the membership did not change.
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
+{
+    // Spectator membership changes under the Player's cover, not the map's, so read the lock-guarded snapshot.
+    vector<refcount_ptr<Player>> spectators = self->GetSpectatorPlayersForSend();
+
+    return MakeScriptHandleVector<Player>(spectators);
+}
+
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)

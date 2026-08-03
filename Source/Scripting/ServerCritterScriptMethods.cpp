@@ -105,6 +105,42 @@ FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
+// SyncScope: requires self; returns the ids of self's current global-map group together with the group's
+// membership revision (empty with revision 0 when self is mapped). Group members are independent Critter roots
+// that self's cover does not include, so a caller that sends initial info to, transfers, or destroys a
+// global-map critter resolves and covers the returned ids and then re-reads ids plus revision to prove the
+// membership did not change while it was acquiring that cover.
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Critter_GetGlobalMapCritterIds(ptr<Critter> self, uint64_t& revision)
+{
+    return self->GetGlobalMapGroupIds(revision);
+}
+
+// SyncScope: requires self + every critter of self's current global-map group; sends the other members to self's
+// player without acquiring any cover. Initial info sends only the critter itself, so a caller that attaches a
+// global-map critter to a player covers the group (Sync::WidenCritterWithGlobalMapGroup) and then calls this.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
+{
+    if (self->GetMapId()) {
+        throw ScriptException("Critter is not on global map");
+    }
+
+    const vector<ptr<Critter>> group = self->GetGlobalMapGroup();
+
+    // Validate the complete group before the first send so an uncovered member cannot leave the client with a
+    // half-delivered group.
+    for (ptr<Critter> group_cr : group) {
+        ValidateEntityAccess(group_cr);
+    }
+
+    for (ptr<Critter> group_cr : group) {
+        if (group_cr != self) {
+            self->Send_AddCritter(group_cr);
+        }
+    }
+}
+
 // SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)
