@@ -63,26 +63,26 @@ namespace FOnline
 
         public static List<bool> GetKeyPressed()
         {
-            return KeyPressed;
+            return new List<bool>(KeyPressed);
         }
 
         public static List<bool> GetMousePressed()
         {
-            return MousePressed;
+            return new List<bool>(MousePressed);
         }
 
         [ModuleInit]
         public static void InitInput()
         {
+            KeyPressed.resize(0x100);
+            MousePressed.resize((int)MouseButton.Ext4 + 1);
+
             Game.OnMouseDown.Subscribe(OnMouseDown);
             Game.OnMouseUp.Subscribe(OnMouseUp);
             Game.OnMouseMove.Subscribe(OnMouseMove);
             Game.OnKeyDown.Subscribe(OnKeyDown);
             Game.OnKeyUp.Subscribe(OnKeyUp);
             Game.OnInputLost.Subscribe(OnInputLost);
-
-            KeyPressed.resize(0x100);
-            MousePressed.resize((int)MouseButton.Ext4 + 1);
         }
 
         public static void ReleaseKeys()

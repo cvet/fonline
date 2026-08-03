@@ -66,7 +66,16 @@ namespace FOnline
                 {
                     if (hasExplicitResult)
                     {
-                        throw new InvalidOperationException("Task event handlers cannot return an explicit EventResult");
+                        // Native event dispatch cannot advance the subscriber chain until it knows whether to stop.
+                        task.GetAwaiter().GetResult();
+                        object? taskResult = task.GetType().GetProperty("Result")?.GetValue(task);
+
+                        if (taskResult is EventResult eventResult)
+                        {
+                            return eventResult;
+                        }
+
+                        throw new InvalidOperationException("Async result event handlers must return Task<EventResult>");
                     }
 
                     if (task.IsCompleted)
@@ -107,12 +116,23 @@ namespace FOnline
                     return result;
                 }
 
-                task.GetAwaiter().GetResult();
-
-                Type taskType = result!.GetType();
-                if (taskType.IsGenericType)
+                Type declaredReturnType = handler.Method.ReturnType;
+                if (declaredReturnType.IsGenericType && declaredReturnType.GetGenericTypeDefinition() == typeof(Task<>))
                 {
-                    return taskType.GetProperty("Result")!.GetValue(result);
+                    task.GetAwaiter().GetResult();
+                    return declaredReturnType.GetProperty("Result")!.GetValue(result);
+                }
+
+                // Task-returning script functions are registered as native void callbacks. Waiting here would
+                // block the script pump that must fire Game.YieldAsync's completion event, so let the callback
+                // continue asynchronously and retain deferred exception accounting.
+                if (task.IsCompleted)
+                {
+                    task.GetAwaiter().GetResult();
+                }
+                else
+                {
+                    Game.ObserveInvokeTask(task);
                 }
 
                 return null;
@@ -379,6 +399,13 @@ namespace FOnline
                 typeof(Dictionary<,>).MakeGenericType(keyType, valueType))!;
         }
 
+        internal static object CreateDictionaryOfList(Type keyType, Type elementType)
+        {
+            Type listType = typeof(List<>).MakeGenericType(elementType);
+            return Activator.CreateInstance(
+                typeof(Dictionary<,>).MakeGenericType(keyType, listType))!;
+        }
+
         internal static void AddDictionaryItem(object dictionary, object key, object value)
         {
             ((IDictionary)dictionary).Add(key, value);
@@ -488,17 +515,43 @@ namespace FOnline
         // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
         // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
         // propIndex is the property enum's member value.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern int GetEntityValueAsInt(IntPtr entityPtr, int propIndex);
+        internal static int GetEntityValueAsInt(IntPtr entityPtr, int propIndex)
+        {
+            string? error;
+            int value = GetEntityValueAsIntInternal(entityPtr, propIndex, out error);
+            ThrowNativeError(error);
+            return value;
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetEntityValueAsInt(IntPtr entityPtr, int propIndex, int value);
+        private static extern int GetEntityValueAsIntInternal(IntPtr entityPtr, int propIndex, out string? error);
+
+        internal static void SetEntityValueAsInt(IntPtr entityPtr, int propIndex, int value)
+        {
+            ThrowNativeError(SetEntityValueAsIntInternal(entityPtr, propIndex, value));
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern string GetEntityValueAsAny(IntPtr entityPtr, int propIndex);
+        private static extern string? SetEntityValueAsIntInternal(IntPtr entityPtr, int propIndex, int value);
+
+        internal static string GetEntityValueAsAny(IntPtr entityPtr, int propIndex)
+        {
+            string? error;
+            string? value = GetEntityValueAsAnyInternal(entityPtr, propIndex, out error);
+            ThrowNativeError(error);
+            return value!;
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetEntityValueAsAny(IntPtr entityPtr, int propIndex, string value);
+        private static extern string? GetEntityValueAsAnyInternal(IntPtr entityPtr, int propIndex, out string? error);
+
+        internal static void SetEntityValueAsAny(IntPtr entityPtr, int propIndex, string value)
+        {
+            ThrowNativeError(SetEntityValueAsAnyInternal(entityPtr, propIndex, value));
+        }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern string? SetEntityValueAsAnyInternal(IntPtr entityPtr, int propIndex, string value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr SubscribeEvent(
@@ -522,14 +575,35 @@ namespace FOnline
             IntPtr entityPtr,
             object[] args);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern object GetProperty(
+        internal static object GetProperty(
             string ownerType,
             string propertyName,
-            IntPtr entityPtr);
+            IntPtr entityPtr)
+        {
+            string? error;
+            object? value = GetPropertyInternal(ownerType, propertyName, entityPtr, out error);
+            ThrowNativeError(error);
+            return value!;
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetProperty(
+        private static extern object? GetPropertyInternal(
+            string ownerType,
+            string propertyName,
+            IntPtr entityPtr,
+            out string? error);
+
+        internal static void SetProperty(
+            string ownerType,
+            string propertyName,
+            IntPtr entityPtr,
+            object value)
+        {
+            ThrowNativeError(SetPropertyInternal(ownerType, propertyName, entityPtr, value));
+        }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern string? SetPropertyInternal(
             string ownerType,
             string propertyName,
             IntPtr entityPtr,
@@ -559,13 +633,35 @@ namespace FOnline
             string propertyName,
             Delegate setter);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern object CallMethod(
+        internal static object CallMethod(
             string ownerType,
             string methodName,
             int methodIndex,
             IntPtr entityPtr,
-            object[] args);
+            object[] args)
+        {
+            string? error;
+            object? value = CallMethodInternal(ownerType, methodName, methodIndex, entityPtr, args, out error);
+            ThrowNativeError(error);
+            return value!;
+        }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern object? CallMethodInternal(
+            string ownerType,
+            string methodName,
+            int methodIndex,
+            IntPtr entityPtr,
+            object[] args,
+            out string? error);
+
+        private static void ThrowNativeError(string? error)
+        {
+            if (error != null)
+            {
+                throw new InvalidOperationException(error);
+            }
+        }
 
         // Outcome of a managed -> script invocation. Mirrors INVOKE_STATUS_* in ManagedScriptBackend.cpp.
         // Kept distinct because a single bool made "no such function" and "the call failed" the same answer,

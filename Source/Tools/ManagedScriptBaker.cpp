@@ -121,6 +121,7 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool;
 static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool;
 static auto CanUseManagedBridge(const ComplexTypeDesc& type) -> bool;
 static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool;
+static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string;
 static auto IsManagedBridgeMethod(const MethodDesc& method) -> bool;
 static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> string_view;
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool;
@@ -137,6 +138,7 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
 static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
+static void AppendDynamicRefTypeProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, unordered_set<string>& member_names);
 static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
 static void AppendEntityHolderAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name, bool is_static, unordered_set<string>& member_names);
@@ -546,7 +548,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                     // A RefType/ExportObject DTO is a standalone managed class (no Entity base), so its
                     // Name/Id/ProtoId/IsDestroyed properties shadow nothing -> no `new` (CS0109 otherwise).
-                    AppendEntityProperties(out, type->RefType->FieldsRegistrator.get(), type->Name, {}, false, false, true, false, member_names);
+                    AppendDynamicRefTypeProperties(out, type->RefType->FieldsRegistrator.get(), type->Name, member_names);
                 }
                 else {
                     out << CS_INDENT << "private IntPtr _refPtr;\n\n";
@@ -643,12 +645,20 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 const string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
                 const string async_delegate_name = strex("{}{}EventHandlerAsync", type_name, event.Name).str();
                 const string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
+                const string async_result_delegate_name = strex("{}{}EventHandlerAsyncResult", type_name, event.Name).str();
                 const string owner_literal = EscapeCsStringLiteral(type_name);
                 const string event_literal = EscapeCsStringLiteral(event.Name);
 
                 AppendCsCallableDeclaration(out, "    ", "public delegate void ", EscapeCsIdentifier(delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(async_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
+                AppendCsCallableDeclaration(
+                    out,
+                    "    ",
+                    "public delegate global::System.Threading.Tasks.Task<EventResult> ",
+                    EscapeCsIdentifier(async_result_delegate_name),
+                    event_arg_declarations,
+                    ";");
                 out << "\n";
                 out << "    public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
                 out << "    {\n";
@@ -723,6 +733,33 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        true,\n";
                 out << CS_INDENT << "        (int)priority);\n";
                 out << CS_INDENT << "}\n\n";
+                AppendCsCallableDeclaration(
+                    out,
+                    CS_INDENT,
+                    "public void ",
+                    "Subscribe",
+                    vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"},
+                    "");
+                out << CS_INDENT << "{\n";
+                out << CS_INDENT << "    if (handler == null)\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
+                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
+                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key))\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
+                out << CS_INDENT << "        \"" << owner_literal << "\",\n";
+                out << CS_INDENT << "        \"" << event_literal << "\",\n";
+                out << CS_INDENT << "        _entityPtr,\n";
+                out << CS_INDENT << "        handler,\n";
+                out << CS_INDENT << "        true,\n";
+                out << CS_INDENT << "        (int)priority);\n";
+                out << CS_INDENT << "}\n\n";
                 AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(delegate_name)).str()}, "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
@@ -758,6 +795,29 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    }\n";
                 out << CS_INDENT << "}\n\n";
                 AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(result_delegate_name)).str()}, "");
+                out << CS_INDENT << "{\n";
+                out << CS_INDENT << "    if (handler == null)\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
+                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
+                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription))\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
+                out << CS_INDENT << "            \"" << event_literal << "\",\n";
+                out << CS_INDENT << "            _entityPtr,\n";
+                out << CS_INDENT << "            subscription);\n";
+                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
+                out << CS_INDENT << "    }\n";
+                out << CS_INDENT << "}\n\n";
+                AppendCsCallableDeclaration(
+                    out,
+                    CS_INDENT,
+                    "public void ",
+                    "Unsubscribe",
+                    vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str()},
+                    "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
                 out << CS_INDENT << "    {\n";
@@ -2614,6 +2674,17 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool
     return type.IsRefType && type.RefType != nullptr && type.RefType->FieldsRegistrator != nullptr;
 }
 
+static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsInComponent()) {
+        return strex("{}{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str();
+    }
+
+    return string {prop->GetNameWithoutComponent()};
+}
+
 static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -2655,6 +2726,13 @@ static auto CanUseManagedFixedDictionaryPropertyValueBridge(const BaseTypeDesc& 
     return type.IsPrimitive || type.IsEnum || type.IsStruct || type.IsHashedString || type.IsFixedType || type.IsEntityProto;
 }
 
+static auto CanUseManagedDictionaryArrayPropertyValueBridge(const BaseTypeDesc& type) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return type.Name == "any" || type.IsString || CanUseManagedFixedDictionaryPropertyValueBridge(type);
+}
+
 static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -2662,7 +2740,15 @@ static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool
     const BaseTypeDesc& base_type = prop->GetBaseType();
 
     if (prop->IsDict()) {
-        return !prop->IsDictOfArray() && !prop->IsDictKeyString() && !prop->IsDictOfString() && CanUseManagedFixedDictionaryPropertyValueBridge(prop->GetDictKeyType()) && CanUseManagedFixedDictionaryPropertyValueBridge(base_type);
+        if (prop->IsDictKeyString() || !CanUseManagedFixedDictionaryPropertyValueBridge(prop->GetDictKeyType())) {
+            return false;
+        }
+
+        if (prop->IsDictOfArray()) {
+            return CanUseManagedDictionaryArrayPropertyValueBridge(base_type);
+        }
+
+        return !prop->IsDictOfString() && CanUseManagedFixedDictionaryPropertyValueBridge(base_type);
     }
 
     return CanUseManagedBridge(base_type) && (!base_type.IsRefType || IsDynamicManagedRefType(base_type)) && (!base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto);
@@ -3290,6 +3376,30 @@ static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& met
 
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
         AppendMethod(out, methods[method_index], method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, signatures);
+    }
+}
+
+static void AppendDynamicRefTypeProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, unordered_set<string>& member_names)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
+        auto prop = registrator->GetPropertyByIndexUnsafe(i);
+
+        if (prop->IsDisabled()) {
+            continue;
+        }
+
+        string prop_type = MakeCsPropertyTypeName(prop);
+
+        if (prop->IsNullable()) {
+            prop_type += "?";
+        }
+
+        const string raw_prop_name = MakeManagedDynamicRefTypePropertyName(prop);
+        const string prop_name = EscapeCsIdentifier(raw_prop_name);
+        FO_VERIFY_AND_THROW(!member_names.contains(prop_name), "Managed dynamic RefType property name collision", owner_type_name, prop->GetName(), raw_prop_name);
+        AppendProperty(out, prop_type, prop_name, true, false, false, member_names);
     }
 }
 

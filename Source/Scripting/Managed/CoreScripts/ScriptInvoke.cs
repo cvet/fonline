@@ -97,6 +97,25 @@ namespace FOnline
             return invoked;
         }
 
+        public static bool Invoke<TResult>(
+            string funcName,
+            object? arg0,
+            object? arg1,
+            object? arg2,
+            object? arg3,
+            object? arg4,
+            object? arg5,
+            ref TResult result)
+        {
+            object?[] args = { arg0, arg1, arg2, arg3, arg4, arg5, result };
+            bool invoked = InvokeCore(funcName, args);
+            if (invoked)
+            {
+                CopyInvokeResult(args, 6, ref result);
+            }
+            return invoked;
+        }
+
         public static int GetGlobalExceptionCount()
         {
             return _managedGlobalExceptionCount;

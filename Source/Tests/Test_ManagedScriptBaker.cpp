@@ -351,8 +351,8 @@ TEST_CASE("ManagedScriptBaker")
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
             {"EntityHolder", {{"Server", "Critter", "ManagedInner", "ManagedEntry"}, {"Server", "Game", "ManagedGlobal", "ManagedGlobal"}}},
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
-            {"Property", {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}}},
-            {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0"}}},
+            {"Property", {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
+            {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
         }));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -453,6 +453,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static List<int> ManagedSteps") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                    \"Game\",\n                    \"ManagedSteps\",\n                    IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                    \"Game\",\n                    \"ManagedSteps\",\n                    IntPtr.Zero,\n                    value)") != string::npos);
+    CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                    \"Critter\",\n                    \"ManagedCheckpointEntries\",\n                    _entityPtr)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                    \"Critter\",\n                    \"ManagedCheckpointEntries\",\n                    _entityPtr,\n                    value)") != string::npos);
+    CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                    \"Critter\",\n                    \"ManagedTextGroups\",\n                    _entityPtr)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                    \"Critter\",\n                    \"ManagedTextGroups\",\n                    _entityPtr,\n                    value)") != string::npos);
     CHECK(server_entities.find("public static List<mpos> TraceHexLine") != string::npos);
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"TraceHexLine\",") != string::npos);
     CHECK(server_entities.find("return (List<mpos>)__result;") != string::npos);
@@ -505,7 +511,10 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("private GameOnManagedTestEventHandler? _handlers;") == string::npos);
     CHECK(server_events.find("private readonly Dictionary<(Delegate Handler, IntPtr Backend), IntPtr> _nativeSubscriptions") != string::npos);
     CHECK(server_events.find("public delegate global::System.Threading.Tasks.Task GameOnManagedTestEventHandlerAsync") != string::npos);
+    CHECK(server_events.find("public delegate global::System.Threading.Tasks.Task<EventResult> GameOnManagedTestEventHandlerAsyncResult") != string::npos);
     CHECK(server_events.find("public void Subscribe(\n            GameOnManagedTestEventHandlerAsync handler") != string::npos);
+    CHECK(server_events.find("public void Subscribe(\n            GameOnManagedTestEventHandlerAsyncResult handler") != string::npos);
+    CHECK(server_events.find("public void Unsubscribe(GameOnManagedTestEventHandlerAsyncResult handler)") != string::npos);
     CHECK(server_events.find("{ if (handler == null)") == string::npos);
     CHECK(server_events.find("global::FOnline.Native.RequireEventAttribute(handler);\n            IntPtr backend = global::FOnline.Native.GetBackend();\n            (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n            if (_nativeSubscriptions.ContainsKey(key))") != string::npos);
     CHECK(server_events.find("_nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n                \"Game\",\n                \"OnManagedTest\",") != string::npos);
@@ -540,6 +549,9 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public int Step") != string::npos);
     CHECK(server_types.find("set;") != string::npos);
     CHECK(server_types.find("public List<int> Values") != string::npos);
+    CHECK(server_types.find("public bool Checkpoint") != string::npos);
+    CHECK(server_types.find("public int CheckpointIndex") != string::npos);
+    CHECK(server_types.find("public string CheckpointLabel") != string::npos);
     CHECK(server_types.find("private IntPtr _refPtr;") != string::npos);
     CHECK(server_types.find("public ushort GetSpeed()") != string::npos);
     CHECK(server_types.find("object __result = global::FOnline.Native.CallMethod(\n                \"MovingContext\",\n                \"GetSpeed\",") != string::npos);
@@ -575,6 +587,43 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "NoWorkObsolete.gen.cs"));
+#endif
+}
+
+TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisions")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitCollision");
+    rig.AddBakedFile("Metadata.fometa-server",
+        MakeMetadataBlob({
+            {"RefType", {{"CollisionRoute", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "CheckpointIndex", "string", "0"}}},
+        }));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed dynamic RefType property name collision"));
 #endif
 }
 

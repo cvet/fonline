@@ -153,10 +153,10 @@ static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool;
 static auto NativeGetEntityName(void* entity_ptr) -> MonoString*;
 static auto NativeGetEntityId(void* entity_ptr) -> int64_t;
 static auto NativeGetEntityProtoId(void* entity_ptr) -> uint64_t;
-static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index) -> int32_t;
-static void NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int32_t value);
-static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index) -> MonoString*;
-static void NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString* value);
+static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t;
+static auto NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*;
+static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*;
+static auto NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*;
 
 // Native ABI: hex direction helpers
 static auto NativeHdirToMdir(int8_t dir) -> int16_t;
@@ -193,13 +193,13 @@ static void NativeSetSettingString(MonoString* name, MonoString* value);
 static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*;
 static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription);
 static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t;
-static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*;
-static void NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value);
+static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoString** error) -> MonoObject*;
+static auto NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value) -> MonoString*;
 static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter);
 static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*;
+static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
 static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args) -> int32_t;
 static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler, mono_bool skip_existing_script_func);
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler);
@@ -255,6 +255,7 @@ static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObj
 static auto GetManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, size_t index) -> MonoObject*;
 static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, MonoObject* item);
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*;
+static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*;
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t;
 static auto GetManagedDictionaryKey(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary, size_t index) -> MonoObject*;
 static auto GetManagedDictionaryValue(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary, size_t index) -> MonoObject*;
@@ -270,6 +271,7 @@ static auto GetManagedByteArrayItem(ptr<const ManagedScriptBackend> backend, Mon
 static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend, MonoObject* value, void* data, size_t size);
 static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, ManagedScalarValue& storage) -> void*;
 static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ManagedNativeValue& storage) -> void*;
+static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, ManagedNativeValue& storage) noexcept;
 static auto ManagedObjectClassMatches(MonoObject* value, MonoClass* expected_class) -> bool;
 static auto ManagedObjectClassMatchesOrDerives(MonoObject* value, MonoClass* expected_class) -> bool;
 static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value) -> bool;
@@ -287,8 +289,10 @@ static auto GetPropertyRawData(ptr<Entity> entity, ptr<const Property> prop) -> 
 static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool;
 static auto IsManagedBridgeType(const ComplexTypeDesc& type) -> bool;
 static auto IsManagedBridgeFixedDictionaryValueType(const BaseTypeDesc& type) -> bool;
-static auto IsManagedBridgeFixedDictionaryProperty(ptr<const Property> prop) -> bool;
+static auto IsManagedBridgeDictionaryArrayValueType(const BaseTypeDesc& type) -> bool;
+static auto IsManagedBridgeDictionaryProperty(ptr<const Property> prop) -> bool;
 static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool;
+static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string;
 
 // Type/class and metadata resolution
 static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_view class_name) -> MonoClass*;
@@ -949,51 +953,125 @@ static auto NativeGetEntityProtoId(void* entity_ptr) -> uint64_t
 // Generic property accessors by index (managed equivalent of AngelScript Entity_GetValueAsInt / Entity_SetValueAsInt /
 // Entity_GetValueAsAny / Entity_SetValueAsAny in register_entity_getset): the generated Entity.GetAs*/SetAs* wrappers
 // pass the property enum value as the property index.
-static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index) -> int32_t
+static auto ResolveManagedGenericProperty(void* entity_ptr, int32_t prop_index, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity_ptr == nullptr) {
+    auto backend = GetActiveBackendOrThrow();
+    auto entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
+
+    auto nullable_prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+
+    if (!nullable_prop) {
+        throw ScriptException("Property invalid enum", prop_index);
+    }
+
+    auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property in not plain data type");
+    }
+    if (prop->IsDisabled()) {
+        throw ScriptException("Property is disabled");
+    }
+    if (require_mutable && !prop->IsMutable()) {
+        throw ScriptException("Property is not mutable");
+    }
+
+    return {entity, prop};
+}
+
+static auto NativeGetEntityValueAsIntImpl(void* entity_ptr, int32_t prop_index) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, false);
+    return entity->GetValueAsInt(prop);
+}
+
+static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed generic property getter error output is null");
+    *error = nullptr;
+
+    try {
+        return NativeGetEntityValueAsIntImpl(entity_ptr, prop_index);
+    }
+    catch (const std::exception& ex) {
+        *error = mono_string_new(mono_domain_get(), ex.what());
         return 0;
     }
-
-    return static_cast<const Entity*>(entity_ptr)->GetValueAsInt(prop_index);
 }
 
-static void NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int32_t value)
+static void NativeSetEntityValueAsIntImpl(void* entity_ptr, int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity_ptr == nullptr) {
-        return;
-    }
-
-    static_cast<Entity*>(entity_ptr)->SetValueAsInt(prop_index, value);
+    auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, true);
+    entity->SetValueAsInt(prop, value);
 }
 
-static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index) -> MonoString*
+static auto NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        NativeSetEntityValueAsIntImpl(entity_ptr, prop_index, value);
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return mono_string_new(mono_domain_get(), ex.what());
+    }
+}
+
+static auto NativeGetEntityValueAsAnyImpl(void* entity_ptr, int32_t prop_index) -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto* domain = GetDomainOrThrow(mono_domain_get());
-
-    if (entity_ptr == nullptr) {
-        return mono_string_new(domain, "");
-    }
-
-    const any_t value = static_cast<const Entity*>(entity_ptr)->GetValueAsAny(prop_index);
+    auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, false);
+    const any_t value = entity->GetValueAsAny(prop);
     return mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size()));
 }
 
-static void NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString* value)
+static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity_ptr == nullptr) {
-        return;
-    }
+    FO_STRONG_ASSERT(error != nullptr, "Managed generic property getter error output is null");
+    *error = nullptr;
 
-    static_cast<Entity*>(entity_ptr)->SetValueAsAny(prop_index, any_t {ToStringAndFree(value)});
+    try {
+        return NativeGetEntityValueAsAnyImpl(entity_ptr, prop_index);
+    }
+    catch (const std::exception& ex) {
+        *error = mono_string_new(mono_domain_get(), ex.what());
+        return nullptr;
+    }
+}
+
+static void NativeSetEntityValueAsAnyImpl(void* entity_ptr, int32_t prop_index, MonoString* value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, true);
+    entity->SetValueAsAny(prop, any_t {ToStringAndFree(value)});
+}
+
+static auto NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        NativeSetEntityValueAsAnyImpl(entity_ptr, prop_index, value);
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return mono_string_new(mono_domain_get(), ex.what());
+    }
 }
 
 // === Native ABI: hex direction helpers ===
@@ -1380,7 +1458,22 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
     call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
+    bool ref_type_owners_reconciled = false;
+    auto reconcile_ref_type_owners = [&]() noexcept {
+        for (size_t i = 0; i < args_count; i++) {
+            ReconcileMutableDynamicRefTypeOwner(event_it->Args[i].Type, native_args[i]);
+        }
+        ref_type_owners_reconciled = true;
+    };
+    auto reconcile_ref_type_owners_on_exit =
+        scope_exit([&]() noexcept {
+            if (!ref_type_owners_reconciled) {
+                reconcile_ref_type_owners();
+            }
+        });
+
     const auto result = entity->FireEvent(event_name_str, call);
+    reconcile_ref_type_owners();
 
     for (size_t i = 0; i < args_count; i++) {
         const ArgDesc& arg_desc = event_it->Args[i];
@@ -1396,12 +1489,13 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     return static_cast<int32_t>(result);
 }
 
-static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*
+static auto NativeGetPropertyImpl(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
     const string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
 
@@ -1412,8 +1506,8 @@ static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name,
     auto prop = nullable_prop.as_ptr();
 
     if (prop->IsDict()) {
-        if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
-            throw ScriptSystemException("Managed dictionary property bridge supports only fixed-size key/value types", prop->GetName());
+        if (!IsManagedBridgeDictionaryProperty(prop)) {
+            throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
         }
     }
     else {
@@ -1429,12 +1523,29 @@ static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name,
     return BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 }
 
-static void NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value)
+static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoString** error) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed property getter error output is null");
+    *error = nullptr;
+
+    try {
+        return NativeGetPropertyImpl(owner_type, property_name, entity_ptr);
+    }
+    catch (const std::exception& ex) {
+        *error = mono_string_new(mono_domain_get(), ex.what());
+        return nullptr;
+    }
+}
+
+static void NativeSetPropertyImpl(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
     const string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
 
@@ -1444,8 +1555,8 @@ static void NativeSetProperty(MonoString* owner_type, MonoString* property_name,
 
     auto prop = nullable_prop.as_ptr();
     if (prop->IsDict()) {
-        if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
-            throw ScriptSystemException("Managed dictionary property bridge supports only fixed-size key/value types", prop->GetName());
+        if (!IsManagedBridgeDictionaryProperty(prop)) {
+            throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
         }
     }
     else {
@@ -1459,6 +1570,19 @@ static void NativeSetProperty(MonoString* owner_type, MonoString* property_name,
 
     PropertyRawData prop_data = ConvertManagedObjectToPropertyData(backend, prop, value);
     entity->SetValueFromData(prop, prop_data);
+}
+
+static auto NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        NativeSetPropertyImpl(owner_type, property_name, entity_ptr, value);
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return mono_string_new(mono_domain_get(), ex.what());
+    }
 }
 
 static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter)
@@ -1476,26 +1600,33 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
     const uint32_t getter_handle = mono_gchandle_new(getter, false);
 
     prop->SetGetter([backend, getter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
-        const ActiveBackendScope active_backend {backend};
+        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        FO_VERIFY_AND_THROW(engine, "Managed property getter requires an engine context");
 
-        auto* domain = GetDomainOrThrow(backend->GetDomain());
+        PropertyRawData prop_data;
+        engine->RunScriptContext([&] {
+            const ActiveBackendScope active_backend {backend};
 
-        if (mono_thread_attach(domain) == nullptr) {
-            throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-        }
+            auto* domain = GetDomainOrThrow(backend->GetDomain());
 
-        auto* handler = mono_gchandle_get_target(getter_handle);
+            if (mono_thread_attach(domain) == nullptr) {
+                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
+            }
 
-        if (handler == nullptr) {
-            throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
-        }
+            auto* handler = mono_gchandle_get_target(getter_handle);
 
-        auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-        auto* args_array = mono_array_new(domain, mono_get_object_class(), 1);
-        mono_array_setref(args_array, 0, entity_obj);
+            if (handler == nullptr) {
+                throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
+            }
 
-        MonoObject* result = InvokeManagedCallbackHandler(backend, handler, args_array);
-        return ConvertManagedObjectToPropertyData(backend, prop, result);
+            auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            auto* args_array = mono_array_new(domain, mono_get_object_class(), 1);
+            mono_array_setref(args_array, 0, entity_obj);
+
+            MonoObject* result = InvokeManagedCallbackHandler(backend, handler, args_array);
+            prop_data = ConvertManagedObjectToPropertyData(backend, prop, result);
+        });
+        return prop_data;
     });
 }
 
@@ -1514,30 +1645,35 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
     const uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
-        const ActiveBackendScope active_backend {backend};
+        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        auto* domain = GetDomainOrThrow(backend->GetDomain());
+        engine->RunScriptContext([&] {
+            const ActiveBackendScope active_backend {backend};
 
-        if (mono_thread_attach(domain) == nullptr) {
-            throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-        }
+            auto* domain = GetDomainOrThrow(backend->GetDomain());
 
-        auto* handler = mono_gchandle_get_target(setter_handle);
+            if (mono_thread_attach(domain) == nullptr) {
+                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
+            }
 
-        if (handler == nullptr) {
-            throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
-        }
+            auto* handler = mono_gchandle_get_target(setter_handle);
 
-        auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-        auto* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-        auto* args_array = mono_array_new(domain, mono_get_object_class(), 2);
-        mono_array_setref(args_array, 0, entity_obj);
-        mono_array_setref(args_array, 1, value_obj);
+            if (handler == nullptr) {
+                throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
+            }
 
-        (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            auto* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            auto* args_array = mono_array_new(domain, mono_get_object_class(), 2);
+            mono_array_setref(args_array, 0, entity_obj);
+            mono_array_setref(args_array, 1, value_obj);
 
-        auto* modified_value = mono_array_get(args_array, MonoObject*, 1);
-        prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+
+            auto* modified_value = mono_array_get(args_array, MonoObject*, 1);
+            prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+        });
     });
 }
 
@@ -1556,32 +1692,37 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
     const uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
-        const ActiveBackendScope active_backend {backend};
+        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        auto* domain = GetDomainOrThrow(backend->GetDomain());
+        engine->RunScriptContext([&] {
+            const ActiveBackendScope active_backend {backend};
 
-        if (mono_thread_attach(domain) == nullptr) {
-            throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-        }
+            auto* domain = GetDomainOrThrow(backend->GetDomain());
 
-        auto* handler = mono_gchandle_get_target(setter_handle);
+            if (mono_thread_attach(domain) == nullptr) {
+                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
+            }
 
-        if (handler == nullptr) {
-            throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
-        }
+            auto* handler = mono_gchandle_get_target(setter_handle);
 
-        auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-        auto* property_obj = CreatePropertyEnumObject(backend, owner_type_name, prop);
-        auto* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-        auto* args_array = mono_array_new(domain, mono_get_object_class(), 3);
-        mono_array_setref(args_array, 0, entity_obj);
-        mono_array_setref(args_array, 1, property_obj);
-        mono_array_setref(args_array, 2, value_obj);
+            if (handler == nullptr) {
+                throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
+            }
 
-        (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            auto* property_obj = CreatePropertyEnumObject(backend, owner_type_name, prop);
+            auto* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            auto* args_array = mono_array_new(domain, mono_get_object_class(), 3);
+            mono_array_setref(args_array, 0, entity_obj);
+            mono_array_setref(args_array, 1, property_obj);
+            mono_array_setref(args_array, 2, value_obj);
 
-        auto* modified_value = mono_array_get(args_array, MonoObject*, 2);
-        prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+
+            auto* modified_value = mono_array_get(args_array, MonoObject*, 2);
+            prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+        });
     });
 }
 
@@ -1603,29 +1744,34 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
     // value is written. It does not reproduce AngelScript's deferred-until-safe-point batching/dedup, which
     // suits reaction handlers; true deferral for re-entrancy-sensitive handlers is a follow-up.
     prop->AddPostSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) FO_DEFERRED {
-        const ActiveBackendScope active_backend {backend};
+        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
 
-        auto* domain = GetDomainOrThrow(backend->GetDomain());
+        engine->RunScriptContext([&] {
+            const ActiveBackendScope active_backend {backend};
 
-        if (mono_thread_attach(domain) == nullptr) {
-            throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-        }
+            auto* domain = GetDomainOrThrow(backend->GetDomain());
 
-        auto* handler = mono_gchandle_get_target(setter_handle);
+            if (mono_thread_attach(domain) == nullptr) {
+                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
+            }
 
-        if (handler == nullptr) {
-            throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
-        }
+            auto* handler = mono_gchandle_get_target(setter_handle);
 
-        auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-        auto* args_array = mono_array_new(domain, mono_get_object_class(), 1);
-        mono_array_setref(args_array, 0, entity_obj);
+            if (handler == nullptr) {
+                throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
+            }
 
-        (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            auto* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            auto* args_array = mono_array_new(domain, mono_get_object_class(), 1);
+            mono_array_setref(args_array, 0, entity_obj);
+
+            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+        });
     });
 }
 
-static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*
+static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1724,7 +1870,22 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
         call.RetData = ret_data;
     }
 
+    bool ref_type_owners_reconciled = false;
+    auto reconcile_ref_type_owners = [&]() noexcept {
+        for (size_t i = 0; i < args_count; i++) {
+            ReconcileMutableDynamicRefTypeOwner(method->Args[i].Type, native_args[i]);
+        }
+        ref_type_owners_reconciled = true;
+    };
+    auto reconcile_ref_type_owners_on_exit =
+        scope_exit([&]() noexcept {
+            if (!ref_type_owners_reconciled) {
+                reconcile_ref_type_owners();
+            }
+        });
+
     method->Call(call);
+    reconcile_ref_type_owners();
 
     const size_t mutable_args_count = static_cast<size_t>(std::ranges::count_if(method->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
 
@@ -1773,6 +1934,22 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
     }
 
     return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
+}
+
+static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed method call error output is null");
+    *error = nullptr;
+
+    try {
+        return NativeCallMethodImpl(owner_type, method_name, method_index, entity_ptr, args);
+    }
+    catch (const std::exception& ex) {
+        *error = mono_string_new(mono_domain_get(), ex.what());
+        return nullptr;
+    }
 }
 
 // Invocation status handed back to managed code. Collapsing every outcome into a bool made "the function
@@ -1860,6 +2037,19 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
         call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
         ManagedNativeValue ret_storage;
         void* ret_data = nullptr;
+        bool ref_type_owners_reconciled = false;
+        auto reconcile_ref_type_owners = [&]() noexcept {
+            for (size_t i = 0; i < call_args_count; i++) {
+                ReconcileMutableDynamicRefTypeOwner(func_desc->Args[i].Type, native_args[i]);
+            }
+            ref_type_owners_reconciled = true;
+        };
+        auto reconcile_ref_type_owners_on_exit =
+            scope_exit([&]() noexcept {
+                if (!ref_type_owners_reconciled) {
+                    reconcile_ref_type_owners();
+                }
+            });
 
         if (is_result_call) {
             if (func_desc->Ret.Kind == ComplexTypeKind::Simple) {
@@ -1907,9 +2097,12 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
             func_desc->Call(call);
         }
         catch (const std::exception& ex) {
+            reconcile_ref_type_owners();
             ReportExceptionAndContinue(ex);
             return INVOKE_STATUS_FAILED;
         }
+
+        reconcile_ref_type_owners();
 
         if (is_result_call) {
             MonoObject* ret = nullptr;
@@ -2324,13 +2517,13 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::SubscribeEvent", reinterpret_cast<const void*>(NativeSubscribeEvent));
     mono_add_internal_call("FOnline.Native::UnsubscribeEvent", reinterpret_cast<const void*>(NativeUnsubscribeEvent));
     mono_add_internal_call("FOnline.Native::FireEvent", reinterpret_cast<const void*>(NativeFireEvent));
-    mono_add_internal_call("FOnline.Native::GetProperty", reinterpret_cast<const void*>(NativeGetProperty));
-    mono_add_internal_call("FOnline.Native::SetProperty", reinterpret_cast<const void*>(NativeSetProperty));
+    mono_add_internal_call("FOnline.Native::GetPropertyInternal", reinterpret_cast<const void*>(NativeGetProperty));
+    mono_add_internal_call("FOnline.Native::SetPropertyInternal", reinterpret_cast<const void*>(NativeSetProperty));
     mono_add_internal_call("FOnline.Native::SetPropertyGetter", reinterpret_cast<const void*>(NativeSetPropertyGetter));
     mono_add_internal_call("FOnline.Native::AddPropertySetter", reinterpret_cast<const void*>(NativeAddPropertySetter));
     mono_add_internal_call("FOnline.Native::AddPropertySetterWithProperty", reinterpret_cast<const void*>(NativeAddPropertySetterWithProperty));
     mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetter", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
-    mono_add_internal_call("FOnline.Native::CallMethod", reinterpret_cast<const void*>(NativeCallMethod));
+    mono_add_internal_call("FOnline.Native::CallMethodInternal", reinterpret_cast<const void*>(NativeCallMethod));
     mono_add_internal_call("FOnline.Native::InvokeScriptFuncStatus", reinterpret_cast<const void*>(NativeInvokeScriptFuncStatus));
     mono_add_internal_call("FOnline.Native::GetBackendAliveFlag", reinterpret_cast<const void*>(NativeGetBackendAliveFlag));
     mono_add_internal_call("FOnline.Native::GetBackend", reinterpret_cast<const void*>(NativeGetBackend));
@@ -2343,10 +2536,10 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::GetInnerEntity", reinterpret_cast<const void*>(NativeGetInnerEntity));
     mono_add_internal_call("FOnline.Native::GetInnerEntityCount", reinterpret_cast<const void*>(NativeGetInnerEntityCount));
     mono_add_internal_call("FOnline.Native::GetInnerEntityAt", reinterpret_cast<const void*>(NativeGetInnerEntityAt));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsInt", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsInt", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsAny", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsAny", reinterpret_cast<const void*>(NativeSetEntityValueAsAny));
+    mono_add_internal_call("FOnline.Native::GetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
+    mono_add_internal_call("FOnline.Native::SetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
+    mono_add_internal_call("FOnline.Native::GetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
+    mono_add_internal_call("FOnline.Native::SetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsAny));
     mono_add_internal_call("FOnline.Native::RegisterGlobalScriptFunc", reinterpret_cast<const void*>(NativeRegisterGlobalScriptFunc));
     mono_add_internal_call("FOnline.Native::RegisterRemoteCallHandler", reinterpret_cast<const void*>(NativeRegisterRemoteCallHandler));
     mono_add_internal_call("FOnline.Native::SendRemoteCall", reinterpret_cast<const void*>(NativeSendRemoteCall));
@@ -2421,7 +2614,7 @@ static void SetSettingValueFromString(GlobalSettings* settings, string_view sett
         return;
     }
 
-    settings->SetCustomSetting(setting_name, any_t(std::move(value)));
+    settings->SetRuntimeSetting(string(setting_name), value);
 }
 
 static void SetSettingValueFromString(MonoString* name, string value)
@@ -3066,7 +3259,8 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
 
         if (!field_raw_data.empty()) {
             MonoObject* field_value = BoxPropertyValue(backend, field_prop.get(), field_raw_data);
-            SetManagedPropertyValue(backend, obj, field_prop->GetNameWithoutComponent(), field_value);
+            const string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
+            SetManagedPropertyValue(backend, obj, field_name, field_value);
         }
     }
 
@@ -3111,7 +3305,8 @@ static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, c
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
         auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
-        MonoObject* field_value = GetManagedPropertyValue(backend, value, field_prop->GetNameWithoutComponent());
+        const string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
+        MonoObject* field_value = GetManagedPropertyValue(backend, value, field_name);
         PropertyRawData field_data = ConvertManagedObjectToPropertyData(backend, field_prop.get(), field_value);
         ref_instance->SetValue(field_prop, field_data);
     }
@@ -3428,6 +3623,25 @@ static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, con
     return dictionary;
 }
 
+static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* domain = GetDomainOrThrow(backend->GetDomain());
+    auto* key_class = GetManagedClass(backend, key_type);
+    auto* element_class = GetManagedClass(backend, element_type);
+    auto* key_reflection_type = mono_type_get_object(domain, mono_class_get_type(key_class));
+    auto* element_reflection_type = mono_type_get_object(domain, mono_class_get_type(element_class));
+    void* args[] = {key_reflection_type, element_reflection_type};
+    auto* dictionary = InvokeNativeHelper(backend, "CreateDictionaryOfList", 2, args);
+
+    if (dictionary == nullptr) {
+        throw ScriptSystemException("Managed dictionary-of-list creation failed", key_type.Name, element_type.Name);
+    }
+
+    return dictionary;
+}
+
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -3692,6 +3906,30 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
     throw ScriptSystemException("Unsupported Managed argument type", type.BaseType.Name);
 }
 
+static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, ManagedNativeValue& storage) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!type.IsMutable || type.Kind != ComplexTypeKind::Simple || !IsDynamicManagedRefType(type.BaseType)) {
+        return;
+    }
+
+    nptr<DynamicRefTypeInstance> current {static_cast<DynamicRefTypeInstance*>(storage.RefTypePtr)};
+
+    if (storage.DynamicRefType.as_nptr() == current) {
+        return;
+    }
+
+    // AngelScript receives a mutable ref type as an owning handle slot. Reassigning that slot releases its
+    // previous reference and transfers one reference to the replacement, so mirror that ownership change in
+    // the managed call storage before its refcount owner is destroyed.
+    (void)storage.DynamicRefType.release_ownership();
+
+    if (current) {
+        storage.DynamicRefType = refcount_nptr<DynamicRefTypeInstance>::from_adopted_ref(current.get_no_const());
+    }
+}
+
 static auto ManagedObjectClassMatches(MonoObject* value, MonoClass* expected_class) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -3905,16 +4143,17 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
         return list;
     }
     if (prop->IsDict()) {
-        if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
-            throw ScriptSystemException("Managed dictionary property bridge supports only fixed-size key/value types", prop->GetName());
+        if (!IsManagedBridgeDictionaryProperty(prop)) {
+            throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
         }
 
         const BaseTypeDesc& key_type = prop->GetDictKeyType();
-        auto* dictionary = CreateManagedDictionary(backend, key_type, base_type);
+        MonoObject* dictionary = prop->IsDictOfArray() ? CreateManagedDictionaryOfList(backend, key_type, base_type) : CreateManagedDictionary(backend, key_type, base_type);
+
         if (raw_data.empty()) {
             return dictionary;
         }
-        if (key_type.Size == 0 || base_type.Size == 0) {
+        if (key_type.Size == 0 || (!prop->IsDictOfArray() && base_type.Size == 0)) {
             throw ScriptSystemException("Corrupted Managed dictionary property", prop->GetName());
         }
 
@@ -3925,11 +4164,35 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
             const auto key_data = span_read_aligned_bytes(data_span, data_pos, key_type.Size, alignment_for_size(key_type.Size));
             MonoObject* key = BoxSimplePropertyValue(backend, key_type, key_data);
 
-            const auto value_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
-            MonoObject* value = BoxSimplePropertyValue(backend, base_type, value_data);
+            if (prop->IsDictOfArray()) {
+                MonoObject* list = CreateManagedList(backend, base_type);
+                const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
-            AddManagedDictionaryItem(backend, dictionary, key, value);
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    MonoObject* item = nullptr;
+
+                    if (prop->IsDictOfArrayOfString()) {
+                        const uint32_t text_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+                        const auto text_data = span_read_bytes(data_span, data_pos, text_size);
+                        item = BoxSimplePropertyValue(backend, base_type, text_data);
+                    }
+                    else {
+                        const auto item_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
+                        item = BoxSimplePropertyValue(backend, base_type, item_data);
+                    }
+
+                    AddManagedListItem(backend, list, item);
+                }
+
+                AddManagedDictionaryItem(backend, dictionary, key, list);
+            }
+            else {
+                const auto value_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
+                MonoObject* item = BoxSimplePropertyValue(backend, base_type, value_data);
+                AddManagedDictionaryItem(backend, dictionary, key, item);
+            }
         }
+
         if (data_pos != raw_data.size()) {
             throw ScriptSystemException("Corrupted Managed dictionary property tail", prop->GetName());
         }
@@ -4004,8 +4267,8 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
         return ConvertManagedSimpleObjectToPropertyData(backend, base_type, value);
     }
     if (prop->IsDict()) {
-        if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
-            throw ScriptSystemException("Managed dictionary property bridge supports only fixed-size key/value types", prop->GetName());
+        if (!IsManagedBridgeDictionaryProperty(prop)) {
+            throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
         }
 
         PropertyRawData prop_data;
@@ -4030,13 +4293,39 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             AppendAlignedRawBytes(data, key_data.GetPtr().get(), key_data.GetSize(), alignment_for_size(key_data.GetSize()));
 
             MonoObject* item = GetManagedDictionaryValue(backend, value, i);
-            PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, item);
 
-            if (item_data.GetSize() != base_type.Size) {
-                throw ScriptSystemException("Managed property dictionary value size mismatch", prop->GetName());
+            if (prop->IsDictOfArray()) {
+                const size_t arr_size = GetManagedListCount(backend, item);
+                const uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
+                AppendAlignedRawBytes(data, &arr_size_value, sizeof(arr_size_value), sizeof(uint32_t));
+
+                for (size_t j = 0; j < arr_size; j++) {
+                    MonoObject* list_item = GetManagedListItem(backend, item, j);
+                    PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, list_item);
+
+                    if (prop->IsDictOfArrayOfString()) {
+                        const uint32_t item_size = numeric_cast<uint32_t>(item_data.GetSize());
+                        AppendAlignedRawBytes(data, &item_size, sizeof(item_size), sizeof(uint32_t));
+                        AppendRawBytes(data, item_data.GetPtr().get(), item_data.GetSize());
+                    }
+                    else {
+                        if (item_data.GetSize() != base_type.Size) {
+                            throw ScriptSystemException("Managed property dictionary array item size mismatch", prop->GetName());
+                        }
+
+                        AppendAlignedRawBytes(data, item_data.GetPtr().get(), item_data.GetSize(), alignment_for_size(item_data.GetSize()));
+                    }
+                }
             }
+            else {
+                PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, item);
 
-            AppendAlignedRawBytes(data, item_data.GetPtr().get(), item_data.GetSize(), alignment_for_size(item_data.GetSize()));
+                if (item_data.GetSize() != base_type.Size) {
+                    throw ScriptSystemException("Managed property dictionary value size mismatch", prop->GetName());
+                }
+
+                AppendAlignedRawBytes(data, item_data.GetPtr().get(), item_data.GetSize(), alignment_for_size(item_data.GetSize()));
+            }
         }
 
         prop_data.Set(data.data(), data.size());
@@ -4175,15 +4464,26 @@ static auto IsManagedBridgeFixedDictionaryValueType(const BaseTypeDesc& type) ->
     return type.IsPrimitive || type.IsEnum || type.IsStruct || type.IsHashedString || type.IsFixedType || type.IsEntityProto;
 }
 
-static auto IsManagedBridgeFixedDictionaryProperty(ptr<const Property> prop) -> bool
+static auto IsManagedBridgeDictionaryArrayValueType(const BaseTypeDesc& type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!prop->IsDict() || prop->IsDictOfArray() || prop->IsDictKeyString() || prop->IsDictOfString()) {
+    return type.Name == "any" || type.IsString || IsManagedBridgeFixedDictionaryValueType(type);
+}
+
+static auto IsManagedBridgeDictionaryProperty(ptr<const Property> prop) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!prop->IsDict() || prop->IsDictKeyString() || !IsManagedBridgeFixedDictionaryValueType(prop->GetDictKeyType())) {
         return false;
     }
 
-    return IsManagedBridgeFixedDictionaryValueType(prop->GetDictKeyType()) && IsManagedBridgeFixedDictionaryValueType(prop->GetBaseType());
+    if (prop->IsDictOfArray()) {
+        return IsManagedBridgeDictionaryArrayValueType(prop->GetBaseType());
+    }
+
+    return !prop->IsDictOfString() && IsManagedBridgeFixedDictionaryValueType(prop->GetBaseType());
 }
 
 static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool
@@ -4191,6 +4491,17 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return base_type.IsRefType && base_type.RefType != nullptr && base_type.RefType->FieldsRegistrator != nullptr;
+}
+
+static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsInComponent()) {
+        return strex("{}{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str();
+    }
+
+    return string {prop->GetNameWithoutComponent()};
 }
 
 // === Type/class and metadata resolution ===
