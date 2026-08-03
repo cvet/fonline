@@ -159,7 +159,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         process_snapshot snapshot = capture_process();
-        WriteLog("[{}] process {}: pid={}, resident={} bytes, private={} bytes", diagnostic_log_prefix, name, snapshot.process_id, snapshot.resident_memory_bytes, snapshot.private_memory_bytes);
+        WriteLog("[{}] process {}: pid: {}, resident: {} bytes, private: {} bytes", diagnostic_log_prefix, name, snapshot.process_id, snapshot.resident_memory_bytes, snapshot.private_memory_bytes);
     }
 
     auto capture_memory_delta(const process_snapshot& before, const process_snapshot& after) noexcept -> memory_delta
@@ -546,7 +546,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         duration_snapshot current = snapshot();
-        WriteLog("[{}] durations {}: count={}, total={}, min={}, max={}, latest={}, average={}", diagnostic_log_prefix, _name, current.sample_count, current.total, current.minimum, current.maximum, current.latest, current.average);
+        WriteLog("[{}] durations {}: count: {}, total: {}, min: {}, max: {}, latest: {}, average: {}", diagnostic_log_prefix, _name, current.sample_count, current.total, current.minimum, current.maximum, current.latest, current.average);
     }
 
     void duration_statistics::clear()

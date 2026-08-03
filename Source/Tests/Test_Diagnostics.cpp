@@ -48,7 +48,7 @@ TEST_CASE("Diagnostics")
         SetLogCallback("diagnostics-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
 
         diagnostics::here("location");
-        diagnostics::checkpoint("state", "value={}", 42);
+        diagnostics::checkpoint("state", "value: {}", 42);
         diagnostics::stack_checkpoint("stack");
         diagnostics::thread_checkpoint("worker");
         diagnostics::process_checkpoint("memory");
@@ -70,10 +70,10 @@ TEST_CASE("Diagnostics")
         }
 
         CHECK(combined.find("[TEMP_DIAGNOSTIC] location") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] checkpoint state: value=42") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] checkpoint state: value: 42") != string::npos);
         CHECK(combined.find("[TEMP_DIAGNOSTIC] stack stack:") != string::npos);
         CHECK(combined.find("[TEMP_DIAGNOSTIC] thread worker:") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] process memory: pid=") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] process memory: pid: ") != string::npos);
         CHECK(combined.find("[TEMP_DIAGNOSTIC] hex packet (5 byte(s)):") != string::npos);
         CHECK(combined.find("41 00 7f 7a") != string::npos);
         CHECK(combined.find("1 byte(s) omitted") != string::npos);

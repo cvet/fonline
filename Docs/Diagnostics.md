@@ -41,7 +41,7 @@ Example:
 ```cpp
 // TEMP_DIAGNOSTIC: remove after investigation.
 diagnostics::scoped_timer load_map_timer {"load-map"};
-diagnostics::checkpoint("load-map", "map={}, entities={}", map_id, entity_count);
+diagnostics::checkpoint("load-map", "map: {}, entities: {}", map_id, entity_count);
 
 if (invalid_state) {
     diagnostics::stack_checkpoint("invalid-map-state");
