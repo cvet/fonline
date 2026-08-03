@@ -82,20 +82,20 @@ auto EffectManager::LoadEffect(EffectUsage usage, u8string_view path) -> nptr<Re
     return effect_ptr;
 }
 
-auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>
+auto EffectManager::ResolveEffect(ptr<RenderEffect> default_effect, string_view effect_path) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_effect_path {effectPath};
-    return ResolveEffect(defaultEffect, utf8_effect_path);
+    u8string utf8_effect_path {effect_path};
+    return ResolveEffect(default_effect, utf8_effect_path);
 }
 
-auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, u8string_view effectPath) -> ptr<RenderEffect>
+auto EffectManager::ResolveEffect(ptr<RenderEffect> default_effect, u8string_view effect_path) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!effectPath.empty()) {
-        auto resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
+    if (!effect_path.empty()) {
+        auto resolved_effect = LoadEffect(default_effect->GetUsage(), effect_path);
 
         if (!resolved_effect) {
             throw EffectManagerException("Effect not found or have some errors, see log file");
@@ -104,35 +104,35 @@ auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, u8string_view
         return resolved_effect;
     }
 
-    return defaultEffect;
+    return default_effect;
 }
 
-void EffectManager::SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value)
+void EffectManager::SetEffectScriptValue(ptr<RenderEffect> effect, int32_t value_index, float32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
+    SetEffectScriptValues(effect, value_index, const_span<float32_t> {&value, 1});
 }
 
-void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values)
+void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t value_start_index, const_span<float32_t> values)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
-        throw EffectManagerException("Effect script value index is out of range", valueStartIndex);
+    if (value_start_index < 0 || value_start_index > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw EffectManagerException("Effect script value index is out of range", value_start_index);
     }
-    if (values.size() > numeric_cast<size_t>(EFFECT_SCRIPT_VALUES - valueStartIndex)) {
-        throw EffectManagerException("Effect script value range is out of range", valueStartIndex, values.size());
+    if (values.size() > numeric_cast<size_t>(EFFECT_SCRIPT_VALUES - value_start_index)) {
+        throw EffectManagerException("Effect script value range is out of range", value_start_index, values.size());
     }
     if (!effect->IsNeedScriptValueBuf()) {
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
     auto script_value_buf = GetOrCreateScriptValueBuf(effect);
-    size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
+    size_t value_start_offset = numeric_cast<size_t>(value_start_index);
 
     for (size_t i = 0; i < values.size(); i++) {
-        script_value_buf->ScriptValue[value_start_index + i] = values[i];
+        script_value_buf->ScriptValue[value_start_offset + i] = values[i];
     }
 }
 

@@ -125,11 +125,11 @@ public:
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ProcessInputEvent(const InputEvent& ev);
-    void SetEffect(EffectType effectType, int64_t effectSubtype, u8string_view effectPath);
-    void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
-    void SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1);
-    void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
-    auto GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>;
+    void SetEffect(EffectType effect_type, int64_t effect_subtype, u8string_view effect_path);
+    void SetEffectScriptValue(EffectType effect_type, int64_t effect_subtype, int32_t value_index, float32_t value);
+    void SetEffectScriptValues(EffectType effect_type, int64_t effect_subtype, int32_t value_start_index, const_span<float32_t> values, int32_t values_offset = 0, int32_t values_count = -1);
+    void ClearEffectScriptValues(EffectType effect_type, int64_t effect_subtype);
+    auto GetOffscreenEffect(int32_t effect_subtype) -> ptr<RenderEffect>;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
     void AnimFree(uint32_t anim_id);
@@ -310,8 +310,8 @@ protected:
 
     void UnloadMap();
     void LmapPrepareMap();
-    auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> nptr<RenderEffect>;
-    auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> ptr<RenderEffect>;
+    auto ResolveEffectScriptValueTarget(EffectType effect_type, int64_t effect_subtype) -> nptr<RenderEffect>;
+    auto ResolveRequiredEffectScriptValueTarget(EffectType effect_type, int64_t effect_subtype) -> ptr<RenderEffect>;
 
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<byte> data) override;
     void HandleUnresolvedHash(hstring::hash_t hash);

@@ -123,10 +123,10 @@ public:
 
     auto LoadEffect(EffectUsage usage, string_view path) -> nptr<RenderEffect>;
     auto LoadEffect(EffectUsage usage, u8string_view path) -> nptr<RenderEffect>;
-    auto ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>;
-    auto ResolveEffect(ptr<RenderEffect> defaultEffect, u8string_view effectPath) -> ptr<RenderEffect>;
-    void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value);
-    void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values);
+    auto ResolveEffect(ptr<RenderEffect> default_effect, string_view effect_path) -> ptr<RenderEffect>;
+    auto ResolveEffect(ptr<RenderEffect> default_effect, u8string_view effect_path) -> ptr<RenderEffect>;
+    void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t value_index, float32_t value);
+    void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t value_start_index, const_span<float32_t> values);
     void ClearEffectScriptValues(ptr<RenderEffect> effect);
     auto GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>;
     void LoadMinimalEffects();

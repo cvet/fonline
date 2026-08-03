@@ -2860,30 +2860,30 @@ void ClientEngine::ProcessVideo()
     }
 }
 
-void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
+void ClientEngine::SetEffect(EffectType effect_type, int64_t effect_subtype, u8string_view effect_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reload_effect = [this, effectPath](ptr<RenderEffect> def_effect) -> ptr<RenderEffect> { return EffectMngr.ResolveEffect(def_effect, effectPath); };
+    auto reload_effect = [this, effect_path](ptr<RenderEffect> def_effect) -> ptr<RenderEffect> { return EffectMngr.ResolveEffect(def_effect, effect_path); };
 
-    uint32_t eff_type = static_cast<uint32_t>(effectType);
+    uint32_t eff_type = static_cast<uint32_t>(effect_type);
 
-    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effect_subtype != 0) {
         auto map = GetCurMap();
 
-        if (map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            auto item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+        if (map && effect_subtype >= 0 && effect_subtype <= std::numeric_limits<uint32_t>::max()) {
+            auto item = map->GetItem(ident_t {numeric_cast<uint32_t>(effect_subtype)});
 
             if (item) {
                 item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic));
             }
         }
     }
-    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effect_subtype != 0) {
         auto map = GetCurMap();
 
-        if (map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            auto cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+        if (map && effect_subtype >= 0 && effect_subtype <= std::numeric_limits<uint32_t>::max()) {
+            auto cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effect_subtype)});
 
             if (cr) {
                 cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter));
@@ -2891,146 +2891,146 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, u8str
         }
     }
 
-    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
-        EffectMngr.Effects.Generic = EffectMngr.ResolveEffect(EffectMngr.Effects.GenericDefault, effectPath);
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effect_subtype == 0) {
+        EffectMngr.Effects.Generic = EffectMngr.ResolveEffect(EffectMngr.Effects.GenericDefault, effect_path);
     }
-    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
-        EffectMngr.Effects.Critter = EffectMngr.ResolveEffect(EffectMngr.Effects.CritterDefault, effectPath);
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effect_subtype == 0) {
+        EffectMngr.Effects.Critter = EffectMngr.ResolveEffect(EffectMngr.Effects.CritterDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::TileSprite)) != 0) {
-        EffectMngr.Effects.Tile = EffectMngr.ResolveEffect(EffectMngr.Effects.TileDefault, effectPath);
+        EffectMngr.Effects.Tile = EffectMngr.ResolveEffect(EffectMngr.Effects.TileDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::RoofSprite)) != 0) {
-        EffectMngr.Effects.Roof = EffectMngr.ResolveEffect(EffectMngr.Effects.RoofDefault, effectPath);
+        EffectMngr.Effects.Roof = EffectMngr.ResolveEffect(EffectMngr.Effects.RoofDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::RainSprite)) != 0) {
-        EffectMngr.Effects.Rain = EffectMngr.ResolveEffect(EffectMngr.Effects.RainDefault, effectPath);
+        EffectMngr.Effects.Rain = EffectMngr.ResolveEffect(EffectMngr.Effects.RainDefault, effect_path);
     }
 
 #if FO_ENABLE_3D
     if ((eff_type & static_cast<uint32_t>(EffectType::SkinnedMesh)) != 0) {
-        EffectMngr.Effects.SkinnedModel = EffectMngr.ResolveEffect(EffectMngr.Effects.SkinnedModelDefault, effectPath);
+        EffectMngr.Effects.SkinnedModel = EffectMngr.ResolveEffect(EffectMngr.Effects.SkinnedModelDefault, effect_path);
     }
 #endif
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Interface)) != 0) {
-        EffectMngr.Effects.Iface = EffectMngr.ResolveEffect(EffectMngr.Effects.IfaceDefault, effectPath);
+        EffectMngr.Effects.Iface = EffectMngr.ResolveEffect(EffectMngr.Effects.IfaceDefault, effect_path);
     }
 
-    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
-        EffectMngr.Effects.Font = EffectMngr.ResolveEffect(EffectMngr.Effects.FontDefault, effectPath);
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effect_subtype == -1) {
+        EffectMngr.Effects.Font = EffectMngr.ResolveEffect(EffectMngr.Effects.FontDefault, effect_path);
     }
-    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
-        FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(EffectMngr.Effects.Font));
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effect_subtype >= 0) {
+        FontMngr.SetFontEffect(static_cast<FontType>(effect_subtype), reload_effect(EffectMngr.Effects.Font));
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
-        EffectMngr.Effects.Primitive = EffectMngr.ResolveEffect(EffectMngr.Effects.PrimitiveDefault, effectPath);
+        EffectMngr.Effects.Primitive = EffectMngr.ResolveEffect(EffectMngr.Effects.PrimitiveDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::Light)) != 0) {
-        EffectMngr.Effects.Light = EffectMngr.ResolveEffect(EffectMngr.Effects.LightDefault, effectPath);
+        EffectMngr.Effects.Light = EffectMngr.ResolveEffect(EffectMngr.Effects.LightDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::Fog)) != 0) {
-        EffectMngr.Effects.Fog = EffectMngr.ResolveEffect(EffectMngr.Effects.FogDefault, effectPath);
+        EffectMngr.Effects.Fog = EffectMngr.ResolveEffect(EffectMngr.Effects.FogDefault, effect_path);
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushRenderTarget)) != 0) {
-        EffectMngr.Effects.FlushRenderTarget = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushRenderTargetDefault, effectPath);
+        EffectMngr.Effects.FlushRenderTarget = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushRenderTargetDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushPrimitive)) != 0) {
-        EffectMngr.Effects.FlushPrimitive = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushPrimitiveDefault, effectPath);
+        EffectMngr.Effects.FlushPrimitive = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushPrimitiveDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushMap)) != 0) {
-        EffectMngr.Effects.FlushMap = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushMapDefault, effectPath);
+        EffectMngr.Effects.FlushMap = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushMapDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushLight)) != 0) {
-        EffectMngr.Effects.FlushLight = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushLightDefault, effectPath);
+        EffectMngr.Effects.FlushLight = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushLightDefault, effect_path);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushFog)) != 0) {
-        EffectMngr.Effects.FlushFog = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushFogDefault, effectPath);
+        EffectMngr.Effects.FlushFog = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushFogDefault, effect_path);
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Offscreen)) != 0) {
-        if (effectSubtype < 0) {
+        if (effect_subtype < 0) {
             throw ScriptException("Negative effect subtype");
         }
 
-        OffscreenEffects.resize(std::max(OffscreenEffects.size(), numeric_cast<size_t>(effectSubtype) + 1));
-        OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
+        OffscreenEffects.resize(std::max(OffscreenEffects.size(), numeric_cast<size_t>(effect_subtype) + 1));
+        OffscreenEffects[numeric_cast<size_t>(effect_subtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
     }
 }
 
-void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
+void ClientEngine::SetEffectScriptValue(EffectType effect_type, int64_t effect_subtype, int32_t value_index, float32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effectType, effectSubtype, valueIndex, const_span<float32_t> {&value, 1});
+    SetEffectScriptValues(effect_type, effect_subtype, value_index, const_span<float32_t> {&value, 1});
 }
 
-void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset, int32_t valuesCount)
+void ClientEngine::SetEffectScriptValues(EffectType effect_type, int64_t effect_subtype, int32_t value_start_index, const_span<float32_t> values, int32_t values_offset, int32_t values_count)
 {
     FO_STACK_TRACE_ENTRY();
 
     int32_t values_size = numeric_cast<int32_t>(values.size());
 
-    if (valuesOffset < 0 || valuesOffset > values_size) {
-        throw ScriptException("Effect script values offset is out of range", valuesOffset, values_size);
+    if (values_offset < 0 || values_offset > values_size) {
+        throw ScriptException("Effect script values offset is out of range", values_offset, values_size);
     }
 
-    int32_t actual_values_count = valuesCount;
+    int32_t actual_values_count = values_count;
 
     if (actual_values_count < 0) {
-        actual_values_count = values_size - valuesOffset;
+        actual_values_count = values_size - values_offset;
     }
-    if (actual_values_count < 0 || actual_values_count > values_size - valuesOffset) {
-        throw ScriptException("Effect script values count is out of range", actual_values_count, values_size, valuesOffset);
+    if (actual_values_count < 0 || actual_values_count > values_size - values_offset) {
+        throw ScriptException("Effect script values count is out of range", actual_values_count, values_size, values_offset);
     }
-    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
-        throw ScriptException("Effect script value index is out of range", valueStartIndex);
+    if (value_start_index < 0 || value_start_index > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw ScriptException("Effect script value index is out of range", value_start_index);
     }
-    if (actual_values_count > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES) - valueStartIndex) {
-        throw ScriptException("Effect script value range is out of range", valueStartIndex, actual_values_count);
+    if (actual_values_count > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES) - value_start_index) {
+        throw ScriptException("Effect script value range is out of range", value_start_index, actual_values_count);
     }
 
-    auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    auto effect = ResolveRequiredEffectScriptValueTarget(effect_type, effect_subtype);
 
     const_span<float32_t> selected_values;
     if (actual_values_count != 0) {
-        selected_values = values.subspan(numeric_cast<size_t>(valuesOffset), numeric_cast<size_t>(actual_values_count));
+        selected_values = values.subspan(numeric_cast<size_t>(values_offset), numeric_cast<size_t>(actual_values_count));
     }
 
-    EffectMngr.SetEffectScriptValues(effect, valueStartIndex, selected_values);
+    EffectMngr.SetEffectScriptValues(effect, value_start_index, selected_values);
 }
 
-void ClientEngine::ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype)
+void ClientEngine::ClearEffectScriptValues(EffectType effect_type, int64_t effect_subtype)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    auto effect = ResolveRequiredEffectScriptValueTarget(effect_type, effect_subtype);
 
     EffectMngr.ClearEffectScriptValues(effect);
 }
 
-auto ClientEngine::GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>
+auto ClientEngine::GetOffscreenEffect(int32_t effect_subtype) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || !OffscreenEffects[numeric_cast<size_t>(effectSubtype)]) {
+    if (effect_subtype < 0 || effect_subtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || !OffscreenEffects[numeric_cast<size_t>(effect_subtype)]) {
         throw ScriptException("Invalid effect subtype");
     }
 
-    return OffscreenEffects[numeric_cast<size_t>(effectSubtype)];
+    return OffscreenEffects[numeric_cast<size_t>(effect_subtype)];
 }
 
-auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> nptr<RenderEffect>
+auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effect_type, int64_t effect_subtype) -> nptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    switch (effectType) {
+    switch (effect_type) {
     case EffectType::GenericSprite:
-        if (effectSubtype != 0) {
-            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
-                throw ScriptException("Invalid generic sprite effect subtype", effectSubtype);
+        if (effect_subtype != 0) {
+            if (effect_subtype < 0 || effect_subtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid generic sprite effect subtype", effect_subtype);
             }
 
             auto map = GetCurMap();
@@ -3038,9 +3038,9 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Current map is not available");
             }
 
-            auto item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            auto item = map->GetItem(ident_t {numeric_cast<uint32_t>(effect_subtype)});
             if (!item) {
-                throw ScriptException("Generic sprite effect target item not found", effectSubtype);
+                throw ScriptException("Generic sprite effect target item not found", effect_subtype);
             }
 
             return item->GetDrawEffect();
@@ -3049,9 +3049,9 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
         return EffectMngr.Effects.Generic;
 
     case EffectType::CritterSprite:
-        if (effectSubtype != 0) {
-            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
-                throw ScriptException("Invalid critter sprite effect subtype", effectSubtype);
+        if (effect_subtype != 0) {
+            if (effect_subtype < 0 || effect_subtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid critter sprite effect subtype", effect_subtype);
             }
 
             auto map = GetCurMap();
@@ -3059,9 +3059,9 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Current map is not available");
             }
 
-            auto cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            auto cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effect_subtype)});
             if (!cr) {
-                throw ScriptException("Critter sprite effect target critter not found", effectSubtype);
+                throw ScriptException("Critter sprite effect target critter not found", effect_subtype);
             }
 
             return cr->GetDrawEffect();
@@ -3087,7 +3087,7 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
         return EffectMngr.Effects.Iface;
 
     case EffectType::Font:
-        if (effectSubtype != -1) {
+        if (effect_subtype != -1) {
             throw ScriptException("Per-font script values are not supported");
         }
 
@@ -3118,29 +3118,29 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
         return EffectMngr.Effects.FlushFog;
 
     case EffectType::Offscreen:
-        if (effectSubtype < 0 || effectSubtype > std::numeric_limits<int32_t>::max()) {
-            throw ScriptException("Invalid offscreen effect subtype", effectSubtype);
+        if (effect_subtype < 0 || effect_subtype > std::numeric_limits<int32_t>::max()) {
+            throw ScriptException("Invalid offscreen effect subtype", effect_subtype);
         }
 
-        return GetOffscreenEffect(numeric_cast<int32_t>(effectSubtype));
+        return GetOffscreenEffect(numeric_cast<int32_t>(effect_subtype));
 
     default:
-        throw ScriptException("Unsupported effect script value target", static_cast<uint32_t>(effectType), effectSubtype);
+        throw ScriptException("Unsupported effect script value target", static_cast<uint32_t>(effect_type), effect_subtype);
     }
 }
 
-auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> ptr<RenderEffect>
+auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effect_type, int64_t effect_subtype) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect = ResolveEffectScriptValueTarget(effectType, effectSubtype);
+    auto effect = ResolveEffectScriptValueTarget(effect_type, effect_subtype);
 
     if (!effect) {
-        throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effectType), effectSubtype);
+        throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effect_type), effect_subtype);
     }
 
     if (!effect->IsNeedScriptValueBuf()) {
-        throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effectType), effectSubtype);
+        throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effect_type), effect_subtype);
     }
 
     return effect;
