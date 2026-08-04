@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_screenshots.py",
   "source_manifest": "BuildTools/DocumentationScreenshots.json",
-  "source_manifest_sha256": "91b4c8f73a25756967145ae239b7b808d4e981ed06f30d7676a39be599d46cb4",
+  "source_manifest_sha256": "fa4b3305407e221e873962c7f17839a1b033b9f6bafcd236728a2a184e0080d9",
   "engine_base_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
   "revision_policy": "The base revision plus the generated SHA-256 digest of every listed source path identifies captures made from a documentation worktree before its final commit.",
   "screenshot_count": 2,
@@ -49,16 +49,16 @@
         "The minimal example map, particle fixture, startup profile, renderer, viewport, or capture script changes."
       ],
       "source_sha256": {
-        "Source/Frontend/Application.cpp": "fe5035005645661d40fdcd8f967624e0156d5d06e3108fa6dc8f922e32511d8a",
-        "Source/Frontend/Application.h": "a34b2318550b5792e2d774d022b6845aa84a8be9e0cf61a3b9e7a7c92fdc4076",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "e68e4d5b742c95f3df6325c3d099198d3776248db1969a419ec614fc70a5d0be",
-        "Source/Tools/Mapper.cpp": "e01da12b0bc735d000128f86ddc41260b8071ba1c63841f4984d32cdc388fc9c",
-        "Source/Tools/Mapper.h": "fd8180b1d17902e172b00704cdc9bcea4b2b300d6a73ff82d0f04b6f271bedbb",
-        "Source/Tools/ParticleEditor.cpp": "3d0a0911bc4a8dd19e9998263f2e6b140fad9be41a62c8ff4af9d1a86089d2ab",
-        "Examples/MinimalMultiplayer/CMakeLists.txt": "329207ee7eb304b0b972d24a2d21e730213a361397e804974a31a96f1ce5f2c7",
-        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "0f304d50d5e656d48b2ddc9591c0c0059d75038a0facf592333e61b314dbaafc",
-        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "9528f56d18268ca3745b644d8a655caa34e2599a045cd650f49608074b3786b3",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "54c83abc333be92de3cd7bc838cab68f4f5cd9c7ddfbfd21128a736fe6f0a8ba"
+        "Source/Frontend/Application.cpp": "941615d4b15e176f8bdbe89e81a1765389ca7913cc716c0612c4d9d6aa0b514f",
+        "Source/Frontend/Application.h": "321379ce74b7724dd82bc1d0f0a19e47363780dd89e96afc58980c51435a0e34",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cfefefb806daf345ad436515b610d4c6cd7263684d95e48f74fefc640175b43e",
+        "Source/Tools/Mapper.cpp": "e4448446ea1680b30e23085c2b4036313ead3388f689de9318d84943067ae1a2",
+        "Source/Tools/Mapper.h": "8d9024cd2241c99ff232a76f31870de72064b534a2f0c7cd1f9c1b9993dd4ae5",
+        "Source/Tools/ParticleEditor.cpp": "3745383a6c1ddd2b10607d30a0db760e54c717b71175bd0dc711be1f4903b303",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "2183e9da3892a152d93ee67393e8e3f7b1e0ed9b67d2dd843c8c7d9ec2b61147",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "e7cad963d74b65b3218d2c38af680e9dbc94794d4181009013315245a6f32ccb",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805",
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "897d46b057de14c7353a74499ba1a83deca0b748fa96ef75e8873e74aabaf0b0"
       }
     },
     {
@@ -105,17 +105,17 @@
         "The minimal example particle fixture, renderer, viewport, or capture script changes."
       ],
       "source_sha256": {
-        "Source/Common/SpriteResource.cpp": "d1614ae67e5b9a6bf892addfe04850c216d2653f811ffb3e73dbd3e60084a45f",
-        "Source/Common/SpriteResource.h": "8fa920103bf532676858d46201199057a4042c6e7e55454defef81bbece2884b",
-        "Source/Frontend/Application.cpp": "fe5035005645661d40fdcd8f967624e0156d5d06e3108fa6dc8f922e32511d8a",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "e68e4d5b742c95f3df6325c3d099198d3776248db1969a419ec614fc70a5d0be",
-        "Source/Tools/Mapper.cpp": "e01da12b0bc735d000128f86ddc41260b8071ba1c63841f4984d32cdc388fc9c",
-        "Source/Tools/ParticleEditor.cpp": "3d0a0911bc4a8dd19e9998263f2e6b140fad9be41a62c8ff4af9d1a86089d2ab",
-        "Source/Tools/SparkParticleEditor.cpp": "947f056168f90011dce18f920176a7fc18a6f0d37f86a0d7444d382d44a0147f",
-        "Examples/MinimalMultiplayer/CMakeLists.txt": "329207ee7eb304b0b972d24a2d21e730213a361397e804974a31a96f1ce5f2c7",
-        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "0f304d50d5e656d48b2ddc9591c0c0059d75038a0facf592333e61b314dbaafc",
-        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "9528f56d18268ca3745b644d8a655caa34e2599a045cd650f49608074b3786b3",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "54c83abc333be92de3cd7bc838cab68f4f5cd9c7ddfbfd21128a736fe6f0a8ba"
+        "Source/Common/SpriteResource.cpp": "8cffbe76863e8f611b09dc501cf38447745b749dfe27b36f4074015014763965",
+        "Source/Common/SpriteResource.h": "c1a16c6d6b86034a83d6eef0ff49e531218218e6bec6ea85098a9d4be1599c00",
+        "Source/Frontend/Application.cpp": "941615d4b15e176f8bdbe89e81a1765389ca7913cc716c0612c4d9d6aa0b514f",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cfefefb806daf345ad436515b610d4c6cd7263684d95e48f74fefc640175b43e",
+        "Source/Tools/Mapper.cpp": "e4448446ea1680b30e23085c2b4036313ead3388f689de9318d84943067ae1a2",
+        "Source/Tools/ParticleEditor.cpp": "3745383a6c1ddd2b10607d30a0db760e54c717b71175bd0dc711be1f4903b303",
+        "Source/Tools/SparkParticleEditor.cpp": "388f27a0544acd6590f6d4c90c89738a80795952dcd92432602a93b05f05aeb7",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "2183e9da3892a152d93ee67393e8e3f7b1e0ed9b67d2dd843c8c7d9ec2b61147",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "e7cad963d74b65b3218d2c38af680e9dbc94794d4181009013315245a6f32ccb",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805",
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "897d46b057de14c7353a74499ba1a83deca0b748fa96ef75e8873e74aabaf0b0"
       }
     }
   ]

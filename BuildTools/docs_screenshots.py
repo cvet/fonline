@@ -63,6 +63,11 @@ def _png_size(path: Path) -> tuple[int, int]:
     return struct.unpack(">II", data[16:24])
 
 
+def _normalized_text_bytes(path: Path) -> bytes:
+    text = path.read_text(encoding="utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def _validate_embedding(root: Path, screenshot: dict[str, Any]) -> None:
     owning_document = root / screenshot["owning_document"]
     if not owning_document.is_file():
@@ -251,13 +256,15 @@ def render_outputs(root: Path) -> dict[str, str]:
     records: list[dict[str, Any]] = []
     for screenshot in manifest["screenshots"]:
         source_hashes = {
-            source_path: hashlib.sha256((root / source_path).read_bytes()).hexdigest()
+            source_path: hashlib.sha256(
+                _normalized_text_bytes(root / source_path)
+            ).hexdigest()
             for source_path in screenshot["source_paths"]
         }
         record = dict(screenshot)
         record["source_sha256"] = source_hashes
         records.append(record)
-    source_bytes = (root / DEFAULT_MANIFEST).read_bytes()
+    source_bytes = _normalized_text_bytes(root / DEFAULT_MANIFEST)
     catalog = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,

@@ -69,9 +69,23 @@ class DocumentationScreenshotTests(unittest.TestCase):
             )
             for path, digest in record["source_sha256"].items():
                 self.assertEqual(
-                    hashlib.sha256((ENGINE_ROOT / path).read_bytes()).hexdigest(),
+                    hashlib.sha256(
+                        docs_screenshots._normalized_text_bytes(ENGINE_ROOT / path)
+                    ).hexdigest(),
                     digest,
                 )
+
+    def test_text_hashes_are_independent_of_checkout_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            lf_path = root / "lf.txt"
+            crlf_path = root / "crlf.txt"
+            lf_path.write_bytes(b"first\nsecond\n")
+            crlf_path.write_bytes(b"first\r\nsecond\r\n")
+            self.assertEqual(
+                docs_screenshots._normalized_text_bytes(lf_path),
+                docs_screenshots._normalized_text_bytes(crlf_path),
+            )
 
     def test_owning_manuals_embed_exact_accessible_metadata(self) -> None:
         owning_documents = {
