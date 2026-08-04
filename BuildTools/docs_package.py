@@ -6,18 +6,24 @@ import html
 import importlib.util
 import json
 import os
+import re
 import sys
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
 from urllib.parse import quote
 
+import docs_localization
+import docs_description_translations
+
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/PackageInterface.json"
 DEFAULT_SOURCE = "BuildTools/package.py"
 DEFAULT_MODEL = "Docs/generated/package.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/package"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/packages"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/packages"
+LEGACY_OUTPUT_DIR = "Docs/generated/package"
 GENERATED_BY = "BuildTools/docs_package.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -29,7 +35,16 @@ PAGE_DEFINITIONS = (
     ("payloads.md", "generated-package-payloads", "Package Payloads and Artifacts"),
     ("cli.md", "generated-package-cli", "Packager Command Line"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 VALID_STABILITY = {"stable", "experimental", "deprecated", "internal"}
 VALID_STATUS = {"implemented", "placeholder", "unsupported"}
 
@@ -421,7 +436,7 @@ def _page_header(document_id: str, title: str) -> list[str]:
         "`BuildTools/package.py`, then run `python BuildTools/docs_package.py --write`.",
         "",
         "[Index](index.md) | [Declaration](declaration.md) | [Matrix](matrix.md) | "
-        "[Payloads](payloads.md) | [CLI](cli.md) | [Canonical JSON](../package.json)",
+        "[Payloads](payloads.md) | [CLI](cli.md) | [Canonical JSON](../../../generated/package.json)",
         "",
     ]
 
@@ -434,6 +449,17 @@ def _render_index(model: dict[str, object]) -> str:
     lines.extend([
         "This reference joins the CMake package declaration with the runtime-consumed packager contract. "
         "It describes engine capabilities, not an embedding project's release matrix.",
+        "This generated package interface is the entry point for `DefinePackage` grammar, `package.py` "
+        "targets, platforms, pack tokens, and payload effects.",
+        "",
+        "## Cross-contract decision",
+        "",
+        "Use this cross-contract sequence:",
+        "",
+        "1. State the package boundary explicitly: pin an exact Engine revision and use `BuildTools/PackageInterface.json` as the `internal` package contract; do not replace this statement with a generic revision-pinned heading.",
+        "2. Treat accepted package.py dimensions and payload effects as capability only. Embedding-project package matrices, release policy, secret provisioning, deployment topology, and installer signing credentials remain excluded and project-owned.",
+        "3. Read support separately: `build_gated`, `smoke_gated`, `source_capable`, and `not_in_public_matrix` are distinct states.",
+        "4. For each example, report source status, remote visibility/state, observed required checks, exact Engine pin, update-delivery policy, and matching Contract digest together. Only a `published` source with a `public` / `published` remote and `passing` observed checks is publication evidence; a private, reserved, source-staged, planned, or unobserved repository is not.",
         "",
         "## Contract status",
         "",
@@ -459,6 +485,148 @@ def _render_index(model: dict[str, object]) -> str:
     lines.extend(f"- {item}" for item in scope["excluded"])
     lines.append("")
     return "\n".join(lines)
+
+
+RUSSIAN_TITLES = {
+    "Generated Package Interface": "Сгенерированный интерфейс пакетов",
+    "Package Declaration Grammar": "Грамматика объявления пакетов",
+    "Package Targets, Platforms, and Packs": "Цели, платформы и наборы пакетов",
+    "Package Payloads and Artifacts": "Содержимое пакетов и артефакты",
+    "Packager Command Line": "Командная строка упаковщика",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit this page directly. Update `BuildTools/PackageInterface.json` or `BuildTools/package.py`, then run `python BuildTools/docs_package.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.",
+    "[Index](index.md) | [Declaration](declaration.md) | [Matrix](matrix.md) | [Payloads](payloads.md) | [CLI](cli.md) | [Canonical JSON](../../../generated/package.json)":
+        "[Индекс](index.md) | [Объявление](declaration.md) | [Матрица](matrix.md) | [Содержимое](payloads.md) | [CLI](cli.md) | [Канонический JSON](../../../generated/package.json)",
+    "This reference joins the CMake package declaration with the runtime-consumed packager contract. It describes engine capabilities, not an embedding project's release matrix.":
+        "Этот справочник связывает объявление пакета CMake с контрактом упаковщика, который используется во время выполнения. Он описывает возможности движка, а не матрицу релиза встраивающего проекта.",
+    "This generated package interface is the entry point for `DefinePackage` grammar, `package.py` targets, platforms, pack tokens, and payload effects.":
+        "Этот сгенерированный интерфейс пакетов является точкой входа для грамматики `DefinePackage`, целей `package.py`, платформ, pack tokens и эффектов payload.",
+    "## Cross-contract decision": "## Решение между контрактами",
+    "Use this cross-contract sequence:": "Используйте следующую cross-contract последовательность:",
+    "1. State the package boundary explicitly: pin an exact Engine revision and use `BuildTools/PackageInterface.json` as the `internal` package contract; do not replace this statement with a generic revision-pinned heading.":
+        "1. Формулируйте package boundary явно: фиксируйте точную ревизию Engine и используйте `BuildTools/PackageInterface.json` как `internal` package contract; не заменяйте это утверждение общим revision-pinned заголовком.",
+    "2. Treat accepted package.py dimensions and payload effects as capability only. Embedding-project package matrices, release policy, secret provisioning, deployment topology, and installer signing credentials remain excluded and project-owned.":
+        "2. Считайте допустимые dimensions package.py и payload effects только capability. Package matrices встраивающего проекта, release policy, secret provisioning, deployment topology и credentials подписи установщика остаются исключёнными и принадлежат проекту.",
+    "3. Read support separately: `build_gated`, `smoke_gated`, `source_capable`, and `not_in_public_matrix` are distinct states.":
+        "3. Рассматривайте support отдельно: `build_gated`, `smoke_gated`, `source_capable` и `not_in_public_matrix` являются разными состояниями.",
+    "4. For each example, report source status, remote visibility/state, observed required checks, exact Engine pin, update-delivery policy, and matching Contract digest together. Only a `published` source with a `public` / `published` remote and `passing` observed checks is publication evidence; a private, reserved, source-staged, planned, or unobserved repository is not.":
+        "4. Для каждого примера сообщайте вместе source status, visibility/state remote, наблюдённые required checks, точный Engine pin, политику update delivery и соответствующий Contract digest. Свидетельством публикации является только source со статусом `published`, remote `public` / `published` и наблюдёнными checks `passing`; private, reserved, source-staged, planned или unobserved repository им не является.",
+    "## Contract status": "## Статус контракта",
+    "## Coverage": "## Покрытие",
+    "## Boundary": "## Граница ответственности",
+    "## Per-binary modifiers": "## Модификаторы отдельного бинарного файла",
+    "## Targets": "## Цели",
+    "## Platforms": "## Платформы",
+    "## Pack tokens": "## Токены наборов",
+    "## Platform payloads": "## Содержимое для платформ",
+    "## Output-producing packs": "## Наборы, создающие выходные артефакты",
+    "Included:": "Включено:",
+    "Excluded from this slice:": "Не входит в этот раздел:",
+    "`DefinePackage` requires `CONFIG`. Each `BINARY` becomes one `package.py` invocation. `POSTFIX` is optional and belongs only to the immediately preceding `BINARY`; it has no package-wide fallback.":
+        "`DefinePackage` требует `CONFIG`. Каждое предложение `BINARY` превращается в отдельный вызов `package.py`. `POSTFIX` необязателен и относится только к непосредственно предшествующему `BINARY`; общего значения для всего пакета нет.",
+    "The packager stages one target payload, applies binary/resource transformations, emits artifact packs in a fixed finalization order, and removes the staged directory unless `Raw` retains it.":
+        "Упаковщик подготавливает содержимое одной цели, применяет преобразования бинарных файлов и ресурсов, выпускает артефакты в фиксированном порядке завершения и удаляет промежуточный каталог, если токен `Raw` не требует его сохранить.",
+    "A package invocation must select at least one implemented output-producing pack. Modifier-only lists and unknown, duplicate, placeholder, unsupported-platform, or target-incompatible tokens fail before output staging.":
+        "Вызов упаковщика должен выбрать хотя бы один реализованный набор, создающий выходной артефакт. Списки только из модификаторов, а также неизвестные, повторяющиеся, резервные, неподдерживаемые платформой или несовместимые с целью токены отклоняются до подготовки выходных данных.",
+    "CMake normally invokes this internal CLI once for each `BINARY` clause. Direct callers must provide the same build hash, config, input, and output context.":
+        "Обычно CMake вызывает этот внутренний CLI один раз для каждого предложения `BINARY`. Прямые вызовы должны передавать тот же хеш сборки, конфигурацию и контекст входных и выходных данных.",
+    "Not declared": "Не объявлено",
+    "Not documented in the parser.": "Не документировано в parser.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
+    "| Stable ID | Clause | Arguments | Required | Repeatable | Purpose |":
+        "| Стабильный ID | Предложение | Аргументы | Обязательно | Повторяемо | Назначение |",
+    "| Stable ID | Modifier | Value | Default | Purpose |":
+        "| Стабильный ID | Модификатор | Значение | По умолчанию | Назначение |",
+    "| Stable ID | Target | Resources | Required packs | Purpose |":
+        "| Стабильный ID | Цель | Ресурсы | Обязательные наборы | Назначение |",
+    "| Stable ID | Platform | Status | Architectures | Targets | Payload |":
+        "| Стабильный ID | Платформа | Статус | Архитектуры | Цели | Содержимое |",
+    "| Stable ID | Pack | Category | Status | Platforms | Targets | Effect |":
+        "| Стабильный ID | Набор | Категория | Статус | Платформы | Цели | Эффект |",
+    "| Stable ID | Platform | Status | Payload |":
+        "| Стабильный ID | Платформа | Статус | Содержимое |",
+    "| Stable ID | Pack | Status | Output | Effect |":
+        "| Стабильный ID | Набор | Статус | Выход | Эффект |",
+    "| Stable ID | Argument | Required | Action | Choices | Default | Description |":
+        "| Стабильный ID | Аргумент | Обязательно | Действие | Варианты | По умолчанию | Описание |",
+}
+
+
+def _render_russian_page(
+    filename: str,
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    content = content.replace(" | yes |", " | да |")
+    content = content.replace(" | no |", " | нет |")
+
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError(f"generated package page has no front matter: {filename}")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/packages/{filename}"
+    russian_path = f"../../ru/reference/packages/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _render_declaration(model: dict[str, object]) -> str:
@@ -568,23 +736,60 @@ def _render_cli(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated package model")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/declaration.md": _render_declaration(model),
         f"{DEFAULT_OUTPUT_DIR}/matrix.md": _render_matrix(model),
         f"{DEFAULT_OUTPUT_DIR}/payloads.md": _render_payloads(model),
         f"{DEFAULT_OUTPUT_DIR}/cli.md": _render_cli(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/declaration.md": _render_declaration(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/matrix.md": _render_matrix(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/payloads.md": _render_payloads(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/cli.md": _render_cli(localized_model),
+    }
+    pages = dict(canonical_pages)
+    definitions = {
+        filename: (document_id, title)
+        for filename, document_id, title in PAGE_DEFINITIONS
+    }
+    for canonical_path, content in canonical_pages.items():
+        filename = PurePosixPath(canonical_path).name
+        document_id, title = definitions[filename]
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            filename,
+            document_id,
+            canonical_path,
+            content,
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            content,
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated package reference page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
 
 
 def render_reference_pages(root: Path, manifest_relative_path: str = DEFAULT_MANIFEST) -> dict[str, str]:
-    return generate_reference_pages(generate_package_model(root, manifest_relative_path))
+    model = generate_package_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "package",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -600,7 +805,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_package_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "package",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate package interface documentation: {exception}", file=sys.stderr)
         return 1

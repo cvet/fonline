@@ -2,6 +2,10 @@
 
 #include "Server.h"
 
+#if !defined(FO_STARTER_PROJECT_DEPENDENCY) || FO_STARTER_PROJECT_DEPENDENCY != 1
+#error Starter project dependency was not linked to the SERVER role
+#endif
+
 FO_USING_NAMESPACE();
 
 FO_BEGIN_NAMESPACE

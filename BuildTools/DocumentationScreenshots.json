@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "title": "FOnline documentation screenshots",
+  "engine_base_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
+  "revision_policy": "The base revision plus the generated SHA-256 digest of every listed source path identifies captures made from a documentation worktree before its final commit.",
+  "screenshots": [
+    {
+      "id": "mapper-particle-preview",
+      "title": "Mapper particle preview and core work windows",
+      "path": "Docs/assets/screenshots/mapper-particle-preview.png",
+      "owning_document": "Docs/en/how-to/tools/mapper-interactive.md",
+      "alt": "FOnline Mapper at 1280 by 800 showing the Workspace and Controls windows, the Particle Preview panel with Documentation.spk selected, deterministic seed and prewarm controls, and the live radiation particle centered on TutorialMap.",
+      "caption": "Mapper capture from the minimal multiplayer example. Particle Preview selects the baked Documentation.spk resource, places it at the view center, and exposes deterministic scale, offset, seed, and prewarm controls beside the normal Workspace and Controls windows.",
+      "width": 1280,
+      "height": 800,
+      "sha256": "f5834f6fbba987d5b9eaa8108437ea5c0ff1a29a2e0aeb73b05871bdec82f404",
+      "captured_on": "2026-07-31",
+      "license": "MIT",
+      "capture": {
+        "host": "Windows 11 x64",
+        "renderer": "Direct3D 11, feature level 11.1",
+        "project": "Examples/MinimalMultiplayer",
+        "viewport": "1280x800",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationCapture",
+        "interaction_steps": [
+          "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
+          "Launch the MapperDocumentationCapture subconfig and do not modify the restored tool layout.",
+          "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
+        ]
+      },
+      "source_paths": [
+        "Source/Frontend/Application.cpp",
+        "Source/Frontend/Application.h",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp",
+        "Source/Tools/Mapper.cpp",
+        "Source/Tools/Mapper.h",
+        "Source/Tools/ParticleEditor.cpp",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark",
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
+      ],
+      "recapture_triggers": [
+        "Mapper menu, Workspace, Controls, or Particle Preview layout or labels change.",
+        "Mapper full-window screenshot composition or ImGui rendering changes.",
+        "The minimal example map, particle fixture, startup profile, renderer, viewport, or capture script changes."
+      ]
+    },
+    {
+      "id": "mapper-spark-editor",
+      "title": "Mapper SPARK particle editor",
+      "path": "Docs/assets/screenshots/mapper-spark-editor.png",
+      "owning_document": "Docs/en/how-to/tools/particle-authoring.md",
+      "alt": "FOnline SPARK Particle Editor at 1280 by 800 showing Documentation.spark, Adding and Removing modes, Auto replay and direction controls, a live 200-pixel preview, and the expandable Groups hierarchy with DocumentationGroup.",
+      "caption": "The Mapper opens the authored Documentation.spark source, not the baked .spk output. The editor combines a live preview with adding, removing, and naming modes plus the editable System and Group object hierarchy.",
+      "width": 1280,
+      "height": 800,
+      "sha256": "168ed7aecf787293778be0e844590925227d76ec52583c07065aeb7c7bf5f9be",
+      "captured_on": "2026-07-31",
+      "license": "MIT",
+      "capture": {
+        "host": "Windows 11 x64",
+        "renderer": "Direct3D 11, feature level 11.1",
+        "project": "Examples/MinimalMultiplayer",
+        "viewport": "1280x800",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationCapture",
+        "interaction_steps": [
+          "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
+          "Open Windows, choose SPARK particle editor, and select Documentation.spark in the source browser.",
+          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA.",
+          "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
+        ]
+      },
+      "source_paths": [
+        "Source/Common/SpriteResource.cpp",
+        "Source/Common/SpriteResource.h",
+        "Source/Frontend/Application.cpp",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp",
+        "Source/Tools/Mapper.cpp",
+        "Source/Tools/ParticleEditor.cpp",
+        "Source/Tools/SparkParticleEditor.cpp",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark",
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
+      ],
+      "recapture_triggers": [
+        "The SPARK source browser, editor modes, hierarchy, preview, or save workflow changes.",
+        "The baked sprite resource format or SPARK editor texture-loading path changes.",
+        "The minimal example particle fixture, renderer, viewport, or capture script changes."
+      ]
+    }
+  ]
+}

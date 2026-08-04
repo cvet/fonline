@@ -149,6 +149,12 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             SetFOServiceStatus(SERVICE_RUNNING);
         }
         else {
+            GetApp()->RequestQuit(false);
+
+            if (Data->ServerThread.joinable()) {
+                Data->ServerThread.join();
+            }
+
             SetFOServiceStatus(SERVICE_STOPPED);
         }
     }
@@ -224,10 +230,8 @@ int main(int argc, char** argv)
             bool error = false;
 
             // Evaluate service path
-            constexpr DWORD buf_len = 4096 * 2;
-            wchar_t buf[buf_len];
-            ::GetModuleFileNameW(nullptr, buf, buf_len);
-            wstring path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
+            wstring path = ::GetCommandLineW();
+            path.append(L" --server-service-start");
             auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed

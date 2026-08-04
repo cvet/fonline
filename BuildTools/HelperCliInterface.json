@@ -23,7 +23,7 @@
     "excluded_parser_sources": [
       {
         "source": "BuildTools/buildtools.py",
-        "reason": "Owned by Docs/generated/cli.json and BuildTools/docs_cli.py."
+        "reason": "Owned by Docs/generated/cli.json, Docs/en/reference/buildtools/, and BuildTools/docs_cli.py."
       },
       {
         "source": "BuildTools/package.py",
@@ -64,6 +64,28 @@
       "audiences": ["engine-contributor", "ci-maintainer"],
       "invocation_owner": "BuildTools/cmake/stages/Applications.cmake",
       "description": "Clean, collect, and report engine code coverage for generated test targets."
+    },
+    {
+      "id": "helper-cli.gameplay-test-runner",
+      "name": "Gameplay test runner",
+      "source": "BuildTools/gameplay_test_runner.py",
+      "factory": "create_parser",
+      "program": "gameplay_test_runner.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project CMake targets and CI gameplay smoke jobs",
+      "description": "Run ordered multi-process gameplay smoke scenarios with readiness, marker, deadline, cleanup, and JSON-report contracts."
+    },
+    {
+      "id": "helper-cli.ai-control-client",
+      "name": "AiControl protocol client",
+      "source": "BuildTools/ai_control_client.py",
+      "factory": "create_parser",
+      "program": "ai_control_client.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "engine-contributor", "tool-developer", "ci-maintainer"],
+      "invocation_owner": "embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics",
+      "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line."
     },
     {
       "id": "helper-cli.windows7-import-check",

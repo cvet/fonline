@@ -90,6 +90,7 @@ static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
     return map;
 }
 
+// Creates an item from the supplied prototype id on a valid hex of the currently shown Mapper map and returns its editable client view.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
@@ -103,6 +104,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstrin
     return item;
 }
 
+// Creates an item from the supplied prototype on a valid hex of the currently shown Mapper map and returns its editable client view.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<ProtoItem> proto, mpos hex)
 {
@@ -116,6 +118,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<Pr
     return item;
 }
 
+// Creates a critter from the supplied prototype id on a valid hex of the currently shown Mapper map and returns its editable client view.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
@@ -129,6 +132,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     return cr;
 }
 
+// Creates a critter from the supplied prototype on a valid hex of the currently shown Mapper map and returns its editable client view.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, ptr<ProtoCritter> proto, mpos hex)
 {
@@ -142,6 +146,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     return cr;
 }
 
+// Returns the current Mapper map's single-item lookup result for a hex, or null when no item is selected there.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
@@ -150,6 +155,7 @@ FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, 
     return item;
 }
 
+// Returns all editable item views occupying a hex on the currently shown Mapper map.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
@@ -158,6 +164,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> 
     return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
 }
 
+// Returns the first critter on a hex that passes the requested find-type filter, or null when none match.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
 {
@@ -172,6 +179,7 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
     return cr;
 }
 
+// Returns all critters on a hex of the current Mapper map that pass the requested find-type filter.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Mapper_Game_GetCrittersOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
 {
@@ -180,6 +188,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Mapper_Game_GetCrittersOnHex(ptr<MapperEn
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
+// Moves a non-null editable entity to a valid hex of the current Mapper map; a null entity is ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_MoveEntity(ptr<MapperEngine> mapper, nptr<ClientEntity> entity, mpos hex)
 {
@@ -196,12 +205,14 @@ FO_SCRIPT_API void Mapper_Game_MoveEntity(ptr<MapperEngine> mapper, nptr<ClientE
     mapper->MoveEntity(entity, hex);
 }
 
+// Deletes one editable entity through the Mapper's normal deletion path.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_DeleteEntity(ptr<MapperEngine> mapper, ptr<ClientEntity> entity)
 {
     mapper->DeleteEntity(entity);
 }
 
+// Deletes each non-null, non-destroyed editable entity in the supplied collection and skips unusable entries.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly_vector<nptr<ClientEntity>> entities)
 {
@@ -216,6 +227,7 @@ FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly
     }
 }
 
+// Adds one editable entity to the Mapper selection when set is true, or removes it when false.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SelectEntity(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, bool set)
 {
@@ -227,6 +239,7 @@ FO_SCRIPT_API void Mapper_Game_SelectEntity(ptr<MapperEngine> mapper, ptr<Client
     }
 }
 
+// Adds or removes every non-null entity in the supplied collection from the Mapper selection according to set.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SelectEntities(ptr<MapperEngine> mapper, readonly_vector<nptr<ClientEntity>> entities, bool set)
 {
@@ -242,12 +255,14 @@ FO_SCRIPT_API void Mapper_Game_SelectEntities(ptr<MapperEngine> mapper, readonly
     }
 }
 
+// Returns the first selected Mapper entity, or null when the selection is empty.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_GetSelectedEntity(ptr<MapperEngine> mapper)
 {
     return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0].get() : nullptr;
 }
 
+// Returns a snapshot of all entities in the Mapper's current selection order.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ClientEntity>> Mapper_Game_GetSelectedEntities(ptr<MapperEngine> mapper)
 {
@@ -261,6 +276,7 @@ FO_SCRIPT_API vector<ptr<ClientEntity>> Mapper_Game_GetSelectedEntities(ptr<Mapp
     return entities;
 }
 
+// Finds an editable entity by runtime id on the currently shown Mapper map, or returns null when it is absent.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> mapper, ident_t id)
 {
@@ -269,6 +285,7 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> ma
     return mapper->FindEntityById(map, id);
 }
 
+// Parses and applies a named property value to an editable entity, returning whether Mapper accepted the text; an unknown property name throws.
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, string_view propName, string_view valueText)
 {
@@ -281,6 +298,7 @@ FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<C
     return mapper->ApplyEntityPropertyText(entity, prop, valueText);
 }
 
+// Adds an editable floor or roof tile of a known item prototype to a valid current-map hex, clamping its layer to the supported zero-through-four range.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstring pid, mpos hex, int32_t layer, bool roof)
 {
@@ -299,6 +317,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstrin
     return tile;
 }
 
+// Creates and loads a minimal named map with dimensions clamped to Engine limits and its work hex at the center; an empty name throws.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_view name, int32_t width, int32_t height)
 {
@@ -316,6 +335,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
     return mapper->LoadMapFromText(name, name, map_text);
 }
 
+// Loads a named map from authored text that contains a ProtoMap section; an empty name or missing section throws, while parse failure may return null.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, string_view text)
 {
@@ -329,6 +349,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
     return mapper->LoadMapFromText(name, name, string(text));
 }
 
+// Loads a map from the Mapper file system by file name and returns its view, or null when loading fails.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_LoadMap(ptr<MapperEngine> mapper, string_view fileName)
 {
@@ -336,18 +357,21 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_LoadMap(ptr<MapperEngine> mapper, string
     return map;
 }
 
+// Unloads the supplied map view from the Mapper.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_UnloadMap(ptr<MapperEngine> mapper, ptr<MapView> map)
 {
     mapper->UnloadMap(map);
 }
 
+// Saves the supplied Mapper map using an optional custom name through the normal map-save path.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMap(ptr<MapperEngine> mapper, ptr<MapView> map, string_view customName)
 {
     mapper->SaveMap(map, customName);
 }
 
+// Saves a map beneath the Mapper maps root using a subdirectory and separator-free name; empty names and parent traversal are rejected.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapToPath(ptr<MapperEngine> mapper, ptr<MapView> map, string_view subDir, string_view name)
 {
@@ -367,12 +391,14 @@ FO_SCRIPT_API void Mapper_Game_SaveMapToPath(ptr<MapperEngine> mapper, ptr<MapVi
     mapper->SaveMapToDir(map, subDir, name);
 }
 
+// Makes the supplied loaded map the map currently shown by the Mapper.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_ShowMap(ptr<MapperEngine> mapper, ptr<MapView> map)
 {
     mapper->ShowMap(map);
 }
 
+// Returns all loaded Mapper maps in load order and writes the current map's index, or -1 when no returned map is current.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mapper, int32_t& index)
 {
@@ -396,6 +422,7 @@ FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> m
     return result;
 }
 
+// Enumerates declared map names from prototype files under a Mapper maps directory, optionally descending recursively.
 ///@ ExportMethod
 FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mapper, string_view dir, bool recursive)
 {
@@ -418,6 +445,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
     return names;
 }
 
+// Resizes the currently shown Mapper map to the requested dimensions through the editor's normal resize operation.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_ResizeMap(ptr<MapperEngine> mapper, int32_t width, int32_t height)
 {
@@ -425,6 +453,7 @@ FO_SCRIPT_API void Mapper_Game_ResizeMap(ptr<MapperEngine> mapper, int32_t width
     mapper->ResizeMap(map.get(), width, height);
 }
 
+// Returns item prototype ids from a valid Mapper tab and named subtab, using the aggregate default subtab when the name is empty; an unknown named subtab returns an empty array.
 ///@ ExportMethod
 FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(ptr<MapperEngine> mapper, int32_t tab, string_view subTab)
 {
@@ -445,6 +474,7 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(ptr<MapperEngine> mappe
     return pids;
 }
 
+// Returns critter prototype ids from a valid Mapper tab and named subtab, using the aggregate default subtab when the name is empty; an unknown named subtab returns an empty array.
 ///@ ExportMethod
 FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(ptr<MapperEngine> mapper, int32_t tab, string_view subTab)
 {
@@ -465,6 +495,7 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(ptr<MapperEngine> ma
     return pids;
 }
 
+// Replaces a custom Mapper subtab's known item prototypes, or deletes that subtab for an empty list, then rebuilds the aggregate default list and active prototype palette.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_TabSetItemPids(ptr<MapperEngine> mapper, int32_t tab, string_view subTab, readonly_vector<hstring> itemPids)
 {
@@ -525,6 +556,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(ptr<MapperEngine> mapper, int32_t 
     mapper->RefreshActiveProtoLists();
 }
 
+// Replaces a custom Mapper subtab's critter prototypes, or deletes that subtab for an empty list, then rebuilds the aggregate default list and active prototype palette; unknown ids throw.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32_t tab, string_view subTab, readonly_vector<hstring> critterPids)
 {
@@ -585,6 +617,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32
     mapper->RefreshActiveProtoLists();
 }
 
+// Clears a valid Mapper content tab, recreates its empty aggregate default subtab, and makes that subtab active.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_TabDelete(ptr<MapperEngine> mapper, int32_t tab)
 {
@@ -597,6 +630,7 @@ FO_SCRIPT_API void Mapper_Game_TabDelete(ptr<MapperEngine> mapper, int32_t tab)
     mapper->ActiveSubTabs[tab] = &stab_default;
 }
 
+// Optionally shows a valid Mapper panel mode and selects an existing named or default content subtab when that mode owns content tabs.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_TabSelect(ptr<MapperEngine> mapper, int32_t tab, string_view subTab, bool show)
 {
@@ -618,6 +652,7 @@ FO_SCRIPT_API void Mapper_Game_TabSelect(ptr<MapperEngine> mapper, int32_t tab, 
     }
 }
 
+// Replaces the display name of a valid Mapper panel mode.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_TabSetName(ptr<MapperEngine> mapper, int32_t tab, string_view tabName)
 {
@@ -628,12 +663,14 @@ FO_SCRIPT_API void Mapper_Game_TabSetName(ptr<MapperEngine> mapper, int32_t tab,
     mapper->PanelModeNames[tab] = tabName;
 }
 
+// Appends a message to the Mapper's on-screen message log.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_AddMessage(ptr<MapperEngine> mapper, string_view message)
 {
     mapper->AddMess(message);
 }
 
+// Returns the current Mapper map's dimensions in hex cells; throws when no map is shown.
 ///@ ExportMethod
 FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
 {
@@ -642,6 +679,7 @@ FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
     return map->GetSize();
 }
 
+// Returns the current Mapper map's full hex-grid bounding size in pixels; throws when no map is shown.
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(ptr<MapperEngine> mapper)
 {
@@ -653,6 +691,7 @@ FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(ptr<MapperEngine> mapper)
     return {width, height};
 }
 
+// Sets a positive rendering viewport size on the currently shown Mapper map; nonpositive dimensions or a missing map throw.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize32 size)
 {
@@ -665,6 +704,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize
     map->SetScreenSize(size);
 }
 
+// Centers and rebuilds the Mapper view on the configured axial playable area, including off-map coordinates, or on the map dimensions when no area is configured.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapper)
 {
@@ -687,6 +727,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapp
     }
 }
 
+// Centers and rebuilds the current Mapper view on a valid in-map hex; an invalid hex or missing current map throws.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
@@ -699,6 +740,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos 
     CenterMapperViewOnHex(map, hex);
 }
 
+// Centers and rebuilds the current Mapper view on an unclamped raw hex coordinate, allowing authored playable areas outside the map rectangle.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ipos32 rawHex)
 {
@@ -707,6 +749,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ip
     CenterMapperViewOnRawHex(map, rawHex);
 }
 
+// Shows or hides the general Mapper overlay on the currently displayed map.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper, bool visible)
 {
@@ -715,6 +758,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper,
     map->SetShowMapperOverlay(visible);
 }
 
+// Returns whether the current map's general Mapper overlay is visible, or false when no map is shown.
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
 {
@@ -727,30 +771,35 @@ FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
     return map->IsShowMapperOverlay();
 }
 
+// Shows or hides the Mapper-wide hex overlay.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHexOverlayVisible(ptr<MapperEngine> mapper, bool visible)
 {
     mapper->SetMapperHexOverlayVisible(visible);
 }
 
+// Returns whether the Mapper-wide hex overlay is visible.
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperHexOverlayVisible(ptr<MapperEngine> mapper)
 {
     return mapper->IsMapperHexOverlayVisible();
 }
 
+// Returns the hex sequence currently exposed by the Mapper track overlay.
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperTrackOverlayHexes(ptr<MapperEngine> mapper)
 {
     return mapper->GetMapperTrackOverlayHexes();
 }
 
+// Returns the per-entry kind values aligned with the Mapper track overlay hex sequence.
 ///@ ExportMethod
 FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(ptr<MapperEngine> mapper)
 {
     return mapper->GetMapperTrackOverlayKinds();
 }
 
+// Returns drawable in-map hexes lying on the configured axial scroll-area border, or an empty array when no map or border is available.
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngine> mapper)
 {
@@ -788,6 +837,7 @@ FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngi
     return hexes;
 }
 
+// Shows or hides sprites marked as hidden on the currently displayed Mapper map.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> mapper, bool visible)
 {
@@ -796,6 +846,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> m
     map->SetShowMapperHiddenSprites(visible);
 }
 
+// Adds item prototype ids to the current map's Mapper ignore set and rebuilds the map view so the filtering takes effect.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper, readonly_vector<hstring> itemPids)
 {
@@ -808,6 +859,7 @@ FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper
     map->RebuildMap();
 }
 
+// Enables or disables scroll checking on the current Mapper map and rebuilds its view.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(ptr<MapperEngine> mapper, bool enabled)
 {
@@ -817,6 +869,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(ptr<MapperEngine> map
     map->RebuildMap();
 }
 
+// Calculates the smaller horizontal or vertical zoom needed to fit the configured playable area, or the full map bounds, inside a positive viewport.
 ///@ ExportMethod
 FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, isize32 viewportSize)
 {
@@ -848,6 +901,7 @@ FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, 
     return std::min(zoom_x, zoom_y);
 }
 
+// Applies a positive zoom immediately to the current Mapper map and updates its zoom target; nonpositive values or a missing map throw.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t zoom)
 {
@@ -861,6 +915,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
     map->InstantZoom(zoom, fpos32(0.0f, 0.0f));
 }
 
+// Saves the current map rendering to a nonempty file path using the Mapper's map-only screenshot path.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, string_view filePath)
 {
@@ -869,45 +924,19 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
     }
 
     (void)RequireCurMapperMap(mapper);
+    mapper->SaveMapperScreenshot(filePath);
+}
 
-    // The mapper's main window paints into the swap-chain backbuffer (no virtual RT) but
-    // SpriteManager keeps an intermediate _rtMain that holds the full frame just before it
-    // is blit out. Re-run the mapper's draw routine to refresh _rtMain, then read pixels
-    // from there. Two paints per save is acceptable for batch tooling.
-    mapper->DrawMapperFrame();
-
-    auto main_rt = mapper->SprMngr.GetMainRenderTarget();
-
-    if (!main_rt) {
-        throw ScriptException("SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
+// Queues a full Mapper-window screenshot to a nonempty file path; a current map must be shown when the request is made.
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_RequestMapperWindowScreenshot(ptr<MapperEngine> mapper, string_view filePath)
+{
+    if (filePath.empty()) {
+        throw ScriptException("Screenshot file path is empty");
     }
 
-    auto texture = main_rt->GetTexture();
-    isize32 size = texture->Size;
-    auto pixels = texture->GetTextureRegion({0, 0}, size);
-    bool flipped = texture->FlippedHeight;
-
-    if (flipped) {
-        auto width = numeric_cast<size_t>(size.width);
-
-        if (width != 0) {
-            vector<ucolor> row_buf(width);
-            size_t row_bytes = width * sizeof(ucolor);
-
-            for (int32_t y = 0; y < size.height / 2; y++) {
-                auto top = numeric_cast<size_t>(y) * width;
-                auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                auto row = make_ptr(row_buf.data());
-                auto top_row = make_ptr(pixels.data() + top);
-                auto bottom_row = make_ptr(pixels.data() + bottom);
-                MemCopy(row, top_row, row_bytes);
-                MemCopy(top_row, bottom_row, row_bytes);
-                MemCopy(bottom_row, row, row_bytes);
-            }
-        }
-    }
-
-    WriteSimpleTga(filePath, size, std::move(pixels));
+    (void)RequireCurMapperMap(mapper);
+    mapper->RequestMapperWindowScreenshot(filePath);
 }
 
 FO_END_NAMESPACE

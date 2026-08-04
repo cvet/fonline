@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,8 @@ ENGINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
 
 import docs_cmake  # noqa: E402
+import docs_description_translations  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 def _manifest() -> dict[str, object]:
@@ -32,6 +35,22 @@ def _write_fixture(root: Path, manifest: dict[str, object]) -> None:
         source_path.parent.mkdir(parents=True, exist_ok=True)
         source_path.write_text("# fixture\n", encoding="utf-8")
 
+    catalog_path = root / docs_description_translations.DEFAULT_CATALOG
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "schema_version": docs_description_translations.SCHEMA_VERSION,
+                "source_locale": "en",
+                "target_locale": "ru",
+                "enforcement": "registered-translations-current",
+                "domains": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
 
 class DocumentationCMakeTests(unittest.TestCase):
     def test_current_interface_model_has_stable_shape_and_ids(self) -> None:
@@ -39,10 +58,10 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 45)
+        self.assertEqual(model["summary"]["option_count"], 44)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
-        self.assertEqual(model["summary"]["helper_count"], 5)
+        self.assertEqual(model["summary"]["helper_count"], 6)
         self.assertEqual(model["stages"][0]["id"], "cmake.stage.Init")
         self.assertEqual(model["stages"][-1]["entrypoint"], "FinalizeProjectGeneration")
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
@@ -117,6 +136,10 @@ class DocumentationCMakeTests(unittest.TestCase):
             "stages": pages[f"{docs_cmake.DEFAULT_OUTPUT_DIR}/stages.md"],
             "helpers": pages[f"{docs_cmake.DEFAULT_OUTPUT_DIR}/helpers.md"],
         }
+        self.assertIn(
+            "[package interface reference](../packages/index.md)",
+            pages[f"{docs_cmake.DEFAULT_OUTPUT_DIR}/index.md"],
+        )
         for key, page in page_for_key.items():
             for entry in model[key]:
                 self.assertIn(str(entry["id"]), page)
@@ -128,6 +151,32 @@ class DocumentationCMakeTests(unittest.TestCase):
             f"{docs_cmake.DEFAULT_OUTPUT_DIR}/options.md"
         ]
         self.assertIn("A &#124; B &#123;shape&#125; &lt;unsafe&gt;", escaped_page)
+
+        for filename, _, _ in docs_cmake.PAGE_DEFINITIONS:
+            canonical = pages[f"{docs_cmake.DEFAULT_OUTPUT_DIR}/{filename}"]
+            legacy = pages[f"{docs_cmake.LEGACY_OUTPUT_DIR}/{filename}"]
+            self.assertIn(f"../../en/reference/cmake/{filename}", legacy)
+            self.assertIn(f"../../ru/reference/cmake/{filename}", legacy)
+            for heading in re.findall(r"^(#{2,3} .+)$", canonical, flags=re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
+
+        localized_pages = docs_cmake.render_reference_pages(ENGINE_ROOT)
+        english_options = localized_pages[f"{docs_cmake.DEFAULT_OUTPUT_DIR}/options.md"]
+        russian_options = localized_pages[f"{docs_cmake.RUSSIAN_OUTPUT_DIR}/options.md"]
+        russian_stages = localized_pages[f"{docs_cmake.RUSSIAN_OUTPUT_DIR}/stages.md"]
+        self.assertIn("Компилирует backend скриптов AngelScript.", russian_options)
+        self.assertNotIn("Compile the AngelScript scripting backend.", russian_options)
+        self.assertIn("Создаёт цели компиляции скриптов и запекания ресурсов.", russian_stages)
+        self.assertIn(
+            docs_localization.translation_metadata_line(
+                "generated-cmake-options",
+                f"{docs_cmake.DEFAULT_OUTPUT_DIR}/options.md",
+                docs_localization.normalized_sha256(english_options),
+            ),
+            russian_options,
+        )
 
     def test_cli_write_check_and_stale_detection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

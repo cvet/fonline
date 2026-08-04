@@ -104,15 +104,6 @@
       "id": "package.target.Client"
     },
     {
-      "name": "Editor",
-      "resource_mode": "none",
-      "required_packs": [
-        "NoRes"
-      ],
-      "description": "Editor binary without packaged game resources.",
-      "id": "package.target.Editor"
-    },
-    {
       "name": "Mapper",
       "resource_mode": "none",
       "required_packs": [
@@ -129,6 +120,24 @@
       ],
       "description": "Baker executable or library without packaged game resources.",
       "id": "package.target.Baker"
+    },
+    {
+      "name": "AnimationViewer",
+      "resource_mode": "none",
+      "required_packs": [
+        "NoRes"
+      ],
+      "description": "Standalone animation preview tool without packaged game resources.",
+      "id": "package.target.AnimationViewer"
+    },
+    {
+      "name": "ParticleViewer",
+      "resource_mode": "none",
+      "required_packs": [
+        "NoRes"
+      ],
+      "description": "Standalone particle preview tool without packaged game resources.",
+      "id": "package.target.ParticleViewer"
     }
   ],
   "platforms": [
@@ -145,9 +154,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Native PE payloads with optional runtime DLLs, symbols, archives, and MSI. The -win7 keys resolve to canonical win32/win64 binary architectures and require a matching explicit POSTFIX when the build output is postfixed. arm64 is accepted as an existing package input, but the standard BuildTools platform registry does not provide a Windows arm64 build lane.",
       "id": "package.platform.Windows"
@@ -164,9 +174,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Native ELF payloads with optional runtime libraries and archives.",
       "id": "package.platform.Linux"
@@ -239,9 +250,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Retain the staged target directory after finalization.",
       "output": "<target-output>",
@@ -261,9 +273,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Create a deterministic ZIP beside the staged target directory.",
       "output": "<target-output>.zip",
@@ -283,9 +296,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Append the staged target directory to one package-wide ZIP; identical same-name members are stored once, while conflicting contents fail packaging.",
       "output": "<output>/<output-name>.zip",
@@ -302,9 +316,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Create an uncompressed tar archive.",
       "output": "<target-output>.tar",
@@ -321,9 +336,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Create a gzip-compressed tar archive.",
       "output": "<target-output>.tar.gz",
@@ -343,9 +359,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Merge the staged target directory into the package output root.",
       "output": "<output>",
@@ -395,9 +412,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Select debug binary inputs; Android uses assembleDebug.",
       "id": "package.pack.Debug"
@@ -414,9 +432,10 @@
       "targets": [
         "Server",
         "Client",
-        "Editor",
         "Mapper",
-        "Baker"
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
       "description": "Skip resource staging and embedded/config/build-name patching.",
       "id": "package.pack.NoRes"
@@ -596,8 +615,8 @@
   "cli": {
     "program": "package.py",
     "description": "FOnline packager",
-    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME\n                  -target {Server,Client,Editor,Mapper,Baker}\n                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH\n                  -pack PACK -config CONFIG -input INPUT\n                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]\n                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
-    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME\n                  -target {Server,Client,Editor,Mapper,Baker}\n                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH\n                  -pack PACK -config CONFIG -input INPUT\n                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]\n                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Editor,Mapper,Baker}\n                        package target type\n  -platform {Windows,Linux,Android,Web,macOS,iOS}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -pack PACK            plus-separated pack tokens from PackageInterface.json\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
+    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME\n                  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH\n                  -pack PACK -config CONFIG -input INPUT\n                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]\n                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
+    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME\n                  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH\n                  -pack PACK -config CONFIG -input INPUT\n                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]\n                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,Web,macOS,iOS}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -pack PACK            plus-separated pack tokens from PackageInterface.json\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
     "arguments": [
       {
         "id": "package.cli.argument.maincfg",
@@ -667,9 +686,10 @@
         "choices": [
           "Server",
           "Client",
-          "Editor",
           "Mapper",
-          "Baker"
+          "Baker",
+          "AnimationViewer",
+          "ParticleViewer"
         ],
         "default": null,
         "type": null,
@@ -810,7 +830,7 @@
   "summary": {
     "clause_count": 2,
     "option_count": 1,
-    "target_count": 5,
+    "target_count": 6,
     "platform_count": 6,
     "implemented_platform_count": 4,
     "pack_count": 19,
@@ -818,5 +838,5 @@
     "artifact_pack_count": 8,
     "cli_argument_count": 13
   },
-  "contract_digest": "31774f63bbfa43d10005d90b4755ff6ae3166406807e49bafb2e7757eb40a55d"
+  "contract_digest": "b8c9e04bf8c3d34d8992bd1176346da7d2489d2c5315ce96a82ae0f604d90a8a"
 }

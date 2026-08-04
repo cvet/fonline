@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_diagrams.py",
+  "source_manifest": "BuildTools/DocumentationDiagrams.json",
+  "source_manifest_sha256": "617428d0eea89ed505d59b2696534e4afa9beb79d2d140064f28fa2bb5c7f746",
+  "diagram_count": 3,
+  "diagrams": [
+    {
+      "id": "engine-game-boundary",
+      "title": "Reusable engine and embedding game boundary",
+      "description": "Ownership and dependency flow between the reusable FOnline engine and an embedding game project.",
+      "owning_document": "Docs/en/explanation/architecture/index.md",
+      "alt": "Diagram showing the reusable FOnline engine on the left and an embedding game project on the right. The engine provides runtime systems, tools, code generation, and platform applications. The game provides project configuration, scripts, content, tests, and release policy. Generated contracts and extension hooks connect the two sides.",
+      "caption": "Engine owns reusable runtime and tooling; the embedding project owns game rules, content, product configuration, validation, and release policy. Dependencies cross only through declared configuration, generated contracts, and extension hooks.",
+      "source_paths": [
+        "Source/Common/EngineBase.h",
+        "Source/Client/Client.h",
+        "Source/Server/Server.h",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalProject/FOnlineStarter.fomain"
+      ],
+      "variants": [
+        {
+          "id": "desktop",
+          "path": "Docs/assets/diagrams/engine-game-boundary.svg",
+          "width": 1120,
+          "height": 650,
+          "sha256": "d1eb883a8aa582cde2fbe54a4a0e695d1e82c5bb496e721d7157347470869fcd"
+        },
+        {
+          "id": "mobile",
+          "path": "Docs/assets/diagrams/engine-game-boundary-mobile.svg",
+          "width": 480,
+          "height": 1544,
+          "sha256": "fc46ea0a5292967c29726871eb66f0d0af39983426ec8dd63ce9caabc5e161e7"
+        }
+      ]
+    },
+    {
+      "id": "generated-content-pipeline",
+      "title": "Generated content dependency order",
+      "description": "Authoritative inputs flow through configure, code generation, compilation, baking, validation, and documentation delivery.",
+      "owning_document": "Docs/en/how-to/build/generated-content.md",
+      "alt": "Pipeline diagram with four columns. Authoritative engine and game inputs feed CMake configuration and code generation, then native and script compilation plus resource baking, then runtime and contract validation, and finally generated documentation, search, AI delivery, and the reviewed release diff.",
+      "caption": "Regenerate from left to right. Delivery artifacts consume earlier generated models and hashes, so a green final gate is meaningful only when configure, compile, bake, and focused validation have already succeeded.",
+      "source_paths": [
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/docs_reference.py",
+        "BuildTools/docs_site.py",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_validate.py"
+      ],
+      "variants": [
+        {
+          "id": "desktop",
+          "path": "Docs/assets/diagrams/generated-content-pipeline.svg",
+          "width": 1120,
+          "height": 650,
+          "sha256": "962f74962e0e9e1ea539c491831c19f0a9c760b87022853e44415b5ce4ac404e"
+        },
+        {
+          "id": "mobile",
+          "path": "Docs/assets/diagrams/generated-content-pipeline-mobile.svg",
+          "width": 480,
+          "height": 1621,
+          "sha256": "4d41feedc9a8e1cf8ef67da29c45e3710b0c0102f2a41fe9c59b2fe883f719ca"
+        }
+      ]
+    },
+    {
+      "id": "documentation-delivery",
+      "title": "Documentation delivery for people and AI",
+      "description": "One canonical Markdown corpus is projected into GitHub Pages, machine-readable AI routes, and review evidence.",
+      "owning_document": "Docs/en/contributing/documentation/site-publication.md",
+      "alt": "Documentation delivery diagram. Canonical Markdown and the documentation manifest feed deterministic generators. Generated navigation, search, diagrams, route catalogs, AI bundles, and evaluation reports are checked in. Jekyll builds the human site while AI clients consume llms.txt, llms-full.txt, docs-manifest.json, and generated JSON. Static, browser, accessibility, hash, and freshness gates validate the same revision.",
+      "caption": "Human and AI routes are projections of one versioned Markdown corpus. GitHub Pages, machine-readable endpoints, and CI evidence all use the same manifest, generated artifacts, source revision, and content hashes.",
+      "source_paths": [
+        "Docs/documentation-manifest.json",
+        "BuildTools/docs_site.py",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site_artifact.py",
+        "BuildTools/docs-browser/audit.mjs",
+        "_layouts/default.html",
+        ".github/workflows/validate.yml"
+      ],
+      "variants": [
+        {
+          "id": "desktop",
+          "path": "Docs/assets/diagrams/documentation-delivery.svg",
+          "width": 1120,
+          "height": 650,
+          "sha256": "c500dd8e2fe6b273f0aa33e67d1106d50ab8329a5d2cf09f08f69d7304db97a1"
+        },
+        {
+          "id": "mobile",
+          "path": "Docs/assets/diagrams/documentation-delivery-mobile.svg",
+          "width": 480,
+          "height": 1842,
+          "sha256": "ea7489dc166d4f0adbba96bc26e97639d9025a78b16f033d1887a7de626e02b7"
+        }
+      ]
+    }
+  ]
+}

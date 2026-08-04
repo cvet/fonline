@@ -1,33 +1,50 @@
----
-title: Prototype Validation Rules
-document_id: generated-prototype-format-validation
-locale: en
-generated: true
----
-
 # Prototype Validation Rules
 
-> Generated reference. Do not edit directly. Update `BuildTools/PrototypeFormatInterface.json` or the owning engine metadata, then run `python BuildTools/docs_prototype_format.py --write`.
+> Legacy route.
 
-[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | [Validation](validation.md) | [Canonical JSON](../prototype-format.json) | [Authoring guide](../../PrototypeFormat.md)
+The canonical generated reference moved to locale-specific paths.
 
-These rules are enforced by the parser, metadata registrators, property serializer, or the side-specific prototype bake. Stable IDs let CI track contract changes.
+[English](../../en/reference/prototype-format/validation.md) | [Russian](../../ru/reference/prototype-format/validation.md)
 
-| Stable ID | Rule | Requirement | Notes | Authority |
-| --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-rule-config-syntax-edd111a80d"></a><code>prototype-format.rule.config-syntax</code> | Configuration syntax | Use repeated INI-like sections, key = value assignments, # comments, backslash line continuation, and key += value append where appropriate. | Prototype files use the shared ConfigFile parser; quoted or escaped comment characters remain part of the value. | [Source/Common/ConfigFile.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/ConfigFile.cpp) |
-| <a id="entry-prototype-format-rule-file-filter-294bf72534"></a><code>prototype-format.rule.file-filter</code> | Extension filter | Only files whose extension occurs in Baking.ProtoFileExtensions enter ProtoBaker. | Directories and conventional extension names do not select a prototype type; the section does. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-identity-per-type-592e564b18"></a><code>prototype-format.rule.identity-per-type</code> | Identity and duplicates | A migration-resolved prototype id must be unique within its resolved type across the complete pack input. | The same text id may exist in different prototype types; duplicate ids in one type fail the bake. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-inheritance-scope-2bfdb2dffe"></a><code>prototype-format.rule.inheritance-scope</code> | Inheritance scope | Every parent must resolve inside the same prototype type and current pack input. | Parents may be declared in another file, but cross-type and missing parents fail the bake. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-inheritance-precedence-72795257fa"></a><code>prototype-format.rule.inheritance-precedence</code> | Inheritance precedence | Merge ancestors depth first, then parents from left to right, then the child; later property values replace earlier values. | $-prefixed control directives are not copied into the merged property map. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-acyclic-inheritance-ab9523a972"></a><code>prototype-format.rule.acyclic-inheritance</code> | Acyclic inheritance | Prototype parent graphs must be acyclic. | The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-property-resolution-b9881b40e7"></a><code>prototype-format.rule.property-resolution</code> | Property resolution | Every non-control key must resolve to a property available for the current bake side. | Unknown, disabled-for-this-side, virtual, and temporary properties are rejected; opposite-side-only properties are skipped for that side. | [Source/Common/Properties.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/Properties.cpp) |
-| <a id="entry-prototype-format-rule-strict-values-17b969721b"></a><code>prototype-format.rule.strict-values</code> | Strict text values | Property values must parse according to the metadata type without overflow, unknown enum/prototype references, non-finite numbers, or malformed collection structure. | The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text. | [Source/Common/PropertiesSerializator.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/PropertiesSerializator.cpp) |
-| <a id="entry-prototype-format-rule-init-script-signature-6c6b332050"></a><code>prototype-format.rule.init-script-signature</code> | InitScript callback signatures | A non-empty built-in Item, Critter, Map, or Location InitScript property must resolve to a global void callback receiving that entity type and bool firstTime. | Server baking validates ScriptFuncType metadata for every authored callback property and rejects missing functions or mismatched signatures before runtime. | [Source/Tools/Baker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/Baker.cpp) |
-| <a id="entry-prototype-format-rule-proto-reference-cb3422b9ff"></a><code>prototype-format.rule.proto-reference</code> | Prototype references | FixedType and Proto entity property references must resolve after migration unless the property is nullable and the authored value is empty. | A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy. | [Source/Common/PropertiesSerializator.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/PropertiesSerializator.cpp) |
-| <a id="entry-prototype-format-rule-proto-migration-db0509eb60"></a><code>prototype-format.rule.proto-migration</code> | Prototype migration | Proto migration rules are applied to declared ids, parent ids, lookups, and persisted references before final resolution. | Author migrations in native/project metadata with ///@ MigrationRule Proto &lt;Type&gt; &lt;Old&gt; &lt;NewOrRemove&gt;. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
-| <a id="entry-prototype-format-rule-side-specific-output-ade0b5dff3"></a><code>prototype-format.rule.side-specific-output</code> | Side-specific output | The same source set is parsed and serialized separately for server, client, and mapper metadata. | A source property can be meaningful on one side and skipped on another; server output also validates script callback properties. | [Source/Tools/ProtoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoBaker.cpp) |
+<a id="entry-prototype-format-rule-config-syntax-edd111a80d"></a>
+- [`entry-prototype-format-rule-config-syntax-edd111a80d`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-config-syntax-edd111a80d)
+
+<a id="entry-prototype-format-rule-file-filter-294bf72534"></a>
+- [`entry-prototype-format-rule-file-filter-294bf72534`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-file-filter-294bf72534)
+
+<a id="entry-prototype-format-rule-identity-per-type-592e564b18"></a>
+- [`entry-prototype-format-rule-identity-per-type-592e564b18`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-identity-per-type-592e564b18)
+
+<a id="entry-prototype-format-rule-identifier-characters-d45ad0eea2"></a>
+- [`entry-prototype-format-rule-identifier-characters-d45ad0eea2`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-identifier-characters-d45ad0eea2)
+
+<a id="entry-prototype-format-rule-inheritance-scope-2bfdb2dffe"></a>
+- [`entry-prototype-format-rule-inheritance-scope-2bfdb2dffe`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-inheritance-scope-2bfdb2dffe)
+
+<a id="entry-prototype-format-rule-inheritance-precedence-72795257fa"></a>
+- [`entry-prototype-format-rule-inheritance-precedence-72795257fa`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-inheritance-precedence-72795257fa)
+
+<a id="entry-prototype-format-rule-acyclic-inheritance-ab9523a972"></a>
+- [`entry-prototype-format-rule-acyclic-inheritance-ab9523a972`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-acyclic-inheritance-ab9523a972)
+
+<a id="entry-prototype-format-rule-property-resolution-b9881b40e7"></a>
+- [`entry-prototype-format-rule-property-resolution-b9881b40e7`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-property-resolution-b9881b40e7)
+
+<a id="entry-prototype-format-rule-strict-values-17b969721b"></a>
+- [`entry-prototype-format-rule-strict-values-17b969721b`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-strict-values-17b969721b)
+
+<a id="entry-prototype-format-rule-init-script-signature-6c6b332050"></a>
+- [`entry-prototype-format-rule-init-script-signature-6c6b332050`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-init-script-signature-6c6b332050)
+
+<a id="entry-prototype-format-rule-proto-reference-cb3422b9ff"></a>
+- [`entry-prototype-format-rule-proto-reference-cb3422b9ff`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-proto-reference-cb3422b9ff)
+
+<a id="entry-prototype-format-rule-proto-migration-db0509eb60"></a>
+- [`entry-prototype-format-rule-proto-migration-db0509eb60`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-proto-migration-db0509eb60)
+
+<a id="entry-prototype-format-rule-side-specific-output-ade0b5dff3"></a>
+- [`entry-prototype-format-rule-side-specific-output-ade0b5dff3`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-side-specific-output-ade0b5dff3)
 
 ## Current diagnostic limitation
 
-Parent graphs must be acyclic. The current baker recursively expands parents without a dedicated cycle diagnostic, so embedding projects should validate cycles before baking and keep inheritance chains shallow. This is a documented implementation limitation, not a supported cyclic behavior.
+Continue with the [canonical reference](../../en/reference/prototype-format/validation.md).

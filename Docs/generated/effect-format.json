@@ -11,7 +11,7 @@
     "since": null,
     "support_note": "The contract is generated for a pinned Engine revision. Projects own effect catalogs, visual policy, quality profiles, concrete override paths, and ScriptValue slot meanings.",
     "included": [
-      ".fofx config sections, shader-stage fallback, pass declarations, render state, and shader compiler prelude",
+      ".fofx config sections, shader-stage fallback, pass declarations, render state, optional per-draw depth/cull variants, and shader compiler prelude",
       "vertex input layouts, recognized samplers, built-in uniform buffers, descriptor conventions, reflection, and backend limits",
       "per-pass baked artifacts for Vulkan, SDL_GPU, OpenGL, OpenGL ES, Direct3D, and Metal",
       "runtime loading, path cache identity, EffectUsage selection, script-value persistence, script methods, and validation"
@@ -382,8 +382,8 @@
         "True",
         "False"
       ],
-      "requirement": "The value is parsed as a boolean and controls depth writes for QuadSprite and Model usages when the active target has a depth attachment.",
-      "rationale": "UI, primitive, and flush targets may have no depth attachment even though the state remains present in the effect.",
+      "requirement": "The value is parsed as a boolean and provides the default depth-write state for QuadSprite and Model usages when the active target has a depth attachment. A draw may select another state only when DepthVariants is enabled.",
+      "rationale": "UI, primitive, and flush targets may have no depth attachment even though the state remains present in the effect; variant-aware backends resolve the selected slot instead of reading the default directly.",
       "stability": "experimental",
       "source": [
         {
@@ -397,7 +397,7 @@
           "path": "Source/Frontend/Rendering-SDLGpu.cpp",
           "anchors": [
             "depth_usage = depth_usage || _usage == EffectUsage::Model;",
-            "pipeline_info.depth_stencil_state.enable_depth_write = _depthWrite[pass];"
+            "pipeline_info.depth_stencil_state.enable_depth_write = GetDepthVariantWrite(depth_slot);"
           ]
         }
       ]
@@ -426,6 +426,65 @@
           "anchors": [
             "string_view depth_func_default = fofx.GetAsStr(\"Effect\", \"DepthFunc\", \"Always\");",
             "Unknown depth func type"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.depth-variants",
+      "name": "Per-draw depth variants",
+      "syntax": "DepthVariants",
+      "default": "False",
+      "values": [
+        "True",
+        "False"
+      ],
+      "requirement": "Enable this only when callers need to select depth-test and depth-write state per draw. The renderer then builds all four test/write combinations; otherwise only the state declared by DepthWrite and DepthFunc exists.",
+      "rationale": "Particle emitter nodes carry depth intent independently from their shader, while ordinary effects should not pay for unused backend objects and pipelines.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "_depthVariants = strvex(fofx.GetAsStr(\"Effect\", \"DepthVariants\", \"False\")).to_bool();",
+            "ResolveDepthVariantSlot",
+            "Draw asks for a depth state the effect did not build"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "enum class DepthVariantType",
+            "EFFECT_DEPTH_VARIANTS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.option.cull-variants",
+      "name": "Per-draw cull variants",
+      "syntax": "CullVariants",
+      "default": "False",
+      "values": [
+        "True",
+        "False"
+      ],
+      "requirement": "Enable this only when callers need to select None, Back, or Front face culling per draw. Without it, the effect accepts only the default None mode.",
+      "rationale": "Models and particle emitter nodes can carry independent culling intent, while backend pipeline/state multiplication remains opt-in.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.cpp",
+          "anchors": [
+            "_cullVariants = strvex(fofx.GetAsStr(\"Effect\", \"CullVariants\", \"False\")).to_bool();",
+            "ResolveCullMode",
+            "Draw asks for a cull mode the effect did not build"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "enum class CullModeType"
           ]
         }
       ]
@@ -552,7 +611,7 @@
     {
       "id": "effect-format.resource.samplers",
       "name": "Renderer-provided samplers",
-      "requirement": "The runtime has producers for MainTex and IndoorMaskTex, plus ModelTex0 through ModelTexN-1 in 3D builds. Other reflected sampler names are not populated by RenderEffect.",
+      "requirement": "The runtime has producers for MainTex, IndoorMaskTex, and BackgroundTex, plus ModelTex0 through ModelTexN-1 in 3D builds. BackgroundTex is a caller-supplied scene snapshot for refraction. Other reflected sampler names are not populated by RenderEffect.",
       "rationale": "A shader may compile with another sampler name but receives no Engine-owned texture binding.",
       "stability": "experimental",
       "source": [
@@ -561,6 +620,7 @@
           "anchors": [
             "CHECK_TEX(\"MainTex\");",
             "CHECK_TEX(\"IndoorMaskTex\");",
+            "CHECK_TEX(\"BackgroundTex\");",
             "CHECK_TEX(strex(\"ModelTex{}\", j).strv());"
           ]
         },
@@ -569,6 +629,7 @@
           "anchors": [
             "nptr<const RenderTexture> MainTex {};",
             "nptr<const RenderTexture> IndoorMaskTex {};",
+            "nptr<const RenderTexture> BackgroundTex {};",
             "nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};"
           ]
         }
@@ -577,7 +638,7 @@
     {
       "id": "effect-format.resource.general-buffers",
       "name": "General uniform buffers",
-      "requirement": "Recognized general buffers are ProjBuf, MainTexBuf, EggBuf, SpriteBorderBuf, TimeBuf, RandomValueBuf, ScriptValueBuf, and CameraBuf. Declarations must match the native std140-compatible layouts exactly.",
+      "requirement": "Recognized general buffers are ProjBuf, MainTexBuf, EggBuf, SpriteBorderBuf, ParticleSamplingBuf, TimeBuf, RandomValueBuf, ScriptValueBuf, and CameraBuf. ParticleSamplingBuf is caller-defined per draw for particle texture sampling and distortion controls. Declarations must match the native std140-compatible layouts exactly.",
       "rationale": "EffectBaker validates reflected byte sizes against RenderEffect buffer structures.",
       "stability": "experimental",
       "source": [
@@ -585,6 +646,7 @@
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
             "CHECK_BUF(ProjBuf);",
+            "CHECK_BUF(ParticleSamplingBuf);",
             "CHECK_BUF(ScriptValueBuf);",
             "CHECK_BUF(CameraBuf);"
           ]
@@ -593,6 +655,7 @@
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
             "struct ProjBuffer",
+            "struct ParticleSamplingBuffer",
             "struct ScriptValueBuffer",
             "struct CameraBuffer"
           ]
@@ -1281,18 +1344,18 @@
     }
   ],
   "summary": {
-    "entry_count": 55,
+    "entry_count": 57,
     "compile_limit_count": 4,
     "section_count": 4,
-    "effect_option_count": 8,
+    "effect_option_count": 10,
     "resource_count": 12,
     "baking_rule_count": 8,
     "runtime_rule_count": 7,
     "script_method_count": 4,
     "validation_rule_count": 8,
     "entries_by_stability": {
-      "experimental": 51
+      "experimental": 53
     }
   },
-  "contract_digest": "639a106c254f8593874e3a9f6da992058e665a6c20a63ad48b5a3ae82b50d22f"
+  "contract_digest": "bd50466bab9291d7b04d119f6fb9b613bc6507b1c771cef1605c7d7e7184aea0"
 }

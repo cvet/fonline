@@ -9,21 +9,28 @@ from collections import Counter, defaultdict
 from pathlib import Path, PurePosixPath
 
 import docs_ai_delivery
+import docs_localization
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 GENERATED_BY = "BuildTools/docs_site.py"
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
 DEFAULT_NAVIGATION_OUTPUT = "_data/docs-site.json"
 DEFAULT_SEARCH_OUTPUT = "assets/docs-search.json"
+DEFAULT_RUSSIAN_SEARCH_OUTPUT = "assets/docs-search.ru.json"
 DEFAULT_ROUTES_OUTPUT = "Docs/generated/document-routes.json"
-OUTPUT_PATHS = (DEFAULT_NAVIGATION_OUTPUT, DEFAULT_SEARCH_OUTPUT, DEFAULT_ROUTES_OUTPUT)
+OUTPUT_PATHS = (
+    DEFAULT_NAVIGATION_OUTPUT,
+    DEFAULT_SEARCH_OUTPUT,
+    DEFAULT_RUSSIAN_SEARCH_OUTPUT,
+    DEFAULT_ROUTES_OUTPUT,
+)
 
 HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 HTML_RE = re.compile(r"<[^>]+>")
-TOKEN_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.:+/?<>-]*")
+TOKEN_RE = re.compile(r"\w[\w_.:+/?<>-]*", re.UNICODE)
 CAMEL_PART_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+")
 VALID_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -54,6 +61,48 @@ STOP_WORDS = {
     "to",
     "use",
     "with",
+    "а",
+    "без",
+    "в",
+    "во",
+    "для",
+    "же",
+    "и",
+    "из",
+    "или",
+    "как",
+    "к",
+    "на",
+    "не",
+    "но",
+    "от",
+    "по",
+    "при",
+    "с",
+    "со",
+    "что",
+    "это",
+}
+
+MAX_DOCUMENT_FREQUENCY_RATIO = 0.60
+QUERY_TOKEN_RE = re.compile(r"\w[\w_.:+/?<>-]*", re.UNICODE)
+DIATAXIS_TITLES = {
+    "en": {
+        "none": "Overview",
+        "tutorial": "Tutorial",
+        "how-to": "How-to",
+        "reference": "Reference",
+        "explanation": "Explanation",
+        "troubleshooting": "Troubleshooting",
+    },
+    "ru": {
+        "none": "Обзор",
+        "tutorial": "Руководство",
+        "how-to": "Инструкция",
+        "reference": "Справочник",
+        "explanation": "Объяснение",
+        "troubleshooting": "Устранение неполадок",
+    },
 }
 
 
@@ -85,6 +134,14 @@ def _site_config(manifest: dict[str, object]) -> dict[str, object]:
     search = _require_object(config, "search", "site_delivery search")
     if search.get("path") != DEFAULT_SEARCH_OUTPUT:
         raise ValueError(f"site_delivery search path must be {DEFAULT_SEARCH_OUTPUT}")
+    expected_locale_paths = {
+        "en": DEFAULT_SEARCH_OUTPUT,
+        "ru": DEFAULT_RUSSIAN_SEARCH_OUTPUT,
+    }
+    if search.get("locale_paths") != expected_locale_paths:
+        raise ValueError(
+            f"site_delivery search locale_paths must be {expected_locale_paths}"
+        )
     max_bytes = search.get("max_bytes")
     if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
         raise ValueError("site_delivery search max_bytes must be a positive integer")
@@ -118,6 +175,7 @@ def _site_config(manifest: dict[str, object]) -> dict[str, object]:
             raise ValueError(f"site_delivery repeats navigation group id: {group_id}")
         seen_group_ids.add(group_id)
         _require_string(group_value, "title", f"{label} title")
+        _require_string(group_value, "title_ru", f"{label} Russian title")
         document_ids = group_value.get("document_ids")
         if (
             not isinstance(document_ids, list)
@@ -130,7 +188,10 @@ def _site_config(manifest: dict[str, object]) -> dict[str, object]:
 def _site_path(source_path: str) -> str:
     if source_path == "README.md":
         return "/"
-    return "/" + str(PurePosixPath(source_path).with_suffix(".html"))
+    path = PurePosixPath(source_path)
+    if path.name == "index.md":
+        return "/" + str(path.parent) + "/"
+    return "/" + str(path.with_suffix(".html"))
 
 
 def _repository_markdown_path(value: object, label: str) -> str:
@@ -436,12 +497,74 @@ def _is_public_human_current(record: dict[str, object]) -> bool:
 
 def _is_generated_detail(record: dict[str, object]) -> bool:
     path = str(record["path"])
-    return path.startswith("Docs/generated/") and not path.endswith("/index.md")
+    generated_path = path.startswith("Docs/generated/")
+    migrated_generated_path = (
+        path.startswith("Docs/en/reference/")
+        and str(record["id"]).startswith("generated-")
+    )
+    return (generated_path or migrated_generated_path) and not path.endswith(
+        "/index.md"
+    )
+
+
+def _markdown_body(text: str) -> str:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    if not normalized.startswith("---\n"):
+        return normalized
+    end = normalized.find("\n---\n", 4)
+    return normalized[end + 5 :] if end >= 0 else normalized
+
+
+def _current_translations(
+    root: Path,
+    localization_status: dict[str, object],
+    records: list[dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    records_by_id = {str(record["id"]): record for record in records}
+    translations: dict[str, dict[str, object]] = {}
+    raw_documents = localization_status.get("documents")
+    if not isinstance(raw_documents, list):
+        raise ValueError("localization status documents must be an array")
+    for raw_document in raw_documents:
+        if not isinstance(raw_document, dict) or raw_document.get("status") != "current":
+            continue
+        document_id = str(raw_document.get("id", ""))
+        canonical = records_by_id.get(document_id)
+        if canonical is None:
+            raise ValueError(
+                f"current translation has no canonical document: {document_id}"
+            )
+        russian_path = str(raw_document.get("russian_path", ""))
+        russian_file = root / russian_path
+        if not russian_file.is_file():
+            raise ValueError(
+                f"current translation source is missing: {russian_path}"
+            )
+        content = russian_file.read_text(encoding="utf-8")
+        headings = _headings(_markdown_body(content))
+        title = next(
+            (str(heading["title"]) for heading in headings if heading["level"] == 1),
+            str(raw_document.get("title", canonical["title"])),
+        )
+        english_path = str(raw_document.get("english_path", ""))
+        if not (root / english_path).is_file():
+            english_path = str(raw_document.get("source_path", canonical["path"]))
+        translations[document_id] = {
+            "id": document_id,
+            "title": title,
+            "content": content,
+            "path": russian_path,
+            "english_path": english_path,
+            "russian_path": russian_path,
+            "diataxis": canonical["diataxis"],
+        }
+    return translations
 
 
 def _navigation_groups(
     config: dict[str, object],
     records: list[dict[str, object]],
+    translations: dict[str, dict[str, object]],
 ) -> tuple[list[dict[str, object]], dict[str, tuple[str, str]]]:
     eligible = {
         str(record["id"]): record
@@ -470,17 +593,40 @@ def _navigation_groups(
                 )
             seen_document_ids.add(document_id)
             record = eligible[document_id]
-            items.append(
-                {
-                    "id": document_id,
-                    "title": record["title"],
-                    "path": record["path"],
-                    "url": _site_path(str(record["path"])),
-                    "diataxis": record["diataxis"],
+            item = {
+                "id": document_id,
+                "title": record["title"],
+                "path": record["path"],
+                "url": _site_path(str(record["path"])),
+                "diataxis": record["diataxis"],
+            }
+            translation = translations.get(document_id)
+            if translation is not None:
+                item["locales"] = {
+                    "en": {
+                        "title": record["title"],
+                        "path": translation["english_path"],
+                        "url": _site_path(str(translation["english_path"])),
+                    },
+                    "ru": {
+                        "title": translation["title"],
+                        "path": translation["russian_path"],
+                        "url": _site_path(str(translation["russian_path"])),
+                    },
                 }
-            )
+            items.append(item)
             document_groups[document_id] = (group_id, group_title)
-        rendered_groups.append({"id": group_id, "title": group_title, "items": items})
+        rendered_groups.append(
+            {
+                "id": group_id,
+                "title": group_title,
+                "titles": {
+                    "en": group_title,
+                    "ru": str(group_value["title_ru"]),
+                },
+                "items": items,
+            }
+        )
 
     missing_ids = sorted(set(eligible) - seen_document_ids)
     if missing_ids:
@@ -587,7 +733,11 @@ def _token_variants(value: str) -> list[str]:
         for component in re.split(r"[_.:+/?<>-]+", raw):
             for part in CAMEL_PART_RE.findall(component):
                 normalized_part = part.casefold()
-                if len(normalized_part) >= 2 and normalized_part not in STOP_WORDS:
+                if (
+                    len(normalized_part) >= 2
+                    and normalized_part not in STOP_WORDS
+                    and not normalized_part.isdigit()
+                ):
                     variants.append(normalized_part)
     return variants
 
@@ -609,10 +759,110 @@ def _search_scores(record: dict[str, object], headings: list[dict[str, object]])
     return scores
 
 
+def search_documents(
+    index: dict[str, object],
+    query: str,
+    *,
+    limit: int = 12,
+) -> list[dict[str, object]]:
+    raw_tokens = QUERY_TOKEN_RE.findall(query.casefold())
+    tokens: list[str] = []
+    for raw in raw_tokens:
+        token = raw.strip("./:+?<>-")
+        if len(token) >= 2 and token not in tokens:
+            tokens.append(token)
+    if not tokens:
+        return []
+
+    documents = index.get("documents")
+    terms = index.get("terms")
+    if not isinstance(documents, list) or not isinstance(terms, dict):
+        raise ValueError("documentation search index must contain documents and terms")
+
+    scores: dict[int, float] = {}
+    matches: Counter[int] = Counter()
+    all_terms = sorted(str(term) for term in terms)
+
+    def collect_postings(
+        token_scores: dict[int, float],
+        postings: object,
+        multiplier: float,
+    ) -> None:
+        if not isinstance(postings, list):
+            raise ValueError("documentation search postings must be arrays")
+        for posting in postings:
+            if (
+                not isinstance(posting, list)
+                or len(posting) != 2
+                or not isinstance(posting[0], int)
+                or not isinstance(posting[1], (int, float))
+                or not 0 <= posting[0] < len(documents)
+            ):
+                raise ValueError("documentation search posting is malformed")
+            document_index = posting[0]
+            token_scores[document_index] = max(
+                token_scores.get(document_index, 0.0),
+                posting[1] * multiplier,
+            )
+
+    effective_token_count = 0
+    for token in tokens:
+        token_scores: dict[int, float] = {}
+        exact = terms.get(token)
+        if exact is not None:
+            collect_postings(token_scores, exact, 1.0)
+        elif len(token) >= 3:
+            prefix_matches = 0
+            for term in all_terms:
+                if term.startswith(token):
+                    collect_postings(token_scores, terms[term], 0.55)
+                    prefix_matches += 1
+                    if prefix_matches == 32:
+                        break
+        if not token_scores:
+            continue
+        effective_token_count += 1
+        for document_index, token_score in token_scores.items():
+            scores[document_index] = scores.get(document_index, 0.0) + token_score
+            matches[document_index] += 1
+
+    normalized_query = query.strip().casefold()
+    results: list[dict[str, object]] = []
+    minimum_matches = max(1, (effective_token_count * 3 + 4) // 5)
+    for document_index, score in scores.items():
+        document = documents[document_index]
+        if not isinstance(document, dict):
+            raise ValueError("documentation search document is malformed")
+        title = str(document.get("title", ""))
+        document_id = str(document.get("id", ""))
+        if normalized_query in title.casefold():
+            score += 80
+        if document_id.casefold() == normalized_query:
+            score += 120
+        if matches[document_index] >= minimum_matches:
+            results.append(
+                {
+                    "document": document,
+                    "score": score,
+                    "matches": matches[document_index],
+                }
+            )
+
+    results.sort(
+        key=lambda result: (
+            -int(result["matches"]),
+            -float(result["score"]),
+            str(result["document"].get("title", "")).casefold(),
+        )
+    )
+    return results[:limit]
+
+
 def render_navigation(
     manifest: dict[str, object],
     config: dict[str, object],
     records: list[dict[str, object]],
+    translations: dict[str, dict[str, object]],
 ) -> tuple[str, dict[str, tuple[str, str]]]:
     publishing = _require_object(manifest, "publishing", "documentation manifest publishing")
     versioning = docs_ai_delivery._versioning_config(manifest)
@@ -623,7 +873,26 @@ def render_navigation(
         "documentation versioning current",
     )
     routing = _require_object(config, "routing", "site_delivery routing")
-    groups, document_groups = _navigation_groups(config, records)
+    groups, document_groups = _navigation_groups(config, records, translations)
+    records_by_id = {str(record["id"]): record for record in records}
+    locale_pairs = []
+    for document_id, translation in sorted(translations.items()):
+        canonical = records_by_id[document_id]
+        locale_pairs.append(
+            {
+                "document_id": document_id,
+                "en": {
+                    "title": canonical["title"],
+                    "path": translation["english_path"],
+                    "url": _site_path(str(translation["english_path"])),
+                },
+                "ru": {
+                    "title": translation["title"],
+                    "path": translation["russian_path"],
+                    "url": _site_path(str(translation["russian_path"])),
+                },
+            }
+        )
     output = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,
@@ -655,6 +924,8 @@ def render_navigation(
         },
         "canonical_locale": localization["canonical_locale"],
         "locales": [dict(locale) for locale in localization["locales"]],
+        "locale_pair_count": len(locale_pairs),
+        "locale_pairs": locale_pairs,
         "routes_path": routing["path"],
         "navigation_item_count": sum(len(group["items"]) for group in groups),
         "navigation": groups,
@@ -667,36 +938,71 @@ def render_search(
     config: dict[str, object],
     records: list[dict[str, object]],
     document_groups: dict[str, tuple[str, str]],
+    translations: dict[str, dict[str, object]],
+    locale: str,
 ) -> str:
     publishing = _require_object(manifest, "publishing", "documentation manifest publishing")
-    eligible = sorted(
-        (record for record in records if _is_public_human_current(record)),
-        key=lambda record: (str(record["title"]).casefold(), str(record["id"])),
-    )
+    if locale == "en":
+        eligible = sorted(
+            (record for record in records if _is_public_human_current(record)),
+            key=lambda record: (str(record["title"]).casefold(), str(record["id"])),
+        )
+    elif locale == "ru":
+        eligible = sorted(
+            translations.values(),
+            key=lambda record: (str(record["title"]).casefold(), str(record["id"])),
+        )
+    else:
+        raise ValueError(f"unsupported documentation search locale: {locale}")
+    group_titles = {
+        str(group["id"]): str(
+            group["title_ru"] if locale == "ru" else group["title"]
+        )
+        for group in config["navigation"]
+        if isinstance(group, dict)
+    }
     documents = []
     postings: dict[str, list[list[int]]] = defaultdict(list)
     for document_index, record in enumerate(eligible):
-        document_headings = _headings(str(record["content"]))
+        content = _markdown_body(str(record["content"]))
+        document_headings = _headings(content)
         group_id, group_title = document_groups.get(
             str(record["id"]),
             (str(record["diataxis"]), str(record["diataxis"]).replace("-", " ").title()),
         )
+        group_title = group_titles.get(group_id, group_title)
+        diataxis = str(record["diataxis"])
         documents.append(
             {
                 "id": record["id"],
+                "document_id": record["id"],
+                "locale": locale,
                 "title": record["title"],
                 "url": _site_path(str(record["path"])),
                 "path": record["path"],
                 "section_id": group_id,
                 "section_title": group_title,
-                "diataxis": record["diataxis"],
-                "summary": _summary(str(record["content"])),
+                "diataxis": diataxis,
+                "diataxis_title": DIATAXIS_TITLES[locale].get(
+                    diataxis, diataxis.replace("-", " ").title()
+                ),
+                "summary": _summary(content),
             }
         )
-        for token, score in sorted(_search_scores(record, document_headings).items()):
+        searchable_record = dict(record)
+        searchable_record["content"] = content
+        for token, score in sorted(
+            _search_scores(searchable_record, document_headings).items()
+        ):
             postings[token].append([document_index, score])
 
     search = _require_object(config, "search", "site_delivery search")
+    postings = {
+        token: token_postings
+        for token, token_postings in postings.items()
+        if len(documents) <= 2
+        or len(token_postings) / len(documents) <= MAX_DOCUMENT_FREQUENCY_RATIO
+    }
     output = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,
@@ -705,13 +1011,14 @@ def render_search(
             "production_url",
             "documentation publishing production_url",
         ),
-        "locale": docs_ai_delivery._localization_config(manifest)["canonical_locale"],
+        "locale": locale,
         "minimum_query_length": search["minimum_query_length"],
+        "maximum_document_frequency_ratio": MAX_DOCUMENT_FREQUENCY_RATIO,
         "document_count": len(documents),
         "documents": documents,
         "terms": {token: postings[token] for token in sorted(postings)},
     }
-    rendered = json.dumps(output, ensure_ascii=True, separators=(",", ":")) + "\n"
+    rendered = json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n"
     max_bytes = int(search["max_bytes"])
     byte_size = len(rendered.encode("utf-8"))
     if byte_size > max_bytes:
@@ -726,12 +1033,27 @@ def render_outputs(
     manifest = docs_ai_delivery._load_manifest(root, manifest_relative_path)
     config = _site_config(manifest)
     records = docs_ai_delivery._document_records(root, manifest)
-    navigation, document_groups = render_navigation(manifest, config, records)
-    search = render_search(manifest, config, records, document_groups)
+    localization = docs_ai_delivery._localization_config(manifest)
+    localization_status = docs_localization.generate_localization_status(
+        root,
+        manifest_relative_path,
+        str(localization["glossary"]),
+    )
+    translations = _current_translations(root, localization_status, records)
+    navigation, document_groups = render_navigation(
+        manifest, config, records, translations
+    )
+    english_search = render_search(
+        manifest, config, records, document_groups, translations, "en"
+    )
+    russian_search = render_search(
+        manifest, config, records, document_groups, translations, "ru"
+    )
     routes = render_routes(root, manifest, config, records)
     return {
         DEFAULT_NAVIGATION_OUTPUT: navigation,
-        DEFAULT_SEARCH_OUTPUT: search,
+        DEFAULT_SEARCH_OUTPUT: english_search,
+        DEFAULT_RUSSIAN_SEARCH_OUTPUT: russian_search,
         DEFAULT_ROUTES_OUTPUT: routes,
     }
 
@@ -775,15 +1097,20 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     navigation = json.loads(outputs[DEFAULT_NAVIGATION_OUTPUT])
-    search = json.loads(outputs[DEFAULT_SEARCH_OUTPUT])
+    english_search = json.loads(outputs[DEFAULT_SEARCH_OUTPUT])
+    russian_search = json.loads(outputs[DEFAULT_RUSSIAN_SEARCH_OUTPUT])
     routes = json.loads(outputs[DEFAULT_ROUTES_OUTPUT])
-    search_size = len(outputs[DEFAULT_SEARCH_OUTPUT].encode("utf-8"))
+    english_search_size = len(outputs[DEFAULT_SEARCH_OUTPUT].encode("utf-8"))
+    russian_search_size = len(
+        outputs[DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
+    )
     print(
         "Documentation site data is current: "
         f"{navigation['navigation_item_count']} navigation items, "
-        f"{search['document_count']} searchable documents, "
+        f"{english_search['document_count']} English and "
+        f"{russian_search['document_count']} Russian searchable documents, "
         f"{routes['route_count']} public routes, {routes['redirect_count']} planned redirects, "
-        f"{search_size} search bytes"
+        f"{english_search_size}/{russian_search_size} search bytes"
     )
     return 0
 

@@ -31,7 +31,7 @@
     "excluded_parser_sources": [
       {
         "source": "BuildTools/buildtools.py",
-        "reason": "Owned by Docs/generated/cli.json and BuildTools/docs_cli.py."
+        "reason": "Owned by Docs/generated/cli.json, Docs/en/reference/buildtools/, and BuildTools/docs_cli.py."
       },
       {
         "source": "BuildTools/package.py",
@@ -741,6 +741,434 @@
       ]
     },
     {
+      "id": "helper-cli.gameplay-test-runner",
+      "name": "Gameplay test runner",
+      "source": "BuildTools/gameplay_test_runner.py",
+      "factory": "create_parser",
+      "program": "gameplay_test_runner.py",
+      "owner": "quality",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "embedding-project-build-system",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "embedding-project CMake targets and CI gameplay smoke jobs",
+      "description": "Run ordered multi-process gameplay smoke scenarios with readiness, marker, deadline, cleanup, and JSON-report contracts.",
+      "parser_description": "Run project-neutral multi-process gameplay smoke scenarios from a checked JSON manifest.",
+      "usage": "usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE]\n                               [--report REPORT]",
+      "help_output": "usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE]\n                               [--report REPORT]\n\nRun project-neutral multi-process gameplay smoke scenarios from a checked JSON\nmanifest.\n\noptions:\n  -h, --help           show this help message and exit\n  --manifest MANIFEST  scenario manifest path\n  --value KEY=VALUE    placeholder value; repeat as needed\n  --report REPORT      optional JSON result path\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.manifest",
+          "destination": "manifest",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--manifest"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "scenario manifest path"
+        },
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.value",
+          "destination": "value",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "--value"
+          ],
+          "metavar": "KEY=VALUE",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "placeholder value; repeat as needed"
+        },
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.report",
+          "destination": "report",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--report"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "optional JSON result path"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.ai-control-client",
+      "name": "AiControl protocol client",
+      "source": "BuildTools/ai_control_client.py",
+      "factory": "create_parser",
+      "program": "ai_control_client.py",
+      "owner": "tooling",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "tool-developer",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics",
+      "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line.",
+      "parser_description": "Call an Engine-compatible AiControl bridge over NDJSON/TCP.",
+      "usage": "usage: ai_control_client.py [-h] [--host HOST] [--port PORT]\n                            [--timeout TIMEOUT] [--token-env TOKEN_ENV]\n                            [--allow-remote]\n                            {ping,status,observe,events,act} ...",
+      "help_output": "usage: ai_control_client.py [-h] [--host HOST] [--port PORT]\n                            [--timeout TIMEOUT] [--token-env TOKEN_ENV]\n                            [--allow-remote]\n                            {ping,status,observe,events,act} ...\n\nCall an Engine-compatible AiControl bridge over NDJSON/TCP.\n\npositional arguments:\n  {ping,status,observe,events,act}\n    ping                Check bridge liveness.\n    status              Read bridge status and queue limits.\n    observe             Read the latest project observation.\n    events              Read events after a sequence cursor.\n    act                 Enqueue one project-defined command.\n\noptions:\n  -h, --help            show this help message and exit\n  --host HOST           Bridge host.\n  --port PORT           Bridge port.\n  --timeout TIMEOUT     Socket timeout in seconds.\n  --token-env TOKEN_ENV\n                        Environment variable containing the shared token.\n  --allow-remote        Permit a non-loopback endpoint; transport remains\n                        unencrypted.\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.ai-control-client.argument.host",
+          "destination": "host",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--host"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "127.0.0.1",
+          "type": null,
+          "description": "Bridge host."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.port",
+          "destination": "port",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--port"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": 43011,
+          "type": "int",
+          "description": "Bridge port."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.timeout",
+          "destination": "timeout",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--timeout"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": 5.0,
+          "type": "float",
+          "description": "Socket timeout in seconds."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.token_env",
+          "destination": "token_env",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--token-env"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "FONLINE_AI_TOKEN",
+          "type": null,
+          "description": "Environment variable containing the shared token."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.allow_remote",
+          "destination": "allow_remote",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--allow-remote"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "Permit a non-loopback endpoint; transport remains unencrypted."
+        }
+      ],
+      "commands": [
+        {
+          "id": "helper-cli.ai-control-client.command.ping",
+          "name": "ping",
+          "summary": "Check bridge liveness.",
+          "description": null,
+          "usage": "usage: ai_control_client.py ping [-h]",
+          "help_output": "usage: ai_control_client.py ping [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.status",
+          "name": "status",
+          "summary": "Read bridge status and queue limits.",
+          "description": null,
+          "usage": "usage: ai_control_client.py status [-h]",
+          "help_output": "usage: ai_control_client.py status [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.observe",
+          "name": "observe",
+          "summary": "Read the latest project observation.",
+          "description": null,
+          "usage": "usage: ai_control_client.py observe [-h]",
+          "help_output": "usage: ai_control_client.py observe [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.events",
+          "name": "events",
+          "summary": "Read events after a sequence cursor.",
+          "description": null,
+          "usage": "usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ]\n                                   [--limit LIMIT]",
+          "help_output": "usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ]\n                                   [--limit LIMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --after-seq AFTER_SEQ\n                        Exclusive event cursor.\n  --limit LIMIT         Maximum events to return.\n",
+          "arguments": [
+            {
+              "id": "helper-cli.ai-control-client.command.events.argument.after_seq",
+              "destination": "after_seq",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--after-seq"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": 0,
+              "type": "int",
+              "description": "Exclusive event cursor."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.events.argument.limit",
+              "destination": "limit",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--limit"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": 100,
+              "type": "int",
+              "description": "Maximum events to return."
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.act",
+          "name": "act",
+          "summary": "Enqueue one project-defined command.",
+          "description": null,
+          "usage": "usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID]\n                                [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X]\n                                [--y Y] [--screen-x SCREEN_X]\n                                [--screen-y SCREEN_Y] [--int-arg INT_ARG]\n                                [--string-arg STRING_ARG] [--append]",
+          "help_output": "usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID]\n                                [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X]\n                                [--y Y] [--screen-x SCREEN_X]\n                                [--screen-y SCREEN_Y] [--int-arg INT_ARG]\n                                [--string-arg STRING_ARG] [--append]\n\noptions:\n  -h, --help            show this help message and exit\n  --type TYPE           Project-defined command type.\n  --target-id TARGET_ID\n                        Optional target entity identifier.\n  --item-id ITEM_ID     Optional item entity identifier.\n  --aux-id AUX_ID       Optional auxiliary entity identifier.\n  --x X                 Optional project world X coordinate.\n  --y Y                 Optional project world Y coordinate.\n  --screen-x SCREEN_X   Optional screen X coordinate.\n  --screen-y SCREEN_Y   Optional screen Y coordinate.\n  --int-arg INT_ARG     Optional integer payload.\n  --string-arg STRING_ARG\n                        Optional string payload.\n  --append              Request project queue append semantics.\n",
+          "arguments": [
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.type",
+              "destination": "type",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--type"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Project-defined command type."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.target_id",
+              "destination": "target_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--target-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional target entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.item_id",
+              "destination": "item_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--item-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional item entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.aux_id",
+              "destination": "aux_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--aux-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional auxiliary entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.x",
+              "destination": "x",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--x"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional project world X coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.y",
+              "destination": "y",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--y"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional project world Y coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.screen_x",
+              "destination": "screen_x",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--screen-x"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional screen X coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.screen_y",
+              "destination": "screen_y",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--screen-y"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional screen Y coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.int_arg",
+              "destination": "int_arg",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--int-arg"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional integer payload."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.string_arg",
+              "destination": "string_arg",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--string-arg"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional string payload."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.append",
+              "destination": "append",
+              "kind": "option",
+              "action": "store_true",
+              "option_strings": [
+                "--append"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "default": false,
+              "type": null,
+              "description": "Request project queue append semantics."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "helper-cli.windows7-import-check",
       "name": "Windows 7 import validation",
       "source": "BuildTools/check_windows7_imports.py",
@@ -1145,10 +1573,10 @@
     }
   ],
   "summary": {
-    "helper_count": 7,
-    "command_count": 11,
-    "global_argument_count": 18,
-    "command_argument_count": 35
+    "helper_count": 9,
+    "command_count": 16,
+    "global_argument_count": 26,
+    "command_argument_count": 48
   },
-  "contract_digest": "c9f5192190b77e1f7858b219f4bd12858a752e83b399179233c6150fbf3a5180"
+  "contract_digest": "fc411f8694ac5fe27dc4ff6cb8cd6491048554bb7117ce7dbff3299c45a34420"
 }

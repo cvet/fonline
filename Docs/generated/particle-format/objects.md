@@ -1,82 +1,173 @@
----
-title: Particle Formats and Backends
-document_id: generated-particle-format-objects
-locale: en
-generated: true
----
-
 # Particle Formats and Backends
 
-> Generated reference. Do not edit this page directly. Update `BuildTools/ParticleFormatInterface.json`, then run `python BuildTools/docs_particle_format.py --write`.
+> Legacy route.
 
-[Reference index](index.md) | [Source rules](xml.md) | [Formats and backends](objects.md) | [Rendering](renderer.md) | [Tooling](tooling.md) | [Runtime](runtime.md) | [Integration](integration.md) | [Validation](validation.md) | [Canonical JSON model](../particle-format.json)
+The canonical generated reference moved to locale-specific paths.
+
+[English](../../en/reference/particle-format/objects.md) | [Russian](../../ru/reference/particle-format/objects.md)
 
 ## Backends
 
-| Stable ID | Backend | Formats | Requirement | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-family-spark-9776f691cb"></a><code>particle-format.family.spark</code> | SPARK backend | <code>.spark</code>, <code>.spk</code> | Enable FO_SPARK_PARTICLES to compile the SPARK baker, runtime backend, and Mapper authoring subeditor. | [BuildTools/cmake/ProjectInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/ProjectInterface.json)<br>[BuildTools/cmake/stages/Init.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/stages/Init.cmake)<br>[Source/Client/ParticleRuntime.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleRuntime.cpp) |
-| <a id="entry-particle-format-family-effekseer-9199775b25"></a><code>particle-format.family.effekseer</code> | Effekseer backend | <code>.efkproj</code>, <code>.efk</code> | Enable FO_EFFEKSEER_PARTICLES to compile the fixed-profile project compiler and Effekseer runtime backend. | [BuildTools/cmake/ProjectInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/ProjectInterface.json)<br>[BuildTools/cmake/stages/Init.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/stages/Init.cmake)<br>[Source/Client/ParticleRuntime.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleRuntime.cpp) |
+Continue with the [canonical reference](../../en/reference/particle-format/objects.md).
+
+<a id="entry-particle-format-family-spark-9776f691cb"></a>
+- [`entry-particle-format-family-spark-9776f691cb`](../../en/reference/particle-format/objects.md#entry-particle-format-family-spark-9776f691cb)
+
+<a id="entry-particle-format-family-effekseer-9199775b25"></a>
+- [`entry-particle-format-family-effekseer-9199775b25`](../../en/reference/particle-format/objects.md#entry-particle-format-family-effekseer-9199775b25)
 
 ## Resource forms
 
-| Stable ID | Format | Backend | Role | Requirement | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-object-spark-source-1b9b5c7cb6"></a><code>particle-format.object.spark-source</code> | <code>.spark</code> | <code>spark</code> | <code>authored</code> | Author SPARK systems as XML in .spark files and reference the corresponding .spk path from game content. | [Source/Tools/ParticleBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ParticleBaker.cpp) |
-| <a id="entry-particle-format-object-spark-runtime-9b17d4e46e"></a><code>particle-format.object.spark-runtime</code> | <code>.spk</code> | <code>spark</code> | <code>generated</code> | Treat .spk as generated baked output and never check it into an authored resource source. | [Source/Tools/ParticleBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ParticleBaker.cpp)<br>[Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-object-effekseer-source-14459b5e64"></a><code>particle-format.object.effekseer-source</code> | <code>.efkproj</code> | <code>effekseer</code> | <code>authored</code> | Author Effekseer effects as text .efkproj projects and reference the corresponding .efk path from game content. | [Source/Tools/ParticleBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ParticleBaker.cpp)<br>[Source/Tools/EffekseerCompiler.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/EffekseerCompiler.cpp) |
-| <a id="entry-particle-format-object-effekseer-runtime-164a5f7a1c"></a><code>particle-format.object.effekseer-runtime</code> | <code>.efk</code> | <code>effekseer</code> | <code>generated</code> | Treat .efk as generated baked output and never check it into an authored resource source. | [Source/Tools/ParticleBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ParticleBaker.cpp)<br>[Source/Client/EffekseerExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/EffekseerExtension.cpp) |
+Continue with the [canonical reference](../../en/reference/particle-format/objects.md).
+
+<a id="entry-particle-format-object-spark-source-1b9b5c7cb6"></a>
+- [`entry-particle-format-object-spark-source-1b9b5c7cb6`](../../en/reference/particle-format/objects.md#entry-particle-format-object-spark-source-1b9b5c7cb6)
+
+<a id="entry-particle-format-object-spark-runtime-9b17d4e46e"></a>
+- [`entry-particle-format-object-spark-runtime-9b17d4e46e`](../../en/reference/particle-format/objects.md#entry-particle-format-object-spark-runtime-9b17d4e46e)
+
+<a id="entry-particle-format-object-effekseer-source-14459b5e64"></a>
+- [`entry-particle-format-object-effekseer-source-14459b5e64`](../../en/reference/particle-format/objects.md#entry-particle-format-object-effekseer-source-14459b5e64)
+
+<a id="entry-particle-format-object-effekseer-runtime-164a5f7a1c"></a>
+- [`entry-particle-format-object-effekseer-runtime-164a5f7a1c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-effekseer-runtime-164a5f7a1c)
 
 ## SPARK object families
 
-| Stable ID | Family | Object tags | Requirement | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-family-core-2ed6037299"></a><code>particle-format.family.core</code> | Core | <code>System</code>, <code>Group</code> | Author exactly one System root object and compose one or more Group objects beneath its groups attribute. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-interpolators-3fe36ac457"></a><code>particle-format.family.interpolators</code> | Interpolators | <code>FloatDefaultInitializer</code>, <code>ColorDefaultInitializer</code>, <code>FloatRandomInitializer</code>, <code>ColorRandomInitializer</code>, <code>FloatSimpleInterpolator</code>, <code>ColorSimpleInterpolator</code>, <code>FloatRandomInterpolator</code>, <code>ColorRandomInterpolator</code>, <code>FloatGraphInterpolator</code>, <code>ColorGraphInterpolator</code> | Use only the registered float and color initializer/interpolator tags for particle parameter evolution. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-zones-07a8ec12d2"></a><code>particle-format.family.zones</code> | Zones | <code>Point</code>, <code>Sphere</code>, <code>Plane</code>, <code>Ring</code>, <code>Box</code>, <code>Cylinder</code> | Emitter and zoned-modifier references may use the six registered geometric zone tags. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-emitters-04e0c09f1b"></a><code>particle-format.family.emitters</code> | Emitters | <code>StaticEmitter</code>, <code>RandomEmitter</code>, <code>StraightEmitter</code>, <code>SphericEmitter</code>, <code>NormalEmitter</code> | Groups may contain the five registered emitter tags. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-modifiers-2695e6d5bc"></a><code>particle-format.family.modifiers</code> | Modifiers | <code>Gravity</code>, <code>Friction</code>, <code>Obstacle</code>, <code>Rotator</code>, <code>Collider</code>, <code>Destroyer</code>, <code>Vortex</code>, <code>EmitterAttacher</code>, <code>PointMass</code>, <code>RandomForce</code>, <code>LinearForce</code> | Groups may contain the eleven registered modifier tags. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-actions-ee7bb308af"></a><code>particle-format.family.actions</code> | Actions | <code>ActionSet</code>, <code>SpawnParticlesAction</code> | Birth/death action references may use ActionSet and SpawnParticlesAction. | [ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp) |
-| <a id="entry-particle-format-family-renderer-acc8eab380"></a><code>particle-format.family.renderer</code> | Renderer | <code>SparkQuadRenderer</code> | Use the Engine-owned SparkQuadRenderer tag for particle rendering. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
+Continue with the [canonical reference](../../en/reference/particle-format/objects.md).
+
+<a id="entry-particle-format-family-core-2ed6037299"></a>
+- [`entry-particle-format-family-core-2ed6037299`](../../en/reference/particle-format/objects.md#entry-particle-format-family-core-2ed6037299)
+
+<a id="entry-particle-format-family-interpolators-3fe36ac457"></a>
+- [`entry-particle-format-family-interpolators-3fe36ac457`](../../en/reference/particle-format/objects.md#entry-particle-format-family-interpolators-3fe36ac457)
+
+<a id="entry-particle-format-family-zones-07a8ec12d2"></a>
+- [`entry-particle-format-family-zones-07a8ec12d2`](../../en/reference/particle-format/objects.md#entry-particle-format-family-zones-07a8ec12d2)
+
+<a id="entry-particle-format-family-emitters-04e0c09f1b"></a>
+- [`entry-particle-format-family-emitters-04e0c09f1b`](../../en/reference/particle-format/objects.md#entry-particle-format-family-emitters-04e0c09f1b)
+
+<a id="entry-particle-format-family-modifiers-2695e6d5bc"></a>
+- [`entry-particle-format-family-modifiers-2695e6d5bc`](../../en/reference/particle-format/objects.md#entry-particle-format-family-modifiers-2695e6d5bc)
+
+<a id="entry-particle-format-family-actions-ee7bb308af"></a>
+- [`entry-particle-format-family-actions-ee7bb308af`](../../en/reference/particle-format/objects.md#entry-particle-format-family-actions-ee7bb308af)
+
+<a id="entry-particle-format-family-renderer-acc8eab380"></a>
+- [`entry-particle-format-family-renderer-acc8eab380`](../../en/reference/particle-format/objects.md#entry-particle-format-family-renderer-acc8eab380)
 
 ## SPARK object catalog
 
-| Stable ID | XML tag | Family | Requirement | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-object-system-be1de27c24"></a><code>particle-format.object.system</code> | <code>System</code> | Core | The &lt;System&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Core/SPK_System.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Core/SPK_System.h) |
-| <a id="entry-particle-format-object-group-491fb8ff74"></a><code>particle-format.object.group</code> | <code>Group</code> | Core | The &lt;Group&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Core/SPK_Group.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Core/SPK_Group.h) |
-| <a id="entry-particle-format-object-float-default-initializer-2e0429a200"></a><code>particle-format.object.float-default-initializer</code> | <code>FloatDefaultInitializer</code> | Interpolators | The &lt;FloatDefaultInitializer&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h) |
-| <a id="entry-particle-format-object-color-default-initializer-b991d36112"></a><code>particle-format.object.color-default-initializer</code> | <code>ColorDefaultInitializer</code> | Interpolators | The &lt;ColorDefaultInitializer&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h) |
-| <a id="entry-particle-format-object-float-random-initializer-290c0aeb8b"></a><code>particle-format.object.float-random-initializer</code> | <code>FloatRandomInitializer</code> | Interpolators | The &lt;FloatRandomInitializer&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h) |
-| <a id="entry-particle-format-object-color-random-initializer-419c900157"></a><code>particle-format.object.color-random-initializer</code> | <code>ColorRandomInitializer</code> | Interpolators | The &lt;ColorRandomInitializer&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h) |
-| <a id="entry-particle-format-object-float-simple-interpolator-6155268c5b"></a><code>particle-format.object.float-simple-interpolator</code> | <code>FloatSimpleInterpolator</code> | Interpolators | The &lt;FloatSimpleInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h) |
-| <a id="entry-particle-format-object-color-simple-interpolator-2dae09a384"></a><code>particle-format.object.color-simple-interpolator</code> | <code>ColorSimpleInterpolator</code> | Interpolators | The &lt;ColorSimpleInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h) |
-| <a id="entry-particle-format-object-float-random-interpolator-2a6915c73c"></a><code>particle-format.object.float-random-interpolator</code> | <code>FloatRandomInterpolator</code> | Interpolators | The &lt;FloatRandomInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h) |
-| <a id="entry-particle-format-object-color-random-interpolator-35e2cc56cf"></a><code>particle-format.object.color-random-interpolator</code> | <code>ColorRandomInterpolator</code> | Interpolators | The &lt;ColorRandomInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h) |
-| <a id="entry-particle-format-object-float-graph-interpolator-537542577b"></a><code>particle-format.object.float-graph-interpolator</code> | <code>FloatGraphInterpolator</code> | Interpolators | The &lt;FloatGraphInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h) |
-| <a id="entry-particle-format-object-color-graph-interpolator-d6224fb43c"></a><code>particle-format.object.color-graph-interpolator</code> | <code>ColorGraphInterpolator</code> | Interpolators | The &lt;ColorGraphInterpolator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h) |
-| <a id="entry-particle-format-object-point-caaf563ab7"></a><code>particle-format.object.point</code> | <code>Point</code> | Zones | The &lt;Point&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Point.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Point.h) |
-| <a id="entry-particle-format-object-sphere-e96ec4890e"></a><code>particle-format.object.sphere</code> | <code>Sphere</code> | Zones | The &lt;Sphere&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Sphere.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Sphere.h) |
-| <a id="entry-particle-format-object-plane-d65e1f5ba2"></a><code>particle-format.object.plane</code> | <code>Plane</code> | Zones | The &lt;Plane&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Plane.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Plane.h) |
-| <a id="entry-particle-format-object-ring-4826392de2"></a><code>particle-format.object.ring</code> | <code>Ring</code> | Zones | The &lt;Ring&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Ring.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Ring.h) |
-| <a id="entry-particle-format-object-box-83a451e2fd"></a><code>particle-format.object.box</code> | <code>Box</code> | Zones | The &lt;Box&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Box.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Box.h) |
-| <a id="entry-particle-format-object-cylinder-756ecf4e5c"></a><code>particle-format.object.cylinder</code> | <code>Cylinder</code> | Zones | The &lt;Cylinder&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Zones/SPK_Cylinder.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Zones/SPK_Cylinder.h) |
-| <a id="entry-particle-format-object-static-emitter-34d0a81fc4"></a><code>particle-format.object.static-emitter</code> | <code>StaticEmitter</code> | Emitters | The &lt;StaticEmitter&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StaticEmitter.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StaticEmitter.h) |
-| <a id="entry-particle-format-object-random-emitter-d1ce250853"></a><code>particle-format.object.random-emitter</code> | <code>RandomEmitter</code> | Emitters | The &lt;RandomEmitter&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Emitters/SPK_RandomEmitter.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Emitters/SPK_RandomEmitter.h) |
-| <a id="entry-particle-format-object-straight-emitter-ad53bbd51e"></a><code>particle-format.object.straight-emitter</code> | <code>StraightEmitter</code> | Emitters | The &lt;StraightEmitter&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StraightEmitter.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StraightEmitter.h) |
-| <a id="entry-particle-format-object-spheric-emitter-601ad325b4"></a><code>particle-format.object.spheric-emitter</code> | <code>SphericEmitter</code> | Emitters | The &lt;SphericEmitter&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Emitters/SPK_SphericEmitter.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Emitters/SPK_SphericEmitter.h) |
-| <a id="entry-particle-format-object-normal-emitter-b1a66b15e0"></a><code>particle-format.object.normal-emitter</code> | <code>NormalEmitter</code> | Emitters | The &lt;NormalEmitter&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Emitters/SPK_NormalEmitter.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Emitters/SPK_NormalEmitter.h) |
-| <a id="entry-particle-format-object-gravity-fb89f9c41e"></a><code>particle-format.object.gravity</code> | <code>Gravity</code> | Modifiers | The &lt;Gravity&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h) |
-| <a id="entry-particle-format-object-friction-f1c6f0f159"></a><code>particle-format.object.friction</code> | <code>Friction</code> | Modifiers | The &lt;Friction&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h) |
-| <a id="entry-particle-format-object-obstacle-9c3916ecd9"></a><code>particle-format.object.obstacle</code> | <code>Obstacle</code> | Modifiers | The &lt;Obstacle&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Obstacle.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Obstacle.h) |
-| <a id="entry-particle-format-object-rotator-4b48d80d6c"></a><code>particle-format.object.rotator</code> | <code>Rotator</code> | Modifiers | The &lt;Rotator&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Rotator.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Rotator.h) |
-| <a id="entry-particle-format-object-collider-68d72541f2"></a><code>particle-format.object.collider</code> | <code>Collider</code> | Modifiers | The &lt;Collider&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Collider.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Collider.h) |
-| <a id="entry-particle-format-object-destroyer-7c9c28554c"></a><code>particle-format.object.destroyer</code> | <code>Destroyer</code> | Modifiers | The &lt;Destroyer&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Destroyer.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Destroyer.h) |
-| <a id="entry-particle-format-object-vortex-5a0caad2b1"></a><code>particle-format.object.vortex</code> | <code>Vortex</code> | Modifiers | The &lt;Vortex&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Vortex.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Vortex.h) |
-| <a id="entry-particle-format-object-emitter-attacher-8875a71fae"></a><code>particle-format.object.emitter-attacher</code> | <code>EmitterAttacher</code> | Modifiers | The &lt;EmitterAttacher&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_EmitterAttacher.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_EmitterAttacher.h) |
-| <a id="entry-particle-format-object-point-mass-a792cc724c"></a><code>particle-format.object.point-mass</code> | <code>PointMass</code> | Modifiers | The &lt;PointMass&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_PointMass.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_PointMass.h) |
-| <a id="entry-particle-format-object-random-force-d7937ed929"></a><code>particle-format.object.random-force</code> | <code>RandomForce</code> | Modifiers | The &lt;RandomForce&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_RandomForce.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_RandomForce.h) |
-| <a id="entry-particle-format-object-linear-force-2548d602d5"></a><code>particle-format.object.linear-force</code> | <code>LinearForce</code> | Modifiers | The &lt;LinearForce&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_LinearForce.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_LinearForce.h) |
-| <a id="entry-particle-format-object-action-set-099f79b42f"></a><code>particle-format.object.action-set</code> | <code>ActionSet</code> | Actions | The &lt;ActionSet&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Actions/SPK_ActionSet.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Actions/SPK_ActionSet.h) |
-| <a id="entry-particle-format-object-spawn-particles-action-d803a71bce"></a><code>particle-format.object.spawn-particles-action</code> | <code>SpawnParticlesAction</code> | Actions | The &lt;SpawnParticlesAction&gt; XML tag is registered and editable by the stock particle editor. | [ThirdParty/spark/spark/include/Extensions/Actions/SPK_SpawnParticlesAction.h](https://github.com/cvet/fonline/blob/master/ThirdParty/spark/spark/include/Extensions/Actions/SPK_SpawnParticlesAction.h) |
-| <a id="entry-particle-format-object-spark-quad-renderer-9c122489f6"></a><code>particle-format.object.spark-quad-renderer</code> | <code>SparkQuadRenderer</code> | Renderer | The &lt;SparkQuadRenderer&gt; XML tag is registered and editable by the stock particle editor. | [Source/Client/SparkExtension.h](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.h) |
+Continue with the [canonical reference](../../en/reference/particle-format/objects.md).
+
+<a id="entry-particle-format-object-system-be1de27c24"></a>
+- [`entry-particle-format-object-system-be1de27c24`](../../en/reference/particle-format/objects.md#entry-particle-format-object-system-be1de27c24)
+
+<a id="entry-particle-format-object-group-491fb8ff74"></a>
+- [`entry-particle-format-object-group-491fb8ff74`](../../en/reference/particle-format/objects.md#entry-particle-format-object-group-491fb8ff74)
+
+<a id="entry-particle-format-object-float-default-initializer-2e0429a200"></a>
+- [`entry-particle-format-object-float-default-initializer-2e0429a200`](../../en/reference/particle-format/objects.md#entry-particle-format-object-float-default-initializer-2e0429a200)
+
+<a id="entry-particle-format-object-color-default-initializer-b991d36112"></a>
+- [`entry-particle-format-object-color-default-initializer-b991d36112`](../../en/reference/particle-format/objects.md#entry-particle-format-object-color-default-initializer-b991d36112)
+
+<a id="entry-particle-format-object-float-random-initializer-290c0aeb8b"></a>
+- [`entry-particle-format-object-float-random-initializer-290c0aeb8b`](../../en/reference/particle-format/objects.md#entry-particle-format-object-float-random-initializer-290c0aeb8b)
+
+<a id="entry-particle-format-object-color-random-initializer-419c900157"></a>
+- [`entry-particle-format-object-color-random-initializer-419c900157`](../../en/reference/particle-format/objects.md#entry-particle-format-object-color-random-initializer-419c900157)
+
+<a id="entry-particle-format-object-float-simple-interpolator-6155268c5b"></a>
+- [`entry-particle-format-object-float-simple-interpolator-6155268c5b`](../../en/reference/particle-format/objects.md#entry-particle-format-object-float-simple-interpolator-6155268c5b)
+
+<a id="entry-particle-format-object-color-simple-interpolator-2dae09a384"></a>
+- [`entry-particle-format-object-color-simple-interpolator-2dae09a384`](../../en/reference/particle-format/objects.md#entry-particle-format-object-color-simple-interpolator-2dae09a384)
+
+<a id="entry-particle-format-object-float-random-interpolator-2a6915c73c"></a>
+- [`entry-particle-format-object-float-random-interpolator-2a6915c73c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-float-random-interpolator-2a6915c73c)
+
+<a id="entry-particle-format-object-color-random-interpolator-35e2cc56cf"></a>
+- [`entry-particle-format-object-color-random-interpolator-35e2cc56cf`](../../en/reference/particle-format/objects.md#entry-particle-format-object-color-random-interpolator-35e2cc56cf)
+
+<a id="entry-particle-format-object-float-graph-interpolator-537542577b"></a>
+- [`entry-particle-format-object-float-graph-interpolator-537542577b`](../../en/reference/particle-format/objects.md#entry-particle-format-object-float-graph-interpolator-537542577b)
+
+<a id="entry-particle-format-object-color-graph-interpolator-d6224fb43c"></a>
+- [`entry-particle-format-object-color-graph-interpolator-d6224fb43c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-color-graph-interpolator-d6224fb43c)
+
+<a id="entry-particle-format-object-point-caaf563ab7"></a>
+- [`entry-particle-format-object-point-caaf563ab7`](../../en/reference/particle-format/objects.md#entry-particle-format-object-point-caaf563ab7)
+
+<a id="entry-particle-format-object-sphere-e96ec4890e"></a>
+- [`entry-particle-format-object-sphere-e96ec4890e`](../../en/reference/particle-format/objects.md#entry-particle-format-object-sphere-e96ec4890e)
+
+<a id="entry-particle-format-object-plane-d65e1f5ba2"></a>
+- [`entry-particle-format-object-plane-d65e1f5ba2`](../../en/reference/particle-format/objects.md#entry-particle-format-object-plane-d65e1f5ba2)
+
+<a id="entry-particle-format-object-ring-4826392de2"></a>
+- [`entry-particle-format-object-ring-4826392de2`](../../en/reference/particle-format/objects.md#entry-particle-format-object-ring-4826392de2)
+
+<a id="entry-particle-format-object-box-83a451e2fd"></a>
+- [`entry-particle-format-object-box-83a451e2fd`](../../en/reference/particle-format/objects.md#entry-particle-format-object-box-83a451e2fd)
+
+<a id="entry-particle-format-object-cylinder-756ecf4e5c"></a>
+- [`entry-particle-format-object-cylinder-756ecf4e5c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-cylinder-756ecf4e5c)
+
+<a id="entry-particle-format-object-static-emitter-34d0a81fc4"></a>
+- [`entry-particle-format-object-static-emitter-34d0a81fc4`](../../en/reference/particle-format/objects.md#entry-particle-format-object-static-emitter-34d0a81fc4)
+
+<a id="entry-particle-format-object-random-emitter-d1ce250853"></a>
+- [`entry-particle-format-object-random-emitter-d1ce250853`](../../en/reference/particle-format/objects.md#entry-particle-format-object-random-emitter-d1ce250853)
+
+<a id="entry-particle-format-object-straight-emitter-ad53bbd51e"></a>
+- [`entry-particle-format-object-straight-emitter-ad53bbd51e`](../../en/reference/particle-format/objects.md#entry-particle-format-object-straight-emitter-ad53bbd51e)
+
+<a id="entry-particle-format-object-spheric-emitter-601ad325b4"></a>
+- [`entry-particle-format-object-spheric-emitter-601ad325b4`](../../en/reference/particle-format/objects.md#entry-particle-format-object-spheric-emitter-601ad325b4)
+
+<a id="entry-particle-format-object-normal-emitter-b1a66b15e0"></a>
+- [`entry-particle-format-object-normal-emitter-b1a66b15e0`](../../en/reference/particle-format/objects.md#entry-particle-format-object-normal-emitter-b1a66b15e0)
+
+<a id="entry-particle-format-object-gravity-fb89f9c41e"></a>
+- [`entry-particle-format-object-gravity-fb89f9c41e`](../../en/reference/particle-format/objects.md#entry-particle-format-object-gravity-fb89f9c41e)
+
+<a id="entry-particle-format-object-friction-f1c6f0f159"></a>
+- [`entry-particle-format-object-friction-f1c6f0f159`](../../en/reference/particle-format/objects.md#entry-particle-format-object-friction-f1c6f0f159)
+
+<a id="entry-particle-format-object-obstacle-9c3916ecd9"></a>
+- [`entry-particle-format-object-obstacle-9c3916ecd9`](../../en/reference/particle-format/objects.md#entry-particle-format-object-obstacle-9c3916ecd9)
+
+<a id="entry-particle-format-object-rotator-4b48d80d6c"></a>
+- [`entry-particle-format-object-rotator-4b48d80d6c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-rotator-4b48d80d6c)
+
+<a id="entry-particle-format-object-collider-68d72541f2"></a>
+- [`entry-particle-format-object-collider-68d72541f2`](../../en/reference/particle-format/objects.md#entry-particle-format-object-collider-68d72541f2)
+
+<a id="entry-particle-format-object-destroyer-7c9c28554c"></a>
+- [`entry-particle-format-object-destroyer-7c9c28554c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-destroyer-7c9c28554c)
+
+<a id="entry-particle-format-object-vortex-5a0caad2b1"></a>
+- [`entry-particle-format-object-vortex-5a0caad2b1`](../../en/reference/particle-format/objects.md#entry-particle-format-object-vortex-5a0caad2b1)
+
+<a id="entry-particle-format-object-emitter-attacher-8875a71fae"></a>
+- [`entry-particle-format-object-emitter-attacher-8875a71fae`](../../en/reference/particle-format/objects.md#entry-particle-format-object-emitter-attacher-8875a71fae)
+
+<a id="entry-particle-format-object-point-mass-a792cc724c"></a>
+- [`entry-particle-format-object-point-mass-a792cc724c`](../../en/reference/particle-format/objects.md#entry-particle-format-object-point-mass-a792cc724c)
+
+<a id="entry-particle-format-object-random-force-d7937ed929"></a>
+- [`entry-particle-format-object-random-force-d7937ed929`](../../en/reference/particle-format/objects.md#entry-particle-format-object-random-force-d7937ed929)
+
+<a id="entry-particle-format-object-linear-force-2548d602d5"></a>
+- [`entry-particle-format-object-linear-force-2548d602d5`](../../en/reference/particle-format/objects.md#entry-particle-format-object-linear-force-2548d602d5)
+
+<a id="entry-particle-format-object-action-set-099f79b42f"></a>
+- [`entry-particle-format-object-action-set-099f79b42f`](../../en/reference/particle-format/objects.md#entry-particle-format-object-action-set-099f79b42f)
+
+<a id="entry-particle-format-object-spawn-particles-action-d803a71bce"></a>
+- [`entry-particle-format-object-spawn-particles-action-d803a71bce`](../../en/reference/particle-format/objects.md#entry-particle-format-object-spawn-particles-action-d803a71bce)
+
+<a id="entry-particle-format-object-spark-quad-renderer-9c122489f6"></a>
+- [`entry-particle-format-object-spark-quad-renderer-9c122489f6`](../../en/reference/particle-format/objects.md#entry-particle-format-object-spark-quad-renderer-9c122489f6)

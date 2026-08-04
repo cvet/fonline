@@ -1,0 +1,66 @@
+[ProtoMap]
+$Name = ShowcaseMap
+$Text engl = "Content showcase"
+$Text russ = "Демонстрация контента"
+Size = 40 40
+WorkHex = 20 20
+
+[ShowcaseMap/Item]
+$Id = 1
+$Proto = ShowcaseFloor
+Hex = 19 19
+
+[ShowcaseMap/Item]
+$Id = 2
+$Proto = ShowcaseFloor
+Hex = 20 19
+
+[ShowcaseMap/Item]
+$Id = 3
+$Proto = ShowcaseFloor
+Hex = 21 19
+
+[ShowcaseMap/Item]
+$Id = 4
+$Proto = ShowcaseFloor
+Hex = 19 20
+
+[ShowcaseMap/Item]
+$Id = 5
+$Proto = ShowcaseFloor
+Hex = 20 20
+
+[ShowcaseMap/Item]
+$Id = 6
+$Proto = ShowcaseFloor
+Hex = 21 20
+
+[ShowcaseMap/Item]
+$Id = 7
+$Proto = ShowcaseFloor
+Hex = 19 21
+
+[ShowcaseMap/Item]
+$Id = 8
+$Proto = ShowcaseFloor
+Hex = 20 21
+
+[ShowcaseMap/Item]
+$Id = 9
+$Proto = ShowcaseFloor
+Hex = 21 21
+
+[ShowcaseMap/Item]
+$Id = 10
+$Proto = ShowcaseBeacon
+Hex = 20 19
+
+[ShowcaseMap/Item]
+$Id = 11
+$Proto = ShowcasePanel
+Hex = 13 20
+
+[ShowcaseMap/Item]
+$Id = 12
+$Proto = ShowcaseParticle
+Hex = 27 20

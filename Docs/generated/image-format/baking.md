@@ -1,25 +1,37 @@
----
-title: Image Baking Contract
-document_id: generated-image-format-baking
-locale: en
-generated: true
----
-
 # Image Baking Contract
 
-> Generated reference. Do not edit directly. Update `BuildTools/ImageFormatInterface.json`, then run `python BuildTools/docs_image_format.py --write`.
+> Legacy route.
 
-[Index](index.md) | [Formats](formats.md) | [FOFRM](fofrm.md) | [Options](options.md) | [Baking](baking.md) | [Runtime](runtime.md) | [Validation](validation.md) | [Canonical JSON](../image-format.json) | [Guide](../../ImageFormat.md)
+The canonical generated reference moved to locale-specific paths.
 
-| Stable ID | Rule | Requirement | Why | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-image-format-baking-discovery-e16e779be5"></a><code>image-format.baking.discovery</code> | Scan and targeted modes | An empty target scans every registered extension; a targeted missing, unsupported, or BakeChecker-skipped path returns without output. | Incremental project builds and one-file rebakes share one baker without treating a skipped target as failure. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-extension-case-7d1a1de0ec"></a><code>image-format.baking.extension-case</code> | Case-insensitive extension dispatch | Source and runtime extension lookup uses get_file_extension(), which returns the extension without its dot and lowercases it. | Mixed-case extensions resolve to the same registered loader, though projects should still use canonical lowercase paths. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp), [Source/Essentials/StringUtils.h](https://github.com/cvet/fonline/blob/master/Source/Essentials/StringUtils.h) |
-| <a id="entry-image-format-baking-source-options-649b4b67d3"></a><code>image-format.baking.source-options</code> | Dollar option dispatch | LoadAny strips text after '$' from the physical filename, passes that suffix to the selected loader, and resolves the source inside the same FileCollection. | One source file can produce selected or transformed variants through FOFRM references without duplicate binaries. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-output-path-fcf62d7441"></a><code>image-format.baking.output-path</code> | Output path and NewName | The baked resource normally keeps its source path; loaders may set NewName, which replaces that output path for legacy normalization. | FRM/FRx critter normalization and split-direction aggregation require deterministic renamed resources. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-container-header-268c9fd74f"></a><code>image-format.baking.container-header</code> | Private container header | The private baked stream starts with SpriteResource magic 43 and version 2, then uint16 frame count, uint16 whole animation ticks, and uint8 direction count, and ends with magic 43. | The shared SpriteResource decoder validates the versioned framing before any client or tool consumes pixels or mesh data. | [Source/Common/SpriteResource.h](https://github.com/cvet/fonline/blob/master/Source/Common/SpriteResource.h), [Source/Common/SpriteResource.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/SpriteResource.cpp) |
-| <a id="entry-image-format-baking-direction-record-677598ac09"></a><code>image-format.baking.direction-record</code> | Direction records | Each of one or GameSettings::MAP_DIR_COUNT directions stores exactly the common frame count; the resolved logical root offset is serialized on every concrete frame after mesh padding and cropping. | Per-frame offsets preserve screen placement when polygon geometry changes the serialized canvas independently for each direction and animation frame. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-frame-record-6712520187"></a><code>image-format.baking.frame-record</code> | Concrete and shared frame records | Each frame starts with a shared flag; a concrete record stores signed int16 draw offset, uint16 cropped dimensions, signed int16 NextX/NextY, exact RGBA8 pixels, a mesh kind, and mesh vertices and indices plus logical source size and origin when the kind is Mesh. A shared record stores one earlier-frame index. | The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-sprite-info-index-2082a6637e"></a><code>image-format.baking.sprite-info-index</code> | Per-pack SpriteInfo index | Image baking maintains SpriteInfo/&lt;PackName&gt;.foinfo version 1 with duration, direction, frame bounds, offsets, and shared-frame metadata for every current image source in that resource pack. | Common EngineMetadata can answer 2D animation queries on server and client without decoding RGBA payloads; losing or introducing the aggregate index requires a full rebake. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp), [Source/Common/AnimationInfo.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/AnimationInfo.cpp) |
-| <a id="entry-image-format-baking-sprite-mesh-b145b5453a"></a><code>image-format.baking.sprite-mesh</code> | Optional polygonal sprite mesh | Resolve and validate the complete SpriteMesh setting group for every image bake, including when SpriteMesh.Enabled is false: AlphaThreshold is 0..254, MaxTriangles is positive, and AreaSavingsWeight is finite and non-negative. When enabled, build deterministic alpha-thresholded candidates within that triangle budget, score saved original-frame area against submitted triangles, retain only validated coverage, crop selected mesh canvases to exact geometry bounds, and preserve the logical root through the serialized frame offset. | The opt-in path reduces transparent overdraw and texture area without clipping visible pixels or changing gameplay placement; unsafe or unprofitable candidates remain quads and empty masks remain explicit empty geometry. | [Source/Common/Settings.inc](https://github.com/cvet/fonline/blob/master/Source/Common/Settings.inc), [Source/Tools/SpriteMeshing.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/SpriteMeshing.cpp), [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-baking-error-aggregation-cba2eb94a4"></a><code>image-format.baking.error-aggregation</code> | Per-file work and aggregate failure | Selected files bake asynchronously; each exception is logged, and any nonzero error count ends the Image baker with ImageBakerException. | A full scan reports all independently failing image resources in one run without silently succeeding. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+[English](../../en/reference/image-format/baking.md) | [Russian](../../ru/reference/image-format/baking.md)
+
+<a id="entry-image-format-baking-discovery-e16e779be5"></a>
+- [`entry-image-format-baking-discovery-e16e779be5`](../../en/reference/image-format/baking.md#entry-image-format-baking-discovery-e16e779be5)
+
+<a id="entry-image-format-baking-extension-case-7d1a1de0ec"></a>
+- [`entry-image-format-baking-extension-case-7d1a1de0ec`](../../en/reference/image-format/baking.md#entry-image-format-baking-extension-case-7d1a1de0ec)
+
+<a id="entry-image-format-baking-source-options-649b4b67d3"></a>
+- [`entry-image-format-baking-source-options-649b4b67d3`](../../en/reference/image-format/baking.md#entry-image-format-baking-source-options-649b4b67d3)
+
+<a id="entry-image-format-baking-output-path-fcf62d7441"></a>
+- [`entry-image-format-baking-output-path-fcf62d7441`](../../en/reference/image-format/baking.md#entry-image-format-baking-output-path-fcf62d7441)
+
+<a id="entry-image-format-baking-container-header-268c9fd74f"></a>
+- [`entry-image-format-baking-container-header-268c9fd74f`](../../en/reference/image-format/baking.md#entry-image-format-baking-container-header-268c9fd74f)
+
+<a id="entry-image-format-baking-direction-record-677598ac09"></a>
+- [`entry-image-format-baking-direction-record-677598ac09`](../../en/reference/image-format/baking.md#entry-image-format-baking-direction-record-677598ac09)
+
+<a id="entry-image-format-baking-frame-record-6712520187"></a>
+- [`entry-image-format-baking-frame-record-6712520187`](../../en/reference/image-format/baking.md#entry-image-format-baking-frame-record-6712520187)
+
+<a id="entry-image-format-baking-sprite-info-index-2082a6637e"></a>
+- [`entry-image-format-baking-sprite-info-index-2082a6637e`](../../en/reference/image-format/baking.md#entry-image-format-baking-sprite-info-index-2082a6637e)
+
+<a id="entry-image-format-baking-sprite-mesh-b145b5453a"></a>
+- [`entry-image-format-baking-sprite-mesh-b145b5453a`](../../en/reference/image-format/baking.md#entry-image-format-baking-sprite-mesh-b145b5453a)
+
+<a id="entry-image-format-baking-error-aggregation-cba2eb94a4"></a>
+- [`entry-image-format-baking-error-aggregation-cba2eb94a4`](../../en/reference/image-format/baking.md#entry-image-format-baking-error-aggregation-cba2eb94a4)

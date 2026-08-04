@@ -1,0 +1,54 @@
+---
+title: Model Format Validation
+document_id: generated-model-format-validation
+locale: en
+generated: true
+---
+
+# Model Format Validation
+
+> Generated reference. Do not edit directly. Update `BuildTools/ModelFormatInterface.json`, then run `python BuildTools/docs_model_format.py --write`.
+
+[Index](index.md) | [Syntax](syntax.md) | [Tokens](tokens.md) | [Composition](composition.md) | [Assets](assets.md) | [Animation](animation.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/model-format.json) | [Guide](../../how-to/content/model-format.md)
+
+## Contract rules
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-model-format-rule-lexical-syntax-3a2486e250"></a><code>model-format.rule.lexical-syntax</code> | Whitespace tokenization | Directives and arguments are whitespace-separated; # and ; start comments; there is no quoting or escaping for paths containing spaces. | The parser strips comments and feeds each line through istringstream token extraction. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-multiple-directives-5e3fe606e6"></a><code>model-format.rule.multiple-directives</code> | Sequential line parsing | A line may contain multiple directives; each directive consumes its exact argument count and parsing continues with the next token. | Compact layer entries are legal, but ordering changes which current link or mesh selector receives later modifiers. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-selector-order-f53cd0c2a9"></a><code>model-format.rule.selector-order</code> | Selector ordering | After Layer or Value, author Root, Attach, or AttachParticles before link modifiers such as transforms, materials, disables, or cuts. | Layer and Value point at a dummy link and clear Mesh; modifiers written before a real link is created are discarded. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-template-files-5334d3672b"></a><code>model-format.rule.template-files</code> | Template naming | Name include-only files with a basename beginning TEMPLATE_; concrete files must not use that prefix. | Template files participate in include timestamps and parsing but ModelInfoBaker does not emit them as independent resources or animation-metadata sections. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-include-replacements-2c1af91e2a"></a><code>model-format.rule.include-replacements</code> | Include replacement scope | Include arguments are name/value pairs replacing every literal %name% occurrence in the included text before tokenization. | Replacement is plain text and does not understand token boundaries; choose placeholder names that cannot collide accidentally. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-relative-paths-cfa2a858c1"></a><code>model-format.rule.relative-paths</code> | Path ownership | Model, Include, Attach, and Cut paths resolve relative to their declaring .fo3d file; animation files resolve relative to the concrete description unless ModelFile is used; particle and effect paths are global baked-resource paths. | Moving a template or concrete description can change the asset paths contributed by directives inside that file. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp) |
+| <a id="entry-model-format-rule-zero-identity-4b43d7830b"></a><code>model-format.rule.zero-identity</code> | Zero is transform identity | Treat zero transform and Speed fields as no contribution. The + and * variants initialize a zero field from their operand before applying later operations. | Runtime SetAnimData skips zero fields, while parser accumulation deliberately makes template-only Scale* and Speed* useful. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp), [Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-model-format-rule-layer-zero-fe807a48c3"></a><code>model-format.rule.layer-zero</code> | Layer zero value is inactive | A runtime layer value of zero selects no link; authored Root and Attach entries require a non-zero Value. | The composition loop skips zero layer values and the baker rejects links created with zero. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp), [Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-model-format-rule-parent-materials-3107cf5a6b"></a><code>model-format.rule.parent-materials</code> | Parent material inheritance | Use Parent or Parent_&lt;mesh&gt; only inside an attached child model; the parent mesh must already expose the requested texture slot or effect. | The child copies the parent's current material state, not the imported default, and root descriptions have no parent context. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp), [Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-model-format-rule-mesh-before-info-a0aded7029"></a><code>model-format.rule.mesh-before-info</code> | Baker order | Run ModelMeshBaker before ModelInfoBaker so every mesh, hierarchy, material, animation, and cut reference can be validated from baked data. | Built-in baker orders are 4 for ModelMesh and 6 for ModelInfo. | [Source/Tools/ModelMeshBaker.h](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelMeshBaker.h), [Source/Tools/ModelInfoBaker.h](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.h) |
+| <a id="entry-model-format-rule-first-animation-wins-5d78a9978f"></a><code>model-format.rule.first-animation-wins</code> | First animation mapping wins | Do not declare the same state/action Anim pair more than once; only the first mapping is validated and registered. | Duplicates are skipped by both model-info validation and client registration. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp), [Source/Client/ModelInformation.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInformation.cpp) |
+| <a id="entry-model-format-rule-runtime-composition-582952d10d"></a><code>model-format.rule.runtime-composition</code> | Layer changes rebuild composition | Treat model-layer arrays as composition state: changing a value may create or remove children and particles, change materials/effects, disable geometry, apply cuts, and regenerate combined meshes. | A layer change is not a cosmetic integer update; it changes the render graph and batching state. | [Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-model-format-rule-validation-boundary-7d55b07e20"></a><code>model-format.rule.validation-boundary</code> | Bake plus visible validation | Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds. | Baking proves references and serialized structure; only the client renderer proves the composed visual result. | [Source/Tests/Test_ModelBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tests/Test_ModelBaker.cpp) |
+
+## Removed legacy spellings
+
+| Removed token | Replacement | Current contract |
+| --- | --- | --- |
+| <code>AnimEqual</code> | <code>StateAnimEqual or ActionAnimEqual</code> | The current parser requires the enum domain to be explicit. |
+| <code>CalculateTangentSpace</code> | <code>none</code> | Mesh import configures ufbx to generate and normalize missing normals and tangents; there is no .fo3d directive. |
+| <code>RenderFrame</code> | <code>none</code> | Current model descriptions do not generate 2D render frames. |
+| <code>RenderFrames</code> | <code>none</code> | Current model descriptions do not generate 2D render-frame sequences. |
+| <code>DrawSize</code> | <code>automatic model-sprite layout from baked animation bounds</code> | ModelInfo baking records aggregate and per-animation bounds; the client derives the offscreen frame for the active composition and pose. |
+| <code>ViewSize</code> | <code>automatic view/name layout from baked idle-priority bounds</code> | The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle. |
+
+The accepted compatibility spelling `Subset` is listed separately in [Tokens](tokens.md) as deprecated because it consumes an argument but does not select a mesh.
+
+## Validation commands
+
+```powershell
+python BuildTools\docs_model_format.py --check
+python -m unittest BuildTools.tests.test_docs_model_format
+.\Binaries\Tests-Windows-win64\LF_UnitTests.exe "ModelBaker*"
+cmake --build Build\Auto --config RelWithDebInfo --target BakeResources
+```
+
+Finish with a visible client scene that exercises every authored layer combination, attachment, material override, cut, animation, draw size, and interaction bound used by the project.

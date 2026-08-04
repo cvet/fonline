@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ ENGINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
 
 import docs_native_extension  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 def _manifest() -> dict[str, object]:
@@ -24,6 +26,22 @@ def _write_fixture(root: Path, manifest: dict[str, object]) -> None:
     manifest_path = root / docs_native_extension.DEFAULT_MANIFEST
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    translation_catalog = root / "Docs/description-translations.ru.json"
+    translation_catalog.parent.mkdir(parents=True, exist_ok=True)
+    translation_catalog.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_locale": "en",
+                "target_locale": "ru",
+                "enforcement": "registered-translations-current",
+                "domains": {},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     project_interface_path = root / docs_native_extension.DEFAULT_PROJECT_INTERFACE
     project_interface_path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,6 +78,20 @@ class DocumentationNativeExtensionTests(unittest.TestCase):
             "hooks_by_role": {"BAKER": 1, "CLIENT": 1, "COMMON": 3, "SERVER": 3},
         })
         self.assertEqual([role["name"] for role in model["roles"]], ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER"])
+        roles = {role["name"]: role for role in model["roles"]}
+        self.assertEqual(
+            roles["COMMON"]["consumers"],
+            ["client", "server", "mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
+        )
+        self.assertEqual(
+            roles["CLIENT"]["consumers"],
+            ["client", "server", "mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
+        )
+        self.assertEqual(
+            roles["BAKER"]["consumers"],
+            ["mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
+        )
+        self.assertNotIn("EditorLib", roles["BAKER"]["description"])
         self.assertEqual(model["hooks"][0]["id"], "native-extension.hook.ApplicationInitHook")
         self.assertEqual(model["hooks"][-1]["name"], "CheckItemVisibilityHook")
 
@@ -121,9 +153,77 @@ class DocumentationNativeExtensionTests(unittest.TestCase):
         escaped = copy.deepcopy(model)
         escaped["binding_rules"][0]["requirement"] = "A | B {shape} <unsafe>"
         bindings = docs_native_extension.generate_reference_pages(escaped)[
-            f"{docs_native_extension.DEFAULT_OUTPUT_DIR}/bindings.md"
+            "Docs/en/reference/native-extension/bindings.md"
         ]
         self.assertIn("A &#124; B &#123;shape&#125; &lt;unsafe&gt;", bindings)
+
+        localized = docs_native_extension.render_reference_pages(ENGINE_ROOT)
+        russian_roles = localized[
+            "Docs/ru/reference/native-extension/roles.md"
+        ]
+        self.assertIn("Авторитетный серверный код и экспорты", russian_roles)
+        self.assertNotIn("Authoritative server-only code", russian_roles)
+        english_roles = localized[
+            "Docs/en/reference/native-extension/roles.md"
+        ]
+        self.assertIn(
+            docs_localization.translation_metadata_line(
+                "generated-native-extension-roles",
+                "Docs/en/reference/native-extension/roles.md",
+                docs_localization.normalized_sha256(english_roles),
+            ),
+            russian_roles,
+        )
+
+    def test_legacy_generated_routes_preserve_headings_and_entry_anchors(self) -> None:
+        model = docs_native_extension.generate_native_extension_model(ENGINE_ROOT)
+        pages = docs_native_extension.generate_reference_pages(model)
+
+        for filename, _, _ in docs_native_extension.PAGE_DEFINITIONS:
+            canonical = pages[f"Docs/en/reference/native-extension/{filename}"]
+            legacy = pages[f"Docs/generated/native-extension/{filename}"]
+            for heading in re.findall(r"^#{2,3} .+$", canonical, re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
+                self.assertIn(
+                    f"../../en/reference/native-extension/{filename}#{anchor}",
+                    legacy,
+                )
+
+    def test_manifest_owns_canonical_and_legacy_routes(self) -> None:
+        documents = json.loads(
+            (ENGINE_ROOT / "Docs/documentation-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )["documents"]
+        for path, document_id in (
+            ("Docs/en/how-to/native-extensions.md", "native-extensions-guide"),
+            (
+                "Docs/en/how-to/native-extensions/project-dependencies.md",
+                "project-local-dependencies",
+            ),
+            (
+                "Docs/en/contributing/third-party/index.md",
+                "third-party-maintenance",
+            ),
+        ):
+            record = documents[path]
+            self.assertEqual(
+                (record["id"], record["state"], record["disposition"]),
+                (document_id, "current", "retain"),
+            )
+        for filename, document_id, _ in docs_native_extension.PAGE_DEFINITIONS:
+            canonical = documents[f"Docs/en/reference/native-extension/{filename}"]
+            legacy = documents[f"Docs/generated/native-extension/{filename}"]
+            self.assertEqual(
+                (canonical["id"], canonical["state"], canonical["disposition"]),
+                (document_id, "current", "retain"),
+            )
+            self.assertEqual(
+                (legacy["state"], legacy["disposition"], legacy["redirect_to"]),
+                ("redirect", "replace", document_id),
+            )
 
     def test_write_check_and_stale_detection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

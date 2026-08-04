@@ -10,10 +10,25 @@ from pathlib import Path
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import docs_ai_delivery  # noqa: E402
+import docs_localization  # noqa: E402
 import docs_site  # noqa: E402
 
 
 class DocumentationSiteTests(unittest.TestCase):
+    def test_repository_search_uses_reviewed_budget(self) -> None:
+        root = BUILDTOOLS_DIR.parent
+        manifest = json.loads((root / docs_site.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
+        max_bytes = manifest["site_delivery"]["search"]["max_bytes"]
+        outputs = docs_site.render_outputs(root)
+        output_bytes = len(outputs[docs_site.DEFAULT_SEARCH_OUTPUT].encode("utf-8"))
+        russian_output_bytes = len(
+            outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
+        )
+
+        self.assertEqual(max_bytes, 1_835_008)
+        self.assertLessEqual(output_bytes, max_bytes)
+        self.assertLessEqual(russian_output_bytes, max_bytes)
+
     def _document(
         self,
         document_id: str,
@@ -47,9 +62,28 @@ class DocumentationSiteTests(unittest.TestCase):
         (root / "Docs/generated/api").mkdir(parents=True)
         (root / "Source").mkdir()
         (root / "Source/example.txt").write_text("fixture source\n", encoding="utf-8")
+        (root / "Docs/translation-glossary.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "source_locale": "en",
+                    "target_locale": "ru",
+                    "terms": [
+                        {
+                            "term": "guide",
+                            "russian": "руководство",
+                            "policy": "translate",
+                            "note": "Fixture terminology.",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
         files = {
             "README.md": "# FOnline\n\nBuild multiplayer games.\n",
-            "Docs/Guide.md": "# Guide\n\nUse `Game.Sync` before shared state.\n\n## Synchronization\n",
+            "Docs/Guide.md": "# Guide\n\nUse `Game.Sync` before 1048576 shared records.\n\n## Synchronization\n",
             "Docs/generated/api/index.md": "# API index\n\nBrowse native declarations.\n",
             "Docs/generated/api/methods.md": "# Methods\n\n## StartParallelTestSuite\n\nRuns tests.\n",
             "Docs/Internal.md": "# Internal\n\nPrivate planning.\n",
@@ -94,18 +128,21 @@ class DocumentationSiteTests(unittest.TestCase):
                         "id": "en",
                         "label": "English",
                         "path_prefix": "Docs/en",
-                        "status": "canonical-source-pending-migration",
+                        "status": "canonical",
                     },
                     {
                         "id": "ru",
                         "label": "Russian",
                         "path_prefix": "Docs/ru",
-                        "status": "planned",
+                        "status": "complete",
                     },
                 ],
                 "path_strategy": "mirrored-relative-path",
                 "translation_hash": "normalized-sha256",
                 "translation_pending": "pre-production-only",
+                "glossary": "Docs/translation-glossary.json",
+                "status_output": "Docs/generated/translation-status.json",
+                "enforcement": "existing-translations-current",
                 "entrypoint_targets": {},
             },
             "ai_delivery": {
@@ -129,6 +166,10 @@ class DocumentationSiteTests(unittest.TestCase):
                 "navigation_data_path": docs_site.DEFAULT_NAVIGATION_OUTPUT,
                 "search": {
                     "path": docs_site.DEFAULT_SEARCH_OUTPUT,
+                    "locale_paths": {
+                        "en": docs_site.DEFAULT_SEARCH_OUTPUT,
+                        "ru": docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT,
+                    },
                     "max_bytes": 65536,
                     "minimum_query_length": 2,
                 },
@@ -143,6 +184,7 @@ class DocumentationSiteTests(unittest.TestCase):
                     {
                         "id": "start",
                         "title": "Start",
+                        "title_ru": "Начало",
                         "document_ids": ["repository-home", "guide", "generated-api-index"],
                     }
                 ],
@@ -173,6 +215,7 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertEqual(navigation["version"]["channel"], "current")
         self.assertEqual(navigation["version"]["value"], "master")
         self.assertEqual(navigation["canonical_locale"], "en")
+        self.assertEqual(navigation["locale_pair_count"], 0)
         self.assertEqual(navigation["routes_path"], docs_site.DEFAULT_ROUTES_OUTPUT)
         self.assertEqual(navigation["navigation_item_count"], 3)
         self.assertEqual(
@@ -181,6 +224,10 @@ class DocumentationSiteTests(unittest.TestCase):
         )
         self.assertEqual(navigation["navigation"][0]["items"][0]["url"], "/")
         self.assertEqual(navigation["navigation"][0]["items"][1]["url"], "/Docs/Guide.html")
+        self.assertEqual(
+            navigation["navigation"][0]["items"][2]["url"],
+            "/Docs/generated/api/",
+        )
 
     def test_route_catalog_freezes_current_planned_and_locale_paths(self) -> None:
         temporary_directory, root = self._create_fixture()
@@ -189,12 +236,18 @@ class DocumentationSiteTests(unittest.TestCase):
         routes = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_ROUTES_OUTPUT])
         routes_by_id = {route["id"]: route for route in routes["routes"]}
         guide = routes_by_id["guide"]
+        generated_api_index = routes_by_id["generated-api-index"]
 
         self.assertEqual(routes["version"]["kind"], "rolling-branch")
         self.assertEqual(routes["release_versions"]["status"], "deferred")
         self.assertEqual(routes["localization"]["canonical_locale"], "en")
         self.assertEqual(guide["current_path"], "/Docs/Guide.html")
         self.assertEqual(guide["planned_path"], "/Docs/en/guide.html")
+        self.assertEqual(generated_api_index["current_path"], "/Docs/generated/api/")
+        self.assertEqual(
+            generated_api_index["planned_path"],
+            "/Docs/en/generated-api-index.html",
+        )
         self.assertTrue(guide["redirect_required"])
         self.assertEqual(
             {route["locale"]: route["path"] for route in guide["locale_routes"]},
@@ -260,7 +313,10 @@ class DocumentationSiteTests(unittest.TestCase):
         manifest["documents"]["Docs/Guide.md"]["target"] = "Docs/Guide.md"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(ValueError, "needs explicit en/ru entrypoint targets"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "must target Docs/en/ or declare explicit entrypoint targets",
+        ):
             docs_site.render_outputs(root)
 
     def test_search_indexes_public_human_details_and_technical_tokens(self) -> None:
@@ -276,6 +332,77 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertIn("game.sync", search["terms"])
         self.assertIn("startparalleltestsuite", search["terms"])
         self.assertIn("parallel", search["terms"])
+        self.assertNotIn("1048576", search["terms"])
+
+        long_query_results = docs_site.search_documents(
+            search,
+            "Game.Sync unrelated absent tokens",
+        )
+        self.assertEqual(long_query_results[0]["document"]["id"], "guide")
+        prefix_results = docs_site.search_documents(search, "startparalleltest")
+        self.assertEqual(
+            prefix_results[0]["document"]["id"],
+            "generated-api-methods",
+        )
+        russian_search = json.loads(
+            docs_site.render_outputs(root)[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT]
+        )
+        self.assertEqual(russian_search["locale"], "ru")
+        self.assertEqual(russian_search["document_count"], 0)
+
+    def test_current_russian_translation_drives_navigation_and_search(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        source_path = root / "Docs/Guide.md"
+        source_hash = docs_localization.normalized_sha256(
+            source_path.read_text(encoding="utf-8")
+        )
+        russian_path = root / "Docs/ru/guide.md"
+        russian_path.parent.mkdir(parents=True)
+        russian_path.write_text(
+            docs_localization.translation_metadata_line(
+                "guide", "Docs/Guide.md", source_hash
+            )
+            + "\n\n# Руководство\n\nИспользуйте `Game.Sync` для синхронизации.\n",
+            encoding="utf-8",
+        )
+
+        outputs = docs_site.render_outputs(root)
+        navigation = json.loads(outputs[docs_site.DEFAULT_NAVIGATION_OUTPUT])
+        guide = navigation["navigation"][0]["items"][1]
+        self.assertEqual(navigation["locale_pair_count"], 1)
+        self.assertEqual(guide["locales"]["en"]["path"], "Docs/Guide.md")
+        self.assertEqual(guide["locales"]["ru"]["title"], "Руководство")
+        self.assertEqual(guide["locales"]["ru"]["url"], "/Docs/ru/guide.html")
+
+        russian_rendered = outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT]
+        self.assertIn("Руководство", russian_rendered)
+        self.assertNotIn("\\u0420", russian_rendered)
+        russian_search = json.loads(russian_rendered)
+        results = docs_site.search_documents(russian_search, "синхронизации")
+        self.assertEqual(russian_search["document_count"], 1)
+        self.assertEqual(results[0]["document"]["id"], "guide")
+        self.assertEqual(results[0]["document"]["locale"], "ru")
+
+    def test_search_omits_terms_present_in_most_documents(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+
+        manifest = json.loads((root / docs_site.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
+        for relative_path, document in manifest["documents"].items():
+            classification = document["classification"]
+            if (
+                classification["visibility"] == "public"
+                and classification["human"]
+                and document["state"] == "current"
+            ):
+                path = root / relative_path
+                path.write_text(path.read_text(encoding="utf-8") + "\nCorpusWideMarker\n", encoding="utf-8")
+
+        search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])
+
+        self.assertEqual(search["maximum_document_frequency_ratio"], 0.60)
+        self.assertNotIn("corpuswidemarker", search["terms"])
 
     def test_navigation_rejects_duplicate_unknown_and_missing_documents(self) -> None:
         temporary_directory, root = self._create_fixture()
@@ -284,14 +411,24 @@ class DocumentationSiteTests(unittest.TestCase):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
         manifest["site_delivery"]["navigation"].append(
-            {"id": "other", "title": "Other", "document_ids": ["guide"]}
+            {
+                "id": "other",
+                "title": "Other",
+                "title_ru": "Другое",
+                "document_ids": ["guide"],
+            }
         )
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "repeats navigation document id: guide"):
             docs_site.render_outputs(root)
 
         manifest["site_delivery"]["navigation"] = [
-            {"id": "start", "title": "Start", "document_ids": ["repository-home", "missing"]}
+            {
+                "id": "start",
+                "title": "Start",
+                "title_ru": "Начало",
+                "document_ids": ["repository-home", "missing"],
+            }
         ]
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "not public current human top-level documentation: missing"):

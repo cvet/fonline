@@ -12,7 +12,7 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         return (ENGINE_ROOT / relative_path).read_text(encoding="utf-8")
 
     def test_guide_covers_the_source_owned_lifecycle_boundaries(self) -> None:
-        guide = self._read("Docs/ScriptLifecycleAndConcurrency.md")
+        guide = self._read("Docs/en/how-to/scripting/lifecycle-and-concurrency.md")
 
         for heading in (
             "## Module initialization",
@@ -82,8 +82,11 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         remote_call = server[server.index("void ServerEngine::Process_RemoteCall") :]
         self.assertLess(remote_call.index("ValidateInboundRemoteCallData"), remote_call.index("ctx->SyncEntity(player);"))
         self.assertLess(remote_call.index("ctx->SyncEntity(player);"), remote_call.index("HandleInboundRemoteCall"))
-        preload = entity_manager[entity_manager.index("// Inner entities") :]
-        self.assertLess(preload.index("LoadInnerEntities(holder"), preload.index("OnCritterPreLoad.Fire(cr)"))
+        preload = entity_manager[
+            entity_manager.index("auto EntityManager::LoadCritter(") :
+            entity_manager.index("auto EntityManager::LoadItem(")
+        ]
+        self.assertLess(preload.index("LoadInnerEntities(cr"), preload.index("OnCritterPreLoad.Fire(cr)"))
         self.assertLess(preload.index("LockMapTransfers();"), preload.index("OnCritterPreLoad.Fire(cr)"))
         self.assertLess(preload.index("OnCritterPreLoad.Fire(cr)"), preload.index("if (cr->IsDestroyed())"))
         mark_destroyed = entity[entity.index("void Entity::MarkAsDestroyed()") :]

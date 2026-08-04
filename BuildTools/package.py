@@ -18,7 +18,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Literal, Sequence
+from typing import Callable, Iterable, Literal, Mapping, Sequence
 
 import buildtools
 import foconfig
@@ -67,6 +67,7 @@ ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+BUILD_HOST_CONFIG_DIRECTIVE_RE = re.compile(r'\$(ENV|FILE|TARGET_ENV|TARGET_FILE)\{([^{}]+)\}')
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -309,6 +310,58 @@ def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
 	return config
 
 
+def build_effective_project_config(fomain: foconfig.ConfigParser, config_name: str) -> foconfig.ConfigSection:
+	root_content = dict(fomain.mainSection().content)
+	if not config_name or config_name == '(Root)':
+		return foconfig.ConfigSection('', root_content)
+
+	resolved_subconfigs: list[tuple[str, dict[str, str]]] = []
+	for section in fomain.getSections('SubConfig'):
+		name = section.getStr('Name', '').strip()
+		if not name:
+			continue
+
+		content: dict[str, str] = {}
+		for parent_name in section.getStr('Parent', '').split():
+			parent = next((entry for entry in resolved_subconfigs if entry[0] == parent_name), None)
+			assert parent is not None, 'Packaging sub-config parent must be declared earlier: ' + parent_name
+			content.update(parent[1])
+
+		content.update({key: value for key, value in section.content.items() if key not in ('Name', 'Parent')})
+		resolved_subconfigs.append((name, content))
+
+	selected = next((content for name, content in resolved_subconfigs if name == config_name), None)
+	assert selected is not None, 'Packaging sub-config not found in main config: ' + config_name
+	root_content.update(selected)
+	return foconfig.ConfigSection('', root_content)
+
+
+def resolve_build_host_config_value(
+	value: str,
+	setting_name: str,
+	config_dir: str,
+	environment: Mapping[str, str],
+) -> str:
+	def replace_directive(match: re.Match[str]) -> str:
+		directive = match.group(1)
+		name = match.group(2).strip()
+		assert name, 'Empty packaging config directive for setting: ' + setting_name
+
+		if directive in ('ENV', 'TARGET_ENV'):
+			assert name in environment, 'Packaging environment variable not found for ' + setting_name + ': ' + name
+			return environment[name]
+
+		file_path = name if os.path.isabs(name) else os.path.join(config_dir, name)
+		assert os.path.isfile(file_path), 'Packaging config file not found for ' + setting_name + ': ' + file_path
+		with open(file_path, 'r', encoding='utf-8-sig') as config_file:
+			return config_file.read().strip()
+
+	resolved = BUILD_HOST_CONFIG_DIRECTIVE_RE.sub(replace_directive, value)
+	for directive in ('ENV', 'FILE', 'TARGET_ENV', 'TARGET_FILE'):
+		assert '$' + directive + '{' not in resolved, 'Malformed packaging config directive for setting: ' + setting_name
+	return resolved
+
+
 def is_png_data(data: bytes) -> bool:
 	return data.startswith(PNG_FILE_SIGNATURE)
 
@@ -528,6 +581,7 @@ class Packager:
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
+	project_config: foconfig.ConfigSection = field(init=False)
 
 	def __post_init__(self) -> None:
 		pack_args = self.args.pack.split('+')
@@ -544,6 +598,7 @@ class Packager:
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
+		self.project_config = build_effective_project_config(self.fomain, self.args.config)
 
 	def validate_package_contract(self) -> None:
 		target = PACKAGE_TARGETS[self.args.target]
@@ -985,6 +1040,20 @@ class Packager:
 	def get_effective_config_section(self) -> foconfig.ConfigSection:
 		return self.target_config.mainSection() if self.target_config else self.fomain.mainSection()
 
+	def get_project_config_value(self, setting_name: str, default: foconfig.ConfigValue = None) -> str:
+		project_config = getattr(self, 'project_config', self.fomain.mainSection())
+		raw_value = project_config.getStr(setting_name, default)
+		config_dir = os.path.dirname(os.path.realpath(self.args.maincfg))
+		return resolve_build_host_config_value(raw_value, setting_name, config_dir, os.environ)
+
+	def get_android_package_config_section(self) -> foconfig.ConfigSection:
+		content = dict(self.get_effective_config_section().content)
+		project_config = getattr(self, 'project_config', self.fomain.mainSection())
+		for key in project_config.content:
+			if key.startswith('Android.'):
+				content[key] = self.get_project_config_value(key)
+		return foconfig.ConfigSection('', content)
+
 	def prepare_resources(self) -> None:
 		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
 		self.baking_path = self.get_input(bake_output, 'Resources')
@@ -1362,8 +1431,9 @@ class Packager:
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 
-		# Read Android config from the baked target config so SubConfig overrides affect APK metadata.
-		android_config = self.get_effective_config_section()
+		# Overlay Android settings from the authored root plus selected sub-config. Resolve host directives here
+		# so signing values do not need to be materialized in the baked client config.
+		android_config = self.get_android_package_config_section()
 		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
 		version_code = android_config.getStr('Android.VersionCode', '1')
 		version_name = self.args.buildhash[:8] if self.args.buildhash else '1.0'
@@ -1484,13 +1554,14 @@ class Packager:
 		# all binary patching so the signature covers the final bytes. Tool-agnostic by design:
 		# Packaging.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
 		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
-		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
+		# certificate, the timestamp URL and any secrets (kept out of the repo and referenced through protected
+		# packaging-host directives in the main config). Empty hook =
 		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
 		# unsigned.
 		if self.args.platform != 'Windows':
 			return
 
-		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.CodeSigningHook', ''))
+		hook = self.resolve_optional_config_relative_path(self.get_project_config_value('Packaging.CodeSigningHook', ''))
 		if not hook:
 			log('Code signing: skipped (Packaging.CodeSigningHook not set)')
 			return
@@ -1542,17 +1613,7 @@ class Packager:
 			shutil.rmtree(self.target_output_path, True)
 
 	def resolve_game_version(self) -> str:
-		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
-		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
-		# `$FILE{...}` indirection here relative to the main config directory.
-		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
-		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
-		if file_match:
-			version_path = self.resolve_config_relative_path(file_match.group(1).strip())
-			assert os.path.isfile(version_path), 'Common.GameVersion $FILE not found: ' + version_path
-			with open(version_path, 'r', encoding='utf-8-sig') as version_file:
-				raw = version_file.read().strip()
-		return raw
+		return self.get_project_config_value('Common.GameVersion', '0.0.0').strip()
 
 	def ensure_msi_toolset(self) -> None:
 		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
@@ -1577,19 +1638,19 @@ class Packager:
 
 		self.ensure_msi_toolset()
 
-		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
+		scheme = self.get_project_config_value('Auth.UriScheme', '').strip()
 		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
 
-		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
+		game_name = self.get_project_config_value('Common.GameName', self.args.nicename).strip() or self.args.nicename
 
-		upgrade_code = self.fomain.mainSection().getStr('Packaging.MsiUpgradeCode', '').strip()
+		upgrade_code = self.get_project_config_value('Packaging.MsiUpgradeCode', '').strip()
 		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Packaging.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
 		upgrade_code = upgrade_code.upper()
 
 		version = self.resolve_game_version()
 		assert re.match(r'^\d+(\.\d+){1,3}$', version), 'Wix pack requires a numeric Common.GameVersion (x.y.z[.w]), got: ' + version
 
-		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.AppIcon', ''))
+		icon_path = self.resolve_optional_config_relative_path(self.get_project_config_value('Packaging.AppIcon', ''))
 		if icon_path:
 			assert os.path.isfile(icon_path), 'Packaging.AppIcon file not found: ' + icon_path
 

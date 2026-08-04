@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 VERSIONING_SCHEMA_VERSION = 1
 LOCALIZATION_SCHEMA_VERSION = 1
 GENERATED_BY = "BuildTools/docs_ai_delivery.py"
@@ -133,8 +134,8 @@ def _localization_config(manifest: dict[str, object]) -> dict[str, object]:
     if not isinstance(locales, list) or len(locales) != 2:
         raise ValueError("documentation localization locales must contain en and ru")
     expected_locales = (
-        ("en", "English", "Docs/en", "canonical-source-pending-migration"),
-        ("ru", "Russian", "Docs/ru", "planned"),
+        ("en", "English", "Docs/en", "canonical"),
+        ("ru", "Russian", "Docs/ru", "complete"),
     )
     for index, (locale_id, label, path_prefix, status) in enumerate(expected_locales):
         locale = locales[index]
@@ -222,6 +223,18 @@ def _delivery_config(manifest: dict[str, object]) -> dict[str, object]:
         raise ValueError("ai_delivery full_context max_bytes must be a positive integer")
     if full_context.get("generated_pages") != "indexes-only":
         raise ValueError("ai_delivery full_context generated_pages must be indexes-only")
+    exclude_document_ids = full_context.get("exclude_document_ids", [])
+    if (
+        not isinstance(exclude_document_ids, list)
+        or any(
+            not isinstance(document_id, str) or not document_id
+            for document_id in exclude_document_ids
+        )
+        or len(exclude_document_ids) != len(set(exclude_document_ids))
+    ):
+        raise ValueError(
+            "ai_delivery full_context exclude_document_ids must be a unique string array"
+        )
 
     public_manifest = _require_object(delivery, "public_manifest", "ai_delivery public_manifest")
     _validate_output_path(
@@ -247,8 +260,10 @@ def _sha256_text(text: str) -> str:
 def _canonical_url(base_url: str, source_path: str) -> str:
     if source_path == "README.md":
         return base_url.rstrip("/") + "/"
-    site_path = str(PurePosixPath(source_path).with_suffix(".html"))
-    return base_url.rstrip("/") + "/" + quote(site_path, safe="/")
+    path = PurePosixPath(source_path)
+    if path.name == "index.md":
+        return base_url.rstrip("/") + "/" + quote(str(path.parent), safe="/") + "/"
+    return base_url.rstrip("/") + "/" + quote(str(path.with_suffix(".html")), safe="/")
 
 
 def _repository_urls(repository: str, source_ref: str, source_path: str) -> tuple[str, str]:
@@ -325,6 +340,7 @@ def _document_records(root: Path, manifest: dict[str, object]) -> list[dict[str,
             "stability": "current-revision" if state == "current" else state,
             "canonical_url": _canonical_url(base_url, source_path),
             "source_url": source_url,
+            "markdown_url": raw_url,
             "raw_url": raw_url,
             "source_paths": list(sources),
             "content_sha256": _sha256_text(text),
@@ -349,7 +365,10 @@ def _link_line(record: dict[str, object]) -> str:
     kind = str(record["diataxis"])
     kind_label = "entry point" if kind == "none" else kind
     audiences = ", ".join(str(value) for value in record["audiences"])
-    return f"- [{record['title']}]({record['canonical_url']}): `{record['id']}`; {kind_label}; {audiences}."
+    return (
+        f"- [{record['title']}]({record['markdown_url']}): `{record['id']}`; "
+        f"{kind_label}; {audiences}; [HTML]({record['canonical_url']})."
+    )
 
 
 def _machine_model_paths(manifest: dict[str, object]) -> list[tuple[str, str]]:
@@ -361,6 +380,8 @@ def _machine_model_paths(manifest: dict[str, object]) -> list[tuple[str, str]]:
     paths: dict[str, str] = {}
     for artifact_id, artifact_value in generated_artifacts.items():
         if not isinstance(artifact_value, dict):
+            continue
+        if artifact_value.get("visibility", "public") == "internal":
             continue
         for field in ("path", "model"):
             value = artifact_value.get(field)
@@ -404,6 +425,7 @@ def render_llms(root: Path, manifest: dict[str, object], records: list[dict[str,
         "> Standalone FOnline engine documentation for game developers, engine contributors, tool authors, and AI agents.",
         "",
         f"Canonical site: {base_url}",
+        "Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.",
         f"Current documentation: `{current_version['source_ref']}` rolling branch.",
         f"Machine-readable document index: {base_url.rstrip('/')}/{DEFAULT_PUBLIC_MANIFEST_OUTPUT}",
         f"Bounded full-context bundle: {base_url.rstrip('/')}/{DEFAULT_FULL_CONTEXT_OUTPUT}",
@@ -442,7 +464,23 @@ def render_llms(root: Path, manifest: dict[str, object], records: list[dict[str,
 
 def _is_generated_detail(record: dict[str, object]) -> bool:
     path = str(record["path"])
-    return path.startswith("Docs/generated/") and not path.endswith("/index.md")
+    if path.endswith("/index.md"):
+        return False
+    if path.startswith("Docs/generated/"):
+        return True
+    content = str(record["content"])
+    front_matter = re.match(
+        r"\A---\s*\n(?P<body>.*?)\n---\s*\n",
+        content,
+        re.DOTALL,
+    )
+    return bool(
+        front_matter
+        and re.search(
+            r"(?m)^generated:\s*true\s*$",
+            front_matter.group("body"),
+        )
+    )
 
 
 def render_full_context(
@@ -464,6 +502,22 @@ def render_full_context(
 
     selected = [record for record in _public_current(records) if not _is_generated_detail(record)]
     selected_by_id = _record_by_id(selected)
+    excluded_ids = set(full_context.get("exclude_document_ids", []))
+    unknown_excluded_ids = sorted(excluded_ids - set(selected_by_id))
+    if unknown_excluded_ids:
+        raise ValueError(
+            "ai_delivery full_context exclude_document_ids are not bundle-eligible "
+            "public current documents: "
+            + ", ".join(unknown_excluded_ids)
+        )
+    excluded_start_ids = sorted(excluded_ids & set(start_ids))
+    if excluded_start_ids:
+        raise ValueError(
+            "ai_delivery full_context cannot exclude llms start documents: "
+            + ", ".join(excluded_start_ids)
+        )
+    selected = [record for record in selected if record["id"] not in excluded_ids]
+    selected_by_id = _record_by_id(selected)
     ordered = [selected_by_id[document_id] for document_id in start_ids if document_id in selected_by_id]
     consumed = {str(record["id"]) for record in ordered}
     ordered.extend(sorted((record for record in selected if record["id"] not in consumed), key=lambda record: str(record["path"])))
@@ -473,9 +527,11 @@ def render_full_context(
         "",
         "This generated bundle contains public current Markdown owned by the standalone engine.",
         "Generated reference detail pages are represented by their indexes; complete JSON models remain linked from llms.txt.",
+        "Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.",
         f"Canonical site: {base_url}",
         f"Documentation version: {current_version['source_ref']} ({current_version['kind']})",
         f"Documents: {len(ordered)}",
+        "Policy exclusions: " + (", ".join(sorted(excluded_ids)) if excluded_ids else "none"),
         "",
     ]
     for record in ordered:
@@ -585,6 +641,13 @@ def render_public_manifest(
             "translation_hash": localization["translation_hash"],
             "translation_pending": localization["translation_pending"],
             "locales": [dict(locale) for locale in localization["locales"]],
+        },
+        "full_context": {
+            "max_bytes": delivery["full_context"]["max_bytes"],
+            "generated_pages": delivery["full_context"]["generated_pages"],
+            "excluded_document_ids": list(
+                delivery["full_context"].get("exclude_document_ids", [])
+            ),
         },
         "document_count": len(public_records),
         "documents": public_records,

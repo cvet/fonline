@@ -1,27 +1,43 @@
----
-title: Image Source Formats
-document_id: generated-image-format-formats
-locale: en
-generated: true
----
-
 # Image Source Formats
 
-> Generated reference. Do not edit directly. Update `BuildTools/ImageFormatInterface.json`, then run `python BuildTools/docs_image_format.py --write`.
+> Legacy route.
 
-[Index](index.md) | [Formats](formats.md) | [FOFRM](fofrm.md) | [Options](options.md) | [Baking](baking.md) | [Runtime](runtime.md) | [Validation](validation.md) | [Canonical JSON](../image-format.json) | [Guide](../../ImageFormat.md)
+The canonical generated reference moved to locale-specific paths.
 
-| Stable ID | Extension | Availability | Import contract | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-image-format-format-fofrm-4b81940351"></a><code>image-format.format.fofrm</code> | <code>fofrm</code> | baker and default runtime | FOFRM composes relative image references into one static image, animation, or complete direction sheet and is the preferred authored wrapper for multi-frame or option-bearing sources. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-frm-c6742490f5"></a><code>image-format.format.frm</code> | <code>frm</code> | baker and default runtime | FRM imports big-endian frame timing, offsets, deltas, one or complete direction tables, optional same-basename .pal data, and animated default-palette indices. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-fr0-1ba0e6a185"></a><code>image-format.format.fr0</code> | <code>fr0</code> | baker and default runtime | A .fr0 entry discovers its numbered directional siblings, rejects a gap after direction loading begins, and renames baked output to lowercase .fofrm for critter paths or .frm otherwise. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-rix-2c90d88847"></a><code>image-format.format.rix</code> | <code>rix</code> | baker and default runtime | RIX imports one opaque indexed image using its embedded palette and emits one RGBA frame. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-art-e05fbeb095"></a><code>image-format.format.art</code> | <code>art</code> | baker and default runtime | ART imports raw or RLE frames, palettes, offsets, frame rate, static or eight-rotation data, and the palette/alpha/mirror/frame filename options. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-spr-8be3e47b47"></a><code>image-format.format.spr</code> | <code>spr</code> | baker only by default; wrap through FOFRM for the stock runtime | SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp), [Source/Client/DefaultSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.h) |
-| <a id="entry-image-format-format-zar-a8622159ac"></a><code>image-format.format.zar</code> | <code>zar</code> | baker and default runtime | ZAR imports one palette-backed raw or RLE image with alpha into one RGBA frame. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-til-9bd4092993"></a><code>image-format.format.til</code> | <code>til</code> | baker and default runtime | TIL imports its nested ZAR frames as a 10 fps single-direction sequence. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-mos-220ef9ebc9"></a><code>image-format.format.mos</code> | <code>mos</code> | baker and default runtime | MOS imports one tiled palette image; MOSC is decompressed first, and palette color 0x00FF00 is made transparent. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-bam-aef2e14846"></a><code>image-format.format.bam</code> | <code>bam</code> | baker and default runtime | BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, derives frame deltas, and treats palette blue 255 as transparent. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-png-0e58dd870f"></a><code>image-format.format.png</code> | <code>png</code> | baker and default runtime | PNG is decoded through libpng, strips 16-bit channels to 8-bit, expands palette/low-bit grayscale/tRNS data, and fills missing alpha with 255 before emitting one RGBA frame. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
-| <a id="entry-image-format-format-tga-6de5f96907"></a><code>image-format.format.tga</code> | <code>tga</code> | baker and default runtime | TGA supports only raw type 2 or RLE type 10 TrueColor input at 24 or 32 bpp, converts BGR(A) to RGBA, and flips rows bottom-to-top. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+[English](../../en/reference/image-format/formats.md) | [Russian](../../ru/reference/image-format/formats.md)
+
+<a id="entry-image-format-format-fofrm-4b81940351"></a>
+- [`entry-image-format-format-fofrm-4b81940351`](../../en/reference/image-format/formats.md#entry-image-format-format-fofrm-4b81940351)
+
+<a id="entry-image-format-format-frm-c6742490f5"></a>
+- [`entry-image-format-format-frm-c6742490f5`](../../en/reference/image-format/formats.md#entry-image-format-format-frm-c6742490f5)
+
+<a id="entry-image-format-format-fr0-1ba0e6a185"></a>
+- [`entry-image-format-format-fr0-1ba0e6a185`](../../en/reference/image-format/formats.md#entry-image-format-format-fr0-1ba0e6a185)
+
+<a id="entry-image-format-format-rix-2c90d88847"></a>
+- [`entry-image-format-format-rix-2c90d88847`](../../en/reference/image-format/formats.md#entry-image-format-format-rix-2c90d88847)
+
+<a id="entry-image-format-format-art-e05fbeb095"></a>
+- [`entry-image-format-format-art-e05fbeb095`](../../en/reference/image-format/formats.md#entry-image-format-format-art-e05fbeb095)
+
+<a id="entry-image-format-format-spr-8be3e47b47"></a>
+- [`entry-image-format-format-spr-8be3e47b47`](../../en/reference/image-format/formats.md#entry-image-format-format-spr-8be3e47b47)
+
+<a id="entry-image-format-format-zar-a8622159ac"></a>
+- [`entry-image-format-format-zar-a8622159ac`](../../en/reference/image-format/formats.md#entry-image-format-format-zar-a8622159ac)
+
+<a id="entry-image-format-format-til-9bd4092993"></a>
+- [`entry-image-format-format-til-9bd4092993`](../../en/reference/image-format/formats.md#entry-image-format-format-til-9bd4092993)
+
+<a id="entry-image-format-format-mos-220ef9ebc9"></a>
+- [`entry-image-format-format-mos-220ef9ebc9`](../../en/reference/image-format/formats.md#entry-image-format-format-mos-220ef9ebc9)
+
+<a id="entry-image-format-format-bam-aef2e14846"></a>
+- [`entry-image-format-format-bam-aef2e14846`](../../en/reference/image-format/formats.md#entry-image-format-format-bam-aef2e14846)
+
+<a id="entry-image-format-format-png-0e58dd870f"></a>
+- [`entry-image-format-format-png-0e58dd870f`](../../en/reference/image-format/formats.md#entry-image-format-format-png-0e58dd870f)
+
+<a id="entry-image-format-format-tga-6de5f96907"></a>
+- [`entry-image-format-format-tga-6de5f96907`](../../en/reference/image-format/formats.md#entry-image-format-format-tga-6de5f96907)

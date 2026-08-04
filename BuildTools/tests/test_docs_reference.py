@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import io
 import json
 import re
@@ -14,6 +15,8 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import docs_reference  # noqa: E402
+import docs_description_translations  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 def _symbol(kind: str, symbol_id: str, name: str, **extra: object) -> dict[str, object]:
@@ -200,6 +203,33 @@ def _model() -> dict[str, object]:
     }
 
 
+def _write_translation_catalog(root: Path, model: dict[str, object]) -> None:
+    inventory = docs_description_translations.inventory_model("api", model)
+    catalog = {
+        "schema_version": docs_description_translations.SCHEMA_VERSION,
+        "source_locale": "en",
+        "target_locale": "ru",
+        "enforcement": "registered-translations-current",
+        "domains": {
+            "api": {
+                "entries": {
+                    locator: {
+                        "source_sha256": docs_localization.normalized_sha256(str(source)),
+                        "translation": f"Перевод: {source}",
+                    }
+                    for locator, source in inventory.items()
+                }
+            }
+        },
+    }
+    path = root / docs_description_translations.DEFAULT_CATALOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(catalog, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
 class DocumentationReferenceTests(unittest.TestCase):
     def test_all_symbol_kinds_render_with_escaped_content_and_source_links(self) -> None:
         model = _model()
@@ -207,30 +237,49 @@ class DocumentationReferenceTests(unittest.TestCase):
 
         self.assertEqual(set(pages), set(docs_reference.OUTPUT_PATHS))
         rendered = "\n".join(pages.values())
+        methods_page = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/methods.md"]
+        index_page = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/index.md"]
+        settings_page = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/settings.md"]
         for symbol in model["symbols"]:
             self.assertIn(f"<code>{symbol['id']}</code>", rendered)
         self.assertIn(
             "Needs &#124; escaping &lt;now&gt; &#123;&#123; safely &#125;&#125;<br>Second line",
-            pages["Docs/generated/api/methods.md"],
+            methods_page,
         )
-        self.assertNotIn("{{", pages["Docs/generated/api/methods.md"])
+        self.assertNotIn("{{", methods_page)
         self.assertIn(
             "https://github.com/cvet/fonline/blob/master/Source/Test.cpp#L7",
-            pages["Docs/generated/api/methods.md"],
+            methods_page,
         )
-        self.assertIn("<code>experimental</code> (explicit)", pages["Docs/generated/api/methods.md"])
-        self.assertIn("since <code>0.1.0</code>", pages["Docs/generated/api/methods.md"])
+        self.assertIn("<code>experimental</code> (explicit)", methods_page)
+        self.assertIn("since <code>0.1.0</code>", methods_page)
         self.assertIn(
-            "[Docs/ContractExample.md#run](../../ContractExample.md#run)",
-            pages["Docs/generated/api/methods.md"],
+            "[Docs/ContractExample.md#run](../../../ContractExample.md#run)",
+            methods_page,
         )
         self.assertIn(
             "https://github.com/cvet/fonline/blob/master/Source/ApiContracts.inc#L3",
-            pages["Docs/generated/api/methods.md"],
+            methods_page,
         )
-        self.assertIn("Reviewed contract", pages["Docs/generated/api/methods.md"])
-        self.assertIn("Explicitly classified symbols", pages["Docs/generated/api/index.md"])
-        self.assertIn("It is not a semantic credential", pages["Docs/generated/api/settings.md"])
+        self.assertIn("Reviewed contract", methods_page)
+        self.assertIn("Explicitly classified symbols", index_page)
+        self.assertIn("It is not a semantic credential", settings_page)
+
+        russian_methods = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/methods.md"]
+        self.assertIn("locale: ru", russian_methods)
+        self.assertIn("Нативные методы скриптов", russian_methods)
+        self.assertIn("ID символа", russian_methods)
+        self.assertIn("docs-translation:", russian_methods)
+
+        for filename, _, _ in docs_reference.PAGE_DEFINITIONS:
+            canonical = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/{filename}"]
+            legacy = pages[f"{docs_reference.LEGACY_OUTPUT_DIR}/{filename}"]
+            self.assertIn(f"../../en/reference/script-api/{filename}", legacy)
+            self.assertIn(f"../../ru/reference/script-api/{filename}", legacy)
+            for heading in re.findall(r"^(#{2,3} .+)$", canonical, flags=re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
 
     def test_generation_is_deterministic_and_anchors_are_unique_per_page(self) -> None:
         first = docs_reference.generate_reference_pages(_model())
@@ -242,12 +291,28 @@ class DocumentationReferenceTests(unittest.TestCase):
             self.assertEqual(len(anchors), len(set(anchors)))
             self.assertTrue(content.endswith("\n"))
 
+    def test_russian_pages_render_translated_descriptions_and_contract_notes(self) -> None:
+        model = _model()
+        russian_model = copy.deepcopy(model)
+        method = russian_model["symbols"][0]
+        method["description"] = "Переведенное описание"
+        method["contract"]["notes"] = "Переведенная заметка контракта"
+
+        pages = docs_reference.generate_reference_pages(model, russian_model)
+        russian_methods = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/methods.md"]
+
+        self.assertIn("Переведенное описание", russian_methods)
+        self.assertIn("Переведенная заметка контракта", russian_methods)
+        self.assertNotIn("Reviewed contract", russian_methods)
+
     def test_write_and_check_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             model_path = root / docs_reference.DEFAULT_MODEL
             model_path.parent.mkdir(parents=True)
-            model_path.write_text(json.dumps(_model()), encoding="utf-8")
+            model = _model()
+            model_path.write_text(json.dumps(model), encoding="utf-8")
+            _write_translation_catalog(root, model)
 
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 self.assertEqual(docs_reference.main(["--root", str(root), "--write"]), 0)
@@ -264,11 +329,47 @@ class DocumentationReferenceTests(unittest.TestCase):
 
     def test_engine_model_renders_every_symbol_once_as_an_anchor(self) -> None:
         pages = docs_reference.render_reference_pages(ENGINE_ROOT)
-        rendered = "\n".join(pages.values())
+        rendered = "\n".join(pages[path] for path in docs_reference.CANONICAL_OUTPUT_PATHS)
         model = json.loads((ENGINE_ROOT / docs_reference.DEFAULT_MODEL).read_text(encoding="utf-8"))
+        english_index = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/index.md"]
+        russian_index = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/index.md"]
 
         anchors = re.findall(r'<a id="symbol-[^"]+"></a>', rendered)
         self.assertEqual(len(anchors), model["summary"]["symbol_count"])
+        self.assertIn("## Scope contract", english_index)
+        self.assertIn("2472 stable IDs", english_index)
+        self.assertIn("## Контракт области", russian_index)
+        self.assertIn("2472 стабильных ID", russian_index)
+        self.assertNotIn("The complete current inventory", russian_index)
+
+    def test_engine_russian_pages_pin_hashes_and_use_semantic_overlay(self) -> None:
+        pages = docs_reference.render_reference_pages(ENGINE_ROOT)
+        russian_methods = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/methods.md"]
+        russian_settings = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/settings.md"]
+
+        self.assertIn("SyncScope: требует self", russian_methods)
+        self.assertIn("Отладочная ловушка только для разработки", russian_methods)
+        self.assertIn("Если true, звук отключен", russian_settings)
+        for (_, document_id, _), english_path, russian_path in zip(
+            docs_reference.PAGE_DEFINITIONS,
+            docs_reference.CANONICAL_OUTPUT_PATHS,
+            docs_reference.RUSSIAN_OUTPUT_PATHS,
+            strict=True,
+        ):
+            english = pages[english_path]
+            russian = pages[russian_path]
+            self.assertIn(
+                docs_localization.translation_metadata_line(
+                    document_id,
+                    english_path,
+                    docs_localization.normalized_sha256(english),
+                ),
+                russian,
+            )
+            self.assertEqual(
+                re.findall(r"```[^\n]*\n(.*?)```", english, re.DOTALL),
+                re.findall(r"```[^\n]*\n(.*?)```", russian, re.DOTALL),
+            )
 
 
 if __name__ == "__main__":

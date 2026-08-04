@@ -4,6 +4,7 @@ import copy
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,7 @@ BUILDTOOLS_DIR = ENGINE_ROOT / "BuildTools"
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 
 import docs_package  # noqa: E402
+import docs_localization  # noqa: E402
 import package as package_tool  # noqa: E402
 
 
@@ -29,6 +31,22 @@ def _write_fixture(root: Path, manifest: dict[str, object]) -> None:
     manifest_path = root / docs_package.DEFAULT_MANIFEST
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    translation_catalog = root / "Docs/description-translations.ru.json"
+    translation_catalog.parent.mkdir(parents=True, exist_ok=True)
+    translation_catalog.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_locale": "en",
+                "target_locale": "ru",
+                "enforcement": "registered-translations-current",
+                "domains": {},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     declaration = manifest["declaration"]
     for source in (declaration["source"], declaration["consumer"]):
@@ -67,13 +85,17 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["generated_by"], "BuildTools/docs_package.py")
         self.assertEqual(model["summary"]["clause_count"], 2)
         self.assertEqual(model["summary"]["option_count"], 1)
-        self.assertEqual(model["summary"]["target_count"], 5)
+        self.assertEqual(model["summary"]["target_count"], 6)
         self.assertEqual(model["summary"]["platform_count"], 6)
         self.assertEqual(model["summary"]["implemented_platform_count"], 4)
         self.assertEqual(model["summary"]["pack_count"], 19)
         self.assertEqual(model["summary"]["implemented_pack_count"], 18)
         self.assertEqual(model["summary"]["artifact_pack_count"], 8)
         self.assertEqual(model["summary"]["cli_argument_count"], 13)
+        self.assertEqual(
+            [entry["name"] for entry in model["targets"]],
+            ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"],
+        )
         self.assertEqual([entry["name"] for entry in model["declaration"]["options"]], ["POSTFIX"])
         self.assertIn("win32-win7", model["platforms"][0]["architectures"])
         self.assertIn("win64-win7", model["platforms"][0]["architectures"])
@@ -173,6 +195,78 @@ class DocumentationPackageTests(unittest.TestCase):
         escaped["packs"][0]["description"] = "A | B {shape} <unsafe>"
         matrix = docs_package.generate_reference_pages(escaped)[f"{docs_package.DEFAULT_OUTPUT_DIR}/matrix.md"]
         self.assertIn("A &#124; B &#123;shape&#125; &lt;unsafe&gt;", matrix)
+
+    def test_reference_pages_have_canonical_russian_and_legacy_routes(self) -> None:
+        pages = docs_package.generate_reference_pages(
+            docs_package.generate_package_model(ENGINE_ROOT)
+        )
+        self.assertEqual(
+            set(pages),
+            set(docs_package.CANONICAL_OUTPUT_PATHS)
+            | set(docs_package.RUSSIAN_OUTPUT_PATHS)
+            | set(docs_package.LEGACY_OUTPUT_PATHS),
+        )
+        for filename, document_id, _ in docs_package.PAGE_DEFINITIONS:
+            canonical_path = f"{docs_package.DEFAULT_OUTPUT_DIR}/{filename}"
+            russian_path = f"{docs_package.RUSSIAN_OUTPUT_DIR}/{filename}"
+            legacy_path = f"{docs_package.LEGACY_OUTPUT_DIR}/{filename}"
+            english = pages[canonical_path]
+            russian = pages[russian_path]
+            legacy = pages[legacy_path]
+            marker = docs_localization.translation_metadata_line(
+                document_id,
+                canonical_path,
+                docs_localization.normalized_sha256(english),
+            )
+            self.assertIn("locale: en", english)
+            self.assertIn("locale: ru", russian)
+            self.assertIn(marker, russian)
+            self.assertEqual(
+                re.findall(r"^#{2,3} ", english, re.MULTILINE),
+                re.findall(r"^#{2,3} ", russian, re.MULTILINE),
+            )
+            self.assertIn(f"../../en/reference/packages/{filename}", legacy)
+            self.assertIn(f"../../ru/reference/packages/{filename}", legacy)
+
+    def test_manifest_assigns_stable_ids_to_canonical_package_pages(self) -> None:
+        documents = json.loads(
+            (ENGINE_ROOT / "Docs/documentation-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )["documents"]
+        for filename, document_id, _ in docs_package.PAGE_DEFINITIONS:
+            canonical = documents[f"{docs_package.DEFAULT_OUTPUT_DIR}/{filename}"]
+            legacy = documents[f"{docs_package.LEGACY_OUTPUT_DIR}/{filename}"]
+            self.assertEqual(canonical["id"], document_id)
+            self.assertEqual(canonical["state"], "current")
+            self.assertEqual(canonical["disposition"], "retain")
+            self.assertEqual(legacy["state"], "redirect")
+            self.assertEqual(legacy["redirect_to"], document_id)
+            self.assertNotEqual(legacy["id"], document_id)
+
+    def test_release_guide_preserves_capability_and_project_boundaries(self) -> None:
+        guide = (ENGINE_ROOT / "Docs/en/how-to/release/packaging.md").read_text(encoding="utf-8")
+
+        for heading in (
+            "## Know what the Engine proves",
+            "## Build, bake, then package",
+            "## Reproducibility and provenance",
+            "## Signing and secret boundaries",
+            "## Acceptance matrix",
+            "## Release checklist",
+        ):
+            self.assertIn(heading, guide)
+        for required_contract in (
+            "ForceBakeResources",
+            "MakePackage-<package-id>",
+            "Packaging.CodeSigningHook",
+            "full SHAs",
+            "SHA-256",
+            "project-qualified",
+            "`package.py` currently aborts for both `macOS` and `iOS`",
+            "`Service` and `Daemon` are binary variants, not deployment systems",
+        ):
+            self.assertIn(required_contract, guide)
 
     def test_cli_write_check_and_stale_detection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

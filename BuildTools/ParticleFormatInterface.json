@@ -1594,10 +1594,6 @@
       ],
       "declared_attributes": [
         {
-          "name": "draw size",
-          "type": "ATTRIBUTE_TYPE_INT32S"
-        },
-        {
           "name": "draw in scene",
           "type": "ATTRIBUTE_TYPE_BOOL"
         },
@@ -1899,25 +1895,6 @@
       ]
     },
     {
-      "id": "particle-format.renderer.spark-draw-size",
-      "name": "SPARK draw size",
-      "backend": "spark",
-      "field": "DrawWidth / DrawHeight",
-      "default": "backend and project settings",
-      "stability": "experimental",
-      "requirement": "Set stable draw bounds for atlas particles and validate that the effect is not clipped.",
-      "rationale": "ParticleSprite allocation uses the maximum draw size reported by the runtime.",
-      "source": [
-        {
-          "path": "Source/Client/SparkExtension.cpp",
-          "anchors": [
-            "max_draw_width",
-            "max_draw_height"
-          ]
-        }
-      ]
-    },
-    {
       "id": "particle-format.renderer.effekseer-direct-scene",
       "name": "Effekseer direct-scene route",
       "backend": "effekseer",
@@ -1937,19 +1914,116 @@
       ]
     },
     {
-      "id": "particle-format.renderer.draw-size",
-      "name": "Draw size",
-      "attribute": "draw size",
-      "attribute_type": "ATTRIBUTE_TYPE_INT32S",
-      "default": "0;0, then Render.DefaultParticleDrawWidth/Height",
+      "id": "particle-format.renderer.effekseer-geometry",
+      "name": "Effekseer callback geometry",
+      "backend": "effekseer",
+      "field": "Sprite / Ring / Ribbon / Track / Model",
+      "default": "Engine-owned renderers",
       "stability": "experimental",
-      "requirement": "One integer sets width only; two set width and height. A zero maximum dimension falls back to the corresponding Render.DefaultParticleDraw* setting.",
-      "rationale": "ParticleSprite needs stable atlas or direct-draw bounds even when the resource omits explicit dimensions.",
+      "requirement": "Use only Root, None, Sprite, Ring, Ribbon, Track, and Model nodes; the five drawing families are converted to Engine-owned callback geometry.",
+      "rationale": "The FOnline runtime does not use Effekseer's graphics backend and fails closed on unimplemented node families.",
       "source": [
         {
-          "path": "Source/Client/SparkExtension.cpp",
+          "path": "Source/Client/EffekseerExtension.cpp",
           "anchors": [
-            "SPK_ATTRIBUTE(\"draw size\", ATTRIBUTE_TYPE_INT32S)"
+            "class FOnlineEffekseerSpriteRenderer",
+            "class FOnlineEffekseerRingRenderer",
+            "class FOnlineEffekseerRibbonRenderer",
+            "class FOnlineEffekseerTrackRenderer",
+            "class FOnlineEffekseerModelRenderer",
+            "only Root, None, Sprite, Ring, Ribbon, Track, and Model nodes are supported"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-material-profile",
+      "name": "Effekseer material and sampling profile",
+      "backend": "effekseer",
+      "field": "material / blend / filter / wrap",
+      "default": "Default material; authored sampling",
+      "stability": "experimental",
+      "requirement": "Use the Default material, Normal/Add/Sub blending, nearest or linear filtering, and Clamp or Repeat wrapping. Multiply blending, mirrored wrapping, advanced texture slots, custom materials, soft particles, falloff, and flipbook interpolation are rejected.",
+      "rationale": "The callback renderers implement a deliberately bounded material profile and validate it before drawing.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "ValidateStaticNodeMaterial",
+            "multiply blending is unsupported",
+            "mirrored texture wrapping is unsupported",
+            "advanced material, soft-particle, or flipbook features are unsupported"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-depth-cull-sort",
+      "name": "Effekseer depth, culling, and sorting",
+      "backend": "effekseer",
+      "field": "ZTest / ZWrite / Culling / ZSort",
+      "default": "authored per node",
+      "stability": "experimental",
+      "requirement": "Sprite and Ring may use stable camera-depth sorting; Ribbon, Track, and Model reject Z-sort. Per-node ZTest/ZWrite select an effect depth variant, and Model face culling selects the Engine draw cull mode.",
+      "rationale": "Draw state and ordering are preserved only where the callback geometry can implement them without breaking strip or model topology.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "StableSortSnapshotsByCameraDepth",
+            "ResolveDepthVariant",
+            "Z-sorted strip nodes are unsupported",
+            "Z-sorted model nodes are unsupported",
+            "ConvertEffekseerCulling",
+            "effect->DepthVariant = render_state->DepthVariant",
+            "effect->CullMode = _node->CullMode"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-distortion",
+      "name": "Effekseer sprite distortion",
+      "backend": "effekseer",
+      "field": "BackDistortion / DistortionIntensity",
+      "default": "disabled",
+      "stability": "experimental",
+      "requirement": "Use scene distortion only on Sprite nodes with a distortion texture and finite intensity; the draw samples a deferred scene-background snapshot through BackgroundTex and ParticleSamplingBuf.",
+      "rationale": "Only sprite geometry supplies the refracting plane required by the Engine distortion effect.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "only Sprite nodes can refract the scene",
+            "RenderDistortion",
+            "effect->BackgroundTex = background.Texture",
+            "effect->ParticleSamplingBuf->ParticleSampling[2] = _node->DistortionIntensity"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleRuntime.h",
+          "anchors": [
+            "ParticleSceneBackgroundProvider"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-global-exclusions",
+      "name": "Effekseer global exclusions",
+      "backend": "effekseer",
+      "field": "GPU particles and external resources",
+      "default": "unsupported",
+      "stability": "experimental",
+      "requirement": "Do not use GPU particles, normal textures, sounds, custom materials, external curves, or procedural models. Referenced static model resources must load and pass FOnline validation.",
+      "rationale": "The runtime rejects unsupported global resources before accepting the effect.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "GPU particles are unsupported",
+            "normal textures, sounds, custom materials, and external curves are unsupported",
+            "model resource failed validation or loading"
           ]
         }
       ]
@@ -2329,6 +2403,105 @@
       ]
     },
     {
+      "id": "particle-format.runtime.baked-bounds",
+      "name": "Mandatory baked bounds",
+      "stability": "experimental",
+      "requirement": "Bake each particle system's simulated position box and maximum billboard radius into the runtime resource. SPARK rejects a system that never shows a particle; Effekseer appends and validates a mandatory bounds trailer.",
+      "rationale": "Static measured bounds replace manual draw dimensions and avoid recomputing a particle AABB every frame.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "deterministic run of a throwaway copy",
+            "SPARK particle system showed no visible particles while baking its bounds",
+            "SimulateEffekseerBounds",
+            "AppendEffekseerBoundsTrailer"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "ReadEffekseerBoundsTrailer",
+            "Baked Effekseer binary is missing its mandatory bounds trailer magic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.bounds-semantics",
+      "name": "Position box and billboard radius",
+      "stability": "experimental",
+      "requirement": "Treat ParticleBounds3D.PositionMin/PositionMax as world positions transformed by the full placement matrix, and BillboardRadius as camera-facing padding transformed by placement scale only.",
+      "rationale": "Rotating or sweeping billboard radius as a world point overstates the frame and can still misrepresent its screen footprint.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleRuntime.h",
+          "anchors": [
+            "struct ParticleBounds3D",
+            "MakeParticleBounds",
+            "TransformParticleBounds"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.live-bounds",
+      "name": "Live bounds",
+      "stability": "experimental",
+      "requirement": "GetLiveBounds returns transformed baked bounds only while the backend has live particles or instances; dormant and finished systems reserve no model-frame space.",
+      "rationale": "Occasional attached effects must expand their owning model only while visible.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SparkParticleRuntimeSystem::GetLiveBounds",
+            "getNbParticles() == 0",
+            "TransformParticleBounds"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::GetLiveBounds",
+            "GetInstanceCount(_impl->Handle) == 0",
+            "TransformParticleBounds"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "model_particle.Particle->GetLiveBounds()",
+            "force_full_frame = true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.sprite-frame",
+      "name": "Automatic particle sprite frame",
+      "stability": "experimental",
+      "requirement": "ParticleSystem projects baked bounds through the map-camera tilt, adds billboard and antialiasing margins, and derives atlas size, emitter offset, and world transform automatically. Invalid or unavailable bounds fall back to Render.DefaultParticleDrawWidth/Height.",
+      "rationale": "ParticleSprite allocation follows measured effect content without an authored draw-size field.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleSystem::ComputeSpriteFrame",
+            "DefaultParticleDrawWidth",
+            "baked->BillboardRadius",
+            "layout.DrawSize"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "ComputeSpriteFrame",
+            "FindAtlasPlace(atlas_type, layout.DrawSize)"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.runtime.prewarm",
       "name": "Prewarm",
       "stability": "experimental",
@@ -2449,8 +2622,7 @@
         {
           "path": "Source/Client/ParticleSprites.cpp",
           "anchors": [
-            "settings.ModelProjFactor",
-            "_settings->ModelProjFactor"
+            "settings.ModelProjFactor"
           ]
         }
       ]
@@ -2557,8 +2729,8 @@
       "id": "particle-format.integration.model-attachment",
       "name": ".fo3d AttachParticles",
       "stability": "experimental",
-      "syntax": "AttachParticles <particle.fopts> Link <bone>",
-      "requirement": "A layer/value-selected .fo3d link stores a global baked particle path and requires a valid target bone; it lives only while the selected link remains active.",
+      "syntax": "AttachParticles <particle.spk|particle.efk> Link <bone>",
+      "requirement": "A layer/value-selected .fo3d link stores a global baked .spk or .efk path and requires a valid target bone; it lives only while the selected link remains active.",
       "rationale": "ModelInfoBaker validates the resource and bone, and runtime creates/removes the particle with model composition.",
       "source": [
         {

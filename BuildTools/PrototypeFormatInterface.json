@@ -114,12 +114,12 @@
     {
       "id": "prototype-format.rule.config-syntax",
       "name": "Configuration syntax",
-      "requirement": "Use repeated INI-like sections, key = value assignments, # comments, backslash line continuation, and key += value append where appropriate.",
+      "requirement": "Use repeated INI-like sections, key = value assignments, # comments, whitespace-prefixed trailing backslash continuation, and key += value append where appropriate.",
       "stability": "experimental",
       "description": "Prototype files use the shared ConfigFile parser; quoted or escaped comment characters remain part of the value.",
       "source": {
         "path": "Source/Common/ConfigFile.cpp",
-        "anchors": ["ConfigFile::ParseConfigKeyValueLine", "append_value", "inside_double_quotes"]
+        "anchors": ["ConfigFile::ParseConfigKeyValueLine", "append_value", "inside_double_quotes", "accum_line.append(\" \")"]
       }
     },
     {
@@ -142,6 +142,17 @@
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
         "anchors": ["Proto already loaded", "all_file_protos[type_name]"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identifier-characters",
+      "name": "Reserved identifier characters",
+      "requirement": "Prototype ids must not contain / or $ because both characters are reserved for nested section addressing.",
+      "stability": "experimental",
+      "description": "The baker rejects either character after applying the file-basename fallback and before hashing or duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["name.find('/') != string::npos", "name.find('$') != string::npos", "Proto name must not contain a slash or dollar sign"]
       }
     },
     {

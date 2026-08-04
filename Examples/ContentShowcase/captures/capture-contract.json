@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "id": "windows-direct3d11",
+      "platform": "Windows",
+      "backend": "Direct3D 11",
+      "status": "observed-local",
+      "width": 1280,
+      "height": 800,
+      "output": "captures/windows-direct3d11.png",
+      "captured_on": "2026-08-03",
+      "engine_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
+      "source_sha256": "683602cebfcfa4910f43232ff815947dc6df5d03a158e25b73b9c1d65f3165b4",
+      "command": "cmake --build --preset windows-capture",
+      "sha256": "f53a3f25f69563b89ce773d67b7289ab85e202deddb135451dfa236ef815bd3a",
+      "pixel_evidence": {
+        "visible_pixels": 1024000,
+        "bright_pixels": 54226,
+        "sampled_unique_colors": 136,
+        "header_bright_pixels": 1968,
+        "runtime_bright_pixels": 20179,
+        "gallery_bright_pixels": 32234,
+        "footer_bright_pixels": 1426
+      },
+      "selected_source": "ShowcaseCapture_7.tga",
+      "samples_checked": 12
+    },
+    {
+      "id": "linux-opengl",
+      "platform": "Linux",
+      "backend": "OpenGL",
+      "status": "required-unobserved",
+      "width": 1280,
+      "height": 800,
+      "output": "captures/linux-opengl.png"
+    },
+    {
+      "id": "web-webgl2",
+      "platform": "Web",
+      "backend": "WebGL 2",
+      "status": "observed-local",
+      "width": 1280,
+      "height": 800,
+      "output": "captures/web-webgl2.png",
+      "captured_on": "2026-08-03",
+      "engine_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
+      "source_sha256": "683602cebfcfa4910f43232ff815947dc6df5d03a158e25b73b9c1d65f3165b4",
+      "command": "python validate.py --web-runtime",
+      "package_sha256": "0ad480b6c820e37fe961bb9d9d9d86c25643b30381a5a1c15883048a5bf0e3c8",
+      "sha256": "48089b5da5f698bfaa5ad72c4c7ffc5de61d1607d7edacbdac3d0b058fa3eaca",
+      "pixel_evidence": {
+        "visible_pixels": 1024000,
+        "bright_pixels": 54290,
+        "sampled_unique_colors": 131,
+        "header_bright_pixels": 1968,
+        "runtime_bright_pixels": 20265,
+        "gallery_bright_pixels": 32225,
+        "footer_bright_pixels": 1426
+      },
+      "browser_version": "151.0.7922.34",
+      "renderer": "WebKit WebGL",
+      "webgl_version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "shading_language_version": "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)"
+    }
+  ],
+  "command": "cmake --build --preset windows-capture",
+  "required_markers": [
+    "showcase_client_resources_loaded",
+    "showcase_client_capture_samples_saved=12",
+    "showcase_server_smoke_passed"
+  ],
+  "recapture_triggers": [
+    "Engine renderer, atlas, lighting, particle, font, or screenshot path changes",
+    "Any ShowcaseAssets/Showcase, map, layout, capture profile, or performance budget change",
+    "A publication tag or supported backend matrix change"
+  ]
+}

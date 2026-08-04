@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 948,
+    "export_method_declarations": 953,
     "method_file_count": 18,
     "method_files": [
       {
@@ -47,11 +47,11 @@
       },
       {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "export_method_declarations": 55
+        "export_method_declarations": 56
       },
       {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "export_method_declarations": 59
+        "export_method_declarations": 61
       },
       {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
@@ -71,16 +71,16 @@
       },
       {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "export_method_declarations": 75
+        "export_method_declarations": 76
       },
       {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "export_method_declarations": 11
+        "export_method_declarations": 12
       }
     ]
   },
   "engine_tests": {
-    "test_file_count": 95,
+    "test_file_count": 98,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -122,6 +122,7 @@
       "Source/Tests/Test_GlobalData.cpp",
       "Source/Tests/Test_HashedString.cpp",
       "Source/Tests/Test_ImageBaker.cpp",
+      "Source/Tests/Test_ImGui.cpp",
       "Source/Tests/Test_LineTracer.cpp",
       "Source/Tests/Test_LocationAndEntityMgmt.cpp",
       "Source/Tests/Test_Logging.cpp",
@@ -139,6 +140,7 @@
       "Source/Tests/Test_ModelMeshData.cpp",
       "Source/Tests/Test_ModelSkeletonCompatibility.cpp",
       "Source/Tests/Test_ModelSourceLoader.cpp",
+      "Source/Tests/Test_ModelSpriteLayout.cpp",
       "Source/Tests/Test_Movement.cpp",
       "Source/Tests/Test_NetBuffer.cpp",
       "Source/Tests/Test_NetSockets.cpp",
@@ -165,6 +167,7 @@
       "Source/Tests/Test_ServerMapOperations.cpp",
       "Source/Tests/Test_ServerScriptMethods.cpp",
       "Source/Tests/Test_Settings.cpp",
+      "Source/Tests/Test_SettingsStorage.cpp",
       "Source/Tests/Test_SmartPointers.cpp",
       "Source/Tests/Test_StackTrace.cpp",
       "Source/Tests/Test_StringUtils.cpp",

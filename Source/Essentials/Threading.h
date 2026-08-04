@@ -78,7 +78,7 @@ FO_BEGIN_NAMESPACE
 
 // Synchronization primitives — drop-in replacements for the std analogues, annotated for Clang Thread Safety
 // Analysis. The platform STL (libc++ is disabled) does not annotate std::mutex / std::shared_mutex as capabilities,
-// so guarded state must use these wrappers for the analysis to track it; see Engine/Docs/ThreadSafetyAnalysis.md.
+// so guarded state must use these wrappers for the analysis to track it; see Engine/Docs/en/contributing/coding-contracts/thread-safety-analysis.md.
 // Method names mirror std so call sites are a plain std:: -> fo:: swap; fo::unique_lock is usable with
 // std::condition_variable_any (wait() drives lock()/unlock()).
 

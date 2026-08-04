@@ -1,0 +1,22 @@
+---
+title: GUI Input Contract
+document_id: generated-gui-runtime-input
+locale: en
+generated: true
+---
+
+# GUI Input Contract
+
+> Generated reference. Do not edit directly. Update `BuildTools/GuiRuntimeInterface.json`, then run `python BuildTools/docs_gui_runtime.py --write`.
+
+[Index](index.md) | [Types](types.md) | [Screen API](screen-api.md) | [Lifecycle](lifecycle.md) | [Layout](layout-rendering.md) | [Input](input.md) | [Integration](integration-validation.md) | [Canonical JSON](../../../generated/gui-runtime.json) | [Guide](../../how-to/runtime/gui.md)
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-gui-runtime-input-event-subscriptions-714452fbc5"></a><code>gui-runtime.input.event-subscriptions</code> | Input event subscriptions | Include Input.fos once; its ModuleInit subscribes mouse, key, and input-loss Game events and forwards them to Gui engine callbacks. | Projects should not duplicate the same forwarding subscriptions. | [Source/Scripting/AngelScript/CoreScripts/Input.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Input.fos) |
+| <a id="entry-gui-runtime-input-active-screen-hit-order-595bde49cb"></a><code>gui-runtime.input.active-screen-hit-order</code> | Active-screen hit order | Mouse input starts at the top active screen; children are tested from last to first so later children are visually and interactively above earlier siblings. | Screen stack and tree order jointly define hit priority. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-modal-and-close-on-miss-a6e1667324"></a><code>gui-runtime.input.modal-and-close-on-miss</code> | Modal and close-on-miss behavior | Close a close-on-miss screen on an unhandled left click; only a nonmodal screen may search lower active screens for a hit and bring one forward. | Modal screens block fallthrough while nonmodal windows can be reordered by interaction. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-focus-console-order-f5af73490d"></a><code>gui-runtime.input.focus-console-order</code> | Keyboard dispatch order | Dispatch global input to active screens from top to bottom, then the active console, then focused objects when the console is absent or inactive. | Global shortcuts, command entry, and focused controls have distinct precedence. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-press-repeat-d7673d17fb"></a><code>gui-runtime.input.press-repeat</code> | Pressed-object repeat | After mouse down, begin repeated pressed callbacks after 500 ms and continue every 40 ms while the pointer still hits the pressed object. | Controls that use OnMousePressed depend on these fixed timings. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-drag-and-drop-052734939d"></a><code>gui-runtime.input.drag-and-drop</code> | Drag and drop | Start dragging from a draggable pressed object, draw it in the cursor pass, and evaluate registered drop handlers in order until one returns true. | The runtime owns gesture and dispatch mechanics while projects own transfer semantics. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-loss-reset-63b8a81b7a"></a><code>gui-runtime.input.loss-reset</code> | Input-loss reset | On focus/input loss, release tracked keys and mouse buttons, unhover and unfocus objects, cancel a pressed object as lost, and notify the drop menu. | Alt-tab and window-focus changes must not leave sticky input or drag state. | [Source/Scripting/AngelScript/CoreScripts/Input.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Input.fos), [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |

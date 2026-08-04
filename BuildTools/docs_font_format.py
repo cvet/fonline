@@ -11,12 +11,16 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/FontFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/font-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/font-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/font-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/font-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/font-format"
 GENERATED_BY = "BuildTools/docs_font_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -30,9 +34,16 @@ PAGE_DEFINITIONS = (
     ("rendering.md", "generated-font-format-rendering", "Font Rendering Contract"),
     ("validation.md", "generated-font-format-validation", "Font Validation Contract"),
 )
-OUTPUT_PATHS = tuple(
+CANONICAL_OUTPUT_PATHS = tuple(
     f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
 )
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = (*CANONICAL_OUTPUT_PATHS, *RUSSIAN_OUTPUT_PATHS, *LEGACY_OUTPUT_PATHS)
 COLLECTION_KINDS = {
     "formats": "format",
     "fofnt_fields": "fofnt",
@@ -461,7 +472,8 @@ def _header(document_id: str, title: str) -> list[str]:
         "[Index](index.md) | [Formats](formats.md) | [FOFNT](fofnt.md) | "
         "[BMFont](bmfont.md) | [Binding](binding.md) | [Layout](layout.md) | "
         "[Rendering](rendering.md) | [Validation](validation.md) | "
-        "[Canonical JSON](../font-format.json) | [Guide](../../FontFormat.md)",
+        "[Canonical JSON](../../../generated/font-format.json) | "
+        "[Guide](../../how-to/content/font-format.md)",
         "",
     ]
 
@@ -651,7 +663,144 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/font-format/{filename}"
+    russian_path = f"../../ru/reference/font-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated Font Format Reference": "Сгенерированный справочник форматов шрифтов",
+    "Font Resource Formats": "Форматы ресурсов шрифтов",
+    "FOFNT Field Reference": "Справочник полей FOFNT",
+    "Binary BMFont Contract": "Контракт бинарного BMFont",
+    "Font Binding Contract": "Контракт привязки шрифтов",
+    "Text Layout Contract": "Контракт компоновки текста",
+    "Font Rendering Contract": "Контракт отрисовки шрифтов",
+    "Font Validation Contract": "Контракт проверки шрифтов",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/FontFormatInterface.json`, then run `python BuildTools/docs_font_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/FontFormatInterface.json`, затем выполните `python BuildTools/docs_font_format.py --write`.",
+    "[Index](index.md) | [Formats](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Binding](binding.md) | [Layout](layout.md) | [Rendering](rendering.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/font-format.json) | [Guide](../../how-to/content/font-format.md)":
+        "[Индекс](index.md) | [Форматы](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Привязка](binding.md) | [Компоновка](layout.md) | [Отрисовка](rendering.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/font-format.json) | [Руководство](../../how-to/content/font-format.md)",
+    "This reference describes Engine-owned font descriptors, client binding, text layout, rendering, scaling, and validation. Project font selection and typography policy remain outside this contract.":
+        "Этот справочник описывает принадлежащие Engine дескрипторы шрифтов, клиентскую привязку, компоновку и отрисовку текста, масштабирование и проверку. Выбор шрифтов и типографическая политика проекта остаются вне контракта.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "Runtime descriptors": "Runtime-дескрипторы",
+    "FOFNT maximum version": "Максимальная версия FOFNT",
+    "BMFont binary version": "Версия binary BMFont",
+    "Client atlas": "Клиентский атлас",
+    "Descriptor roles and supported resource suffixes.":
+        "Роли дескрипторов и поддерживаемые суффиксы ресурсов.",
+    "Text descriptor keys and glyph metrics.":
+        "Ключи текстового дескриптора и метрики глифов.",
+    "Accepted binary-v3 blocks and metric transformations.":
+        "Принимаемые блоки binary v3 и преобразования метрик.",
+    "Raw-copy, slot, atlas, scale, and startup behavior.":
+        "Raw-copy, слоты, атлас, масштаб и поведение при запуске.",
+    "TextFormat, wrapping, alignment, measurement, and glyph fallback.":
+        "TextFormat, перенос, выравнивание, измерение и fallback глифов.",
+    "Texture preparation, borders, effects, color tags, and cache.":
+        "Подготовка текстуры, рамки, эффекты, теги цвета и кеш.",
+    "Failure modes and executable validation gates.":
+        "Режимы отказа и исполняемые gate проверки.",
+    "## Boundary": "## Граница ответственности",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "## Bundled descriptors": "## Поставляемые дескрипторы",
+    "See requirement": "См. требование",
+    "## FontFlag values": "## Значения FontFlag",
+    "## Layout rules": "## Правила компоновки",
+    "## Validation commands": "## Команды проверки",
+    "An embedding project must also bake the descriptor and image together, run its text-measurement regression, and inspect representative regular, bordered, scaled, wrapped, and localized text in a visible client.":
+        "Подключаемый проект также должен совместно запечь дескриптор и изображение, запустить регрессию измерения текста и проверить в видимом клиенте репрезентативный обычный, обведённый, масштабированный, перенесённый и локализованный текст.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
+    "| Stable ID | Suffix | Role | Contract | Source |":
+        "| Стабильный ID | Суффикс | Роль | Контракт | Источник |",
+    "| Suffix | Files |": "| Суффикс | Файлы |",
+    "| Stable ID | Key | Syntax | Behavior | Source |":
+        "| Стабильный ID | Ключ | Синтаксис | Поведение | Источник |",
+    "| Stable ID | Rule | Requirement | Why | Source |":
+        "| Стабильный ID | Правило | Требование | Причина | Источник |",
+    "| Name | Value | Source behavior |":
+        "| Имя | Значение | Поведение исходного кода |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated font format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated font format model")
     identities = [
@@ -662,7 +811,7 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     ]
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every font format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(model),
         f"{DEFAULT_OUTPUT_DIR}/fofnt.md": _render_fofnt(model),
@@ -672,9 +821,55 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         f"{DEFAULT_OUTPUT_DIR}/rendering.md": _render_rules(model, 6, "rendering_rules"),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/fofnt.md": _render_fofnt(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/bmfont.md": _render_rules(
+            localized_model, 3, "bmfont_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/binding.md": _render_rules(
+            localized_model, 4, "binding_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/layout.md": _render_layout(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/rendering.md": _render_rules(
+            localized_model, 6, "rendering_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for filename, document_id, title in PAGE_DEFINITIONS:
+        canonical_path = f"{DEFAULT_OUTPUT_DIR}/{filename}"
+        russian_path = f"{RUSSIAN_OUTPUT_DIR}/{filename}"
+        legacy_path = f"{LEGACY_OUTPUT_DIR}/{filename}"
+        pages[russian_path] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[legacy_path] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated font format page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_font_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "font-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -691,7 +886,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_font_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "font-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate font format documentation: {exception}", file=sys.stderr)
         return 1

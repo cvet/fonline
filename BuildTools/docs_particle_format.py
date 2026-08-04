@@ -11,12 +11,16 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/ParticleFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/particle-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/particle-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/particle-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/particle-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/particle-format"
 GENERATED_BY = "BuildTools/docs_particle_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -30,9 +34,16 @@ PAGE_DEFINITIONS = (
     ("integration.md", "generated-particle-format-integration", "Particle Integration Contract"),
     ("validation.md", "generated-particle-format-validation", "Particle Validation Contract"),
 )
-OUTPUT_PATHS = tuple(
+CANONICAL_OUTPUT_PATHS = tuple(
     f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
 )
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 COLLECTION_KINDS = {
     "object_families": "family",
     "objects": "object",
@@ -377,9 +388,51 @@ def _header(document_id: str, title: str) -> list[str]:
         "[Formats and backends](objects.md) | [Rendering](renderer.md) | "
         "[Tooling](tooling.md) | [Runtime](runtime.md) | "
         "[Integration](integration.md) | [Validation](validation.md) | "
-        "[Canonical JSON model](../particle-format.json)",
+        "[Canonical JSON model](../../../generated/particle-format.json) | "
+        "[Guide](../../how-to/content/particle-format.md) | "
+        "[Authoring tools](../../how-to/tools/particle-authoring.md)",
         "",
     ]
+
+
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/particle-format/{filename}"
+    russian_path = f"../../ru/reference/particle-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _source_links(model: dict[str, object], refs: object) -> str:
@@ -604,7 +657,108 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+RUSSIAN_TITLES = {
+    "Generated Particle Format Reference": "Сгенерированный справочник форматов частиц",
+    "Particle Source Rules": "Правила исходников частиц",
+    "Particle Formats and Backends": "Форматы и backend-ы частиц",
+    "Particle Rendering Contract": "Контракт отрисовки частиц",
+    "Particle Tooling Contract": "Контракт инструментов частиц",
+    "Particle Runtime Contract": "Runtime-контракт частиц",
+    "Particle Integration Contract": "Контракт интеграции частиц",
+    "Particle Validation Contract": "Контракт проверки частиц",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit this page directly. Update `BuildTools/ParticleFormatInterface.json`, then run `python BuildTools/docs_particle_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/ParticleFormatInterface.json`, затем выполните `python BuildTools/docs_particle_format.py --write`.",
+    "[Reference index](index.md) | [Source rules](xml.md) | [Formats and backends](objects.md) | [Rendering](renderer.md) | [Tooling](tooling.md) | [Runtime](runtime.md) | [Integration](integration.md) | [Validation](validation.md) | [Canonical JSON model](../../../generated/particle-format.json) | [Guide](../../how-to/content/particle-format.md) | [Authoring tools](../../how-to/tools/particle-authoring.md)":
+        "[Индекс справочника](index.md) | [Правила исходников](xml.md) | [Форматы и backend-ы](objects.md) | [Отрисовка](renderer.md) | [Инструменты](tooling.md) | [Runtime](runtime.md) | [Интеграция](integration.md) | [Проверка](validation.md) | [Каноническая JSON-модель](../../../generated/particle-format.json) | [Руководство](../../how-to/content/particle-format.md) | [Инструменты авторинга](../../how-to/tools/particle-authoring.md)",
+    "This reference describes the optional SPARK and Effekseer authoring, baking, runtime, Mapper, integration, and validation contract.":
+        "Этот справочник описывает контракт необязательных backend-ов SPARK и Effekseer: авторинг, запекание, runtime, Mapper, интеграцию и проверку.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "Authored extensions": "Авторские расширения",
+    "Runtime extensions": "Расширения runtime",
+    "Runtime side": "Сторона runtime",
+    "Authored XML and dependency boundaries.":
+        "Границы авторского XML и зависимостей.",
+    "Optional backends and source-to-runtime forms.":
+        "Необязательные backend-ы и формы source-to-runtime.",
+    "Backend rendering routes and fields.":
+        "Маршруты и поля отрисовки backend-ов.",
+    "Mapper and standalone authoring workflows.":
+        "Процессы авторинга в Mapper и отдельных инструментах.",
+    "Composition, routing, seed, scale, and prewarm.":
+        "Компоновка, маршрутизация, seed, масштаб и prewarm.",
+    "Sprite, model, script, and project boundaries.":
+        "Границы спрайтов, моделей, скриптов и проекта.",
+    "Documentation, native, bake, and visible gates.":
+        "Gate документации, native-кода, запекания и видимой проверки.",
+    "## Boundary": "## Граница ответственности",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "## Backends": "## Backend-ы",
+    "## Resource forms": "## Формы ресурсов",
+    "## SPARK object families": "## Семейства объектов SPARK",
+    "## SPARK object catalog": "## Каталог объектов SPARK",
+    "## Validation commands": "## Команды проверки",
+    "An embedding project must also rebake its resources and visibly inspect every affected backend and integration route.":
+        "Подключаемый проект также должен повторно запечь ресурсы и визуально проверить каждый затронутый backend и маршрут интеграции.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
+    "| Stable ID | Rule | Requirement | Why | Source |":
+        "| Стабильный ID | Правило | Требование | Причина | Источник |",
+    "| Stable ID | Backend | Formats | Requirement | Source |":
+        "| Стабильный ID | Backend | Форматы | Требование | Источник |",
+    "| Stable ID | Format | Backend | Role | Requirement | Source |":
+        "| Стабильный ID | Формат | Backend | Роль | Требование | Источник |",
+    "| Stable ID | Family | Object tags | Requirement | Source |":
+        "| Стабильный ID | Семейство | Теги объектов | Требование | Источник |",
+    "| Stable ID | XML tag | Family | Requirement | Source |":
+        "| Стабильный ID | XML-тег | Семейство | Требование | Источник |",
+    "| Stable ID | Backend | Field or route | Default | Behavior | Source |":
+        "| Стабильный ID | Backend | Поле или маршрут | По умолчанию | Поведение | Источник |",
+    "| Stable ID | Gate | Requirement | Why | Source |":
+        "| Стабильный ID | Gate | Требование | Причина | Источник |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated particle format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated particle format model")
     identities = [
@@ -618,7 +772,7 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         or len(identities) != len(set(identities))
     ):
         raise ValueError("every particle format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/xml.md": _render_rules(model, 1, "xml_rules"),
         f"{DEFAULT_OUTPUT_DIR}/objects.md": _render_objects(model),
@@ -628,11 +782,57 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         f"{DEFAULT_OUTPUT_DIR}/integration.md": _render_rules(model, 6, "integration_rules"),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/xml.md": _render_rules(
+            localized_model, 1, "xml_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/objects.md": _render_objects(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/renderer.md": _render_renderer(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/tooling.md": _render_rules(
+            localized_model, 4, "tooling_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/runtime.md": _render_rules(
+            localized_model, 5, "runtime_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/integration.md": _render_rules(
+            localized_model, 6, "integration_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for filename, document_id, title in PAGE_DEFINITIONS:
+        canonical_path = f"{DEFAULT_OUTPUT_DIR}/{filename}"
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated particle format page set does not match OUTPUT_PATHS")
     return {
         path: content.rstrip() + "\n" for path, content in sorted(pages.items())
     }
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_particle_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "particle-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -649,7 +849,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_particle_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "particle-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(
             f"Unable to generate particle format documentation: {exception}",

@@ -10,25 +10,38 @@ from urllib.parse import unquote, urlsplit
 
 import docs_api
 import docs_api_diff
+import docs_ai_control_protocol
 import docs_ai_delivery
+import docs_ai_eval
+import docs_audio
 import docs_cli
 import docs_cmake
 import docs_contract_diff
+import docs_description_translations
+import docs_diagrams
 import docs_effect_format
 import docs_examples
+import docs_external_evidence
 import docs_font_format
+import docs_gui_runtime
 import docs_helper_cli
 import docs_image_format
 import docs_inventory
+import docs_localization
 import docs_map_format
 import docs_model_format
 import docs_native_extension
 import docs_package
 import docs_particle_format
 import docs_prototype_format
+import docs_public_api
 import docs_reference
+import docs_screenshots
 import docs_site
+import docs_snippets
+import docs_support_matrix
 import docs_text_format
+import docs_video
 
 
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
@@ -47,8 +60,20 @@ ALLOWED_AUDIENCES = {
     "ai-agent",
 }
 ALLOWED_PAGES_SOURCE_STATES = {"pending-admin-verification", "verified"}
+ALLOWED_PAGES_BUILD_TYPES = {"legacy", "workflow"}
+ALLOWED_DNS_STATES = {"public-resolution-confirmed"}
+ALLOWED_DNS_OWNERSHIP_STATES = {"not-observed", "verified"}
 PAGES_BUILD_ACTION = "actions/jekyll-build-pages@v1"
 SITE_ARTIFACT_ACTION = "actions/upload-artifact@v4"
+PAGES_README_PERMALINKS = {
+    "BuildTools/README.md": "/BuildTools/README.html",
+    "Docs/README.md": "/Docs/README.html",
+    "Examples/MinimalProject/README.md": "/Examples/MinimalProject/README.html",
+    "Examples/MinimalMultiplayer/README.md": "/Examples/MinimalMultiplayer/README.html",
+    "Examples/AiControlSample/README.md": "/Examples/AiControlSample/README.html",
+    "Source/README.md": "/Source/README.html",
+    "Source/Tests/README.md": "/Source/Tests/README.html",
+}
 PLACEHOLDER_ROUTE_MARKER = "> placeholder route."
 LEGACY_ROUTE_MARKER = "> legacy route."
 UNFINISHED_CONTENT_MARKERS = ("...generate content...", "...write about", "estimated finishing date")
@@ -222,7 +247,12 @@ def _top_level_yaml_scalar(text: str, key: str) -> str | None:
     return value
 
 
-def _validate_publishing(root: Path, publishing: object, errors: list[str]) -> None:
+def _validate_publishing(
+    root: Path,
+    publishing: object,
+    documents: object,
+    errors: list[str],
+) -> None:
     if not isinstance(publishing, dict):
         errors.append("documentation manifest must contain a publishing object")
         return
@@ -279,12 +309,26 @@ def _validate_publishing(root: Path, publishing: object, errors: list[str]) -> N
                 errors.append("verified documentation publishing source must name a branch")
             if not isinstance(source.get("folder"), str) or not source["folder"].strip():
                 errors.append("verified documentation publishing source must name a folder")
+            if source.get("build_type") not in ALLOWED_PAGES_BUILD_TYPES:
+                errors.append("verified documentation publishing source has invalid build type")
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(source.get("verified_on", ""))):
+                errors.append("verified documentation publishing source must name its audit date")
         elif source.get("branch") is not None or source.get("folder") is not None:
             errors.append("pending documentation publishing source branch/folder must remain null")
 
     dns = publishing.get("dns")
     if not isinstance(dns, dict) or not isinstance(dns.get("owner"), str) or not dns["owner"].strip():
         errors.append("documentation publishing dns must name an operational owner")
+    elif dns.get("status") not in ALLOWED_DNS_STATES:
+        errors.append("documentation publishing dns has invalid resolution status")
+    elif dns.get("ownership_verification") not in ALLOWED_DNS_OWNERSHIP_STATES:
+        errors.append("documentation publishing dns has invalid ownership-verification status")
+    elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(dns.get("verified_on", ""))):
+        errors.append("documentation publishing dns must name its audit date")
+    elif dns["ownership_verification"] == "not-observed" and (
+        not isinstance(dns.get("challenge_record"), str) or not dns["challenge_record"].strip()
+    ):
+        errors.append("unverified documentation publishing dns must name its challenge record")
 
     cname_path = root / "CNAME"
     config_path = root / "_config.yml"
@@ -308,6 +352,23 @@ def _validate_publishing(root: Path, publishing: object, errors: list[str]) -> N
                 errors.append(f"GitHub Pages _config.yml {key} must match the publishing manifest")
         if not re.search(r"^\s*-\s+jekyll-relative-links\s*$", config_text, flags=re.MULTILINE):
             errors.append("GitHub Pages _config.yml must enable jekyll-relative-links")
+        manifest_documents = documents if isinstance(documents, dict) else {}
+        for relative_path, permalink in PAGES_README_PERMALINKS.items():
+            if relative_path not in manifest_documents:
+                continue
+            readme_path = root / relative_path
+            if not readme_path.is_file():
+                continue
+            readme_text = readme_path.read_text(encoding="utf-8-sig")
+            front_matter = re.match(r"\A---\s*\n(?P<body>.*?)\n---\s*\n", readme_text, re.DOTALL)
+            if front_matter is None or not re.search(
+                rf"(?m)^permalink:\s*{re.escape(permalink)}\s*$",
+                front_matter.group("body") if front_matter else "",
+            ):
+                errors.append(
+                    f"GitHub Pages public README must pin permalink {permalink}: "
+                    f"{relative_path}"
+                )
 
     ruby_version_path = root / ".ruby-version"
     if not ruby_version_path.is_file():
@@ -335,6 +396,9 @@ def _validate_publishing(root: Path, publishing: object, errors: list[str]) -> N
         required_workflow_markers = (
             f"uses: {PAGES_BUILD_ACTION}",
             "destination: ./_site",
+            "BuildTools/docs_site_artifact.py",
+            "--site-dir _site",
+            "Workspace/docs-site-artifact-report.json",
             f"uses: {SITE_ARTIFACT_ACTION}",
             "path: _site/",
         )
@@ -350,6 +414,24 @@ def _validate_publishing(root: Path, publishing: object, errors: list[str]) -> N
         sprite_root_motion_test = "BuildTools/tests/test_docs_sprite_root_motion.py"
         if sprite_root_motion_test not in workflow_text:
             errors.append(f"documentation sprite root motion workflow is missing: {sprite_root_motion_test}")
+        web_debugging_test = "BuildTools/tests/test_docs_web_debugging.py"
+        if web_debugging_test not in workflow_text:
+            errors.append(f"documentation Web debugging workflow is missing: {web_debugging_test}")
+        android_debugging_test = "BuildTools/tests/test_docs_android_debugging.py"
+        if android_debugging_test not in workflow_text:
+            errors.append(f"documentation Android debugging workflow is missing: {android_debugging_test}")
+        debugging_test = "BuildTools/tests/test_docs_debugging.py"
+        if debugging_test not in workflow_text:
+            errors.append(f"documentation native and AngelScript debugging workflow is missing: {debugging_test}")
+        angelscript_style_test = "BuildTools/tests/test_docs_angelscript_style.py"
+        if angelscript_style_test not in workflow_text:
+            errors.append(f"documentation AngelScript style workflow is missing: {angelscript_style_test}")
+        viewer_tools_test = "BuildTools/tests/test_docs_viewer_tools.py"
+        if viewer_tools_test not in workflow_text:
+            errors.append(f"documentation viewer tools workflow is missing: {viewer_tools_test}")
+        mapper_tools_test = "BuildTools/tests/test_docs_mapper_tools.py"
+        if mapper_tools_test not in workflow_text:
+            errors.append(f"documentation Mapper tools workflow is missing: {mapper_tools_test}")
 
 
 def _validate_delivery_policy(manifest: dict[str, object], errors: list[str]) -> None:
@@ -363,10 +445,25 @@ def _validate_delivery_policy(manifest: dict[str, object], errors: list[str]) ->
         errors.append(f"invalid documentation localization policy: {exception}")
 
 
-def _validate_generated_artifacts(root: Path, generated_artifacts: object, errors: list[str]) -> None:
+def _validate_generated_artifacts(
+    root: Path,
+    generated_artifacts: object,
+    site_delivery_config: object,
+    documents: object,
+    errors: list[str],
+) -> None:
     if not isinstance(generated_artifacts, dict):
         errors.append("documentation manifest must contain a generated_artifacts object")
         return
+
+    for artifact_id, artifact in generated_artifacts.items():
+        if not isinstance(artifact, dict):
+            continue
+        visibility = artifact.get("visibility", "public")
+        if visibility not in {"public", "internal"}:
+            errors.append(
+                f"documentation generated artifact {artifact_id} has invalid visibility: {visibility}"
+            )
 
     source_inventory = generated_artifacts.get("source_inventory")
     if not isinstance(source_inventory, dict):
@@ -572,7 +669,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_helper_cli_model = docs_helper_cli.render_helper_cli_model(root)
         helper_cli_model = json.loads(rendered_helper_cli_model)
-        rendered_helper_cli_pages = docs_helper_cli.generate_reference_pages(helper_cli_model)
+        rendered_helper_cli_pages = docs_helper_cli.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated helper CLI documentation: {exception}")
     else:
@@ -625,7 +722,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_native_extension_model = docs_native_extension.render_native_extension_model(root)
         native_extension_model = json.loads(rendered_native_extension_model)
-        rendered_native_extension_pages = docs_native_extension.generate_reference_pages(native_extension_model)
+        rendered_native_extension_pages = docs_native_extension.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated native extension documentation: {exception}")
     else:
@@ -684,9 +781,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_prototype_format_model = docs_prototype_format.render_prototype_format_model(root)
         prototype_format_model = json.loads(rendered_prototype_format_model)
-        rendered_prototype_format_pages = docs_prototype_format.generate_reference_pages(
-            prototype_format_model
-        )
+        rendered_prototype_format_pages = docs_prototype_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated prototype format documentation: {exception}")
     else:
@@ -743,7 +838,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_map_format_model = docs_map_format.render_map_format_model(root)
         map_format_model = json.loads(rendered_map_format_model)
-        rendered_map_format_pages = docs_map_format.generate_reference_pages(map_format_model)
+        rendered_map_format_pages = docs_map_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated map format documentation: {exception}")
     else:
@@ -797,9 +892,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_model_format_model = docs_model_format.render_model_format_model(root)
         model_format_model = json.loads(rendered_model_format_model)
-        rendered_model_format_pages = docs_model_format.generate_reference_pages(
-            model_format_model
-        )
+        rendered_model_format_pages = docs_model_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated model format documentation: {exception}")
     else:
@@ -857,10 +950,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
 
     try:
         rendered_text_format_model = docs_text_format.render_text_format_model(root)
-        text_format_model = json.loads(rendered_text_format_model)
-        rendered_text_format_pages = docs_text_format.generate_reference_pages(
-            text_format_model
-        )
+        rendered_text_format_pages = docs_text_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated text format documentation: {exception}")
     else:
@@ -919,9 +1009,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_effect_format_model = docs_effect_format.render_effect_format_model(root)
         effect_format_model = json.loads(rendered_effect_format_model)
-        rendered_effect_format_pages = docs_effect_format.generate_reference_pages(
-            effect_format_model
-        )
+        rendered_effect_format_pages = docs_effect_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated effect format documentation: {exception}")
     else:
@@ -980,9 +1068,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_image_format_model = docs_image_format.render_image_format_model(root)
         image_format_model = json.loads(rendered_image_format_model)
-        rendered_image_format_pages = docs_image_format.generate_reference_pages(
-            image_format_model
-        )
+        rendered_image_format_pages = docs_image_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated image format documentation: {exception}")
     else:
@@ -1038,9 +1124,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_particle_format_model = docs_particle_format.render_particle_format_model(root)
         particle_format_model = json.loads(rendered_particle_format_model)
-        rendered_particle_format_pages = docs_particle_format.generate_reference_pages(
-            particle_format_model
-        )
+        rendered_particle_format_pages = docs_particle_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated particle format documentation: {exception}")
     else:
@@ -1099,9 +1183,7 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
     try:
         rendered_font_format_model = docs_font_format.render_font_format_model(root)
         font_format_model = json.loads(rendered_font_format_model)
-        rendered_font_format_pages = docs_font_format.generate_reference_pages(
-            font_format_model
-        )
+        rendered_font_format_pages = docs_font_format.render_reference_pages(root)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         errors.append(f"unable to render generated font format documentation: {exception}")
     else:
@@ -1139,6 +1221,272 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
         ):
             if marker not in workflow_text:
                 errors.append(f"documentation font format workflow is missing: {marker}")
+
+    audio_reference = generated_artifacts.get("audio_reference")
+    if not isinstance(audio_reference, dict):
+        errors.append("documentation manifest must declare generated_artifacts.audio_reference")
+        return
+
+    expected_audio_reference = {
+        "source_manifest": docs_audio.DEFAULT_MANIFEST,
+        "model": docs_audio.DEFAULT_MODEL,
+        "generator": "BuildTools/docs_audio.py",
+        "schema_version": docs_audio.SCHEMA_VERSION,
+        "directory": docs_audio.DEFAULT_OUTPUT_DIR,
+        "paths": list(docs_audio.OUTPUT_PATHS),
+    }
+    for field, expected in expected_audio_reference.items():
+        if audio_reference.get(field) != expected:
+            errors.append(f"documentation audio reference {field} must be {expected}")
+
+    try:
+        rendered_audio_model = docs_audio.render_audio_model(root)
+        rendered_audio_pages = docs_audio.render_reference_pages(root)
+    except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
+        errors.append(f"unable to render generated audio documentation: {exception}")
+    else:
+        audio_model_path = root / docs_audio.DEFAULT_MODEL
+        if not audio_model_path.is_file():
+            errors.append(
+                "generated documentation audio model is missing: "
+                + docs_audio.DEFAULT_MODEL
+            )
+        elif audio_model_path.read_text(encoding="utf-8") != rendered_audio_model:
+            errors.append(
+                "generated documentation audio model is stale; "
+                "run python BuildTools/docs_audio.py --write"
+            )
+        for page_path, rendered_page in rendered_audio_pages.items():
+            output_path = root / page_path
+            if not output_path.is_file():
+                errors.append(
+                    f"generated documentation audio page is missing: {page_path}"
+                )
+            elif output_path.read_text(encoding="utf-8") != rendered_page:
+                errors.append(
+                    f"generated documentation audio page is stale: {page_path}; "
+                    "run python BuildTools/docs_audio.py --write"
+                )
+
+    if workflow_path.is_file():
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        for marker in (
+            "BuildTools/tests/test_docs_audio.py",
+            "BuildTools/docs_audio.py --check",
+        ):
+            if marker not in workflow_text:
+                errors.append(f"documentation audio workflow is missing: {marker}")
+
+    video_reference = generated_artifacts.get("video_reference")
+    if not isinstance(video_reference, dict):
+        errors.append(
+            "documentation manifest must declare generated_artifacts.video_reference"
+        )
+        return
+
+    expected_video_reference = {
+        "source_manifest": docs_video.DEFAULT_MANIFEST,
+        "model": docs_video.DEFAULT_MODEL,
+        "generator": "BuildTools/docs_video.py",
+        "schema_version": docs_video.SCHEMA_VERSION,
+        "directory": docs_video.DEFAULT_OUTPUT_DIR,
+        "paths": list(docs_video.OUTPUT_PATHS),
+    }
+    for field, expected in expected_video_reference.items():
+        if video_reference.get(field) != expected:
+            errors.append(f"documentation video reference {field} must be {expected}")
+
+    try:
+        rendered_video_model = docs_video.render_video_model(root)
+        rendered_video_pages = docs_video.render_reference_pages(root)
+    except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
+        errors.append(f"unable to render generated video documentation: {exception}")
+    else:
+        video_model_path = root / docs_video.DEFAULT_MODEL
+        if not video_model_path.is_file():
+            errors.append(
+                "generated documentation video model is missing: "
+                + docs_video.DEFAULT_MODEL
+            )
+        elif video_model_path.read_text(encoding="utf-8") != rendered_video_model:
+            errors.append(
+                "generated documentation video model is stale; "
+                "run python BuildTools/docs_video.py --write"
+            )
+        for page_path, rendered_page in rendered_video_pages.items():
+            output_path = root / page_path
+            if not output_path.is_file():
+                errors.append(
+                    f"generated documentation video page is missing: {page_path}"
+                )
+            elif output_path.read_text(encoding="utf-8") != rendered_page:
+                errors.append(
+                    f"generated documentation video page is stale: {page_path}; "
+                    "run python BuildTools/docs_video.py --write"
+                )
+
+    if workflow_path.is_file():
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        for marker in (
+            "BuildTools/tests/test_docs_video.py",
+            "BuildTools/docs_video.py --check",
+        ):
+            if marker not in workflow_text:
+                errors.append(f"documentation video workflow is missing: {marker}")
+
+    gui_runtime_reference = generated_artifacts.get("gui_runtime_reference")
+    if not isinstance(gui_runtime_reference, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.gui_runtime_reference"
+        )
+        return
+
+    expected_gui_runtime_reference = {
+        "source_manifest": docs_gui_runtime.DEFAULT_MANIFEST,
+        "model": docs_gui_runtime.DEFAULT_MODEL,
+        "generator": "BuildTools/docs_gui_runtime.py",
+        "schema_version": docs_gui_runtime.SCHEMA_VERSION,
+        "directory": docs_gui_runtime.DEFAULT_OUTPUT_DIR,
+        "paths": list(docs_gui_runtime.OUTPUT_PATHS),
+    }
+    for field, expected in expected_gui_runtime_reference.items():
+        if gui_runtime_reference.get(field) != expected:
+            errors.append(
+                f"documentation GUI runtime reference {field} must be {expected}"
+            )
+
+    try:
+        rendered_gui_runtime_model = docs_gui_runtime.render_gui_runtime_model(root)
+        gui_runtime_model = json.loads(rendered_gui_runtime_model)
+        rendered_gui_runtime_pages = docs_gui_runtime.render_reference_pages(root)
+    except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
+        errors.append(
+            f"unable to render generated GUI runtime documentation: {exception}"
+        )
+    else:
+        gui_runtime_model_path = root / docs_gui_runtime.DEFAULT_MODEL
+        if not gui_runtime_model_path.is_file():
+            errors.append(
+                "generated documentation GUI runtime model is missing: "
+                + docs_gui_runtime.DEFAULT_MODEL
+            )
+        elif (
+            gui_runtime_model_path.read_text(encoding="utf-8")
+            != rendered_gui_runtime_model
+        ):
+            errors.append(
+                "generated documentation GUI runtime model is stale; "
+                "run python BuildTools/docs_gui_runtime.py --write"
+            )
+        for page_path, rendered_page in rendered_gui_runtime_pages.items():
+            output_path = root / page_path
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation GUI runtime page is missing: "
+                    + page_path
+                )
+            elif output_path.read_text(encoding="utf-8") != rendered_page:
+                errors.append(
+                    f"generated documentation GUI runtime page is stale: "
+                    f"{page_path}; run python "
+                    "BuildTools/docs_gui_runtime.py --write"
+                )
+
+    if workflow_path.is_file():
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        for marker in (
+            "BuildTools/tests/test_docs_gui_runtime.py",
+            "BuildTools/docs_gui_runtime.py --check",
+        ):
+            if marker not in workflow_text:
+                errors.append(
+                    f"documentation GUI runtime workflow is missing: {marker}"
+                )
+
+    ai_control_protocol_reference = generated_artifacts.get(
+        "ai_control_protocol_reference"
+    )
+    if not isinstance(ai_control_protocol_reference, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.ai_control_protocol_reference"
+        )
+        return
+
+    expected_ai_control_protocol_reference = {
+        "source_manifest": docs_ai_control_protocol.DEFAULT_MANIFEST,
+        "model": docs_ai_control_protocol.DEFAULT_MODEL,
+        "generator": "BuildTools/docs_ai_control_protocol.py",
+        "schema_version": docs_ai_control_protocol.SCHEMA_VERSION,
+        "directory": docs_ai_control_protocol.DEFAULT_OUTPUT_DIR,
+        "paths": list(docs_ai_control_protocol.OUTPUT_PATHS),
+        "reference_client": "BuildTools/ai_control_client.py",
+        "sample": "Examples/AiControlSample",
+        "smoke": "Examples/AiControlSample/run_protocol_smoke.py",
+    }
+    for field, expected in expected_ai_control_protocol_reference.items():
+        if ai_control_protocol_reference.get(field) != expected:
+            errors.append(
+                f"documentation AiControl protocol reference {field} must be {expected}"
+            )
+
+    try:
+        rendered_ai_control_protocol_model = (
+            docs_ai_control_protocol.render_ai_control_protocol_model(root)
+        )
+        ai_control_protocol_model = json.loads(rendered_ai_control_protocol_model)
+        rendered_ai_control_protocol_pages = (
+            docs_ai_control_protocol.render_reference_pages(root)
+        )
+    except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
+        errors.append(
+            "unable to render generated AiControl protocol documentation: "
+            f"{exception}"
+        )
+    else:
+        ai_control_protocol_model_path = (
+            root / docs_ai_control_protocol.DEFAULT_MODEL
+        )
+        if not ai_control_protocol_model_path.is_file():
+            errors.append(
+                "generated documentation AiControl protocol model is missing: "
+                + docs_ai_control_protocol.DEFAULT_MODEL
+            )
+        elif (
+            ai_control_protocol_model_path.read_text(encoding="utf-8")
+            != rendered_ai_control_protocol_model
+        ):
+            errors.append(
+                "generated documentation AiControl protocol model is stale; "
+                "run python BuildTools/docs_ai_control_protocol.py --write"
+            )
+        for page_path, rendered_page in rendered_ai_control_protocol_pages.items():
+            output_path = root / page_path
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation AiControl protocol page is missing: "
+                    + page_path
+                )
+            elif output_path.read_text(encoding="utf-8") != rendered_page:
+                errors.append(
+                    "generated documentation AiControl protocol page is stale: "
+                    f"{page_path}; run python "
+                    "BuildTools/docs_ai_control_protocol.py --write"
+                )
+
+    if workflow_path.is_file():
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        for marker in (
+            "BuildTools/tests/test_ai_control_protocol.py",
+            "BuildTools/tests/test_docs_ai_control_protocol.py",
+            "BuildTools/docs_ai_control_protocol.py --check",
+        ):
+            if marker not in workflow_text:
+                errors.append(
+                    "documentation AiControl protocol workflow is missing: "
+                    + marker
+                )
 
     package_reference = generated_artifacts.get("package_reference")
     if not isinstance(package_reference, dict):
@@ -1235,6 +1583,400 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
                 if marker not in workflow_text:
                     errors.append(f"documentation public examples workflow is missing: {marker}")
 
+    support_matrix = generated_artifacts.get("support_matrix")
+    if not isinstance(support_matrix, dict):
+        errors.append("documentation manifest must declare generated_artifacts.support_matrix")
+    else:
+        expected_support_matrix = {
+            "source_manifest": docs_support_matrix.DEFAULT_MANIFEST,
+            "model": docs_support_matrix.DEFAULT_MODEL,
+            "generator": docs_support_matrix.GENERATED_BY,
+            "schema_version": docs_support_matrix.SCHEMA_VERSION,
+            "directory": str(PurePosixPath(docs_support_matrix.DEFAULT_INDEX).parent),
+            "paths": list(docs_support_matrix.OUTPUT_PATHS),
+        }
+        for field, expected in expected_support_matrix.items():
+            if support_matrix.get(field) != expected:
+                errors.append(f"documentation support matrix {field} must be {expected}")
+
+        try:
+            rendered_support_outputs = docs_support_matrix.render_outputs(root)
+        except (OSError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(f"unable to render support matrix documentation: {exception}")
+        else:
+            for relative_path, expected_content in rendered_support_outputs.items():
+                output_path = root / relative_path
+                if not output_path.is_file():
+                    errors.append(f"generated support matrix artifact is missing: {relative_path}")
+                elif output_path.read_text(encoding="utf-8") != expected_content:
+                    errors.append(
+                        f"generated support matrix artifact is stale: {relative_path}; "
+                        "run python BuildTools/docs_support_matrix.py --write"
+                    )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_support_matrix.py",
+                "BuildTools/docs_support_matrix.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(f"documentation support matrix workflow is missing: {marker}")
+
+    public_api_document = (
+        documents.get(docs_public_api.DEFAULT_OUTPUT)
+        if isinstance(documents, dict)
+        else None
+    )
+    public_api_required = (
+        isinstance(public_api_document, dict)
+        and public_api_document.get("state") == "current"
+    )
+    public_api_contract = generated_artifacts.get("public_api_contract")
+    if public_api_required and not isinstance(public_api_contract, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.public_api_contract for the current public contract index"
+        )
+    elif isinstance(public_api_contract, dict):
+        expected_public_api_contract = {
+            "path": docs_public_api.DEFAULT_OUTPUT,
+            "paths": list(docs_public_api.OUTPUT_PATHS),
+            "generator": docs_public_api.GENERATED_BY,
+            "source_models": docs_public_api.SOURCE_MODELS,
+            "source_references": docs_public_api.SOURCE_REFERENCES,
+        }
+        for field, expected in expected_public_api_contract.items():
+            if public_api_contract.get(field) != expected:
+                errors.append(
+                    f"documentation public API contract {field} must be {expected}"
+                )
+
+        try:
+            rendered_public_api_pages = docs_public_api.generate_public_api_pages(root)
+        except (
+            OSError,
+            json.JSONDecodeError,
+            ValueError,
+            docs_contract_diff.ContractDiffError,
+        ) as exception:
+            errors.append(f"unable to render public API contract index: {exception}")
+        else:
+            for relative_path, rendered_page in rendered_public_api_pages.items():
+                output_path = root / relative_path
+                if not output_path.is_file():
+                    errors.append(
+                        f"generated public API contract page is missing: {relative_path}"
+                    )
+                elif output_path.read_text(encoding="utf-8") != rendered_page:
+                    errors.append(
+                        f"generated public API contract page is stale: {relative_path}; "
+                        "run python BuildTools/docs_public_api.py --write"
+                    )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_public_api.py",
+                "BuildTools/docs_public_api.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation public API workflow is missing: {marker}"
+                    )
+
+    external_evidence_document = (
+        documents.get(docs_external_evidence.DEFAULT_INDEX)
+        if isinstance(documents, dict)
+        else None
+    )
+    external_evidence_required = (
+        isinstance(external_evidence_document, dict)
+        and external_evidence_document.get("state") == "current"
+    )
+    external_evidence = generated_artifacts.get("external_project_evidence")
+    if external_evidence_required and not isinstance(external_evidence, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.external_project_evidence for the current audit"
+        )
+    elif isinstance(external_evidence, dict):
+        expected_external_evidence = {
+            "visibility": "internal",
+            "source_manifest": docs_external_evidence.DEFAULT_MANIFEST,
+            "model": docs_external_evidence.DEFAULT_MODEL,
+            "generator": docs_external_evidence.GENERATED_BY,
+            "schema_version": docs_external_evidence.SCHEMA_VERSION,
+            "directory": str(
+                PurePosixPath(docs_external_evidence.DEFAULT_INDEX).parent
+            ),
+            "paths": list(docs_external_evidence.OUTPUT_PATHS),
+            "external_source_verification": (
+                "python BuildTools/docs_external_evidence.py --check "
+                "--verify-sources --last-frontier-root ../ "
+                "--tla-root Workspace/fonline-tla-audit"
+            ),
+        }
+        for field, expected in expected_external_evidence.items():
+            if external_evidence.get(field) != expected:
+                errors.append(
+                    f"documentation external project evidence {field} must be "
+                    f"{expected}"
+                )
+
+        try:
+            rendered_external_evidence = docs_external_evidence.render_outputs(root)
+        except (OSError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(
+                f"unable to render external project evidence documentation: "
+                f"{exception}"
+            )
+        else:
+            for relative_path, expected_content in rendered_external_evidence.items():
+                output_path = root / relative_path
+                if not output_path.is_file():
+                    errors.append(
+                        f"generated external project evidence artifact is missing: "
+                        f"{relative_path}"
+                    )
+                elif output_path.read_text(encoding="utf-8") != expected_content:
+                    errors.append(
+                        f"generated external project evidence artifact is stale: "
+                        f"{relative_path}; run python "
+                        "BuildTools/docs_external_evidence.py --write"
+                    )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_external_evidence.py",
+                "BuildTools/docs_external_evidence.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation external project evidence workflow is "
+                        f"missing: {marker}"
+                    )
+
+    documentation_diagrams = generated_artifacts.get("documentation_diagrams")
+    if not isinstance(documentation_diagrams, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.documentation_diagrams"
+        )
+    else:
+        expected_documentation_diagrams = {
+            "source_manifest": docs_diagrams.DEFAULT_MANIFEST,
+            "model": docs_diagrams.DEFAULT_CATALOG,
+            "generator": docs_diagrams.GENERATED_BY,
+            "schema_version": docs_diagrams.SCHEMA_VERSION,
+            "directory": docs_diagrams.DEFAULT_OUTPUT_DIR,
+            "paths": list(docs_diagrams.OUTPUT_PATHS),
+        }
+        for field, expected in expected_documentation_diagrams.items():
+            if documentation_diagrams.get(field) != expected:
+                errors.append(
+                    f"documentation diagrams {field} must be {expected}"
+                )
+
+        try:
+            rendered_diagram_outputs = docs_diagrams.render_outputs(root)
+        except (OSError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(f"unable to render documentation diagrams: {exception}")
+        else:
+            for relative_path, expected_content in rendered_diagram_outputs.items():
+                output_path = root / relative_path
+                if not output_path.is_file():
+                    errors.append(
+                        f"generated documentation diagram artifact is missing: "
+                        f"{relative_path}"
+                    )
+                elif output_path.read_text(encoding="utf-8") != expected_content:
+                    errors.append(
+                        f"generated documentation diagram artifact is stale: "
+                        f"{relative_path}; run python "
+                        "BuildTools/docs_diagrams.py --write"
+                    )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_diagrams.py",
+                "BuildTools/docs_diagrams.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation diagram workflow is missing: {marker}"
+                    )
+
+    documentation_screenshots = generated_artifacts.get(
+        "documentation_screenshots"
+    )
+    if not isinstance(documentation_screenshots, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.documentation_screenshots"
+        )
+    else:
+        expected_documentation_screenshots = {
+            "source_manifest": docs_screenshots.DEFAULT_MANIFEST,
+            "model": docs_screenshots.DEFAULT_CATALOG,
+            "generator": docs_screenshots.GENERATED_BY,
+            "schema_version": docs_screenshots.SCHEMA_VERSION,
+            "directory": docs_screenshots.DEFAULT_OUTPUT_DIR,
+            "paths": list(docs_screenshots.MANIFEST_PATHS),
+        }
+        for field, expected in expected_documentation_screenshots.items():
+            if documentation_screenshots.get(field) != expected:
+                errors.append(
+                    f"documentation screenshots {field} must be {expected}"
+                )
+
+        try:
+            rendered_screenshot_outputs = docs_screenshots.render_outputs(root)
+        except (OSError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(
+                f"unable to validate documentation screenshots: {exception}"
+            )
+        else:
+            for relative_path, expected_content in (
+                rendered_screenshot_outputs.items()
+            ):
+                output_path = root / relative_path
+                if not output_path.is_file():
+                    errors.append(
+                        "generated documentation screenshot artifact is "
+                        f"missing: {relative_path}"
+                    )
+                elif output_path.read_text(
+                    encoding="utf-8"
+                ) != expected_content:
+                    errors.append(
+                        "generated documentation screenshot artifact is "
+                        f"stale: {relative_path}; run python "
+                        "BuildTools/docs_screenshots.py --write"
+                    )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_screenshots.py",
+                "BuildTools/docs_screenshots.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation screenshot workflow is missing: {marker}"
+                    )
+
+    localization_status = generated_artifacts.get("localization_status")
+    if not isinstance(localization_status, dict):
+        errors.append(
+            "documentation manifest must declare generated_artifacts.localization_status"
+        )
+    else:
+        expected_localization_status = {
+            "source_manifest": docs_localization.DEFAULT_MANIFEST,
+            "glossary": docs_localization.DEFAULT_GLOSSARY,
+            "path": docs_localization.DEFAULT_OUTPUT,
+            "generator": docs_localization.GENERATED_BY,
+            "schema_version": docs_localization.SCHEMA_VERSION,
+        }
+        for field, expected in expected_localization_status.items():
+            if localization_status.get(field) != expected:
+                errors.append(
+                    f"documentation localization status {field} must be {expected}"
+                )
+
+        try:
+            expected_localization_content = docs_localization.render_localization_status(
+                root
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(f"unable to render documentation localization status: {exception}")
+        else:
+            output_path = root / docs_localization.DEFAULT_OUTPUT
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation localization status is missing: "
+                    + docs_localization.DEFAULT_OUTPUT
+                )
+            elif output_path.read_text(encoding="utf-8") != expected_localization_content:
+                errors.append(
+                    "generated documentation localization status is stale; "
+                    "run python BuildTools/docs_localization.py --write"
+                )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_localization.py",
+                "BuildTools/docs_localization.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation localization workflow is missing: {marker}"
+                    )
+
+    description_translation_status = generated_artifacts.get(
+        "description_translation_status"
+    )
+    if not isinstance(description_translation_status, dict):
+        errors.append(
+            "documentation manifest must declare "
+            "generated_artifacts.description_translation_status"
+        )
+    else:
+        expected_description_translation_status = {
+            "source_catalog": docs_description_translations.DEFAULT_CATALOG,
+            "models": docs_description_translations.MODEL_PATHS,
+            "path": docs_description_translations.DEFAULT_OUTPUT,
+            "generator": docs_description_translations.GENERATED_BY,
+            "schema_version": docs_description_translations.SCHEMA_VERSION,
+        }
+        for field, expected in expected_description_translation_status.items():
+            if description_translation_status.get(field) != expected:
+                errors.append(
+                    f"documentation generated-description translation status {field} "
+                    f"must be {expected}"
+                )
+
+        try:
+            expected_description_translation_content = (
+                docs_description_translations.render_status(root)
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exception:
+            errors.append(
+                "unable to render documentation generated-description translation "
+                f"status: {exception}"
+            )
+        else:
+            output_path = root / docs_description_translations.DEFAULT_OUTPUT
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation description translation status is missing: "
+                    + docs_description_translations.DEFAULT_OUTPUT
+                )
+            elif (
+                output_path.read_text(encoding="utf-8")
+                != expected_description_translation_content
+            ):
+                errors.append(
+                    "generated documentation description translation status is stale; "
+                    "run python BuildTools/docs_description_translations.py --write"
+                )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_description_translations.py",
+                "BuildTools/docs_description_translations.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        "documentation generated-description translation workflow is "
+                        f"missing: {marker}"
+                    )
+
     ai_delivery = generated_artifacts.get("ai_delivery")
     if not isinstance(ai_delivery, dict):
         errors.append("documentation manifest must declare generated_artifacts.ai_delivery")
@@ -1273,10 +2015,159 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
                 if marker not in workflow_text:
                     errors.append(f"documentation AI delivery workflow is missing: {marker}")
 
+    ai_evaluation = generated_artifacts.get("ai_evaluation")
+    if not isinstance(ai_evaluation, dict):
+        errors.append(
+            "documentation manifest must declare generated_artifacts.ai_evaluation"
+        )
+    else:
+        expected_ai_evaluation = {
+            "source": docs_ai_eval.DEFAULT_SOURCE,
+            "search": docs_ai_eval.DEFAULT_SEARCH,
+            "path": docs_ai_eval.DEFAULT_OUTPUT,
+            "generator": docs_ai_eval.GENERATED_BY,
+            "schema_version": docs_ai_eval.SCHEMA_VERSION,
+            "test": "BuildTools/tests/test_docs_ai_eval.py",
+        }
+        for field, expected in expected_ai_evaluation.items():
+            if ai_evaluation.get(field) != expected:
+                errors.append(
+                    f"documentation AI evaluation {field} must be {expected}"
+                )
+
+        try:
+            evaluation_report = docs_ai_eval.evaluate(root)
+        except ValueError as exception:
+            errors.append(f"invalid documentation AI evaluation: {exception}")
+        else:
+            for evaluation_error in evaluation_report["errors"]:
+                errors.append(f"documentation AI evaluation: {evaluation_error}")
+            expected_content = (
+                json.dumps(evaluation_report, indent=2, ensure_ascii=True) + "\n"
+            )
+            output_path = root / docs_ai_eval.DEFAULT_OUTPUT
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation AI evaluation report is missing: "
+                    + docs_ai_eval.DEFAULT_OUTPUT
+                )
+            elif output_path.read_text(encoding="utf-8") != expected_content:
+                errors.append(
+                    "generated documentation AI evaluation report is stale; "
+                    "run python BuildTools/docs_ai_eval.py --write"
+                )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_ai_eval.py",
+                "BuildTools/tests/test_docs_ai_model_eval.py",
+                "BuildTools/tests/test_docs_ai_model_review.py",
+                "BuildTools/docs_ai_eval.py --check",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation AI evaluation workflow is missing: {marker}"
+                    )
+
+    snippet_validation = generated_artifacts.get("snippet_validation")
+    if not isinstance(snippet_validation, dict):
+        errors.append(
+            "documentation manifest must declare generated_artifacts.snippet_validation"
+        )
+    else:
+        expected_snippet_validation = {
+            "source_policy": docs_snippets.DEFAULT_POLICY,
+            "path": docs_snippets.DEFAULT_OUTPUT,
+            "generator": docs_snippets.GENERATED_BY,
+            "schema_version": docs_snippets.SCHEMA_VERSION,
+            "test": "BuildTools/tests/test_docs_snippets.py",
+            "external_check": "python3 BuildTools/docs_snippets.py --check --external",
+        }
+        for field, expected in expected_snippet_validation.items():
+            if snippet_validation.get(field) != expected:
+                errors.append(
+                    f"documentation snippet validation {field} must be {expected}"
+                )
+
+        try:
+            snippet_report = docs_snippets.evaluate(root)
+        except ValueError as exception:
+            errors.append(f"invalid documentation snippet validation: {exception}")
+        else:
+            for snippet_error in snippet_report["errors"]:
+                errors.append(f"documentation snippet validation: {snippet_error}")
+            expected_content = (
+                json.dumps(snippet_report, indent=2, ensure_ascii=True) + "\n"
+            )
+            output_path = root / docs_snippets.DEFAULT_OUTPUT
+            if not output_path.is_file():
+                errors.append(
+                    "generated documentation snippet report is missing: "
+                    + docs_snippets.DEFAULT_OUTPUT
+                )
+            elif output_path.read_text(encoding="utf-8") != expected_content:
+                errors.append(
+                    "generated documentation snippet report is stale; "
+                    "run python BuildTools/docs_snippets.py --write"
+                )
+
+        if workflow_path.is_file():
+            workflow_text = workflow_path.read_text(encoding="utf-8")
+            for marker in (
+                "BuildTools/tests/test_docs_snippets.py",
+                "BuildTools/docs_snippets.py --check",
+                "BuildTools/docs_snippets.py --check --external",
+            ):
+                if marker not in workflow_text:
+                    errors.append(
+                        f"documentation snippet workflow is missing: {marker}"
+                    )
+
     site_delivery = generated_artifacts.get("site_delivery")
     if not isinstance(site_delivery, dict):
         errors.append("documentation manifest must declare generated_artifacts.site_delivery")
     else:
+        browser_policy = (
+            site_delivery_config.get("browser_validation")
+            if isinstance(site_delivery_config, dict)
+            else None
+        )
+        expected_browser_policy = {
+            "schema_version": 1,
+            "node": "24.16.0",
+            "playwright": "1.62.0",
+            "axe_core": "4.12.1",
+            "wcag_target": "WCAG 2.2 Level AA automated axe-core subset",
+            "wcag_tags": [
+                "wcag2a",
+                "wcag2aa",
+                "wcag21a",
+                "wcag21aa",
+                "wcag22a",
+                "wcag22aa",
+            ],
+            "profiles": [
+                {"id": "desktop", "width": 1440, "height": 1000},
+                {"id": "mobile", "width": 390, "height": 844},
+                {
+                    "id": "zoom-200",
+                    "width": 640,
+                    "height": 512,
+                    "physical_width": 1280,
+                    "physical_height": 1024,
+                    "device_scale_factor": 2,
+                    "zoom_percent": 200,
+                    "compact_navigation": True,
+                },
+            ],
+        }
+        if browser_policy != expected_browser_policy:
+            errors.append(
+                "documentation site browser validation policy must match the "
+                "pinned desktop/mobile/200-percent-zoom WCAG 2.2 AA contract"
+            )
+
         expected_site_delivery = {
             "source_manifest": docs_site.DEFAULT_MANIFEST,
             "generator": docs_site.GENERATED_BY,
@@ -1288,6 +2179,12 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
                 "assets/js/docs.js",
                 "assets/images/fonline-mark.png",
             ],
+            "artifact_validator": "BuildTools/docs_site_artifact.py",
+            "artifact_report": "Workspace/docs-site-artifact-report.json",
+            "browser_validator": "BuildTools/docs-browser/audit.mjs",
+            "browser_package_lock": "BuildTools/docs-browser/package-lock.json",
+            "browser_report": "Workspace/docs-browser-audit-report.json",
+            "browser_screenshots": "Workspace/docs-browser-screenshots",
         }
         for field, expected in expected_site_delivery.items():
             if site_delivery.get(field) != expected:
@@ -1317,7 +2214,12 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
             for marker in (
                 "BuildTools/tests/test_docs_site.py",
                 "BuildTools/tests/test_docs_site_layout.py",
+                "BuildTools/tests/test_docs_site_artifact.py",
+                "BuildTools/tests/test_docs_browser.py",
                 "BuildTools/docs_site.py --check",
+                "BuildTools/docs_site_artifact.py",
+                "playwright install --with-deps chromium",
+                "npm run audit",
             ):
                 if marker not in workflow_text:
                     errors.append(f"documentation site delivery workflow is missing: {marker}")
@@ -1344,6 +2246,10 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
             "image-format": "BuildTools/docs_contract_diff.py",
             "particle-format": "BuildTools/docs_contract_diff.py",
             "font-format": "BuildTools/docs_contract_diff.py",
+            "audio": "BuildTools/docs_contract_diff.py",
+            "video": "BuildTools/docs_contract_diff.py",
+            "gui-runtime": "BuildTools/docs_contract_diff.py",
+            "ai-control-protocol": "BuildTools/docs_contract_diff.py",
         },
         "source_models": {
             "api": docs_api.DEFAULT_OUTPUT,
@@ -1360,6 +2266,10 @@ def _validate_generated_artifacts(root: Path, generated_artifacts: object, error
             "image-format": docs_image_format.DEFAULT_MODEL,
             "particle-format": docs_particle_format.DEFAULT_MODEL,
             "font-format": docs_font_format.DEFAULT_MODEL,
+            "audio": docs_audio.DEFAULT_MODEL,
+            "video": docs_video.DEFAULT_MODEL,
+            "gui-runtime": docs_gui_runtime.DEFAULT_MODEL,
+            "ai-control-protocol": docs_ai_control_protocol.DEFAULT_MODEL,
         },
         "dispositions": docs_contract_diff.DEFAULT_DISPOSITIONS,
         "schema_version": docs_contract_diff.SCHEMA_VERSION,
@@ -1409,10 +2319,26 @@ def validate_manifest(root: Path, manifest_path: Path) -> tuple[list[str], dict[
     if manifest.get("schema_version") != 1:
         errors.append("documentation manifest schema_version must be 1")
 
+    try:
+        docs_external_evidence._validate_owner_policy(manifest)
+    except ValueError as exception:
+        errors.append(f"invalid documentation owner review policy: {exception}")
+
     inventory = manifest.get("inventory")
-    _validate_publishing(root, manifest.get("publishing"), errors)
+    _validate_publishing(
+        root,
+        manifest.get("publishing"),
+        manifest.get("documents"),
+        errors,
+    )
     _validate_delivery_policy(manifest, errors)
-    _validate_generated_artifacts(root, manifest.get("generated_artifacts"), errors)
+    _validate_generated_artifacts(
+        root,
+        manifest.get("generated_artifacts"),
+        manifest.get("site_delivery"),
+        manifest.get("documents"),
+        errors,
+    )
     owners = manifest.get("owners")
     documents = manifest.get("documents")
     if not isinstance(inventory, dict) or not isinstance(owners, dict) or not isinstance(documents, dict):
@@ -1427,7 +2353,18 @@ def validate_manifest(root: Path, manifest_path: Path) -> tuple[list[str], dict[
 
     discovered = _expand_inventory(root, include) - _expand_inventory(root, exclude)
     declared = set(documents)
-    for missing_path in sorted(discovered - declared):
+    localized_variants: set[str] = set()
+    try:
+        localization_status = docs_localization.generate_localization_status(root)
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        # Generated-artifact validation above reports the owning localization error.
+        pass
+    else:
+        for record in localization_status["documents"]:
+            if record["status"] == "current":
+                localized_variants.add(str(record["russian_path"]))
+
+    for missing_path in sorted(discovered - declared - localized_variants):
         errors.append(f"documentation inventory is missing a manifest entry: {missing_path}")
     for stale_path in sorted(declared - discovered):
         errors.append(f"documentation manifest path is outside the inventory or missing: {stale_path}")

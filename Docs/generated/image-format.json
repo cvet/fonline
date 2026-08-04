@@ -19,7 +19,7 @@
     ],
     "excluded": [
       "project image catalogs, resource-pack precedence, asset licenses, art direction, quality targets, and acceptance baselines",
-      "authoritative movement and the detailed walk/run projection algorithm documented by SpriteRootMotion.md",
+      "authoritative movement and the detailed walk/run projection algorithm documented by the Sprite Root Motion guide",
       "particle authoring, model textures, shader effects, GUI layout, fonts, video, and audio formats",
       "a public compatibility promise for the private baked byte stream or unsupported third-party image formats"
     ]
@@ -1110,5 +1110,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "af558b9764b246b525397ca7dcb8b14eb3a6438605dc4b6ac0d416dc50e8481c"
+  "contract_digest": "e566e0b777acd21b4440657bb7dec1cbcfd15a53e99c9f128f4d0c303e17753a"
 }

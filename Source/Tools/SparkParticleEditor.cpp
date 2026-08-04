@@ -39,6 +39,7 @@
 #include "ImGuiStuff.h"
 #include "Mapper.h"
 #include "SparkExtension.h"
+#include "SpriteResource.h"
 #include "VisualParticles.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -248,29 +249,16 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
             return {nullptr, {}};
         }
 
-        auto reader = file.GetReader();
+        SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
+        FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "SPARK particle texture must contain exactly one direction", path, resource.Directions.size());
+        SpriteResourceDirectionData& direction = resource.Directions.front();
+        FO_VERIFY_AND_THROW(direction.Frames.size() == 1, "SPARK particle texture must contain exactly one frame", path, direction.Frames.size());
+        SpriteResourceFrameData& frame = direction.Frames.front();
+        FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame SPARK particle texture cannot contain a shared-frame reference", path);
+        SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
 
-        uint8_t check_number = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
-
-        (void)reader.GetLEUInt16();
-        (void)reader.GetLEUInt16();
-        (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetUInt8();
-        uint16_t w = reader.GetLEUInt16();
-        uint16_t h = reader.GetLEUInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-
-        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
-        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
-
-        auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        nptr<const uint8_t> data_ptr = data.data();
-        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
-        tex->UpdateTextureRegion({}, {w, h}, pixels);
+        unique_ptr<RenderTexture> tex = GetApp()->Render.CreateTexture(image.Size, true, false);
+        tex->UpdateTextureRegion({}, image.Size, image.Pixels);
 
         nptr<RenderTexture> texture = tex.as_nptr();
         loaded_textures_ptr->emplace_back(std::move(tex));

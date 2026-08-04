@@ -369,7 +369,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 }
 
                 anim_merge->_sprOffset[anim_->GetFramesCount()].x -= ox;
-                anim_merge->_sprOffset[anim_->GetFramesCount()].x -= oy;
+                anim_merge->_sprOffset[anim_->GetFramesCount()].y -= oy;
             }
 
             return anim_merge_base;

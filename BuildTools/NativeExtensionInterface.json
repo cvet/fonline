@@ -39,7 +39,7 @@
       "source_list": "FO_COMMON_SOURCE",
       "library_target": "CommonLib",
       "primary_header": "Common.h",
-      "consumers": ["client", "server", "mapper", "baker", "editor", "tests"],
+      "consumers": ["client", "server", "mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
       "script_targets": ["common"],
       "description": "Code shared by every enabled engine role; use only for genuinely common dependencies and hooks."
     },
@@ -59,9 +59,9 @@
       "source_list": "FO_CLIENT_SOURCE",
       "library_target": "ClientLib",
       "primary_header": "Client.h",
-      "consumers": ["client", "mapper", "tests"],
+      "consumers": ["client", "server", "mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
       "script_targets": ["client", "mapper"],
-      "description": "Client runtime code; MapperLib links ClientLib and receives client-side metadata registrations."
+      "description": "Client runtime code; server controller paths, Mapper, both focused viewers, BakerLib, and ASCompiler link ClientLib, while only client and mapper are script export targets."
     },
     {
       "id": "native-extension.role.mapper",
@@ -79,9 +79,9 @@
       "source_list": "FO_BAKER_SOURCE",
       "library_target": "BakerLib",
       "primary_header": "Baker.h",
-      "consumers": ["baker", "editor", "tests"],
+      "consumers": ["mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
       "script_targets": [],
-      "description": "Resource-baker extensions; EditorLib links BakerLib, but BAKER is not a script export target."
+      "description": "Resource-baker extensions shared by Baker, Mapper, both focused viewers, and ASCompiler; BAKER is not a script export target."
     }
   ],
   "hooks": [

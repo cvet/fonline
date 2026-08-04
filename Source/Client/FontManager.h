@@ -59,6 +59,7 @@ enum class FontType : int32_t
 {
     Default = 0,
 };
+///@ EnumValueDoc FontType Default // Built-in default font slot used when no project-defined slot is selected.
 
 // Font flags
 ///@ ExportEnum
@@ -76,10 +77,24 @@ enum class FontFlag : uint32_t
     Justify = 0x0100, // Justify each line: distribute extra spaces between words to fill the rect width
     Bordered = 0x0200, // Render glyphs from the bordered/outlined font texture variant instead of the regular one
 };
+///@ EnumValueDoc FontFlag None // Applies no optional text-layout or glyph-rendering flags.
+///@ EnumValueDoc FontFlag NoWrap // Truncates the remaining text at rectangle-width overflow instead of wrapping it.
+///@ EnumValueDoc FontFlag TruncateLine // Skips overflowing glyphs through the next newline instead of wrapping the current line.
+///@ EnumValueDoc FontFlag CenterX // Horizontally centers each rendered line within the target rectangle.
+///@ EnumValueDoc FontFlag CenterY // Vertically centers the complete text block within the target rectangle.
+///@ EnumValueDoc FontFlag AlignRight // Right-aligns each rendered line within the target rectangle.
+///@ EnumValueDoc FontFlag AlignBottom // Aligns the text block to the bottom and makes SkipLines count from the trailing lines.
+///@ EnumValueDoc FontFlag KeepTail // Renders the tail of a text block that is taller than the target rectangle.
+///@ EnumValueDoc FontFlag NoColorize // Removes inline color tags while retaining the supplied base text color.
+///@ EnumValueDoc FontFlag Justify // Distributes extra spacing between words to fill each line's target width.
+///@ EnumValueDoc FontFlag Bordered // Uses the bordered or outlined font-texture variant for glyph rendering.
 
 // Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines counter.
 // `SkipLines` is "skip from top" by default; with FontFlag::AlignBottom set it becomes "skip from bottom" (trailing lines).
 ///@ ExportValueType Layout = FontType-Font+FontFlag-Flags+int32-SkipLines
+///@ ValueFieldDoc TextFormat Font // Font slot selected for text measurement and rendering.
+///@ ValueFieldDoc TextFormat Flags // FontFlag bitmask controlling alignment, wrapping, clipping, color tags, and glyph presentation.
+///@ ValueFieldDoc TextFormat SkipLines // Line-skip count taken from the top by default or from the bottom when AlignBottom is set.
 struct TextFormat
 {
     FontType Font {};

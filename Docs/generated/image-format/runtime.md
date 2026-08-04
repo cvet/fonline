@@ -1,23 +1,31 @@
----
-title: Sprite Runtime Contract
-document_id: generated-image-format-runtime
-locale: en
-generated: true
----
-
 # Sprite Runtime Contract
 
-> Generated reference. Do not edit directly. Update `BuildTools/ImageFormatInterface.json`, then run `python BuildTools/docs_image_format.py --write`.
+> Legacy route.
 
-[Index](index.md) | [Formats](formats.md) | [FOFRM](fofrm.md) | [Options](options.md) | [Baking](baking.md) | [Runtime](runtime.md) | [Validation](validation.md) | [Canonical JSON](../image-format.json) | [Guide](../../ImageFormat.md)
+The canonical generated reference moved to locale-specific paths.
 
-| Stable ID | Rule | Requirement | Why | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-image-format-runtime-factory-coverage-dbed40ee44"></a><code>image-format.runtime.factory-coverage</code> | Default factory extension boundary | DefaultSpriteFactory registers every built-in ImageBaker extension except spr; direct .spr paths need a custom factory or, normally, an authored .fofrm wrapper. | Bake support and stock runtime path support are separate extension registries. | [Source/Client/DefaultSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.h) |
-| <a id="entry-image-format-runtime-decode-e3dbb9d591"></a><code>image-format.runtime.decode</code> | Baked-container decoding | The stock runtime reads only the baked container through ReadSpriteResource, validates magic, version, frame and direction counts, complete frame/mesh records, footer, and trailing data, then constructs either AtlasSprite or SpriteSheet. | Source decoders are baker-only and are not deployed as runtime image parsers. | [Source/Common/SpriteResource.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/SpriteResource.cpp), [Source/Client/DefaultSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.cpp) |
-| <a id="entry-image-format-runtime-static-frame-f16d140751"></a><code>image-format.runtime.static-frame</code> | Single-frame behavior | A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized NextX/NextY remains metadata because there is no SpriteSheet frame-displacement surface. | NextX/NextY matter only when a sheet consumer selects and interprets animation frames. | [Source/Client/DefaultSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.cpp) |
-| <a id="entry-image-format-runtime-sprite-sheet-901dd24a6b"></a><code>image-format.runtime.sprite-sheet</code> | Direction and playback state | SpriteSheet accepts one or the full map direction count, supports direction selection, random prewarm, normalized time, loop/reverse playback, and treats one frame or zero whole ticks as non-playing. | Animation state is client presentation state and each direction owns a parallel frame sheet. | [Source/Client/DefaultSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.cpp) |
-| <a id="entry-image-format-runtime-frame-offset-2099ef42b3"></a><code>image-format.runtime.frame-offset</code> | Per-frame sprite offsets | Concrete and shared SpriteSheet frames retain imported NextX/NextY in _sprOffset; ordinary drawing uses the selected AtlasSprite offset, while locomotion projection consumes the separate frame-offset array. | Visual root-motion displacement must remain separate from sequence placement and authoritative world movement. | [Source/Client/DefaultSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.cpp), [Source/Client/DefaultSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.h) |
-| <a id="entry-image-format-runtime-atlas-3e5e6b22c3"></a><code>image-format.runtime.atlas</code> | Atlas upload, polygon draw, border, and hit mask | Positive-size RGBA frames are placed in the requested AtlasType, uploaded with duplicated one-pixel filtering edges, and converted to a SpriteHitValue hit mask. Ordinary full-image draws submit the baked indexed silhouette when present; crops, tiled and padded draws, fonts, blits, model sprites, and particles retain rectangular paths. | Mesh geometry changes fill and submission cost without changing atlas pixels, picking, logical scaling, or specialized rectangular rendering contracts. | [Source/Client/DefaultSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.cpp), [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp) |
-| <a id="entry-image-format-runtime-cache-d9a3c9addc"></a><code>image-format.runtime.cache</code> | Copyable sprite cache identity | Copyable sprites are cached by hashed path plus AtlasType and each load returns MakeCopy, so the same source path may have separate atlas-backed cache entries. | Independent animation state must not mutate the cached prototype, and different atlas classes cannot share placement blindly. | [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp) |
-| <a id="entry-image-format-runtime-missing-cache-1d967120e0"></a><code>image-format.runtime.missing-cache</code> | Missing-path memoization | Missing paths, absent extensions, unknown factories, and factory load failures are memoized by path in _nonFoundSprites; CleanupSpriteCache does not clear that set. | Adding a previously missing resource during a live session normally requires recreating the manager or restarting the client before retrying the same path. | [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp), [Source/Client/SpriteManager.h](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h) |
+[English](../../en/reference/image-format/runtime.md) | [Russian](../../ru/reference/image-format/runtime.md)
+
+<a id="entry-image-format-runtime-factory-coverage-dbed40ee44"></a>
+- [`entry-image-format-runtime-factory-coverage-dbed40ee44`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-factory-coverage-dbed40ee44)
+
+<a id="entry-image-format-runtime-decode-e3dbb9d591"></a>
+- [`entry-image-format-runtime-decode-e3dbb9d591`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-decode-e3dbb9d591)
+
+<a id="entry-image-format-runtime-static-frame-f16d140751"></a>
+- [`entry-image-format-runtime-static-frame-f16d140751`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-static-frame-f16d140751)
+
+<a id="entry-image-format-runtime-sprite-sheet-901dd24a6b"></a>
+- [`entry-image-format-runtime-sprite-sheet-901dd24a6b`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-sprite-sheet-901dd24a6b)
+
+<a id="entry-image-format-runtime-frame-offset-2099ef42b3"></a>
+- [`entry-image-format-runtime-frame-offset-2099ef42b3`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-frame-offset-2099ef42b3)
+
+<a id="entry-image-format-runtime-atlas-3e5e6b22c3"></a>
+- [`entry-image-format-runtime-atlas-3e5e6b22c3`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-atlas-3e5e6b22c3)
+
+<a id="entry-image-format-runtime-cache-d9a3c9addc"></a>
+- [`entry-image-format-runtime-cache-d9a3c9addc`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-cache-d9a3c9addc)
+
+<a id="entry-image-format-runtime-missing-cache-1d967120e0"></a>
+- [`entry-image-format-runtime-missing-cache-1d967120e0`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-missing-cache-1d967120e0)

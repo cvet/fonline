@@ -56,7 +56,7 @@ class DocumentationContractDiffTests(unittest.TestCase):
         )
 
         self.assertEqual(report["status"], "pass")
-        self.assertEqual(report["summary"]["domain_count"], 14)
+        self.assertEqual(report["summary"]["domain_count"], 18)
         self.assertEqual(report["summary"]["change_count"], 0)
         self.assertEqual(
             set(report["summary"]["domains"]), set(docs_contract_diff.DOMAIN_ORDER)
@@ -75,6 +75,10 @@ class DocumentationContractDiffTests(unittest.TestCase):
             "image-format",
             "particle-format",
             "font-format",
+            "audio",
+            "video",
+            "gui-runtime",
+            "ai-control-protocol",
         ):
             entries = docs_contract_diff._flatten_entries(domain, models[domain])
             self.assertEqual(len(entries), len({entry["id"] for entry in entries}))
@@ -95,6 +99,10 @@ class DocumentationContractDiffTests(unittest.TestCase):
         current["image-format"]["validation_rules"].pop()
         current["particle-format"]["validation_rules"].pop()
         current["font-format"]["validation_rules"].pop()
+        current["audio"]["validation_rules"].pop()
+        current["video"]["validation_rules"].pop()
+        current["gui-runtime"]["validation_rules"].pop()
+        current["ai-control-protocol"]["validation_rules"].pop()
 
         report = docs_contract_diff.generate_contract_diff(
             baseline, current, _empty_dispositions()
@@ -116,6 +124,20 @@ class DocumentationContractDiffTests(unittest.TestCase):
         self.assertEqual(report["domains"]["image-format"]["summary"]["required_disposition_count"], 1)
         self.assertEqual(report["domains"]["particle-format"]["summary"]["required_disposition_count"], 1)
         self.assertEqual(report["domains"]["font-format"]["summary"]["required_disposition_count"], 1)
+        self.assertEqual(report["domains"]["audio"]["summary"]["required_disposition_count"], 1)
+        self.assertEqual(report["domains"]["video"]["summary"]["required_disposition_count"], 1)
+        self.assertEqual(
+            report["domains"]["gui-runtime"]["summary"][
+                "required_disposition_count"
+            ],
+            1,
+        )
+        self.assertEqual(
+            report["domains"]["ai-control-protocol"]["summary"][
+                "required_disposition_count"
+            ],
+            1,
+        )
         self.assertEqual(
             {entry["domain"] for entry in report["missing_dispositions"]},
             {
@@ -129,6 +151,10 @@ class DocumentationContractDiffTests(unittest.TestCase):
                 "image-format",
                 "particle-format",
                 "font-format",
+                "audio",
+                "video",
+                "gui-runtime",
+                "ai-control-protocol",
             },
         )
 
@@ -136,7 +162,7 @@ class DocumentationContractDiffTests(unittest.TestCase):
             baseline, current, _resolved_dispositions(report)
         )
         self.assertEqual(passed["status"], "pass")
-        self.assertEqual(passed["summary"]["satisfied_disposition_count"], 10)
+        self.assertEqual(passed["summary"]["satisfied_disposition_count"], 14)
 
     def test_public_native_break_is_preserved_in_aggregate_report(self) -> None:
         baseline = _load_current_models()

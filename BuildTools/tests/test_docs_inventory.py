@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from pathlib import Path
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import docs_inventory  # noqa: E402
+
+ENGINE_ROOT = BUILDTOOLS_DIR.parent
 
 
 class DocumentationInventoryTests(unittest.TestCase):
@@ -55,6 +58,18 @@ class DocumentationInventoryTests(unittest.TestCase):
 
             self.assertTrue(rendered.endswith("\n"))
             self.assertEqual(json.loads(rendered)["generated_by"], "BuildTools/docs_inventory.py")
+
+    def test_unit_test_readmes_match_the_source_inventory(self) -> None:
+        inventory = docs_inventory.generate_inventory(ENGINE_ROOT)
+        expected = set(inventory["engine_tests"]["files"])
+
+        for relative_path in ("Source/Tests/README.md", "Source/Tests/README.ru.md"):
+            text = (ENGINE_ROOT / relative_path).read_text(encoding="utf-8")
+            listed = {
+                match.group(0)
+                for match in re.finditer(r"Source/Tests/Test_[A-Za-z0-9_]+\.cpp", text)
+            }
+            self.assertEqual(listed, expected, relative_path)
 
 
 if __name__ == "__main__":

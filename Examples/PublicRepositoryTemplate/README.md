@@ -12,4 +12,4 @@ python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pi
 
 The pinned workflow protects released behavior. The scheduled current-Engine workflow checks forward compatibility without changing the released pin. A current-Engine failure produces a reviewed update task or pull request; it never silently moves a release artifact to a floating Engine branch.
 
-Human policy and repository-specific exit gates are documented in [PublicExampleRepositories.md](../../Docs/PublicExampleRepositories.md). The machine source is [PublicRepositories.json](../PublicRepositories.json).
+Human policy and repository-specific exit gates are documented in [Public Example Repositories](../../Docs/en/how-to/build/public-example-repositories.md). The machine source is [PublicRepositories.json](../PublicRepositories.json).
