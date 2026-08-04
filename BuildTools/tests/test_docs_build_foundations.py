@@ -135,6 +135,8 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
             "AddProjectLibraries(ROLES SERVER LIBRARIES StarterProjectDependency)",
             project,
         )
+        self.assertIn("if(COMMAND AddProjectLibraries)", project)
+        self.assertIn("list(APPEND FO_SERVER_LIBS StarterProjectDependency)", project)
 
         stock_dialogs = [
             path

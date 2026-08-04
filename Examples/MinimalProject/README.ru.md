@@ -4,7 +4,7 @@ locale: ru
 document_id: minimal-project-readme
 ---
 
-<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"233b246e37b21a2dbf80ce3e672c6e76e4fef792b21548735aa80718b8521695"} -->
+<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"92165d78de7674d593ba7eacc0e16f9c71114d4e2975fa7a4f4bad45e77f01dc"} -->
 
 # Минимальный проект FOnline
 
@@ -75,6 +75,12 @@ AngelScript вызвал сгенерированную привязку `Game.N
 успешно выполнен 31 июля 2026 года. Оба маршрута, Windows и Linux,
 зарегистрированы в `.github/workflows/validate.yml`; Linux нельзя описывать как
 проверенный, пока его задание CI не станет зелёным.
+
+Ветка совместимости в `CMakeLists.txt` добавляет ту же цель в `FO_SERVER_LIBS`
+только для старых ревизий Engine, в которых ещё нет `AddProjectLibraries`.
+Зафиксированный release-маршрут проверяет публичную вспомогательную функцию, а
+маршрут текущего Engine сохраняет собираемость starter на время переноса этой
+функции из кандидата документации в `master`.
 
 ## Намеренные ограничения
 
