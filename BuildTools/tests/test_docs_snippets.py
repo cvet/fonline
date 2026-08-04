@@ -58,12 +58,12 @@ class DocumentationSnippetTests(unittest.TestCase):
         report = docs_snippets.evaluate(BUILDTOOLS_DIR.parent)
 
         self.assertEqual(report["error_count"], 0)
-        self.assertEqual(report["snippet_count"], 461)
-        self.assertEqual(report["normative_count"], 304)
-        self.assertEqual(report["normative_validated_count"], 304)
+        self.assertEqual(report["snippet_count"], 462)
+        self.assertEqual(report["normative_count"], 305)
+        self.assertEqual(report["normative_validated_count"], 305)
         self.assertEqual(report["normative_coverage"], 1.0)
         self.assertEqual(report["evidence_count"], 157)
-        self.assertEqual(report["external_parser_required_count"], 181)
+        self.assertEqual(report["external_parser_required_count"], 182)
 
     def test_every_declared_harness_validates_a_fixture(self) -> None:
         markdown = """# Guide
