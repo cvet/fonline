@@ -21,7 +21,6 @@ EVIDENCE_PATTERNS = (
     "Workspace/**/*.tga",
     "captures/*.json",
     "captures/*.png",
-    "Build/**/Binaries/**/*",
     "Build/**/*packaging-manifest.json",
     "Build/**/*runtime-report.json",
     "Build/**/*.zip",

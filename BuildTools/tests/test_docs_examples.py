@@ -326,6 +326,18 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
         prepare_workspace = (ENGINE_ROOT / "BuildTools/prepare-workspace.sh").read_text(encoding="utf-8")
         self.assertIn("showcase-display-packages", prepare_workspace)
+        evidence_collector = (
+            ENGINE_ROOT / "Examples/PublicRepositoryTemplate/collect-evidence.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn('"Build/**/Binaries/**/*"', evidence_collector)
+        for retained_pattern in (
+            '"Build/**/*packaging-manifest.json"',
+            '"Build/**/*.zip"',
+            '"Build/**/*.tar.gz"',
+            '"Build/**/*.wasm"',
+            '"Build/**/*.data"',
+        ):
+            self.assertIn(retained_pattern, evidence_collector)
         for marker in (
             "schedule:",
             "git -C Engine fetch --depth=1 origin master",

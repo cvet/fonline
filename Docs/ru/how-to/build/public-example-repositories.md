@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/public-example-repositories.html
 
 # Публичные репозитории с примерами
 
-<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"e7c8c19b7778a8169067d6bbc08337d0dc4f2e9f360fa322c9d3da1267ebaf74"} -->
+<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"69a2ee63b27441f90ac8c9ba40d3a5a554f74c3d8c9a1d835cd3daedcb579c41"} -->
 
 Это руководство определяет, как создаются, проверяются, подготавливаются, выпускаются и поддерживаются совместимыми репозитории с примерами FOnline. Машиночитаемый первоисточник находится в [Examples/PublicRepositories.json](../../../../Examples/PublicRepositories.json), а его проверяемая проекция находится в [сгенерированном реестре](../../reference/public-examples/index.md).
 
@@ -172,6 +172,8 @@ Linux-задачи подготавливают системные зависи�
 Content Showcase добавляет к этой команде `showcase-display-packages web-packages web`. Поскольку helper запускается из корня репозитория примера, закреплённый SDK устанавливается в `Workspace/emsdk`; задавайте `FO_EMSDK` на этот принадлежащий корню путь, а не на `Engine/Workspace/emsdk`. PNG Linux OpenGL, контракт захвата и отчёт процессов загружаются сразу после успешного захвата Xvfb/Mesa и до более длинной WebGL 2 runtime-линии. Поэтому последующий сбой Web не уничтожает уже достоверное доказательство backend, но вся обязательная job остаётся неуспешной, пока не пройдут все линии.
 
 `current-engine` запускается еженедельно и по запросу. Она временно извлекает Engine `master`, записывает протестированный commit и запускает то же основное поведение. Она не должна перезаписывать `example-repository.json`, gitlink, сгенерированные файлы, теги или артефакты выпусков.
+
+Общий сборщик доказательств сохраняет отчёты, снимки, манифесты пакетов, архивы выпуска и Web runtime payload. Он намеренно исключает рекурсивные копии `Build/**/Binaries`: эти деревья дублируют промежуточный результат сборки, могут исчерпать таймаут job и не являются контрактом выпуска. Если репозиторию нужен другой артефакт, добавьте узкий именованный шаблон; не расширяйте сборщик до всего дерева сборки.
 
 Дополнительные шлюзы задаются записью реестра:
 

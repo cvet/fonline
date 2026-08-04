@@ -19516,7 +19516,7 @@ When changing server runtime behavior, verify:
 ===== BEGIN DOCUMENT public-example-repositories =====
 Source: Docs/en/how-to/build/public-example-repositories.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/public-example-repositories.html
-Content SHA-256: e7c8c19b7778a8169067d6bbc08337d0dc4f2e9f360fa322c9d3da1267ebaf74
+Content SHA-256: 69a2ee63b27441f90ac8c9ba40d3a5a554f74c3d8c9a1d835cd3daedcb579c41
 
 ---
 layout: default
@@ -19690,6 +19690,8 @@ Linux jobs prepare host dependencies through the checked-out revision's `Engine/
 Content Showcase adds `showcase-display-packages web-packages web` to that command. Because the helper runs from the example repository root, it installs the pinned SDK under `Workspace/emsdk`; set `FO_EMSDK` to that root-owned path, not `Engine/Workspace/emsdk`. The Linux OpenGL PNG, capture contract, and process report are uploaded immediately after the successful Xvfb/Mesa capture and before the longer WebGL 2 runtime lane. A later Web failure therefore cannot erase already valid backend evidence, while the overall required job still remains failed until every lane passes.
 
 `current-engine` runs weekly and on demand. It temporarily checks out Engine `master`, records the tested commit, and runs the same primary behavior. It must not rewrite `example-repository.json`, the gitlink, generated files, tags, or release artifacts.
+
+The shared evidence collector retains reports, captures, package manifests, release archives, and Web runtime payloads. It deliberately excludes recursive copies of `Build/**/Binaries`: those trees duplicate intermediate build output, can exceed the job timeout, and are not a release contract. Add a narrow, named pattern when a repository needs another artifact; do not broaden the collector to the complete build tree.
 
 Additional gates come from the registry entry:
 

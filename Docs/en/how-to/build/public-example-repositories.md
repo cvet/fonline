@@ -171,6 +171,8 @@ Content Showcase adds `showcase-display-packages web-packages web` to that comma
 
 `current-engine` runs weekly and on demand. It temporarily checks out Engine `master`, records the tested commit, and runs the same primary behavior. It must not rewrite `example-repository.json`, the gitlink, generated files, tags, or release artifacts.
 
+The shared evidence collector retains reports, captures, package manifests, release archives, and Web runtime payloads. It deliberately excludes recursive copies of `Build/**/Binaries`: those trees duplicate intermediate build output, can exceed the job timeout, and are not a release contract. Add a narrow, named pattern when a repository needs another artifact; do not broaden the collector to the complete build tree.
+
 Additional gates come from the registry entry:
 
 - tutorial repositories replay every lesson tag or fixture;
