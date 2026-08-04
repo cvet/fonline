@@ -15,7 +15,12 @@ from typing import Sequence
 
 
 ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT / "Engine" / "BuildTools"))
+BUILDTOOLS_ROOT = ROOT.parents[1] / "BuildTools"
+if not BUILDTOOLS_ROOT.is_dir():
+    BUILDTOOLS_ROOT = ROOT / "Engine" / "BuildTools"
+if not BUILDTOOLS_ROOT.is_dir():
+    raise RuntimeError("unable to locate Engine BuildTools")
+sys.path.insert(0, str(BUILDTOOLS_ROOT))
 
 import gameplay_test_runner  # noqa: E402
 

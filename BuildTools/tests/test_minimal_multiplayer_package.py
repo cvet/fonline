@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -53,6 +54,21 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "archive inventory mismatch"):
                 verify_tutorial_package.verify_archive(payload, archive_path)
 
+    def test_verifier_imports_from_standalone_repository_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            buildtools = root / "Engine/BuildTools"
+            buildtools.mkdir(parents=True)
+            shutil.copy2(ENGINE_ROOT / "BuildTools/gameplay_test_runner.py", buildtools)
+            script = root / "verify_tutorial_package.py"
+            shutil.copy2(SCRIPT, script)
+            spec = importlib.util.spec_from_file_location("standalone_verify_tutorial_package", script)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            self.assertEqual(module.BUILDTOOLS_ROOT, buildtools)
+
     def test_checked_package_manifest_and_cmake_cover_both_hosts(self) -> None:
         manifest = json.loads((ENGINE_ROOT / "Examples/MinimalMultiplayer/package-smoke.json").read_text(encoding="utf-8"))
         cmake = (ENGINE_ROOT / "Examples/MinimalMultiplayer/CMakeLists.txt").read_text(encoding="utf-8")
@@ -60,6 +76,7 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
         workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
 
         self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(verify_tutorial_package.BUILDTOOLS_ROOT, ENGINE_ROOT / "BuildTools")
         self.assertEqual(manifest["scenarios"][0]["id"], "packaged-server-client-interaction")
         self.assertEqual(verify_tutorial_package.PACKAGE_CONFIG, "TutorialSmoke")
         self.assertIn("DefinePackage(Tutorial", cmake)
