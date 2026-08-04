@@ -13,8 +13,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
 from urllib.parse import quote
 
-import docs_localization
 import docs_description_translations
+import docs_cli
+import docs_localization
 
 
 SCHEMA_VERSION = 1
@@ -28,6 +29,7 @@ GENERATED_BY = "BuildTools/docs_package.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
 PROGRAM = "package.py"
+HELP_COLUMNS = docs_cli.HELP_COLUMNS
 PAGE_DEFINITIONS = (
     ("index.md", "generated-package-index", "Generated Package Interface"),
     ("declaration.md", "generated-package-declaration", "Package Declaration Grammar"),
@@ -185,7 +187,7 @@ def _stable_argparse_environment() -> Iterator[None]:
     previous_argv0 = sys.argv[0]
     previous_columns = os.environ.get("COLUMNS")
     sys.argv[0] = PROGRAM
-    os.environ["COLUMNS"] = "80"
+    os.environ["COLUMNS"] = str(HELP_COLUMNS)
     try:
         yield
     finally:
@@ -252,7 +254,7 @@ def _argument_model(action: argparse.Action) -> dict[str, object]:
         "destination": action.dest,
         "action": _action_kind(action),
         "option_strings": list(action.option_strings),
-        "required": bool(action.required),
+        "required": docs_cli._is_required(action),
         "nargs": 1 if action.nargs is None else _serializable(action.nargs, f"{action.dest}.nargs"),
         "choices": _serializable(choices, f"{action.dest}.choices"),
         "default": _serializable(action.default, f"{action.dest}.default"),

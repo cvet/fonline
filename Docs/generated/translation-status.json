@@ -1821,8 +1821,8 @@
       "english_path": "Docs/en/reference/packages/cli.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/packages/cli.md",
-      "source_sha256": "9d656b9c2182f81234d27673ec7f5a5452972ac93015b0cee582077c3647ab54",
-      "source_bytes": 5119,
+      "source_sha256": "8dc7412d2191f7c88f26a318811ba37b408a47ab21e7d686c54961834af77ed6",
+      "source_bytes": 5029,
       "status": "current"
     },
     {
@@ -1847,7 +1847,7 @@
       "english_path": "Docs/en/reference/packages/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/packages/index.md",
-      "source_sha256": "a32ff019c4f1ae81db2a7b65c10fe4e4fdca5b7f26d8331fbf2a1cc126fc4cf8",
+      "source_sha256": "8e1ac7ecd20bdf6a8d8f866644771ea31374025ac10c7c145382b6a48eb56fcf",
       "source_bytes": 3324,
       "status": "current"
     },

@@ -14,13 +14,8 @@ generated: true
 CMake normally invokes this internal CLI once for each `BINARY` clause. Direct callers must provide the same build hash, config, input, and output context.
 
 ```text
-usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME
-                  -nicename NICENAME
-                  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}
-                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH
-                  -pack PACK -config CONFIG -input INPUT
-                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]
-                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
+usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH -pack PACK
+                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
 
 FOnline packager
 

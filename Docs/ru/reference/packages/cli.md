@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"9d656b9c2182f81234d27673ec7f5a5452972ac93015b0cee582077c3647ab54"} -->
+<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"8dc7412d2191f7c88f26a318811ba37b408a47ab21e7d686c54961834af77ed6"} -->
 
 # Командная строка упаковщика
 
@@ -16,13 +16,8 @@ generated: true
 Обычно CMake вызывает этот внутренний CLI один раз для каждого предложения `BINARY`. Прямые вызовы должны передавать тот же хеш сборки, конфигурацию и контекст входных и выходных данных.
 
 ```text
-usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME
-                  -nicename NICENAME
-                  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}
-                  -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH
-                  -pack PACK -config CONFIG -input INPUT
-                  [-binary-output-postfix BINARY_OUTPUT_POSTFIX]
-                  -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
+usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH -pack PACK
+                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
 
 FOnline packager
 

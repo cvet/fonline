@@ -131,7 +131,7 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(len(identities), len(set(identities)))
 
         environment = dict(os.environ)
-        environment["COLUMNS"] = "80"
+        environment["COLUMNS"] = str(docs_package.HELP_COLUMNS)
         result = subprocess.run(
             [sys.executable, str(ENGINE_ROOT / docs_package.DEFAULT_SOURCE), "--help"],
             cwd=ENGINE_ROOT,
