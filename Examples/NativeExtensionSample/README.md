@@ -58,6 +58,8 @@ The project compiles the extension and Engine from source in one build. It does 
 
 `NativeExtensionCore` exposes only fixed-width values to its focused test. Engine handles stay in the registered extension translation unit and use `ptr<T>` borrows. Per-server state lives in `ServerEngine.UserData`; there is no file-scope mutable state. A real project with several native subsystems should place one project-owned aggregate in that slot instead of letting independent extensions compete for it.
 
+The `CMakeLists.txt` compatibility branch appends `NativeExtensionCore` directly to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane therefore proves the documented helper, while the current-Engine lane remains useful during helper rollout.
+
 The sample contains no distributable assets, runtime libraries, credentials, or service integration. Add those only with explicit provenance, platform support, package acceptance, and security ownership.
 
 ## Related Documentation

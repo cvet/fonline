@@ -75,6 +75,11 @@ class DocumentationProjectDependenciesTests(unittest.TestCase):
 
         self.assertIn("add_library(StarterProjectDependency INTERFACE)", fixture_cmake)
         self.assertIn("AddProjectLibraries(ROLES SERVER LIBRARIES StarterProjectDependency)", fixture_cmake)
+        self.assertIn("list(APPEND FO_SERVER_LIBS StarterProjectDependency)", fixture_cmake)
+
+        native_fixture = (ENGINE_ROOT / "Examples/NativeExtensionSample/CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn("if(COMMAND AddProjectLibraries)", native_fixture)
+        self.assertIn("list(APPEND FO_SERVER_LIBS NativeExtensionCore)", native_fixture)
         self.assertIn("FO_STARTER_PROJECT_DEPENDENCY", fixture_source)
 
     def test_manifest_evaluation_evidence_and_ci_register_the_guide(self) -> None:

@@ -541,6 +541,8 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         for marker in (
             "AddProjectLibraries(",
             "ROLES SERVER",
+            "if(COMMAND AddProjectLibraries)",
+            "list(APPEND FO_SERVER_LIBS NativeExtensionCore)",
             "AddEngineSources(SERVER SourceExt/ServerExtension.cpp)",
             "FONATIVE_NativeExtensionCoreTest",
             "RunNativeExtensionChecks",

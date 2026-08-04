@@ -41,9 +41,14 @@ add_executable(FONATIVE_NativeExtensionCoreTest
 target_link_libraries(FONATIVE_NativeExtensionCoreTest PRIVATE
     NativeExtensionCore)
 
-AddProjectLibraries(
-    ROLES SERVER
-    LIBRARIES NativeExtensionCore)
+if(COMMAND AddProjectLibraries)
+    AddProjectLibraries(
+        ROLES SERVER
+        LIBRARIES NativeExtensionCore)
+else()
+    # Compatibility with Engine revisions from before the public role helper.
+    list(APPEND FO_SERVER_LIBS NativeExtensionCore)
+endif()
 AddEngineSources(SERVER SourceExt/ServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
