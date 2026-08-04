@@ -78,6 +78,25 @@ def _contract_packager(target: str, platform: str, arch: str, packs: set[str]) -
 
 
 class DocumentationPackageTests(unittest.TestCase):
+    def test_runtime_payload_postfix_accepts_package_and_cmake_variants(self) -> None:
+        extract = package_tool.Packager.extract_binary_entry_postfix
+
+        self.assertEqual(extract("Client-Linux-x64"), "")
+        self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand"), "")
+        self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand-Debug-Steam"), "Steam")
+        self.assertEqual(extract("Client-Linux-x64-Debug_Profiling_OnDemand"), "")
+        self.assertEqual(extract("Client-Linux-x64-Debug_Profiling_OnDemand-Steam"), "Steam")
+        self.assertEqual(extract("Client-Linux-x64-Debug_San_Address"), "")
+        self.assertEqual(extract("Client-Linux-x64-San_MemoryWithOrigins"), "")
+        self.assertEqual(extract("Client-Windows-win64-Release_Debugging"), "")
+
+    def test_runtime_payload_postfix_rejects_unrelated_or_malformed_entries(self) -> None:
+        extract = package_tool.Packager.extract_binary_entry_postfix
+
+        self.assertIsNone(extract("Server-Linux-x64"))
+        self.assertIsNone(extract("Client-Unknown-x64"))
+        self.assertIsNone(extract("Client-Linux-x64-Debug_Profiling_OnDemand_bad"))
+
     def test_current_model_has_stable_shape_ids_and_exact_help(self) -> None:
         model = docs_package.generate_package_model(ENGINE_ROOT)
 

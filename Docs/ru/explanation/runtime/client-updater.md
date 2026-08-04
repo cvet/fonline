@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"6cbd05d54dbe72c6815a01a81c0053be8843687d0b6206632290fb37f226ca0b"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"625c43c51ad848e76f6f8ac58d2776ce53c1f13b0158e875149944a48952e44a"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -511,9 +511,13 @@ Incremental baker может touch неизменившийся output, но con
 `Linux-arm64`, `macOS-arm64`, `Android-arm64` и другие targets. Profiling получает
 `_Profiling`; OGL staged отдельно с `ForceOpenGL=1`. Для
 `FO_BINARY_OUTPUT_POSTFIX`, например `Steam`, каждый payload получает `_Steam`,
-чтобы варианты не перезаписывались. `extract_binary_entry_postfix` извлекает
-postfix из имени build entry, но package declaration обязана явно задать то же
-значение через `POSTFIX`: package-wide fallback нет. Client packager отражает
+чтобы варианты не перезаписывались. `extract_binary_entry_postfix` сначала
+удаляет как порядок packager (`-Profiling_X-Debug`), так и фактическое имя
+multi-config CMake (`-Debug_Profiling_X`), включая именованные release- и
+sanitizer-конфигурации, а затем извлекает необязательный postfix. Посторонние
+или некорректные каталоги `Client-*` пропускаются и не прерывают корректную
+упаковку. Совпадающая package declaration обязана явно задать тот же postfix
+через `POSTFIX`: package-wide fallback нет. Client packager отражает
 suffix в `bin_out_name`, `PACKAGED_BUILD_NAME` совпадает с именем server payload,
 а `Updater.cpp::remap_runtime_name` выбирает правильный runtime. Legacy Win7 target
 нормализуется к обычному Windows target, поэтому отдельность обеспечивает именно

@@ -708,7 +708,7 @@ class Packager:
 
 	@staticmethod
 	def extract_binary_entry_postfix(binary_entry_name: str) -> str | None:
-		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
+		# Accept both build_binary_entry() suffixes and CMake multi-config directory names.
 		# Returns the FO_BINARY_OUTPUT_POSTFIX segment (empty if absent), or None when the entry
 		# doesn't match any known platform/arch. The server-side runtime payload packager uses
 		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
@@ -726,7 +726,22 @@ class Packager:
 		if best_prefix_len < 0:
 			return None
 		remainder = after_client[best_prefix_len:]
-		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
+		for opt in (
+			'-Debug_Profiling_Total',
+			'-Debug_Profiling_OnDemand',
+			'-Debug_San_Address',
+			'-Profiling_Total',
+			'-Profiling_OnDemand',
+			'-Release_Debugging',
+			'-Release_Ext',
+			'-San_MemoryWithOrigins',
+			'-San_Address_Undefined',
+			'-San_Undefined',
+			'-San_Address',
+			'-San_Memory',
+			'-San_Thread',
+			'-San_DataFlow',
+		):
 			if remainder.startswith(opt):
 				remainder = remainder[len(opt):]
 				break
@@ -734,7 +749,8 @@ class Packager:
 			remainder = remainder[len('-Debug'):]
 		if not remainder:
 			return ''
-		assert remainder.startswith('-'), 'Unexpected binary entry layout: ' + binary_entry_name
+		if not remainder.startswith('-'):
+			return None
 		return remainder[1:]
 
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
