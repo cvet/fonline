@@ -139,7 +139,7 @@ class DocumentationHelperCliTests(unittest.TestCase):
         )
 
         environment = dict(os.environ)
-        environment["COLUMNS"] = "80"
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
         for helper in model["helpers"]:
             with self.subTest(helper=helper["id"]):
                 result = subprocess.run(
