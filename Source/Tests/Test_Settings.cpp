@@ -191,11 +191,10 @@ TEST_CASE("Settings")
 
         string config_path = strex(temp_dir).combine_path("runtime-defaults.fomain").str();
         string cache_path = strex(temp_dir).combine_path("cache").str();
-        REQUIRE(fs_write_file(
-            config_path,
+        REQUIRE(fs_write_file(config_path,
             strex("Common.GameName = Runtime Defaults Probe\n"
                   "Baking.CacheResources = {}\n",
-                  cache_path)
+                cache_path)
                 .str()));
 
         string arg0 = "lf_tests";
