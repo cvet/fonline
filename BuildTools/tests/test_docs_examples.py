@@ -125,6 +125,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertEqual(result["repository"], "cvet/fonline-minimal-multiplayer")
         self.assertTrue((output_root / "Scripts" / "Tutorial.fos").is_file())
         self.assertTrue((output_root / "TUTORIAL.md").is_file())
+        self.assertTrue((output_root / "collect-evidence.py").is_file())
         self.assertIn("FOnline Minimal Multiplayer", (output_root / "README.md").read_text(encoding="utf-8"))
         self.assertIn("python validate.py", (output_root / "README.md").read_text(encoding="utf-8"))
         self.assertIn("url = https://github.com/cvet/fonline.git", (output_root / ".gitmodules").read_text())
@@ -321,8 +322,25 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             self.assertIn(marker, pinned_workflow)
         for workflow in (pinned_workflow, current_workflow):
             self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
-        for marker in ("schedule:", "git -C Engine fetch --depth=1 origin master", "--engine-mode current"):
+        for marker in (
+            "schedule:",
+            "git -C Engine fetch --depth=1 origin master",
+            "collect-evidence.py --mode current",
+            "actions/upload-artifact@v4",
+        ):
             self.assertIn(marker, current_workflow)
+        self.assertLess(
+            current_workflow.index("--engine-mode pinned"),
+            current_workflow.index("git -C Engine fetch --depth=1 origin master"),
+        )
+        for marker in (
+            "collect-evidence.py --mode pinned",
+            "showcase-display-packages",
+            "linux-capture",
+            "--web-runtime",
+            "actions/upload-artifact@v4",
+        ):
+            self.assertIn(marker, pinned_workflow)
 
         multiplayer = model["repositories"][1]
         self.assertEqual(multiplayer["status"], "source-ready")

@@ -1,5 +1,8 @@
 name: Current Engine Compatibility
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   schedule:
@@ -8,6 +11,7 @@ on:
 jobs:
   compatibility:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
@@ -16,12 +20,21 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: Engine/BuildTools/prepare-workspace.sh linux-packages linux
+      - name: Verify repository contract and exact release pin
+        run: python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pinned
       - name: Select current Engine master
         shell: bash
         run: |
           git -C Engine fetch --depth=1 origin master
           git -C Engine checkout --detach FETCH_HEAD
-      - name: Verify repository contract
-        run: python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode current
       - name: Run primary example check
         run: "{{PRIMARY_CHECK_COMMAND}}"
+      - name: Collect commit-addressed compatibility evidence
+        run: python collect-evidence.py --mode current
+      - name: Upload commit-addressed compatibility evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: '{{REPOSITORY_ID}}-current-Engine-${{ github.sha }}-${{ github.run_attempt }}'
+          path: Evidence/
+          if-no-files-found: error
+          retention-days: 30

@@ -1,5 +1,5 @@
 {
-  "contract_digest": "4af5ab4535823a5592d87d8e47c5403afd750a38697ffc6c62cf3065cba64e74",
+  "contract_digest": "105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54",
   "generated_by": "BuildTools/docs_examples.py",
   "program": {
     "compatibility": {
@@ -47,6 +47,7 @@
         "SUPPORT.md": "SUPPORT.md",
         "THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
         "assets/provenance.json": "assets/provenance.json",
+        "collect-evidence.py": "collect-evidence.py",
         "example-repository.template.json": "example-repository.json"
       },
       "metadata_path": "example-repository.json",
@@ -67,6 +68,7 @@
         ".github/PULL_REQUEST_TEMPLATE.md",
         ".github/workflows/current-engine.yml",
         ".github/workflows/pinned-engine.yml",
+        "collect-evidence.py",
         "CONTRIBUTING.md",
         "LICENSE",
         "README.md",
