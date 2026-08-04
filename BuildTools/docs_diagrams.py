@@ -674,6 +674,11 @@ def render_mobile_svg(diagram: dict[str, Any]) -> tuple[str, int, int]:
     return "\n".join(lines), width, height
 
 
+def _normalized_text_bytes(path: Path) -> bytes:
+    text = path.read_text(encoding="utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def render_outputs(root: Path) -> dict[str, str]:
     manifest = load_diagrams(root)
     svg_outputs: dict[str, str] = {}
@@ -718,7 +723,7 @@ def render_outputs(root: Path) -> dict[str, str]:
                 ],
             }
         )
-    source_bytes = (root / DEFAULT_MANIFEST).read_bytes()
+    source_bytes = _normalized_text_bytes(root / DEFAULT_MANIFEST)
     catalog = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,

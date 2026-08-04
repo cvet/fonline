@@ -79,6 +79,18 @@ class DocumentationDiagramTests(unittest.TestCase):
                 self.assertGreater(variant["width"], 0)
                 self.assertGreater(variant["height"], 0)
 
+    def test_manifest_hash_is_independent_of_checkout_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            lf_path = root / "lf.json"
+            crlf_path = root / "crlf.json"
+            lf_path.write_bytes(b'{\n  "schema_version": 1\n}\n')
+            crlf_path.write_bytes(b'{\r\n  "schema_version": 1\r\n}\r\n')
+            self.assertEqual(
+                docs_diagrams._normalized_text_bytes(lf_path),
+                docs_diagrams._normalized_text_bytes(crlf_path),
+            )
+
     def test_palette_text_contrast_exceeds_wcag_normal_text_ratio(self) -> None:
         def luminance(color: str) -> float:
             channels = [
