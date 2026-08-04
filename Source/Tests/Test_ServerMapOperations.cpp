@@ -4731,10 +4731,10 @@ namespace MapOpsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4762,10 +4762,10 @@ namespace MapOpsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4876,9 +4876,9 @@ namespace MapOpsTest
         hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
         hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
-        REQUIRE(static_cast<bool>(critter_registrator));
-        auto multihex_property = critter_registrator->FindProperty("Multihex");
+        auto critter_registrar = proto_engine.GetPropertyRegistrar(critter_type);
+        REQUIRE(static_cast<bool>(critter_registrar));
+        auto multihex_property = critter_registrar->FindProperty("Multihex");
         REQUIRE(static_cast<bool>(multihex_property));
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
             {"TestCritter", {}},

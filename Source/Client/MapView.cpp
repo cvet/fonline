@@ -63,7 +63,7 @@ void FogLayer::Dispose() noexcept
 }
 
 MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto, isize32 screen_size, nptr<const Properties> props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef())
 {
@@ -345,7 +345,7 @@ void MapView::LoadStaticData()
             auto item_proto = _engine->GetProtoItem(item_pid);
             FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype");
 
-            auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
+            auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
             auto props_data_size = reader.Read<uint32_t>();
             props_data.resize(props_data_size);
             span<uint8_t> props_data_span = props_data;

@@ -111,7 +111,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
                         }
 
-                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
+                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
@@ -152,7 +152,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
                         }
 
-                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
+                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;

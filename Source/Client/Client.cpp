@@ -142,11 +142,11 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
             };
         };
 
-        auto set_send_callbacks = [](nptr<const PropertyRegistrator> registrator, const PropertyPostSetCallback& callback) {
-            FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+        auto set_send_callbacks = [](nptr<const PropertyRegistrar> registrar, const PropertyPostSetCallback& callback) {
+            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
-            for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                auto prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+                auto prop = registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
                 FO_VERIFY_AND_THROW(prop, "Missing property by index");
 
                 if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
@@ -157,12 +157,12 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendGlobalValue));
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendPlayerValue));
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendItemValue));
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendCritterValue));
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendMapValue));
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendLocationValue));
+        set_send_callbacks(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendGlobalValue));
+        set_send_callbacks(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendPlayerValue));
+        set_send_callbacks(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendItemValue));
+        set_send_callbacks(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendCritterValue));
+        set_send_callbacks(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendMapValue));
+        set_send_callbacks(GetPropertyRegistrar(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendLocationValue));
     }
 
     // Properties with custom behaviours
@@ -174,44 +174,44 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
             };
         };
 
-        auto set_callback = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertyPostSetCallback callback) {
-            FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+        auto set_callback = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
+            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
-            auto prop = registrator->GetPropertyByIndex(prop_index);
+            auto prop = registrar->GetPropertyByIndex(prop_index);
             FO_VERIFY_AND_THROW(prop, "Missing property by index");
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLookDistance));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterModelName));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterElevation));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemPicMap));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemOffsetCoords));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLookDistance));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterModelName));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterElevation));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemPicMap));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemOffsetCoords));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
     }
 
     _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
-ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator) :
-    BaseEngine(settings, std::move(resources), mapper_registrator),
+ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrar& mapper_registrar) :
+    BaseEngine(settings, std::move(resources), mapper_registrar),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
     SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
     FontMngr(make_ptr(&SprMngr)),
@@ -1734,7 +1734,7 @@ void ClientEngine::Net_OnProperty()
         return;
     }
 
-    auto prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(property_index);
+    auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(property_index);
 
     if (!prop) {
         BreakIntoDebugger();
@@ -2002,15 +2002,15 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
         FO_VERIFY_AND_THROW(!has_protos, "Has protos is already set");
     }
 
-    auto registrator = GetPropertyRegistrator(type_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+    auto registrar = GetPropertyRegistrar(type_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
     refcount_ptr<CustomEntityView> entity = [&]() -> refcount_ptr<CustomEntityView> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrar, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
+        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrar, nullptr, nullptr);
     }();
 
     entity->RestoreData(data);
@@ -2210,7 +2210,7 @@ void ClientEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
     FO_VERIFY_AND_THROW(player, "Player is null");
 
     if (!player->GetId()) {
-        throw ScriptException("Can't modify player public/protected property on unlogined player");
+        throw ScriptException("Can't modify player public/protected property on notLoggedIn player");
     }
 
     Net_SendProperty(NetProperty::Player, prop, player);
