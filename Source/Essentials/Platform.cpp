@@ -523,7 +523,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         result.Cores.reserve(static_cast<size_t>(processor_count));
 
         for (natural_t i = 0; i < processor_count; i++) {
-            processor_cpu_load_info_data_t& info = load_info[i];
+            const processor_cpu_load_info_data_t& info = load_info[i];
             uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
             uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
             uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
