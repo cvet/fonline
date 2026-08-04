@@ -39,6 +39,19 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
         )
         self.assertIn("localization", self.model["owners"])
 
+    def test_source_digest_is_independent_of_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            lf_path = root / "lf.json"
+            crlf_path = root / "crlf.json"
+            lf_path.write_bytes(b'{\n  "schema_version": 1\n}\n')
+            crlf_path.write_bytes(b'{\r\n  "schema_version": 1\r\n}\r\n')
+
+            self.assertEqual(
+                docs_external_evidence._normalized_text_sha256(lf_path),
+                docs_external_evidence._normalized_text_sha256(crlf_path),
+            )
+
     def test_every_record_has_owner_target_and_review_gate(self) -> None:
         for record in self.model["records"]:
             self.assertIn(record["owner"], record["required_reviews"])

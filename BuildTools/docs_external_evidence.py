@@ -29,6 +29,11 @@ VALID_PRIORITIES = {"P0", "P1", "P2", "P3"}
 REVIEW_FIELDS = ("scope", "required_evidence", "co_review_when")
 
 
+def _normalized_text_sha256(path: Path) -> str:
+    text = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def _required_string(value: object, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a non-empty string")
@@ -327,7 +332,7 @@ def generate_model(
     priority_counts = Counter(record["priority"] for record in normalized_records)
     owner_counts = Counter(record["owner"] for record in normalized_records)
     source_count = sum(len(record["sources"]) for record in normalized_records)
-    source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    source_sha256 = _normalized_text_sha256(source_path)
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,

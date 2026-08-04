@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "655473496928e07fdc22d411d1a4d2b738d20b689ed747f0fb7a5f41d27ac58d",
+  "source_sha256": "5c986e4d24225e9dfdc7031858d10d1e21bbd093029b5ce0e20b9e24d62555e6",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
