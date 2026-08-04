@@ -497,6 +497,13 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         )
         self.assertEqual(len(provenance["assets"]), 13)
         self.assertTrue(all(asset["source"] == "project-original" for asset in provenance["assets"]))
+        attributes = (ENGINE_ROOT / ".gitattributes").read_text(encoding="utf-8")
+        for source_path in (
+            "Examples/ContentShowcase/ShowcaseAssets/Showcase/Effects/ShowcaseParticle.fofx",
+            "Examples/ContentShowcase/ShowcaseAssets/Showcase/Particles/Showcase.spark",
+            "Examples/ContentShowcase/ShowcaseAssets/Showcase/Sprites/Beacon.fofrm",
+        ):
+            self.assertIn(f"{source_path} text eol=lf", attributes)
 
         native_sample = model["repositories"][3]
         self.assertEqual(native_sample["status"], "source-ready")
