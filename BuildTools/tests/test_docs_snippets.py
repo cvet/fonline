@@ -65,6 +65,30 @@ class DocumentationSnippetTests(unittest.TestCase):
         self.assertEqual(report["evidence_count"], 157)
         self.assertEqual(report["external_parser_required_count"], 182)
 
+    def test_corpus_hash_is_independent_of_line_endings(self) -> None:
+        temporary_directory, root = self._create_fixture(
+            """# Guide
+
+```bash
+echo ok
+```
+"""
+        )
+        self.addCleanup(temporary_directory.cleanup)
+        baseline = docs_snippets.evaluate(root)
+
+        for relative_path in (
+            docs_snippets.DEFAULT_MANIFEST,
+            docs_snippets.DEFAULT_POLICY,
+            "Docs/Guide.md",
+        ):
+            path = root / relative_path
+            normalized = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+            path.write_bytes(normalized.replace("\n", "\r\n").encode("utf-8"))
+
+        crlf = docs_snippets.evaluate(root)
+        self.assertEqual(crlf["corpus_sha256"], baseline["corpus_sha256"])
+
     def test_every_declared_harness_validates_a_fixture(self) -> None:
         markdown = """# Guide
 

@@ -467,8 +467,11 @@ def _collect(
     snippets: list[dict[str, object]] = []
     errors: list[str] = []
     corpus_hash = hashlib.sha256()
-    corpus_hash.update((root / manifest_path).read_bytes())
-    corpus_hash.update((root / policy_path).read_bytes())
+    for metadata_path in (manifest_path, policy_path):
+        metadata_text = (root / metadata_path).read_text(encoding="utf-8")
+        corpus_hash.update(
+            metadata_text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+        )
     for path, document_id, title in documents:
         text = (root / path).read_text(encoding="utf-8")
         corpus_hash.update(path.encode("utf-8"))
