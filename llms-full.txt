@@ -22498,7 +22498,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: 69b097fe376df783819d67b6833caabe0ff74d9a5b825e3bf27d22a5ba3f983f
+Content SHA-256: 59a69c9b2558cb661b2668bfcc3ddc33e5015741ecf1f11117c66de79661b354
 
 ---
 title: Generated BuildTools CLI Reference
@@ -22523,7 +22523,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2</code> |
+| Contract digest | <code>7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf</code> |
 
 ## Coverage
 
@@ -22535,8 +22535,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 ## Top-level help
 
 ```text
-usage: buildtools.py [-h]
-                     {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 
@@ -23098,7 +23097,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-helper-cli-index =====
 Source: Docs/en/reference/helper-cli/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/helper-cli/
-Content SHA-256: 239c361b7a7b623aef75994d6f361c9325354e8dc3566c65042ecf21107553dc
+Content SHA-256: 4973a0760cebd212c323e4806ddafd49e6d2d49162d2d3afdaec296c716bc00c
 
 ---
 title: Generated Helper CLI Reference
@@ -23123,7 +23122,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>fc411f8694ac5fe27dc4ff6cb8cd6491048554bb7117ce7dbff3299c45a34420</code> |
+| Contract digest | <code>7cf80c42248ebcdee6ab1f35240efe6a4e0a4bafcdc76a62b72d9a08985cd22c</code> |
 
 ## Inventory
 

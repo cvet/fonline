@@ -1093,8 +1093,8 @@
       "english_path": "Docs/en/reference/buildtools/commands.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/buildtools/commands.md",
-      "source_sha256": "4f011e78f60a80798cb41b563c0febbfd7fe029252c2eaddcfdce522e838eec4",
-      "source_bytes": 18305,
+      "source_sha256": "d2e7b9373f596dfa6144fb6a13dcb892724daba81d5b59aa6880d87dab8dfadc",
+      "source_bytes": 17857,
       "status": "current"
     },
     {
@@ -1106,8 +1106,8 @@
       "english_path": "Docs/en/reference/buildtools/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/buildtools/index.md",
-      "source_sha256": "69b097fe376df783819d67b6833caabe0ff74d9a5b825e3bf27d22a5ba3f983f",
-      "source_bytes": 3038,
+      "source_sha256": "59a69c9b2558cb661b2668bfcc3ddc33e5015741ecf1f11117c66de79661b354",
+      "source_bytes": 3017,
       "status": "current"
     },
     {
@@ -1470,8 +1470,8 @@
       "english_path": "Docs/en/reference/helper-cli/commands.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/commands.md",
-      "source_sha256": "0a6f14d2aa93702a08549237c32f5896f7114cb7e077734de3d8af7c8ce3f2cd",
-      "source_bytes": 47978,
+      "source_sha256": "d3291a632418848347bd8d3ea396f511fb64d7df07b4229fb9e4fc762c07573a",
+      "source_bytes": 46136,
       "status": "current"
     },
     {
@@ -1483,7 +1483,7 @@
       "english_path": "Docs/en/reference/helper-cli/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/index.md",
-      "source_sha256": "239c361b7a7b623aef75994d6f361c9325354e8dc3566c65042ecf21107553dc",
+      "source_sha256": "4973a0760cebd212c323e4806ddafd49e6d2d49162d2d3afdaec296c716bc00c",
       "source_bytes": 5314,
       "status": "current"
     },

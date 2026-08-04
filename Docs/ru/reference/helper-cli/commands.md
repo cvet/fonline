@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"0a6f14d2aa93702a08549237c32f5896f7114cb7e077734de3d8af7c8ce3f2cd"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"d3291a632418848347bd8d3ea396f511fb64d7df07b4229fb9e4fc762c07573a"} -->
 
 # Команды вспомогательных CLI
 
@@ -46,10 +46,7 @@ generated: true
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME
-                  -nicename NICENAME -embedded EMBEDDED
-                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]
-                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
+usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
                   [-verbose]
 
 FOnline code generator
@@ -64,8 +61,7 @@ options:
   -internalcfg INTERNALCFG
                         internal config buffer capacity
   -enginedefine ENGINEDEFINE
-                        engine configuration define NAME=VALUE emitted as a
-                        macro into EngineConfig.gen.h
+                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h
   -meta META            path to script api metadata (///@ tags)
   -commonheader COMMONHEADER
                         path to common header file
@@ -131,12 +127,9 @@ Run and analyze engine code coverage
 positional arguments:
   {clean,run,report,full}
     clean               Remove previously collected coverage data and reports
-    run                 Run the instrumented test binary and collect coverage
-                        data
-    report              Generate text and HTML reports from collected coverage
-                        data
-    full                Clean, run the instrumented binary, and generate
-                        reports
+    run                 Run the instrumented test binary and collect coverage data
+    report              Generate text and HTML reports from collected coverage data
+    full                Clean, run the instrumented binary, and generate reports
 
 options:
   -h, --help            show this help message and exit
@@ -150,10 +143,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.clean`
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT
-                             --build-dir BUILD_DIR --binary BINARY
-                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                             ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -163,15 +153,12 @@ usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b"></a><code>helper-cli.codecoverage.command.clean.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e"></a><code>helper-cli.codecoverage.command.clean.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a><code>helper-cli.codecoverage.command.clean.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a><code>helper-cli.codecoverage.command.clean.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | нет | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
+| <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a><code>helper-cli.codecoverage.command.clean.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT
-                             --build-dir BUILD_DIR --binary BINARY
-                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                             ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 
 Remove previously collected coverage data and reports
 
@@ -199,10 +186,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.run`
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT
-                           --build-dir BUILD_DIR --binary BINARY
-                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                           ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -212,15 +196,12 @@ usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT
 | <a id="entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb"></a><code>helper-cli.codecoverage.command.run.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400"></a><code>helper-cli.codecoverage.command.run.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a><code>helper-cli.codecoverage.command.run.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a><code>helper-cli.codecoverage.command.run.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | нет | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
+| <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a><code>helper-cli.codecoverage.command.run.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT
-                           --build-dir BUILD_DIR --binary BINARY
-                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                           ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 
 Run the instrumented test binary and collect coverage data
 
@@ -248,11 +229,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.report`
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT
-                              --build-dir BUILD_DIR --binary BINARY
-                              --backend {gcc,llvm,msvc}
-                              --output-dir OUTPUT_DIR
-                              ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -262,16 +239,12 @@ usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT
 | <a id="entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a"></a><code>helper-cli.codecoverage.command.report.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-backend-927a805169"></a><code>helper-cli.codecoverage.command.report.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a><code>helper-cli.codecoverage.command.report.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a><code>helper-cli.codecoverage.command.report.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | нет | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
+| <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a><code>helper-cli.codecoverage.command.report.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT
-                              --build-dir BUILD_DIR --binary BINARY
-                              --backend {gcc,llvm,msvc}
-                              --output-dir OUTPUT_DIR
-                              ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 
 Generate text and HTML reports from collected coverage data
 
@@ -299,10 +272,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.full`
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT
-                            --build-dir BUILD_DIR --binary BINARY
-                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                            ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -312,15 +282,12 @@ usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT
 | <a id="entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145"></a><code>helper-cli.codecoverage.command.full.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3"></a><code>helper-cli.codecoverage.command.full.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a><code>helper-cli.codecoverage.command.full.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a><code>helper-cli.codecoverage.command.full.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | нет | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
+| <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a><code>helper-cli.codecoverage.command.full.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT
-                            --build-dir BUILD_DIR --binary BINARY
-                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                            ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
 
 Clean, run the instrumented binary, and generate reports
 
@@ -363,11 +330,9 @@ options:
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE]
-                               [--report REPORT]
+usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE] [--report REPORT]
 
-Run project-neutral multi-process gameplay smoke scenarios from a checked JSON
-manifest.
+Run project-neutral multi-process gameplay smoke scenarios from a checked JSON manifest.
 
 options:
   -h, --help           show this help message and exit
@@ -401,10 +366,7 @@ options:
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: ai_control_client.py [-h] [--host HOST] [--port PORT]
-                            [--timeout TIMEOUT] [--token-env TOKEN_ENV]
-                            [--allow-remote]
-                            {ping,status,observe,events,act} ...
+usage: ai_control_client.py [-h] [--host HOST] [--port PORT] [--timeout TIMEOUT] [--token-env TOKEN_ENV] [--allow-remote] {ping,status,observe,events,act} ...
 
 Call an Engine-compatible AiControl bridge over NDJSON/TCP.
 
@@ -423,8 +385,7 @@ options:
   --timeout TIMEOUT     Socket timeout in seconds.
   --token-env TOKEN_ENV
                         Environment variable containing the shared token.
-  --allow-remote        Permit a non-loopback endpoint; transport remains
-                        unencrypted.
+  --allow-remote        Permit a non-loopback endpoint; transport remains unencrypted.
 ```
 
 <a id="entry-helper-cli-ai-control-client-command-ping-2a253f06de"></a>
@@ -501,8 +462,7 @@ options:
 Stable ID: `helper-cli.ai-control-client.command.events`
 
 ```text
-usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ]
-                                   [--limit LIMIT]
+usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ] [--limit LIMIT]
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -513,8 +473,7 @@ usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ]
 #### Точный вывод `--help`
 
 ```text
-usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ]
-                                   [--limit LIMIT]
+usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ] [--limit LIMIT]
 
 options:
   -h, --help            show this help message and exit
@@ -531,11 +490,7 @@ options:
 Stable ID: `helper-cli.ai-control-client.command.act`
 
 ```text
-usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID]
-                                [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X]
-                                [--y Y] [--screen-x SCREEN_X]
-                                [--screen-y SCREEN_Y] [--int-arg INT_ARG]
-                                [--string-arg STRING_ARG] [--append]
+usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID] [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X] [--y Y] [--screen-x SCREEN_X] [--screen-y SCREEN_Y] [--int-arg INT_ARG] [--string-arg STRING_ARG] [--append]
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -555,11 +510,7 @@ usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID]
 #### Точный вывод `--help`
 
 ```text
-usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID]
-                                [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X]
-                                [--y Y] [--screen-x SCREEN_X]
-                                [--screen-y SCREEN_Y] [--int-arg INT_ARG]
-                                [--string-arg STRING_ARG] [--append]
+usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID] [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X] [--y Y] [--screen-x SCREEN_X] [--screen-y SCREEN_Y] [--int-arg INT_ARG] [--string-arg STRING_ARG] [--append]
 
 options:
   -h, --help            show this help message and exit
@@ -631,28 +582,24 @@ options:
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]
-                         {discover,connect,install,launch,launch-game,stop,logcat} ...
+usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT] {discover,connect,install,launch,launch-game,stop,logcat} ...
 
 Android Wi-Fi device helper for BuildTools tasks
 
 positional arguments:
   {discover,connect,install,launch,launch-game,stop,logcat}
     discover            List Android Wi-Fi devices discovered through adb mdns
-    connect             Connect to an Android Wi-Fi device and cache the
-                        endpoint
+    connect             Connect to an Android Wi-Fi device and cache the endpoint
     install             Install an APK on the selected Android Wi-Fi device
     launch              Launch an Android activity on the selected device
-    launch-game         Launch the Android game activity and pass
-                        RemoteSceneLaunch server host override
+    launch-game         Launch the Android game activity and pass RemoteSceneLaunch server host override
     stop                Force-stop an Android package on the selected device
     logcat              Stream logcat from the selected device
 
 options:
   -h, --help            show this help message and exit
   --workspace-root WORKSPACE_ROOT
-                        Workspace directory path containing android-sdk and
-                        android-debug
+                        Workspace directory path containing android-sdk and android-debug
 ```
 
 <a id="entry-helper-cli-android-device-command-discover-f8951fbd7c"></a>
@@ -699,8 +646,7 @@ usage: android_device.py connect [-h] [--device DEVICE]
 
 options:
   -h, --help       show this help message and exit
-  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and
-                   interactive selection are used
+  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and interactive selection are used
 ```
 
 <a id="entry-helper-cli-android-device-command-install-20d466716c"></a>
@@ -727,8 +673,7 @@ usage: android_device.py install [-h] --apk APK [--device DEVICE]
 options:
   -h, --help       show this help message and exit
   --apk APK        APK path
-  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery
-                   is used
+  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery is used
 ```
 
 <a id="entry-helper-cli-android-device-command-launch-7c998b622c"></a>
@@ -754,10 +699,8 @@ usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]
 
 options:
   -h, --help           show this help message and exit
-  --activity ACTIVITY  Fully qualified activity component, e.g.
-                       com.example.game/.FOnlineActivity
-  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or
-                       discovery is used
+  --activity ACTIVITY  Fully qualified activity component, e.g. com.example.game/.FOnlineActivity
+  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or discovery is used
 ```
 
 <a id="entry-helper-cli-android-device-command-launch-game-408e50236e"></a>
@@ -768,9 +711,7 @@ options:
 Stable ID: `helper-cli.android-device.command.launch-game`
 
 ```text
-usage: android_device.py launch-game [-h] --activity ACTIVITY
-                                     [--device DEVICE]
-                                     [--server-host SERVER_HOST]
+usage: android_device.py launch-game [-h] --activity ACTIVITY [--device DEVICE] [--server-host SERVER_HOST]
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -782,20 +723,14 @@ usage: android_device.py launch-game [-h] --activity ACTIVITY
 #### Точный вывод `--help`
 
 ```text
-usage: android_device.py launch-game [-h] --activity ACTIVITY
-                                     [--device DEVICE]
-                                     [--server-host SERVER_HOST]
+usage: android_device.py launch-game [-h] --activity ACTIVITY [--device DEVICE] [--server-host SERVER_HOST]
 
 options:
   -h, --help            show this help message and exit
-  --activity ACTIVITY   Fully qualified activity component, e.g.
-                        com.example.game/.FOnlineActivity
-  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or
-                        discovery is used
+  --activity ACTIVITY   Fully qualified activity component, e.g. com.example.game/.FOnlineActivity
+  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or discovery is used
   --server-host SERVER_HOST
-                        Host IP or name for ClientNetwork.ServerHost; if
-                        omitted, auto-detected from the route to the selected
-                        device
+                        Host IP or name for ClientNetwork.ServerHost; if omitted, auto-detected from the route to the selected device
 ```
 
 <a id="entry-helper-cli-android-device-command-stop-74b36b2258"></a>
@@ -823,8 +758,7 @@ options:
   -h, --help            show this help message and exit
   --package PACKAGE_NAME
                         Android package name
-  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or
-                        discovery is used
+  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or discovery is used
 ```
 
 <a id="entry-helper-cli-android-device-command-logcat-5f28df274e"></a>
@@ -849,8 +783,7 @@ usage: android_device.py logcat [-h] [--device DEVICE]
 
 options:
   -h, --help       show this help message and exit
-  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery
-                   is used
+  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery is used
 ```
 
 <a id="entry-helper-cli-simple-web-server-58fbf70798"></a>
@@ -911,8 +844,7 @@ usage: createmsi.py [-h] definition.json
 Build an MSI package from a WiX definition
 
 positional arguments:
-  definition.json  bare WiX package definition filename in the working
-                   directory
+  definition.json  bare WiX package definition filename in the working directory
 
 options:
   -h, --help       show this help message and exit

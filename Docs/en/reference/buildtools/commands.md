@@ -21,8 +21,7 @@ resolve BuildTools environment
 Stable ID: `cli.buildtools.command.env`
 
 ```text
-usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary]
-                         [--summary-only]
+usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -34,8 +33,7 @@ usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary]
 ### Exact `--help` output
 
 ```text
-usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary]
-                         [--summary-only]
+usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]
 
 options:
   -h, --help            show this help message and exit
@@ -69,8 +67,7 @@ usage: buildtools.py build [-h] platform target [config]
 
 positional arguments:
   platform    engine platform key, such as linux, win64, web, or android-arm64
-  target      BuildTools target profile, such as client, server, baker, or
-              unit-tests
+  target      BuildTools target profile, such as client, server, baker, or unit-tests
   config      CMake build configuration
 
 options:
@@ -221,8 +218,7 @@ prepare shared workspace parts
 Stable ID: `cli.buildtools.command.prepare-workspace`
 
 ```text
-usage: buildtools.py prepare-workspace [-h] [--check]
-                                       {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
+usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -233,8 +229,7 @@ usage: buildtools.py prepare-workspace [-h] [--check]
 ### Exact `--help` output
 
 ```text
-usage: buildtools.py prepare-workspace [-h] [--check]
-                                       {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
+usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
 
 positional arguments:
   {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}
@@ -282,10 +277,7 @@ package the local android debug client
 Stable ID: `cli.buildtools.command.package-android-debug`
 
 ```text
-usage: buildtools.py package-android-debug [-h]
-                                           devname
-                                           {android-arm32,android-arm64,android-x86}
-                                           configs [configs ...]
+usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -297,14 +289,10 @@ usage: buildtools.py package-android-debug [-h]
 ### Exact `--help` output
 
 ```text
-usage: buildtools.py package-android-debug [-h]
-                                           devname
-                                           {android-arm32,android-arm64,android-x86}
-                                           configs [configs ...]
+usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]
 
 positional arguments:
-  devname               short project name for binary/directory naming (e.g.
-                        LF)
+  devname               short project name for binary/directory naming (e.g. LF)
   {android-arm32,android-arm64,android-x86}
                         Android target platform (e.g. android-arm64)
   configs               config names to package (e.g. LocalTest)
@@ -371,8 +359,7 @@ positional arguments:
   {linux,windows,macos}
                         host platform to prepare
   {common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}
-                        feature groups to prepare; omit to use the host
-                        defaults
+                        feature groups to prepare; omit to use the host defaults
 
 options:
   -h, --help            show this help message and exit

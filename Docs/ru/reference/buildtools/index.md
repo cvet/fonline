@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"69b097fe376df783819d67b6833caabe0ff74d9a5b825e3bf27d22a5ba3f983f"} -->
+<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"59a69c9b2558cb661b2668bfcc3ddc33e5015741ecf1f11117c66de79661b354"} -->
 
 # Сгенерированный справочник CLI BuildTools
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Версионируемая линия поддержки CLI не объявлена; закрепляйте ревизию движка в автоматизации. |
 | Исходный парсер | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Дайджест контракта | <code>6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2</code> |
+| Дайджест контракта | <code>7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf</code> |
 
 ## Покрытие
 
@@ -35,8 +35,7 @@ generated: true
 ## Справка верхнего уровня
 
 ```text
-usage: buildtools.py [-h]
-                     {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 

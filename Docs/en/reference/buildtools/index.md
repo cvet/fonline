@@ -21,7 +21,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2</code> |
+| Contract digest | <code>7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf</code> |
 
 ## Coverage
 
@@ -33,8 +33,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 ## Top-level help
 
 ```text
-usage: buildtools.py [-h]
-                     {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 

@@ -27,6 +27,7 @@ GENERATED_BY = "BuildTools/docs_cli.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
 PROGRAM = "buildtools.py"
+HELP_COLUMNS = 240
 PAGE_DEFINITIONS = (
     ("index.md", "generated-cli-index", "Generated BuildTools CLI Reference"),
     ("commands.md", "generated-cli-commands", "BuildTools Commands"),
@@ -48,7 +49,7 @@ def _stable_argparse_environment() -> Iterator[None]:
     previous_argv0 = sys.argv[0]
     previous_columns = os.environ.get("COLUMNS")
     sys.argv[0] = PROGRAM
-    os.environ["COLUMNS"] = "80"
+    os.environ["COLUMNS"] = str(HELP_COLUMNS)
     try:
         yield
     finally:
@@ -123,6 +124,12 @@ def _type_name(action: argparse.Action) -> str | None:
     return name if isinstance(name, str) and name else str(action.type)
 
 
+def _is_required(action: argparse.Action) -> bool:
+    if action.option_strings:
+        return bool(action.required)
+    return action.nargs not in (argparse.OPTIONAL, argparse.ZERO_OR_MORE)
+
+
 def _argument_model(command_id: str, action: argparse.Action) -> dict[str, object]:
     if not action.dest or action.dest == argparse.SUPPRESS:
         raise ValueError(f"Argument in {command_id} must have a stable destination")
@@ -136,7 +143,7 @@ def _argument_model(command_id: str, action: argparse.Action) -> dict[str, objec
         "action": _action_kind(action),
         "option_strings": option_strings,
         "metavar": metavar,
-        "required": bool(action.required),
+        "required": _is_required(action),
         "nargs": 1 if action.nargs is None else _serializable(action.nargs, f"{command_id}.{action.dest}.nargs"),
         "choices": _serializable(choices, f"{command_id}.{action.dest}.choices"),
         "default": _serializable(action.default, f"{command_id}.{action.dest}.default"),

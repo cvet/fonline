@@ -68,6 +68,14 @@ class DocumentationCliTests(unittest.TestCase):
         self.assertEqual(model["commands"][0]["id"], "cli.buildtools.command.env")
         self.assertEqual(model["commands"][-1]["name"], "prepare-host-workspace")
         self.assertIn("build-auxiliary", {command["name"] for command in model["commands"]})
+        self.assertNotIn("\n", model["usage"])
+        prepare_workspace = next(
+            command for command in model["commands"] if command["name"] == "prepare-host-workspace"
+        )
+        parts = next(
+            argument for argument in prepare_workspace["arguments"] if argument["destination"] == "features"
+        )
+        self.assertFalse(parts["required"])
 
         identities = [
             entry["id"]
@@ -80,7 +88,7 @@ class DocumentationCliTests(unittest.TestCase):
         )
 
         environment = dict(os.environ)
-        environment["COLUMNS"] = "80"
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
         result = subprocess.run(
             [sys.executable, str(ENGINE_ROOT / docs_cli.DEFAULT_SOURCE), "--help"],
             cwd=ENGINE_ROOT,
