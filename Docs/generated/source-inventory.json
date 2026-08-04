@@ -121,8 +121,8 @@
       "Source/Tests/Test_Geometry.cpp",
       "Source/Tests/Test_GlobalData.cpp",
       "Source/Tests/Test_HashedString.cpp",
-      "Source/Tests/Test_ImageBaker.cpp",
       "Source/Tests/Test_ImGui.cpp",
+      "Source/Tests/Test_ImageBaker.cpp",
       "Source/Tests/Test_LineTracer.cpp",
       "Source/Tests/Test_LocationAndEntityMgmt.cpp",
       "Source/Tests/Test_Logging.cpp",
@@ -175,11 +175,11 @@
       "Source/Tests/Test_TextBaker.cpp",
       "Source/Tests/Test_TextPack.cpp",
       "Source/Tests/Test_TextureAtlas.cpp",
-      "Source/Tests/Test_Timer.cpp",
       "Source/Tests/Test_TimeRelated.cpp",
+      "Source/Tests/Test_Timer.cpp",
       "Source/Tests/Test_TwoDimensionalGrid.cpp",
-      "Source/Tests/Test_WorkerPool.cpp",
-      "Source/Tests/Test_WorkThread.cpp"
+      "Source/Tests/Test_WorkThread.cpp",
+      "Source/Tests/Test_WorkerPool.cpp"
     ]
   },
   "settings": {

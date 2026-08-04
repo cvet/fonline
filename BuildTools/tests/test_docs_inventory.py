@@ -59,6 +59,26 @@ class DocumentationInventoryTests(unittest.TestCase):
             self.assertTrue(rendered.endswith("\n"))
             self.assertEqual(json.loads(rendered)["generated_by"], "BuildTools/docs_inventory.py")
 
+    def test_test_file_order_uses_portable_posix_path_sorting(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "Source/Scripting").mkdir(parents=True)
+            (root / "Source/Tests").mkdir(parents=True)
+            (root / "Source/Common").mkdir(parents=True)
+            (root / "Source/Common/Settings.inc").write_text("", encoding="utf-8")
+            for name in ("Test_ImageBaker.cpp", "Test_ImGui.cpp"):
+                (root / "Source/Tests" / name).write_text("// test\n", encoding="utf-8")
+
+            inventory = docs_inventory.generate_inventory(root)
+
+            self.assertEqual(
+                inventory["engine_tests"]["files"],
+                [
+                    "Source/Tests/Test_ImGui.cpp",
+                    "Source/Tests/Test_ImageBaker.cpp",
+                ],
+            )
+
     def test_unit_test_readmes_match_the_source_inventory(self) -> None:
         inventory = docs_inventory.generate_inventory(ENGINE_ROOT)
         expected = set(inventory["engine_tests"]["files"])

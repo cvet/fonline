@@ -12,7 +12,7 @@ SETTING_RE = re.compile(r"^(?:FIXED|VARIABLE)_SETTING\(", re.MULTILINE)
 
 
 def _relative_paths(root: Path, paths: list[Path]) -> list[str]:
-    return [path.relative_to(root).as_posix() for path in sorted(paths)]
+    return sorted(path.relative_to(root).as_posix() for path in paths)
 
 
 def generate_inventory(root: Path) -> dict[str, object]:
