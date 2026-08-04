@@ -22,7 +22,7 @@ This registry describes illustrative embedding-project repositories. Engine beha
 | Release Engine ref | `exact-commit` |
 | Development ref | `master` (weekly) |
 | Update delivery | `reviewed-pull-request` |
-| Contract digest | `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54` |
+| Contract digest | `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516` |
 
 ## Publication evidence
 
@@ -33,7 +33,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Observed required-check states: `not-observed`.
 - Observed Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54`.
+- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.

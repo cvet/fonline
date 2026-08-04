@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-public-examples-index","locale":"ru","source_path":"Docs/en/reference/public-examples/index.md","source_sha256":"84f57800f63a908845abd0171119bd26f85d78198aa6300aed91d14fbfe84fc5"} -->
+<!-- docs-translation: {"document_id":"generated-public-examples-index","locale":"ru","source_path":"Docs/en/reference/public-examples/index.md","source_sha256":"b57c2cbe9b742fb9d6347de9d3da5cfdd1364f381aa2220c6908330a8e2b42f5"} -->
 
 # Сгенерированный реестр публичных репозиториев-примеров
 
@@ -24,7 +24,7 @@ generated: true
 | Ревизия Engine для релиза | `exact-commit` |
 | Ревизия для разработки | `master` (weekly) |
 | Доставка обновлений | `reviewed-pull-request` |
-| Digest контракта | `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54` |
+| Digest контракта | `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516` |
 
 ## Свидетельства публикации
 
@@ -35,7 +35,7 @@ generated: true
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Наблюдённые состояния required checks: `not-observed`.
 - Наблюдённые Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Значения программы, обязательные в том же отчёте: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54`.
+- Значения программы, обязательные в том же отчёте: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.

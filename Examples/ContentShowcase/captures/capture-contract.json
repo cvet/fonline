@@ -30,10 +30,32 @@
       "id": "linux-opengl",
       "platform": "Linux",
       "backend": "OpenGL",
-      "status": "required-unobserved",
+      "status": "observed-ci",
       "width": 1280,
       "height": 800,
-      "output": "captures/linux-opengl.png"
+      "output": "captures/linux-opengl.png",
+      "captured_on": "2026-08-04",
+      "engine_revision": "763a8047fc1c92c27976eb7579f61d028473a9b0",
+      "source_sha256": "4f313d9cf1263d4b84a1a9c0e53ed09ef5983ea290a6a2b18aabeb66e93f73d9",
+      "command": "cmake --build --preset linux-capture",
+      "sha256": "66048d6f060ca686205ffa1d7356d2b89a2e48681061093ad53374132e60aa49",
+      "pixel_evidence": {
+        "visible_pixels": 1024000,
+        "bright_pixels": 54398,
+        "sampled_unique_colors": 139,
+        "header_bright_pixels": 1968,
+        "runtime_bright_pixels": 20423,
+        "gallery_bright_pixels": 32301,
+        "footer_bright_pixels": 1426
+      },
+      "selected_source": "ShowcaseCapture_10.tga",
+      "samples_checked": 12,
+      "ci": {
+        "repository": "cvet/fonline-content-showcase",
+        "commit": "551a03912f6dfbfc4addbca2de54ba6862f0f4ac",
+        "run_id": "30937990249",
+        "run_attempt": "1"
+      }
     },
     {
       "id": "web-webgl2",

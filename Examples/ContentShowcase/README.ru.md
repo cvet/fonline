@@ -4,7 +4,7 @@ locale: ru
 document_id: content-showcase-readme
 ---
 
-<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"9f6c452309928129e1eee676db5a0e5c9aa4da26c20dc8ae374476fb4001f075"} -->
+<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"261a3d5784dcc49490fcace8099a099f907244f11015c869dcac90fb776dad34"} -->
 
 # Демонстрация контента FOnline
 
@@ -12,6 +12,8 @@ document_id: content-showcase-readme
 контента без зависимости от Last Frontier, TLA или другой игры.
 
 ![Снимок галереи контента FOnline через Direct3D 11](captures/windows-direct3d11.png)
+
+![Снимок галереи контента FOnline через OpenGL в Linux CI](captures/linux-opengl.png)
 
 ![Снимок упакованной галереи контента FOnline через WebGL 2](captures/web-webgl2.png)
 
@@ -95,14 +97,17 @@ digest исходников, выбранный кадр, хэш изображ�
 пиксельные доказательства, а при запуске в CI также идентификатор GitHub run.
 
 Сохранённые изображения Windows Direct3D 11 и Chromium WebGL 2 являются
-локальными доказательствами. Запись Web доказывает, что упакованный клиент
+локальными доказательствами. Сохранённое изображение Linux OpenGL является
+CI-доказательством из run `30937990249` репозитория
+`cvet/fonline-content-showcase`; перед добавлением сюда проверены digest архива,
+хэш изображения, процессный отчёт, точная привязка Engine и области пикселей.
+Запись Web доказывает, что упакованный клиент
 загрузил все обязательные ответы, подключился к native-серверу, достиг
 `resources_loaded` и `world_ready`, создал буфер WebGL 2 размером 1280 x 800 и
-прошёл те же проверки областей изображения, что и native-снимок. Linux OpenGL
-остаётся обязательным доказательством публикации. Теперь за его маршрут на
-программном Mesa и неизменяемый workflow-артефакт отвечает обязательная job
-`linux-showcase-capture`; backend нельзя заявлять, пока сохранённый run не
-создаст `linux-opengl.png` и запись `observed-ci`.
+прошёл те же проверки областей изображения, что и native-снимки. Обязательная
+job `linux-showcase-capture` отвечает за воспроизводимый маршрут на программном
+Mesa и неизменяемый workflow-артефакт; запускайте её заново при каждом изменении,
+которое требует пересъёмки сохранённых доказательств.
 
 ## Проверка Web-сборки
 

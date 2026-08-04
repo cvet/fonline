@@ -19516,7 +19516,7 @@ When changing server runtime behavior, verify:
 ===== BEGIN DOCUMENT public-example-repositories =====
 Source: Docs/en/how-to/build/public-example-repositories.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/public-example-repositories.html
-Content SHA-256: 352d32d2e5a593af953ad8f2cbd91d6418ed4bcebf76cff85a61049217429dd8
+Content SHA-256: e7c8c19b7778a8169067d6bbc08337d0dc4f2e9f360fa322c9d3da1267ebaf74
 
 ---
 layout: default
@@ -19566,7 +19566,7 @@ Remote existence, source readiness, and public release are separate states. `rem
 
 [`Examples/ContentShowcase`](../../../../Examples/ContentShowcase/README.md) is the executable, Engine-owned gallery behind the third portfolio entry. It contains a one-map scene, an animated FOFRM beacon, a scripted sprite panel, SPARK particles rendered through a `.fofx` effect, a generated WAV cue, project-original TGA inputs, a prototype, and the smallest client/server script needed to prove loading and interaction. The authored inputs live under `ShowcaseAssets/`; generated `Resources/`, `ServerResources/`, `Baking/`, `Build/`, and `Workspace/` trees never belong to a staged repository.
 
-Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. The same complete route is exposed as `web-showcase-runtime` in BuildTools and the required workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client. On Linux, `linux-showcase-capture` runs `linux-capture` under Xvfb with software Mesa and retains the PNG, process report, exact Engine SHA, and backend record as a commit-addressed workflow artifact. Both native routes record twelve warmed samples, validate independent header/runtime/gallery/footer regions, and keep the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Checked Direct3D 11 and WebGL 2 captures are local backend-specific evidence; Linux OpenGL remains unobserved until the required remote job retains a successful artifact.
+Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. The same complete route is exposed as `web-showcase-runtime` in BuildTools and the required workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client. On Linux, `linux-showcase-capture` runs `linux-capture` under Xvfb with software Mesa and retains the PNG, process report, exact Engine SHA, and backend record as a commit-addressed workflow artifact. Both native routes record twelve warmed samples, validate independent header/runtime/gallery/footer regions, and keep the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Direct3D 11 and WebGL 2 captures are checked local backend evidence; Linux OpenGL is checked CI evidence from `cvet/fonline-content-showcase` run `30937990249`, whose artifact digest, PNG hash, process report, Engine pin, and pixel regions were independently verified before admission.
 
 ### Supporting in-repository fixtures
 
@@ -24924,7 +24924,7 @@ Embedding projects must generate or document their additional entity declaration
 ===== BEGIN DOCUMENT generated-public-examples-index =====
 Source: Docs/en/reference/public-examples/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-examples/
-Content SHA-256: 84f57800f63a908845abd0171119bd26f85d78198aa6300aed91d14fbfe84fc5
+Content SHA-256: b57c2cbe9b742fb9d6347de9d3da5cfdd1364f381aa2220c6908330a8e2b42f5
 
 ---
 title: Generated Public Example Repository Registry
@@ -24950,7 +24950,7 @@ This registry describes illustrative embedding-project repositories. Engine beha
 | Release Engine ref | `exact-commit` |
 | Development ref | `master` (weekly) |
 | Update delivery | `reviewed-pull-request` |
-| Contract digest | `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54` |
+| Contract digest | `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516` |
 
 ## Publication evidence
 
@@ -24961,7 +24961,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Observed required-check states: `not-observed`.
 - Observed Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54`.
+- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
@@ -26429,7 +26429,7 @@ clients, and test the resulting native/script integration separately.
 ===== BEGIN DOCUMENT content-showcase-readme =====
 Source: Examples/ContentShowcase/README.md
 Canonical URL: https://fonline.ru/Examples/ContentShowcase/README.html
-Content SHA-256: 9f6c452309928129e1eee676db5a0e5c9aa4da26c20dc8ae374476fb4001f075
+Content SHA-256: 261a3d5784dcc49490fcace8099a099f907244f11015c869dcac90fb776dad34
 
 ---
 permalink: /Examples/ContentShowcase/README.html
@@ -26443,6 +26443,8 @@ A standalone, presentation-focused FOnline project that demonstrates the
 content pipeline without depending on Last Frontier, TLA, or another game.
 
 ![Direct3D 11 capture of the FOnline content gallery](captures/windows-direct3d11.png)
+
+![OpenGL capture of the FOnline content gallery on Linux CI](captures/linux-opengl.png)
 
 ![WebGL 2 capture of the packaged FOnline content gallery](captures/web-webgl2.png)
 
@@ -26526,13 +26528,15 @@ revision, source digest, selected sample, image hash, viewport, backend, date,
 pixel evidence, and the GitHub run identity when it executes in CI.
 
 The checked Windows Direct3D 11 and Chromium WebGL 2 images are local evidence.
-The Web record proves the packaged client loaded every required response,
+The checked Linux OpenGL image is retained CI evidence from
+`cvet/fonline-content-showcase` run `30937990249`; its archive digest, image
+hash, process report, exact Engine pin, and pixel regions were verified before
+the capture was admitted here. The Web record proves the packaged client loaded every required response,
 connected to the native server, reached `resources_loaded` and `world_ready`,
 created a 1280 x 800 WebGL 2 drawing buffer, and passed the same pixel-region
-checks as the native capture. Linux OpenGL remains required publication
-evidence. The required `linux-showcase-capture` job now owns its software-Mesa
-route and immutable workflow artifact; do not claim the backend until a retained
-run produces `linux-opengl.png` and its `observed-ci` record.
+checks as the native captures. The required `linux-showcase-capture` job owns
+the reproducible software-Mesa route and immutable workflow artifact; rerun it
+whenever a recapture trigger changes the checked evidence.
 
 ## Validate the Web build
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -188,6 +189,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertTrue((output_root / "README.ru.md").is_file())
         self.assertTrue((output_root / "ShowcaseAssets/Showcase/Sprites/Beacon_0.tga").is_file())
         self.assertTrue((output_root / "captures/windows-direct3d11.png").is_file())
+        self.assertTrue((output_root / "captures/linux-opengl.png").is_file())
         self.assertTrue((output_root / "captures/web-webgl2.png").is_file())
         self.assertTrue((output_root / "captures/capture-contract.json").is_file())
         self.assertTrue((output_root / "WebTests/package-lock.json").is_file())
@@ -473,7 +475,14 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertEqual(capture_contract["schema_version"], 1)
         capture_profiles = {profile["id"]: profile for profile in capture_contract["profiles"]}
         self.assertIn("windows-direct3d11", capture_profiles)
-        self.assertEqual(capture_profiles["linux-opengl"]["status"], "required-unobserved")
+        linux_profile = capture_profiles["linux-opengl"]
+        self.assertEqual(linux_profile["status"], "observed-ci")
+        self.assertEqual(linux_profile["ci"]["run_id"], "30937990249")
+        linux_capture_path = ENGINE_ROOT / "Examples/ContentShowcase/captures/linux-opengl.png"
+        self.assertEqual(
+            hashlib.sha256(linux_capture_path.read_bytes()).hexdigest(),
+            linux_profile["sha256"],
+        )
         web_profile = next(profile for profile in capture_contract["profiles"] if profile["id"] == "web-webgl2")
         self.assertEqual(web_profile["status"], "observed-local")
         self.assertEqual(web_profile["width"], 1280)
@@ -520,6 +529,9 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         )
         self.assertEqual((width, height), (1280, 800))
         self.assertEqual(capture_showcase.verify_pixels(width, height, rgba), web_profile["pixel_evidence"])
+        width, height, rgba = capture_showcase_web.read_png(linux_capture_path)
+        self.assertEqual((width, height), (1280, 800))
+        self.assertEqual(capture_showcase.verify_pixels(width, height, rgba), linux_profile["pixel_evidence"])
         provenance = json.loads(
             (ENGINE_ROOT / "Examples/ContentShowcase/assets/provenance.json").read_text(encoding="utf-8")
         )

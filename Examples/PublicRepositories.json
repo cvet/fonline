@@ -297,6 +297,7 @@
         "quality/performance-budget.json",
         "captures/capture-contract.json",
         "captures/windows-direct3d11.png",
+        "captures/linux-opengl.png",
         "generate_assets.py",
         "generate_config.py",
         "run_showcase_smoke.py",

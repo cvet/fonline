@@ -1,5 +1,5 @@
 {
-  "contract_digest": "105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54",
+  "contract_digest": "393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516",
   "generated_by": "BuildTools/docs_examples.py",
   "program": {
     "compatibility": {
@@ -330,6 +330,7 @@
         "quality/performance-budget.json",
         "captures/capture-contract.json",
         "captures/windows-direct3d11.png",
+        "captures/linux-opengl.png",
         "generate_assets.py",
         "generate_config.py",
         "run_showcase_smoke.py",

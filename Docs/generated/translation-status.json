@@ -508,8 +508,8 @@
       "english_path": "Docs/en/how-to/build/public-example-repositories.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/public-example-repositories.md",
-      "source_sha256": "352d32d2e5a593af953ad8f2cbd91d6418ed4bcebf76cff85a61049217429dd8",
-      "source_bytes": 25376,
+      "source_sha256": "e7c8c19b7778a8169067d6bbc08337d0dc4f2e9f360fa322c9d3da1267ebaf74",
+      "source_bytes": 25491,
       "status": "current"
     },
     {
@@ -2081,7 +2081,7 @@
       "english_path": "Docs/en/reference/public-examples/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-examples/index.md",
-      "source_sha256": "84f57800f63a908845abd0171119bd26f85d78198aa6300aed91d14fbfe84fc5",
+      "source_sha256": "b57c2cbe9b742fb9d6347de9d3da5cfdd1364f381aa2220c6908330a8e2b42f5",
       "source_bytes": 7251,
       "status": "current"
     },
@@ -2497,8 +2497,8 @@
       "english_path": "Examples/ContentShowcase/README.md",
       "english_path_state": "migrated",
       "russian_path": "Examples/ContentShowcase/README.ru.md",
-      "source_sha256": "9f6c452309928129e1eee676db5a0e5c9aa4da26c20dc8ae374476fb4001f075",
-      "source_bytes": 9530,
+      "source_sha256": "261a3d5784dcc49490fcace8099a099f907244f11015c869dcac90fb776dad34",
+      "source_bytes": 9788,
       "status": "current"
     },
     {

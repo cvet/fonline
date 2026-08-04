@@ -11,6 +11,8 @@ content pipeline without depending on Last Frontier, TLA, or another game.
 
 ![Direct3D 11 capture of the FOnline content gallery](captures/windows-direct3d11.png)
 
+![OpenGL capture of the FOnline content gallery on Linux CI](captures/linux-opengl.png)
+
 ![WebGL 2 capture of the packaged FOnline content gallery](captures/web-webgl2.png)
 
 The checked project covers:
@@ -93,13 +95,15 @@ revision, source digest, selected sample, image hash, viewport, backend, date,
 pixel evidence, and the GitHub run identity when it executes in CI.
 
 The checked Windows Direct3D 11 and Chromium WebGL 2 images are local evidence.
-The Web record proves the packaged client loaded every required response,
+The checked Linux OpenGL image is retained CI evidence from
+`cvet/fonline-content-showcase` run `30937990249`; its archive digest, image
+hash, process report, exact Engine pin, and pixel regions were verified before
+the capture was admitted here. The Web record proves the packaged client loaded every required response,
 connected to the native server, reached `resources_loaded` and `world_ready`,
 created a 1280 x 800 WebGL 2 drawing buffer, and passed the same pixel-region
-checks as the native capture. Linux OpenGL remains required publication
-evidence. The required `linux-showcase-capture` job now owns its software-Mesa
-route and immutable workflow artifact; do not claim the backend until a retained
-run produces `linux-opengl.png` and its `observed-ci` record.
+checks as the native captures. The required `linux-showcase-capture` job owns
+the reproducible software-Mesa route and immutable workflow artifact; rerun it
+whenever a recapture trigger changes the checked evidence.
 
 ## Validate the Web build
 
