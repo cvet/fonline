@@ -466,8 +466,8 @@
       "name": "prepare-host-workspace",
       "summary": "prepare host workspace and prerequisites",
       "description": null,
-      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
-      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host\n                        defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host\n                        defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
@@ -499,6 +499,7 @@
           "choices": [
             "common-packages",
             "linux-packages",
+            "showcase-display-packages",
             "web-packages",
             "android-packages",
             "windows-cross-packages",
@@ -543,5 +544,5 @@
     "global_argument_count": 0,
     "command_argument_count": 24
   },
-  "contract_digest": "de65387247c562f7232b85e632f7f23ceb35f75e88d35b5989bcdc2fbb2ff6b1"
+  "contract_digest": "6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2"
 }

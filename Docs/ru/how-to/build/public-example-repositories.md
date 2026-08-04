@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/public-example-repositories.html
 
 # Публичные репозитории с примерами
 
-<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"03299d2e198be8b731b9e79e7c2e815691357c1344ebb72791b7222e1591a69e"} -->
+<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"352d32d2e5a593af953ad8f2cbd91d6418ed4bcebf76cff85a61049217429dd8"} -->
 
 Это руководство определяет, как создаются, проверяются, подготавливаются, выпускаются и поддерживаются совместимыми репозитории с примерами FOnline. Машиночитаемый первоисточник находится в [Examples/PublicRepositories.json](../../../../Examples/PublicRepositories.json), а его проверяемая проекция находится в [сгенерированном реестре](../../reference/public-examples/index.md).
 
@@ -168,6 +168,8 @@ python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pi
 `pinned-engine` запускается для каждого pull request и обновления защищённой ветки. Она проверяет управление репозиторием, идентичность gitlink и metadata, основное поведение примера и все специфичные для репозитория платформенные шлюзы. Шаблон проекта и исходный код Minimal Multiplayer требуют smoke-задачи Windows и Linux; Minimal Multiplayer дополнительно требует приёмку пакетов Windows/Linux и сохраняемые доказательства пакетов, адресованные commit.
 
 Linux-задачи подготавливают системные зависимости командой `Engine/BuildTools/prepare-workspace.sh linux-packages linux` из полученной ревизии. Не копируйте список apt-пакетов в workflow примеров: принадлежащая Engine команда является версионируемым платформенным контрактом и удерживает prerequisites pinned- и compatibility-линий одинаковыми.
+
+Content Showcase добавляет к этой команде `showcase-display-packages web-packages web`. Поскольку helper запускается из корня репозитория примера, закреплённый SDK устанавливается в `Workspace/emsdk`; задавайте `FO_EMSDK` на этот принадлежащий корню путь, а не на `Engine/Workspace/emsdk`. PNG Linux OpenGL, контракт захвата и отчёт процессов загружаются сразу после успешного захвата Xvfb/Mesa и до более длинной WebGL 2 runtime-линии. Поэтому последующий сбой Web не уничтожает уже достоверное доказательство backend, но вся обязательная job остаётся неуспешной, пока не пройдут все линии.
 
 `current-engine` запускается еженедельно и по запросу. Она временно извлекает Engine `master`, записывает протестированный commit и запускает то же основное поведение. Она не должна перезаписывать `example-repository.json`, gitlink, сгенерированные файлы, теги или артефакты выпусков.
 

@@ -21,7 +21,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>de65387247c562f7232b85e632f7f23ceb35f75e88d35b5989bcdc2fbb2ff6b1</code> |
+| Contract digest | <code>6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2</code> |
 
 ## Coverage
 

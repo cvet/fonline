@@ -167,6 +167,8 @@ Updater protocol generation 2 and client host/runtime ABI 3 reject older unsafe 
 
 Linux jobs prepare host dependencies through the checked-out revision's `Engine/BuildTools/prepare-workspace.sh linux-packages linux` command. Do not copy an apt package list into example workflows: the Engine-owned command is the versioned platform contract and keeps pinned and compatibility lanes on the same prerequisites.
 
+Content Showcase adds `showcase-display-packages web-packages web` to that command. Because the helper runs from the example repository root, it installs the pinned SDK under `Workspace/emsdk`; set `FO_EMSDK` to that root-owned path, not `Engine/Workspace/emsdk`. The Linux OpenGL PNG, capture contract, and process report are uploaded immediately after the successful Xvfb/Mesa capture and before the longer WebGL 2 runtime lane. A later Web failure therefore cannot erase already valid backend evidence, while the overall required job still remains failed until every lane passes.
+
 `current-engine` runs weekly and on demand. It temporarily checks out Engine `master`, records the tested commit, and runs the same primary behavior. It must not rewrite `example-repository.json`, the gitlink, generated files, tags, or release artifacts.
 
 Additional gates come from the registry entry:

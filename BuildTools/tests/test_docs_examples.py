@@ -322,6 +322,8 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             self.assertIn(marker, pinned_workflow)
         for workflow in (pinned_workflow, current_workflow):
             self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
+        prepare_workspace = (ENGINE_ROOT / "BuildTools/prepare-workspace.sh").read_text(encoding="utf-8")
+        self.assertIn("showcase-display-packages", prepare_workspace)
         for marker in (
             "schedule:",
             "git -C Engine fetch --depth=1 origin master",
@@ -337,10 +339,18 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             "collect-evidence.py --mode pinned",
             "showcase-display-packages",
             "linux-capture",
+            "content-showcase-linux-opengl-${{ github.sha }}-${{ github.run_attempt }}",
+            "captures/linux-opengl.png",
+            "Workspace/showcase-capture-report.json",
+            "FO_EMSDK: ${{ github.workspace }}/Workspace/emsdk",
             "--web-runtime",
             "actions/upload-artifact@v4",
         ):
             self.assertIn(marker, pinned_workflow)
+        self.assertLess(
+            pinned_workflow.index("Upload Content Showcase OpenGL evidence"),
+            pinned_workflow.index("Validate Content Showcase WebGL 2 runtime"),
+        )
 
         multiplayer = model["repositories"][1]
         self.assertEqual(multiplayer["status"], "source-ready")

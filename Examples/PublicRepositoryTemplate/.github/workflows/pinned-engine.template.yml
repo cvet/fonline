@@ -55,11 +55,22 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           SDL_VIDEODRIVER: x11
         run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" cmake --build --preset linux-capture
+      - name: Upload Content Showcase OpenGL evidence
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'content-showcase-linux-opengl-${{ github.sha }}-${{ github.run_attempt }}'
+          path: |
+            captures/linux-opengl.png
+            captures/capture-contract.json
+            Workspace/showcase-capture-report.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Validate Content Showcase WebGL 2 runtime
         if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
         shell: bash
         env:
-          FO_EMSDK: ${{ github.workspace }}/Engine/Workspace/emsdk
+          FO_EMSDK: ${{ github.workspace }}/Workspace/emsdk
         run: python3 validate.py --web-runtime
       - name: Collect commit-addressed evidence
         run: python collect-evidence.py --mode pinned

@@ -18009,7 +18009,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 6cbd05d54dbe72c6815a01a81c0053be8843687d0b6206632290fb37f226ca0b
+Content SHA-256: 625c43c51ad848e76f6f8ac58d2776ce53c1f13b0158e875149944a48952e44a
 
 ---
 layout: default
@@ -18454,7 +18454,7 @@ Naming convention from `build_runtime_update_target_name` in `BuildTools/package
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
 - The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
-- Binary outputs tagged by `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`<runtime-name>_Steam.so`, `<runtime-name>_Headless_Steam.so`, etc.) so variants do not clobber each other. `extract_binary_entry_postfix` parses the postfix out of `Client-<platform>-<arch>[-Profiling_X][-Debug][-<postfix>]`. The matching package declaration must put the same value on that `BINARY` entry with `POSTFIX <value>`; there is no package-wide fallback from `FO_BINARY_OUTPUT_POSTFIX`. The client-side packager mirrors the suffix in `bin_out_name`, so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name used by `Updater.cpp::remap_runtime_name` (`runtime_server_prefix = GetPackagedRuntimeName()`). `win32-win7` and `win64-win7` normalize to updater targets `Windows-win32` and `Windows-win64`; an explicit postfix is what keeps a legacy payload distinct from the regular build.
+- Binary outputs tagged by `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`<runtime-name>_Steam.so`, `<runtime-name>_Headless_Steam.so`, etc.) so variants do not clobber each other. `extract_binary_entry_postfix` strips either the packager order (`-Profiling_X-Debug`) or the actual CMake multi-config name (`-Debug_Profiling_X`), as well as the named release and sanitizer configurations, before reading an optional postfix. Unrelated or malformed `Client-*` directories are skipped instead of aborting an otherwise valid package. The matching package declaration must put the same value on that `BINARY` entry with `POSTFIX <value>`; there is no package-wide fallback from `FO_BINARY_OUTPUT_POSTFIX`. The client-side packager mirrors the suffix in `bin_out_name`, so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name used by `Updater.cpp::remap_runtime_name` (`runtime_server_prefix = GetPackagedRuntimeName()`). `win32-win7` and `win64-win7` normalize to updater targets `Windows-win32` and `Windows-win64`; an explicit postfix is what keeps a legacy payload distinct from the regular build.
 
 ## Embedding-project practices
 
@@ -19516,7 +19516,7 @@ When changing server runtime behavior, verify:
 ===== BEGIN DOCUMENT public-example-repositories =====
 Source: Docs/en/how-to/build/public-example-repositories.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/public-example-repositories.html
-Content SHA-256: aa8e5e75f4ed476d5ef753db42cb2bb6eca95e3e6e2877684afd805d06c320ea
+Content SHA-256: 352d32d2e5a593af953ad8f2cbd91d6418ed4bcebf76cff85a61049217429dd8
 
 ---
 layout: default
@@ -19566,7 +19566,7 @@ Remote existence, source readiness, and public release are separate states. `rem
 
 [`Examples/ContentShowcase`](../../../../Examples/ContentShowcase/README.md) is the executable, Engine-owned gallery behind the third portfolio entry. It contains a one-map scene, an animated FOFRM beacon, a scripted sprite panel, SPARK particles rendered through a `.fofx` effect, a generated WAV cue, project-original TGA inputs, a prototype, and the smallest client/server script needed to prove loading and interaction. The authored inputs live under `ShowcaseAssets/`; generated `Resources/`, `ServerResources/`, `Baking/`, `Build/`, and `Workspace/` trees never belong to a staged repository.
 
-Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. The same complete route is exposed as `web-showcase-runtime` in BuildTools and the required workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client, records twelve warmed samples, validates independent header/runtime/gallery/footer regions, and keeps the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Checked Direct3D 11 and WebGL 2 captures are local backend-specific evidence; Linux OpenGL remains required before publication.
+Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. The same complete route is exposed as `web-showcase-runtime` in BuildTools and the required workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client. On Linux, `linux-showcase-capture` runs `linux-capture` under Xvfb with software Mesa and retains the PNG, process report, exact Engine SHA, and backend record as a commit-addressed workflow artifact. Both native routes record twelve warmed samples, validate independent header/runtime/gallery/footer regions, and keep the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Checked Direct3D 11 and WebGL 2 captures are local backend-specific evidence; Linux OpenGL remains unobserved until the required remote job retains a successful artifact.
 
 ### Supporting in-repository fixtures
 
@@ -19686,6 +19686,8 @@ Updater protocol generation 2 and client host/runtime ABI 3 reject older unsafe 
 `pinned-engine` runs on every pull request and protected-branch update. It checks repository governance, gitlink/metadata identity, the primary example behavior, and all repository-specific platform gates. The project template and minimal multiplayer source both require Windows and Linux smoke jobs; Minimal Multiplayer additionally requires Windows/Linux package acceptance and retained commit-addressed package evidence.
 
 Linux jobs prepare host dependencies through the checked-out revision's `Engine/BuildTools/prepare-workspace.sh linux-packages linux` command. Do not copy an apt package list into example workflows: the Engine-owned command is the versioned platform contract and keeps pinned and compatibility lanes on the same prerequisites.
+
+Content Showcase adds `showcase-display-packages web-packages web` to that command. Because the helper runs from the example repository root, it installs the pinned SDK under `Workspace/emsdk`; set `FO_EMSDK` to that root-owned path, not `Engine/Workspace/emsdk`. The Linux OpenGL PNG, capture contract, and process report are uploaded immediately after the successful Xvfb/Mesa capture and before the longer WebGL 2 runtime lane. A later Web failure therefore cannot erase already valid backend evidence, while the overall required job still remains failed until every lane passes.
 
 `current-engine` runs weekly and on demand. It temporarily checks out Engine `master`, records the tested commit, and runs the same primary behavior. It must not rewrite `example-repository.json`, the gitlink, generated files, tags, or release artifacts.
 
@@ -22496,7 +22498,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: f6029a418379a337e3047d92d60a52db2ca720ea856a57066facccb08464695f
+Content SHA-256: 69b097fe376df783819d67b6833caabe0ff74d9a5b825e3bf27d22a5ba3f983f
 
 ---
 title: Generated BuildTools CLI Reference
@@ -22521,7 +22523,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>de65387247c562f7232b85e632f7f23ceb35f75e88d35b5989bcdc2fbb2ff6b1</code> |
+| Contract digest | <code>6af30feb34ac5be65e7d48234dae6d6057d14cf43437d5dd79d29712d9b86fd2</code> |
 
 ## Coverage
 
@@ -24922,7 +24924,7 @@ Embedding projects must generate or document their additional entity declaration
 ===== BEGIN DOCUMENT generated-public-examples-index =====
 Source: Docs/en/reference/public-examples/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-examples/
-Content SHA-256: 27fa05d5c1b58a9639e79e5e2a87c35f500dab2acb3347a66d411462060510f5
+Content SHA-256: 84f57800f63a908845abd0171119bd26f85d78198aa6300aed91d14fbfe84fc5
 
 ---
 title: Generated Public Example Repository Registry
@@ -24948,7 +24950,7 @@ This registry describes illustrative embedding-project repositories. Engine beha
 | Release Engine ref | `exact-commit` |
 | Development ref | `master` (weekly) |
 | Update delivery | `reviewed-pull-request` |
-| Contract digest | `4af5ab4535823a5592d87d8e47c5403afd750a38697ffc6c62cf3065cba64e74` |
+| Contract digest | `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54` |
 
 ## Publication evidence
 
@@ -24959,7 +24961,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Observed required-check states: `not-observed`.
 - Observed Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `4af5ab4535823a5592d87d8e47c5403afd750a38697ffc6c62cf3065cba64e74`.
+- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `105ea0167404015cdcb46c9c3dee0c2328c877b9ecb58adbc230e2fbe89c3c54`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
@@ -26427,7 +26429,7 @@ clients, and test the resulting native/script integration separately.
 ===== BEGIN DOCUMENT content-showcase-readme =====
 Source: Examples/ContentShowcase/README.md
 Canonical URL: https://fonline.ru/Examples/ContentShowcase/README.html
-Content SHA-256: 4ba4fde6af71ab0ae7952783dbe27260c73d521aefb3753319b3e144af3d2da9
+Content SHA-256: 9f6c452309928129e1eee676db5a0e5c9aa4da26c20dc8ae374476fb4001f075
 
 ---
 permalink: /Examples/ContentShowcase/README.html
@@ -26454,7 +26456,7 @@ The checked project covers:
 - English and Russian prototype text;
 - headless source, content, and client/server lifecycle checks;
 - a visible Direct3D capture with machine-checked composition regions;
-- native Windows/Linux presets plus WebAssembly compilation, packaging, and browser runtime lanes;
+- native Windows/Linux presets, an Xvfb/Mesa OpenGL capture lane, plus WebAssembly compilation, packaging, and browser runtime lanes;
 - machine-readable asset rights, performance budgets, and capture provenance.
 
 This is a rendering and authoring example, not a gameplay starter. Begin with
@@ -26469,6 +26471,7 @@ project lifecycle or client/server interaction.
 - Node.js 20 or newer and the Emscripten SDK for Web runtime validation;
 - Visual Studio with C++ support on Windows, or GCC and Ninja Multi-Config on
   Linux;
+- Xvfb, Xauth, and Mesa software rendering packages for a Linux reference capture;
 - an Engine checkout available at `Engine/`.
 
 For a standalone checkout, initialize the exact Engine submodule recorded by
@@ -26504,21 +26507,32 @@ On Windows after configuration:
 cmake --build --preset windows-capture
 ```
 
-The target starts a real Direct3D 11 client at 1280 x 800 and records twelve
-warm capture samples. `capture_showcase.py` rejects torn or incomplete samples
+On Linux after configuration, run the visible client inside an X11 display. The
+required workflow installs the same pinned package group and forces software
+Mesa for reproducibility:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 SDL_VIDEODRIVER=x11 \
+  xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
+  cmake --build --preset linux-capture
+```
+
+The target starts a real Direct3D 11 or OpenGL client at 1280 x 800 and records
+twelve warm capture samples. `capture_showcase.py` rejects torn or incomplete samples
 unless the header, runtime map, source gallery, and provenance footer are all
-present, then stores the strongest complete frame in
-`captures/windows-direct3d11.png`. The capture contract records the Engine
+present, then stores the strongest complete frame in the backend-specific path
+under `captures/`. The capture contract records the Engine
 revision, source digest, selected sample, image hash, viewport, backend, date,
-and pixel evidence.
+pixel evidence, and the GitHub run identity when it executes in CI.
 
 The checked Windows Direct3D 11 and Chromium WebGL 2 images are local evidence.
 The Web record proves the packaged client loaded every required response,
 connected to the native server, reached `resources_loaded` and `world_ready`,
 created a 1280 x 800 WebGL 2 drawing buffer, and passed the same pixel-region
 checks as the native capture. Linux OpenGL remains required publication
-evidence and must not be claimed until that backend produces its file and
-record.
+evidence. The required `linux-showcase-capture` job now owns its software-Mesa
+route and immutable workflow artifact; do not claim the backend until a retained
+run produces `linux-opengl.png` and its `observed-ci` record.
 
 ## Validate the Web build
 
@@ -26834,7 +26848,7 @@ requires its complete saved settings contract.
 ===== BEGIN DOCUMENT minimal-project-readme =====
 Source: Examples/MinimalProject/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalProject/README.html
-Content SHA-256: 233b246e37b21a2dbf80ce3e672c6e76e4fef792b21548735aa80718b8521695
+Content SHA-256: 92165d78de7674d593ba7eacc0e16f9c71114d4e2975fa7a4f4bad45e77f01dc
 
 ---
 permalink: /Examples/MinimalProject/README.html
@@ -26880,6 +26894,8 @@ starter_smoke_passed
 
 The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `AddProjectLibraries`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. Both Windows and Linux routes are registered in `.github/workflows/validate.yml`; the Linux route must not be described as verified until its CI job is green.
 
+The `CMakeLists.txt` compatibility branch appends the same target to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane exercises the public helper; the current-Engine lane keeps the starter buildable while the helper is moving from the documentation candidate into `master`.
+
 ## Deliberate limits
 
 The starter does not enable the `Config` baker because distributable configuration requires a complete explicit settings set. It also does not import all engine `CoreScripts`; client-facing core modules depend on project-owned settings, enums, and generated GUI symbols. These are integration contracts for later examples, not hidden starter prerequisites.
@@ -26923,7 +26939,7 @@ The tested first lesson is
 ===== BEGIN DOCUMENT native-extension-sample-readme =====
 Source: Examples/NativeExtensionSample/README.md
 Canonical URL: https://fonline.ru/Examples/NativeExtensionSample/README.html
-Content SHA-256: c834c8be138f7684c38fe6394f786bea0e75c40794912e5c9c025742c3ddbc82
+Content SHA-256: 393210f4b00ca5b2051f62439563d96ca3347d60ca3f315b6d2db5f80c945f91
 
 ---
 permalink: /Examples/NativeExtensionSample/README.html
@@ -26984,6 +27000,8 @@ native_extension_smoke_passed
 The project compiles the extension and Engine from source in one build. It does not promise a stable binary ABI across Engine revisions. Update the Engine gitlink, reconfigure, rebuild, rebake, and rerun both pinned/current compatibility lanes as one review.
 
 `NativeExtensionCore` exposes only fixed-width values to its focused test. Engine handles stay in the registered extension translation unit and use `ptr<T>` borrows. Per-server state lives in `ServerEngine.UserData`; there is no file-scope mutable state. A real project with several native subsystems should place one project-owned aggregate in that slot instead of letting independent extensions compete for it.
+
+The `CMakeLists.txt` compatibility branch appends `NativeExtensionCore` directly to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane therefore proves the documented helper, while the current-Engine lane remains useful during helper rollout.
 
 The sample contains no distributable assets, runtime libraries, credentials, or service integration. Add those only with explicit provenance, platform support, package acceptance, and security ownership.
 

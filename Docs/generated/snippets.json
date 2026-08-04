@@ -3,7 +3,7 @@
   "generated_by": "BuildTools/docs_snippets.py",
   "manifest_path": "Docs/documentation-manifest.json",
   "policy_path": "BuildTools/SnippetPolicy.json",
-  "corpus_sha256": "07f659bc90efa084e26d1ba800feeb8aa4fc38eeb82ea42b071d23beb42dd277",
+  "corpus_sha256": "1099629b38477d0c196d219e16e976b59a4f5b1f267807d581c2408c623b85b6",
   "document_count": 197,
   "snippet_count": 462,
   "validated_count": 462,
@@ -1047,8 +1047,8 @@
       "path": "Docs/en/how-to/build/public-example-repositories.md",
       "heading": "Maintenance triggers",
       "anchor": "maintenance-triggers",
-      "start_line": 242,
-      "end_line": 249,
+      "start_line": 244,
+      "end_line": 251,
       "language": "bash",
       "contract": "normative",
       "harness": "bash-parse",
@@ -2878,7 +2878,7 @@
       "status": "passed"
     },
     {
-      "id": "generated-cli-commands-a2615d2c6792",
+      "id": "generated-cli-commands-25ae536d531b",
       "document_id": "generated-cli-commands",
       "path": "Docs/en/reference/buildtools/commands.md",
       "heading": "`prepare-host-workspace`",
@@ -2890,12 +2890,12 @@
       "harness": "text-contract",
       "template": true,
       "line_count": 3,
-      "byte_count": 382,
-      "sha256": "a2615d2c679224e2629f32eb20d57fa18190e8a7f13718672615568ce06ab89b",
+      "byte_count": 408,
+      "sha256": "25ae536d531b8d778be3a1f5d5c466ea31f6e325ba170a1b5ce5da3debe13fbe",
       "status": "passed"
     },
     {
-      "id": "generated-cli-commands-0b643c1191c3",
+      "id": "generated-cli-commands-4c624f2b48e7",
       "document_id": "generated-cli-commands",
       "path": "Docs/en/reference/buildtools/commands.md",
       "heading": "Exact `--help` output",
@@ -2907,8 +2907,8 @@
       "harness": "text-contract",
       "template": true,
       "line_count": 14,
-      "byte_count": 932,
-      "sha256": "0b643c1191c31d3e358ae1ce6ea417126fcf1a5f0115f126203c33ec637f496c",
+      "byte_count": 984,
+      "sha256": "4c624f2b48e75dbd3d758649efcb1227deeff4efda0e374086ed6d1a5c595e6e",
       "status": "passed"
     },
     {
