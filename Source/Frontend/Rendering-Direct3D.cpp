@@ -119,17 +119,15 @@ public:
     nptr<ID3D11VertexShader> VertexShader[EFFECT_MAX_PASSES] {};
     nptr<ID3D11InputLayout> InputLayout[EFFECT_MAX_PASSES] {};
     nptr<ID3D11PixelShader> PixelShader[EFFECT_MAX_PASSES] {};
-    nptr<ID3D11RasterizerState> RasterizerState[EFFECT_MAX_PASSES] {};
+    nptr<ID3D11RasterizerState> RasterizerState[EFFECT_CULL_MODES][EFFECT_MAX_PASSES] {};
     nptr<ID3D11BlendState> BlendState[EFFECT_MAX_PASSES] {};
-    nptr<ID3D11DepthStencilState> DepthStencilState[EFFECT_MAX_PASSES] {};
-#if FO_ENABLE_3D
-    nptr<ID3D11RasterizerState> RasterizerState_Culling[EFFECT_MAX_PASSES] {};
-#endif
+    nptr<ID3D11DepthStencilState> DepthStencilState[EFFECT_MAX_PASSES][EFFECT_DEPTH_VARIANTS] {};
 
     nptr<ID3D11Buffer> Cb_ProjBuf {};
     nptr<ID3D11Buffer> Cb_MainTexBuf {};
     nptr<ID3D11Buffer> Cb_EggBuf {};
     nptr<ID3D11Buffer> Cb_SpriteBorderBuf {};
+    nptr<ID3D11Buffer> Cb_ParticleSamplingBuf {};
     nptr<ID3D11Buffer> Cb_TimeBuf {};
     nptr<ID3D11Buffer> Cb_RandomValueBuf {};
     nptr<ID3D11Buffer> Cb_ScriptValueBuf {};
@@ -311,6 +309,22 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
         return D3D11_COMPARISON_GREATER;
     case DepthFuncType::NotEqual:
         return D3D11_COMPARISON_NOT_EQUAL;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
+static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (cull_mode) {
+    case CullModeType::None:
+        return D3D11_CULL_NONE;
+    case CullModeType::Back:
+        return D3D11_CULL_BACK;
+    case CullModeType::Front:
+        return D3D11_CULL_FRONT;
     }
 
     FO_UNREACHABLE_PLACE();
@@ -844,53 +858,52 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
         }
 
-        // Create the rasterizer state
-        {
+        // Create one rasterizer state per cull mode the effect can resolve to.
+        for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+            CullModeType cull_mode_type = static_cast<CullModeType>(cull_mode);
+
+            if (!d3d_effect->IsCullModeUsed(cull_mode_type)) {
+                continue;
+            }
+
             D3D11_RASTERIZER_DESC rasterizer_desc = {};
             rasterizer_desc.FillMode = D3D11_FILL_SOLID;
-            rasterizer_desc.CullMode = D3D11_CULL_NONE;
+            rasterizer_desc.CullMode = ConvertCullMode(cull_mode_type);
+            rasterizer_desc.FrontCounterClockwise = TRUE;
             rasterizer_desc.DepthClipEnable = TRUE;
             rasterizer_desc.ScissorEnable = TRUE;
             rasterizer_desc.DepthBiasClamp = 0;
 
-            auto d3d_create_rasterized_state = _ctx->D3DDevice->CreateRasterizerState(&rasterizer_desc, d3d_effect->RasterizerState[pass].get_pp());
+            auto d3d_create_rasterized_state = _ctx->D3DDevice->CreateRasterizerState(&rasterizer_desc, d3d_effect->RasterizerState[cull_mode][pass].get_pp());
 
             if (FAILED(d3d_create_rasterized_state)) {
                 throw EffectLoadException("Failed to call CreateRasterizerState", d3d_create_rasterized_state, name);
             }
-
-#if FO_ENABLE_3D
-            D3D11_RASTERIZER_DESC rasterizer_culling_desc = rasterizer_desc;
-            rasterizer_desc.CullMode = D3D11_CULL_BACK;
-            rasterizer_desc.FrontCounterClockwise = TRUE;
-
-            auto d3d_create_rasterized_state_culling = _ctx->D3DDevice->CreateRasterizerState(&rasterizer_culling_desc, d3d_effect->RasterizerState_Culling[pass].get_pp());
-
-            if (FAILED(d3d_create_rasterized_state_culling)) {
-                throw EffectLoadException("Failed to call CreateRasterizerState", d3d_create_rasterized_state_culling, name);
-            }
-#endif
         }
 
-        // Create depth-stencil state
-        {
+        // Create depth-stencil state, one object per depth variant slot the effect can resolve to
+        for (size_t slot = 0; slot < EFFECT_DEPTH_VARIANTS; slot++) {
+            if (!d3d_effect->IsDepthVariantSlotUsed(pass, slot)) {
+                continue;
+            }
+
             D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
 
 #if FO_ENABLE_3D
             if (usage == EffectUsage::Model) {
                 depth_stencil_desc.DepthEnable = TRUE;
-                depth_stencil_desc.DepthWriteMask = d3d_effect->_depthWrite[pass] ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->_depthFunc[pass]);
+                depth_stencil_desc.DepthWriteMask = d3d_effect->GetDepthVariantWrite(slot) ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->GetDepthVariantFunc(pass, slot));
             }
 #endif
 
             if (usage == EffectUsage::QuadSprite) {
                 depth_stencil_desc.DepthEnable = TRUE;
-                depth_stencil_desc.DepthWriteMask = d3d_effect->_depthWrite[pass] ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->_depthFunc[pass]);
+                depth_stencil_desc.DepthWriteMask = d3d_effect->GetDepthVariantWrite(slot) ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->GetDepthVariantFunc(pass, slot));
             }
 
-            auto d3d_create_depth_stencil_state = _ctx->D3DDevice->CreateDepthStencilState(&depth_stencil_desc, d3d_effect->DepthStencilState[pass].get_pp());
+            auto d3d_create_depth_stencil_state = _ctx->D3DDevice->CreateDepthStencilState(&depth_stencil_desc, d3d_effect->DepthStencilState[pass][slot].get_pp());
 
             if (FAILED(d3d_create_depth_stencil_state)) {
                 throw EffectLoadException("Failed to call CreateDepthStencilState", d3d_create_depth_stencil_state, name);
@@ -1386,17 +1399,19 @@ Direct3D_Effect::~Direct3D_Effect()
         ReleaseComObjectSlot(VertexShader[i]);
         ReleaseComObjectSlot(InputLayout[i]);
         ReleaseComObjectSlot(PixelShader[i]);
-        ReleaseComObjectSlot(RasterizerState[i]);
         ReleaseComObjectSlot(BlendState[i]);
-        ReleaseComObjectSlot(DepthStencilState[i]);
-#if FO_ENABLE_3D
-        ReleaseComObjectSlot(RasterizerState_Culling[i]);
-#endif
+        for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+            ReleaseComObjectSlot(RasterizerState[cull_mode][i]);
+        }
+        for (size_t slot = 0; slot < EFFECT_DEPTH_VARIANTS; slot++) {
+            ReleaseComObjectSlot(DepthStencilState[i][slot]);
+        }
     }
     ReleaseComObjectSlot(Cb_ProjBuf);
     ReleaseComObjectSlot(Cb_MainTexBuf);
     ReleaseComObjectSlot(Cb_EggBuf);
     ReleaseComObjectSlot(Cb_SpriteBorderBuf);
+    ReleaseComObjectSlot(Cb_ParticleSamplingBuf);
     ReleaseComObjectSlot(Cb_TimeBuf);
     ReleaseComObjectSlot(Cb_RandomValueBuf);
     ReleaseComObjectSlot(Cb_ScriptValueBuf);
@@ -1473,7 +1488,6 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
         auto cbuffer_dst = make_nptr(cbuffer_resource.pData);
         FO_VERIFY_AND_THROW(cbuffer_dst, "Mapped subresource data pointer is null");
-        using BufferType = std::remove_cvref_t<decltype(buf)>;
 
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
@@ -1521,6 +1535,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
     upload_cbuffer(_needMainTexBuf, MainTexBuf, Cb_MainTexBuf, true);
     upload_cbuffer(_needEggBuf, EggBuf, Cb_EggBuf, true);
     upload_cbuffer(_needSpriteBorderBuf, SpriteBorderBuf, Cb_SpriteBorderBuf, true);
+    upload_cbuffer(_needParticleSamplingBuf, ParticleSamplingBuf, Cb_ParticleSamplingBuf, true);
     upload_cbuffer(_needTimeBuf, TimeBuf, Cb_TimeBuf, true);
     upload_cbuffer(_needRandomValueBuf, RandomValueBuf, Cb_RandomValueBuf, true);
     upload_cbuffer(_needScriptValueBuf, ScriptValueBuf, Cb_ScriptValueBuf, false);
@@ -1573,6 +1588,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         set_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
         set_cbuffer(_posEggBuf[pass], Cb_EggBuf);
         set_cbuffer(_posSpriteBorderBuf[pass], Cb_SpriteBorderBuf);
+        set_cbuffer(_posParticleSamplingBuf[pass], Cb_ParticleSamplingBuf);
         set_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         set_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         set_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
@@ -1606,6 +1622,15 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
             _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, find_tex_sampler(indoor_tex));
         }
 
+        if (_posBackgroundTex[pass] != -1) {
+            nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(background_tex_source, "Direct3D dummy texture is not created");
+            auto background_tex = background_tex_source.dyn_cast<const Direct3D_Texture>();
+            FO_VERIFY_AND_THROW(background_tex, "Direct3D background texture is not of the expected backend type");
+            _ctx->D3DDeviceContext->PSSetShaderResources(_posBackgroundTex[pass], 1, background_tex->ShaderTexView.get_pp());
+            _ctx->D3DDeviceContext->PSSetSamplers(_posBackgroundTex[pass], 1, find_tex_sampler(background_tex));
+        }
+
 #if FO_ENABLE_3D
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1623,13 +1648,9 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
         constexpr float32_t blend_factor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
         _ctx->D3DDeviceContext->OMSetBlendState(DisableBlending ? nullptr : BlendState[pass].get(), blend_factor, 0xFFFFFFFF);
-        _ctx->D3DDeviceContext->OMSetDepthStencilState(DepthStencilState[pass].get(), 0);
+        _ctx->D3DDeviceContext->OMSetDepthStencilState(DepthStencilState[pass][ResolveDepthVariantSlot(pass)].get(), 0);
 
-#if FO_ENABLE_3D
-        _ctx->D3DDeviceContext->RSSetState(DisableCulling ? RasterizerState[pass].get() : RasterizerState_Culling[pass].get());
-#else
-        _ctx->D3DDeviceContext->RSSetState(RasterizerState[pass].get());
-#endif
+        _ctx->D3DDeviceContext->RSSetState(RasterizerState[static_cast<size_t>(ResolveCullMode())][pass].get());
         _ctx->D3DDeviceContext->RSSetScissorRects(1, _ctx->ScissorEnabled ? &_ctx->ScissorRect : &_ctx->DisabledScissorRect);
 
         if (_ctx->FeatureLevel <= D3D_FEATURE_LEVEL_9_3 && draw_mode == D3D11_PRIMITIVE_TOPOLOGY_POINTLIST) {
@@ -1656,6 +1677,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         unset_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
         unset_cbuffer(_posEggBuf[pass], Cb_EggBuf);
         unset_cbuffer(_posSpriteBorderBuf[pass], Cb_SpriteBorderBuf);
+        unset_cbuffer(_posParticleSamplingBuf[pass], Cb_ParticleSamplingBuf);
         unset_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         unset_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         unset_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
@@ -1674,6 +1696,10 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         if (_posIndoorMaskTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posIndoorMaskTex[pass], 1, &null_res);
             _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, &null_sampler);
+        }
+        if (_posBackgroundTex[pass] != -1) {
+            _ctx->D3DDeviceContext->PSSetShaderResources(_posBackgroundTex[pass], 1, &null_res);
+            _ctx->D3DDeviceContext->PSSetSamplers(_posBackgroundTex[pass], 1, &null_sampler);
         }
 
 #if FO_ENABLE_3D

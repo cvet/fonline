@@ -44,7 +44,7 @@ DeclareBoolOptions(
 	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
-	FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF
+	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF
 	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
@@ -301,7 +301,7 @@ endif()
 
 # UBSan: there is no file-based ignorelist. The AngelScript value-type alignment UB was fixed at the source, so the
 # ubsan-ignorelist.txt is gone entirely. The only UBSan suppressions left are the per-target vendored-third-party
-# excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for unqlite /
+# excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for SQLite /
 # AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
 
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).

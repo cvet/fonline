@@ -345,9 +345,9 @@ private:
 };
 
 // Null-tolerant own-lock retention for an entity already covered by the active script/job context.
-// Makes one non-blocking attempt and never releases/reacquires, blocks, waits, retries, yields, sleeps,
-// or obtains missing caller cover; throws when there is no active context, the entity is uncovered,
-// or the one try is contended.
+// Never releases the caller's existing cover or blocks on an entity lock. It retries the all-or-nothing
+// state-mutex transaction with bounded back-off to absorb in-flight acquire/release windows, and throws
+// when there is no active context, the entity is uncovered, or the invariant-level retry budget is exhausted.
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

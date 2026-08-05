@@ -72,6 +72,73 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
 
+static auto BsonMalloc(size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::CallocRaw(num, size).get();
+}
+
+static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::ReallocRaw(mem, size).get();
+}
+
+static void BsonFree(void* mem) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SafeAlloc::FreeRaw(mem);
+}
+
+// bson releases every block through the plain free member — it never records that an allocation came
+// from the aligned path, so the aligned allocator must produce blocks that BsonFree can release. That
+// holds under rpmalloc (rpaligned_alloc and rpmalloc both end in rpfree) and on POSIX without it
+// (posix_memalign blocks are free()-able by definition). The one combination where it does not hold is
+// Windows without rpmalloc — the sanitizer configs — because there the aligned path is
+// _aligned_malloc/_aligned_free. bson's own default vtable resolves this the same way: its
+// _aligned_alloc_impl falls back to plain malloc on MSVC and deliberately does not use _aligned_malloc,
+// precisely because that would break the free symmetry. Match it. Every aligned request in mongoc is a
+// BSON_ALIGNOF of an ordinary C struct (plus mongoc-ts-pool's promotion to BSON_ALIGN_OF_PTR), so
+// malloc's fundamental alignment already covers them.
+static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC || !FO_WINDOWS
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+#else
+    ignore_unused(alignment);
+
+    return SafeAlloc::MallocRaw(size).get();
+#endif
+}
+
+void InitializeBsonMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        bson_mem_vtable_t vtable {};
+        vtable.malloc = &BsonMalloc;
+        vtable.calloc = &BsonCalloc;
+        vtable.realloc = &BsonRealloc;
+        vtable.free = &BsonFree;
+        vtable.aligned_alloc = &BsonAlignedAlloc;
+        bson_mem_set_vtable(&vtable);
+    });
+}
+
 DataBase::DataBase() = default;
 
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -1379,9 +1446,9 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         if (options.front() == "JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
         }
-#if FO_HAVE_UNQLITE
-        if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return finish_connect(CreateUnQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#if FO_HAVE_SQLITE
+        if (options.front() == "DbSQLite" && options.size() == 2) {
+            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #endif
 #if FO_HAVE_MONGO

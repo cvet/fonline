@@ -76,6 +76,7 @@ struct ModelSpriteFramePlacement
 auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>;
 auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>;
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>;
+auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor) -> ModelBounds3D;
 
 FO_END_NAMESPACE
 

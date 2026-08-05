@@ -175,6 +175,11 @@ public:
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
+    // A copy of whatever has been drawn into the current render target so far, for draws that refract what is behind
+    // them. The copy is taken on demand and at most once per direct-draw replay, so a frame with nothing refracting
+    // never pays for it.
+    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
+
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -276,6 +281,8 @@ private:
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
 
     nptr<RenderTarget> _rtMain {};
+    nptr<RenderTarget> _rtSceneBackground {};
+    bool _sceneBackgroundValid {};
 
     vector<DipData> _dipQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};

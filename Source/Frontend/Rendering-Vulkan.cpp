@@ -467,6 +467,22 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertCullMode(CullModeType cull_mode) -> VkCullModeFlags
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (cull_mode) {
+    case CullModeType::None:
+        return VK_CULL_MODE_NONE;
+    case CullModeType::Back:
+        return VK_CULL_MODE_BACK_BIT;
+    case CullModeType::Front:
+        return VK_CULL_MODE_FRONT_BIT;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 static auto ConvertPrimitive(RenderPrimitiveType prim_type) -> VkPrimitiveTopology
 {
     FO_STACK_TRACE_ENTRY();
@@ -565,7 +581,7 @@ public:
     VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
     // Per-pass pipelines indexed by [pass][primitive_type][blend_disabled?]: the second variant
     // honours RenderEffect::DisableBlending (opaque blits; alpha-blending them drops the HUD).
-    VkPipeline Pipeline[EFFECT_MAX_PASSES][5][2] {};
+    VkPipeline Pipeline[EFFECT_MAX_PASSES][5][2][EFFECT_DEPTH_VARIANTS][EFFECT_CULL_MODES] {};
     VkPipelineLayout PipelineLayout {};
 
 private:
@@ -1267,9 +1283,13 @@ Vulkan_Effect::~Vulkan_Effect()
         }
         for (size_t prim = 0; prim < 5; prim++) {
             for (size_t blend_disabled = 0; blend_disabled < 2; blend_disabled++) {
-                if (Pipeline[pass][prim][blend_disabled] != VK_NULL_HANDLE) {
-                    vkDestroyPipeline(_ctx->Device, Pipeline[pass][prim][blend_disabled], nullptr);
-                    Pipeline[pass][prim][blend_disabled] = VK_NULL_HANDLE;
+                for (size_t depth_slot = 0; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
+                    for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+                        if (Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode] != VK_NULL_HANDLE) {
+                            vkDestroyPipeline(_ctx->Device, Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode], nullptr);
+                            Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode] = VK_NULL_HANDLE;
+                        }
+                    }
                 }
             }
         }
@@ -1326,6 +1346,9 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }
+    if (_needParticleSamplingBuf && !ParticleSamplingBuf.has_value()) {
+        ParticleSamplingBuf = ParticleSamplingBuffer();
+    }
     if (_needSpriteBorderBuf && !SpriteBorderBuf.has_value()) {
         SpriteBorderBuf = SpriteBorderBuffer();
     }
@@ -1376,9 +1399,11 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Bind pipeline for current pass — pick the variant that matches the current
         // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
         size_t blend_variant = DisableBlending ? 1 : 0;
-        if (Pipeline[pass][prim_index][blend_variant] != VK_NULL_HANDLE) {
-            vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass][prim_index][blend_variant]);
-        }
+        size_t depth_slot = ResolveDepthVariantSlot(pass);
+        size_t cull_variant = static_cast<size_t>(ResolveCullMode());
+        VkPipeline pipeline = Pipeline[pass][prim_index][blend_variant][depth_slot][cull_variant];
+        FO_VERIFY_AND_THROW(pipeline != VK_NULL_HANDLE, "Vulkan pipeline variant is not created", _name, pass + 1, prim_index, blend_variant, depth_slot, cull_variant);
+        vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         // Allocate descriptor sets for this draw call
         VkDescriptorSet texture_set = VK_NULL_HANDLE;
@@ -1442,6 +1467,14 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 auto indoor_tex = indoor_tex_source.dyn_cast<const Vulkan_Texture>();
                 FO_VERIFY_AND_THROW(indoor_tex, "Vulkan indoor mask texture is not of the expected backend type");
                 append_sampler(_posIndoorMaskTex[pass], indoor_tex);
+            }
+
+            if (_posBackgroundTex[pass] != -1) {
+                nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+                FO_VERIFY_AND_THROW(background_tex_source, "Vulkan dummy texture is not created");
+                auto background_tex = background_tex_source.dyn_cast<const Vulkan_Texture>();
+                FO_VERIFY_AND_THROW(background_tex, "Vulkan background texture is not of the expected backend type");
+                append_sampler(_posBackgroundTex[pass], background_tex);
             }
 
 #if FO_ENABLE_3D
@@ -1517,6 +1550,9 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             if (EggBuf.has_value()) {
                 upload_uniform_buffer(_posEggBuf[pass], object_to_bytes(EggBuf.value()));
             }
+            if (ParticleSamplingBuf.has_value()) {
+                upload_uniform_buffer(_posParticleSamplingBuf[pass], object_to_bytes(ParticleSamplingBuf.value()));
+            }
             if (SpriteBorderBuf.has_value()) {
                 upload_uniform_buffer(_posSpriteBorderBuf[pass], object_to_bytes(SpriteBorderBuf.value()));
             }
@@ -1573,6 +1609,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     MainTexBuf.reset();
     EggBuf.reset();
     SpriteBorderBuf.reset();
+    ParticleSamplingBuf.reset();
     TimeBuf.reset();
     RandomValueBuf.reset();
     CameraBuf.reset();
@@ -1923,15 +1960,10 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         rasterization_ci.depthClampEnable = VK_FALSE;
         rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
         rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
-#if FO_ENABLE_3D
-        // The negative-height viewport flips screen-space winding exactly like the previously used
-        // Y-negated projection did, so the effective front face stays the same as before.
-        rasterization_ci.cullMode = (usage == EffectUsage::Model) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
-        rasterization_ci.frontFace = (usage == EffectUsage::Model) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-#else
-        rasterization_ci.cullMode = VK_CULL_MODE_NONE;
-        rasterization_ci.frontFace = VK_FRONT_FACE_CLOCKWISE;
-#endif
+        // The negative-height viewport flips screen-space winding exactly like the previously used Y-negated projection
+        // did, so counter-clockwise is the front face here, matching the other backends. The cull mode itself is a
+        // per-pipeline variant filled in below.
+        rasterization_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterization_ci.depthBiasEnable = VK_FALSE;
         rasterization_ci.lineWidth = 1.0f;
 
@@ -1956,26 +1988,11 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         blend_ci.attachmentCount = 1;
         blend_ci.pAttachments = &blend_attachment;
 
-        VkPipelineDepthStencilStateCreateInfo depth_ci {};
-        depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_ci.depthTestEnable = VK_FALSE;
-        depth_ci.depthWriteEnable = VK_FALSE;
-        depth_ci.depthCompareOp = ConvertDepthFunc(vk_effect->_depthFunc[pass]);
-
+        bool depth_state_used =
 #if FO_ENABLE_3D
-        if (usage == EffectUsage::Model) {
-            depth_ci.depthTestEnable = VK_TRUE;
-            depth_ci.depthWriteEnable = vk_effect->_depthWrite[pass] ? VK_TRUE : VK_FALSE;
-        }
+            usage == EffectUsage::Model ||
 #endif
-
-        if (usage == EffectUsage::QuadSprite) {
-            depth_ci.depthTestEnable = VK_TRUE;
-            depth_ci.depthWriteEnable = vk_effect->_depthWrite[pass] ? VK_TRUE : VK_FALSE;
-        }
-
-        depth_ci.depthBoundsTestEnable = VK_FALSE;
-        depth_ci.stencilTestEnable = VK_FALSE;
+            usage == EffectUsage::QuadSprite;
 
         VkPipelineShaderStageCreateInfo shader_stages[2] {};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -2006,7 +2023,8 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             input_assembly_ci.topology = prim_type == RenderPrimitiveType::PointList ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : ConvertPrimitive(prim_type);
             input_assembly_ci.primitiveRestartEnable = prim_type == RenderPrimitiveType::LineStrip || prim_type == RenderPrimitiveType::TriangleStrip ? VK_TRUE : VK_FALSE;
 
-            // Two variants per (pass, prim): 0 = alpha-blend, 1 = blending disabled (see Pipeline)
+            // Two blend variants per (pass, prim): 0 = alpha-blend, 1 = blending disabled. Times the depth variant
+            // slots the effect can resolve to - one for an ordinary effect, all of them when it declares variants.
             for (size_t blend_variant = 0; blend_variant < 2; blend_variant++) {
                 VkPipelineColorBlendAttachmentState variant_blend_attachment = blend_attachment;
                 if (blend_variant == 1) {
@@ -2016,24 +2034,47 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 VkPipelineColorBlendStateCreateInfo variant_blend_ci = blend_ci;
                 variant_blend_ci.pAttachments = &variant_blend_attachment;
 
-                VkGraphicsPipelineCreateInfo pipeline_ci {};
-                pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-                pipeline_ci.stageCount = 2;
-                pipeline_ci.pStages = shader_stages;
-                pipeline_ci.pVertexInputState = &vertex_input_ci;
-                pipeline_ci.pInputAssemblyState = &input_assembly_ci;
-                pipeline_ci.pViewportState = &viewport_ci;
-                pipeline_ci.pRasterizationState = &rasterization_ci;
-                pipeline_ci.pMultisampleState = &multisample_ci;
-                pipeline_ci.pDepthStencilState = &depth_ci;
-                pipeline_ci.pColorBlendState = &variant_blend_ci;
-                pipeline_ci.pDynamicState = &dynamic_ci;
-                pipeline_ci.layout = vk_effect->PipelineLayout;
-                pipeline_ci.renderPass = _ctx->RenderPass;
-                pipeline_ci.subpass = 0;
+                for (size_t depth_slot = 0; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
+                    if (!vk_effect->IsDepthVariantSlotUsed(pass, depth_slot)) {
+                        continue;
+                    }
 
-                if (vkCreateGraphicsPipelines(_ctx->Device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant]) != VK_SUCCESS) {
-                    throw EffectLoadException("Failed to create graphics pipeline", name);
+                    VkPipelineDepthStencilStateCreateInfo depth_ci {};
+                    depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                    depth_ci.depthTestEnable = depth_state_used ? VK_TRUE : VK_FALSE;
+                    depth_ci.depthWriteEnable = depth_state_used && vk_effect->GetDepthVariantWrite(depth_slot) ? VK_TRUE : VK_FALSE;
+                    depth_ci.depthCompareOp = ConvertDepthFunc(vk_effect->GetDepthVariantFunc(pass, depth_slot));
+                    depth_ci.depthBoundsTestEnable = VK_FALSE;
+                    depth_ci.stencilTestEnable = VK_FALSE;
+
+                    for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+                        if (!vk_effect->IsCullModeUsed(static_cast<CullModeType>(cull_mode))) {
+                            continue;
+                        }
+
+                        VkPipelineRasterizationStateCreateInfo variant_rasterization_ci = rasterization_ci;
+                        variant_rasterization_ci.cullMode = ConvertCullMode(static_cast<CullModeType>(cull_mode));
+
+                        VkGraphicsPipelineCreateInfo pipeline_ci {};
+                        pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                        pipeline_ci.stageCount = 2;
+                        pipeline_ci.pStages = shader_stages;
+                        pipeline_ci.pVertexInputState = &vertex_input_ci;
+                        pipeline_ci.pInputAssemblyState = &input_assembly_ci;
+                        pipeline_ci.pViewportState = &viewport_ci;
+                        pipeline_ci.pRasterizationState = &variant_rasterization_ci;
+                        pipeline_ci.pMultisampleState = &multisample_ci;
+                        pipeline_ci.pDepthStencilState = &depth_ci;
+                        pipeline_ci.pColorBlendState = &variant_blend_ci;
+                        pipeline_ci.pDynamicState = &dynamic_ci;
+                        pipeline_ci.layout = vk_effect->PipelineLayout;
+                        pipeline_ci.renderPass = _ctx->RenderPass;
+                        pipeline_ci.subpass = 0;
+
+                        if (vkCreateGraphicsPipelines(_ctx->Device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant][depth_slot][cull_mode]) != VK_SUCCESS) {
+                            throw EffectLoadException("Failed to create graphics pipeline", name);
+                        }
+                    }
                 }
             }
         }

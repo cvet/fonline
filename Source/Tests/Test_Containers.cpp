@@ -60,6 +60,20 @@ TEST_CASE("Containers")
         CHECK(text == "1 2 3");
     }
 
+    SECTION("VectorFormatterChar")
+    {
+        vector<char> values = {'A', ' '};
+        std::string text = std::format("{}", values);
+        CHECK(text == "65 32");
+    }
+
+    SECTION("VectorFormatterByte")
+    {
+        vector<uint8_t> values = {0, 65, 255};
+        std::string text = std::format("{}", values);
+        CHECK(text == "0 65 255");
+    }
+
     SECTION("VectorFormatterString")
     {
         vector<string> values = {"one", "two", "three"};
@@ -72,6 +86,14 @@ TEST_CASE("Containers")
         vector<bool> values = {true, false, true};
         auto text = std::format("{}", values);
         CHECK(text == "True False True");
+    }
+
+    SECTION("VectorFormatterFloat")
+    {
+        // Pins the printf("%f") output the formatter produced while it went through std::to_string
+        vector<float32_t> values = {1.5f, -2.0f, 0.0f};
+        auto text = std::format("{}", values);
+        CHECK(text == "1.500000 -2.000000 0.000000");
     }
 
     SECTION("VectorFormatterEmpty")

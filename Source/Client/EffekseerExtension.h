@@ -41,6 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
+void InitializeEffekseerMemory() noexcept;
+
 class EffekseerParticleRuntimeBackend;
 
 class EffekseerParticleRuntimeSystem final : public ParticleRuntimeSystem
@@ -95,6 +97,19 @@ private:
 
     unique_ptr<Impl> _impl;
 };
+
+// Structural resource budgets enforced before Effekseer's unchecked parser allocates from serialized counts. The
+// renderer's per-draw geometry budget is 64K vertices; animated model resources additionally get a generous frame and
+// payload ceiling so a compact count bomb cannot amplify into an unbounded decoded model.
+inline constexpr size_t EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX = 64U * 1024U * 1024U;
+inline constexpr int32_t EFFEKSEER_MODEL_FRAME_COUNT_MAX = 4096;
+inline constexpr int32_t EFFEKSEER_MODEL_VERTEX_COUNT_MAX = 64000;
+inline constexpr int32_t EFFEKSEER_MODEL_FACE_COUNT_MAX = EFFEKSEER_MODEL_VERTEX_COUNT_MAX / 3;
+
+// Effekseer's model constructor trusts every serialized count and does not consult the supplied buffer size. Validate
+// the complete part it will read before handing a raw-copied .efkmodel payload to the third-party parser. A valid
+// legacy payload may carry trailing bytes which that parser deliberately ignores.
+auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>;
 
 // A baked Effekseer effect carries its precomputed world-space bounds as a fixed-size trailer appended after the
 // compiled "SKFE" payload (the effect keeps its magic at offset 0). Only our runtime reads the .efk - it is never

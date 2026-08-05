@@ -2326,7 +2326,10 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 			'-SourceRoot',
 			engine_root / 'ThirdParty' / 'Effekseer',
 			'-BuildRoot',
-			workspace / 'auxiliary-builds' / 'EffekseerEditor',
+			# Kept deliberately short: Effekseer nests its own ExternalProject trees (ThirdParty/Build/<lib>/src/
+			# ExternalProject_<lib>-build/CMakeFiles/CMakeScratch/TryCompile-*/...) under this root, and with a
+			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit.
+			workspace / 'aux-builds' / 'efk',
 			'-OutputPath',
 			output / 'Binaries' / 'EffekseerEditor-Windows-win64',
 			'-Configuration',

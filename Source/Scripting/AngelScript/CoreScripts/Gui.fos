@@ -3750,10 +3750,16 @@ class ItemView : Grid
         Item?[] newItems = {};
 
         Item[]? maybeItems = OnGetItems();
-        Item[] items = maybeItems != null ? maybeItems : array<Item>();
+        Item[] sourceItems = maybeItems != null ? maybeItems : array<Item>();
 
-        for (int i = 0; i < items.length(); i++) {
-            verify(!items[i].IsDestroyed, "Item is destroyed");
+        // A destroyed item here is expected, not an invariant break: the grid is most often rebuilt
+        // *because* the server removed an item, and the supplier still hands back the pre-refresh
+        // list. Drop those entries and render what is left instead of failing the whole refresh.
+        Item[] items = {};
+        for (int i = 0; i < sourceItems.length(); i++) {
+            if (!sourceItems[i].IsDestroyed) {
+                items.insertLast(sourceItems[i]);
+            }
         }
 
         if (!_UseSorting) {

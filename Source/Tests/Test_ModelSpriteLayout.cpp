@@ -48,6 +48,72 @@ TEST_CASE("ModelSpriteParticleFramePlacementClampsExtremeFiniteBounds", "[model]
     CHECK(placement->Pivot.y == 74);
 }
 
+TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
+{
+    // The view rect anchors the critter name, so it must never advertise more space than the model actually draws in.
+    // Its bounds are the idle-pose subset of the model bounds, and the layout must keep that containment: the regression
+    // this pins is a view box grown from live poses and attachments until it dwarfed the frame and the name drifted up.
+    const ModelBounds3D model_bounds = {.Min = {-0.9f, 0.0f, -0.7f}, .Max = {0.9f, 2.4f, 0.7f}};
+    const ModelBounds3D view_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
+    const mat44 identity {1.0f};
+
+    optional<ModelSpriteLayout> model_layout = CalculateModelSpriteLayout(model_bounds, identity, identity, 32.0f, false);
+    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, identity, identity, 32.0f, false);
+
+    REQUIRE(model_layout);
+    REQUIRE(view_layout);
+    CHECK(view_layout->ViewRect.width <= model_layout->DrawRect.width);
+    CHECK(view_layout->ViewRect.height <= model_layout->DrawRect.height);
+    CHECK(view_layout->ViewRect.x >= model_layout->DrawRect.x);
+    CHECK(view_layout->ViewRect.y >= model_layout->DrawRect.y);
+    CHECK(view_layout->ViewRect.x + view_layout->ViewRect.width <= model_layout->DrawRect.x + model_layout->DrawRect.width);
+    CHECK(view_layout->ViewRect.y + view_layout->ViewRect.height <= model_layout->DrawRect.y + model_layout->DrawRect.height);
+}
+
+TEST_CASE("ModelSpriteViewBoundsFollowALowerPoseButNeverAHigherOne", "[model]")
+{
+    // A corpse or a prone body must wear its name at its own height, not at standing height, so a lower animation box
+    // replaces the idle one. The opposite must not happen: a raised weapon or an overhead swing may not lift the name.
+    const ModelBounds3D idle_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
+    const ModelBounds3D lying_bounds = {.Min = {-0.9f, 0.0f, -0.3f}, .Max = {0.9f, 0.4f, 0.3f}};
+    const ModelBounds3D overhead_bounds = {.Min = {-0.6f, 0.0f, -0.4f}, .Max = {0.6f, 2.6f, 0.4f}};
+    const mat44 identity {1.0f};
+    constexpr float32_t projection_factor = 32.0f;
+
+    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, identity, projection_factor).Max.y == lying_bounds.Max.y);
+    CHECK(SelectModelViewBounds(idle_bounds, overhead_bounds, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
+    CHECK(SelectModelViewBounds(idle_bounds, std::nullopt, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
+
+    // The lying pose is wider than the standing one, so the whole box - not just its top - has to come from it.
+    CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, identity, projection_factor).Min.x == lying_bounds.Min.x);
+}
+
+TEST_CASE("ModelSpriteViewBoundsCompareHeightAfterTheModelBaseRotation", "[model]")
+{
+    // Several production models import with RotX +/-90, making source Z - not source Y - the screen-up axis. The
+    // active box deliberately has a taller raw Y than idle, so a raw Max.y comparison would keep idle in both cases.
+    const mat44 identity {1.0f};
+    constexpr float32_t projection_factor = 32.0f;
+
+    SECTION("Positive quarter turn")
+    {
+        const ModelBounds3D idle_bounds = {.Min = {-0.3f, -0.25f, -1.8f}, .Max = {0.3f, 0.25f, 0.0f}};
+        const ModelBounds3D lying_bounds = {.Min = {-0.9f, -0.3f, -0.4f}, .Max = {0.9f, 0.3f, 0.0f}};
+        const mat44 base_rotation = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+
+        CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, base_rotation, projection_factor).Min.x == lying_bounds.Min.x);
+    }
+
+    SECTION("Negative quarter turn")
+    {
+        const ModelBounds3D idle_bounds = {.Min = {-0.3f, -0.25f, 0.0f}, .Max = {0.3f, 0.25f, 1.8f}};
+        const ModelBounds3D lying_bounds = {.Min = {-0.9f, -0.3f, 0.0f}, .Max = {0.9f, 0.3f, 0.4f}};
+        const mat44 base_rotation = glm::rotate(mat44 {1.0f}, -90.0f * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+
+        CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, base_rotation, projection_factor).Min.x == lying_bounds.Min.x);
+    }
+}
+
 FO_END_NAMESPACE
 
 #endif
