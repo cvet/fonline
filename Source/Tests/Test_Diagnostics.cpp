@@ -69,22 +69,47 @@ TEST_CASE("Diagnostics")
             combined += message;
         }
 
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] location") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] checkpoint state: value: 42") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] stack stack:") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] thread worker:") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] process memory: pid: ") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] hex packet (5 byte(s)):") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] here location | file: ") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] checkpoint state | value: 42") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] stack stack\n") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] thread worker | thread: ") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] process memory | pid: ") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] hex packet | bytes: 5\n") != string::npos);
         CHECK(combined.find("41 00 7f 7a") != string::npos);
         CHECK(combined.find("1 byte(s) omitted") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] timing scope / first:") != string::npos);
-        CHECK(combined.find("[TEMP_DIAGNOSTIC] timing scope:") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] timing scope | lap: first, lap_elapsed: ") != string::npos);
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] timing scope | elapsed: ") != string::npos);
         CHECK_FALSE(diagnostics::stack_trace().empty());
 
         diagnostics::process_snapshot process = diagnostics::capture_process();
         CHECK_FALSE(process.process_id.empty());
         CHECK(diagnostics::debugger_attached() == IsRunInDebugger());
         CHECK_FALSE(diagnostics::debug_break_if(false));
+    }
+
+    SECTION("ProbeLinesQuoteValuesCarryingDelimiters")
+    {
+        vector<string> captured;
+
+        SetLogCallback("diagnostics-format-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
+
+        diagnostics::event_history history {"events", 4};
+        history.record_message("net", "path: C:/tmp/a, b");
+        history.dump();
+
+        SetLogCallback("diagnostics-format-test", {});
+
+        string combined;
+
+        for (const string& message : captured) {
+            combined += message;
+        }
+
+        // Header and payload are split on the first " | "; a value holding ':' or ',' must be quoted
+        // so a consumer cannot mistake it for another pair.
+        CHECK(combined.find("[TEMP_DIAGNOSTIC] history events | count: 1") != string::npos);
+        CHECK(combined.find("channel: net") != string::npos);
+        CHECK(combined.find("message: \"path: C:/tmp/a, b\"") != string::npos);
     }
 
     SECTION("OneShotTriggerConsumesPayloadOnce")

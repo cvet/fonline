@@ -8,6 +8,25 @@ The module itself is permanent engine code, but it owns no ambient recorder, set
 
 All public names are `snake_case` under `diagnostics`.
 
+## Probe line format
+
+Every instrument emits one canonical header line through the normal engine log:
+
+```
+[TEMP_DIAGNOSTIC] <kind> <name> | <key>: <value>, <key>: <value>
+```
+
+- `<kind>` is a fixed lowercase token identifying the instrument: `here`, `checkpoint`, `stack`, `thread`, `process`, `memory`, `hex`, `dump`, `timing`, `hit`, `rate`, `durations`, `fault`, `udp`, `pcap`, `watchdog`, `history`.
+- `<name>` is the caller-supplied probe name.
+- ` | ` separates the header from the payload and is omitted when a probe carries no pairs.
+- Payload pairs are `key: value`, separated by `, `.
+
+A value is written bare only when it contains none of `, : | " \` or a line break; otherwise it is double-quoted, with `"`, `\`, and line breaks escaped. That keeps values such as filesystem paths unambiguous — a Windows dump path is emitted as `dump "C:/Workspace/state.txt" | format: text, status: written, bytes: 11`, so a consumer can split the header on the first ` | ` and the payload on `, ` without tripping over the drive-letter colon.
+
+Multi-line output never enters the payload. `stack` and `hex` print their header line first and the block on the following lines. The log writer prefixes each entry with a timestamp, so a record is recognised by the marker appearing anywhere in the line, not at its start; a following line that carries no marker and does not open a new timestamped entry belongs to the previous block. Only `stack` and `hex` produce one.
+
+`checkpoint(name, format, args...)` passes the caller's formatted text through as the payload verbatim. Write it as `key: value` pairs to stay consistent, and quote a value yourself if it can contain a delimiter — the module cannot quote what the caller already formatted.
+
 ## Instruments
 
 All APIs are in `diagnostics` inside the engine namespace:

@@ -46,6 +46,75 @@ namespace diagnostics
 
     static constexpr string_view diagnostic_log_prefix = "TEMP_DIAGNOSTIC";
 
+    // Probe lines are `[TEMP_DIAGNOSTIC] <kind> <name> | key: value, key: value`. A consumer splits the
+    // header from the payload on the first " | ", so any value that could contain a payload delimiter is
+    // quoted by probe_value(). Multi-line blobs never enter the payload: they follow the header line, and
+    // only a header line starts with the prefix.
+    [[nodiscard]] static auto probe_value(string_view value) -> string
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        bool needs_quoting = value.empty();
+
+        for (char symbol : value) {
+            if (symbol == ',' || symbol == ':' || symbol == '|' || symbol == '"' || symbol == '\\' || symbol == '\n' || symbol == '\r') {
+                needs_quoting = true;
+                break;
+            }
+        }
+
+        if (!needs_quoting) {
+            return string {value};
+        }
+
+        string result;
+        result.reserve(value.size() + 2);
+        result += '"';
+
+        for (char symbol : value) {
+            if (symbol == '"' || symbol == '\\') {
+                result += '\\';
+                result += symbol;
+            }
+            else if (symbol == '\n') {
+                result += "\\n";
+            }
+            else if (symbol == '\r') {
+                result += "\\r";
+            }
+            else {
+                result += symbol;
+            }
+        }
+
+        result += '"';
+        return result;
+    }
+
+    static void write_probe(string_view kind, string_view name, string_view payload) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (payload.empty()) {
+            WriteLog("[{}] {} {}", diagnostic_log_prefix, kind, probe_value(name));
+            return;
+        }
+
+        WriteLog("[{}] {} {} | {}", diagnostic_log_prefix, kind, probe_value(name), payload);
+    }
+
+    static void write_probe_block(string_view kind, string_view name, string_view payload, string_view block) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (payload.empty()) {
+            WriteLog("[{}] {} {}\n{}", diagnostic_log_prefix, kind, probe_value(name), block);
+            return;
+        }
+
+        WriteLog("[{}] {} {} | {}\n{}", diagnostic_log_prefix, kind, probe_value(name), payload, block);
+    }
+
     static auto make_memory_delta_component(size_t before, size_t after) noexcept -> int64_t
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -81,21 +150,21 @@ namespace diagnostics
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] {} at {}:{} ({})", diagnostic_log_prefix, name, location.file_name(), location.line(), location.function_name());
+        write_probe("here", name, strex("file: {}, line: {}, function: {}", probe_value(location.file_name()), location.line(), probe_value(location.function_name())));
     }
 
     void checkpoint_message(string_view name, string message) noexcept
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] checkpoint {}: {}", diagnostic_log_prefix, name, message);
+        write_probe("checkpoint", name, message);
     }
 
     void checkpoint(string_view name) noexcept
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] checkpoint {}", diagnostic_log_prefix, name);
+        write_probe("checkpoint", name, {});
     }
 
     auto stack_trace() -> string
@@ -111,7 +180,7 @@ namespace diagnostics
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] stack {}:\n{}", diagnostic_log_prefix, name, stack_trace());
+        write_probe_block("stack", name, {}, stack_trace());
     }
 
     void thread_checkpoint(string_view name) noexcept
@@ -119,7 +188,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         string_view thread_name = get_this_thread_name();
-        WriteLog("[{}] thread {}: {}", diagnostic_log_prefix, name, thread_name.empty() ? "<unnamed>" : thread_name);
+        write_probe("thread", name, strex("thread: {}", probe_value(thread_name.empty() ? "<unnamed>" : thread_name)));
     }
 
     auto debugger_attached() noexcept -> bool
@@ -159,7 +228,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         process_snapshot snapshot = capture_process();
-        WriteLog("[{}] process {}: pid: {}, resident: {} bytes, private: {} bytes", diagnostic_log_prefix, name, snapshot.process_id, snapshot.resident_memory_bytes, snapshot.private_memory_bytes);
+        write_probe("process", name, strex("pid: {}, resident_bytes: {}, private_bytes: {}", probe_value(snapshot.process_id), snapshot.resident_memory_bytes, snapshot.private_memory_bytes));
     }
 
     auto capture_memory_delta(const process_snapshot& before, const process_snapshot& after) noexcept -> memory_delta
@@ -193,7 +262,7 @@ namespace diagnostics
         uint64_t private_magnitude = current.private_memory_bytes >= 0 ? numeric_cast<uint64_t>(current.private_memory_bytes) : numeric_cast<uint64_t>(-current.private_memory_bytes);
 
         if (std::max(resident_magnitude, private_magnitude) >= _report_threshold_bytes) {
-            WriteLog("[{}] memory {}: resident {:+} bytes, private {:+} bytes", diagnostic_log_prefix, _name, current.resident_memory_bytes, current.private_memory_bytes);
+            write_probe("memory", _name, strex("resident_bytes: {:+}, private_bytes: {:+}", current.resident_memory_bytes, current.private_memory_bytes));
         }
     }
 
@@ -266,7 +335,7 @@ namespace diagnostics
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] hex {} ({} byte(s)):\n{}", diagnostic_log_prefix, name, data.size(), hex_dump(data, max_bytes, bytes_per_line));
+        write_probe_block("hex", name, strex("bytes: {}", data.size()), hex_dump(data, max_bytes, bytes_per_line));
     }
 
     auto write_text_dump(string_view path, string_view content) -> bool
@@ -274,7 +343,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         bool written = fs_write_file(path, content);
-        WriteLog("[{}] text dump {}: {} ({} byte(s))", diagnostic_log_prefix, path, written ? "written" : "failed", content.size());
+        write_probe("dump", path, strex("format: text, status: {}, bytes: {}", written ? "written" : "failed", content.size()));
         return written;
     }
 
@@ -283,7 +352,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         bool written = fs_write_file(path, content);
-        WriteLog("[{}] binary dump {}: {} ({} byte(s))", diagnostic_log_prefix, path, written ? "written" : "failed", content.size());
+        write_probe("dump", path, strex("format: binary, status: {}, bytes: {}", written ? "written" : "failed", content.size()));
         return written;
     }
 
@@ -318,7 +387,7 @@ namespace diagnostics
         bool unwinding = std::uncaught_exceptions() > _uncaught_exceptions_at_start;
 
         if (unwinding || elapsed_time >= _report_threshold) {
-            WriteLog("[{}] timing {}: {}{}", diagnostic_log_prefix, _name, elapsed_time, unwinding ? " (exception unwinding)" : "");
+            write_probe("timing", _name, strex("elapsed: {}{}", elapsed_time, unwinding ? ", unwinding: true" : ""));
         }
 
         if (unwinding && _capture_stack_on_exception) {
@@ -342,7 +411,7 @@ namespace diagnostics
         timespan lap_elapsed = now - _last_lap_at;
         timespan total_elapsed = now - _started_at;
         _last_lap_at = now;
-        WriteLog("[{}] timing {} / {}: lap {}, total {}", diagnostic_log_prefix, _name, name, lap_elapsed, total_elapsed);
+        write_probe("timing", _name, strex("lap: {}, lap_elapsed: {}, total_elapsed: {}", probe_value(name), lap_elapsed, total_elapsed));
         return lap_elapsed;
     }
 
@@ -413,7 +482,7 @@ namespace diagnostics
         bool should_report = hit_count <= _report_first || (_report_every != 0 && hit_count % _report_every == 0);
 
         if (should_report) {
-            WriteLog("[{}] hit {}: {}", diagnostic_log_prefix, _name, hit_count);
+            write_probe("hit", _name, strex("count: {}", hit_count));
         }
 
         return should_report;
@@ -430,7 +499,7 @@ namespace diagnostics
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        WriteLog("[{}] hit {}: {} total", diagnostic_log_prefix, _name, count());
+        write_probe("hit", _name, strex("count: {}, final: true", count()));
     }
 
     rate_counter::rate_counter(string_view name, timespan report_interval) :
@@ -476,7 +545,7 @@ namespace diagnostics
             _started_at = now;
         }
 
-        WriteLog("[{}] rate {}: {:.3f}/s ({} event(s) over {})", diagnostic_log_prefix, _name, report.events_per_second, report.event_count, report.elapsed);
+        write_probe("rate", _name, strex("events_per_second: {:.3f}, events: {}, elapsed: {}", report.events_per_second, report.event_count, report.elapsed));
         return report;
     }
 
@@ -546,7 +615,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         duration_snapshot current = snapshot();
-        WriteLog("[{}] durations {}: count: {}, total: {}, min: {}, max: {}, latest: {}, average: {}", diagnostic_log_prefix, _name, current.sample_count, current.total, current.minimum, current.maximum, current.latest, current.average);
+        write_probe("durations", _name, strex("count: {}, total: {}, min: {}, max: {}, latest: {}, average: {}", current.sample_count, current.total, current.minimum, current.maximum, current.latest, current.average));
     }
 
     void duration_statistics::clear()
@@ -609,7 +678,7 @@ namespace diagnostics
         bool inject = _inject_at != 0 && (hit_count == _inject_at || (hit_count > _inject_at && _repeat_every != 0 && (hit_count - _inject_at) % _repeat_every == 0));
 
         if (inject) {
-            WriteLog("[{}] fault {} injected at hit {}", diagnostic_log_prefix, _name, hit_count);
+            write_probe("fault", _name, strex("injected_at_hit: {}", hit_count));
         }
 
         return inject;
@@ -662,7 +731,7 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         if (!net_sockets::startup() || !_socket.bind(bind_host, 0, false)) {
-            WriteLog("[{}] udp sender {}:{} initialization failed: {}", diagnostic_log_prefix, _host, _port, net_sockets::last_error_text());
+            write_probe("udp", strex("{}:{}", _host, _port), strex("status: init_failed, error: {}", probe_value(net_sockets::last_error_text())));
         }
     }
 
@@ -682,7 +751,7 @@ namespace diagnostics
         int32_t sent_size = _socket.send_to(_host, _port, data);
 
         if (sent_size != numeric_cast<int32_t>(data.size())) {
-            WriteLog("[{}] udp sender {}:{} sent {}/{} byte(s): {}", diagnostic_log_prefix, _host, _port, sent_size, data.size(), net_sockets::last_error_text());
+            write_probe("udp", strex("{}:{}", _host, _port), strex("sent_bytes: {}, expected_bytes: {}, error: {}", sent_size, data.size(), probe_value(net_sockets::last_error_text())));
         }
 
         return sent_size;
@@ -704,14 +773,14 @@ namespace diagnostics
         string directory = strex(path).extract_dir().str();
 
         if (!directory.empty() && !fs_create_directories(directory)) {
-            WriteLog("[{}] pcap {}: unable to create parent directory", diagnostic_log_prefix, _path);
+            write_probe("pcap", _path, "status: parent_directory_failed");
             return;
         }
 
         _file.open(std::filesystem::path {fs_make_path(_path)}, std::ios::binary | std::ios::trunc);
 
         if (!_file) {
-            WriteLog("[{}] pcap {}: unable to open", diagnostic_log_prefix, _path);
+            write_probe("pcap", _path, "status: open_failed");
             return;
         }
 
@@ -728,7 +797,7 @@ namespace diagnostics
         _file.flush();
 
         if (!_file) {
-            WriteLog("[{}] pcap {}: global header write failed", diagnostic_log_prefix, _path);
+            write_probe("pcap", _path, "status: header_write_failed");
             _file.close();
         }
     }
@@ -879,7 +948,7 @@ namespace diagnostics
             return;
         }
 
-        WriteLog("[{}] watchdog {} expired", diagnostic_log_prefix, watchdog_state->name);
+        write_probe("watchdog", watchdog_state->name, "status: expired");
 
         if (watchdog_state->on_timeout) {
             safe_call(watchdog_state->on_timeout);
@@ -937,10 +1006,10 @@ namespace diagnostics
         FO_NO_STACK_TRACE_ENTRY();
 
         vector<history_entry> entries = snapshot();
-        WriteLog("[{}] history {}: {} event(s)", diagnostic_log_prefix, _name, entries.size());
+        write_probe("history", _name, strex("count: {}", entries.size()));
 
         for (const history_entry& entry : entries) {
-            WriteLog("[{}] history {} #{} +{} [{}] {}", diagnostic_log_prefix, _name, entry.sequence, entry.since_start, entry.channel, entry.message);
+            write_probe("history", _name, strex("sequence: {}, since_start: {}, channel: {}, message: {}", entry.sequence, entry.since_start, probe_value(entry.channel), probe_value(entry.message)));
         }
     }
 
