@@ -169,6 +169,154 @@ TEST_CASE("CommonUtilities")
         uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
+
+    SECTION("SeededRandomGeneratorProducesValues")
+    {
+        auto generator = MakeSeededRandomGenerator();
+        auto other = MakeSeededRandomGenerator();
+
+        std::array<std::mt19937::result_type, 4> values {};
+
+        for (auto& value : values) {
+            value = generator();
+        }
+
+        // Two independently seeded generators must not walk the same sequence
+        bool all_equal = true;
+
+        for (auto& value : values) {
+            if (value != other()) {
+                all_equal = false;
+                break;
+            }
+        }
+
+        CHECK_FALSE(all_equal);
+    }
+
+    SECTION("PackagedBuildAccessorsAreConsistent")
+    {
+        // An unpackaged test build reports no runtime name; a packaged one must name it
+        CHECK(IsPackaged() == !GetPackagedRuntimeName().empty());
+    }
+}
+
+TEST_CASE("CommonFrameBalancer")
+{
+    SECTION("DisabledBalancerDoesNotWait")
+    {
+        FrameBalancer balancer {false, 100, 0};
+
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+    }
+
+    SECTION("ZeroSleepYieldsInsteadOfSleeping")
+    {
+        FrameBalancer balancer {true, 0, 0};
+
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+    }
+
+    SECTION("PositiveSleepWaitsForTheRequestedTime")
+    {
+        FrameBalancer balancer {true, 5, 0};
+
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {4}});
+    }
+
+    SECTION("FixedFpsBalancesTheIdleTime")
+    {
+        // A negative sleep hands control to the fixed-fps arm, which pads each loop up to the frame budget
+        FrameBalancer balancer {true, -1, 200};
+
+        nanotime start = nanotime::now();
+
+        for (int32_t i = 0; i < 3; i++) {
+            balancer.StartLoop();
+            balancer.EndLoop();
+        }
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {5}});
+    }
+}
+
+TEST_CASE("CommonRemoteCallWireSizes")
+{
+    auto make_primitive = [](string_view name, size_t size) {
+        BaseTypeDesc type;
+        type.Name = string {name};
+        type.Size = size;
+        type.IsPrimitive = true;
+        return type;
+    };
+
+    SECTION("PlainAndReferenceTypesReportTheirMinimumSize")
+    {
+        CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int32", sizeof(int32_t))) == sizeof(int32_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int64", sizeof(int64_t))) == sizeof(int64_t));
+
+        BaseTypeDesc enum_type;
+        enum_type.Name = "TestEnum";
+        enum_type.Size = sizeof(uint16_t);
+        enum_type.IsEnum = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(enum_type) == sizeof(uint16_t));
+
+        // A string only has to carry its length prefix to be well formed
+        BaseTypeDesc string_type;
+        string_type.Name = "string";
+        string_type.IsString = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(string_type) == sizeof(uint32_t));
+
+        BaseTypeDesc hash_type;
+        hash_type.Name = "hstring";
+        hash_type.IsHashedString = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(hash_type) == sizeof(hstring::hash_t));
+    }
+
+    SECTION("StructSizesAreTheSumOfTheirFields")
+    {
+        auto layout = SafeAlloc::MakeShared<StructLayoutDesc>();
+        layout->Fields.emplace_back();
+        layout->Fields.back().Type = make_primitive("int32", sizeof(int32_t));
+        layout->Fields.emplace_back();
+        layout->Fields.back().Type = make_primitive("int16", sizeof(int16_t));
+
+        BaseTypeDesc struct_type;
+        struct_type.Name = "TestStruct";
+        struct_type.IsStruct = true;
+        struct_type.StructLayout = layout;
+
+        CHECK(GetRemoteCallSimpleValueMinWireSize(struct_type) == sizeof(int32_t) + sizeof(int16_t));
+    }
+
+    SECTION("UnsupportedAndMalformedTypesAreRejected")
+    {
+        BaseTypeDesc zero_sized;
+        zero_sized.Name = "BadPrimitive";
+        zero_sized.IsPrimitive = true;
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(zero_sized), VerificationException);
+
+        BaseTypeDesc no_layout;
+        no_layout.Name = "BadStruct";
+        no_layout.IsStruct = true;
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(no_layout), VerificationException);
+
+        BaseTypeDesc unsupported;
+        unsupported.Name = "Unsupported";
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(unsupported), NotSupportedException);
+    }
 }
 
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")

@@ -38,6 +38,7 @@
 #include "DiskFileSystem.h"
 #include "Logging.h"
 #include "Movement.h"
+#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 
@@ -2947,6 +2948,91 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         cr_a->SetParent(nullptr);
         cr_b->SetParent(nullptr);
     }
+}
+
+TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // The world is deliberately left empty: every per-entity panel trips
+    // "Entity access without sync" once it has a real row to render (see the plan notes)
+    // The diagnostic panels are normally only reachable through the windowed server application, so the
+    // test drives a backend-less ImGui context directly: no renderer is attached and the draw data is
+    // discarded, but every panel builder runs for real
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+
+    // The legacy atlas-upload entry points are compiled out, so declare the modern texture contract instead
+    // and let ImGui own the atlas; nothing consumes the resulting texture requests here
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    // A collapsed node never runs its body, and ImGui only stores an open state once something opens the
+    // node, so there is nothing to flip afterwards. Logging is the supported way through: it auto-expands
+    // every tree node while capturing the rendered text
+    constexpr int32_t GUI_FRAMES = 3;
+
+    // Collapsing headers opt out of the log auto-expansion, so their stored state is seeded by hand. The
+    // ids mirror the root panels of ServerEngine::DrawGui; the log assertions below catch any drift
+    constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###UnloginedPlayers", "###Locations", "Data base"};
+
+    string drawn_text;
+
+    for (int32_t frame = 0; frame < GUI_FRAMES; frame++) {
+        ImGui::NewFrame();
+
+        if (ImGui::Begin("ServerDiagnostics")) {
+            ptr<ImGuiWindow> window = ImGui::GetCurrentWindow();
+
+            for (string_view panel_id : ROOT_PANEL_IDS) {
+                window->StateStorage.SetInt(ImGui::GetID(panel_id.data(), panel_id.data() + panel_id.size()), 1);
+            }
+
+            ImGui::LogToBuffer();
+            REQUIRE_NOTHROW(server->DrawGui());
+
+            // LogFinish() drops the captured text, so take it while the log is still open
+            drawn_text.assign(ImGui::GetCurrentContext()->LogBuffer.c_str());
+            ImGui::LogFinish();
+        }
+
+        ImGui::End();
+        ImGui::Render();
+    }
+
+    CHECK(ImGui::GetCurrentContext() != nullptr);
+    CHECK(ImGui::GetFrameCount() == GUI_FRAMES);
+
+    // Prove the walk actually descended into the panels instead of silently rendering collapsed headers
+    INFO(drawn_text);
+    CHECK(drawn_text.find("Data base") != string::npos);
+    CHECK(drawn_text.find("Memory documents") != string::npos);
+    CHECK(drawn_text.find("Performance details") != string::npos);
 }
 
 FO_END_NAMESPACE

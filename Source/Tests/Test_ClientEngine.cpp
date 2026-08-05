@@ -34,6 +34,7 @@
 
 #include "AngelScriptScripting.h"
 #include "Application.h"
+#include "ImGuiStuff.h"
 #include "Baker.h"
 #include "Client.h"
 #include "CritterView.h"
@@ -127,11 +128,43 @@ namespace ClientEngineTest
     int LoopCalls = 0;
     int ManualCalls = 0;
 
+    int RenderCalls = 0;
+    bool DrawDuringRender = false;
+
     [[ModuleInit]]
     void InitClientEngineTest()
     {
         Game.OnStart.Subscribe(OnStart);
         Game.OnLoop.Subscribe(OnLoop);
+        Game.OnRenderIface.Subscribe(OnRenderIface);
+    }
+
+    [[Event]]
+    void OnRenderIface()
+    {
+        RenderCalls++;
+
+        if (!DrawDuringRender) {
+            return;
+        }
+
+        // The 2D drawing surface is only legal inside the interface render pass
+        // DrawPrimitive takes a flat int stream of x/y/colour triples
+        int[] primitive = {0, 0, 0xFFFF0000, 10, 10, 0xFF00FF00};
+        Game.DrawPrimitive(RenderPrimitiveType::LineList, primitive);
+
+        Game.PushDrawScissor(ipos(0, 0), isize(100, 100));
+        Game.PopDrawScissor();
+    }
+
+    int UnitTestGetRenderCalls()
+    {
+        return RenderCalls;
+    }
+
+    void UnitTestEnableRenderDrawing()
+    {
+        DrawDuringRender = true;
     }
 
     [[Event]]
@@ -166,6 +199,91 @@ namespace ClientEngineTest
     int UnitTestGetManualCalls()
     {
         return ManualCalls;
+    }
+
+    int UnitTestClientStateQueries()
+    {
+        // Without a session none of the current-context accessors have anything to hand out.
+        // These are GlobalGetter exports, so they are bare globals rather than Game members.
+        if (HasChosen) return -1;
+        if (HasCurPlayer) return -2;
+        if (HasCurLocation) return -3;
+        if (HasCurMap) return -4;
+        if (Game.IsConnecting()) return -5;
+        if (Game.IsConnected()) return -6;
+
+        if (Game.BytesSend() < 0) return -7;
+        if (Game.BytesReceive() < 0) return -8;
+
+        // These read window/input state and must answer even with no real device attached
+        ipos mouse = Game.MousePos;
+        bool mouseAvailable = Game.IsMouseAvailable();
+        bool fullscreen = Game.IsFullscreen();
+        if (mouse.x < -100000 || mouse.y < -100000) return -9;
+        if (mouseAvailable && !mouseAvailable) return -10;
+        if (fullscreen && !fullscreen) return -11;
+
+        Game.GetGamepadState();
+
+        // With no current map the critter query answers empty instead of failing
+        if (!Game.GetCritters(CritterFindType::Any).isEmpty()) return -14;
+
+        return 0;
+    }
+
+    int UnitTestClientGeometry()
+    {
+        mpos a = mpos(10, 10);
+        mpos b = mpos(14, 10);
+
+        if (Game.GetDistance(a, a) != 0) return -1;
+        if (Game.GetDistance(a, b) <= 0) return -2;
+
+        return 0;
+    }
+
+    int UnitTestClientTextAndCache()
+    {
+        // The fixture declares no text packs, so only the pack-independent helpers are exercised here
+        string replaced = Game.ReplaceText("hello $name", "$name", "world");
+        if (replaced != "hello world") return -3;
+
+        string replacedNum = Game.ReplaceText("count $n", "$n", 42);
+        if (replacedNum != "count 42") return -4;
+
+        // The client cache round-trips both binary and text payloads
+        if (Game.IsCacheEntry("unit_test_entry")) return -5;
+
+        Game.SetCacheText("unit_test_entry", "cached value");
+        if (!Game.IsCacheEntry("unit_test_entry")) return -6;
+        if (Game.GetCacheText("unit_test_entry") != "cached value") return -7;
+
+        uint8[] payload = {1, 2, 3};
+        Game.SetCacheData("unit_test_bin", payload);
+        uint8[] readBack = Game.GetCacheData("unit_test_bin");
+        if (readBack.length() != 3) return -8;
+        if (readBack[2] != 3) return -9;
+
+        Game.RemoveCacheEntry("unit_test_entry");
+        Game.RemoveCacheEntry("unit_test_bin");
+        if (Game.IsCacheEntry("unit_test_entry")) return -10;
+
+        return 0;
+    }
+
+    int UnitTestClientInputSimulation()
+    {
+        // The simulated-input surface is what automated play uses, so it must run without a device
+        Game.SimulateMouseMove(ipos(10, 10));
+        Game.SimulateMouseDown(ipos(10, 10), MouseButton::Left);
+        Game.SimulateMouseUp(ipos(10, 10), MouseButton::Left);
+        Game.SimulateMouseClick(ipos(12, 12), MouseButton::Right);
+        Game.SimulateTouchDown(0, ipos(5, 5));
+        Game.SimulateTouchMove(0, ipos(6, 6), ipos(1, 1));
+        Game.SimulateTouchUp(0, ipos(6, 6));
+        Game.SimulateTouchTap(ipos(7, 7));
+
+        return 0;
     }
 
     int UnitTestMapSpriteHolderRefType()
@@ -622,6 +740,26 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
     CHECK(result == 0);
+}
+
+TEST_CASE("ClientEngineGlobalScriptBindings")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto run_script = [&client](string_view name) {
+        int32_t result = -1;
+        INFO(name);
+        REQUIRE(client->CallFunc(client->Hashes.ToHashedString(name), result));
+        CHECK(result == 0);
+    };
+
+    run_script("ClientEngineTest::UnitTestClientStateQueries");
+    run_script("ClientEngineTest::UnitTestClientGeometry");
+    run_script("ClientEngineTest::UnitTestClientTextAndCache");
+    run_script("ClientEngineTest::UnitTestClientInputSimulation");
 }
 
 TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
@@ -1182,6 +1320,75 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());
+}
+
+
+TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    // A disconnected client still runs its whole frame: timers, scheduled callbacks, script loop
+    // events and the interface render pass
+    for (int32_t frame = 0; frame < 3; frame++) {
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(client->MainLoop());
+        ImGui::Render();
+    }
+
+    int32_t loop_calls = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
+    CHECK(loop_calls > 0);
+
+    int32_t render_calls = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
+    CHECK(render_calls > 0);
+
+    // Re-run with script drawing enabled so the render-pass-only draw bindings execute
+    REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientEngineTest::UnitTestEnableRenderDrawing")));
+
+    for (int32_t frame = 0; frame < 2; frame++) {
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(client->MainLoop());
+        ImGui::Render();
+    }
+
+    // Input events must be safe to feed outside of a session too
+    InputEvent move;
+    move.Type = InputEvent::EventType::MouseMoveEvent;
+    move.MouseMove.MouseX = 40;
+    move.MouseMove.MouseY = 40;
+    REQUIRE_NOTHROW(client->ProcessInputEvent(move));
+
+    InputEvent key_down;
+    key_down.Type = InputEvent::EventType::KeyDownEvent;
+    key_down.KeyDown.Code = KeyCode::A;
+    key_down.KeyDown.Text = "a";
+    REQUIRE_NOTHROW(client->ProcessInputEvent(key_down));
+
+    InputEvent key_up;
+    key_up.Type = InputEvent::EventType::KeyUpEvent;
+    key_up.KeyUp.Code = KeyCode::A;
+    REQUIRE_NOTHROW(client->ProcessInputEvent(key_up));
 }
 
 FO_END_NAMESPACE

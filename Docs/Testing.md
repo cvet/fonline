@@ -153,6 +153,34 @@ Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 [../Source/Tests/README.md](../Source/Tests/README.md) for current local task
 notes.
 
+### Covering ImGui diagnostic panels
+
+`DrawGui()` implementations normally only run inside the windowed application,
+but they are reachable from unit tests through a backend-less ImGui context: no
+renderer is attached and the draw data is discarded, while every panel builder
+runs for real. `Test_ServerEngine.cpp` shows the pattern. Three details matter:
+
+- Declare `ImGuiBackendFlags_RendererHasTextures` on the IO. The legacy
+  `GetTexDataAsRGBA32` / `GetTexDataAsAlpha8` atlas-upload entry points are
+  compiled out by `IMGUI_DISABLE_OBSOLETE_FUNCTIONS`, so letting ImGui own the
+  atlas is the only way to satisfy the "font atlas is not built" check in
+  `NewFrame()`.
+- A collapsed `TreeNode` skips its body, so a plain frame only covers the
+  outermost level. Force-opening the stored state does not help: ImGui writes a
+  node's open state only once something opens it, so a node that was never
+  clicked has no `StateStorage` entry to flip. Wrap the draw call in
+  `ImGui::LogToBuffer()` / `ImGui::LogFinish()` instead — auto-expanding tree
+  nodes is a documented side effect of logging. Collapsing headers carry
+  `ImGuiTreeNodeFlags_NoAutoOpenOnLog` and opt out, so seed their ids into the
+  window's `StateStorage` by hand.
+- Logging also captures the rendered text, which is the cheapest way to prove
+  the walk really descended instead of rendering a row of closed headers. Read
+  the buffer before `LogFinish()`, which clears it, and assert on markers from
+  the nested panels so a renamed panel fails the test rather than silently
+  dropping coverage.
+- Destroy the context at scope exit — other tests assert that no ImGui context
+  leaks between test cases.
+
 ## Current test inventory
 
 Current count: **95** `Test_*.cpp` suites.
@@ -254,6 +282,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`

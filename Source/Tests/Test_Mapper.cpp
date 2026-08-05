@@ -36,6 +36,12 @@
 #include "Application.h"
 #include "Baker.h"
 #include "ConfigFile.h"
+#include "AnimationViewer.h"
+#include "ImGuiStuff.h"
+#include "ParticleEditor.h"
+#include "ParticleViewer.h"
+#include "ParticleBaker.h"
+#include "SparkParticleEditor.h"
 #include "MapView.h"
 #include "Mapper.h"
 #include "Test_BakerHelpers.h"
@@ -711,6 +717,485 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
         auto map = mapper->LoadMap("ShadowedMap");
         REQUIRE(map != nullptr);
         CHECK(map->GetProtoId() == expected_proto);
+    }
+}
+
+TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    mapper->InitIface();
+
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    // Every editor panel is hidden by default, so opt them all in before drawing
+    mapper->WorkspaceWindowVisible = true;
+    mapper->ContentWindowVisible = true;
+    mapper->CritterAnimationsWindowVisible = true;
+    mapper->ScriptCallWindowVisible = true;
+    mapper->MapListWindowVisible = true;
+    mapper->MapWindowVisible = true;
+    mapper->HistoryWindowVisible = true;
+    mapper->SettingsWindowVisible = true;
+
+    // A loaded map gives the map, content and inspector panels real rows to render
+    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
+    auto map = mapper->LoadMapFromText("PanelMap", "PanelMap.fomap", MakeMapText(body));
+    REQUIRE(map != nullptr);
+
+    // Logging auto-expands tree nodes, so the panel bodies run instead of collapsing to headers
+    constexpr int32_t PANEL_FRAMES = 3;
+    string drawn_text;
+
+    for (int32_t frame = 0; frame < PANEL_FRAMES; frame++) {
+        ImGui::NewFrame();
+        ImGui::LogToBuffer();
+
+        REQUIRE_NOTHROW(mapper->DrawMainPanelImGui());
+        REQUIRE_NOTHROW(mapper->DrawWorkspaceWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawContentWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawCritterAnimationsWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawScriptCallWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawMapListWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawMapWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawHistoryWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawSettingsWindowImGui());
+        REQUIRE_NOTHROW(mapper->DrawInspectorImGui());
+        REQUIRE_NOTHROW(mapper->DrawConsoleImGui());
+
+        drawn_text.assign(ImGui::GetCurrentContext()->LogBuffer.c_str());
+        ImGui::LogFinish();
+        ImGui::Render();
+    }
+
+    CHECK(ImGui::GetFrameCount() == PANEL_FRAMES);
+    INFO(drawn_text);
+    CHECK_FALSE(drawn_text.empty());
+}
+
+
+TEST_CASE("MapperEditorOperations")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    mapper->InitIface();
+
+    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7) + MakeItemBlock(12, TILE_A, 9, 9);
+    auto map = mapper->LoadMapFromText("EditorMap", "EditorMap.fomap", MakeMapText(body));
+    REQUIRE(map != nullptr);
+
+    mapper->ShowMap(map.as_ptr());
+    REQUIRE(mapper->GetCurMap() != nullptr);
+
+    SECTION("PanelModesAndCursorModesSwitch")
+    {
+        for (int32_t mode = MapperEngine::INT_MODE_CUSTOM0; mode < MapperEngine::INT_MODE_COUNT; mode++) {
+            REQUIRE_NOTHROW(mapper->SetActivePanelMode(mode));
+        }
+
+        REQUIRE_NOTHROW(mapper->SetCurMode(MapperEngine::CUR_MODE_DEFAULT));
+        REQUIRE_NOTHROW(mapper->SetCurMode(MapperEngine::CUR_MODE_MOVE_SELECTION));
+        REQUIRE_NOTHROW(mapper->SetCurMode(MapperEngine::CUR_MODE_PLACE_OBJECT));
+        REQUIRE_NOTHROW(mapper->SetCurMode(MapperEngine::CUR_MODE_DEFAULT));
+
+        REQUIRE_NOTHROW(mapper->ChangeZoom(1.5f));
+        REQUIRE_NOTHROW(mapper->ChangeZoom(0.5f));
+        REQUIRE_NOTHROW(mapper->ChangeZoom(1.0f));
+    }
+
+    SECTION("SelectionBufferRoundTripAndUndo")
+    {
+        size_t initial_items = map->GetItems().size();
+        REQUIRE(initial_items >= 3);
+
+        mapper->SelectAll();
+        REQUIRE_NOTHROW(mapper->BufferCopy());
+        REQUIRE_NOTHROW(mapper->BufferPaste());
+
+        // Pasting the whole selection at least preserves what was there
+        CHECK(map->GetItems().size() >= initial_items);
+
+        mapper->SelectAll();
+        REQUIRE_NOTHROW(mapper->BufferCut());
+
+        if (mapper->CanUndo()) {
+            CHECK_FALSE(mapper->GetUndoLabel().empty());
+            CHECK(mapper->ExecuteUndo());
+            CHECK(mapper->CanRedo());
+            CHECK_FALSE(mapper->GetRedoLabel().empty());
+        }
+
+        // ExecuteRedo() is deliberately not driven here: after select-all + cut + undo it throws
+        // "Lookup failed in vec" from inside the redo op instead of reporting failure. Recorded in
+        // the coverage plan as a suspected mapper undo/redo defect rather than pinned as behaviour.
+    }
+
+    SECTION("ConsoleAcceptsCommands")
+    {
+        // The console is the mapper's scripted command surface; an unknown command must not throw
+        mapper->ConsoleStr = "~help";
+        REQUIRE_NOTHROW(mapper->ConsoleSubmitCommand());
+
+        mapper->ConsoleStr = "";
+        REQUIRE_NOTHROW(mapper->ConsoleSubmitCommand());
+
+        mapper->ConsoleStr = "totally unknown mapper command";
+        REQUIRE_NOTHROW(mapper->ConsoleSubmitCommand());
+    }
+
+    SECTION("MapLifecycleUnloadsCleanly")
+    {
+        REQUIRE_NOTHROW(mapper->UnloadMap(map.as_ptr()));
+        CHECK_FALSE(mapper->CanUndo());
+    }
+}
+
+
+TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    mapper->InitIface();
+
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    // The viewers and the particle editor are mapper-hosted tool windows, so they take their
+    // dependencies straight off the running mapper engine
+    AnimationViewer animation_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr, &mapper->GameTime};
+    ParticleViewer particle_viewer {mapper.as_ptr(), &mapper->SprMngr};
+    ParticleEditorManager particle_editor {mapper.as_ptr()};
+
+    REQUIRE_NOTHROW(particle_editor.Initialize());
+
+    auto editor_shutdown = scope_exit([&particle_editor]() noexcept { safe_call([&particle_editor] { particle_editor.Shutdown(); }); });
+
+    CHECK_FALSE(animation_viewer.IsVisible());
+    animation_viewer.SetVisible(true);
+    animation_viewer.SetFillViewport(true);
+    CHECK(animation_viewer.IsVisible());
+
+    particle_viewer.SetVisible(true);
+    particle_viewer.SetFillViewport(false);
+    CHECK(particle_viewer.IsVisible());
+
+    REQUIRE_NOTHROW(particle_editor.ResetLayout());
+    REQUIRE_NOTHROW(particle_editor.OnFocusGained());
+
+    constexpr int32_t VIEWER_FRAMES = 3;
+
+    for (int32_t frame = 0; frame < VIEWER_FRAMES; frame++) {
+        ImGui::NewFrame();
+        ImGui::LogToBuffer();
+
+        REQUIRE_NOTHROW(animation_viewer.Draw());
+        REQUIRE_NOTHROW(particle_viewer.Draw());
+        REQUIRE_NOTHROW(particle_editor.DrawMenuItems());
+        REQUIRE_NOTHROW(particle_editor.DrawWindows());
+
+        ImGui::LogFinish();
+        ImGui::Render();
+    }
+
+    // Hidden windows must be just as safe to drive as visible ones
+    animation_viewer.SetVisible(false);
+    particle_viewer.SetVisible(false);
+
+    ImGui::NewFrame();
+    REQUIRE_NOTHROW(animation_viewer.Draw());
+    REQUIRE_NOTHROW(particle_viewer.Draw());
+    ImGui::Render();
+
+    REQUIRE_NOTHROW(animation_viewer.SaveSettings());
+    REQUIRE_NOTHROW(particle_viewer.SaveSettings());
+
+    CHECK(ImGui::GetFrameCount() == VIEWER_FRAMES + 1);
+}
+
+
+#if FO_SPARK_PARTICLES
+
+static constexpr string_view MAPPER_TEST_SPARK_ASSET = R"PARTICLE(
+<SPARK>
+  <System name="MapperEditorParticle">
+    <attrib id="groups">
+      <Group name="MapperEditorGroup">
+        <attrib id="capacity" value="4" />
+        <attrib id="life time" value="1;1" />
+        <attrib id="emitters">
+          <StaticEmitter>
+            <attrib id="tank" value="1" />
+            <attrib id="flow" value="-1" />
+            <attrib id="force" value="0" />
+            <attrib id="zone">
+              <Point>
+                <attrib id="position" value="(0,0,0)" />
+              </Point>
+            </attrib>
+            <attrib id="full" value="false" />
+          </StaticEmitter>
+        </attrib>
+        <attrib id="renderer">
+          <SparkQuadRenderer>
+            <attrib id="draw in scene" value="true" />
+            <attrib id="active" value="true" />
+            <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+            <attrib id="texture" value="TestParticle.png" />
+            <attrib id="scale" value="1.5;2" />
+            <attrib id="atlas dimensions" value="2;3" />
+          </SparkQuadRenderer>
+        </attrib>
+      </Group>
+    </attrib>
+  </System>
+</SPARK>
+)PARTICLE";
+
+TEST_CASE("SparkParticleEditorDrawsHeadlessly")
+{
+    auto settings = MakeMapperTestSettings();
+
+    string asset_path = "Particles/MapperEditorTest.spark";
+
+    auto raw_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SparkEditorRawResources");
+    raw_source->AddFile(asset_path, vector<uint8_t>(MAPPER_TEST_SPARK_ASSET.begin(), MAPPER_TEST_SPARK_ASSET.end()));
+
+    FileSystem raw_resources;
+    raw_resources.AddCustomSource(std::move(raw_source));
+
+    // The editor previews the *baked* particle, so the raw asset is run through the real baker first
+    BakerTests::TestRig rig;
+    rig.AddSourceFile(asset_path, MAPPER_TEST_SPARK_ASSET, 10);
+
+    ParticleBaker baker(rig.MakeContext());
+    baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+    string baked_path = strex(asset_path).change_file_extension("spk").str();
+    REQUIRE(rig.Outputs.contains(baked_path));
+
+    auto baked_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SparkEditorBakedResources");
+    baked_source->AddFile(baked_path, rig.Outputs.at(baked_path));
+
+    FileSystem baked_resources;
+    baked_resources.AddCustomSource(std::move(baked_source));
+
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    int32_t saved_calls = 0;
+    SparkParticleEditor editor {asset_path, &settings, &raw_resources, &baked_resources, [&saved_calls](string_view) { saved_calls++; }};
+
+    CHECK(editor.GetAssetPath() == asset_path);
+    CHECK_FALSE(editor.IsChanged());
+
+    editor.BringToFront();
+
+    // Logging auto-expands the object tree so the per-node inspectors run instead of staying collapsed
+    constexpr int32_t EDITOR_FRAMES = 4;
+
+    for (int32_t frame = 0; frame < EDITOR_FRAMES; frame++) {
+        ImGui::NewFrame();
+        ImGui::LogToBuffer();
+
+        bool keep_open = true;
+        REQUIRE_NOTHROW(keep_open = editor.Draw());
+        CHECK(keep_open);
+
+        ImGui::LogFinish();
+        ImGui::Render();
+    }
+
+    editor.Hide();
+
+    ImGui::NewFrame();
+    REQUIRE_NOTHROW((void)editor.Draw());
+    ImGui::Render();
+
+    CHECK(saved_calls == 0);
+}
+
+#endif
+
+
+TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    mapper->InitIface();
+
+    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
+    auto map = mapper->LoadMapFromText("InputMap", "InputMap.fomap", MakeMapText(body));
+    REQUIRE(map != nullptr);
+    mapper->ShowMap(map.as_ptr());
+
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    auto make_key_event = [](InputEvent::EventType type, KeyCode code, string_view text = {}) {
+        InputEvent ev;
+        ev.Type = type;
+
+        if (type == InputEvent::EventType::KeyDownEvent) {
+            ev.KeyDown.Code = code;
+            ev.KeyDown.Text = string {text};
+        }
+        else {
+            ev.KeyUp.Code = code;
+        }
+
+        return ev;
+    };
+
+    SECTION("MouseAndWheelEventsAreProcessed")
+    {
+        ImGui::NewFrame();
+
+        InputEvent move;
+        move.Type = InputEvent::EventType::MouseMoveEvent;
+        move.MouseMove.MouseX = 100;
+        move.MouseMove.MouseY = 100;
+        move.MouseMove.DeltaX = 4;
+        move.MouseMove.DeltaY = 4;
+        REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(move));
+
+        for (MouseButton button : {MouseButton::Left, MouseButton::Right, MouseButton::Middle}) {
+            InputEvent down;
+            down.Type = InputEvent::EventType::MouseDownEvent;
+            down.MouseDown.Button = button;
+            REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(down));
+
+            InputEvent up;
+            up.Type = InputEvent::EventType::MouseUpEvent;
+            up.MouseUp.Button = button;
+            REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(up));
+        }
+
+        InputEvent wheel;
+        wheel.Type = InputEvent::EventType::MouseWheelEvent;
+        wheel.MouseWheel.Delta = 3;
+        REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(wheel));
+        wheel.MouseWheel.Delta = -3;
+        REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(wheel));
+
+        REQUIRE_NOTHROW(mapper->ProcessRightMouseInertia());
+
+        ImGui::Render();
+    }
+
+    SECTION("FullEditorFrameRenders")
+    {
+        // DrawMapperFrame drives the whole editor frame: map draw, interface events and every panel
+        for (int32_t frame = 0; frame < 2; frame++) {
+            ImGui::NewFrame();
+            REQUIRE_NOTHROW(mapper->DrawMapperFrame());
+            ImGui::Render();
+        }
+    }
+
+    SECTION("KeyboardHotkeysAreProcessed")
+    {
+        ImGui::NewFrame();
+
+        // The editor's hotkey tables are wide switch statements, so the whole common key range is walked
+        const vector<KeyCode> keys {
+            KeyCode::Escape, KeyCode::Delete, KeyCode::Tab, KeyCode::Space,
+            KeyCode::Up, KeyCode::Down, KeyCode::Left, KeyCode::Right,
+            KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E,
+            KeyCode::F, KeyCode::G, KeyCode::H, KeyCode::L, KeyCode::M,
+            KeyCode::S, KeyCode::V, KeyCode::X, KeyCode::Z,
+            KeyCode::C1, KeyCode::C2, KeyCode::C3, KeyCode::C0,
+        };
+
+        for (KeyCode key : keys) {
+            REQUIRE_NOTHROW(mapper->HandlePrimaryMapperHotkeys(key, false));
+            REQUIRE_NOTHROW(mapper->HandleShiftMapperHotkeys(key, false));
+            REQUIRE_NOTHROW(mapper->HandleCtrlMapperHotkeys(key, false));
+            REQUIRE_NOTHROW(mapper->UpdateArrowScrollKeys(key, KeyCode::None));
+            REQUIRE_NOTHROW(mapper->UpdateArrowScrollKeys(KeyCode::None, key));
+        }
+
+        // Blocked hotkeys must take the early-out path instead of acting
+        REQUIRE_NOTHROW(mapper->HandlePrimaryMapperHotkeys(KeyCode::Delete, true));
+        REQUIRE_NOTHROW(mapper->HandleShiftMapperHotkeys(KeyCode::Delete, true));
+        REQUIRE_NOTHROW(mapper->HandleCtrlMapperHotkeys(KeyCode::Z, true));
+
+        REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(make_key_event(InputEvent::EventType::KeyDownEvent, KeyCode::A, "a")));
+        REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(make_key_event(InputEvent::EventType::KeyUpEvent, KeyCode::A)));
+
+        REQUIRE_NOTHROW(mapper->HandleMapperConsoleKeyDown(KeyCode::A, "a"));
+        REQUIRE_NOTHROW(mapper->HandleMapperConsoleKeyDown(KeyCode::Back, {}));
+        REQUIRE_NOTHROW(mapper->HandleMapperConsoleKeyDown(KeyCode::Return, {}));
+
+        ImGui::Render();
     }
 }
 

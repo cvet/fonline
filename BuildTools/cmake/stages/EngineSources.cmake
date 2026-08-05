@@ -466,6 +466,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationPoseProcedural.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBounds.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSpriteLayout.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSkeletonCompatibility.cpp"

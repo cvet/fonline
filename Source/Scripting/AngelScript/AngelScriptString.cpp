@@ -479,8 +479,10 @@ static auto ScriptString_FindLast(const string& str, const string& sub, int32_t 
         return -1;
     }
 
-    auto pos = str.rfind(sub);
-    return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
+    // Like the forward counterparts, start is where the search begins; for a reverse search that makes it
+    // an inclusive upper bound, and the default of -1 resolves to the last character
+    auto pos = str.rfind(sub, numeric_cast<size_t>(start));
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindFirstOf(const string& str, const string& chars, int32_t start) -> int32_t
@@ -515,8 +517,8 @@ static auto ScriptString_FindLastOf(const string& str, const string& chars, int3
         return -1;
     }
 
-    auto pos = str.find_last_of(chars);
-    return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
+    auto pos = str.find_last_of(chars, numeric_cast<size_t>(start));
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindLastNotOf(const string& str, const string& chars, int32_t start) -> int32_t
@@ -527,8 +529,8 @@ static auto ScriptString_FindLastNotOf(const string& str, const string& chars, i
         return -1;
     }
 
-    auto pos = str.find_last_not_of(chars, start);
-    return pos != string::npos && numeric_cast<int32_t>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
+    auto pos = str.find_last_not_of(chars, numeric_cast<size_t>(start));
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_GetAt(const string& str, int32_t i) -> string
