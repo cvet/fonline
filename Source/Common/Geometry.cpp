@@ -978,8 +978,12 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
         return false;
     }
 
+    // Narrow before touching the out params: numeric_cast throws, and a throw between the two writes
+    // would leave the caller with a new hex still carrying the old offset
+    ipos16 normalized_hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
+
     hex = normalized_hex;
-    hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
+    hex_offset = normalized_hex_offset;
     return true;
 }
 

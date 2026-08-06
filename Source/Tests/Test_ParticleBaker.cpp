@@ -502,6 +502,97 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
 #endif
 
 #if FO_EFFEKSEER_PARTICLES
+TEST_CASE("Effekseer model payload validation", "[particle][effekseer]")
+{
+    vector<uint8_t> valid = ParticleTests::MakeFixtureModelPayload();
+    CHECK_FALSE(ValidateEffekseerModelPayload(valid));
+
+    SECTION("RejectsPayloadAboveResourceBudget")
+    {
+        vector<uint8_t> oversized(EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX + 1);
+        CHECK(ValidateEffekseerModelPayload(oversized));
+    }
+
+    SECTION("RejectsEveryTruncatedPrefix")
+    {
+        for (size_t prefix_size = 0; prefix_size < valid.size(); prefix_size++) {
+            CAPTURE(prefix_size);
+            CHECK(ValidateEffekseerModelPayload({valid.data(), prefix_size}));
+        }
+    }
+
+    const auto write_int32 = [](vector<uint8_t>& data, size_t offset, int32_t value) {
+        REQUIRE(offset + sizeof(int32_t) <= data.size());
+        uint32_t encoded = std::bit_cast<uint32_t>(value);
+
+        for (size_t byte = 0; byte < sizeof(uint32_t); byte++) {
+            data[offset + byte] = numeric_cast<uint8_t>((encoded >> (byte * 8)) & 0xffu);
+        }
+    };
+
+    SECTION("RejectsUnsupportedVersion")
+    {
+        vector<uint8_t> invalid = valid;
+        write_int32(invalid, 0, 7);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+    }
+
+    SECTION("RejectsInvalidFrameCount")
+    {
+        vector<uint8_t> invalid = valid;
+        write_int32(invalid, 3 * sizeof(int32_t), 0);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, 3 * sizeof(int32_t), EFFEKSEER_MODEL_FRAME_COUNT_MAX + 1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+    }
+
+    SECTION("RejectsInvalidVertexCount")
+    {
+        vector<uint8_t> invalid = valid;
+        write_int32(invalid, 4 * sizeof(int32_t), -1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, 4 * sizeof(int32_t), std::numeric_limits<int32_t>::max());
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, 4 * sizeof(int32_t), EFFEKSEER_MODEL_VERTEX_COUNT_MAX + 1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+    }
+
+    constexpr size_t face_count_offset = 5 * sizeof(int32_t) + 4 * 68;
+    constexpr size_t first_face_index_offset = face_count_offset + sizeof(int32_t);
+
+    SECTION("RejectsInvalidFaceCount")
+    {
+        vector<uint8_t> invalid = valid;
+        write_int32(invalid, face_count_offset, -1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, face_count_offset, std::numeric_limits<int32_t>::max());
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, face_count_offset, EFFEKSEER_MODEL_FACE_COUNT_MAX + 1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+    }
+
+    SECTION("RejectsOutOfRangeFaceIndexes")
+    {
+        vector<uint8_t> invalid = valid;
+        write_int32(invalid, first_face_index_offset, -1);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+
+        write_int32(invalid, first_face_index_offset, 4);
+        CHECK(ValidateEffekseerModelPayload(invalid));
+    }
+
+    SECTION("AllowsIgnoredLegacyTrailer")
+    {
+        valid.insert(valid.end(), {0xde, 0xad, 0xbe, 0xef});
+        CHECK_FALSE(ValidateEffekseerModelPayload(valid));
+    }
+}
+
 TEST_CASE("Effekseer baked bounds trailer", "[particle][effekseer]")
 {
     SECTION("RoundtripsBounds")
@@ -777,6 +868,66 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(binary.size() > 4);
         CHECK(string_view {ptr<const uint8_t> {binary.data()}.reinterpret_as<const char>().get(), 4} == "SKFE");
         CHECK_FALSE(rig.Outputs.contains("Particles/Simple.efkproj"));
+    }
+
+    SECTION("IncludesModelGeometryInEffekseerBounds")
+    {
+        string temp_dir = MakeTempParticleBakerDir();
+        string source_dir = strex(temp_dir).combine_path("source").str();
+        string project_path = strex(source_dir).combine_path("Particles/Mesh.efkproj").str();
+        string model_path = strex(source_dir).combine_path("Particles/Model/Fixture.efkmodel").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(project_path, ParticleTests::MakeModelProject(2)));
+        REQUIRE(fs_write_file(model_path, ParticleTests::MakeFixtureModelPayload()));
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(source_files.GetAllFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 1);
+        REQUIRE(rig.Outputs.contains("Particles/Mesh.efk"));
+        EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(rig.Outputs.at("Particles/Mesh.efk"));
+
+        CHECK(trailer.PositionMin.x == Catch::Approx(0.0f));
+        CHECK(trailer.PositionMin.y == Catch::Approx(0.0f));
+        CHECK(trailer.PositionMin.z == Catch::Approx(0.0f));
+        CHECK(trailer.PositionMax.x == Catch::Approx(0.0f));
+        CHECK(trailer.PositionMax.y == Catch::Approx(0.0f));
+        CHECK(trailer.PositionMax.z == Catch::Approx(0.0f));
+        CHECK(trailer.BillboardRadius == Catch::Approx(std::sqrt(0.5f)));
+    }
+
+    SECTION("RejectsModelSymlinkOutsideTheResourceSource")
+    {
+        string temp_dir = MakeTempParticleBakerDir();
+        string source_dir = strex(temp_dir).combine_path("source").str();
+        string project_path = strex(source_dir).combine_path("Particles/Mesh.efkproj").str();
+        string outside_dir = strex(temp_dir).combine_path("outside").str();
+        string outside_model_path = strex(outside_dir).combine_path("Fixture.efkmodel").str();
+        string linked_model_dir = strex(source_dir).combine_path("Particles/Model").str();
+        (void)fs_remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        REQUIRE(fs_write_file(project_path, ParticleTests::MakeModelProject(2)));
+        REQUIRE(fs_write_file(outside_model_path, ParticleTests::MakeFixtureModelPayload()));
+
+        std::error_code link_error;
+        std::filesystem::create_directory_symlink(std::filesystem::path {fs_make_path(outside_dir)}, std::filesystem::path {fs_make_path(linked_model_dir)}, link_error);
+
+        if (link_error) {
+            SKIP(strex("Directory symlinks are unavailable: {}", link_error.message()).str());
+        }
+
+        FileSystem source_files;
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+
+        CHECK_THROWS_WITH(baker.BakeFiles(source_files.GetAllFiles(), ""), Catch::Matchers::ContainsSubstring("resolves outside its directory resource source"));
     }
 
     SECTION("BatchesTextEffekseerProjects")
