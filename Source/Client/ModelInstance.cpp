@@ -1057,6 +1057,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     mat44 identity {1.0f};
+    // The model matrix here is the identity, so the clip matrix is the frame projection itself.
+    // Combining once keeps the per-vertex sweep below to a single matrix-vector product each.
+    mat44 frame_clip_matrix = _frameProj * identity;
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
     bool has_projected_point = false;
     float32_t min_x {};
@@ -1069,7 +1072,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     auto project_sprite_length = [&](float32_t world_length) -> optional<float32_t> {
         vec3 projected_origin {};
         vec3 projected_offset {};
-        if (!ProjectPoint(vec3 {}, identity, _frameProj, viewport, projected_origin) || !ProjectPoint(vec3 {world_length, 0.0f, 0.0f}, identity, _frameProj, viewport, projected_offset)) {
+        if (!ProjectPointClip(vec3 {}, frame_clip_matrix, viewport, projected_origin) || !ProjectPointClip(vec3 {world_length, 0.0f, 0.0f}, frame_clip_matrix, viewport, projected_offset)) {
             return std::nullopt;
         }
         if (!std::isfinite(projected_origin.x) || !std::isfinite(projected_offset.x)) {
@@ -1084,7 +1087,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // another world point; mesh geometry passes zero.
     auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
         vec3 projected_pos {};
-        if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
+        if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
             return false;
         }
 
@@ -1164,9 +1167,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         vec3 projected_90 {};
         vec3 projected_180 {};
 
-        if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_0) || //
-            !ProjectPoint(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, identity, _frameProj, viewport, projected_90) || //
-            !ProjectPoint(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, identity, _frameProj, viewport, projected_180)) {
+        if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_0) || //
+            !ProjectPointClip(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_90) || //
+            !ProjectPointClip(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_180)) {
             return;
         }
         if (!std::isfinite(projected_0.x) || !std::isfinite(projected_0.y) || !std::isfinite(projected_90.x) || !std::isfinite(projected_90.y) || !std::isfinite(projected_180.x) || !std::isfinite(projected_180.y)) {
@@ -2629,7 +2632,18 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+    return ProjectPointClip(obj_pos, proj_matrix * model_matrix, viewport, out_pos);
+}
+
+// Projects with an already-combined clip matrix. Callers that project many points through the same
+// pair - the sprite-frame bounds sweep runs three projections per mesh vertex - would otherwise redo
+// the 4x4 matrix product per point, which dominates that loop. Combining once is exact, so results are
+// identical to the two-matrix overload.
+auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    glm::vec<4, float32_t, glm::defaultp> clip_pos = clip_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
 
     if (clip_pos.w == 0.0f) {
         return false;

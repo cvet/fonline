@@ -182,6 +182,7 @@ private:
     auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
     auto CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool;
     auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
+    auto ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     auto ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>;
     void CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const;
     auto CollectActiveAnimationBounds() const -> optional<ModelBounds3D>;
