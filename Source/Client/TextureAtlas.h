@@ -117,7 +117,8 @@ private:
     auto FindBestPlacement(isize32 size) const noexcept -> optional<Placement>;
     auto AcquireAllocation() -> ptr<Allocation>;
     void Release(ptr<Allocation> allocation) noexcept;
-    void RebuildFreeRectangles();
+    void DefragmentFreeRectangles();
+    auto CanDefragment() const noexcept -> bool;
     void DrawAllocationOverlay(const Allocation& allocation, span<ucolor> pixels) const;
 
     static void SplitFreeRectangles(vector<irect32>& free_rectangles, irect32 used_rectangle);
