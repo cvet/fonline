@@ -3328,6 +3328,10 @@
     },
     "cmake": {
       "entries": {
+        "/helpers/@id=cmake.helper.AddBakingTarget/description": {
+          "source_sha256": "f4cc5eb10e93a3e293686d09eb7eab871e063ec905ee6fed6e3325df4c1a2eea",
+          "translation": "Создаёт проектную цель запекания с необязательным subconfig, принудительным режимом и обновлением build hash после SetupScriptsAndBaking."
+        },
         "/helpers/@id=cmake.helper.AddEngineSources/description": {
           "source_sha256": "1bb8ed4584f287ef0e4d8ab08b6c06cf71ddbe6c619e1c3c42b06756b7e4e030",
           "translation": "Добавляет нативные исходники подключающего проекта с разделением по ролям до RegisterEngineSources."

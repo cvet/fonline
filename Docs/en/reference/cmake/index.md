@@ -28,7 +28,7 @@ This reference describes the project-facing CMake surface consumed by an embeddi
 | --- | --- | --- |
 | [Project options](options.md) | 44 | Required inputs, defaults, and override precedence. |
 | [Stages and hooks](stages.md) | 10 | Strict project-generation order and extension boundaries. |
-| [Project helpers](helpers.md) | 6 | Selected commands intended for embedding projects. |
+| [Project helpers](helpers.md) | 7 | Selected commands intended for embedding projects. |
 
 ## Option override precedence
 

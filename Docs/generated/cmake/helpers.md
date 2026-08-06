@@ -23,3 +23,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-helper-addnativeincludedir-60a1b8f1db"></a>
 - [`entry-cmake-helper-addnativeincludedir-60a1b8f1db`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addnativeincludedir-60a1b8f1db)
+
+<a id="entry-cmake-helper-addbakingtarget-5d644391c3"></a>
+- [`entry-cmake-helper-addbakingtarget-5d644391c3`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addbakingtarget-5d644391c3)

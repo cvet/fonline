@@ -61,7 +61,7 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["summary"]["option_count"], 44)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
-        self.assertEqual(model["summary"]["helper_count"], 6)
+        self.assertEqual(model["summary"]["helper_count"], 7)
         self.assertEqual(model["stages"][0]["id"], "cmake.stage.Init")
         self.assertEqual(model["stages"][-1]["entrypoint"], "FinalizeProjectGeneration")
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
@@ -69,6 +69,15 @@ class DocumentationCMakeTests(unittest.TestCase):
         options = {entry["name"]: entry for entry in model["options"]}
         self.assertEqual(options["FO_SPARK_PARTICLES"]["default"], "OFF")
         self.assertEqual(options["FO_EFFEKSEER_PARTICLES"]["default"], "OFF")
+        helpers = {entry["name"]: entry for entry in model["helpers"]}
+        self.assertEqual(
+            helpers["AddBakingTarget"]["signature"],
+            "AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])",
+        )
+        self.assertEqual(
+            helpers["AddBakingTarget"]["source"],
+            "BuildTools/cmake/helpers/Build.cmake",
+        )
 
         identities = [
             entry["id"]
@@ -76,6 +85,30 @@ class DocumentationCMakeTests(unittest.TestCase):
             for entry in model[key]
         ]
         self.assertEqual(len(identities), len(set(identities)))
+
+    def test_add_baking_target_implementation_matches_public_contract(self) -> None:
+        helper_source = (
+            ENGINE_ROOT / "BuildTools/cmake/helpers/Build.cmake"
+        ).read_text(encoding="utf-8")
+
+        for expected in (
+            "function(AddBakingTarget target)",
+            "set(options FORCE)",
+            "set(oneValueArgs SUB_CONFIG COMMENT)",
+            'set(BAKING_TARGET_SUB_CONFIG "NONE")',
+            'set(BAKING_TARGET_COMMENT "Bake resources")',
+            "COMMAND ${bakeResources} -ForceBaking ${forceBaking}",
+            "DEPENDS ForceCodeGeneration",
+            "WORKING_DIRECTORY ${FO_OUTPUT_PATH}",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, helper_source)
+
+        stage_source = (
+            ENGINE_ROOT / "BuildTools/cmake/stages/ScriptsAndBaking.cmake"
+        ).read_text(encoding="utf-8")
+        self.assertIn("AddBakingTarget(BakeResources)", stage_source)
+        self.assertIn("AddBakingTarget(ForceBakeResources FORCE)", stage_source)
 
     def test_manifest_validation_rejects_contract_drift(self) -> None:
         cases = []

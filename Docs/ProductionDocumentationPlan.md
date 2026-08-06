@@ -5,7 +5,7 @@
 - **Engine baseline:** `67ee893ae721d149cd44ff314abd8036adfd3821`
 - **Last Frontier baseline:** `805caa79976b7cf4f81e46e1cf9ca0f1ea96ba43`
 - **TLA baseline:** `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
-- **Latest reconciliation:** 2026-08-04, Engine through `fac978a67d1e601eb77389e8dc562d7e511705a0`, Last Frontier through `50b8cb4e9ec706887708640e4474b9f8281097d8`, and TLA through `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
+- **Latest reconciliation:** 2026-08-06, Engine audited through `f83305017369020e8e6888e76acf824bb24bf202`, Last Frontier audited through `8a39ad7f8c4d9cf5ee114a44caaa988f2dab5b74`, and TLA through `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
 - **Predecessor:** [DocumentationExpansionPlan.md](_meta/DocumentationExpansionPlan.md), which remains the completed historical plan for the first source-coverage pass.
 
 ## Outcome
@@ -56,15 +56,26 @@ The focused-viewer-guide build passes all 179 current routes, 39 static
 endpoints, and 21,443 local references plus all 358 desktop/mobile browser
 checks.
 
-The current checked models include an eighteenth experimental AiControl protocol domain with 49 source-backed entries, a standard-library reference client, malformed-peer tests, and a runnable 12-check sample. The generated support model distinguishes ten build-, smoke-, and source-capability profiles. The pinned external-project inventory classifies 30 concerns from exact Last Frontier/TLA paths; generated evidence remains authoritative for current disposition and source counts. Locale groups 45 through 48 moved the generated native script API, cross-domain public contract index, Generated API and Metadata guide, native Essentials reference, package reference, support matrix projection, public-example registry, Configuration and Data Sources reference, and Tools index to canonical EN/RU routes while retaining their former paths as durable pointers. All 197 physical locale pairs are present and complete-parity enforcement is active. The stable-locator description catalog also runs in `complete` mode: all 4,917 reader-facing model values across twenty generated domains have current reviewed Russian overlays, including 2,474 native API descriptions and contract notes plus 221 map/prototype property projections. Exact-source translation memory may reuse a reviewed value only when its complete source and normalized hash match and all donors agree; missing, stale, unknown, ambiguous, or structurally unsafe generated-prose translations fail CI. The latest generated localization, description-translation, site, snippet, evaluation, and AI-delivery counts are recorded in [DocumentationVerificationReport.md](_meta/DocumentationVerificationReport.md); their checked artifacts, rather than this roadmap paragraph, remain authoritative. ADR 0003 and ADR 0004 keep fail-closed whole-document budgets at 2 MiB for AI context and 1.75 MiB per locale for search; truncation and silent document removal remain forbidden.
+The 2026-08-06 reconciliation audited the complete incoming Engine and Last
+Frontier ranges. It retained the macOS CPU-load lifetime correction and made
+the new `AddBakingTarget` project helper part of the public CMake contract,
+with bilingual guidance, machine-readable metadata, translation overlays, and
+source-backed tests. The helper implementation now lives in the early-loaded
+BuildTools helper layer so manifest validation and embedding projects observe
+the same command before stage setup. Last Frontier's incoming
+`BakePublicResources` integration remains project-owned evidence and is
+reconciled in that repository rather than copied into the standalone Engine
+contract.
+
+The current checked models include an eighteenth experimental AiControl protocol domain with 49 source-backed entries, a standard-library reference client, malformed-peer tests, and a runnable 12-check sample. The generated support model distinguishes ten build-, smoke-, and source-capability profiles. The pinned external-project inventory classifies 30 concerns from exact Last Frontier/TLA paths; generated evidence remains authoritative for current disposition and source counts. Locale groups 45 through 48 moved the generated native script API, cross-domain public contract index, Generated API and Metadata guide, native Essentials reference, package reference, support matrix projection, public-example registry, Configuration and Data Sources reference, and Tools index to canonical EN/RU routes while retaining their former paths as durable pointers. All 197 physical locale pairs are present and complete-parity enforcement is active. The stable-locator description catalog also runs in `complete` mode: all 4,918 reader-facing model values across twenty generated domains have current reviewed Russian overlays, including 2,474 native API descriptions and contract notes plus 221 map/prototype property projections. Exact-source translation memory may reuse a reviewed value only when its complete source and normalized hash match and all donors agree; missing, stale, unknown, ambiguous, or structurally unsafe generated-prose translations fail CI. The latest generated localization, description-translation, site, snippet, evaluation, and AI-delivery counts are recorded in [DocumentationVerificationReport.md](_meta/DocumentationVerificationReport.md); their checked artifacts, rather than this roadmap paragraph, remain authoritative. ADR 0003 and ADR 0004 keep fail-closed whole-document budgets at 2 MiB for AI context and 1.75 MiB per locale for search; truncation and silent document removal remain forbidden.
 
 The update does not close the production program. Highest-value remaining work is:
 
 1. finish and review the reserved private example repositories, then perform owner-gated tagging/publication;
 2. confirm the landed GitHub Actions artifact and production Pages source, then complete manual assistive-technology/zoom review and migrated-route verification;
-3. keep the complete 197-page Russian mirror and all 4,917 generated-description overlays green while completing human language and accessibility review;
-4. run and review the task set with at least two independent model families, and add same-domain Markdown aliases only if the publication platform can do so without content duplication;
-5. add further runtime/tutorial result media only where task review proves that text, diagrams, and the four reproducible Mapper/SPARK/Direct3D/WebGL captures are insufficient.
+3. keep the complete 197-page Russian mirror and all 4,918 generated-description overlays green while completing human language and accessibility review;
+4. add same-domain Markdown aliases only if the publication platform can do so without content duplication;
+5. add further runtime/tutorial result media only where completed task review proves that text, diagrams, and the reproducible Mapper/SPARK/Direct3D/WebGL/OpenGL captures are insufficient.
 
 The 2026-08-03 external audit reverified all four example repositories as
 private: the project template remains source-staged and the other three remain
@@ -78,15 +89,12 @@ challenge TXT record is not observed. The locale corpus, new CI artifact,
 migrated-route evidence, and domain-ownership verification still require the
 documentation branch and the external administrator workflow.
 
-The 2026-08-03 Content Showcase continuation completed the reusable Web
-evidence layer locally. A native host now force-bakes the fixture, the Web lane
-builds and verifies an exact six-file raw/ZIP payload, and the isolated
-`web-showcase-runtime` target starts the native server and packaged HTTP server
-before pinned Chromium checks required responses, client/server lifecycle
-markers, a real 1280 x 800 WebGL 2 context, runtime errors, and compositor
-pixels. The checked WebGL capture and machine provenance record are local
-fixture evidence. Linux native/OpenGL, public-host, remote pinned/current,
-security, tag, and visibility gates remain outstanding.
+The Content Showcase repository now retains successful Linux/OpenGL and
+Windows qualification artifacts in addition to the reusable Web evidence
+layer. Its merged fixture force-bakes content, verifies the exact Web payload,
+checks native client/server lifecycle, captures a real WebGL 2 compositor, and
+records machine provenance. Public-host, remote pinned/current, security, tag,
+and owner-authorized visibility gates remain outstanding.
 
 The Last Frontier authentication suite is functionally green after updating stale reconnect-helper references, but its parallel worker logs an `EntitySyncException` while disconnecting an unlogged player during shutdown despite returning success. That runtime harness defect is a separate source/test follow-up and must not be reported as clean validation evidence until fixed.
 
@@ -123,7 +131,7 @@ The current set is not yet a self-sufficient game-developer product:
 | Current site is a repository landing page | Manifest-backed localized navigation, separate bounded EN/RU search, responsive layout, stable-ID language switching, source links, local theme preference, page table of contents, rolling `master` identity, ADR-0006 route policy, and a generated current/planned route catalog are implemented over Markdown. All 197 physical pairs route under `Docs/en` and `Docs/ru` behind durable legacy pointers; the manifest-owned 200-percent Chromium profile and reviewed Russian 1280 x 1024 screenshot now provide local reflow evidence; final counts belong to the verification report | Confirm the GitHub Pages source and production route and complete production-domain zoom/screen-reader review without changing publication architecture |
 | Visual teaching coverage is incomplete | Three source-owned deterministic SVG diagrams explain the Engine/game boundary, generated-content dependency order, and human/AI publication flow. Two 1280x800 Mapper/SPARK screenshots are reproduced by the independent minimal multiplayer fixture, while Content Showcase adds separately checked 1280x800 Direct3D 11 and Chromium WebGL 2 runtime captures with exact source/image/package hashes and recapture triggers. Linux OpenGL and broader task-driven runtime media remain gaps | Add media only where it materially improves a task guide, and capture it from exact reviewed builds with the same provenance/recapture contract |
 | No public canonical example game | `Examples/MinimalProject`, `Examples/MinimalMultiplayer`, `Examples/ContentShowcase`, and `Examples/NativeExtensionSample` are source-ready, executable Engine-owned projects. The template is source-staged privately; the other three repositories remain reserved private shells, and none has a public tag/artifact | Complete branch/security gates, pinned/current CI, immutable tags/artifacts, and the explicit owner-authorized visibility transitions |
-| Russian mirror still needs human production review | All 197 required physical counterparts are current; the 34-term glossary, normalized hashes, fenced-code parity, language-preserving links, and `complete` enforcement fail closed in CI. The generated-description catalog separately covers all 4,917 reader-facing values across twenty machine-model domains in `complete` mode. Local 200-percent Chromium reflow passes every route and the dedicated Russian screenshot has been visually reviewed | Keep both automated gates green and complete native-speaker, production-domain 200-percent zoom, and representative screen-reader review before production publication |
+| Russian mirror still needs human production review | All 197 required physical counterparts are current; the 34-term glossary, normalized hashes, fenced-code parity, language-preserving links, and `complete` enforcement fail closed in CI. The generated-description catalog separately covers all 4,918 reader-facing values across twenty machine-model domains in `complete` mode. Local 200-percent Chromium reflow passes every route and the dedicated Russian screenshot has been visually reviewed | Keep both automated gates green and complete native-speaker, production-domain 200-percent zoom, and representative screen-reader review before production publication |
 | AI access is only partly structured | `AGENTS.md`, generated `llms.txt`, bounded context, public manifest, source-ref-pinned clean Markdown URLs, compact site search, a versioned deterministic evaluation set, source inventory, eighteen generated contract models, and aggregate JSON diff reports now provide routing, ownership, stable IDs, signatures, provenance, change classification, and retrieval evidence | Add same-domain Markdown aliases if the publication platform gains a non-duplicating route, then run and review at least two independent model families |
 
 ### External project findings
@@ -725,7 +733,7 @@ Exit gate: agents select the correct owning source/version and complete at least
 
 - [x] Freeze the English public information architecture and stable IDs for the translation pass. ADR-0006 and the generated route inventory freeze the current target paths; all required EN/RU pairs and the first executable example slices are present.
 - [x] Create the Russian locale tree with one-to-one document coverage. All 197 required counterparts live under canonical paired routes or explicit README pairs with durable flat-path pointers.
-- [x] Create and review the bilingual glossary and API-description translation catalog. The source-owned glossary contains 34 reviewed term records. The stable-locator catalog covers all 4,917 reader-facing values across twenty generated domains, including 2,474 native API descriptions and contract notes plus 221 map/prototype property projections, validates exact source hashes, unambiguous exact-source reuse, and inline-code shape, and runs in `complete` mode.
+- [x] Create and review the bilingual glossary and API-description translation catalog. The source-owned glossary contains 34 reviewed term records. The stable-locator catalog covers all 4,918 reader-facing values across twenty generated domains, including 2,474 native API descriptions and contract notes plus 221 map/prototype property projections, validates exact source hashes, unambiguous exact-source reuse, and inline-code shape, and runs in `complete` mode.
 - [x] Translate tutorials first, then how-tos, reference descriptions, explanation, troubleshooting, and contributor/operator guides. Every physical human route is reviewed and current in EN/RU, including Configuration and Data Sources and Tools. All twenty generated-model domains apply complete semantic overlays while preserving canonical English JSON, signatures, identifiers, paths, and fenced examples.
 - [x] Add translation hash/parity gates and language-preserving links. Whole-document hash/code/link parity, front-matter locale, stable-ID switching, separate locale search, durable legacy pointers, and explicit `--enforce-complete` CI enforcement now cover all 197 pairs.
 - [x] Add `README.ru.md` and language selection from both repository and site entry points.

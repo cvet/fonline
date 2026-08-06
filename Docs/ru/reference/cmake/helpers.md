@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-helpers","locale":"ru","source_path":"Docs/en/reference/cmake/helpers.md","source_sha256":"d9cb85f528f79933d2ac8e5351ee965ee939c248917a6ba1aae54e8a3a5dede1"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-helpers","locale":"ru","source_path":"Docs/en/reference/cmake/helpers.md","source_sha256":"d162d21abe7ac08a159ae79e44aa9a8c115052899cd5d670890983f0bf05e38d"} -->
 
 # Проектные helper-команды CMake
 
@@ -23,3 +23,4 @@ generated: true
 | <a id="entry-cmake-helper-addenginesources-8a1a5c856f"></a><code>cmake.helper.AddEngineSources</code> | <code>AddEngineSources(&lt;role&gt; &lt;path-or-glob&gt; [&lt;role&gt; &lt;path-or-glob&gt; ...])</code> | <code>macro</code> | <code>COMMON</code>, <code>SERVER</code>, <code>CLIENT</code>, <code>MAPPER</code>, <code>BAKER</code> | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Добавляет нативные исходники подключающего проекта с разделением по ролям до RegisterEngineSources. |
 | <a id="entry-cmake-helper-addprojectlibraries-917d80c201"></a><code>cmake.helper.AddProjectLibraries</code> | <code>AddProjectLibraries(ROLES &lt;role&gt; [...] LIBRARIES &lt;target-or-library&gt; [...])</code> | <code>macro</code> | <code>COMMON</code>, <code>SERVER</code>, <code>CLIENT</code>, <code>MAPPER</code>, <code>BAKER</code> | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Компонует принадлежащие проекту цели или явно заданные платформенные библиотеки только с использующими их ролями движка до BuildCoreLibraries. |
 | <a id="entry-cmake-helper-addnativeincludedir-60a1b8f1db"></a><code>cmake.helper.AddNativeIncludeDir</code> | <code>AddNativeIncludeDir(&lt;directory&gt; [...])</code> | <code>macro</code> | - | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Добавляет относительные к проекту каталоги include, когда включены нативные скрипты. |
+| <a id="entry-cmake-helper-addbakingtarget-5d644391c3"></a><code>cmake.helper.AddBakingTarget</code> | <code>AddBakingTarget(&lt;target&gt; [SUB_CONFIG &lt;name&gt;] [FORCE] [COMMENT &lt;text&gt;])</code> | <code>function</code> | - | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Создаёт проектную цель запекания с необязательным subconfig, принудительным режимом и обновлением build hash после SetupScriptsAndBaking. |

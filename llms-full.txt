@@ -901,7 +901,7 @@ native Catch2 ownership and coverage, use [Testing](../../Testing.md).
 ===== BEGIN DOCUMENT embedding-project =====
 Source: Docs/en/how-to/build/embedding-project.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/embedding-project.html
-Content SHA-256: e803442832d838f603933740f17292e174c6232d8f5f3a9fdde7da84bc57f738
+Content SHA-256: ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270
 
 ---
 layout: default
@@ -919,6 +919,8 @@ FOnline is designed to be embedded as a source submodule. The engine repository 
 
 - `BuildTools/Init.cmake`
 - `BuildTools/cmake/ProjectInterface.json`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Examples/MinimalProject/CMakeLists.txt`
 - `Examples/MinimalProject/FOnlineStarter.fomain`
 - `Examples/MinimalProject/README.md`
@@ -1009,6 +1011,22 @@ The game repository should drive the build. In practice this means:
 4. Keep generated files out of hand-authored docs unless the generation process is part of the topic.
 
 Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through `AddProjectLibraries`; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
+
+### Add a project-specific baking target
+
+The standard pipeline creates `BakeResources` and `ForceBakeResources` with subconfig `NONE`. If the game defines another configuration slice for a public, test, or release resource set, create its target immediately after the scripts-and-baking stage:
+
+```cmake
+SetupScriptsAndBaking()
+
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+
+BuildPackages()
+```
+
+Add `FORCE` only when that target must always request a full bake. The helper retains the standard `ForceCodeGeneration` dependency, `FO_OUTPUT_PATH` working directory, main-config argument, and resource build-hash update. Keep the target name, subconfig contents, and downstream CI/package policy in the game repository.
 
 ## Documentation composition
 
@@ -14420,7 +14438,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 2a9dcfcd698df43cc562953e7bc4758880107a7020fe36c9fb7cb9ef8ae64666
+Content SHA-256: bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23
 
 ---
 layout: default
@@ -14554,7 +14572,7 @@ Generators apply the overlay to a deep copy of the model: canonical JSON and
 English Markdown remain unchanged, while Russian Markdown receives translated
 descriptions before its fixed labels and headings are localized.
 
-The catalog uses `complete`: all 4,917 reader-facing values in all 20 generated
+The catalog uses `complete`: all 4,918 reader-facing values in all 20 generated
 domains, including the native API, have current reviewed records. CI and local
 validation reject any missing, unknown, stale, type-changing, list-shape-changing,
 or inline-code-changing entry. When a generator exposes another reader-facing
@@ -15323,7 +15341,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: eb27c153f3e959f074b7c51eee096c92c5d281d3aae7ff32ba433e8590b962de
+Content SHA-256: 1c9dc9f4ff3ecb6296fe5f8488b8fc9a218b58b9db37fdc215641fa18d2ffd94
 
 ---
 layout: default
@@ -15348,6 +15366,7 @@ Treat the current Engine source and generated contract models as authoritative. 
 ## Source paths inspected
 
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `Source/Common/Settings.h`
 - `Source/Common/Settings.cpp`
@@ -15434,16 +15453,25 @@ At runtime/source level, baking is owned by:
 
 ## CMake entry points
 
-`BuildTools/cmake/stages/ScriptsAndBaking.cmake` creates baking commands after application targets are available.
+`BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
 
 Current target responsibilities:
 
-- `BakeResources` runs the project baker with `-ForceBaking False`.
-- `ForceBakeResources` runs the project baker with `-ForceBaking True`.
-- Both apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and `-ApplySubConfig NONE`.
-- Both work from `FO_OUTPUT_PATH`.
-- `CompileAngelScript`, `BakeResources`, and `ForceBakeResources` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind the command invocation.
-- Resource build-hash state is written through `BuildTools/cmake/helpers/WriteBuildHash.cmake` using `Baking/Resources.build-hash`.
+- `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-ForceBaking False`.
+- `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-ForceBaking True`.
+- Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- `CompileAngelScript` also depends on `ForceCodeGeneration`, so metadata and generated code cannot lag behind script compilation or a bake invocation.
+
+After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:
+
+```cmake
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+```
+
+The full signature is `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. `SUB_CONFIG` defaults to `NONE`, `COMMENT` defaults to `Bake resources`, and `FORCE` changes `-ForceBaking` from `False` to `True`. Unknown arguments and keywords without values fail at configure time. The embedding project owns the additional target name and the referenced subconfig.
 
 The actual final target names that depend on these commands are project/preset-dependent. Do not document one embedding project's target names as universal engine behavior.
 
@@ -22582,7 +22610,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 2aaa3c53f33ea84f4151e2d94fb81fd940fa825551b96aec34573bfa8a48ae5e
+Content SHA-256: 1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895
 
 ---
 layout: default
@@ -22733,6 +22761,7 @@ Creates custom targets for script compilation and resource baking. Current respo
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
+- The public `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])` helper for project-owned bake variants. Call it after `SetupScriptsAndBaking()` so the project baker exists; every added target reuses the standard codegen dependency, output working directory, config application, and resource build-hash update.
 
 Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and [Scripting](../../explanation/scripting-runtime/).
 
@@ -22846,7 +22875,7 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9
+Content SHA-256: 6beb1b29ae2077772d4490f9758c12eaf771faa8bdfff182b3ccc32605dca0ed
 
 ---
 title: Generated CMake Project Interface
@@ -22878,7 +22907,7 @@ This reference describes the project-facing CMake surface consumed by an embeddi
 | --- | --- | --- |
 | [Project options](options.md) | 44 | Required inputs, defaults, and override precedence. |
 | [Stages and hooks](stages.md) | 10 | Strict project-generation order and extension boundaries. |
-| [Project helpers](helpers.md) | 6 | Selected commands intended for embedding projects. |
+| [Project helpers](helpers.md) | 7 | Selected commands intended for embedding projects. |
 
 ## Option override precedence
 

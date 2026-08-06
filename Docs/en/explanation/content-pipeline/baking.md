@@ -21,6 +21,7 @@ Treat the current Engine source and generated contract models as authoritative. 
 ## Source paths inspected
 
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `Source/Common/Settings.h`
 - `Source/Common/Settings.cpp`
@@ -107,16 +108,25 @@ At runtime/source level, baking is owned by:
 
 ## CMake entry points
 
-`BuildTools/cmake/stages/ScriptsAndBaking.cmake` creates baking commands after application targets are available.
+`BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
 
 Current target responsibilities:
 
-- `BakeResources` runs the project baker with `-ForceBaking False`.
-- `ForceBakeResources` runs the project baker with `-ForceBaking True`.
-- Both apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and `-ApplySubConfig NONE`.
-- Both work from `FO_OUTPUT_PATH`.
-- `CompileAngelScript`, `BakeResources`, and `ForceBakeResources` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind the command invocation.
-- Resource build-hash state is written through `BuildTools/cmake/helpers/WriteBuildHash.cmake` using `Baking/Resources.build-hash`.
+- `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-ForceBaking False`.
+- `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-ForceBaking True`.
+- Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- `CompileAngelScript` also depends on `ForceCodeGeneration`, so metadata and generated code cannot lag behind script compilation or a bake invocation.
+
+After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:
+
+```cmake
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+```
+
+The full signature is `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. `SUB_CONFIG` defaults to `NONE`, `COMMENT` defaults to `Bake resources`, and `FORCE` changes `-ForceBaking` from `False` to `True`. Unknown arguments and keywords without values fail at configure time. The embedding project owns the additional target name and the referenced subconfig.
 
 The actual final target names that depend on these commands are project/preset-dependent. Do not document one embedding project's target names as universal engine behavior.
 

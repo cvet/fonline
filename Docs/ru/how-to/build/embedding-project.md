@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/embedding-project.html
 
 # Встраивание FOnline в игровой проект
 
-<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"e803442832d838f603933740f17292e174c6232d8f5f3a9fdde7da84bc57f738"} -->
+<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270"} -->
 
 FOnline рассчитан на подключение как source submodule. Репозиторий движка
 поставляет переиспользуемую технологию, а репозиторий игры создает конкретный
@@ -18,6 +18,8 @@ FOnline рассчитан на подключение как source submodule. 
 
 - `BuildTools/Init.cmake`
 - `BuildTools/cmake/ProjectInterface.json`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Examples/MinimalProject/CMakeLists.txt`
 - `Examples/MinimalProject/FOnlineStarter.fomain`
 - `Examples/MinimalProject/README.md`
@@ -129,6 +131,29 @@ format как стандартную возможность FOnline.
 пример композиции. Он также доказывает server-only `INTERFACE` dependency через
 `AddProjectLibraries`; расширяйте его project-owned modules и targets, не
 копируя постороннее wiring из большой игры.
+
+### Добавление проектной цели запекания
+
+Стандартный конвейер создаёт `BakeResources` и `ForceBakeResources` с subconfig
+`NONE`. Если игра определяет отдельный срез конфигурации для публичного,
+тестового или релизного набора ресурсов, создайте его цель сразу после стадии
+scripts-and-baking:
+
+```cmake
+SetupScriptsAndBaking()
+
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+
+BuildPackages()
+```
+
+Добавляйте `FORCE`, только если эта цель всегда должна запрашивать полное
+запекание. Helper сохраняет стандартные зависимость от `ForceCodeGeneration`,
+рабочий каталог `FO_OUTPUT_PATH`, аргумент главной конфигурации и обновление
+resource build hash. Имя цели, содержимое subconfig и последующая политика
+CI/пакетов должны оставаться в репозитории игры.
 
 ## Композиция документации
 

@@ -53,18 +53,22 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
 
     def test_generated_workflow_keeps_codegen_and_docs_dependency_order(self) -> None:
         cmake = self._read("BuildTools/cmake/stages/ScriptsAndBaking.cmake")
+        helper = self._read("BuildTools/cmake/helpers/Build.cmake")
         self.assertIn(
             'SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")',
             cmake,
         )
-        for target in ("CompileAngelScript", "BakeResources", "ForceBakeResources"):
-            block = re.search(
-                rf"AddCommandTarget\({target}\b(?P<body>.*?)(?=\nAddCommandTarget\(|\Z)",
-                cmake,
-                re.DOTALL,
-            )
-            self.assertIsNotNone(block, target)
-            self.assertIn("DEPENDS ForceCodeGeneration", block.group("body"), target)
+        compile_block = re.search(
+            r"AddCommandTarget\(CompileAngelScript\b(?P<body>.*?)(?=\n\s*endif\(\))",
+            cmake,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(compile_block)
+        self.assertIn("DEPENDS ForceCodeGeneration", compile_block.group("body"))
+        self.assertIn("AddBakingTarget(BakeResources)", cmake)
+        self.assertIn("AddBakingTarget(ForceBakeResources FORCE)", cmake)
+        self.assertIn("DEPENDS ForceCodeGeneration", helper)
+        self.assertIn('-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"', helper)
 
         guide = self._read(GENERATED_GUIDE)
         commands = (

@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"eb27c153f3e959f074b7c51eee096c92c5d281d3aae7ff32ba433e8590b962de"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"1c9dc9f4ff3ecb6296fe5f8488b8fc9a218b58b9db37fdc215641fa18d2ffd94"} -->
 
 # Конвейер запекания ресурсов
 
@@ -23,6 +23,7 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ## Проверенные исходники
 
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `Source/Common/Settings.h`
 - `Source/Common/Settings.cpp`
@@ -109,14 +110,23 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 
 ## Точки входа CMake
 
-`BuildTools/cmake/stages/ScriptsAndBaking.cmake` создаёт команды запекания после появления application targets.
+`BuildTools/cmake/helpers/Build.cmake` экспортирует `AddBakingTarget` как проверяемый helper project interface. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` использует его для создания стандартных команд запекания после появления application targets.
 
-- `BakeResources` запускает baker с `-ForceBaking False`.
-- `ForceBakeResources` запускает его с `-ForceBaking True`.
-- Обе команды передают `-ApplyConfig <FO_MAIN_CONFIG>` и `-ApplySubConfig NONE`.
-- Рабочим каталогом служит `FO_OUTPUT_PATH`.
-- Состояние build hash записывается в `Baking/Resources.build-hash` через `WriteBuildHash.cmake`.
-- Все три подготовительные команды `CompileAngelScript`, `BakeResources` и `ForceBakeResources` зависят от `ForceCodeGeneration`, поэтому метаданные и генерируемый код не могут остаться позади запуска baker-а.
+- `BakeResources` создаётся вызовом `AddBakingTarget(BakeResources)` и запускает baker с `-ForceBaking False`.
+- `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-ForceBaking True`.
+- Обе стандартные цели передают главный конфигурационный файл проекта через `-ApplyConfig <FO_MAIN_CONFIG>` и используют subconfig `NONE` по умолчанию.
+- Каждая цель, созданная через `AddBakingTarget`, работает из `FO_OUTPUT_PATH`, зависит от `ForceCodeGeneration` и записывает `Baking/Resources.build-hash` через `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- `CompileAngelScript` также зависит от `ForceCodeGeneration`, поэтому метаданные и генерируемый код не могут отстать от компиляции скриптов или запуска baker-а.
+
+После выполнения `SetupScriptsAndBaking()` встраивающий проект может добавить цель для собственного subconfig, не копируя команду запуска baker-а:
+
+```cmake
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+```
+
+Полная сигнатура: `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. По умолчанию `SUB_CONFIG` равен `NONE`, `COMMENT` равен `Bake resources`, а `FORCE` переключает `-ForceBaking` с `False` на `True`. Неизвестные аргументы и ключи без значений останавливают конфигурацию. Имя дополнительной цели и соответствующий subconfig принадлежат встраивающему проекту.
 
 Финальные имена application targets и их зависимости задаются проектом и preset-ом. Не следует выдавать имена одного проекта за универсальный интерфейс Engine.
 

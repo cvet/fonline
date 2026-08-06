@@ -44,25 +44,5 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
 endif()
 
 # Baking
-SetValue(bakeResources "${FO_DEV_NAME}_Baker" ${foMainConfigArgs})
-SetValue(resourceBuildHashCommand
-    ${CMAKE_COMMAND}
-    -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash"
-    -DGIT_ROOT="${FO_GIT_ROOT}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
-
-AddCommandTarget(BakeResources
-    COMMAND_ARGS
-    COMMAND ${bakeResources} -ForceBaking False
-    COMMAND ${resourceBuildHashCommand}
-    DEPENDS ForceCodeGeneration
-    WORKING_DIRECTORY ${FO_OUTPUT_PATH}
-    COMMENT "Bake resources")
-
-AddCommandTarget(ForceBakeResources
-    COMMAND_ARGS
-    COMMAND ${bakeResources} -ForceBaking True
-    COMMAND ${resourceBuildHashCommand}
-    DEPENDS ForceCodeGeneration
-    WORKING_DIRECTORY ${FO_OUTPUT_PATH}
-    COMMENT "Bake resources")
+AddBakingTarget(BakeResources)
+AddBakingTarget(ForceBakeResources FORCE)

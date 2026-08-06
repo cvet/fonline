@@ -248,7 +248,7 @@
       "english_path": "Docs/en/contributing/documentation/translation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/translation.md",
-      "source_sha256": "2a9dcfcd698df43cc562953e7bc4758880107a7020fe36c9fb7cb9ef8ae64666",
+      "source_sha256": "bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23",
       "source_bytes": 11110,
       "status": "current"
     },
@@ -326,8 +326,8 @@
       "english_path": "Docs/en/explanation/content-pipeline/baking.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/content-pipeline/baking.md",
-      "source_sha256": "eb27c153f3e959f074b7c51eee096c92c5d281d3aae7ff32ba433e8590b962de",
-      "source_bytes": 71589,
+      "source_sha256": "1c9dc9f4ff3ecb6296fe5f8488b8fc9a218b58b9db37fdc215641fa18d2ffd94",
+      "source_bytes": 72554,
       "status": "current"
     },
     {
@@ -456,8 +456,8 @@
       "english_path": "Docs/en/how-to/build/embedding-project.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/embedding-project.md",
-      "source_sha256": "e803442832d838f603933740f17292e174c6232d8f5f3a9fdde7da84bc57f738",
-      "source_bytes": 6827,
+      "source_sha256": "ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270",
+      "source_bytes": 7694,
       "status": "current"
     },
     {
@@ -1119,8 +1119,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "2aaa3c53f33ea84f4151e2d94fb81fd940fa825551b96aec34573bfa8a48ae5e",
-      "source_bytes": 19348,
+      "source_sha256": "1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895",
+      "source_bytes": 19680,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake/helpers.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake/helpers.md",
-      "source_sha256": "d9cb85f528f79933d2ac8e5351ee965ee939c248917a6ba1aae54e8a3a5dede1",
-      "source_bytes": 3364,
+      "source_sha256": "d162d21abe7ac08a159ae79e44aa9a8c115052899cd5d670890983f0bf05e38d",
+      "source_bytes": 3847,
       "status": "current"
     },
     {
@@ -1145,7 +1145,7 @@
       "english_path": "Docs/en/reference/cmake/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake/index.md",
-      "source_sha256": "b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9",
+      "source_sha256": "6beb1b29ae2077772d4490f9758c12eaf771faa8bdfff182b3ccc32605dca0ed",
       "source_bytes": 2325,
       "status": "current"
     },

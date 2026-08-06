@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4917,
-    "current_count": 4917,
+    "entry_count": 4918,
+    "current_count": 4918,
     "missing_count": 0,
     "complete": true
   },
@@ -16721,11 +16721,17 @@
     },
     "cmake": {
       "source_model": "Docs/generated/cmake.json",
-      "entry_count": 64,
-      "current_count": 64,
+      "entry_count": 65,
+      "current_count": 65,
       "missing_count": 0,
       "complete": true,
       "entries": [
+        {
+          "locator": "/helpers/@id=cmake.helper.AddBakingTarget/description",
+          "source": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking.",
+          "source_sha256": "f4cc5eb10e93a3e293686d09eb7eab871e063ec905ee6fed6e3325df4c1a2eea",
+          "status": "current"
+        },
         {
           "locator": "/helpers/@id=cmake.helper.AddEngineSources/description",
           "source": "Add role-scoped embedding-project native sources before RegisterEngineSources.",

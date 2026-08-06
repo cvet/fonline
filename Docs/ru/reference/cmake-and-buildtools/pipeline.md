@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"2aaa3c53f33ea84f4151e2d94fb81fd940fa825551b96aec34573bfa8a48ae5e"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -219,6 +219,7 @@ code. Так ожидаемая диагностика negative tests сохра
 - Resource baking через project baker target.
 - Поддержка build-hash/write-hash для baked resources.
 - Обычные и принудительные bake targets.
+- Публичный helper `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])` для принадлежащих проекту вариантов запекания. Вызывайте его после `SetupScriptsAndBaking()`, когда project baker уже существует; каждая добавленная цель переиспользует стандартные зависимость от codegen, рабочий каталог output, применение конфигурации и обновление resource build hash.
 
 Связанные документы: [Baking Pipeline](../../explanation/content-pipeline/baking.md) и
 [Scripting](../../explanation/scripting-runtime/).

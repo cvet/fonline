@@ -147,6 +147,7 @@ Creates custom targets for script compilation and resource baking. Current respo
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
+- The public `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])` helper for project-owned bake variants. Call it after `SetupScriptsAndBaking()` so the project baker exists; every added target reuses the standard codegen dependency, output working directory, config application, and resource build-hash update.
 
 Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and [Scripting](../../explanation/scripting-runtime/).
 

@@ -14,6 +14,8 @@ FOnline is designed to be embedded as a source submodule. The engine repository 
 
 - `BuildTools/Init.cmake`
 - `BuildTools/cmake/ProjectInterface.json`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Examples/MinimalProject/CMakeLists.txt`
 - `Examples/MinimalProject/FOnlineStarter.fomain`
 - `Examples/MinimalProject/README.md`
@@ -104,6 +106,22 @@ The game repository should drive the build. In practice this means:
 4. Keep generated files out of hand-authored docs unless the generation process is part of the topic.
 
 Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through `AddProjectLibraries`; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
+
+### Add a project-specific baking target
+
+The standard pipeline creates `BakeResources` and `ForceBakeResources` with subconfig `NONE`. If the game defines another configuration slice for a public, test, or release resource set, create its target immediately after the scripts-and-baking stage:
+
+```cmake
+SetupScriptsAndBaking()
+
+AddBakingTarget(Game_PublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+
+BuildPackages()
+```
+
+Add `FORCE` only when that target must always request a full bake. The helper retains the standard `ForceCodeGeneration` dependency, `FO_OUTPUT_PATH` working directory, main-config argument, and resource build-hash update. Keep the target name, subconfig contents, and downstream CI/package policy in the game repository.
 
 ## Documentation composition
 

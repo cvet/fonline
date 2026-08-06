@@ -6,7 +6,7 @@ document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
 
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"2a9dcfcd698df43cc562953e7bc4758880107a7020fe36c9fb7cb9ef8ae64666"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23"} -->
 
 # Процесс перевода документации
 
@@ -150,7 +150,7 @@ inline-code записи и создаёт
 английский Markdown не меняются, а русский Markdown получает переведённые
 описания до локализации фиксированных подписей и заголовков.
 
-Каталог использует режим `complete`: все 4 917 обращённых к читателю значений
+Каталог использует режим `complete`: все 4 918 обращённых к читателю значений
 во всех 20 генерируемых доменах, включая native API, имеют актуальные
 проверенные записи. CI и локальная проверка отклоняют отсутствующие,
 неизвестные, устаревшие, меняющие тип, форму списка или inline-code записи.

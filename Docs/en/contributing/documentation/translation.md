@@ -130,7 +130,7 @@ Generators apply the overlay to a deep copy of the model: canonical JSON and
 English Markdown remain unchanged, while Russian Markdown receives translated
 descriptions before its fixed labels and headings are localized.
 
-The catalog uses `complete`: all 4,917 reader-facing values in all 20 generated
+The catalog uses `complete`: all 4,918 reader-facing values in all 20 generated
 domains, including the native API, have current reviewed records. CI and local
 validation reject any missing, unknown, stale, type-changing, list-shape-changing,
 or inline-code-changing entry. When a generator exposes another reader-facing

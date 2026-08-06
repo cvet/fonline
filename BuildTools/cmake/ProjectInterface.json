@@ -548,6 +548,13 @@
       "signature": "AddNativeIncludeDir(<directory> [...])",
       "source": "BuildTools/cmake/helpers/Build.cmake",
       "description": "Add project-relative include directories when Native scripting is enabled."
+    },
+    {
+      "name": "AddBakingTarget",
+      "kind": "function",
+      "signature": "AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])",
+      "source": "BuildTools/cmake/helpers/Build.cmake",
+      "description": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking."
     }
   ]
 }

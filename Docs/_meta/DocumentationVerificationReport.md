@@ -8060,8 +8060,63 @@ Disposition:
   Preserve the current owner summaries, exact evidence boundaries, objective
   repair limits, hidden rubric, raw hashes, compact reviews, and 90-percent
   target as the maintained regression contract.
-- Remaining production gates are external or human: Linux/OpenGL Content
-  Showcase evidence; clean pinned/current qualification, release controls,
-  immutable artifacts, and owner-authorized visibility for the four private
-  examples; landed Pages/domain CI evidence; and native-speaker, production
-  200-percent zoom, and representative assistive-technology review.
+- Remaining production gates are external or human: clean pinned/current
+  qualification, release controls, immutable artifacts, and owner-authorized
+  visibility for the four private examples; landed Pages/domain CI evidence;
+  and native-speaker, production 200-percent zoom, and representative
+  assistive-technology review.
+
+## 2026-08-06 - upstream baking-target reconciliation
+
+Scope and source revisions:
+
+- Reconciled the documentation production branch at
+  `e72873767b6adc1137f6c0d16789498b89652247` with Engine `origin/master`
+  through `f83305017369020e8e6888e76acf824bb24bf202`. The incoming Engine range
+  contains the project baking-target helper and the macOS CPU-load span
+  lifetime correction.
+- Audited the embedding Last Frontier repository through
+  `8a39ad7f8c4d9cf5ee114a44caaa988f2dab5b74`. Its new
+  `BakePublicResources` target, `PublicGame` subconfig, and CI route are
+  integration evidence; their project-specific policy remains in that
+  repository.
+- TLA remains pinned at
+  `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`; this reconciliation introduced
+  no new TLA-derived normative claim.
+
+Contract and documentation changes:
+
+- Promoted `AddBakingTarget` into the early-loaded BuildTools helper layer and
+  registered it as the seventh public CMake helper. This keeps project
+  interface validation, generated references, and actual configure-time
+  command availability aligned.
+- Documented the exact target signature, `NONE` subconfig default, force mode,
+  build-hash update, and required call order after `SetupScriptsAndBaking()` in
+  canonical English and Russian baking, embedding, and pipeline owners.
+- Added the stable-locator Russian description overlay and source ownership to
+  the machine-readable project-interface and documentation manifests. The
+  generated description catalog remains complete at 4,918/4,918 values.
+- Retained upstream's `const_span` construction over the owned macOS CPU-load
+  buffer. No reusable documentation contract changes for that internal
+  implementation correction.
+
+Validation:
+
+- Complete `BuildTools/tests` discovery passes 572/572. The focused CMake,
+  baking, build-foundation, localization, translation, and documentation
+  quality set passes 39/39.
+- Generated snippet validation passes 307/307 normative snippets, 157 evidence
+  blocks, and 182 external-parser checks. All 197 locale pairs and all 4,918
+  generated-description overlays are current.
+- Deterministic AI evaluation passes all 65 retrieval checks across 27 tasks at
+  100 percent success and 0.908 MRR. Generated CMake, site, inventory, and AI
+  delivery artifacts were refreshed in dependency order.
+
+Disposition:
+
+- The reusable helper contract is ready for CI and maintainer review. Merge and
+  publication evidence remain attached to the Engine pull request rather than
+  being inferred from this local reconciliation.
+- Linux/OpenGL Content Showcase evidence is complete. Remaining example gates
+  are clean pinned/current qualification, release controls, immutable
+  artifacts, and owner-authorized visibility for the four private repositories.

@@ -518,7 +518,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
         auto processor_info = make_ptr(raw_processor_info);
         auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
-        const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), processor_count};
+        const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), static_cast<size_t>(processor_count)};
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 

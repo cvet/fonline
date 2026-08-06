@@ -1451,7 +1451,7 @@
       "audiences": ["game-developer", "engine-contributor"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/build/embedding-project.md",
-      "sources": ["Examples/MinimalProject", "Examples/MinimalMultiplayer", "Examples/PublicRepositories.json", "BuildTools/Init.cmake", "BuildTools/cmake/ProjectInterface.json", "Source/Applications", "Source/Tools"]
+      "sources": ["Examples/MinimalProject", "Examples/MinimalMultiplayer", "Examples/PublicRepositories.json", "BuildTools/Init.cmake", "BuildTools/cmake/ProjectInterface.json", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "Source/Applications", "Source/Tools"]
     },
     "Docs/EmbeddingProject.md": {
       "id": "legacy-embedding-project-route",

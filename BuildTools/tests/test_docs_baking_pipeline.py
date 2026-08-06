@@ -56,22 +56,31 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
 
     def test_cmake_targets_use_project_config_and_fresh_codegen(self) -> None:
         cmake = self._read("BuildTools/cmake/stages/ScriptsAndBaking.cmake")
+        helper = self._read("BuildTools/cmake/helpers/Build.cmake")
         self.assertIn(
             'SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")',
             cmake,
         )
-        for target in ("CompileAngelScript", "BakeResources", "ForceBakeResources"):
-            block = re.search(
-                rf"AddCommandTarget\({target}\b(?P<body>.*?)(?=\nAddCommandTarget\(|\Z)",
-                cmake,
-                re.DOTALL,
-            )
-            self.assertIsNotNone(block, target)
-            self.assertIn("DEPENDS ForceCodeGeneration", block.group("body"), target)
+        compile_block = re.search(
+            r"AddCommandTarget\(CompileAngelScript\b(?P<body>.*?)(?=\n\s*endif\(\))",
+            cmake,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(compile_block)
+        self.assertIn("DEPENDS ForceCodeGeneration", compile_block.group("body"))
+        self.assertIn("AddBakingTarget(BakeResources)", cmake)
+        self.assertIn("AddBakingTarget(ForceBakeResources FORCE)", cmake)
+        for marker in (
+            '-ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"',
+            '-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"',
+            'set(BAKING_TARGET_SUB_CONFIG "NONE")',
+            "DEPENDS ForceCodeGeneration",
+        ):
+            self.assertIn(marker, helper)
 
         guide = self._read(GUIDE_PATH)
         self.assertIn("`-ApplyConfig <FO_MAIN_CONFIG>`", guide)
-        self.assertIn("`-ApplySubConfig NONE`", guide)
+        self.assertIn("default subconfig `NONE`", guide)
         self.assertIn("`ForceCodeGeneration`", guide)
 
     def test_resource_pack_contract_and_practices_are_source_backed(self) -> None:
