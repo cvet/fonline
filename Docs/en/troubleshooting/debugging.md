@@ -144,7 +144,7 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 
 - MSVC supplies `San_Address` and `Debug_San_Address`;
 - native Clang supplies Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow, and Address+Undefined configurations where the toolchain supports them;
-- AddressSanitizer and MemorySanitizer switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines do not defeat instrumentation;
+- AddressSanitizer, MemorySanitizer, and code-coverage builds switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines do not defeat instrumentation or terminate while an instrumented frame unwinds a registered-function exception;
 - MemorySanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
 - sanitizer timing, allocation, stack size, and calling-convention behavior differ from a release build, so reproduce the original configuration as well.
 

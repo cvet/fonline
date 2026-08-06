@@ -39,6 +39,7 @@ class TestingFoundationsDocumentationTests(unittest.TestCase):
         guide = self._read(GUIDE_PATH)
         testing_app = self._read("Source/Applications/TestingApp.cpp")
         applications = self._read("BuildTools/cmake/stages/Applications.cmake")
+        init = self._read("BuildTools/cmake/stages/Init.cmake")
         validate = self._read("BuildTools/validate.sh")
         buildtools = self._read("BuildTools/buildtools.py")
         workflow = self._read(".github/workflows/validate.yml")
@@ -67,6 +68,12 @@ class TestingFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn('exec "$PYTHON_BIN" "$CUR_DIR/buildtools.py" validate "$@"', validate)
         self.assertIn("unit-tests-sanitizers", workflow)
         self.assertIn("FO_MSAN_LIBCXX_ROOT", guide)
+
+        portable_calls_start = init.index("SetValue(expr_PortableScriptCalls")
+        portable_calls_end = init.index("if(MSVC", portable_calls_start)
+        portable_calls = init[portable_calls_start:portable_calls_end]
+        self.assertIn("$<BOOL:${FO_CODE_COVERAGE}>", portable_calls)
+        self.assertIn("AS_MAX_PORTABILITY", portable_calls)
 
     def test_canonical_and_legacy_routes_are_explicit(self) -> None:
         manifest = json.loads(self._read("Docs/documentation-manifest.json"))

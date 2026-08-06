@@ -6,7 +6,7 @@ document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"f65f0031b9bad0f90f2ea01eeca496c948647b2e0896626160834f10f497b98c"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"504dceeac763f3d13f5c6e236914b9013a7e9d9fadca1a1e6a02ea78c9c62851"} -->
 
 # Нативная отладка и отладка AngelScript
 
@@ -146,7 +146,7 @@ Engine отвечает за:
 
 - MSVC предоставляет `San_Address` и `Debug_San_Address`;
 - native Clang предоставляет Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow и Address+Undefined там, где это поддерживает toolchain;
-- AddressSanitizer и MemorySanitizer переключают AngelScript на `AS_MAX_PORTABILITY`, чтобы native call trampolines не обходили instrumentation;
+- AddressSanitizer, MemorySanitizer и сборки code coverage переключают AngelScript на `AS_MAX_PORTABILITY`, чтобы native call trampolines не обходили instrumentation и не вызывали `terminate` при раскрутке instrumented frame после исключения из зарегистрированной функции;
 - сборки MemorySanitizer компилируют слой stack/exception с `HAS_NATIVE_TRACE=0`; ожидайте diagnostics sanitizer, а не обычный нативный mixed-stack контракт;
 - timing, allocation, размер stack и calling convention sanitizer отличаются от release-сборки, поэтому воспроизводите также исходную конфигурацию.
 
