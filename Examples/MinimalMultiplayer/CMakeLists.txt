@@ -72,7 +72,9 @@ if(FO_BUILD_CLIENT AND FO_BUILD_SERVER AND FO_BUILD_BAKER)
             "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"
             "${FO_OUTPUT_PATH}/Baking/Metadata/Metadata.fometa-server"
             "${FO_OUTPUT_PATH}/Baking/Metadata/Metadata.fometa-client"
-        DEPENDS FOMM_ServerHeadless FOMM_Client FOMM_ClientHeadless BakeResources
+        # Package checks also depend on ForceBakeResources. Sharing that target
+        # prevents concurrent bakers from racing over FO_OUTPUT_PATH/Baking.
+        DEPENDS FOMM_ServerHeadless FOMM_Client FOMM_ClientHeadless ForceBakeResources
         SOURCES tutorial-smoke.json
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         VERBATIM

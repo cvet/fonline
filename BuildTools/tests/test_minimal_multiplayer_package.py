@@ -84,6 +84,12 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
         self.assertIn("Raw+TarGz+Headless", cmake)
         self.assertIn("RunTutorialPackageChecks", cmake)
         self.assertIn("CheckTutorialConfig", cmake)
+        tutorial_checks = (
+            cmake.split("add_custom_target(RunTutorialChecks", 1)[1]
+            .split("if(FO_WINDOWS OR FO_LINUX)", 1)[0]
+        )
+        self.assertIn("FOMM_ClientHeadless ForceBakeResources", tutorial_checks)
+        self.assertNotIn("FOMM_ClientHeadless BakeResources", tutorial_checks)
         self.assertIn("Settings.inc", generator)
         self.assertIn("win64-tutorial-package", workflow)
         self.assertIn("linux-tutorial-package", workflow)

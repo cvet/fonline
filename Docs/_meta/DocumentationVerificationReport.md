@@ -8112,6 +8112,18 @@ Validation:
   100 percent success and 0.908 MRR. Generated CMake, site, inventory, and AI
   delivery artifacts were refreshed in dependency order.
 
+CI reconciliation:
+
+- The first current-base workflow exposed a coverage-only compile failure in
+  the portable AngelScript wrapper path. The test destructor adapter no longer
+  adds a `noexcept` function type that the object-first generic wrapper does not
+  accept; the replacement workflow passes the code-coverage job.
+- The replacement workflow then exposed concurrent `BakeResources` and
+  `ForceBakeResources` writers in the Minimal Multiplayer package lane. Both
+  tutorial smoke and package checks now share `ForceBakeResources`, so CMake
+  schedules one baker before the two read-only consumers. Focused public-example
+  and package tests pass 16/16 and pin the single-target dependency.
+
 Disposition:
 
 - The reusable helper contract is ready for CI and maintainer review. Merge and
