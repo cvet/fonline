@@ -1085,11 +1085,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Merge a projected world point into the frame envelope, grown by a padding in sprite pixels. The padding carries a
     // particle's camera-facing billboard radius, which is a screen-space disc around the particle position rather than
     // another world point; mesh geometry passes zero.
+    vec3 last_projected_point {};
     auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
         vec3 projected_pos {};
         if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
             return false;
         }
+
+        last_projected_point = projected_pos;
 
         float32_t sprite_x = projected_pos.x / frame_scale;
         float32_t sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
@@ -1111,10 +1114,15 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return true;
     };
 
+    // Holds the facing-0 projection of the world point itself, captured before the shadow projection
+    // below overwrites last_projected_point, so the all-facings sweep can reuse it.
+    vec3 world_point_projection {};
     auto include_world_point = [&](vec3 world_pos) -> bool {
         if (!include_projected_point(world_pos, 0.0f)) {
             return false;
         }
+
+        world_point_projection = last_projected_point;
 
         if (include_shadow) {
             vec3 shadow_pos = world_pos;
@@ -1162,13 +1170,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_min_y {};
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
-    auto include_mesh_all_facings = [&](vec3 world_pos, float32_t padding) {
-        vec3 projected_0 {};
+    // Takes the facing-0 projection from the caller: include_world_point has already projected this
+    // exact point through the same clip matrix, and recomputing it here doubled up one of the three
+    // per-vertex projections in the hot sweep.
+    auto include_mesh_all_facings = [&](vec3 world_pos, vec3 projected_0, float32_t padding) {
         vec3 projected_90 {};
         vec3 projected_180 {};
 
-        if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_0) || //
-            !ProjectPointClip(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_90) || //
+        if (!ProjectPointClip(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_90) || //
             !ProjectPointClip(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_180)) {
             return;
         }
@@ -1254,7 +1263,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                     return std::nullopt;
                 }
 
-                include_mesh_all_facings(vec3 {transformed_pos}, 0.0f);
+                include_mesh_all_facings(vec3 {transformed_pos}, world_point_projection, 0.0f);
             }
         }
     }
@@ -1338,7 +1347,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 // Keep the emitting effect (e.g. furnace smoke) inside the frame at every facing, not just the
                 // current one, so a turn does not clip it - same all-facings envelope the mesh geometry uses. Only
                 // the particle position is swept; the quad faces the camera at every facing.
-                include_mesh_all_facings(corner, *billboard_padding);
+                include_mesh_all_facings(corner, last_projected_point, *billboard_padding);
             }
 
             has_geometry = true;
