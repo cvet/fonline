@@ -22,6 +22,11 @@ RUNTIME_SIDES = {
     "Client": ["client", "mapper"],
     "Mapper": ["mapper"],
 }
+NON_DOCUMENTATION_COMMENT_PREFIXES = (
+    "ReSharper disable",
+    "NOLINT",
+)
+API_CONTRACT_SCOPE_SELECTOR = "scope:native-codegen"
 
 
 def collect_engine_metadata_inputs(root: Path) -> list[Path]:
@@ -75,7 +80,12 @@ def _source(root: Path, location: codegen.SourceLocation | None) -> dict[str, ob
 
 
 def _description(comment: list[str]) -> str:
-    return "\n".join(comment).strip()
+    lines = [
+        line
+        for line in comment
+        if not line.strip().startswith(NON_DOCUMENTATION_COMMENT_PREFIXES)
+    ]
+    return "\n".join(lines).strip()
 
 
 def _script_type(meta_type: str, receiver: str = "SELF_ENTITY", nullable: bool = False) -> str:
@@ -185,6 +195,7 @@ def _append_enum_symbols(
         for key_value in tag.key_values:
             value_family_id = f"script.enum-value.{tag.group_name}.{key_value.key}"
             value = codegen.require_enum_value_text(key_value)
+            value_doc = tag.value_docs.get(key_value.key)
             value_symbol = _base_symbol(
                 root,
                 symbol_id=value_family_id,
@@ -193,8 +204,8 @@ def _append_enum_symbols(
                 name=key_value.key,
                 runtime_sides=RUNTIME_SIDES["Common"],
                 signature=f"{tag.group_name}.{key_value.key} = {value}",
-                comment=key_value.comment,
-                source=source,
+                comment=value_doc.comment if value_doc is not None else key_value.comment,
+                source=value_doc.source if value_doc is not None else source,
                 receiver=tag.group_name,
             )
             value_symbol["parent_id"] = family_id
@@ -229,6 +240,7 @@ def _append_value_type_symbols(
 
         for field_type, field_name in layout:
             field_family_id = f"script.value-field.{tag.name}.{field_name}"
+            field_doc = tag.field_docs.get(field_name)
             field_symbol = _base_symbol(
                 root,
                 symbol_id=field_family_id,
@@ -237,8 +249,8 @@ def _append_value_type_symbols(
                 name=field_name,
                 runtime_sides=RUNTIME_SIDES["Common"],
                 signature=f"{field_type} {tag.name}.{field_name}",
-                comment=[],
-                source=source,
+                comment=field_doc.comment if field_doc is not None else [],
+                source=field_doc.source if field_doc is not None else source,
                 receiver=tag.name,
             )
             field_symbol["parent_id"] = family_id
@@ -564,14 +576,62 @@ def _apply_api_contracts(
     root: Path,
     symbols: list[dict[str, object]],
     entries: list[tuple[codegen.ApiContractTag, codegen.SourceLocation | None]],
-) -> None:
+) -> dict[str, object] | None:
     symbols_by_id = {str(symbol["id"]): symbol for symbol in symbols}
     symbols_by_family: dict[str, list[dict[str, object]]] = {}
     for symbol in symbols:
         symbols_by_family.setdefault(str(symbol["family_id"]), []).append(symbol)
 
+    scope_entries = [(tag, source) for tag, source in entries if tag.selector == API_CONTRACT_SCOPE_SELECTOR]
+    if len(scope_entries) > 1:
+        raise ValueError("Multiple native-codegen scope contracts are not allowed")
+
+    scope_contract: dict[str, object] | None = None
+    if scope_entries:
+        scope_tag, scope_source = scope_entries[0]
+        symbol_ids = sorted(symbols_by_id)
+        inventory_sha256 = hashlib.sha256("\n".join(symbol_ids).encode("utf-8")).hexdigest()
+        if scope_tag.symbol_count != len(symbol_ids):
+            raise ValueError(
+                "Native-codegen scope contract SymbolCount is stale: "
+                f"declared {scope_tag.symbol_count}, generated {len(symbol_ids)}"
+            )
+        if scope_tag.inventory_sha256 != inventory_sha256:
+            raise ValueError(
+                "Native-codegen scope contract InventorySha256 is stale: "
+                f"declared {scope_tag.inventory_sha256}, generated {inventory_sha256}"
+            )
+        for example in scope_tag.examples:
+            _validate_contract_example(root, example)
+        contract_source = _source(root, scope_source)
+        if contract_source is None:
+            raise ValueError("Native-codegen scope contract has no source provenance")
+        scope_contract = {
+            "selector": scope_tag.selector,
+            "stability": scope_tag.stability,
+            "since": scope_tag.since,
+            "symbol_count": scope_tag.symbol_count,
+            "inventory_sha256": scope_tag.inventory_sha256,
+            "examples": list(scope_tag.examples),
+            "source": contract_source,
+            "notes": _description(scope_tag.comment),
+        }
+        for symbol in symbols:
+            symbol["stability"] = scope_tag.stability
+            symbol["since"] = scope_tag.since
+            symbol["deprecated"] = None
+            symbol["examples"] = []
+            symbol["contract"] = {
+                "explicit": True,
+                "selector": scope_tag.selector,
+                "source": contract_source,
+                "notes": "",
+            }
+
     classified_symbol_ids: set[str] = set()
     for tag, source in entries:
+        if tag.selector == API_CONTRACT_SCOPE_SELECTOR:
+            continue
         selected_symbols = _resolve_contract_selector(tag.selector, symbols_by_id, symbols_by_family)
         if not selected_symbols:
             raise ValueError(f"API contract selector does not match a generated symbol or family: {tag.selector}")
@@ -619,6 +679,8 @@ def _apply_api_contracts(
 
         classified_symbol_ids.update(selected_ids)
 
+    return scope_contract
+
 
 def generate_api_model(root: Path) -> dict[str, object]:
     root = root.resolve()
@@ -635,6 +697,8 @@ def generate_api_model(root: Path) -> dict[str, object]:
     setting_entries = _entries(tags, sources, "ExportSettings")
     migration_entries = _entries(tags, sources, "MigrationRule")
     contract_entries = _entries(tags, sources, "ApiContract")
+    scope_contracts = [tag for tag, _ in contract_entries if tag.selector == API_CONTRACT_SCOPE_SELECTOR]
+    default_stability = scope_contracts[0].stability if scope_contracts else "internal"
 
     _append_enum_symbols(root, symbols, enum_entries)
     _append_value_type_symbols(root, symbols, value_type_entries)
@@ -645,7 +709,7 @@ def generate_api_model(root: Path) -> dict[str, object]:
     _append_event_symbols(root, symbols, event_entries)
     _append_setting_symbols(root, symbols, setting_entries)
     _append_migration_symbols(root, symbols, migration_entries)
-    _apply_api_contracts(root, symbols, contract_entries)
+    scope_contract = _apply_api_contracts(root, symbols, contract_entries)
 
     symbols.sort(key=lambda symbol: str(symbol["id"]))
     symbol_ids = [str(symbol["id"]) for symbol in symbols]
@@ -680,7 +744,8 @@ def generate_api_model(root: Path) -> dict[str, object]:
         "scope": {
             "repository": "cvet/fonline",
             "surface": "engine-native-codegen",
-            "default_stability": "internal",
+            "default_stability": default_stability,
+            "contract": scope_contract,
             "included": [
                 "native script enums, value types, reference types, entities, properties, methods, and events",
                 "engine settings parsed from ExportSettings",
@@ -700,6 +765,7 @@ def generate_api_model(root: Path) -> dict[str, object]:
             "engine_hook_names": list(codegen.ENGINE_HOOK_NAMES),
             "migration_rule_kinds": list(codegen.MIGRATION_RULE_KINDS),
             "api_stability_labels": list(codegen.API_STABILITY_LABELS),
+            "api_contract_scope_selector": API_CONTRACT_SCOPE_SELECTOR,
         },
         "summary": {
             "symbol_count": len(symbols),

@@ -1,5 +1,5 @@
 {
-  "contract_digest": "f583216e49948329e9ebb5dd1cb9db2decbc199b753f8d61c78f01f67f646c4a",
+  "contract_digest": "393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516",
   "generated_by": "BuildTools/docs_examples.py",
   "program": {
     "compatibility": {
@@ -34,10 +34,12 @@
     "publication": {
       "asset_provenance_path": "assets/provenance.json",
       "copy_files": {
+        ".gitattributes": ".gitattributes",
         ".github/CODEOWNERS.template": ".github/CODEOWNERS",
         ".github/PULL_REQUEST_TEMPLATE.md": ".github/PULL_REQUEST_TEMPLATE.md",
         ".github/workflows/current-engine.template.yml": ".github/workflows/current-engine.yml",
         ".github/workflows/pinned-engine.template.yml": ".github/workflows/pinned-engine.yml",
+        ".gitmodules": ".gitmodules",
         "CONTRIBUTING.md": "CONTRIBUTING.md",
         "LICENSE": "LICENSE",
         "README.template.md": "README.md",
@@ -45,6 +47,7 @@
         "SUPPORT.md": "SUPPORT.md",
         "THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
         "assets/provenance.json": "assets/provenance.json",
+        "collect-evidence.py": "collect-evidence.py",
         "example-repository.template.json": "example-repository.json"
       },
       "metadata_path": "example-repository.json",
@@ -59,10 +62,13 @@
       ],
       "protected_branch": "main",
       "required_files": [
+        ".gitattributes",
+        ".gitmodules",
         ".github/CODEOWNERS",
         ".github/PULL_REQUEST_TEMPLATE.md",
         ".github/workflows/current-engine.yml",
         ".github/workflows/pinned-engine.yml",
+        "collect-evidence.py",
         "CONTRIBUTING.md",
         "LICENSE",
         "README.md",
@@ -88,13 +94,20 @@
         "deterministic-smoke"
       ],
       "depends_on": [],
+      "display_name": "FOnline Project Template",
       "exit_gate": "A clean Windows or Linux host reaches the documented successful server state in under 30 minutes from a tagged exact Engine revision.",
       "id": "project-template",
       "owner": "build_release",
+      "primary_check": "python validate.py",
       "purpose": "Canonical GitHub template and source for the first successful headless-project quickstart.",
       "remote": {
         "created_on": "2026-07-20",
+        "default_branch": "main",
+        "engine_revision": "9d74c751f5684f80aef3b35a0eb16a8fabf9fa42",
+        "head_commit": "9946ca42c332a294f8fedd2732e7850a01c1ec27",
+        "required_checks_state": "not-observed",
         "state": "source-staged",
+        "verified_on": "2026-08-03",
         "visibility": "private"
       },
       "repository": "cvet/fonline-project-template",
@@ -111,6 +124,16 @@
         "linux-smoke"
       ],
       "sequence": 1,
+      "source_excludes": [
+        "Build/**",
+        "Engine/**",
+        "Baking/**",
+        "Cache/**",
+        "Workspace/**",
+        "__pycache__/**",
+        "*.log",
+        "*.pyc"
+      ],
       "source_path": "Examples/MinimalProject",
       "source_required_files": [
         ".gitignore",
@@ -135,25 +158,37 @@
         "replicated-persisted-property",
         "event-and-remote-call",
         "english-and-russian-text",
-        "client-visible-smoke"
+        "client-visible-smoke",
+        "manifest-driven-gameplay-smoke",
+        "native-package-acceptance",
+        "mapper-ui-capture",
+        "spark-particle-authoring"
       ],
       "depends_on": [
         "project-template"
       ],
+      "display_name": "FOnline Minimal Multiplayer",
       "exit_gate": "Every tutorial checkpoint reproduces from its pinned tag and the final project is understandable without Last Frontier or TLA.",
       "id": "minimal-multiplayer",
       "owner": "documentation",
+      "primary_check": "python validate.py",
       "purpose": "Tiny playable vertical slice used by first server, client, content, scripting, persistence, and test tutorials.",
       "remote": {
         "created_on": "2026-07-20",
+        "default_branch": "main",
+        "head_commit": "97d232431488125b370be352fdcf28f66e6cbf4f",
+        "required_checks_state": "not-observed",
         "state": "reserved",
+        "verified_on": "2026-08-03",
         "visibility": "private"
       },
       "repository": "cvet/fonline-minimal-multiplayer",
       "required_artifacts": [
         "desktop-client",
         "headless-server",
-        "tutorial-report"
+        "tutorial-report",
+        "tutorial-package-evidence",
+        "mapper-capture"
       ],
       "required_checks": [
         "governance-contract",
@@ -161,11 +196,45 @@
         "current-engine",
         "windows-smoke",
         "linux-smoke",
+        "windows-package",
+        "linux-package",
         "tutorial-tag-replay"
       ],
       "sequence": 2,
-      "source_path": null,
-      "status": "planned",
+      "source_excludes": [
+        "Build/**",
+        "Engine/**",
+        "Baking/**",
+        "Cache/**",
+        "Resources/**",
+        "ServerResources/**",
+        "PlatformBinaries/**",
+        "Workspace/**",
+        "__pycache__/**",
+        "*.log",
+        "*.pyc"
+      ],
+      "source_path": "Examples/MinimalMultiplayer",
+      "source_required_files": [
+        ".gitignore",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "FOnlineMinimalMultiplayer.fomain",
+        "generate_config.py",
+        "README.md",
+        "Content/StarterContent.fopro",
+        "Maps/TutorialMap.fomap",
+        "Particles/Documentation.spark",
+        "Scripts/MapperCapture.fos",
+        "Scripts/Tutorial.fos",
+        "assets/provenance.json",
+        "package-smoke.json",
+        "run_tutorial_smoke.py",
+        "tutorial-smoke.json",
+        "verify_tutorial_package.py",
+        "validate.py"
+      ],
+      "status": "source-ready",
       "tier": "tutorial"
     },
     {
@@ -182,18 +251,26 @@
         "project-template",
         "minimal-multiplayer"
       ],
+      "display_name": "FOnline Content Showcase",
       "exit_gate": "A tagged build produces the public showcase and reproducible captures with complete machine-readable rights and provenance.",
       "id": "content-showcase",
       "owner": "content",
+      "primary_check": "python validate.py",
       "purpose": "Presentation-quality gallery for rendering and authoring capabilities without a large gameplay codebase.",
       "remote": {
         "created_on": "2026-07-20",
+        "default_branch": "main",
+        "head_commit": "011dab0d07eef6387609821206b8ee534ec51c3f",
+        "required_checks_state": "not-observed",
         "state": "reserved",
+        "verified_on": "2026-08-03",
         "visibility": "private"
       },
       "repository": "cvet/fonline-content-showcase",
       "required_artifacts": [
         "web-build",
+        "web-package",
+        "webgl-capture",
         "desktop-build",
         "capture-set",
         "asset-provenance-report"
@@ -204,11 +281,73 @@
         "current-engine",
         "asset-provenance",
         "performance-budget",
+        "web-build",
+        "web-package",
+        "web-runtime",
         "capture-reproduction"
       ],
       "sequence": 3,
-      "source_path": null,
-      "status": "planned",
+      "source_excludes": [
+        "Build/**",
+        "Engine/**",
+        "Baking/**",
+        "Cache/**",
+        "Resources/**",
+        "ServerResources/**",
+        "PlatformBinaries/**",
+        "Workspace/**",
+        "WebTests/node_modules/**",
+        "__pycache__/**",
+        "*.log",
+        "*.pyc"
+      ],
+      "source_path": "Examples/ContentShowcase",
+      "source_required_files": [
+        ".gitignore",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "FOnlineContentShowcase.fomain",
+        "README.md",
+        "README.ru.md",
+        "ASSET_LICENSE.md",
+        "Content/ShowcaseContent.fopro",
+        "Maps/ShowcaseMap.fomap",
+        "Scripts/Showcase.fos",
+        "ShowcaseAssets/Showcase/Audio/ShowcaseChime.wav",
+        "ShowcaseAssets/Showcase/Effects/ShowcaseParticle.fofx",
+        "ShowcaseAssets/Showcase/Particles/Showcase.spark",
+        "ShowcaseAssets/Showcase/Particles/ShowcaseSpark.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon.fofrm",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_0.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_1.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_2.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_3.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_4.tga",
+        "ShowcaseAssets/Showcase/Sprites/Beacon_5.tga",
+        "ShowcaseAssets/Showcase/Sprites/ShowcasePanel.tga",
+        "ShowcaseAssets/Showcase/Tiles/ShowcaseFloor.tga",
+        "assets/provenance.json",
+        "quality/performance-budget.json",
+        "captures/capture-contract.json",
+        "captures/windows-direct3d11.png",
+        "captures/linux-opengl.png",
+        "generate_assets.py",
+        "generate_config.py",
+        "run_showcase_smoke.py",
+        "showcase-smoke.json",
+        "capture_showcase.py",
+        "showcase-capture.json",
+        "showcase-web-package.json",
+        "showcase-web-runtime.json",
+        "capture_showcase_web.py",
+        "capture_showcase_web.mjs",
+        "captures/web-webgl2.png",
+        "WebTests/package.json",
+        "WebTests/package-lock.json",
+        "verify_showcase.py",
+        "validate.py"
+      ],
+      "status": "source-ready",
       "tier": "showcase"
     },
     {
@@ -223,13 +362,19 @@
       "depends_on": [
         "project-template"
       ],
+      "display_name": "FOnline Native Extension Sample",
       "exit_gate": "The tagged sample demonstrates one complete native extension path without game-specific services and passes the generated extension contract checks.",
       "id": "native-extension-sample",
       "owner": "runtime",
+      "primary_check": "python validate.py",
       "purpose": "Advanced minimal example of project-native C++ composition, lifecycle hooks, script exports, tests, and ABI review.",
       "remote": {
         "created_on": "2026-07-20",
+        "default_branch": "main",
+        "head_commit": "97823816ab333a62aced43edd4daafa19c5fee22",
+        "required_checks_state": "not-observed",
         "state": "reserved",
+        "verified_on": "2026-08-03",
         "visibility": "private"
       },
       "repository": "cvet/fonline-native-extension-sample",
@@ -246,8 +391,37 @@
         "native-extension-contract"
       ],
       "sequence": 4,
-      "source_path": null,
-      "status": "planned",
+      "source_excludes": [
+        "Build/**",
+        "Engine/**",
+        "Baking/**",
+        "Cache/**",
+        "Resources/**",
+        "ServerResources/**",
+        "PlatformBinaries/**",
+        "Workspace/**",
+        "__pycache__/**",
+        "*.log",
+        "*.pyc"
+      ],
+      "source_path": "Examples/NativeExtensionSample",
+      "source_required_files": [
+        ".gitignore",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "FOnlineNativeExtensionSample.fomain",
+        "README.md",
+        "README.ru.md",
+        "Scripts/NativeExtensionSample.fos",
+        "SourceExt/NativeExtensionCore.cpp",
+        "SourceExt/NativeExtensionCore.h",
+        "SourceExt/ServerExtension.cpp",
+        "Tests/NativeExtensionCoreTest.cpp",
+        "assets/provenance.json",
+        "run_native_extension_smoke.py",
+        "validate.py"
+      ],
+      "status": "source-ready",
       "tier": "advanced"
     }
   ],
@@ -255,11 +429,11 @@
   "source_manifest": "Examples/PublicRepositories.json",
   "source_ref": "master",
   "summary": {
-    "planned_count": 3,
+    "planned_count": 0,
     "private_count": 4,
     "published_count": 0,
     "repository_count": 4,
-    "source_ready_count": 1,
+    "source_ready_count": 4,
     "source_staged_count": 1
   }
 }

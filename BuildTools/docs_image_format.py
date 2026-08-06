@@ -11,12 +11,16 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/ImageFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/image-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/image-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/image-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/image-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/image-format"
 GENERATED_BY = "BuildTools/docs_image_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -29,9 +33,16 @@ PAGE_DEFINITIONS = (
     ("runtime.md", "generated-image-format-runtime", "Sprite Runtime Contract"),
     ("validation.md", "generated-image-format-validation", "Image Format Validation"),
 )
-OUTPUT_PATHS = tuple(
+CANONICAL_OUTPUT_PATHS = tuple(
     f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
 )
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 COLLECTION_KINDS = {
     "formats": "format",
     "descriptor_fields": "field",
@@ -378,10 +389,51 @@ def _header(document_id: str, title: str) -> list[str]:
         "",
         "[Index](index.md) | [Formats](formats.md) | [FOFRM](fofrm.md) | "
         "[Options](options.md) | [Baking](baking.md) | [Runtime](runtime.md) | "
-        "[Validation](validation.md) | [Canonical JSON](../image-format.json) | "
-        "[Guide](../../ImageFormat.md)",
+        "[Validation](validation.md) | "
+        "[Canonical JSON](../../../generated/image-format.json) | "
+        "[Guide](../../how-to/content/image-format.md)",
         "",
     ]
+
+
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/image-format/{filename}"
+    russian_path = f"../../ru/reference/image-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _entry_anchor(entry: dict[str, object]) -> str:
@@ -515,7 +567,102 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+RUSSIAN_TITLES = {
+    "Generated Image Format Reference": "Сгенерированный справочник форматов изображений",
+    "Image Source Formats": "Исходные форматы изображений",
+    "FOFRM Descriptor Reference": "Справочник descriptor FOFRM",
+    "Legacy Image Filename Options": "Устаревшие параметры имён изображений",
+    "Image Baking Contract": "Контракт запекания изображений",
+    "Sprite Runtime Contract": "Контракт runtime спрайтов",
+    "Image Format Validation": "Проверка форматов изображений",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/ImageFormatInterface.json`, then run `python BuildTools/docs_image_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/ImageFormatInterface.json`, затем выполните `python BuildTools/docs_image_format.py --write`.",
+    "[Index](index.md) | [Formats](formats.md) | [FOFRM](fofrm.md) | [Options](options.md) | [Baking](baking.md) | [Runtime](runtime.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/image-format.json) | [Guide](../../how-to/content/image-format.md)":
+        "[Индекс](index.md) | [Форматы](formats.md) | [FOFRM](fofrm.md) | [Параметры](options.md) | [Запекание](baking.md) | [Runtime](runtime.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/image-format.json) | [Руководство](../../how-to/content/image-format.md)",
+    "This reference describes the Engine-owned image import, FOFRM composition, baked sprite, client loading, atlas, cache, and validation contract. Project asset catalogs and visual acceptance remain project-owned.":
+        "Этот справочник описывает принадлежащий Engine контракт импорта изображений, композиции FOFRM, запечённых спрайтов, клиентской загрузки, атласов, кэшей и проверки. Каталоги ресурсов проекта и визуальная приёмка принадлежат проекту.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный manifest",
+    "Contract digest": "Digest контракта",
+    ", order ": ", порядок ",
+    "Baked pixels": "Запечённые pixels",
+    "Runtime side": "Сторона runtime",
+    "[Formats](formats.md)": "[Форматы](formats.md)",
+    "Accepted source formats and their current import behavior.":
+        "Принимаемые исходные форматы и текущее поведение импорта.",
+    "Descriptor fields, aliases, directions, flattening, and timing.":
+        "Поля descriptor, aliases, направления, flattening и timing.",
+    "[Options](options.md)": "[Параметры](options.md)",
+    "ART, SPR, and BAM filename selectors.":
+        "Selectors имени файла ART, SPR и BAM.",
+    "[Baking](baking.md)": "[Запекание](baking.md)",
+    "Discovery, output naming, container records, and failures.":
+        "Обнаружение, имена выходов, записи контейнера и отказы.",
+    "Factory coverage, sprite sheets, atlas upload, and caches.":
+        "Покрытие factory, sprite sheets, загрузка в atlas и caches.",
+    "[Validation](validation.md)": "[Проверка](validation.md)",
+    "Source constraints and executable checks.":
+        "Ограничения источников и исполняемые проверки.",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "FOFRM is the authored composition layer for static images, animations, direction sheets, and imported legacy sources. References are relative to the descriptor directory.":
+        "FOFRM является авторским слоем композиции статических изображений, анимаций, наборов направлений и импортированных legacy-источников. Ссылки задаются относительно каталога descriptor.",
+    "## Validation commands": "## Команды проверки",
+    "An embedding project must also rebake affected resources and inspect every changed animation, direction, alpha edge, hit mask, and supported client profile.":
+        "Встраиваемый проект также должен перезапечь затронутые ресурсы и проверить каждую изменённую анимацию, направление, alpha edge, hit mask и поддерживаемый client profile.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |":
+        "| Справочник | Записей | Назначение |",
+    "| Stable ID | Extension | Availability | Import contract | Source |":
+        "| Стабильный ID | Расширение | Доступность | Контракт импорта | Источник |",
+    "| Stable ID | Field/rule | Requirement | Why | Source |":
+        "| Стабильный ID | Поле/правило | Требование | Причина | Источник |",
+    "| Stable ID | Syntax | Behavior | Why | Source |":
+        "| Стабильный ID | Синтаксис | Поведение | Причина | Источник |",
+    "| Stable ID | Rule | Requirement | Why | Source |":
+        "| Стабильный ID | Правило | Требование | Причина | Источник |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated image format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated image format model")
     identities = [
@@ -526,7 +673,7 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     ]
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every image format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(model),
         f"{DEFAULT_OUTPUT_DIR}/fofrm.md": _render_fofrm(model),
@@ -535,9 +682,51 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         f"{DEFAULT_OUTPUT_DIR}/runtime.md": _render_rules(model, 5, "runtime_rules"),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/fofrm.md": _render_fofrm(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/options.md": _render_options(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/baking.md": _render_rules(
+            localized_model, 4, "baking_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/runtime.md": _render_rules(
+            localized_model, 5, "runtime_rules"
+        ),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated image format page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_image_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "image-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -552,7 +741,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_image_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "image-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate image format documentation: {exception}", file=sys.stderr)
         return 1

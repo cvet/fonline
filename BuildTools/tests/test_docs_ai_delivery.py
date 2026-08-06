@@ -25,7 +25,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 1_310_720)
+        self.assertEqual(max_bytes, 2_097_152)
         self.assertLessEqual(output_bytes, max_bytes)
 
     def _document(
@@ -59,6 +59,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
         (root / "Docs/generated/api").mkdir(parents=True)
+        (root / "Docs/en/reference/api").mkdir(parents=True)
         (root / "Source").mkdir()
         (root / "Source/example.txt").write_text("source\n", encoding="utf-8")
         files = {
@@ -67,7 +68,17 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             "Docs/Guide.md": "# Guide\n\nUse the engine.\n",
             "Docs/generated/api/index.md": "# API index\n\nReference route.\n",
             "Docs/generated/api/methods.md": "# API methods\n\nLarge detail.\n",
+            "Docs/en/reference/api/types.md": (
+                "---\n"
+                "title: API types\n"
+                "document_id: generated-api-types\n"
+                "locale: en\n"
+                "generated: true\n"
+                "---\n\n"
+                "# API types\n\nLocalized generated detail.\n"
+            ),
             "Docs/Internal.md": "# Internal\n\nPrivate plan.\n",
+            "Docs/generated/internal.json": '{"private":true}\n',
             "PUBLIC_API.md": "> Placeholder route.\n\n# Public API\n",
         }
         for relative_path, content in files.items():
@@ -120,13 +131,13 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                         "id": "en",
                         "label": "English",
                         "path_prefix": "Docs/en",
-                        "status": "canonical-source-pending-migration",
+                        "status": "canonical",
                     },
                     {
                         "id": "ru",
                         "label": "Russian",
                         "path_prefix": "Docs/ru",
-                        "status": "planned",
+                        "status": "complete",
                     },
                 ],
                 "path_strategy": "mirrored-relative-path",
@@ -159,6 +170,11 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             "generated_artifacts": {
                 "api_model": {
                     "path": "Docs/generated/api.json",
+                    "generator": "fixture",
+                },
+                "internal_model": {
+                    "visibility": "internal",
+                    "model": "Docs/generated/internal.json",
                     "generator": "fixture",
                 },
                 "ai_delivery": {
@@ -200,6 +216,10 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                     "generated-api-methods",
                     "API methods",
                 ),
+                "Docs/en/reference/api/types.md": self._document(
+                    "generated-api-types",
+                    "API types",
+                ),
                 "Docs/Internal.md": self._document(
                     "internal-plan",
                     "Internal",
@@ -235,6 +255,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         self.assertIn("BEGIN DOCUMENT repository-home", full_context)
         self.assertIn("BEGIN DOCUMENT generated-api-index", full_context)
         self.assertNotIn("BEGIN DOCUMENT generated-api-methods", full_context)
+        self.assertNotIn("BEGIN DOCUMENT generated-api-types", full_context)
         self.assertNotIn("BEGIN DOCUMENT internal-plan", full_context)
         self.assertNotIn("BEGIN DOCUMENT legacy-public-api", full_context)
 
@@ -247,14 +268,28 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         expected_hash = hashlib.sha256(guide_text.encode("utf-8")).hexdigest()
         self.assertEqual(guide["content_sha256"], expected_hash)
         self.assertEqual(guide["canonical_url"], "https://fonline.ru/Docs/Guide.html")
+        self.assertEqual(
+            guide["markdown_url"],
+            "https://raw.githubusercontent.com/cvet/fonline/master/Docs/Guide.md",
+        )
+        self.assertIn(guide["markdown_url"], llms)
+        self.assertIn(f"[HTML]({guide['canonical_url']})", llms)
+        generated_index = documents["generated-api-index"]
+        self.assertEqual(
+            generated_index["canonical_url"],
+            "https://fonline.ru/Docs/generated/api/",
+        )
         self.assertEqual(guide["locale"], "en")
         self.assertEqual(public_manifest["version"]["channel"], "current")
         self.assertEqual(public_manifest["version"]["source_ref"], "master")
         self.assertEqual(public_manifest["release_versions"]["status"], "deferred")
         self.assertEqual(public_manifest["localization"]["canonical_locale"], "en")
+        self.assertEqual(public_manifest["full_context"]["excluded_document_ids"], [])
         self.assertIn("site-docs-site", artifacts)
         self.assertIn("site-docs-search", artifacts)
         self.assertIn("site-document-routes", artifacts)
+        self.assertNotIn("internal_model", artifacts)
+        self.assertNotIn("Docs/generated/internal.json", llms)
         self.assertIn("assets/docs-search.json", llms)
         self.assertIn("Docs/generated/document-routes.json", llms)
 
@@ -278,6 +313,56 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "full-context bundle is .* limit is 100"):
             docs_ai_delivery.render_outputs(root)
+
+    def test_reviewed_full_context_exclusion_retains_discovery_routes(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        manifest_path = root / docs_ai_delivery.DEFAULT_MANIFEST
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["ai_delivery"]["full_context"]["exclude_document_ids"] = [
+            "generated-api-index"
+        ]
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+        outputs = docs_ai_delivery.render_outputs(root)
+        full_context = outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT]
+        llms = outputs[docs_ai_delivery.DEFAULT_LLMS_OUTPUT]
+        public_manifest = json.loads(
+            outputs[docs_ai_delivery.DEFAULT_PUBLIC_MANIFEST_OUTPUT]
+        )
+
+        self.assertNotIn("BEGIN DOCUMENT generated-api-index", full_context)
+        self.assertIn("generated-api-index", llms)
+        self.assertIn(
+            "generated-api-index",
+            {document["id"] for document in public_manifest["documents"]},
+        )
+        self.assertEqual(
+            public_manifest["full_context"]["excluded_document_ids"],
+            ["generated-api-index"],
+        )
+
+    def test_unknown_or_start_document_exclusion_is_rejected(self) -> None:
+        for excluded_id, expected in (
+            ("missing-guide", "not bundle-eligible"),
+            ("repository-home", "cannot exclude llms start documents"),
+        ):
+            with self.subTest(excluded_id=excluded_id):
+                temporary_directory, root = self._create_fixture()
+                try:
+                    manifest_path = root / docs_ai_delivery.DEFAULT_MANIFEST
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["ai_delivery"]["full_context"]["exclude_document_ids"] = [
+                        excluded_id
+                    ]
+                    manifest_path.write_text(
+                        json.dumps(manifest, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    with self.assertRaisesRegex(ValueError, expected):
+                        docs_ai_delivery.render_outputs(root)
+                finally:
+                    temporary_directory.cleanup()
 
     def test_unknown_start_document_is_rejected(self) -> None:
         temporary_directory, root = self._create_fixture()

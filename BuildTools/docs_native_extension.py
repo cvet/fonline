@@ -13,13 +13,17 @@ from urllib.parse import quote
 
 import codegen
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/NativeExtensionInterface.json"
 DEFAULT_PROJECT_INTERFACE = "BuildTools/cmake/ProjectInterface.json"
 DEFAULT_MODEL = "Docs/generated/native-extension.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/native-extension"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/native-extension"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/native-extension"
+LEGACY_OUTPUT_DIR = "Docs/generated/native-extension"
 GENERATED_BY = "BuildTools/docs_native_extension.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -29,7 +33,16 @@ PAGE_DEFINITIONS = (
     ("hooks.md", "generated-native-extension-hooks", "Engine Hooks"),
     ("bindings.md", "generated-native-extension-bindings", "Native Binding Rules"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 ENTRY_ID_PATTERN = re.compile(r"^native-extension\.(role|hook|binding)\.[A-Za-z0-9][A-Za-z0-9.-]*$")
 ROLE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 VALID_STABILITY = {"stable", "experimental", "deprecated", "internal"}
@@ -294,9 +307,135 @@ def _header(document_id: str, title: str) -> list[str]:
         "then run `python BuildTools/docs_native_extension.py --write`.",
         "",
         "[Index](index.md) | [Roles](roles.md) | [Hooks](hooks.md) | [Bindings](bindings.md) | "
-        "[Canonical JSON](../native-extension.json) | [Guide](../../NativeExtensions.md)",
+        "[Canonical JSON](../../../generated/native-extension.json) | [Guide](../../how-to/native-extensions.md)",
         "",
     ]
+
+
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/native-extension/{filename}"
+    russian_path = f"../../ru/reference/native-extension/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated Native Extension Interface": "Сгенерированный интерфейс нативных расширений",
+    "Native Extension Roles": "Роли нативных расширений",
+    "Engine Hooks": "Хуки движка",
+    "Native Binding Rules": "Правила нативного биндинга",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/NativeExtensionInterface.json`, then run `python BuildTools/docs_native_extension.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/NativeExtensionInterface.json`, затем выполните `python BuildTools/docs_native_extension.py --write`.",
+    "[Index](index.md) | [Roles](roles.md) | [Hooks](hooks.md) | [Bindings](bindings.md) | [Canonical JSON](../../../generated/native-extension.json) | [Guide](../../how-to/native-extensions.md)":
+        "[Обзор](index.md) | [Роли](roles.md) | [Хуки](hooks.md) | [Биндинги](bindings.md) | [Канонический JSON](../../../generated/native-extension.json) | [Руководство](../../how-to/native-extensions.md)",
+    "This interface describes engine-owned composition and hook contracts for project-native C++ sources. It does not document any particular game's extension implementation.":
+        "Этот интерфейс описывает принадлежащие движку контракты компоновки и хуков для проектных нативных исходников C++. Он не документирует реализацию расширения конкретной игры.",
+    "## Contract status": "## Статус контракта",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "[Roles](roles.md)": "[Роли](roles.md)",
+    "[Hooks](hooks.md)": "[Хуки](hooks.md)",
+    "[Bindings](bindings.md)": "[Биндинги](bindings.md)",
+    "CMake source routing, libraries, headers, and consumers.":
+        "Маршрутизация исходников CMake, библиотеки, заголовки и потребители.",
+    "Optional declarations, call sites, defaults, and compatibility state.":
+        "Необязательные объявления, места вызова, значения по умолчанию и состояние совместимости.",
+    "Registration, namespace, pointer, and dependency rules.":
+        "Правила регистрации, пространства имён, указателей и зависимостей.",
+    "`AddEngineSources` accepts only these roles. Every resolved source also enters `FO_SOURCE_META_FILES` before code generation.":
+        "`AddEngineSources` принимает только перечисленные роли. Каждый найденный исходник также добавляется в `FO_SOURCE_META_FILES` до кодогенерации.",
+    "## Registration shape": "## Форма регистрации",
+    "Paths and globs are resolved relative to the embedding-project contribution root. Unknown roles are configure errors.":
+        "Пути и шаблоны разрешаются относительно корня вклада подключающего проекта. Неизвестные роли приводят к ошибке конфигурации.",
+    "A project implements a hook by declaring it as metadata in a source registered under the owning role. Codegen omits that hook's fallback when it sees the declaration.":
+        "Проект реализует хук, объявляя его как метаданные в исходнике, зарегистрированном во владеющей роли. Обнаружив объявление, кодогенерация исключает реализацию этого хука по умолчанию.",
+    "- Stable ID:": "- Стабильный ID:",
+    "- Role:": "- Роль:",
+    "- Compatibility-hashed presence:": "- Наличие входит в хеш совместимости:",
+    "- Call sites:": "- Места вызова:",
+    "Default:": "По умолчанию:",
+    "These rules are the reusable boundary. Project dependency setup, native state, settings, and packaging remain project-owned.":
+        "Эти правила образуют переиспользуемую границу. Настройка проектных зависимостей, нативное состояние, настройки и упаковка остаются во владении проекта.",
+    "## Minimal exported method": "## Минимальный экспортируемый метод",
+    "The exported body intentionally has no stack-trace entry macro. Ordinary non-exported native functions keep the normal engine stack-trace convention.":
+        "Экспортируемое тело намеренно не содержит макроса входа трассировки стека. Обычные неэкспортируемые нативные функции сохраняют стандартное соглашение движка о трассировке стека.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записей | Назначение |",
+    "| Stable ID | Role | Source list | Library | Primary header | Consumers | Script targets | Purpose |":
+        "| Стабильный ID | Роль | Список исходников | Библиотека | Основной заголовок | Потребители | Скриптовые цели | Назначение |",
+    "| Stable ID | Rule | Requirement | Why |":
+        "| Стабильный ID | Правило | Требование | Причина |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated native extension page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
 
 
 def _render_index(model: dict[str, object]) -> str:
@@ -385,10 +524,10 @@ def _render_hooks(model: dict[str, object]) -> str:
             "",
             str(hook["description"]),
             "",
-            f"Stable ID: `{entry_id}`  ",
-            f"Role: `{hook['role']}`  ",
-            f"Compatibility-hashed presence: `{'yes' if hook['compatibility_hashed'] else 'no'}`  ",
-            "Call sites: " + ", ".join(_source_link(model, str(path)) for path in hook["call_sites"]),
+            f"- Stable ID: `{entry_id}`",
+            f"- Role: `{hook['role']}`",
+            f"- Compatibility-hashed presence: `{'yes' if hook['compatibility_hashed'] else 'no'}`",
+            "- Call sites: " + ", ".join(_source_link(model, str(path)) for path in hook["call_sites"]),
             "",
             "```cpp",
             "FO_BEGIN_NAMESPACE",
@@ -446,7 +585,10 @@ def _render_bindings(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated native extension model")
     identities = [
@@ -457,15 +599,50 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     ]
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every native extension entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/roles.md": _render_roles(model),
         f"{DEFAULT_OUTPUT_DIR}/hooks.md": _render_hooks(model),
         f"{DEFAULT_OUTPUT_DIR}/bindings.md": _render_bindings(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/roles.md": _render_roles(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/hooks.md": _render_hooks(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/bindings.md": _render_bindings(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated native extension page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_native_extension_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "native-extension",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -480,7 +657,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_native_extension_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "native-extension",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate native extension documentation: {exception}", file=sys.stderr)
         return 1

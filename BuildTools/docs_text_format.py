@@ -11,12 +11,16 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/TextFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/text-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/text-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/text-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/text-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/text-format"
 GENERATED_BY = "BuildTools/docs_text_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -28,9 +32,16 @@ PAGE_DEFINITIONS = (
     ("runtime.md", "generated-text-format-runtime", "Runtime Text API"),
     ("validation.md", "generated-text-format-validation", "Text Format Validation"),
 )
-OUTPUT_PATHS = tuple(
+CANONICAL_OUTPUT_PATHS = tuple(
     f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
 )
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = (*CANONICAL_OUTPUT_PATHS, *RUSSIAN_OUTPUT_PATHS, *LEGACY_OUTPUT_PATHS)
 COLLECTION_KINDS = {
     "syntax_rules": "syntax",
     "language_rules": "language",
@@ -353,10 +364,51 @@ def _header(document_id: str, title: str) -> list[str]:
         "",
         "[Index](index.md) | [Syntax](syntax.md) | [Languages](languages.md) | "
         "[Prototype text](proto-text.md) | [Runtime](runtime.md) | "
-        "[Validation](validation.md) | [Canonical JSON](../text-format.json) | "
-        "[Guide](../../TextAndLocalization.md)",
+        "[Validation](validation.md) | "
+        "[Canonical JSON](../../../generated/text-format.json) | "
+        "[Guide](../../how-to/content/text-and-localization.md)",
         "",
     ]
+
+
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/text-format/{filename}"
+    russian_path = f"../../ru/reference/text-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _rule_rows(
@@ -626,7 +678,109 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+RUSSIAN_TITLES = {
+    "Generated Text And Localization Reference": "Справочник текста и локализации",
+    "Text Pack Syntax": "Синтаксис текстового пакета",
+    "Languages And Normalization": "Языки и нормализация",
+    "Prototype Text": "Текст прототипов",
+    "Runtime Text API": "Runtime API текста",
+    "Text Format Validation": "Проверка формата текста",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/TextFormatInterface.json`, then run `python BuildTools/docs_text_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/TextFormatInterface.json`, затем выполните `python BuildTools/docs_text_format.py --write`.",
+    "[Index](index.md) | [Syntax](syntax.md) | [Languages](languages.md) | [Prototype text](proto-text.md) | [Runtime](runtime.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/text-format.json) | [Guide](../../how-to/content/text-and-localization.md)":
+        "[Индекс](index.md) | [Синтаксис](syntax.md) | [Языки](languages.md) | [Текст прототипов](proto-text.md) | [Runtime](runtime.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/text-format.json) | [Руководство](../../how-to/content/text-and-localization.md)",
+    "This reference describes the reusable Engine-owned text-pack, language, prototype-text, runtime lookup, and inline color contract. Concrete game pack catalogs and formatting lexems remain project-owned.":
+        "Этот справочник описывает переиспользуемый контракт движка для текстовых пакетов, языков, текста прототипов, runtime lookup и встроенных цветов. Конкретные каталоги игровых пакетов и formatter-ы lexem принадлежат проекту.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный manifest",
+    "Contract digest": "Дайджест контракта",
+    "Source filename": "Имя исходного файла",
+    "Baked filename": "Имя запечённого файла",
+    "Raw entry": "Исходная запись",
+    "[Syntax](syntax.md)": "[Синтаксис](syntax.md)",
+    "Raw brace fields, key identity, multiline text, and variants.": "Исходные поля в фигурных скобках, идентичность ключей, многострочный текст и варианты.",
+    "[Languages](languages.md)": "[Языки](languages.md)",
+    "Filename selection, defaults, rebakes, and normalization.": "Выбор имени файла, значения по умолчанию, повторное запекание и нормализация.",
+    "[Prototype text](proto-text.md)": "[Текст прототипов](proto-text.md)",
+    "$Text grammar, inheritance, pack routing, and decoding.": "Грамматика `$Text`, наследование, маршрутизация пакетов и декодирование.",
+    "Script lookup, language switching, server boundary, and color tags.": "Script lookup, переключение языка, граница сервера и цветовые теги.",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "A raw text file supplies the collection through its filename. Each parsed logical entry supplies Key1, Key2, and Text:":
+        "Исходный текстовый файл задаёт коллекцию своим именем. Каждая разобранная логическая запись задаёт Key1, Key2 и Text:",
+    "Raw `.fotxt` does not author Key3. Use prototype `$Text` fields when a prototype-owned key needs both Key2 and Key3.":
+        "Исходный `.fotxt` не задаёт Key3. Используйте поля `$Text` прототипа, когда принадлежащему прототипу ключу нужны одновременно Key2 и Key3.",
+    "Language fallback is materialized by the bakers. Runtime lookup reads the selected binary language pack and does not consult the base pack.":
+        "Языковой fallback материализуется baker-ами. Runtime lookup читает выбранный бинарный языковой пакет и не обращается к базовому пакету.",
+    "## Engine defaults": "## Значения движка по умолчанию",
+    "Ordered output languages; the first is the normalization base.": "Упорядоченные выходные языки; первый служит базой нормализации.",
+    "Initial current-language pack loaded by the client.": "Начальный пакет текущего языка, загружаемый клиентом.",
+    "Prototype-localized text is authored inside any valid prototype section:":
+        "Локализованный текст прототипа задаётся внутри любой допустимой секции прототипа:",
+    "The complete key is the generated pack, prototype id, optional Key2, and optional Key3. Omitting the language selects the first configured BakeLanguages entry.":
+        "Полный ключ состоит из сгенерированного пакета, id прототипа, необязательного Key2 и необязательного Key3. Если язык опущен, выбирается первый настроенный элемент `BakeLanguages`.",
+    "## Generated packs": "## Генерируемые пакеты",
+    "The generated API reference owns the exact exported signatures. This page explains selection, missing-data behavior, and side availability.":
+        "Точными экспортируемыми сигнатурами владеет сгенерированный справочник API. Эта страница описывает выбор, поведение при отсутствии данных и доступность по сторонам.",
+    "## Script methods": "## Script-методы",
+    "## Renderer-owned inline tags": "## Встроенные теги рендерера",
+    "The Engine does not interpret game lexems such as player-name, gender, argument, nested-text, or random-choice tags. An embedding project that adds them owns their grammar, tests, diagnostics, and ordering relative to renderer color tags.":
+        "Движок не интерпретирует игровые lexem наподобие тегов имени игрока, пола, аргумента, вложенного текста или случайного выбора. Подключаемый проект, добавляющий их, владеет их грамматикой, тестами, диагностикой и порядком относительно цветовых тегов рендерера.",
+    "## Validation commands": "## Команды проверки",
+    "In an embedding project, finish with its resource bake, localization guards, and a visible client check for language switching and formatted text that the project itself owns.":
+        "В подключаемом проекте завершите проверку запеканием ресурсов, проектными проверками локализации и видимой проверкой переключения языка и форматированного текста в клиенте.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
+    "| Stable ID | Rule | Requirement | Why | Source |":
+        "| Стабильный ID | Правило | Требование | Причина | Источник |",
+    "| Setting | Source default | Meaning |": "| Настройка | Исходное значение по умолчанию | Смысл |",
+    "| Stable ID | Signature | Sides | Behavior | Missing or invalid input | Source |":
+        "| Стабильный ID | Сигнатура | Стороны | Поведение | Отсутствующие или некорректные данные | Источник |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    content = content.replace(" methods / ", " методов / ").replace(
+        " rendering rules", " правил рендеринга"
+    )
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated text format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if (
         model.get("schema_version") != SCHEMA_VERSION
         or model.get("generated_by") != GENERATED_BY
@@ -643,7 +797,7 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         or len(identities) != len(set(identities))
     ):
         raise ValueError("every text format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(model),
         f"{DEFAULT_OUTPUT_DIR}/languages.md": _render_languages(model),
@@ -651,11 +805,48 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         f"{DEFAULT_OUTPUT_DIR}/runtime.md": _render_runtime(model),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/languages.md": _render_languages(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/proto-text.md": _render_proto_text(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/runtime.md": _render_runtime(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated text format page set does not match OUTPUT_PATHS")
     return {
         path: content.rstrip() + "\n" for path, content in sorted(pages.items())
     }
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_text_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "text-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -674,7 +865,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_text_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "text-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(
             f"Unable to generate text format documentation: {exception}",

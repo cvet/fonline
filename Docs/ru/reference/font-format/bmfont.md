@@ -1,0 +1,26 @@
+---
+title: Контракт бинарного BMFont
+document_id: generated-font-format-bmfont
+locale: ru
+generated: true
+---
+
+<!-- docs-translation: {"document_id":"generated-font-format-bmfont","locale":"ru","source_path":"Docs/en/reference/font-format/bmfont.md","source_sha256":"48b355d2a13c3de78ed098a50f5472b08bae4e6fe524476d0e72189e4847f864"} -->
+
+# Контракт бинарного BMFont
+
+> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/FontFormatInterface.json`, затем выполните `python BuildTools/docs_font_format.py --write`.
+
+[Индекс](index.md) | [Форматы](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Привязка](binding.md) | [Компоновка](layout.md) | [Отрисовка](rendering.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/font-format.json) | [Руководство](../../how-to/content/font-format.md)
+
+| Стабильный ID | Правило | Требование | Причина | Источник |
+| --- | --- | --- | --- | --- |
+| <a id="entry-font-format-bmfont-binary-v3-signature-957f811130"></a><code>font-format.bmfont.binary-v3-signature</code> | Сигнатура binary v3 | Первые четыре байта должны быть B, M, F и версией бинарного формата 3. | Любая другая сигнатура или версия BMFont отклоняется до разбора блоков. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-block-order-0680abfc74"></a><code>font-format.bmfont.block-order</code> | Фиксированный порядок блоков | Экспортируйте Info, Common, Pages и Chars в стандартном бинарном порядке без необязательных блоков между ними. | Парсер продвигается на размер каждого блока и напрямую читает полезную нагрузку следующего; он не ищет блок по типу. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-info-padding-0efcb0a3ce"></a><code>font-format.bmfont.info-padding</code> | Однопиксельный отступ экспортёра | Установите отступы BMFont Info сверху, справа, снизу и слева ровно в один пиксель. | Загрузчик требует четыре байта отступа 0x01010101, затем удаляет по одному пикселю с каждой стороны прямоугольника глифа. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-single-page-02e3e82348"></a><code>font-format.bmfont.single-page</code> | Одна страница текстуры | Экспортируйте ровно одну страницу текстуры. | Число страниц в Common должно быть равно одному; многостраничные дескрипторы BMFont отклоняются. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-relative-page-image-70bb68aaf4"></a><code>font-format.bmfont.relative-page-image</code> | Относительное изображение страницы | Храните завершённое NUL имя страницы, разрешаемое относительно каталога дескриптора .fnt. | Полезная нагрузка Pages читается как одна строка и объединяется с каталогом дескриптора до загрузки спрайта. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-char-records-4e9087c8a5"></a><code>font-format.bmfont.char-records</code> | Двадцатибайтные записи символов | Кодируйте каждую запись Chars в 20-байтной раскладке BMFont v3; xoffset, yoffset и xadvance должны быть знаковыми little-endian int16. | Отрицательные выносы встречаются в поставляемых шрифтах и должны оставаться отрицательными, а не превращаться в значения около 65535. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp), [Source/Common/FileSystem.h](https://github.com/cvet/fonline/blob/master/Source/Common/FileSystem.h) |
+| <a id="entry-font-format-bmfont-metric-conversion-e214340bea"></a><code>font-format.bmfont.metric-conversion</code> | Преобразование метрик Engine | Оставляйте прозрачный пиксель вокруг каждого глифа; загрузчик сдвигает x/y внутрь, удаляет два пикселя из ширины/высоты, меняет знак выносов и добавляет пиксель к xadvance. | Engine выбирает расширенный прямоугольник для сглаживания и необязательной обводки, сохраняя видимые метрики глифа отдельно. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-line-metrics-90d41b3f39"></a><code>font-format.bmfont.line-metrics</code> | Производные метрики строки | Ожидайте, что Engine LineHeight использует видимую высоту глифа W, когда он есть, иначе Common.base; YAdvance равен половине результата. | Поле BMFont Common.lineHeight участвует в преобразовании выноса, но не копируется напрямую в высоту строки Engine. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-gray-bordered-391c95d210"></a><code>font-format.bmfont.gray-bordered</code> | Подготовка серого и обводки | Бинарные привязки BMFont всегда нормализуют непрозрачные пиксели в серый и создают вторую копию атласа с обводкой. | Это обеспечивает runtime-тонирование и FontFlag::Bordered без переключателей в дескрипторе. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |

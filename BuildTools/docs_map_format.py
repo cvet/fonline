@@ -12,12 +12,16 @@ from urllib.parse import quote
 
 import docs_api
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/MapFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/map-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/map-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/map-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/map-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/map-format"
 GENERATED_BY = "BuildTools/docs_map_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -28,7 +32,16 @@ PAGE_DEFINITIONS = (
     ("baking.md", "generated-map-format-baking", "Map Baking And Runtime Loading"),
     ("validation.md", "generated-map-format-validation", "Map Validation Rules"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = (*CANONICAL_OUTPUT_PATHS, *RUSSIAN_OUTPUT_PATHS, *LEGACY_OUTPUT_PATHS)
 ENTRY_ID_PATTERN = re.compile(
     r"^map-format\.(section|directive|ownership|rule|property)\.[A-Za-z0-9][A-Za-z0-9.-]*$"
 )
@@ -339,7 +352,8 @@ def _header(document_id: str, title: str) -> list[str]:
         "",
         "[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | "
         "[Baking](baking.md) | [Validation](validation.md) | "
-        "[Canonical JSON](../map-format.json) | [Authoring guide](../../MapFormat.md)",
+        "[Canonical JSON](../../../generated/map-format.json) | "
+        "[Authoring guide](../../how-to/content/map-format.md)",
         "",
     ]
 
@@ -518,7 +532,191 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/map-format/{filename}"
+    russian_path = f"../../ru/reference/map-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated Map Format Reference": "Справочник формата карт",
+    "Map File Syntax": "Синтаксис файла карты",
+    "Map Placement Properties": "Свойства размещений карты",
+    "Map Baking And Runtime Loading": "Запекание и runtime-загрузка карт",
+    "Map Validation Rules": "Правила валидации карт",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/MapFormatInterface.json` or the owning engine metadata, then run `python BuildTools/docs_map_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте напрямую. Обновите `BuildTools/MapFormatInterface.json` или владеющие метаданные движка, затем запустите `python BuildTools/docs_map_format.py --write`.",
+    "[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | [Baking](baking.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/map-format.json) | [Authoring guide](../../how-to/content/map-format.md)":
+        "[Индекс](index.md) | [Синтаксис](syntax.md) | [Свойства](properties.md) | [Запекание](baking.md) | [Валидация](validation.md) | [Каноническая JSON-модель](../../../generated/map-format.json) | [Руководство по авторингу](../../how-to/content/map-format.md)",
+    "This reference describes the reusable engine contract for authored `.fomap` files, their side-specific bake products, and initial runtime materialization.":
+        "Этот справочник описывает переиспользуемый контракт движка для авторских файлов `.fomap`, их результатов запекания для отдельных сторон и начальной runtime-материализации.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "[Syntax](syntax.md)": "[Синтаксис](syntax.md)",
+    "[Properties](properties.md)": "[Свойства](properties.md)",
+    "[Baking](baking.md)": "[Запекание](baking.md)",
+    "[Validation](validation.md)": "[Валидация](validation.md)",
+    "Sections and control directives.": "Секции и управляющие директивы.",
+    "Engine-owned Map, Critter, and Item properties.":
+        "Свойства Map, Critter и Item, которыми владеет движок.",
+    "Ownership and server/client materialization.":
+        "Владение и материализация на сервере и клиенте.",
+    "Source-backed requirements and limitations.":
+        "Требования и ограничения, подтверждённые исходным кодом.",
+    "## Boundary": "## Граница ответственности",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "Embedding projects must document their added metadata, prototypes, map catalog, and level-design conventions separately.":
+        "Встраивающие проекты обязаны отдельно документировать добавленные метаданные, прототипы, каталог карт и соглашения по дизайну уровней.",
+    "A map container is a configured prototype file with one or more `[ProtoMap]` anchors. Each anchor owns nested `[$Name/Critter]` and `[$Name/Item]` sections; an explicit map id may replace `$Name`.":
+        "Контейнер карт является настроенным файлом прототипов с одним или несколькими якорями `[ProtoMap]`. Каждый якорь владеет вложенными секциями `[$Name/Critter]` и `[$Name/Item]`; вместо `$Name` можно использовать явный ID карты.",
+    "## Section forms": "## Формы секций",
+    "## Control directives": "## Управляющие директивы",
+    "## Minimal map": "## Минимальная карта",
+    "Within one selected map, placement order is not semantic: the loader processes all critters, then all items. Keep explicit unique ids for stable ownership references and reviewable diffs.":
+        "В пределах одной выбранной карты порядок размещений не имеет семантики: загрузчик обрабатывает всех криттеров, затем все предметы. Используйте явные уникальные ID для стабильных ссылок владения и понятных diff.",
+    "A `no` entry is virtual or temporary. Side-specific properties are serialized only where their metadata permits them. Project-defined properties are additional to this generated catalog.":
+        "Значение `нет` означает virtual или temporary свойство. Свойства конкретной стороны сериализуются только там, где это разрешают их метаданные. Определённые проектом свойства дополняют этот сгенерированный каталог.",
+    "The server payload contains placed critters and all items. The client payload contains visible static items; hidden static items contribute required string hashes but no client item record.":
+        "Серверные данные содержат размещённых криттеров и все предметы. Клиентские данные содержат видимые статические предметы; скрытые статические предметы добавляют необходимые хеши строк, но не запись клиентского предмета.",
+    "## Item ownership": "## Владение предметом",
+    "## Runtime split": "## Разделение runtime-данных",
+    "- Static `MapHex` items become immutable grid entries and may block movement or shooting, expose triggers, and occupy multihex cells.":
+        "- Статические предметы `MapHex` становятся неизменяемыми записями сетки и могут блокировать движение или стрельбу, предоставлять триггеры и занимать multihex-ячейки.",
+    "- Non-static `MapHex` items and placed critters are generated for each map instance; their authored ids are remapped to runtime ids.":
+        "- Нестатические предметы `MapHex` и размещённые криттеры создаются для каждого экземпляра карты; их авторские ID переназначаются в runtime-ID.",
+    "- `CritterInventory` and `ItemContainer` records are attached after their direct owners are generated. A missing owner mapping skips the child.":
+        "- Записи `CritterInventory` и `ItemContainer` присоединяются после создания их непосредственных владельцев. При отсутствии сопоставления владельца дочерний предмет пропускается.",
+    "- The client reconstructs only the visible static map layer from the client binary; dynamic entities arrive through normal runtime synchronization.":
+        "- Клиент восстанавливает из клиентского бинарного файла только видимый статический слой карты; динамические сущности поступают через обычную runtime-синхронизацию.",
+    "These stable rule IDs let documentation CI classify format changes against an earlier engine revision.":
+        "Эти стабильные ID правил позволяют CI документации классифицировать изменения формата относительно более ранней ревизии движка.",
+    "## Authoring validation sequence": "## Последовательность авторской валидации",
+    "1. Declare every map with `[ProtoMap]`; name every anchor in a multi-map container.":
+        "1. Объявите каждую карту через `[ProtoMap]`; именуйте каждый якорь контейнера с несколькими картами.",
+    "2. Address placements with `[$Name/Critter]` / `[$Name/Item]` after their anchor or use an explicit declared map id.":
+        "2. Адресуйте размещения после якоря через `[$Name/Critter]` / `[$Name/Item]` либо используйте явный объявленный ID карты.",
+    "3. Assign explicit unique positive placement ids within each map and resolve every `$Proto` and ownership reference.":
+        "3. Назначьте явные уникальные положительные ID размещений внутри каждой карты и разрешите каждый `$Proto` и ссылку владения.",
+    "4. Validate receiver properties, resources, map bounds, and static-item ownership.":
+        "4. Проверьте свойства получателей, ресурсы, границы карты и владение статическими предметами.",
+    "5. Bake both side outputs and treat warnings followed by an aggregate map error as a failed build.":
+        "5. Запеките output обеих сторон; считайте предупреждения с последующей агрегированной ошибкой карты ошибкой сборки.",
+    "6. After mapper save, inspect the edited map's normalization and verify that sibling map blocks stayed unchanged.":
+        "6. После сохранения в Mapper проверьте нормализацию изменённой карты и убедитесь, что соседние блоки карт не изменились.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записей | Назначение |",
+    "| Stable ID | Syntax | Receiver | Cardinality | Meaning |":
+        "| Стабильный ID | Синтаксис | Получатель | Кардинальность | Значение |",
+    "| Directive | Sections | Syntax | Required | Default | Meaning |":
+        "| Директива | Секции | Синтаксис | Обязательна | По умолчанию | Значение |",
+    "| Property | Type | Authorable | Sides | Flags | Source |":
+        "| Свойство | Тип | Доступно для авторинга | Стороны | Флаги | Источник |",
+    "| Ownership | Value | Map-supported | Reference/position | Meaning | Enum source |":
+        "| Владение | Значение | Поддерживается картой | Ссылка/позиция | Значение | Источник enum |",
+    "| Stable ID | Rule | Requirement | Notes | Authority |":
+        "| Стабильный ID | Правило | Требование | Примечания | Авторитетный источник |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    content = re.sub(
+        r"The current engine metadata exposes (\d+) properties across `Map`, `Critter`, "
+        r"and `Item`; (\d+) can be loaded from authored map text at this revision\.",
+        r"Текущие метаданные движка предоставляют \1 свойств для `Map`, `Critter` и "
+        r"`Item`; в этой ревизии \2 из них можно загрузить из авторского текста карты.",
+        content,
+    )
+    content = re.sub(r"^## `([^`]+)` properties$", r"## Свойства `\1`", content, flags=re.MULTILINE)
+    content = re.sub(
+        r"^(\d+) of (\d+) properties are authorable in map text at this revision\.$",
+        r"\1 из \2 свойств доступны для авторинга в тексте карты в этой ревизии.",
+        content,
+        flags=re.MULTILINE,
+    )
+    content = re.sub(
+        r"Map containers are selected by (`[^`]+`); (`[^`]+`) is a project convention, "
+        r"not an engine requirement\. Each declared map emits (`[^`]+`) and (`[^`]+`) "
+        r"as a coupled resource pair\.",
+        r"Контейнеры карт выбираются по \1; \2 является соглашением проекта, а не "
+        r"требованием движка. Каждая объявленная карта выпускает связанную пару "
+        r"ресурсов \3 и \4.",
+        content,
+    )
+    content = content.replace(" | yes | ", " | да | ").replace(" | no | ", " | нет | ")
+    content = content.replace(" | no (temporary) | ", " | нет (временное) | ")
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated map format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated map format model")
     identities = [
@@ -529,16 +727,53 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     ]
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every map format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(model),
         f"{DEFAULT_OUTPUT_DIR}/properties.md": _render_properties(model),
         f"{DEFAULT_OUTPUT_DIR}/baking.md": _render_baking(model),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/properties.md": _render_properties(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/baking.md": _render_baking(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        legacy_path = f"{LEGACY_OUTPUT_DIR}/{filename}"
+        pages[legacy_path] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated map format page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_map_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "map-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -553,7 +788,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_map_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "map-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate map format documentation: {exception}", file=sys.stderr)
         return 1

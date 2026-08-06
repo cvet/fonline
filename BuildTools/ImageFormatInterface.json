@@ -15,7 +15,7 @@
     ],
     "excluded": [
       "project image catalogs, resource-pack precedence, asset licenses, art direction, quality targets, and acceptance baselines",
-      "authoritative movement and the detailed walk/run projection algorithm documented by SpriteRootMotion.md",
+      "authoritative movement and the detailed walk/run projection algorithm documented by the Sprite Root Motion guide",
       "particle authoring, model textures, shader effects, GUI layout, fonts, video, and audio formats",
       "a public compatibility promise for the private baked byte stream or unsupported third-party image formats"
     ]

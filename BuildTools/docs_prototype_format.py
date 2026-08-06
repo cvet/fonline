@@ -12,12 +12,16 @@ from urllib.parse import quote
 
 import docs_api
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/PrototypeFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/prototype-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/prototype-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/prototype-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/prototype-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/prototype-format"
 GENERATED_BY = "BuildTools/docs_prototype_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -27,7 +31,16 @@ PAGE_DEFINITIONS = (
     ("properties.md", "generated-prototype-format-properties", "Built-in Prototype Properties"),
     ("validation.md", "generated-prototype-format-validation", "Prototype Validation Rules"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 ENTRY_ID_PATTERN = re.compile(
     r"^prototype-format\.(section|directive|rule|entity|property)\.[A-Za-z0-9][A-Za-z0-9.-]*$"
 )
@@ -342,8 +355,9 @@ def _header(document_id: str, title: str) -> list[str]:
         "`python BuildTools/docs_prototype_format.py --write`.",
         "",
         "[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | "
-        "[Validation](validation.md) | [Canonical JSON](../prototype-format.json) | "
-        "[Authoring guide](../../PrototypeFormat.md)",
+        "[Validation](validation.md) | "
+        "[Canonical JSON](../../../generated/prototype-format.json) | "
+        "[Authoring guide](../../how-to/content/prototype-format.md)",
         "",
     ]
 
@@ -465,8 +479,8 @@ def _render_syntax(model: dict[str, object]) -> str:
             "```",
             "",
             "The section selects the type. The extension and directory do not. Values use the shared "
-            "configuration parser, including `#` comments, backslash continuation, and "
-            "`key += value` append syntax.",
+            "configuration parser, including `#` comments, a trailing backslash preceded by "
+            "space or tab for continuation, and `key += value` append syntax.",
             "",
         ]
     )
@@ -579,7 +593,163 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/prototype-format/{filename}"
+    russian_path = f"../../ru/reference/prototype-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated Prototype Format Reference": "Справочник формата прототипов",
+    "Prototype File Syntax": "Синтаксис файлов прототипов",
+    "Built-in Prototype Properties": "Встроенные свойства прототипов",
+    "Prototype Validation Rules": "Валидация формата прототипов",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/PrototypeFormatInterface.json` or the owning engine metadata, then run `python BuildTools/docs_prototype_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте напрямую. Обновите `BuildTools/PrototypeFormatInterface.json` или владеющие метаданные движка, затем запустите `python BuildTools/docs_prototype_format.py --write`.",
+    "[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/prototype-format.json) | [Authoring guide](../../how-to/content/prototype-format.md)":
+        "[Индекс](index.md) | [Синтаксис](syntax.md) | [Свойства](properties.md) | [Валидация](validation.md) | [Каноническая JSON-модель](../../../generated/prototype-format.json) | [Руководство](../../how-to/content/prototype-format.md)",
+    "This reference describes the engine-owned prototype grammar and the built-in metadata available to any embedding project at this engine revision.":
+        "Справочник описывает принадлежащую движку грамматику прототипов и встроенные метаданные, доступные любому встраивающему проекту на этой ревизии движка.",
+    "## Contract status": "## Состояние контракта",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded:": "Не включено:",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "[Syntax](syntax.md)": "[Синтаксис](syntax.md)",
+    "[Properties](properties.md)": "[Свойства](properties.md)",
+    "[Validation](validation.md)": "[Валидация](validation.md)",
+    "Discovery, sections, identity, and inheritance.":
+        "Обнаружение, секции, идентичность и наследование.",
+    "Built-in HasProtos types and engine-owned property keys.":
+        "Встроенные типы `HasProtos` и принадлежащие движку ключи свойств.",
+    "Source-backed bake and migration requirements.":
+        "Основанные на исходниках требования baking и миграции.",
+    "Embedding projects must generate or document their additional entity declarations, `FixedType` metadata, properties, extensions, and content IDs separately.":
+        "Встраивающие проекты должны отдельно генерировать или документировать дополнительные объявления сущностей, метаданные `FixedType`, свойства, расширения и ID контента.",
+    "## Section forms": "## Формы секций",
+    "## Control directives": "## Управляющие директивы",
+    "## Minimal example": "## Минимальный пример",
+    "The section selects the type. The extension and directory do not. Values use the shared configuration parser, including `#` comments, a trailing backslash preceded by space or tab for continuation, and `key += value` append syntax.":
+        "Тип выбирает секция, а не расширение или каталог. Значения разбирает общий parser конфигурации, включая комментарии `#`, продолжение строки конечным обратным слешем после пробела или табуляции и синтаксис добавления `key += value`.",
+    "A property marked `no` is virtual or temporary and fails when authored on a side where it exists. A server-only key is skipped in client/mapper output, and a client-only key is skipped in server output.":
+        "Свойство с отметкой `нет` является virtual или temporary и приводит к ошибке при авторинге на стороне, где оно существует. Server-only ключ пропускается в client/mapper output, а client-only ключ - в server output.",
+    "## Built-in entity types": "## Встроенные типы сущностей",
+    "These rules are enforced by the parser, metadata registrators, property serializer, or the side-specific prototype bake. Stable IDs let CI track contract changes.":
+        "Эти правила обеспечиваются parser, registrators метаданных, serializer свойств или side-specific bake прототипов. Стабильные ID позволяют CI отслеживать изменения контракта.",
+    "## Current diagnostic limitation": "## Текущее ограничение диагностики",
+    "Parent graphs must be acyclic. The current baker recursively expands parents without a dedicated cycle diagnostic, so embedding projects should validate cycles before baking and keep inheritance chains shallow. This is a documented implementation limitation, not a supported cyclic behavior.":
+        "Граф родителей должен быть ациклическим. Текущий baker рекурсивно раскрывает родителей без отдельной диагностики цикла, поэтому встраивающим проектам следует проверять циклы до baking и держать цепочки наследования короткими. Это документированное ограничение реализации, а не поддержка циклического поведения.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записей | Назначение |",
+    "| Stable ID | Syntax | Resolution | Meaning |":
+        "| Стабильный ID | Синтаксис | Разрешение | Значение |",
+    "| Stable ID | Syntax | Default | Meaning |":
+        "| Стабильный ID | Синтаксис | Значение по умолчанию | Значение |",
+    "| Stable ID | Type | Section | Sides | Authorable properties | Source |":
+        "| Стабильный ID | Тип | Секция | Стороны | Доступные для авторинга свойства | Исходник |",
+    "| Property | Type | Authorable | Sides | Flags | Source |":
+        "| Свойство | Тип | Авторинг | Стороны | Флаги | Исходник |",
+    "| Stable ID | Rule | Requirement | Notes | Authority |":
+        "| Стабильный ID | Правило | Требование | Примечания | Авторитетный источник |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    content = re.sub(
+        r"`Baking\.ProtoFileExtensions` selects input files\. Engine defaults: (.+?)\. "
+        r"An embedding project may add extensions without changing how sections are parsed\.",
+        r"`Baking.ProtoFileExtensions` выбирает входные файлы. Значения движка по умолчанию: "
+        r"\1. Встраивающий проект может добавлять расширения, не меняя разбор секций.",
+        content,
+    )
+    content = re.sub(
+        r"Each pack emits (.+?) for (.+?)\. Every top-level "
+        r"`\[ProtoMap\]` anchor contributes a Map prototype; nested map-placement sections are skipped\.",
+        r"Каждый pack создаёт \1 для \2. Каждая верхнеуровневая секция `[ProtoMap]` "
+        r"добавляет прототип Map; вложенные секции размещения на карте пропускаются.",
+        content,
+    )
+    content = re.sub(
+        r"The engine declares (\d+) built-in `HasProtos` entity types and (\d+) properties "
+        r"for them\. (\d+) properties can be loaded from prototype text at this revision\.",
+        r"Движок объявляет \1 встроенных типа сущностей `HasProtos` и \2 их свойств. "
+        r"На этой ревизии из текста прототипов можно загрузить \3 свойства.",
+        content,
+    )
+    content = re.sub(r"^## `([^`]+)` properties$", r"## Свойства `\1`", content, flags=re.MULTILINE)
+    content = content.replace(" | yes | ", " | да | ").replace(" | no (", " | нет (")
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated prototype format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated prototype format model")
     identities = [
@@ -593,15 +763,51 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         or len(identities) != len(set(identities))
     ):
         raise ValueError("every prototype format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(model),
         f"{DEFAULT_OUTPUT_DIR}/properties.md": _render_properties(model),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/properties.md": _render_properties(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        legacy_path = f"{LEGACY_OUTPUT_DIR}/{filename}"
+        pages[legacy_path] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated prototype format page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_prototype_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "prototype-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -618,7 +824,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_prototype_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "prototype-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate prototype format documentation: {exception}", file=sys.stderr)
         return 1

@@ -1,8 +1,15 @@
+---
+permalink: /Examples/MinimalProject/README.html
+locale: en
+document_id: minimal-project-readme
+---
+
 # FOnline Minimal Project
 
 This is the engine-owned executable starter and CI validation project. It is intentionally small enough to explain completely:
 
-- `CMakeLists.txt` composes FOnline through the public stage helpers;
+- `CMakeLists.txt` composes FOnline through the public stage helpers and routes
+  one server-only `INTERFACE` dependency through `AddProjectLibraries`;
 - `CMakePresets.json` provides standalone Windows x64 and Linux GCC configure/smoke presets;
 - `FOnlineStarter.fomain` defines one smoke sub-config and the minimum reusable resource packs;
 - `Scripts/Starter.fos` subscribes to the server start event and declares one remote call in each direction;
@@ -33,7 +40,9 @@ starter_server_started
 starter_smoke_passed
 ```
 
-The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The visibility hook in the same source proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-10. Both Windows and Linux routes are registered in `.github/workflows/validate.yml`; the Linux route must not be described as verified until its CI job is green.
+The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `AddProjectLibraries`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. Both Windows and Linux routes are registered in `.github/workflows/validate.yml`; the Linux route must not be described as verified until its CI job is green.
+
+The `CMakeLists.txt` compatibility branch appends the same target to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane exercises the public helper; the current-Engine lane keeps the starter buildable while the helper is moving from the documentation candidate into `master`.
 
 ## Deliberate limits
 
@@ -70,4 +79,5 @@ The repository workflows run the same Engine-owned Linux preparation command bef
 
 The Windows preset deliberately leaves generator selection to CMake, which chooses the newest installed Visual Studio; pinning `Visual Studio 17 2022` would reject otherwise compatible newer installations. The presets build only the headless server and baker required by `RunStarterSmoke`; project-specific client, mapper, editor, packaging, and deployment presets belong in later examples. Do not rename source/config identifiers one at a time. Change `FO_DEV_NAME`, `FO_NICE_NAME`, the `.fomain` filename, and any package/application identity together as one project-bootstrap operation.
 
-The tested first lesson is [TUTORIAL.md](../../TUTORIAL.md).
+The tested first lesson is
+[First FOnline Headless Project](../../Docs/en/tutorials/first-project.md).

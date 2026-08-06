@@ -49,7 +49,9 @@
         "server",
         "mapper",
         "baker",
-        "editor",
+        "animation-viewer",
+        "particle-viewer",
+        "ascompiler",
         "tests"
       ],
       "script_targets": [
@@ -80,14 +82,19 @@
       "primary_header": "Client.h",
       "consumers": [
         "client",
+        "server",
         "mapper",
+        "baker",
+        "animation-viewer",
+        "particle-viewer",
+        "ascompiler",
         "tests"
       ],
       "script_targets": [
         "client",
         "mapper"
       ],
-      "description": "Client runtime code; MapperLib links ClientLib and receives client-side metadata registrations."
+      "description": "Client runtime code; server controller paths, Mapper, both focused viewers, BakerLib, and ASCompiler link ClientLib, while only client and mapper are script export targets."
     },
     {
       "id": "native-extension.role.mapper",
@@ -111,12 +118,15 @@
       "library_target": "BakerLib",
       "primary_header": "Baker.h",
       "consumers": [
+        "mapper",
         "baker",
-        "editor",
+        "animation-viewer",
+        "particle-viewer",
+        "ascompiler",
         "tests"
       ],
       "script_targets": [],
-      "description": "Resource-baker extensions; EditorLib links BakerLib, but BAKER is not a script export target."
+      "description": "Resource-baker extensions shared by Baker, Mapper, both focused viewers, and ASCompiler; BAKER is not a script export target."
     }
   ],
   "hooks": [
@@ -307,5 +317,5 @@
       "SERVER": 3
     }
   },
-  "contract_digest": "7309539ef4c0941c34b105b6bbbe58e553bbeec9d2b609e81b23bdae63208a02"
+  "contract_digest": "5ef7c1a932f6f8e9ae41354d6bdbfd090c47c2d50791788c08a0239188ab1757"
 }

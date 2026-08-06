@@ -4,6 +4,7 @@ import contextlib
 import copy
 import io
 import json
+import re
 import struct
 import sys
 import tempfile
@@ -16,6 +17,7 @@ ENGINE_ROOT = BUILDTOOLS_DIR.parent
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 
 import docs_font_format  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 def _read_bmfont(path: Path) -> tuple[dict[int, bytes], list[tuple[int, int, int, int]]]:
@@ -161,7 +163,9 @@ class FontFormatDocumentationTests(unittest.TestCase):
                         self.assertIn(anchor, source_text)
 
     def test_human_guide_covers_formats_layout_and_project_boundary(self) -> None:
-        guide = (ENGINE_ROOT / "Docs/FontFormat.md").read_text(encoding="utf-8")
+        guide = (
+            ENGINE_ROOT / "Docs/en/how-to/content/font-format.md"
+        ).read_text(encoding="utf-8")
 
         for heading in (
             "## Supported resources",
@@ -202,20 +206,114 @@ class FontFormatDocumentationTests(unittest.TestCase):
                 )
 
     def test_generated_pages_and_checked_outputs_are_current(self) -> None:
-        pages = docs_font_format.generate_reference_pages(self.model)
+        pages = docs_font_format.render_reference_pages(ENGINE_ROOT)
 
         self.assertEqual(set(pages), set(docs_font_format.OUTPUT_PATHS))
         self.assertIn(
             "Runtime descriptors | <code>.fofnt</code>, <code>.fnt</code>",
-            pages["Docs/generated/font-format/index.md"],
+            pages["Docs/en/reference/font-format/index.md"],
         )
-        self.assertIn("Raw-copied authoring sidecar", pages["Docs/generated/font-format/formats.md"])
-        self.assertIn("OffsetX", pages["Docs/generated/font-format/fofnt.md"])
-        self.assertIn("Signed BMFont metric", pages["Docs/generated/font-format/validation.md"])
-        self.assertIn("<code>NoWrap</code>", pages["Docs/generated/font-format/layout.md"])
+        self.assertIn("Raw-copied authoring sidecar", pages["Docs/en/reference/font-format/formats.md"])
+        self.assertIn("OffsetX", pages["Docs/en/reference/font-format/fofnt.md"])
+        self.assertIn("Signed BMFont metric", pages["Docs/en/reference/font-format/validation.md"])
+        self.assertIn("<code>NoWrap</code>", pages["Docs/en/reference/font-format/layout.md"])
+        self.assertIn(
+            "Сгенерированный справочник форматов шрифтов",
+            pages["Docs/ru/reference/font-format/index.md"],
+        )
+        self.assertIn(
+            "Уменьшение при привязке",
+            pages["Docs/ru/reference/font-format/binding.md"],
+        )
+        self.assertNotIn(
+            "Descriptor roles and supported resource suffixes.",
+            pages["Docs/ru/reference/font-format/index.md"],
+        )
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             result = docs_font_format.main(["--root", str(ENGINE_ROOT), "--check"])
         self.assertEqual(result, 0)
+
+    def test_russian_pages_pin_english_hashes_and_preserve_commands(self) -> None:
+        pages = docs_font_format.render_reference_pages(ENGINE_ROOT)
+        for (_, document_id, _), english_path, russian_path in zip(
+            docs_font_format.PAGE_DEFINITIONS,
+            docs_font_format.CANONICAL_OUTPUT_PATHS,
+            docs_font_format.RUSSIAN_OUTPUT_PATHS,
+            strict=True,
+        ):
+            english = pages[english_path]
+            russian = pages[russian_path]
+            self.assertIn(
+                docs_localization.translation_metadata_line(
+                    document_id,
+                    english_path,
+                    docs_localization.normalized_sha256(english),
+                ),
+                russian,
+            )
+            self.assertEqual(
+                re.findall(r"```[^\n]*\n(.*?)```", english, re.DOTALL),
+                re.findall(r"```[^\n]*\n(.*?)```", russian, re.DOTALL),
+            )
+
+    def test_legacy_generated_routes_preserve_headings_and_entry_anchors(self) -> None:
+        pages = docs_font_format.generate_reference_pages(self.model)
+
+        for filename, _, _ in docs_font_format.PAGE_DEFINITIONS:
+            canonical = pages[f"Docs/en/reference/font-format/{filename}"]
+            legacy = pages[f"Docs/generated/font-format/{filename}"]
+            for heading in re.findall(r"^#{2,3} .+$", canonical, re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
+                self.assertIn(
+                    f"../../en/reference/font-format/{filename}#{anchor}",
+                    legacy,
+                )
+
+    def test_manifest_owns_canonical_and_legacy_routes(self) -> None:
+        documents = json.loads(
+            (ENGINE_ROOT / "Docs/documentation-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )["documents"]
+        canonical_guide = documents["Docs/en/how-to/content/font-format.md"]
+        self.assertEqual(
+            (
+                canonical_guide["id"],
+                canonical_guide["state"],
+                canonical_guide["disposition"],
+            ),
+            ("font-format-guide", "current", "retain"),
+        )
+        legacy_guide = documents["Docs/FontFormat.md"]
+        self.assertEqual(
+            (
+                legacy_guide["state"],
+                legacy_guide["disposition"],
+                legacy_guide["redirect_to"],
+            ),
+            ("redirect", "replace", "font-format-guide"),
+        )
+        for filename, document_id, _ in docs_font_format.PAGE_DEFINITIONS:
+            canonical = documents[f"Docs/en/reference/font-format/{filename}"]
+            legacy = documents[f"Docs/generated/font-format/{filename}"]
+            self.assertEqual(
+                (canonical["id"], canonical["state"], canonical["disposition"]),
+                (document_id, "current", "retain"),
+            )
+            self.assertEqual(
+                (legacy["state"], legacy["disposition"], legacy["redirect_to"]),
+                ("redirect", "replace", document_id),
+            )
+        generated_paths = json.loads(
+            (ENGINE_ROOT / "Docs/documentation-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )["generated_artifacts"]["font_format_reference"]["paths"]
+        self.assertTrue(
+            set(docs_font_format.RUSSIAN_OUTPUT_PATHS).issubset(generated_paths)
+        )
 
     def test_ci_manifest_and_contract_diff_route_the_domain(self) -> None:
         workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(

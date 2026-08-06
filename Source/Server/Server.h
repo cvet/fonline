@@ -134,66 +134,97 @@ public:
     void StopCritterMoving(ptr<Critter> cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed);
 
+    // Runs after script modules initialize and before the world is generated or restored; `StopChain` aborts server initialization.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
+    // Runs only for an empty database to create the initial world; `StopChain` aborts server initialization.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGenerateWorld);
+    // Runs after world generation or restoration and before normal server work; `StopChain` aborts startup.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStart);
+    // Runs during server shutdown before script modules are finalized.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs after login success is sent and before post-login setup; `unloginedPlayer` is present only during reconnect, and `StopChain` rejects the login.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*unloginedPlayer*/);
+    // Runs after a hard disconnect is observed and before the player is detached and unregistered.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, ptr<Player> /*player*/);
+    // Runs after a player switches from `prevCr` to `cr` and initial critter information is sent.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, ptr<Player> /*player*/, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
+    // Validates a player movement request; handlers may replace `speed`, and `StopChain` rejects the request.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerMoveCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, int32_t& /*speed*/);
+    // Validates a player direction request; handlers may replace `dir`, and `StopChain` rejects the request.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, mdir& /*dir*/);
+    // Runs after a critter changes map hex and reports the previous hex in `oldHex`.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterMoved, ptr<Critter> /*cr*/, mpos /*oldHex*/);
+    // Runs after a movement context is activated and broadcast; `wasMoving` reports whether it replaced active movement.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterStartMoving, ptr<Critter> /*cr*/, bool /*wasMoving*/);
+    // Runs after active critter movement is stopped and the resulting state is broadcast.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterStopMoving, ptr<Critter> /*cr*/);
+    // Runs after a critter transfer completes; `prevMap` is absent when the critter did not come from a local map.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterTransfer, ptr<Critter> /*cr*/, nptr<Map> /*prevMap*/);
+    // Runs when a critter enters the global-map container.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, ptr<Critter> /*cr*/);
+    // Runs when a critter leaves the global-map container.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterOut, ptr<Critter> /*cr*/);
+    // Runs once before a location's own initialization script; `firstTime` distinguishes creation from restore.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLocationInit, ptr<Location> /*location*/, bool /*firstTime*/);
+    // Runs while a location is being finished, before its maps are destroyed.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLocationFinish, ptr<Location> /*location*/);
+    // Runs once before a map's own initialization script; `firstTime` distinguishes creation from restore.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapInit, ptr<Map> /*map*/, bool /*firstTime*/);
+    // Runs while a map is being finished and before it is unregistered.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapFinish, ptr<Map> /*map*/);
+    // Runs after a critter is attached to a local map.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapCritterIn, ptr<Map> /*map*/, ptr<Critter> /*cr*/);
+    // Runs before a critter is detached from a local map.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapCritterOut, ptr<Map> /*map*/, ptr<Critter> /*cr*/);
+    // Runs after a persistent critter and its owned entities are restored but before world entry; `StopChain` rejects the load.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterPreLoad, ptr<Critter> /*cr*/);
+    // Runs once before a critter's own initialization script; `firstTime` distinguishes creation from restore.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterInit, ptr<Critter> /*cr*/, bool /*firstTime*/);
+    // Runs while a critter is being finished and before it is unregistered.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterFinish, ptr<Critter> /*cr*/);
+    // Runs after a persistent critter is loaded and enters server ownership.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterLoad, ptr<Critter> /*cr*/);
+    // Runs before a persistent critter leaves server ownership without being destroyed.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterUnload, ptr<Critter> /*cr*/);
+    // Runs while the server prepares initial controlled-critter state for its player.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
+    // Runs after an item enters, leaves, or changes slot in a critter inventory; `fromSlot` reports its previous slot.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
+    // Runs once before an item's own initialization script; `firstTime` distinguishes creation from restore.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
+    // Runs while an item is being finished and before it is unregistered.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemFinish, ptr<Item> /*item*/);
+    // Runs when a critter crosses a static item's trigger footprint; `isIn` distinguishes entry from exit.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStaticItemWalk, ptr<StaticItem> /*item*/, ptr<Critter> /*cr*/, bool /*isIn*/, mdir /*dir*/);
 

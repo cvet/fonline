@@ -1,25 +1,49 @@
----
-title: Particle Runtime Contract
-document_id: generated-particle-format-runtime
-locale: en
-generated: true
----
-
 # Particle Runtime Contract
 
-> Generated reference. Do not edit this page directly. Update `BuildTools/ParticleFormatInterface.json`, then run `python BuildTools/docs_particle_format.py --write`.
+> Legacy route.
 
-[Reference index](index.md) | [Source rules](xml.md) | [Formats and backends](objects.md) | [Rendering](renderer.md) | [Tooling](tooling.md) | [Runtime](runtime.md) | [Integration](integration.md) | [Validation](validation.md) | [Canonical JSON model](../particle-format.json)
+The canonical generated reference moved to locale-specific paths.
 
-| Stable ID | Rule | Requirement | Why | Source |
-| --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-runtime-backend-composition-ecb62b0f31"></a><code>particle-format.runtime.backend-composition</code> | Backend composition | Compile only the particle backends selected by FO_SPARK_PARTICLES and FO_EFFEKSEER_PARTICLES. | CreateParticleRuntimeBackends is the single feature-aware composition point. | [Source/Client/ParticleRuntime.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleRuntime.cpp) |
-| <a id="entry-particle-format-runtime-extension-routing-4a7b02a225"></a><code>particle-format.runtime.extension-routing</code> | Runtime extension routing | Reference baked .spk or .efk paths; ParticleManager selects a backend by its advertised extension. | Authored source extensions are not runtime sprite formats. | [Source/Client/VisualParticles.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/VisualParticles.cpp) |
-| <a id="entry-particle-format-runtime-seed-00f791d86f"></a><code>particle-format.runtime.seed</code> | Seeded respawn | Use an explicit seed when deterministic replay or comparison is required. | The neutral facade forwards the seed to the selected backend. | [Source/Client/VisualParticles.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/VisualParticles.cpp) |
-| <a id="entry-particle-format-runtime-scale-ad0dd32ae4"></a><code>particle-format.runtime.scale</code> | Runtime scale | Apply finite positive scale through ParticleSystem and revalidate bounds, depth, and attachment placement. | Scale is part of the backend-neutral runtime setup and forces a transform refresh. | [Source/Client/VisualParticles.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/VisualParticles.cpp) |
-| <a id="entry-particle-format-runtime-prewarm-9ba1f2bdb4"></a><code>particle-format.runtime.prewarm</code> | Prewarm | Use prewarm only when the effect must enter already simulated, and include its cost in the project performance gate. | The runtime advances the selected backend and resets facade timing to the reported elapsed time. | [Source/Client/VisualParticles.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/VisualParticles.cpp) |
-| <a id="entry-particle-format-runtime-update-cadence-21ca02d55d"></a><code>particle-format.runtime.update-cadence</code> | Update cadence | Render.Animation3dFPS sets the millisecond particle update threshold; zero leaves the threshold at zero and therefore permits an update every frame. | Particle simulation cadence shares the 3D animation setting rather than owning an independent particle FPS. | [Source/Client/VisualParticles.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/VisualParticles.cpp)<br>[Source/Common/Settings.inc](https://github.com/cvet/fonline/blob/master/Source/Common/Settings.inc) |
-| <a id="entry-particle-format-runtime-atlas-path-5a93455cda"></a><code>particle-format.runtime.atlas-path</code> | Default offscreen-atlas path | With draw in scene false, updates render the SPARK system into an intermediate render target and copy it into the sprite atlas; normal sprite batching draws the resulting quad. | The default path preserves ordinary sprite ordering and batching at the cost of flattening particle depth. | [Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
-| <a id="entry-particle-format-runtime-scene-path-9ef07f6c77"></a><code>particle-format.runtime.scene-path</code> | Direct map-scene path | With draw in scene true, ParticleSprite is direct-draw and renders SPARK geometry against the map projection and shared depth target instead of refreshing its atlas region. | World-space particles can be occluded by standing sprites and models according to the selected .fofx depth state. | [Source/Client/ParticleSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.h)<br>[Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
-| <a id="entry-particle-format-runtime-sprite-semantics-23a149c555"></a><code>particle-format.runtime.sprite-semantics</code> | ParticleSprite animation semantics | ParticleSprite is non-copyable and never hit-tests; Play respawns, Stop is a no-op, SetTime and SetDir are ignored, and IsPlaying mirrors SPARK active state. | Generic Sprite animation controls do not map to SPARK timeline or direction selection. | [Source/Client/ParticleSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.h)<br>[Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
-| <a id="entry-particle-format-runtime-world-scale-40d9de63b8"></a><code>particle-format.runtime.world-scale</code> | Shared model and particle scale | Render.ModelProjFactor is screen pixels per 3D world unit for models and in-scene particles. The Engine default is 40.0; embedding projects may override it consistently. | ParticleSprite and model projection use the same scale setting, so project overrides affect both. | [Source/Common/Settings.inc](https://github.com/cvet/fonline/blob/master/Source/Common/Settings.inc)<br>[Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
+[English](../../en/reference/particle-format/runtime.md) | [Russian](../../ru/reference/particle-format/runtime.md)
+
+<a id="entry-particle-format-runtime-backend-composition-ecb62b0f31"></a>
+- [`entry-particle-format-runtime-backend-composition-ecb62b0f31`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-backend-composition-ecb62b0f31)
+
+<a id="entry-particle-format-runtime-extension-routing-4a7b02a225"></a>
+- [`entry-particle-format-runtime-extension-routing-4a7b02a225`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-extension-routing-4a7b02a225)
+
+<a id="entry-particle-format-runtime-seed-00f791d86f"></a>
+- [`entry-particle-format-runtime-seed-00f791d86f`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-seed-00f791d86f)
+
+<a id="entry-particle-format-runtime-scale-ad0dd32ae4"></a>
+- [`entry-particle-format-runtime-scale-ad0dd32ae4`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-scale-ad0dd32ae4)
+
+<a id="entry-particle-format-runtime-baked-bounds-77189beb93"></a>
+- [`entry-particle-format-runtime-baked-bounds-77189beb93`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-baked-bounds-77189beb93)
+
+<a id="entry-particle-format-runtime-bounds-semantics-843884ff18"></a>
+- [`entry-particle-format-runtime-bounds-semantics-843884ff18`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-bounds-semantics-843884ff18)
+
+<a id="entry-particle-format-runtime-live-bounds-35efdbc65a"></a>
+- [`entry-particle-format-runtime-live-bounds-35efdbc65a`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-live-bounds-35efdbc65a)
+
+<a id="entry-particle-format-runtime-sprite-frame-9c7d88fe11"></a>
+- [`entry-particle-format-runtime-sprite-frame-9c7d88fe11`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-sprite-frame-9c7d88fe11)
+
+<a id="entry-particle-format-runtime-prewarm-9ba1f2bdb4"></a>
+- [`entry-particle-format-runtime-prewarm-9ba1f2bdb4`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-prewarm-9ba1f2bdb4)
+
+<a id="entry-particle-format-runtime-update-cadence-21ca02d55d"></a>
+- [`entry-particle-format-runtime-update-cadence-21ca02d55d`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-update-cadence-21ca02d55d)
+
+<a id="entry-particle-format-runtime-atlas-path-5a93455cda"></a>
+- [`entry-particle-format-runtime-atlas-path-5a93455cda`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-atlas-path-5a93455cda)
+
+<a id="entry-particle-format-runtime-scene-path-9ef07f6c77"></a>
+- [`entry-particle-format-runtime-scene-path-9ef07f6c77`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-scene-path-9ef07f6c77)
+
+<a id="entry-particle-format-runtime-sprite-semantics-23a149c555"></a>
+- [`entry-particle-format-runtime-sprite-semantics-23a149c555`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-sprite-semantics-23a149c555)
+
+<a id="entry-particle-format-runtime-world-scale-40d9de63b8"></a>
+- [`entry-particle-format-runtime-world-scale-40d9de63b8`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-world-scale-40d9de63b8)

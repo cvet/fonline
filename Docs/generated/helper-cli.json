@@ -31,7 +31,7 @@
     "excluded_parser_sources": [
       {
         "source": "BuildTools/buildtools.py",
-        "reason": "Owned by Docs/generated/cli.json and BuildTools/docs_cli.py."
+        "reason": "Owned by Docs/generated/cli.json, Docs/en/reference/buildtools/, and BuildTools/docs_cli.py."
       },
       {
         "source": "BuildTools/package.py",
@@ -54,8 +54,8 @@
       "invocation_owner": "BuildTools/cmake/stages/Codegen.cmake",
       "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files.",
       "parser_description": "FOnline code generator",
-      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME -embedded EMBEDDED\n                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]\n                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]",
-      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME\n                  -nicename NICENAME -embedded EMBEDDED\n                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]\n                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -internalcfg INTERNALCFG\n                        internal config buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a\n                        macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
+      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]",
+      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -internalcfg INTERNALCFG\n                        internal config buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
       "global_arguments": [
         {
           "id": "helper-cli.codegen.argument.maincfg",
@@ -303,7 +303,7 @@
       "description": "Clean, collect, and report engine code coverage for generated test targets.",
       "parser_description": "Run and analyze engine code coverage",
       "usage": "usage: codecoverage.py [-h] {clean,run,report,full} ...",
-      "help_output": "usage: codecoverage.py [-h] {clean,run,report,full} ...\n\nRun and analyze engine code coverage\n\npositional arguments:\n  {clean,run,report,full}\n    clean               Remove previously collected coverage data and reports\n    run                 Run the instrumented test binary and collect coverage\n                        data\n    report              Generate text and HTML reports from collected coverage\n                        data\n    full                Clean, run the instrumented binary, and generate\n                        reports\n\noptions:\n  -h, --help            show this help message and exit\n",
+      "help_output": "usage: codecoverage.py [-h] {clean,run,report,full} ...\n\nRun and analyze engine code coverage\n\npositional arguments:\n  {clean,run,report,full}\n    clean               Remove previously collected coverage data and reports\n    run                 Run the instrumented test binary and collect coverage data\n    report              Generate text and HTML reports from collected coverage data\n    full                Clean, run the instrumented binary, and generate reports\n\noptions:\n  -h, --help            show this help message and exit\n",
       "global_arguments": [],
       "commands": [
         {
@@ -311,8 +311,8 @@
           "name": "clean",
           "summary": "Remove previously collected coverage data and reports",
           "description": "Remove previously collected coverage data and reports",
-          "usage": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT\n                             --build-dir BUILD_DIR --binary BINARY\n                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                             ...",
-          "help_output": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT\n                             --build-dir BUILD_DIR --binary BINARY\n                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                             ...\n\nRemove previously collected coverage data and reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
+          "help_output": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nRemove previously collected coverage data and reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.clean.argument.workspace_root",
@@ -405,7 +405,7 @@
               "action": "store",
               "option_strings": [],
               "metavar": null,
-              "required": false,
+              "required": true,
               "nargs": "...",
               "choices": null,
               "default": null,
@@ -419,8 +419,8 @@
           "name": "run",
           "summary": "Run the instrumented test binary and collect coverage data",
           "description": "Run the instrumented test binary and collect coverage data",
-          "usage": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT\n                           --build-dir BUILD_DIR --binary BINARY\n                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                           ...",
-          "help_output": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT\n                           --build-dir BUILD_DIR --binary BINARY\n                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                           ...\n\nRun the instrumented test binary and collect coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
+          "help_output": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nRun the instrumented test binary and collect coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.run.argument.workspace_root",
@@ -513,7 +513,7 @@
               "action": "store",
               "option_strings": [],
               "metavar": null,
-              "required": false,
+              "required": true,
               "nargs": "...",
               "choices": null,
               "default": null,
@@ -527,8 +527,8 @@
           "name": "report",
           "summary": "Generate text and HTML reports from collected coverage data",
           "description": "Generate text and HTML reports from collected coverage data",
-          "usage": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT\n                              --build-dir BUILD_DIR --binary BINARY\n                              --backend {gcc,llvm,msvc}\n                              --output-dir OUTPUT_DIR\n                              ...",
-          "help_output": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT\n                              --build-dir BUILD_DIR --binary BINARY\n                              --backend {gcc,llvm,msvc}\n                              --output-dir OUTPUT_DIR\n                              ...\n\nGenerate text and HTML reports from collected coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
+          "help_output": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nGenerate text and HTML reports from collected coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.report.argument.workspace_root",
@@ -621,7 +621,7 @@
               "action": "store",
               "option_strings": [],
               "metavar": null,
-              "required": false,
+              "required": true,
               "nargs": "...",
               "choices": null,
               "default": null,
@@ -635,8 +635,8 @@
           "name": "full",
           "summary": "Clean, run the instrumented binary, and generate reports",
           "description": "Clean, run the instrumented binary, and generate reports",
-          "usage": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT\n                            --build-dir BUILD_DIR --binary BINARY\n                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                            ...",
-          "help_output": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT\n                            --build-dir BUILD_DIR --binary BINARY\n                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR\n                            ...\n\nClean, run the instrumented binary, and generate reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
+          "help_output": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nClean, run the instrumented binary, and generate reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.full.argument.workspace_root",
@@ -729,12 +729,440 @@
               "action": "store",
               "option_strings": [],
               "metavar": null,
-              "required": false,
+              "required": true,
               "nargs": "...",
               "choices": null,
               "default": null,
               "type": null,
               "description": "arguments passed to the test binary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "helper-cli.gameplay-test-runner",
+      "name": "Gameplay test runner",
+      "source": "BuildTools/gameplay_test_runner.py",
+      "factory": "create_parser",
+      "program": "gameplay_test_runner.py",
+      "owner": "quality",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "embedding-project-build-system",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "embedding-project CMake targets and CI gameplay smoke jobs",
+      "description": "Run ordered multi-process gameplay smoke scenarios with readiness, marker, deadline, cleanup, and JSON-report contracts.",
+      "parser_description": "Run project-neutral multi-process gameplay smoke scenarios from a checked JSON manifest.",
+      "usage": "usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE] [--report REPORT]",
+      "help_output": "usage: gameplay_test_runner.py [-h] --manifest MANIFEST [--value KEY=VALUE] [--report REPORT]\n\nRun project-neutral multi-process gameplay smoke scenarios from a checked JSON manifest.\n\noptions:\n  -h, --help           show this help message and exit\n  --manifest MANIFEST  scenario manifest path\n  --value KEY=VALUE    placeholder value; repeat as needed\n  --report REPORT      optional JSON result path\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.manifest",
+          "destination": "manifest",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--manifest"
+          ],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "scenario manifest path"
+        },
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.value",
+          "destination": "value",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "--value"
+          ],
+          "metavar": "KEY=VALUE",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "placeholder value; repeat as needed"
+        },
+        {
+          "id": "helper-cli.gameplay-test-runner.argument.report",
+          "destination": "report",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--report"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "optional JSON result path"
+        }
+      ],
+      "commands": []
+    },
+    {
+      "id": "helper-cli.ai-control-client",
+      "name": "AiControl protocol client",
+      "source": "BuildTools/ai_control_client.py",
+      "factory": "create_parser",
+      "program": "ai_control_client.py",
+      "owner": "tooling",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "tool-developer",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics",
+      "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line.",
+      "parser_description": "Call an Engine-compatible AiControl bridge over NDJSON/TCP.",
+      "usage": "usage: ai_control_client.py [-h] [--host HOST] [--port PORT] [--timeout TIMEOUT] [--token-env TOKEN_ENV] [--allow-remote] {ping,status,observe,events,act} ...",
+      "help_output": "usage: ai_control_client.py [-h] [--host HOST] [--port PORT] [--timeout TIMEOUT] [--token-env TOKEN_ENV] [--allow-remote] {ping,status,observe,events,act} ...\n\nCall an Engine-compatible AiControl bridge over NDJSON/TCP.\n\npositional arguments:\n  {ping,status,observe,events,act}\n    ping                Check bridge liveness.\n    status              Read bridge status and queue limits.\n    observe             Read the latest project observation.\n    events              Read events after a sequence cursor.\n    act                 Enqueue one project-defined command.\n\noptions:\n  -h, --help            show this help message and exit\n  --host HOST           Bridge host.\n  --port PORT           Bridge port.\n  --timeout TIMEOUT     Socket timeout in seconds.\n  --token-env TOKEN_ENV\n                        Environment variable containing the shared token.\n  --allow-remote        Permit a non-loopback endpoint; transport remains unencrypted.\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.ai-control-client.argument.host",
+          "destination": "host",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--host"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "127.0.0.1",
+          "type": null,
+          "description": "Bridge host."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.port",
+          "destination": "port",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--port"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": 43011,
+          "type": "int",
+          "description": "Bridge port."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.timeout",
+          "destination": "timeout",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--timeout"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": 5.0,
+          "type": "float",
+          "description": "Socket timeout in seconds."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.token_env",
+          "destination": "token_env",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--token-env"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "FONLINE_AI_TOKEN",
+          "type": null,
+          "description": "Environment variable containing the shared token."
+        },
+        {
+          "id": "helper-cli.ai-control-client.argument.allow_remote",
+          "destination": "allow_remote",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--allow-remote"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "Permit a non-loopback endpoint; transport remains unencrypted."
+        }
+      ],
+      "commands": [
+        {
+          "id": "helper-cli.ai-control-client.command.ping",
+          "name": "ping",
+          "summary": "Check bridge liveness.",
+          "description": null,
+          "usage": "usage: ai_control_client.py ping [-h]",
+          "help_output": "usage: ai_control_client.py ping [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.status",
+          "name": "status",
+          "summary": "Read bridge status and queue limits.",
+          "description": null,
+          "usage": "usage: ai_control_client.py status [-h]",
+          "help_output": "usage: ai_control_client.py status [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.observe",
+          "name": "observe",
+          "summary": "Read the latest project observation.",
+          "description": null,
+          "usage": "usage: ai_control_client.py observe [-h]",
+          "help_output": "usage: ai_control_client.py observe [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+          "arguments": []
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.events",
+          "name": "events",
+          "summary": "Read events after a sequence cursor.",
+          "description": null,
+          "usage": "usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ] [--limit LIMIT]",
+          "help_output": "usage: ai_control_client.py events [-h] [--after-seq AFTER_SEQ] [--limit LIMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --after-seq AFTER_SEQ\n                        Exclusive event cursor.\n  --limit LIMIT         Maximum events to return.\n",
+          "arguments": [
+            {
+              "id": "helper-cli.ai-control-client.command.events.argument.after_seq",
+              "destination": "after_seq",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--after-seq"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": 0,
+              "type": "int",
+              "description": "Exclusive event cursor."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.events.argument.limit",
+              "destination": "limit",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--limit"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": 100,
+              "type": "int",
+              "description": "Maximum events to return."
+            }
+          ]
+        },
+        {
+          "id": "helper-cli.ai-control-client.command.act",
+          "name": "act",
+          "summary": "Enqueue one project-defined command.",
+          "description": null,
+          "usage": "usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID] [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X] [--y Y] [--screen-x SCREEN_X] [--screen-y SCREEN_Y] [--int-arg INT_ARG] [--string-arg STRING_ARG] [--append]",
+          "help_output": "usage: ai_control_client.py act [-h] --type TYPE [--target-id TARGET_ID] [--item-id ITEM_ID] [--aux-id AUX_ID] [--x X] [--y Y] [--screen-x SCREEN_X] [--screen-y SCREEN_Y] [--int-arg INT_ARG] [--string-arg STRING_ARG] [--append]\n\noptions:\n  -h, --help            show this help message and exit\n  --type TYPE           Project-defined command type.\n  --target-id TARGET_ID\n                        Optional target entity identifier.\n  --item-id ITEM_ID     Optional item entity identifier.\n  --aux-id AUX_ID       Optional auxiliary entity identifier.\n  --x X                 Optional project world X coordinate.\n  --y Y                 Optional project world Y coordinate.\n  --screen-x SCREEN_X   Optional screen X coordinate.\n  --screen-y SCREEN_Y   Optional screen Y coordinate.\n  --int-arg INT_ARG     Optional integer payload.\n  --string-arg STRING_ARG\n                        Optional string payload.\n  --append              Request project queue append semantics.\n",
+          "arguments": [
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.type",
+              "destination": "type",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--type"
+              ],
+              "metavar": null,
+              "required": true,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Project-defined command type."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.target_id",
+              "destination": "target_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--target-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional target entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.item_id",
+              "destination": "item_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--item-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional item entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.aux_id",
+              "destination": "aux_id",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--aux-id"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional auxiliary entity identifier."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.x",
+              "destination": "x",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--x"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional project world X coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.y",
+              "destination": "y",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--y"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional project world Y coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.screen_x",
+              "destination": "screen_x",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--screen-x"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional screen X coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.screen_y",
+              "destination": "screen_y",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--screen-y"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional screen Y coordinate."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.int_arg",
+              "destination": "int_arg",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--int-arg"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": "int",
+              "description": "Optional integer payload."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.string_arg",
+              "destination": "string_arg",
+              "kind": "option",
+              "action": "store",
+              "option_strings": [
+                "--string-arg"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": null,
+              "type": null,
+              "description": "Optional string payload."
+            },
+            {
+              "id": "helper-cli.ai-control-client.command.act.argument.append",
+              "destination": "append",
+              "kind": "option",
+              "action": "store_true",
+              "option_strings": [
+                "--append"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "default": false,
+              "type": null,
+              "description": "Request project queue append semantics."
             }
           ]
         }
@@ -789,8 +1217,8 @@
       "invocation_owner": "embedding-project Android tasks and direct developer use",
       "description": "Discover, connect, install, launch, stop, and inspect Android Wi-Fi devices through adb.",
       "parser_description": "Android Wi-Fi device helper for BuildTools tasks",
-      "usage": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]\n                         {discover,connect,install,launch,launch-game,stop,logcat} ...",
-      "help_output": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]\n                         {discover,connect,install,launch,launch-game,stop,logcat} ...\n\nAndroid Wi-Fi device helper for BuildTools tasks\n\npositional arguments:\n  {discover,connect,install,launch,launch-game,stop,logcat}\n    discover            List Android Wi-Fi devices discovered through adb mdns\n    connect             Connect to an Android Wi-Fi device and cache the\n                        endpoint\n    install             Install an APK on the selected Android Wi-Fi device\n    launch              Launch an Android activity on the selected device\n    launch-game         Launch the Android game activity and pass\n                        RemoteSceneLaunch server host override\n    stop                Force-stop an Android package on the selected device\n    logcat              Stream logcat from the selected device\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        Workspace directory path containing android-sdk and\n                        android-debug\n",
+      "usage": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT] {discover,connect,install,launch,launch-game,stop,logcat} ...",
+      "help_output": "usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT] {discover,connect,install,launch,launch-game,stop,logcat} ...\n\nAndroid Wi-Fi device helper for BuildTools tasks\n\npositional arguments:\n  {discover,connect,install,launch,launch-game,stop,logcat}\n    discover            List Android Wi-Fi devices discovered through adb mdns\n    connect             Connect to an Android Wi-Fi device and cache the endpoint\n    install             Install an APK on the selected Android Wi-Fi device\n    launch              Launch an Android activity on the selected device\n    launch-game         Launch the Android game activity and pass RemoteSceneLaunch server host override\n    stop                Force-stop an Android package on the selected device\n    logcat              Stream logcat from the selected device\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        Workspace directory path containing android-sdk and android-debug\n",
       "global_arguments": [
         {
           "id": "helper-cli.android-device.argument.workspace_root",
@@ -825,7 +1253,7 @@
           "summary": "Connect to an Android Wi-Fi device and cache the endpoint",
           "description": null,
           "usage": "usage: android_device.py connect [-h] [--device DEVICE]",
-          "help_output": "usage: android_device.py connect [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and\n                   interactive selection are used\n",
+          "help_output": "usage: android_device.py connect [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and interactive selection are used\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.connect.argument.device",
@@ -851,7 +1279,7 @@
           "summary": "Install an APK on the selected Android Wi-Fi device",
           "description": null,
           "usage": "usage: android_device.py install [-h] --apk APK [--device DEVICE]",
-          "help_output": "usage: android_device.py install [-h] --apk APK [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --apk APK        APK path\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery\n                   is used\n",
+          "help_output": "usage: android_device.py install [-h] --apk APK [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --apk APK        APK path\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery is used\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.install.argument.apk",
@@ -893,7 +1321,7 @@
           "summary": "Launch an Android activity on the selected device",
           "description": null,
           "usage": "usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]",
-          "help_output": "usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]\n\noptions:\n  -h, --help           show this help message and exit\n  --activity ACTIVITY  Fully qualified activity component, e.g.\n                       com.example.game/.FOnlineActivity\n  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or\n                       discovery is used\n",
+          "help_output": "usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]\n\noptions:\n  -h, --help           show this help message and exit\n  --activity ACTIVITY  Fully qualified activity component, e.g. com.example.game/.FOnlineActivity\n  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or discovery is used\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.launch.argument.activity",
@@ -934,8 +1362,8 @@
           "name": "launch-game",
           "summary": "Launch the Android game activity and pass RemoteSceneLaunch server host override",
           "description": null,
-          "usage": "usage: android_device.py launch-game [-h] --activity ACTIVITY\n                                     [--device DEVICE]\n                                     [--server-host SERVER_HOST]",
-          "help_output": "usage: android_device.py launch-game [-h] --activity ACTIVITY\n                                     [--device DEVICE]\n                                     [--server-host SERVER_HOST]\n\noptions:\n  -h, --help            show this help message and exit\n  --activity ACTIVITY   Fully qualified activity component, e.g.\n                        com.example.game/.FOnlineActivity\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or\n                        discovery is used\n  --server-host SERVER_HOST\n                        Host IP or name for ClientNetwork.ServerHost; if\n                        omitted, auto-detected from the route to the selected\n                        device\n",
+          "usage": "usage: android_device.py launch-game [-h] --activity ACTIVITY [--device DEVICE] [--server-host SERVER_HOST]",
+          "help_output": "usage: android_device.py launch-game [-h] --activity ACTIVITY [--device DEVICE] [--server-host SERVER_HOST]\n\noptions:\n  -h, --help            show this help message and exit\n  --activity ACTIVITY   Fully qualified activity component, e.g. com.example.game/.FOnlineActivity\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or discovery is used\n  --server-host SERVER_HOST\n                        Host IP or name for ClientNetwork.ServerHost; if omitted, auto-detected from the route to the selected device\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.launch-game.argument.activity",
@@ -993,7 +1421,7 @@
           "summary": "Force-stop an Android package on the selected device",
           "description": null,
           "usage": "usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]",
-          "help_output": "usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]\n\noptions:\n  -h, --help            show this help message and exit\n  --package PACKAGE_NAME\n                        Android package name\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or\n                        discovery is used\n",
+          "help_output": "usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]\n\noptions:\n  -h, --help            show this help message and exit\n  --package PACKAGE_NAME\n                        Android package name\n  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or discovery is used\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.stop.argument.package_name",
@@ -1035,7 +1463,7 @@
           "summary": "Stream logcat from the selected device",
           "description": null,
           "usage": "usage: android_device.py logcat [-h] [--device DEVICE]",
-          "help_output": "usage: android_device.py logcat [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery\n                   is used\n",
+          "help_output": "usage: android_device.py logcat [-h] [--device DEVICE]\n\noptions:\n  -h, --help       show this help message and exit\n  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery is used\n",
           "arguments": [
             {
               "id": "helper-cli.android-device.command.logcat.argument.device",
@@ -1124,7 +1552,7 @@
       "description": "Build an MSI installer from a package-generated WiX definition.",
       "parser_description": "Build an MSI package from a WiX definition",
       "usage": "usage: createmsi.py [-h] definition.json",
-      "help_output": "usage: createmsi.py [-h] definition.json\n\nBuild an MSI package from a WiX definition\n\npositional arguments:\n  definition.json  bare WiX package definition filename in the working\n                   directory\n\noptions:\n  -h, --help       show this help message and exit\n",
+      "help_output": "usage: createmsi.py [-h] definition.json\n\nBuild an MSI package from a WiX definition\n\npositional arguments:\n  definition.json  bare WiX package definition filename in the working directory\n\noptions:\n  -h, --help       show this help message and exit\n",
       "global_arguments": [
         {
           "id": "helper-cli.createmsi.argument.jsonfile",
@@ -1145,10 +1573,10 @@
     }
   ],
   "summary": {
-    "helper_count": 7,
-    "command_count": 11,
-    "global_argument_count": 18,
-    "command_argument_count": 35
+    "helper_count": 9,
+    "command_count": 16,
+    "global_argument_count": 26,
+    "command_argument_count": 48
   },
-  "contract_digest": "c9f5192190b77e1f7858b219f4bd12858a752e83b399179233c6150fbf3a5180"
+  "contract_digest": "7cf80c42248ebcdee6ab1f35240efe6a4e0a4bafcdc76a62b72d9a08985cd22c"
 }

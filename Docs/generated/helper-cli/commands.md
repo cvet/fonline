@@ -1,679 +1,476 @@
----
-title: Helper Commands
-document_id: generated-helper-cli-commands
-locale: en
-generated: true
----
-
 # Helper Commands
 
-> Generated reference. Do not edit this page directly. Update `BuildTools/HelperCliInterface.json` or the owning executable parser, then run `python BuildTools/docs_helper_cli.py --write`.
+> Legacy route.
 
-[Reference index](index.md) | [Commands](commands.md) | [Canonical JSON model](../helper-cli.json) | [Generation contract](../../GeneratedApiAndMetadata.md)
+The canonical generated reference moved to locale-specific paths.
 
-Commands are shown with exact parser-generated usage and help at a fixed 80-column width. Invoke a helper from the engine repository root unless its invocation owner sets another working directory.
+[English](../../en/reference/helper-cli/commands.md) | [Russian](../../ru/reference/helper-cli/commands.md)
 
 <a id="entry-helper-cli-codegen-60abdf415d"></a>
+- [`entry-helper-cli-codegen-60abdf415d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-60abdf415d)
+
 ## Code generation
 
-Generate engine configuration, metadata registration, script bindings, and embedded-resource source files.
-
-Stable ID: `helper-cli.codegen`  
-Program: `codegen.py`  
-Owner: `build-release`  
-Audience: `engine-contributor`, `embedding-project-build-system`  
-Invocation owner: BuildTools/cmake/stages/Codegen.cmake  
-Parser source: [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codegen-argument-maincfg-a02226a81e"></a><code>helper-cli.codegen.argument.maincfg</code> | <code>-maincfg</code> | <code>option</code> | yes | <code>1</code> | - | - | main config file |
-| <a id="entry-helper-cli-codegen-argument-buildhash-bbbdec66bb"></a><code>helper-cli.codegen.argument.buildhash</code> | <code>-buildhash</code> | <code>option</code> | yes | <code>1</code> | - | - | build hash |
-| <a id="entry-helper-cli-codegen-argument-devname-47485557c0"></a><code>helper-cli.codegen.argument.devname</code> | <code>-devname</code> | <code>option</code> | yes | <code>1</code> | - | - | dev game name |
-| <a id="entry-helper-cli-codegen-argument-nicename-161cc8093d"></a><code>helper-cli.codegen.argument.nicename</code> | <code>-nicename</code> | <code>option</code> | yes | <code>1</code> | - | - | nice game name |
-| <a id="entry-helper-cli-codegen-argument-embedded-f936b1a395"></a><code>helper-cli.codegen.argument.embedded</code> | <code>-embedded</code> | <code>option</code> | yes | <code>1</code> | - | - | embedded buffer capacity |
-| <a id="entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8"></a><code>helper-cli.codegen.argument.internalcfg</code> | <code>-internalcfg</code> | <code>option</code> | yes | <code>1</code> | - | - | internal config buffer capacity |
-| <a id="entry-helper-cli-codegen-argument-enginedefine-8961bb73cd"></a><code>helper-cli.codegen.argument.enginedefine</code> | <code>-enginedefine</code> | <code>option</code> | no | <code>1</code> | - | - | engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h |
-| <a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a><code>helper-cli.codegen.argument.meta</code> | <code>-meta</code> | <code>option</code> | yes | <code>1</code> | - | - | path to script api metadata (///@ tags) |
-| <a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a><code>helper-cli.codegen.argument.commonheader</code> | <code>-commonheader</code> | <code>option</code> | no | <code>1</code> | - | - | path to common header file |
-| <a id="entry-helper-cli-codegen-argument-genoutput-b6e5ab6468"></a><code>helper-cli.codegen.argument.genoutput</code> | <code>-genoutput</code> | <code>option</code> | yes | <code>1</code> | - | - | generated code output dir |
-| <a id="entry-helper-cli-codegen-argument-verbose-1ae6caa3b7"></a><code>helper-cli.codegen.argument.verbose</code> | <code>-verbose</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | verbose mode |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-codegen-argument-maincfg-a02226a81e"></a>
+- [`entry-helper-cli-codegen-argument-maincfg-a02226a81e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-maincfg-a02226a81e)
+
+<a id="entry-helper-cli-codegen-argument-buildhash-bbbdec66bb"></a>
+- [`entry-helper-cli-codegen-argument-buildhash-bbbdec66bb`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-buildhash-bbbdec66bb)
+
+<a id="entry-helper-cli-codegen-argument-devname-47485557c0"></a>
+- [`entry-helper-cli-codegen-argument-devname-47485557c0`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-devname-47485557c0)
+
+<a id="entry-helper-cli-codegen-argument-nicename-161cc8093d"></a>
+- [`entry-helper-cli-codegen-argument-nicename-161cc8093d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-nicename-161cc8093d)
+
+<a id="entry-helper-cli-codegen-argument-embedded-f936b1a395"></a>
+- [`entry-helper-cli-codegen-argument-embedded-f936b1a395`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-embedded-f936b1a395)
+
+<a id="entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8"></a>
+- [`entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8)
+
+<a id="entry-helper-cli-codegen-argument-enginedefine-8961bb73cd"></a>
+- [`entry-helper-cli-codegen-argument-enginedefine-8961bb73cd`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-enginedefine-8961bb73cd)
+
+<a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a>
+- [`entry-helper-cli-codegen-argument-meta-467f731eb8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-meta-467f731eb8)
+
+<a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a>
+- [`entry-helper-cli-codegen-argument-commonheader-888570e588`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-commonheader-888570e588)
+
+<a id="entry-helper-cli-codegen-argument-genoutput-b6e5ab6468"></a>
+- [`entry-helper-cli-codegen-argument-genoutput-b6e5ab6468`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-genoutput-b6e5ab6468)
+
+<a id="entry-helper-cli-codegen-argument-verbose-1ae6caa3b7"></a>
+- [`entry-helper-cli-codegen-argument-verbose-1ae6caa3b7`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-verbose-1ae6caa3b7)
 
 ### Exact top-level `--help` output
 
-```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME
-                  -nicename NICENAME -embedded EMBEDDED
-                  -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE]
-                  -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
-                  [-verbose]
-
-FOnline code generator
-
-options:
-  -h, --help            show this help message and exit
-  -maincfg MAINCFG      main config file
-  -buildhash BUILDHASH  build hash
-  -devname DEVNAME      dev game name
-  -nicename NICENAME    nice game name
-  -embedded EMBEDDED    embedded buffer capacity
-  -internalcfg INTERNALCFG
-                        internal config buffer capacity
-  -enginedefine ENGINEDEFINE
-                        engine configuration define NAME=VALUE emitted as a
-                        macro into EngineConfig.gen.h
-  -meta META            path to script api metadata (///@ tags)
-  -commonheader COMMONHEADER
-                        path to common header file
-  -genoutput GENOUTPUT  generated code output dir
-  -verbose              verbose mode
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a>
+- [`entry-helper-cli-compile-mono-scripts-ad6011a439`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-ad6011a439)
+
 ## Mono script compilation
 
-Compile configured Mono assemblies for engine application roles.
-
-Stable ID: `helper-cli.compile-mono-scripts`  
-Program: `compile-mono-scripts.py`  
-Owner: `scripting`  
-Audience: `engine-contributor`, `embedding-project-build-system`  
-Invocation owner: BuildTools/cmake/stages/ScriptsAndBaking.cmake  
-Parser source: [BuildTools/compile-mono-scripts.py](https://github.com/cvet/fonline/blob/master/BuildTools/compile-mono-scripts.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7"></a><code>helper-cli.compile-mono-scripts.argument.scripts</code> | <code>-scripts</code> | <code>option</code> | yes | <code>1</code> | - | - | path to scripts directory |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1"></a><code>helper-cli.compile-mono-scripts.argument.assembly</code> | <code>-assembly</code> | <code>option</code> | no | <code>1</code> | - | - | assembly name |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7"></a>
+- [`entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7)
+
+<a id="entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1"></a>
+- [`entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1)
 
 ### Exact top-level `--help` output
 
-```text
-usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]
-
-FOnline scripts generation
-
-options:
-  -h, --help          show this help message and exit
-  -scripts SCRIPTS    path to scripts directory
-  -assembly ASSEMBLY  assembly name
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-codecoverage-b014400e5e"></a>
+- [`entry-helper-cli-codecoverage-b014400e5e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-b014400e5e)
+
 ## Code coverage
 
-Clean, collect, and report engine code coverage for generated test targets.
-
-Stable ID: `helper-cli.codecoverage`  
-Program: `codecoverage.py`  
-Owner: `quality`  
-Audience: `engine-contributor`, `ci-maintainer`  
-Invocation owner: BuildTools/cmake/stages/Applications.cmake  
-Parser source: [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-No arguments at this level.
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Exact top-level `--help` output
 
-```text
-usage: codecoverage.py [-h] {clean,run,report,full} ...
-
-Run and analyze engine code coverage
-
-positional arguments:
-  {clean,run,report,full}
-    clean               Remove previously collected coverage data and reports
-    run                 Run the instrumented test binary and collect coverage
-                        data
-    report              Generate text and HTML reports from collected coverage
-                        data
-    full                Clean, run the instrumented binary, and generate
-                        reports
-
-options:
-  -h, --help            show this help message and exit
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-codecoverage-command-clean-af34f1698d"></a>
+- [`entry-helper-cli-codecoverage-command-clean-af34f1698d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-af34f1698d)
+
 ### `clean`
 
-Remove previously collected coverage data and reports
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.codecoverage.command.clean`
+<a id="entry-helper-cli-codecoverage-command-clean-argument-workspace-root-b6d8a2447e"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-workspace-root-b6d8a2447e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-workspace-root-b6d8a2447e)
 
-```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT
-                             --build-dir BUILD_DIR --binary BINARY
-                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                             ...
-```
+<a id="entry-helper-cli-codecoverage-command-clean-argument-build-dir-094d74e38d"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-build-dir-094d74e38d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-build-dir-094d74e38d)
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-workspace-root-b6d8a2447e"></a><code>helper-cli.codecoverage.command.clean.argument.workspace_root</code> | <code>--workspace-root</code> | <code>option</code> | yes | <code>1</code> | - | - | embedding-project source directory |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-build-dir-094d74e38d"></a><code>helper-cli.codecoverage.command.clean.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | configured CMake build directory |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b"></a><code>helper-cli.codecoverage.command.clean.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e"></a><code>helper-cli.codecoverage.command.clean.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a><code>helper-cli.codecoverage.command.clean.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
-| <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a><code>helper-cli.codecoverage.command.clean.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | no | <code>...</code> | - | - | arguments passed to the test binary |
+<a id="entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b)
 
-#### Exact `--help` output
+<a id="entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e)
 
-```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT
-                             --build-dir BUILD_DIR --binary BINARY
-                             --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                             ...
+<a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10)
 
-Remove previously collected coverage data and reports
-
-positional arguments:
-  binary_args           arguments passed to the test binary
-
-options:
-  -h, --help            show this help message and exit
-  --workspace-root WORKSPACE_ROOT
-                        embedding-project source directory
-  --build-dir BUILD_DIR
-                        configured CMake build directory
-  --binary BINARY       instrumented test executable
-  --backend {gcc,llvm,msvc}
-                        coverage compiler/toolchain backend
-  --output-dir OUTPUT_DIR
-                        coverage data and report output directory
-```
+<a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed)
 
 <a id="entry-helper-cli-codecoverage-command-run-6ff9c981af"></a>
+- [`entry-helper-cli-codecoverage-command-run-6ff9c981af`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-6ff9c981af)
+
 ### `run`
 
-Run the instrumented test binary and collect coverage data
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.codecoverage.command.run`
+<a id="entry-helper-cli-codecoverage-command-run-argument-workspace-root-3ea13c9ab2"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-workspace-root-3ea13c9ab2`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-workspace-root-3ea13c9ab2)
 
-```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT
-                           --build-dir BUILD_DIR --binary BINARY
-                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                           ...
-```
+<a id="entry-helper-cli-codecoverage-command-run-argument-build-dir-23ad87643e"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-build-dir-23ad87643e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-build-dir-23ad87643e)
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-workspace-root-3ea13c9ab2"></a><code>helper-cli.codecoverage.command.run.argument.workspace_root</code> | <code>--workspace-root</code> | <code>option</code> | yes | <code>1</code> | - | - | embedding-project source directory |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-build-dir-23ad87643e"></a><code>helper-cli.codecoverage.command.run.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | configured CMake build directory |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb"></a><code>helper-cli.codecoverage.command.run.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400"></a><code>helper-cli.codecoverage.command.run.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a><code>helper-cli.codecoverage.command.run.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
-| <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a><code>helper-cli.codecoverage.command.run.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | no | <code>...</code> | - | - | arguments passed to the test binary |
+<a id="entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb)
 
-#### Exact `--help` output
+<a id="entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400)
 
-```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT
-                           --build-dir BUILD_DIR --binary BINARY
-                           --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                           ...
+<a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a)
 
-Run the instrumented test binary and collect coverage data
-
-positional arguments:
-  binary_args           arguments passed to the test binary
-
-options:
-  -h, --help            show this help message and exit
-  --workspace-root WORKSPACE_ROOT
-                        embedding-project source directory
-  --build-dir BUILD_DIR
-                        configured CMake build directory
-  --binary BINARY       instrumented test executable
-  --backend {gcc,llvm,msvc}
-                        coverage compiler/toolchain backend
-  --output-dir OUTPUT_DIR
-                        coverage data and report output directory
-```
+<a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437)
 
 <a id="entry-helper-cli-codecoverage-command-report-8de4627b8f"></a>
+- [`entry-helper-cli-codecoverage-command-report-8de4627b8f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-8de4627b8f)
+
 ### `report`
 
-Generate text and HTML reports from collected coverage data
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.codecoverage.command.report`
+<a id="entry-helper-cli-codecoverage-command-report-argument-workspace-root-c368887528"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-workspace-root-c368887528`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-workspace-root-c368887528)
 
-```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT
-                              --build-dir BUILD_DIR --binary BINARY
-                              --backend {gcc,llvm,msvc}
-                              --output-dir OUTPUT_DIR
-                              ...
-```
+<a id="entry-helper-cli-codecoverage-command-report-argument-build-dir-ef1800b8f4"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-build-dir-ef1800b8f4`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-build-dir-ef1800b8f4)
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-workspace-root-c368887528"></a><code>helper-cli.codecoverage.command.report.argument.workspace_root</code> | <code>--workspace-root</code> | <code>option</code> | yes | <code>1</code> | - | - | embedding-project source directory |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-build-dir-ef1800b8f4"></a><code>helper-cli.codecoverage.command.report.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | configured CMake build directory |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a"></a><code>helper-cli.codecoverage.command.report.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-backend-927a805169"></a><code>helper-cli.codecoverage.command.report.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a><code>helper-cli.codecoverage.command.report.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
-| <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a><code>helper-cli.codecoverage.command.report.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | no | <code>...</code> | - | - | arguments passed to the test binary |
+<a id="entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a)
 
-#### Exact `--help` output
+<a id="entry-helper-cli-codecoverage-command-report-argument-backend-927a805169"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-backend-927a805169`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-backend-927a805169)
 
-```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT
-                              --build-dir BUILD_DIR --binary BINARY
-                              --backend {gcc,llvm,msvc}
-                              --output-dir OUTPUT_DIR
-                              ...
+<a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452)
 
-Generate text and HTML reports from collected coverage data
-
-positional arguments:
-  binary_args           arguments passed to the test binary
-
-options:
-  -h, --help            show this help message and exit
-  --workspace-root WORKSPACE_ROOT
-                        embedding-project source directory
-  --build-dir BUILD_DIR
-                        configured CMake build directory
-  --binary BINARY       instrumented test executable
-  --backend {gcc,llvm,msvc}
-                        coverage compiler/toolchain backend
-  --output-dir OUTPUT_DIR
-                        coverage data and report output directory
-```
+<a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0)
 
 <a id="entry-helper-cli-codecoverage-command-full-43f183aedc"></a>
+- [`entry-helper-cli-codecoverage-command-full-43f183aedc`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-43f183aedc)
+
 ### `full`
 
-Clean, run the instrumented binary, and generate reports
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.codecoverage.command.full`
+<a id="entry-helper-cli-codecoverage-command-full-argument-workspace-root-ad42e148ad"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-workspace-root-ad42e148ad`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-workspace-root-ad42e148ad)
 
-```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT
-                            --build-dir BUILD_DIR --binary BINARY
-                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                            ...
-```
+<a id="entry-helper-cli-codecoverage-command-full-argument-build-dir-0d3d1b2e06"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-build-dir-0d3d1b2e06`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-build-dir-0d3d1b2e06)
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-workspace-root-ad42e148ad"></a><code>helper-cli.codecoverage.command.full.argument.workspace_root</code> | <code>--workspace-root</code> | <code>option</code> | yes | <code>1</code> | - | - | embedding-project source directory |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-build-dir-0d3d1b2e06"></a><code>helper-cli.codecoverage.command.full.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | configured CMake build directory |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145"></a><code>helper-cli.codecoverage.command.full.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3"></a><code>helper-cli.codecoverage.command.full.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a><code>helper-cli.codecoverage.command.full.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
-| <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a><code>helper-cli.codecoverage.command.full.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | no | <code>...</code> | - | - | arguments passed to the test binary |
+<a id="entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145)
 
-#### Exact `--help` output
+<a id="entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3)
 
-```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT
-                            --build-dir BUILD_DIR --binary BINARY
-                            --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR
-                            ...
+<a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9)
 
-Clean, run the instrumented binary, and generate reports
+<a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a)
 
-positional arguments:
-  binary_args           arguments passed to the test binary
+<a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a>
+- [`entry-helper-cli-gameplay-test-runner-b34ed8deb4`](../../en/reference/helper-cli/commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4)
 
-options:
-  -h, --help            show this help message and exit
-  --workspace-root WORKSPACE_ROOT
-                        embedding-project source directory
-  --build-dir BUILD_DIR
-                        configured CMake build directory
-  --binary BINARY       instrumented test executable
-  --backend {gcc,llvm,msvc}
-                        coverage compiler/toolchain backend
-  --output-dir OUTPUT_DIR
-                        coverage data and report output directory
-```
+## Gameplay test runner
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+### Top-level arguments
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-gameplay-test-runner-argument-manifest-214c4bd23c"></a>
+- [`entry-helper-cli-gameplay-test-runner-argument-manifest-214c4bd23c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-gameplay-test-runner-argument-manifest-214c4bd23c)
+
+<a id="entry-helper-cli-gameplay-test-runner-argument-value-40c5a38d08"></a>
+- [`entry-helper-cli-gameplay-test-runner-argument-value-40c5a38d08`](../../en/reference/helper-cli/commands.md#entry-helper-cli-gameplay-test-runner-argument-value-40c5a38d08)
+
+<a id="entry-helper-cli-gameplay-test-runner-argument-report-55cdc99b26"></a>
+- [`entry-helper-cli-gameplay-test-runner-argument-report-55cdc99b26`](../../en/reference/helper-cli/commands.md#entry-helper-cli-gameplay-test-runner-argument-report-55cdc99b26)
+
+### Exact top-level `--help` output
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-35184e9731"></a>
+- [`entry-helper-cli-ai-control-client-35184e9731`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-35184e9731)
+
+## AiControl protocol client
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+### Top-level arguments
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-argument-host-0554537b33"></a>
+- [`entry-helper-cli-ai-control-client-argument-host-0554537b33`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-argument-host-0554537b33)
+
+<a id="entry-helper-cli-ai-control-client-argument-port-fb6c2c628e"></a>
+- [`entry-helper-cli-ai-control-client-argument-port-fb6c2c628e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-argument-port-fb6c2c628e)
+
+<a id="entry-helper-cli-ai-control-client-argument-timeout-3a4b9b5c1e"></a>
+- [`entry-helper-cli-ai-control-client-argument-timeout-3a4b9b5c1e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-argument-timeout-3a4b9b5c1e)
+
+<a id="entry-helper-cli-ai-control-client-argument-token-env-4a7ef4dfd5"></a>
+- [`entry-helper-cli-ai-control-client-argument-token-env-4a7ef4dfd5`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-argument-token-env-4a7ef4dfd5)
+
+<a id="entry-helper-cli-ai-control-client-argument-allow-remote-0d33b73a66"></a>
+- [`entry-helper-cli-ai-control-client-argument-allow-remote-0d33b73a66`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-argument-allow-remote-0d33b73a66)
+
+### Exact top-level `--help` output
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-ping-2a253f06de"></a>
+- [`entry-helper-cli-ai-control-client-command-ping-2a253f06de`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-ping-2a253f06de)
+
+### `ping`
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-status-71ec51cb72"></a>
+- [`entry-helper-cli-ai-control-client-command-status-71ec51cb72`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-status-71ec51cb72)
+
+### `status`
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-observe-38177f229e"></a>
+- [`entry-helper-cli-ai-control-client-command-observe-38177f229e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-observe-38177f229e)
+
+### `observe`
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-events-e9dd1890b0"></a>
+- [`entry-helper-cli-ai-control-client-command-events-e9dd1890b0`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-events-e9dd1890b0)
+
+### `events`
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-events-argument-after-seq-f5b3920536"></a>
+- [`entry-helper-cli-ai-control-client-command-events-argument-after-seq-f5b3920536`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-events-argument-after-seq-f5b3920536)
+
+<a id="entry-helper-cli-ai-control-client-command-events-argument-limit-a61d74a970"></a>
+- [`entry-helper-cli-ai-control-client-command-events-argument-limit-a61d74a970`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-events-argument-limit-a61d74a970)
+
+<a id="entry-helper-cli-ai-control-client-command-act-a8414f2a7f"></a>
+- [`entry-helper-cli-ai-control-client-command-act-a8414f2a7f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-a8414f2a7f)
+
+### `act`
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-type-30243d4b4c"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-type-30243d4b4c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-type-30243d4b4c)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-target-id-cc6d8b017b"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-target-id-cc6d8b017b`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-target-id-cc6d8b017b)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-item-id-82973c779f"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-item-id-82973c779f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-item-id-82973c779f)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-aux-id-12c9597c1d"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-aux-id-12c9597c1d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-aux-id-12c9597c1d)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-x-4507b45828"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-x-4507b45828`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-x-4507b45828)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-y-4125d48b44"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-y-4125d48b44`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-y-4125d48b44)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-screen-x-180c94f1ff"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-screen-x-180c94f1ff`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-screen-x-180c94f1ff)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-screen-y-e60dd59502"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-screen-y-e60dd59502`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-screen-y-e60dd59502)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-int-arg-d52ef6d5f8"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-int-arg-d52ef6d5f8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-int-arg-d52ef6d5f8)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-string-arg-a167eef2cd"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-string-arg-a167eef2cd`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-string-arg-a167eef2cd)
+
+<a id="entry-helper-cli-ai-control-client-command-act-argument-append-460a176550"></a>
+- [`entry-helper-cli-ai-control-client-command-act-argument-append-460a176550`](../../en/reference/helper-cli/commands.md#entry-helper-cli-ai-control-client-command-act-argument-append-460a176550)
 
 <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a>
+- [`entry-helper-cli-windows7-import-check-a0c7e4cb59`](../../en/reference/helper-cli/commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59)
+
 ## Windows 7 import validation
 
-Inspect linked PE files and reject imports that are unavailable on Windows 7.
-
-Stable ID: `helper-cli.windows7-import-check`  
-Program: `check_windows7_imports.py`  
-Owner: `quality`  
-Audience: `engine-contributor`, `embedding-project-build-system`, `release-operator`  
-Invocation owner: embedding-project Windows 7 CI and release validation  
-Parser source: [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-windows7-import-check-argument-binaries-90e898370f"></a><code>helper-cli.windows7-import-check.argument.binaries</code> | <code>binaries</code> | <code>positional</code> | yes | <code>+</code> | - | - | linked PE executable or DLL to inspect |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-windows7-import-check-argument-binaries-90e898370f"></a>
+- [`entry-helper-cli-windows7-import-check-argument-binaries-90e898370f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-windows7-import-check-argument-binaries-90e898370f)
 
 ### Exact top-level `--help` output
 
-```text
-usage: check_windows7_imports.py [-h] binaries [binaries ...]
-
-Reject CreateFile2 from Windows 7-compatible PE binaries
-
-positional arguments:
-  binaries    linked PE executable or DLL to inspect
-
-options:
-  -h, --help  show this help message and exit
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-android-device-ab99179ae9"></a>
+- [`entry-helper-cli-android-device-ab99179ae9`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-ab99179ae9)
+
 ## Android device control
 
-Discover, connect, install, launch, stop, and inspect Android Wi-Fi devices through adb.
-
-Stable ID: `helper-cli.android-device`  
-Program: `android_device.py`  
-Owner: `platform`  
-Audience: `game-developer`, `engine-contributor`  
-Invocation owner: embedding-project Android tasks and direct developer use  
-Parser source: [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-argument-workspace-root-8726d0799e"></a><code>helper-cli.android-device.argument.workspace_root</code> | <code>--workspace-root</code> | <code>option</code> | no | <code>1</code> | - | - | Workspace directory path containing android-sdk and android-debug |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-android-device-argument-workspace-root-8726d0799e"></a>
+- [`entry-helper-cli-android-device-argument-workspace-root-8726d0799e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-argument-workspace-root-8726d0799e)
 
 ### Exact top-level `--help` output
 
-```text
-usage: android_device.py [-h] [--workspace-root WORKSPACE_ROOT]
-                         {discover,connect,install,launch,launch-game,stop,logcat} ...
-
-Android Wi-Fi device helper for BuildTools tasks
-
-positional arguments:
-  {discover,connect,install,launch,launch-game,stop,logcat}
-    discover            List Android Wi-Fi devices discovered through adb mdns
-    connect             Connect to an Android Wi-Fi device and cache the
-                        endpoint
-    install             Install an APK on the selected Android Wi-Fi device
-    launch              Launch an Android activity on the selected device
-    launch-game         Launch the Android game activity and pass
-                        RemoteSceneLaunch server host override
-    stop                Force-stop an Android package on the selected device
-    logcat              Stream logcat from the selected device
-
-options:
-  -h, --help            show this help message and exit
-  --workspace-root WORKSPACE_ROOT
-                        Workspace directory path containing android-sdk and
-                        android-debug
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-android-device-command-discover-f8951fbd7c"></a>
+- [`entry-helper-cli-android-device-command-discover-f8951fbd7c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-discover-f8951fbd7c)
+
 ### `discover`
 
-List Android Wi-Fi devices discovered through adb mdns
-
-Stable ID: `helper-cli.android-device.command.discover`
-
-```text
-usage: android_device.py discover [-h]
-```
-
-No arguments at this level.
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py discover [-h]
-
-options:
-  -h, --help  show this help message and exit
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-android-device-command-connect-6083ee40ae"></a>
+- [`entry-helper-cli-android-device-command-connect-6083ee40ae`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-connect-6083ee40ae)
+
 ### `connect`
 
-Connect to an Android Wi-Fi device and cache the endpoint
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.connect`
-
-```text
-usage: android_device.py connect [-h] [--device DEVICE]
-```
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-connect-argument-device-933a2c37f1"></a><code>helper-cli.android-device.command.connect.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, auto-discovery and interactive selection are used |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py connect [-h] [--device DEVICE]
-
-options:
-  -h, --help       show this help message and exit
-  --device DEVICE  Device IP[:port]; if omitted, auto-discovery and
-                   interactive selection are used
-```
+<a id="entry-helper-cli-android-device-command-connect-argument-device-933a2c37f1"></a>
+- [`entry-helper-cli-android-device-command-connect-argument-device-933a2c37f1`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-connect-argument-device-933a2c37f1)
 
 <a id="entry-helper-cli-android-device-command-install-20d466716c"></a>
+- [`entry-helper-cli-android-device-command-install-20d466716c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-install-20d466716c)
+
 ### `install`
 
-Install an APK on the selected Android Wi-Fi device
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.install`
+<a id="entry-helper-cli-android-device-command-install-argument-apk-052b021543"></a>
+- [`entry-helper-cli-android-device-command-install-argument-apk-052b021543`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-install-argument-apk-052b021543)
 
-```text
-usage: android_device.py install [-h] --apk APK [--device DEVICE]
-```
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-install-argument-apk-052b021543"></a><code>helper-cli.android-device.command.install.argument.apk</code> | <code>--apk</code> | <code>option</code> | yes | <code>1</code> | - | - | APK path |
-| <a id="entry-helper-cli-android-device-command-install-argument-device-117a72e901"></a><code>helper-cli.android-device.command.install.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, cached endpoint or discovery is used |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py install [-h] --apk APK [--device DEVICE]
-
-options:
-  -h, --help       show this help message and exit
-  --apk APK        APK path
-  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery
-                   is used
-```
+<a id="entry-helper-cli-android-device-command-install-argument-device-117a72e901"></a>
+- [`entry-helper-cli-android-device-command-install-argument-device-117a72e901`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-install-argument-device-117a72e901)
 
 <a id="entry-helper-cli-android-device-command-launch-7c998b622c"></a>
+- [`entry-helper-cli-android-device-command-launch-7c998b622c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-7c998b622c)
+
 ### `launch`
 
-Launch an Android activity on the selected device
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.launch`
+<a id="entry-helper-cli-android-device-command-launch-argument-activity-8e9055617d"></a>
+- [`entry-helper-cli-android-device-command-launch-argument-activity-8e9055617d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-argument-activity-8e9055617d)
 
-```text
-usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]
-```
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-launch-argument-activity-8e9055617d"></a><code>helper-cli.android-device.command.launch.argument.activity</code> | <code>--activity</code> | <code>option</code> | yes | <code>1</code> | - | - | Fully qualified activity component, e.g. com.example.game/.FOnlineActivity |
-| <a id="entry-helper-cli-android-device-command-launch-argument-device-fb19f4776c"></a><code>helper-cli.android-device.command.launch.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, cached endpoint or discovery is used |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py launch [-h] --activity ACTIVITY [--device DEVICE]
-
-options:
-  -h, --help           show this help message and exit
-  --activity ACTIVITY  Fully qualified activity component, e.g.
-                       com.example.game/.FOnlineActivity
-  --device DEVICE      Device IP[:port]; if omitted, cached endpoint or
-                       discovery is used
-```
+<a id="entry-helper-cli-android-device-command-launch-argument-device-fb19f4776c"></a>
+- [`entry-helper-cli-android-device-command-launch-argument-device-fb19f4776c`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-argument-device-fb19f4776c)
 
 <a id="entry-helper-cli-android-device-command-launch-game-408e50236e"></a>
+- [`entry-helper-cli-android-device-command-launch-game-408e50236e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-game-408e50236e)
+
 ### `launch-game`
 
-Launch the Android game activity and pass RemoteSceneLaunch server host override
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.launch-game`
+<a id="entry-helper-cli-android-device-command-launch-game-argument-activity-428147ad37"></a>
+- [`entry-helper-cli-android-device-command-launch-game-argument-activity-428147ad37`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-game-argument-activity-428147ad37)
 
-```text
-usage: android_device.py launch-game [-h] --activity ACTIVITY
-                                     [--device DEVICE]
-                                     [--server-host SERVER_HOST]
-```
+<a id="entry-helper-cli-android-device-command-launch-game-argument-device-d749dc44b6"></a>
+- [`entry-helper-cli-android-device-command-launch-game-argument-device-d749dc44b6`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-game-argument-device-d749dc44b6)
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-launch-game-argument-activity-428147ad37"></a><code>helper-cli.android-device.command.launch-game.argument.activity</code> | <code>--activity</code> | <code>option</code> | yes | <code>1</code> | - | - | Fully qualified activity component, e.g. com.example.game/.FOnlineActivity |
-| <a id="entry-helper-cli-android-device-command-launch-game-argument-device-d749dc44b6"></a><code>helper-cli.android-device.command.launch-game.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, cached endpoint or discovery is used |
-| <a id="entry-helper-cli-android-device-command-launch-game-argument-server-host-3f5230a55e"></a><code>helper-cli.android-device.command.launch-game.argument.server_host</code> | <code>--server-host</code> | <code>option</code> | no | <code>1</code> | - | - | Host IP or name for ClientNetwork.ServerHost; if omitted, auto-detected from the route to the selected device |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py launch-game [-h] --activity ACTIVITY
-                                     [--device DEVICE]
-                                     [--server-host SERVER_HOST]
-
-options:
-  -h, --help            show this help message and exit
-  --activity ACTIVITY   Fully qualified activity component, e.g.
-                        com.example.game/.FOnlineActivity
-  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or
-                        discovery is used
-  --server-host SERVER_HOST
-                        Host IP or name for ClientNetwork.ServerHost; if
-                        omitted, auto-detected from the route to the selected
-                        device
-```
+<a id="entry-helper-cli-android-device-command-launch-game-argument-server-host-3f5230a55e"></a>
+- [`entry-helper-cli-android-device-command-launch-game-argument-server-host-3f5230a55e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-launch-game-argument-server-host-3f5230a55e)
 
 <a id="entry-helper-cli-android-device-command-stop-74b36b2258"></a>
+- [`entry-helper-cli-android-device-command-stop-74b36b2258`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-stop-74b36b2258)
+
 ### `stop`
 
-Force-stop an Android package on the selected device
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.stop`
+<a id="entry-helper-cli-android-device-command-stop-argument-package-name-8a29334041"></a>
+- [`entry-helper-cli-android-device-command-stop-argument-package-name-8a29334041`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-stop-argument-package-name-8a29334041)
 
-```text
-usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]
-```
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-stop-argument-package-name-8a29334041"></a><code>helper-cli.android-device.command.stop.argument.package_name</code> | <code>--package</code> | <code>option</code> | yes | <code>1</code> | - | - | Android package name |
-| <a id="entry-helper-cli-android-device-command-stop-argument-device-8c3cd8d602"></a><code>helper-cli.android-device.command.stop.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, cached endpoint or discovery is used |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py stop [-h] --package PACKAGE_NAME [--device DEVICE]
-
-options:
-  -h, --help            show this help message and exit
-  --package PACKAGE_NAME
-                        Android package name
-  --device DEVICE       Device IP[:port]; if omitted, cached endpoint or
-                        discovery is used
-```
+<a id="entry-helper-cli-android-device-command-stop-argument-device-8c3cd8d602"></a>
+- [`entry-helper-cli-android-device-command-stop-argument-device-8c3cd8d602`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-stop-argument-device-8c3cd8d602)
 
 <a id="entry-helper-cli-android-device-command-logcat-5f28df274e"></a>
+- [`entry-helper-cli-android-device-command-logcat-5f28df274e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-logcat-5f28df274e)
+
 ### `logcat`
 
-Stream logcat from the selected device
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-Stable ID: `helper-cli.android-device.command.logcat`
-
-```text
-usage: android_device.py logcat [-h] [--device DEVICE]
-```
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-android-device-command-logcat-argument-device-71db85d287"></a><code>helper-cli.android-device.command.logcat.argument.device</code> | <code>--device</code> | <code>option</code> | no | <code>1</code> | - | - | Device IP[:port]; if omitted, cached endpoint or discovery is used |
-
-#### Exact `--help` output
-
-```text
-usage: android_device.py logcat [-h] [--device DEVICE]
-
-options:
-  -h, --help       show this help message and exit
-  --device DEVICE  Device IP[:port]; if omitted, cached endpoint or discovery
-                   is used
-```
+<a id="entry-helper-cli-android-device-command-logcat-argument-device-71db85d287"></a>
+- [`entry-helper-cli-android-device-command-logcat-argument-device-71db85d287`](../../en/reference/helper-cli/commands.md#entry-helper-cli-android-device-command-logcat-argument-device-71db85d287)
 
 <a id="entry-helper-cli-simple-web-server-58fbf70798"></a>
+- [`entry-helper-cli-simple-web-server-58fbf70798`](../../en/reference/helper-cli/commands.md#entry-helper-cli-simple-web-server-58fbf70798)
+
 ## Local web server
 
-Serve a packaged web client from a no-cache local HTTP server.
-
-Stable ID: `helper-cli.simple-web-server`  
-Program: `simple-web-server.py`  
-Owner: `platform`  
-Audience: `game-developer`, `release-operator`  
-Invocation owner: BuildTools/package.py WebServer payload  
-Parser source: [BuildTools/web/simple-web-server.py](https://github.com/cvet/fonline/blob/master/BuildTools/web/simple-web-server.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-simple-web-server-argument-port-20ae9fb491"></a><code>helper-cli.simple-web-server.argument.port</code> | <code>--port</code> | <code>option</code> | no | <code>1</code> | - | <code>7000</code> | web server port |
-| <a id="entry-helper-cli-simple-web-server-argument-fork-b1141869ad"></a><code>helper-cli.simple-web-server.argument.fork</code> | <code>--fork</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | fork process |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-simple-web-server-argument-port-20ae9fb491"></a>
+- [`entry-helper-cli-simple-web-server-argument-port-20ae9fb491`](../../en/reference/helper-cli/commands.md#entry-helper-cli-simple-web-server-argument-port-20ae9fb491)
+
+<a id="entry-helper-cli-simple-web-server-argument-fork-b1141869ad"></a>
+- [`entry-helper-cli-simple-web-server-argument-fork-b1141869ad`](../../en/reference/helper-cli/commands.md#entry-helper-cli-simple-web-server-argument-fork-b1141869ad)
 
 ### Exact top-level `--help` output
 
-```text
-usage: simple-web-server.py [-h] [--port PORT] [--fork]
-
-Simple HTTP server
-
-options:
-  -h, --help   show this help message and exit
-  --port PORT  web server port
-  --fork       fork process
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 <a id="entry-helper-cli-createmsi-18899fd2a5"></a>
+- [`entry-helper-cli-createmsi-18899fd2a5`](../../en/reference/helper-cli/commands.md#entry-helper-cli-createmsi-18899fd2a5)
+
 ## MSI creation
 
-Build an MSI installer from a package-generated WiX definition.
-
-Stable ID: `helper-cli.createmsi`  
-Program: `createmsi.py`  
-Owner: `build-release`  
-Audience: `release-operator`, `engine-contributor`  
-Invocation owner: BuildTools/package.py Wix pack  
-Parser source: [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py)
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
 ### Top-level arguments
 
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-createmsi-argument-jsonfile-385f92bb78"></a><code>helper-cli.createmsi.argument.jsonfile</code> | <code>definition.json</code> | <code>positional</code> | yes | <code>1</code> | - | - | bare WiX package definition filename in the working directory |
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-createmsi-argument-jsonfile-385f92bb78"></a>
+- [`entry-helper-cli-createmsi-argument-jsonfile-385f92bb78`](../../en/reference/helper-cli/commands.md#entry-helper-cli-createmsi-argument-jsonfile-385f92bb78)
 
 ### Exact top-level `--help` output
 
-```text
-usage: createmsi.py [-h] definition.json
-
-Build an MSI package from a WiX definition
-
-positional arguments:
-  definition.json  bare WiX package definition filename in the working
-                   directory
-
-options:
-  -h, --help       show this help message and exit
-```
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).

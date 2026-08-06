@@ -45,6 +45,7 @@ class RenderEffect;
 class Sprite;
 class MapSpriteList;
 
+// Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs.
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
@@ -80,7 +81,33 @@ enum class DrawOrderType : uint8_t
     // Count: 40
     Last = 39,
 };
+///@ EnumValueDoc DrawOrderType Tile // Base flat tile layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType Tile1 // First additional flat tile layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType Tile2 // Second additional flat tile layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType Tile3 // Third additional flat tile layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType Tile4 // Fourth additional flat tile layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType FlatItemPreLight // Flat item layer rendered before map lighting.
+///@ EnumValueDoc DrawOrderType HexGrid // Hex-grid overlay layer rendered before lighting primitives.
+///@ EnumValueDoc DrawOrderType PreLight // Primitive layer rendered immediately before map light accumulation.
+///@ EnumValueDoc DrawOrderType Light // Map light accumulation layer.
+///@ EnumValueDoc DrawOrderType AfterLight // Primitive layer rendered immediately after map light accumulation.
+///@ EnumValueDoc DrawOrderType DeadCritter // Flat dead-critter layer rendered after lighting.
+///@ EnumValueDoc DrawOrderType FlatItemAfterLight // Flat item layer rendered after map lighting.
+///@ EnumValueDoc DrawOrderType FlatEnd // Upper ordering boundary for flat post-light sprites.
+///@ EnumValueDoc DrawOrderType NormalBegin // Lower ordering boundary for depth-sorted normal sprites.
+///@ EnumValueDoc DrawOrderType Item // Depth-sorted normal item layer.
+///@ EnumValueDoc DrawOrderType Critter // Depth-sorted critter layer.
+///@ EnumValueDoc DrawOrderType Particles // Depth-sorted map-particle layer.
+///@ EnumValueDoc DrawOrderType NormalEnd // Upper ordering boundary for depth-sorted normal sprites.
+///@ EnumValueDoc DrawOrderType Roof // Base roof-sprite layer.
+///@ EnumValueDoc DrawOrderType Roof1 // First additional roof-sprite layer.
+///@ EnumValueDoc DrawOrderType Roof2 // Second additional roof-sprite layer.
+///@ EnumValueDoc DrawOrderType Roof3 // Third additional roof-sprite layer.
+///@ EnumValueDoc DrawOrderType Roof4 // Fourth additional roof-sprite layer.
+///@ EnumValueDoc DrawOrderType RoofParticles // Particle layer rendered with roof sprites.
+///@ EnumValueDoc DrawOrderType Last // Highest valid draw-order marker reserved by the map-sprite sorter.
 
+// Conditions under which a map sprite participates in the transparency-egg cutout around the player.
 ///@ ExportEnum
 enum class EggAppearenceType : uint8_t
 {
@@ -91,6 +118,12 @@ enum class EggAppearenceType : uint8_t
     ByXAndY,
     ByXOrY,
 };
+///@ EnumValueDoc EggAppearenceType None // Never applies a transparency-egg mask to this sprite.
+///@ EnumValueDoc EggAppearenceType Always // Applies a valid transparency-egg mask regardless of relative map hex.
+///@ EnumValueDoc EggAppearenceType ByX // Applies the mask when the sprite hex X is at or beyond the egg hex X.
+///@ EnumValueDoc EggAppearenceType ByY // Applies the mask when the sprite hex Y is at or beyond the egg hex Y.
+///@ EnumValueDoc EggAppearenceType ByXAndY // Applies the mask when either adjusted X or Y is at or beyond the corresponding egg coordinate.
+///@ EnumValueDoc EggAppearenceType ByXOrY // Applies the mask only when both adjusted X and Y are at or beyond the corresponding egg coordinates.
 
 class MapSprite final
 {
@@ -213,6 +246,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
+// Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped.
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
@@ -224,25 +258,44 @@ public:
     auto operator=(MapSpriteHolder&&) noexcept = delete;
     ~MapSpriteHolder();
 
+    // Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless.
     void StopDraw();
 
+    // Reports whether the attached map sprite remains valid; the sprite writes false when invalidated.
     bool Valid {};
+    // Sprite resource handle resolved when Map.DrawMapSprite attaches the holder.
     uint32_t SprId {};
+    // Map hex used as the sprite anchor and visibility test.
     mpos Hex {};
+    // Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields.
     hstring ProtoId {};
+    // Base map-pixel offset applied when the sprite is attached.
     ipos32 Offset {};
+    // Manual flat-sprite selection used when ProtoId is empty.
     bool IsFlat {};
+    // Manual lighting bypass used when ProtoId is empty.
     bool NoLight {};
+    // Manual draw-order slot used when ProtoId is empty.
     DrawOrderType DrawOrder {DrawOrderType::Item};
+    // Vertical hex offset applied to draw-order sorting when ProtoId is empty.
     int32_t DrawOrderHyOffset {};
+    // Manual corner classification used for lighting and egg appearance when ProtoId is empty.
     CornerType Corner {};
+    // Manual switch that suppresses egg appearance when ProtoId is empty.
     bool DisableEgg {};
+    // Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged.
     ucolor Color {};
+    // Enables live offset tracking through TweakOffset after attachment.
     bool IsTweakOffs {};
+    // Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment.
     ipos32 TweakOffset {};
+    // Enables live alpha tracking through TweakAlpha after attachment.
     bool IsTweakAlpha {};
+    // Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment.
     uint8_t TweakAlpha {};
+    // Initial sprite angle in degrees applied when nonzero.
     int16_t Angle {};
+    // Requests map-projected rendering when the sprite is attached.
     bool MapProjected {};
     nptr<MapSprite> MSpr {};
 };

@@ -11,6 +11,7 @@ This is a public FOnline example, not the normative Engine contract. It is teste
 ```
 
 Repository metadata is in `example-repository.json`. Asset rights and source provenance are in `assets/provenance.json`.
+The complete source walkthrough and project-specific commands are in [`TUTORIAL.md`](TUTORIAL.md).
 
 ## Support
 

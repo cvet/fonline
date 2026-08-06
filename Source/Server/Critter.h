@@ -174,34 +174,49 @@ public:
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(ptr<const Critter> from_cr);
 
+    // Runs while this critter is being finished.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs when another critter enters this critter's current visibility set.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppeared, ptr<Critter> /*appearedCr*/);
+    // Exposes a project-defined distance-tier appearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist1, ptr<Critter> /*appearedCr*/);
+    // Exposes a project-defined distance-tier appearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist2, ptr<Critter> /*appearedCr*/);
+    // Exposes a project-defined distance-tier appearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist3, ptr<Critter> /*appearedCr*/);
+    // Runs when another critter leaves this critter's current visibility set.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappeared, ptr<Critter> /*disappearedCr*/);
+    // Exposes a project-defined distance-tier disappearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist1, ptr<Critter> /*disappearedCr*/);
+    // Exposes a project-defined distance-tier disappearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist2, ptr<Critter> /*disappearedCr*/);
+    // Exposes a project-defined distance-tier disappearance event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist3, ptr<Critter> /*disappearedCr*/);
+    // Runs when `targetCr` remains visible but changes visibility mode for this critter.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<Critter> /*targetCr*/, CritterVisibilityMode /*mode*/);
+    // Runs when a map item enters this critter's visibility set; `dropper` is present for a direct critter drop.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapAppeared, ptr<Item> /*item*/, nptr<Critter> /*dropper*/);
+    // Runs when a map item leaves this critter's visibility set; `picker` is present when a critter picks it up.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapDisappeared, ptr<Item> /*item*/, nptr<Critter> /*picker*/);
+    // Runs when a still-visible map item's view-relevant state changes.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, ptr<Item> /*item*/);
+    // Exposes a project-defined talk lifecycle event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTalk, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
+    // Exposes a project-defined barter lifecycle event; Engine does not fire it directly.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 

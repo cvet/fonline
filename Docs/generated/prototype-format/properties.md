@@ -1,158 +1,378 @@
----
-title: Built-in Prototype Properties
-document_id: generated-prototype-format-properties
-locale: en
-generated: true
----
-
 # Built-in Prototype Properties
 
-> Generated reference. Do not edit directly. Update `BuildTools/PrototypeFormatInterface.json` or the owning engine metadata, then run `python BuildTools/docs_prototype_format.py --write`.
+> Legacy route.
 
-[Index](index.md) | [Syntax](syntax.md) | [Properties](properties.md) | [Validation](validation.md) | [Canonical JSON](../prototype-format.json) | [Authoring guide](../../PrototypeFormat.md)
+The canonical generated reference moved to locale-specific paths.
 
-The engine declares 4 built-in `HasProtos` entity types and 113 properties for them. 92 properties can be loaded from prototype text at this revision.
-
-A property marked `no` is virtual or temporary and fails when authored on a side where it exists. A server-only key is skipped in client/mapper output, and a client-only key is skipped in server output.
+[English](../../en/reference/prototype-format/properties.md) | [Russian](../../ru/reference/prototype-format/properties.md)
 
 ## Built-in entity types
 
-| Stable ID | Type | Section | Sides | Authorable properties | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-entity-critter-b78012ef46"></a><code>prototype-format.entity.Critter</code> | <code>Critter</code> | <code>[ProtoCritter]</code> | <code>server</code>, <code>client</code>, <code>mapper</code> | 21 | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L48) |
-| <a id="entry-prototype-format-entity-item-3ec0b6f699"></a><code>prototype-format.entity.Item</code> | <code>Item</code> | <code>[ProtoItem]</code> | <code>server</code>, <code>client</code>, <code>mapper</code> | 52 | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L49) |
-| <a id="entry-prototype-format-entity-location-49f2bea1b5"></a><code>prototype-format.entity.Location</code> | <code>Location</code> | <code>[ProtoLocation]</code> | <code>server</code>, <code>client</code>, <code>mapper</code> | 5 | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L46) |
-| <a id="entry-prototype-format-entity-map-074d2f2b33"></a><code>prototype-format.entity.Map</code> | <code>Map</code> | <code>[ProtoMap]</code> | <code>server</code>, <code>client</code>, <code>mapper</code> | 14 | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L47) |
+Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).
+
+<a id="entry-prototype-format-entity-critter-b78012ef46"></a>
+- [`entry-prototype-format-entity-critter-b78012ef46`](../../en/reference/prototype-format/properties.md#entry-prototype-format-entity-critter-b78012ef46)
+
+<a id="entry-prototype-format-entity-item-3ec0b6f699"></a>
+- [`entry-prototype-format-entity-item-3ec0b6f699`](../../en/reference/prototype-format/properties.md#entry-prototype-format-entity-item-3ec0b6f699)
+
+<a id="entry-prototype-format-entity-location-49f2bea1b5"></a>
+- [`entry-prototype-format-entity-location-49f2bea1b5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-entity-location-49f2bea1b5)
+
+<a id="entry-prototype-format-entity-map-074d2f2b33"></a>
+- [`entry-prototype-format-entity-map-074d2f2b33`](../../en/reference/prototype-format/properties.md#entry-prototype-format-entity-map-074d2f2b33)
 
 ## `Critter` properties
 
-| Property | Type | Authorable | Sides | Flags | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-property-critter-attachmaster-a6108c7a7d"></a><code>AttachMaster</code> | <code>ident</code> | no (temporary) | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L268) |
-| <a id="entry-prototype-format-property-critter-condition-5259461323"></a><code>Condition</code> | <code>CritterCondition</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L277) |
-| <a id="entry-prototype-format-property-critter-controlledbyplayer-3e06d8389f"></a><code>ControlledByPlayer</code> | <code>bool</code> | no (temporary) | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L260) |
-| <a id="entry-prototype-format-property-critter-customholderentry-9126acbc81"></a><code>CustomHolderEntry</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L87) |
-| <a id="entry-prototype-format-property-critter-customholderid-d80a9e3b91"></a><code>CustomHolderId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L85) |
-| <a id="entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd"></a><code>DeadDrawNoFlatten</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L284) |
-| <a id="entry-prototype-format-property-critter-dir-dc6dd071ec"></a><code>Dir</code> | <code>mdir</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L241) |
-| <a id="entry-prototype-format-property-critter-elevation-348f58841f"></a><code>Elevation</code> | <code>int16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L239) |
-| <a id="entry-prototype-format-property-critter-explicitlypersistent-a0e7fe0cc7"></a><code>ExplicitlyPersistent</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L89) |
-| <a id="entry-prototype-format-property-critter-globalmaptripid-e47e6a85b2"></a><code>GlobalMapTripId</code> | <code>uint32</code> | no (temporary) | <code>server</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L233) |
-| <a id="entry-prototype-format-property-critter-hex-80ed5b8a0e"></a><code>Hex</code> | <code>mpos</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L235) |
-| <a id="entry-prototype-format-property-critter-hexoffset-da9f8c9e88"></a><code>HexOffset</code> | <code>ipos16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L237) |
-| <a id="entry-prototype-format-property-critter-hidesprite-27a4219061"></a><code>HideSprite</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L270) |
-| <a id="entry-prototype-format-property-critter-initscript-5f98394535"></a><code>InitScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>CritterInit</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L229) |
-| <a id="entry-prototype-format-property-critter-isattached-daa4bd2770"></a><code>IsAttached</code> | <code>bool</code> | no (temporary) | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L266) |
-| <a id="entry-prototype-format-property-critter-ischosen-5f80c42528"></a><code>IsChosen</code> | <code>bool</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L262) |
-| <a id="entry-prototype-format-property-critter-isplayeroffline-6b7fb01f65"></a><code>IsPlayerOffline</code> | <code>bool</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L264) |
-| <a id="entry-prototype-format-property-critter-itemids-9a998a52b3"></a><code>ItemIds</code> | <code>ident[]</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L243) |
-| <a id="entry-prototype-format-property-critter-lightcolor-7884284406"></a><code>LightColor</code> | <code>ucolor</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L294) |
-| <a id="entry-prototype-format-property-critter-lightdistance-4a62a970ba"></a><code>LightDistance</code> | <code>int16</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L290) |
-| <a id="entry-prototype-format-property-critter-lightflags-d8ed306da5"></a><code>LightFlags</code> | <code>uint16</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L292) |
-| <a id="entry-prototype-format-property-critter-lightintensity-e63302bed7"></a><code>LightIntensity</code> | <code>int8</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L288) |
-| <a id="entry-prototype-format-property-critter-lightsource-6951bc8699"></a><code>LightSource</code> | <code>bool</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L286) |
-| <a id="entry-prototype-format-property-critter-lookdistance-e0651c7907"></a><code>LookDistance</code> | <code>int32</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>OwnerSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L281) |
-| <a id="entry-prototype-format-property-critter-mapid-d94485d4d9"></a><code>MapId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L231) |
-| <a id="entry-prototype-format-property-critter-modellayers-64d25ac417"></a><code>ModelLayers</code> | <code>int32[]</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L257) |
-| <a id="entry-prototype-format-property-critter-modelname-23153dd766"></a><code>ModelName</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>Resource</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L245) |
-| <a id="entry-prototype-format-property-critter-movingspeed-e475938cbf"></a><code>MovingSpeed</code> | <code>int32</code> | no (temporary) | <code>server</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L272) |
-| <a id="entry-prototype-format-property-critter-multihex-aa01190876"></a><code>Multihex</code> | <code>int32</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L247) |
-| <a id="entry-prototype-format-property-critter-nameoffset-8dede7778e"></a><code>NameOffset</code> | <code>int16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L279) |
-| <a id="entry-prototype-format-property-critter-scalefactor-71891b8814"></a><code>ScaleFactor</code> | <code>int32</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L249) |
-| <a id="entry-prototype-format-property-critter-showcritterdist1-09cb39a6e0"></a><code>ShowCritterDist1</code> | <code>int32</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L251) |
-| <a id="entry-prototype-format-property-critter-showcritterdist2-f7e4a127f5"></a><code>ShowCritterDist2</code> | <code>int32</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L253) |
-| <a id="entry-prototype-format-property-critter-showcritterdist3-156904971f"></a><code>ShowCritterDist3</code> | <code>int32</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L255) |
-| <a id="entry-prototype-format-property-critter-visibilitymode-42263efa59"></a><code>VisibilityMode</code> | <code>CritterVisibilityMode</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L274) |
+Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).
+
+<a id="entry-prototype-format-property-critter-attachmaster-a6108c7a7d"></a>
+- [`entry-prototype-format-property-critter-attachmaster-a6108c7a7d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-attachmaster-a6108c7a7d)
+
+<a id="entry-prototype-format-property-critter-condition-5259461323"></a>
+- [`entry-prototype-format-property-critter-condition-5259461323`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-condition-5259461323)
+
+<a id="entry-prototype-format-property-critter-controlledbyplayer-3e06d8389f"></a>
+- [`entry-prototype-format-property-critter-controlledbyplayer-3e06d8389f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-controlledbyplayer-3e06d8389f)
+
+<a id="entry-prototype-format-property-critter-customholderentry-9126acbc81"></a>
+- [`entry-prototype-format-property-critter-customholderentry-9126acbc81`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-customholderentry-9126acbc81)
+
+<a id="entry-prototype-format-property-critter-customholderid-d80a9e3b91"></a>
+- [`entry-prototype-format-property-critter-customholderid-d80a9e3b91`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-customholderid-d80a9e3b91)
+
+<a id="entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd"></a>
+- [`entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd)
+
+<a id="entry-prototype-format-property-critter-dir-dc6dd071ec"></a>
+- [`entry-prototype-format-property-critter-dir-dc6dd071ec`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-dir-dc6dd071ec)
+
+<a id="entry-prototype-format-property-critter-elevation-348f58841f"></a>
+- [`entry-prototype-format-property-critter-elevation-348f58841f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-elevation-348f58841f)
+
+<a id="entry-prototype-format-property-critter-explicitlypersistent-a0e7fe0cc7"></a>
+- [`entry-prototype-format-property-critter-explicitlypersistent-a0e7fe0cc7`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-explicitlypersistent-a0e7fe0cc7)
+
+<a id="entry-prototype-format-property-critter-globalmaptripid-e47e6a85b2"></a>
+- [`entry-prototype-format-property-critter-globalmaptripid-e47e6a85b2`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-globalmaptripid-e47e6a85b2)
+
+<a id="entry-prototype-format-property-critter-hex-80ed5b8a0e"></a>
+- [`entry-prototype-format-property-critter-hex-80ed5b8a0e`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-hex-80ed5b8a0e)
+
+<a id="entry-prototype-format-property-critter-hexoffset-da9f8c9e88"></a>
+- [`entry-prototype-format-property-critter-hexoffset-da9f8c9e88`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-hexoffset-da9f8c9e88)
+
+<a id="entry-prototype-format-property-critter-hidesprite-27a4219061"></a>
+- [`entry-prototype-format-property-critter-hidesprite-27a4219061`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-hidesprite-27a4219061)
+
+<a id="entry-prototype-format-property-critter-initscript-5f98394535"></a>
+- [`entry-prototype-format-property-critter-initscript-5f98394535`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-initscript-5f98394535)
+
+<a id="entry-prototype-format-property-critter-isattached-daa4bd2770"></a>
+- [`entry-prototype-format-property-critter-isattached-daa4bd2770`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-isattached-daa4bd2770)
+
+<a id="entry-prototype-format-property-critter-ischosen-5f80c42528"></a>
+- [`entry-prototype-format-property-critter-ischosen-5f80c42528`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-ischosen-5f80c42528)
+
+<a id="entry-prototype-format-property-critter-isplayeroffline-6b7fb01f65"></a>
+- [`entry-prototype-format-property-critter-isplayeroffline-6b7fb01f65`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-isplayeroffline-6b7fb01f65)
+
+<a id="entry-prototype-format-property-critter-itemids-9a998a52b3"></a>
+- [`entry-prototype-format-property-critter-itemids-9a998a52b3`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-itemids-9a998a52b3)
+
+<a id="entry-prototype-format-property-critter-lightcolor-7884284406"></a>
+- [`entry-prototype-format-property-critter-lightcolor-7884284406`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lightcolor-7884284406)
+
+<a id="entry-prototype-format-property-critter-lightdistance-4a62a970ba"></a>
+- [`entry-prototype-format-property-critter-lightdistance-4a62a970ba`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lightdistance-4a62a970ba)
+
+<a id="entry-prototype-format-property-critter-lightflags-d8ed306da5"></a>
+- [`entry-prototype-format-property-critter-lightflags-d8ed306da5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lightflags-d8ed306da5)
+
+<a id="entry-prototype-format-property-critter-lightintensity-e63302bed7"></a>
+- [`entry-prototype-format-property-critter-lightintensity-e63302bed7`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lightintensity-e63302bed7)
+
+<a id="entry-prototype-format-property-critter-lightsource-6951bc8699"></a>
+- [`entry-prototype-format-property-critter-lightsource-6951bc8699`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lightsource-6951bc8699)
+
+<a id="entry-prototype-format-property-critter-lookdistance-e0651c7907"></a>
+- [`entry-prototype-format-property-critter-lookdistance-e0651c7907`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-lookdistance-e0651c7907)
+
+<a id="entry-prototype-format-property-critter-mapid-d94485d4d9"></a>
+- [`entry-prototype-format-property-critter-mapid-d94485d4d9`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-mapid-d94485d4d9)
+
+<a id="entry-prototype-format-property-critter-modellayers-64d25ac417"></a>
+- [`entry-prototype-format-property-critter-modellayers-64d25ac417`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-modellayers-64d25ac417)
+
+<a id="entry-prototype-format-property-critter-modelname-23153dd766"></a>
+- [`entry-prototype-format-property-critter-modelname-23153dd766`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-modelname-23153dd766)
+
+<a id="entry-prototype-format-property-critter-movingspeed-e475938cbf"></a>
+- [`entry-prototype-format-property-critter-movingspeed-e475938cbf`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-movingspeed-e475938cbf)
+
+<a id="entry-prototype-format-property-critter-multihex-aa01190876"></a>
+- [`entry-prototype-format-property-critter-multihex-aa01190876`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-multihex-aa01190876)
+
+<a id="entry-prototype-format-property-critter-nameoffset-8dede7778e"></a>
+- [`entry-prototype-format-property-critter-nameoffset-8dede7778e`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-nameoffset-8dede7778e)
+
+<a id="entry-prototype-format-property-critter-scalefactor-71891b8814"></a>
+- [`entry-prototype-format-property-critter-scalefactor-71891b8814`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-scalefactor-71891b8814)
+
+<a id="entry-prototype-format-property-critter-showcritterdist1-09cb39a6e0"></a>
+- [`entry-prototype-format-property-critter-showcritterdist1-09cb39a6e0`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-showcritterdist1-09cb39a6e0)
+
+<a id="entry-prototype-format-property-critter-showcritterdist2-f7e4a127f5"></a>
+- [`entry-prototype-format-property-critter-showcritterdist2-f7e4a127f5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-showcritterdist2-f7e4a127f5)
+
+<a id="entry-prototype-format-property-critter-showcritterdist3-156904971f"></a>
+- [`entry-prototype-format-property-critter-showcritterdist3-156904971f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-showcritterdist3-156904971f)
+
+<a id="entry-prototype-format-property-critter-visibilitymode-42263efa59"></a>
+- [`entry-prototype-format-property-critter-visibilitymode-42263efa59`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-visibilitymode-42263efa59)
 
 ## `Item` properties
 
-| Property | Type | Authorable | Sides | Flags | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-property-item-alwayshidesprite-f14d559974"></a><code>AlwaysHideSprite</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L157) |
-| <a id="entry-prototype-format-property-item-colorize-d669f495bc"></a><code>Colorize</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L214) |
-| <a id="entry-prototype-format-property-item-colorizecolor-a8160cf1ee"></a><code>ColorizeColor</code> | <code>ucolor</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L179) |
-| <a id="entry-prototype-format-property-item-containerid-025dd7ffee"></a><code>ContainerId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L121) |
-| <a id="entry-prototype-format-property-item-containerstack-9f2e0010ce"></a><code>ContainerStack</code> | <code>any</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L123) |
-| <a id="entry-prototype-format-property-item-corner-9383a06c1f"></a><code>Corner</code> | <code>CornerType</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L136) |
-| <a id="entry-prototype-format-property-item-count-64aa4941c6"></a><code>Count</code> | <code>int32</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L130) |
-| <a id="entry-prototype-format-property-item-critterid-d326a60244"></a><code>CritterId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L115) |
-| <a id="entry-prototype-format-property-item-critterslot-9fcb03a6ce"></a><code>CritterSlot</code> | <code>CritterItemSlot</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L119) |
-| <a id="entry-prototype-format-property-item-customholderentry-4a632f9347"></a><code>CustomHolderEntry</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L87) |
-| <a id="entry-prototype-format-property-item-customholderid-214071879e"></a><code>CustomHolderId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L85) |
-| <a id="entry-prototype-format-property-item-disableegg-394b88db77"></a><code>DisableEgg</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L138) |
-| <a id="entry-prototype-format-property-item-drawflatten-738501d0c9"></a><code>DrawFlatten</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L201) |
-| <a id="entry-prototype-format-property-item-drawmultihexlines-c8c865d6c9"></a><code>DrawMultihexLines</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L147) |
-| <a id="entry-prototype-format-property-item-drawmultihexmesh-0948bebba1"></a><code>DrawMultihexMesh</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L149) |
-| <a id="entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48"></a><code>DrawOrderOffsetHexY</code> | <code>int8</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L203) |
-| <a id="entry-prototype-format-property-item-elevation-8bd1e0f4b7"></a><code>Elevation</code> | <code>int16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L112) |
-| <a id="entry-prototype-format-property-item-explicitlypersistent-9d64bed347"></a><code>ExplicitlyPersistent</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L89) |
-| <a id="entry-prototype-format-property-item-hex-8f6f30ae5d"></a><code>Hex</code> | <code>mpos</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L110) |
-| <a id="entry-prototype-format-property-item-hidden-e344a2b7be"></a><code>Hidden</code> | <code>bool</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L152) |
-| <a id="entry-prototype-format-property-item-hidesprite-6f5c6169ab"></a><code>HideSprite</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L154) |
-| <a id="entry-prototype-format-property-item-initscript-b74ba5ec5c"></a><code>InitScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>ItemInit</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L100) |
-| <a id="entry-prototype-format-property-item-inneritemids-21ea33784b"></a><code>InnerItemIds</code> | <code>ident[]</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L126) |
-| <a id="entry-prototype-format-property-item-isgag-a633edbd03"></a><code>IsGag</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L211) |
-| <a id="entry-prototype-format-property-item-isrooftile-24c7bbc381"></a><code>IsRoofTile</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L196) |
-| <a id="entry-prototype-format-property-item-isscenery-c23ec5a5f5"></a><code>IsScenery</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L190) |
-| <a id="entry-prototype-format-property-item-istile-1203a9dd09"></a><code>IsTile</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L194) |
-| <a id="entry-prototype-format-property-item-istrigger-025e127efc"></a><code>IsTrigger</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L186) |
-| <a id="entry-prototype-format-property-item-iswall-3bb5d58483"></a><code>IsWall</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L192) |
-| <a id="entry-prototype-format-property-item-lightcolor-427c3a1a70"></a><code>LightColor</code> | <code>ucolor</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L177) |
-| <a id="entry-prototype-format-property-item-lightdistance-668d15d126"></a><code>LightDistance</code> | <code>int16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L173) |
-| <a id="entry-prototype-format-property-item-lightflags-7b87f66b77"></a><code>LightFlags</code> | <code>uint16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L175) |
-| <a id="entry-prototype-format-property-item-lightintensity-a8d9498927"></a><code>LightIntensity</code> | <code>int8</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L171) |
-| <a id="entry-prototype-format-property-item-lightsource-0e20e7d415"></a><code>LightSource</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L169) |
-| <a id="entry-prototype-format-property-item-lightthru-bc99f4b9d4"></a><code>LightThru</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L166) |
-| <a id="entry-prototype-format-property-item-mapid-f21bf54d13"></a><code>MapId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L108) |
-| <a id="entry-prototype-format-property-item-multihexgeneration-d2baf2fb67"></a><code>MultihexGeneration</code> | <code>MultihexGenerationType</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L145) |
-| <a id="entry-prototype-format-property-item-multihexlines-7f060a87b2"></a><code>MultihexLines</code> | <code>uint8[]</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L141) |
-| <a id="entry-prototype-format-property-item-multihexmesh-90e7cf4883"></a><code>MultihexMesh</code> | <code>mpos[]</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L143) |
-| <a id="entry-prototype-format-property-item-noblock-3b7259993f"></a><code>NoBlock</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L160) |
-| <a id="entry-prototype-format-property-item-nohighlight-bbbf8084f3"></a><code>NoHighlight</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L206) |
-| <a id="entry-prototype-format-property-item-nolightinfluence-1b7afb0e62"></a><code>NoLightInfluence</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L209) |
-| <a id="entry-prototype-format-property-item-offset-28b47c3296"></a><code>Offset</code> | <code>ipos16</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L134) |
-| <a id="entry-prototype-format-property-item-ownership-a6ea84c098"></a><code>Ownership</code> | <code>ItemOwnership</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L106) |
-| <a id="entry-prototype-format-property-item-picinv-7af576d753"></a><code>PicInv</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>Resource</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L188) |
-| <a id="entry-prototype-format-property-item-picmap-622c6b3152"></a><code>PicMap</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>Resource</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L132) |
-| <a id="entry-prototype-format-property-item-shootthru-b7cd48fca5"></a><code>ShootThru</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L163) |
-| <a id="entry-prototype-format-property-item-stackable-7c665f0124"></a><code>Stackable</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L128) |
-| <a id="entry-prototype-format-property-item-static-facb8f116d"></a><code>Static</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L103) |
-| <a id="entry-prototype-format-property-item-staticscript-39d7c84ac8"></a><code>StaticScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>ItemStatic</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L182) |
-| <a id="entry-prototype-format-property-item-tilelayer-b2f79c3759"></a><code>TileLayer</code> | <code>uint8</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L198) |
-| <a id="entry-prototype-format-property-item-triggerscript-84ffc5e053"></a><code>TriggerScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>ItemTrigger</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L184) |
+Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).
+
+<a id="entry-prototype-format-property-item-alwayshidesprite-f14d559974"></a>
+- [`entry-prototype-format-property-item-alwayshidesprite-f14d559974`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-alwayshidesprite-f14d559974)
+
+<a id="entry-prototype-format-property-item-colorize-d669f495bc"></a>
+- [`entry-prototype-format-property-item-colorize-d669f495bc`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-colorize-d669f495bc)
+
+<a id="entry-prototype-format-property-item-colorizecolor-a8160cf1ee"></a>
+- [`entry-prototype-format-property-item-colorizecolor-a8160cf1ee`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-colorizecolor-a8160cf1ee)
+
+<a id="entry-prototype-format-property-item-containerid-025dd7ffee"></a>
+- [`entry-prototype-format-property-item-containerid-025dd7ffee`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-containerid-025dd7ffee)
+
+<a id="entry-prototype-format-property-item-containerstack-9f2e0010ce"></a>
+- [`entry-prototype-format-property-item-containerstack-9f2e0010ce`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-containerstack-9f2e0010ce)
+
+<a id="entry-prototype-format-property-item-corner-9383a06c1f"></a>
+- [`entry-prototype-format-property-item-corner-9383a06c1f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-corner-9383a06c1f)
+
+<a id="entry-prototype-format-property-item-count-64aa4941c6"></a>
+- [`entry-prototype-format-property-item-count-64aa4941c6`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-count-64aa4941c6)
+
+<a id="entry-prototype-format-property-item-critterid-d326a60244"></a>
+- [`entry-prototype-format-property-item-critterid-d326a60244`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-critterid-d326a60244)
+
+<a id="entry-prototype-format-property-item-critterslot-9fcb03a6ce"></a>
+- [`entry-prototype-format-property-item-critterslot-9fcb03a6ce`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-critterslot-9fcb03a6ce)
+
+<a id="entry-prototype-format-property-item-customholderentry-4a632f9347"></a>
+- [`entry-prototype-format-property-item-customholderentry-4a632f9347`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-customholderentry-4a632f9347)
+
+<a id="entry-prototype-format-property-item-customholderid-214071879e"></a>
+- [`entry-prototype-format-property-item-customholderid-214071879e`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-customholderid-214071879e)
+
+<a id="entry-prototype-format-property-item-disableegg-394b88db77"></a>
+- [`entry-prototype-format-property-item-disableegg-394b88db77`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-disableegg-394b88db77)
+
+<a id="entry-prototype-format-property-item-drawflatten-738501d0c9"></a>
+- [`entry-prototype-format-property-item-drawflatten-738501d0c9`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-drawflatten-738501d0c9)
+
+<a id="entry-prototype-format-property-item-drawmultihexlines-c8c865d6c9"></a>
+- [`entry-prototype-format-property-item-drawmultihexlines-c8c865d6c9`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-drawmultihexlines-c8c865d6c9)
+
+<a id="entry-prototype-format-property-item-drawmultihexmesh-0948bebba1"></a>
+- [`entry-prototype-format-property-item-drawmultihexmesh-0948bebba1`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-drawmultihexmesh-0948bebba1)
+
+<a id="entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48"></a>
+- [`entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48)
+
+<a id="entry-prototype-format-property-item-elevation-8bd1e0f4b7"></a>
+- [`entry-prototype-format-property-item-elevation-8bd1e0f4b7`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-elevation-8bd1e0f4b7)
+
+<a id="entry-prototype-format-property-item-explicitlypersistent-9d64bed347"></a>
+- [`entry-prototype-format-property-item-explicitlypersistent-9d64bed347`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-explicitlypersistent-9d64bed347)
+
+<a id="entry-prototype-format-property-item-hex-8f6f30ae5d"></a>
+- [`entry-prototype-format-property-item-hex-8f6f30ae5d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-hex-8f6f30ae5d)
+
+<a id="entry-prototype-format-property-item-hidden-e344a2b7be"></a>
+- [`entry-prototype-format-property-item-hidden-e344a2b7be`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-hidden-e344a2b7be)
+
+<a id="entry-prototype-format-property-item-hidesprite-6f5c6169ab"></a>
+- [`entry-prototype-format-property-item-hidesprite-6f5c6169ab`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-hidesprite-6f5c6169ab)
+
+<a id="entry-prototype-format-property-item-initscript-b74ba5ec5c"></a>
+- [`entry-prototype-format-property-item-initscript-b74ba5ec5c`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-initscript-b74ba5ec5c)
+
+<a id="entry-prototype-format-property-item-inneritemids-21ea33784b"></a>
+- [`entry-prototype-format-property-item-inneritemids-21ea33784b`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-inneritemids-21ea33784b)
+
+<a id="entry-prototype-format-property-item-isgag-a633edbd03"></a>
+- [`entry-prototype-format-property-item-isgag-a633edbd03`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-isgag-a633edbd03)
+
+<a id="entry-prototype-format-property-item-isrooftile-24c7bbc381"></a>
+- [`entry-prototype-format-property-item-isrooftile-24c7bbc381`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-isrooftile-24c7bbc381)
+
+<a id="entry-prototype-format-property-item-isscenery-c23ec5a5f5"></a>
+- [`entry-prototype-format-property-item-isscenery-c23ec5a5f5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-isscenery-c23ec5a5f5)
+
+<a id="entry-prototype-format-property-item-istile-1203a9dd09"></a>
+- [`entry-prototype-format-property-item-istile-1203a9dd09`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-istile-1203a9dd09)
+
+<a id="entry-prototype-format-property-item-istrigger-025e127efc"></a>
+- [`entry-prototype-format-property-item-istrigger-025e127efc`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-istrigger-025e127efc)
+
+<a id="entry-prototype-format-property-item-iswall-3bb5d58483"></a>
+- [`entry-prototype-format-property-item-iswall-3bb5d58483`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-iswall-3bb5d58483)
+
+<a id="entry-prototype-format-property-item-lightcolor-427c3a1a70"></a>
+- [`entry-prototype-format-property-item-lightcolor-427c3a1a70`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightcolor-427c3a1a70)
+
+<a id="entry-prototype-format-property-item-lightdistance-668d15d126"></a>
+- [`entry-prototype-format-property-item-lightdistance-668d15d126`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightdistance-668d15d126)
+
+<a id="entry-prototype-format-property-item-lightflags-7b87f66b77"></a>
+- [`entry-prototype-format-property-item-lightflags-7b87f66b77`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightflags-7b87f66b77)
+
+<a id="entry-prototype-format-property-item-lightintensity-a8d9498927"></a>
+- [`entry-prototype-format-property-item-lightintensity-a8d9498927`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightintensity-a8d9498927)
+
+<a id="entry-prototype-format-property-item-lightsource-0e20e7d415"></a>
+- [`entry-prototype-format-property-item-lightsource-0e20e7d415`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightsource-0e20e7d415)
+
+<a id="entry-prototype-format-property-item-lightthru-bc99f4b9d4"></a>
+- [`entry-prototype-format-property-item-lightthru-bc99f4b9d4`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-lightthru-bc99f4b9d4)
+
+<a id="entry-prototype-format-property-item-mapid-f21bf54d13"></a>
+- [`entry-prototype-format-property-item-mapid-f21bf54d13`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-mapid-f21bf54d13)
+
+<a id="entry-prototype-format-property-item-multihexgeneration-d2baf2fb67"></a>
+- [`entry-prototype-format-property-item-multihexgeneration-d2baf2fb67`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-multihexgeneration-d2baf2fb67)
+
+<a id="entry-prototype-format-property-item-multihexlines-7f060a87b2"></a>
+- [`entry-prototype-format-property-item-multihexlines-7f060a87b2`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-multihexlines-7f060a87b2)
+
+<a id="entry-prototype-format-property-item-multihexmesh-90e7cf4883"></a>
+- [`entry-prototype-format-property-item-multihexmesh-90e7cf4883`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-multihexmesh-90e7cf4883)
+
+<a id="entry-prototype-format-property-item-noblock-3b7259993f"></a>
+- [`entry-prototype-format-property-item-noblock-3b7259993f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-noblock-3b7259993f)
+
+<a id="entry-prototype-format-property-item-nohighlight-bbbf8084f3"></a>
+- [`entry-prototype-format-property-item-nohighlight-bbbf8084f3`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-nohighlight-bbbf8084f3)
+
+<a id="entry-prototype-format-property-item-nolightinfluence-1b7afb0e62"></a>
+- [`entry-prototype-format-property-item-nolightinfluence-1b7afb0e62`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-nolightinfluence-1b7afb0e62)
+
+<a id="entry-prototype-format-property-item-offset-28b47c3296"></a>
+- [`entry-prototype-format-property-item-offset-28b47c3296`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-offset-28b47c3296)
+
+<a id="entry-prototype-format-property-item-ownership-a6ea84c098"></a>
+- [`entry-prototype-format-property-item-ownership-a6ea84c098`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-ownership-a6ea84c098)
+
+<a id="entry-prototype-format-property-item-picinv-7af576d753"></a>
+- [`entry-prototype-format-property-item-picinv-7af576d753`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-picinv-7af576d753)
+
+<a id="entry-prototype-format-property-item-picmap-622c6b3152"></a>
+- [`entry-prototype-format-property-item-picmap-622c6b3152`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-picmap-622c6b3152)
+
+<a id="entry-prototype-format-property-item-shootthru-b7cd48fca5"></a>
+- [`entry-prototype-format-property-item-shootthru-b7cd48fca5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-shootthru-b7cd48fca5)
+
+<a id="entry-prototype-format-property-item-stackable-7c665f0124"></a>
+- [`entry-prototype-format-property-item-stackable-7c665f0124`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-stackable-7c665f0124)
+
+<a id="entry-prototype-format-property-item-static-facb8f116d"></a>
+- [`entry-prototype-format-property-item-static-facb8f116d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-static-facb8f116d)
+
+<a id="entry-prototype-format-property-item-staticscript-39d7c84ac8"></a>
+- [`entry-prototype-format-property-item-staticscript-39d7c84ac8`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-staticscript-39d7c84ac8)
+
+<a id="entry-prototype-format-property-item-tilelayer-b2f79c3759"></a>
+- [`entry-prototype-format-property-item-tilelayer-b2f79c3759`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-tilelayer-b2f79c3759)
+
+<a id="entry-prototype-format-property-item-triggerscript-84ffc5e053"></a>
+- [`entry-prototype-format-property-item-triggerscript-84ffc5e053`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-triggerscript-84ffc5e053)
 
 ## `Location` properties
 
-| Property | Type | Authorable | Sides | Flags | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-property-location-customholderentry-a07d53de81"></a><code>CustomHolderEntry</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L87) |
-| <a id="entry-prototype-format-property-location-customholderid-49e67993e4"></a><code>CustomHolderId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L85) |
-| <a id="entry-prototype-format-property-location-explicitlypersistent-a558aed5c5"></a><code>ExplicitlyPersistent</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L89) |
-| <a id="entry-prototype-format-property-location-initscript-7112a1f36f"></a><code>InitScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>LocationInit</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L360) |
-| <a id="entry-prototype-format-property-location-mapids-2b7e103526"></a><code>MapIds</code> | <code>ident[]</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L362) |
+Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).
+
+<a id="entry-prototype-format-property-location-customholderentry-a07d53de81"></a>
+- [`entry-prototype-format-property-location-customholderentry-a07d53de81`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-location-customholderentry-a07d53de81)
+
+<a id="entry-prototype-format-property-location-customholderid-49e67993e4"></a>
+- [`entry-prototype-format-property-location-customholderid-49e67993e4`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-location-customholderid-49e67993e4)
+
+<a id="entry-prototype-format-property-location-explicitlypersistent-a558aed5c5"></a>
+- [`entry-prototype-format-property-location-explicitlypersistent-a558aed5c5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-location-explicitlypersistent-a558aed5c5)
+
+<a id="entry-prototype-format-property-location-initscript-7112a1f36f"></a>
+- [`entry-prototype-format-property-location-initscript-7112a1f36f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-location-initscript-7112a1f36f)
+
+<a id="entry-prototype-format-property-location-mapids-2b7e103526"></a>
+- [`entry-prototype-format-property-location-mapids-2b7e103526`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-location-mapids-2b7e103526)
 
 ## `Map` properties
 
-| Property | Type | Authorable | Sides | Flags | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-prototype-format-property-map-critterids-b7ebac223d"></a><code>CritterIds</code> | <code>ident[]</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L315) |
-| <a id="entry-prototype-format-property-map-customholderentry-b7263bf0f4"></a><code>CustomHolderEntry</code> | <code>hstring</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L87) |
-| <a id="entry-prototype-format-property-map-customholderid-980e507222"></a><code>CustomHolderId</code> | <code>ident</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L85) |
-| <a id="entry-prototype-format-property-map-daycolor-af5f1faa0e"></a><code>DayColor</code> | <code>uint8[]</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L337) |
-| <a id="entry-prototype-format-property-map-daycolortime-4a83486387"></a><code>DayColorTime</code> | <code>int32[]</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L335) |
-| <a id="entry-prototype-format-property-map-explicitlypersistent-9ef9567adf"></a><code>ExplicitlyPersistent</code> | <code>bool</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L89) |
-| <a id="entry-prototype-format-property-map-fixeddaytime-db507cabf9"></a><code>FixedDayTime</code> | <code>int32</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L332) |
-| <a id="entry-prototype-format-property-map-globaldaycolor-0075dc55e2"></a><code>GlobalDayColor</code> | <code>ucolor</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L341) |
-| <a id="entry-prototype-format-property-map-globaldaylightcapacity-f76deb0269"></a><code>GlobalDayLightCapacity</code> | <code>int32</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L345) |
-| <a id="entry-prototype-format-property-map-initscript-71336fc6a3"></a><code>InitScript</code> | <code>hstring</code> | yes | <code>server</code> | <code>Mutable</code>, <code>Persistent</code>, <code>ScriptFuncType</code>, <code>=</code>, <code>MapInit</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L309) |
-| <a id="entry-prototype-format-property-map-itemids-c945947d7a"></a><code>ItemIds</code> | <code>ident[]</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L317) |
-| <a id="entry-prototype-format-property-map-locid-0ccbddb6df"></a><code>LocId</code> | <code>ident</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L311) |
-| <a id="entry-prototype-format-property-map-locmapindex-f7e1bf34b3"></a><code>LocMapIndex</code> | <code>int32</code> | yes | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L313) |
-| <a id="entry-prototype-format-property-map-mapdaycolor-9405c19300"></a><code>MapDayColor</code> | <code>ucolor</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L339) |
-| <a id="entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d"></a><code>MapDayLightCapacity</code> | <code>int32</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L343) |
-| <a id="entry-prototype-format-property-map-scrollaxialarea-592636e933"></a><code>ScrollAxialArea</code> | <code>irect</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L325) |
-| <a id="entry-prototype-format-property-map-scrolloffset-be7cd227e9"></a><code>ScrollOffset</code> | <code>ipos</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L323) |
-| <a id="entry-prototype-format-property-map-size-485c0c2c7f"></a><code>Size</code> | <code>msize</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L319) |
-| <a id="entry-prototype-format-property-map-spriteszoom-78f904ae40"></a><code>SpritesZoom</code> | <code>float32</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L327) |
-| <a id="entry-prototype-format-property-map-spriteszoomtarget-ed81c6c3b2"></a><code>SpritesZoomTarget</code> | <code>float32</code> | no (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L329) |
-| <a id="entry-prototype-format-property-map-workhex-a21dcbefe4"></a><code>WorkHex</code> | <code>mpos</code> | yes | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L321) |
+Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).
+
+<a id="entry-prototype-format-property-map-critterids-b7ebac223d"></a>
+- [`entry-prototype-format-property-map-critterids-b7ebac223d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-critterids-b7ebac223d)
+
+<a id="entry-prototype-format-property-map-customholderentry-b7263bf0f4"></a>
+- [`entry-prototype-format-property-map-customholderentry-b7263bf0f4`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-customholderentry-b7263bf0f4)
+
+<a id="entry-prototype-format-property-map-customholderid-980e507222"></a>
+- [`entry-prototype-format-property-map-customholderid-980e507222`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-customholderid-980e507222)
+
+<a id="entry-prototype-format-property-map-daycolor-af5f1faa0e"></a>
+- [`entry-prototype-format-property-map-daycolor-af5f1faa0e`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-daycolor-af5f1faa0e)
+
+<a id="entry-prototype-format-property-map-daycolortime-4a83486387"></a>
+- [`entry-prototype-format-property-map-daycolortime-4a83486387`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-daycolortime-4a83486387)
+
+<a id="entry-prototype-format-property-map-explicitlypersistent-9ef9567adf"></a>
+- [`entry-prototype-format-property-map-explicitlypersistent-9ef9567adf`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-explicitlypersistent-9ef9567adf)
+
+<a id="entry-prototype-format-property-map-fixeddaytime-db507cabf9"></a>
+- [`entry-prototype-format-property-map-fixeddaytime-db507cabf9`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-fixeddaytime-db507cabf9)
+
+<a id="entry-prototype-format-property-map-globaldaycolor-0075dc55e2"></a>
+- [`entry-prototype-format-property-map-globaldaycolor-0075dc55e2`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-globaldaycolor-0075dc55e2)
+
+<a id="entry-prototype-format-property-map-globaldaylightcapacity-f76deb0269"></a>
+- [`entry-prototype-format-property-map-globaldaylightcapacity-f76deb0269`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-globaldaylightcapacity-f76deb0269)
+
+<a id="entry-prototype-format-property-map-initscript-71336fc6a3"></a>
+- [`entry-prototype-format-property-map-initscript-71336fc6a3`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-initscript-71336fc6a3)
+
+<a id="entry-prototype-format-property-map-itemids-c945947d7a"></a>
+- [`entry-prototype-format-property-map-itemids-c945947d7a`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-itemids-c945947d7a)
+
+<a id="entry-prototype-format-property-map-locid-0ccbddb6df"></a>
+- [`entry-prototype-format-property-map-locid-0ccbddb6df`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-locid-0ccbddb6df)
+
+<a id="entry-prototype-format-property-map-locmapindex-f7e1bf34b3"></a>
+- [`entry-prototype-format-property-map-locmapindex-f7e1bf34b3`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-locmapindex-f7e1bf34b3)
+
+<a id="entry-prototype-format-property-map-mapdaycolor-9405c19300"></a>
+- [`entry-prototype-format-property-map-mapdaycolor-9405c19300`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-mapdaycolor-9405c19300)
+
+<a id="entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d"></a>
+- [`entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d)
+
+<a id="entry-prototype-format-property-map-scrollaxialarea-592636e933"></a>
+- [`entry-prototype-format-property-map-scrollaxialarea-592636e933`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-scrollaxialarea-592636e933)
+
+<a id="entry-prototype-format-property-map-scrolloffset-be7cd227e9"></a>
+- [`entry-prototype-format-property-map-scrolloffset-be7cd227e9`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-scrolloffset-be7cd227e9)
+
+<a id="entry-prototype-format-property-map-size-485c0c2c7f"></a>
+- [`entry-prototype-format-property-map-size-485c0c2c7f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-size-485c0c2c7f)
+
+<a id="entry-prototype-format-property-map-spriteszoom-78f904ae40"></a>
+- [`entry-prototype-format-property-map-spriteszoom-78f904ae40`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-spriteszoom-78f904ae40)
+
+<a id="entry-prototype-format-property-map-spriteszoomtarget-ed81c6c3b2"></a>
+- [`entry-prototype-format-property-map-spriteszoomtarget-ed81c6c3b2`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-spriteszoomtarget-ed81c6c3b2)
+
+<a id="entry-prototype-format-property-map-workhex-a21dcbefe4"></a>
+- [`entry-prototype-format-property-map-workhex-a21dcbefe4`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-workhex-a21dcbefe4)

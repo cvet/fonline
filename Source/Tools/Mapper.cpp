@@ -48,6 +48,36 @@ static constexpr string_view MAPPER_IMGUI_SETTINGS_KEY = "ImGuiLayout";
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
+static void SaveMapperTextureToTga(string_view file_path, ptr<RenderTexture> texture)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    isize32 size = texture->Size;
+    vector<ucolor> pixels = texture->GetTextureRegion({0, 0}, size);
+
+    if (texture->FlippedHeight) {
+        size_t width = numeric_cast<size_t>(size.width);
+
+        if (width != 0) {
+            vector<ucolor> row_buf(width);
+            size_t row_bytes = width * sizeof(ucolor);
+
+            for (int32_t y = 0; y < size.height / 2; y++) {
+                size_t top = numeric_cast<size_t>(y) * width;
+                size_t bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
+                ptr<ucolor> row = make_ptr(row_buf.data());
+                ptr<ucolor> top_row = make_ptr(pixels.data() + top);
+                ptr<ucolor> bottom_row = make_ptr(pixels.data() + bottom);
+                MemCopy(row, top_row, row_bytes);
+                MemCopy(top_row, bottom_row, row_bytes);
+                MemCopy(bottom_row, row, row_bytes);
+            }
+        }
+    }
+
+    WriteSimpleTga(file_path, size, std::move(pixels));
+}
+
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); }),
     ParticleEditors {this}
@@ -55,6 +85,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FO_STACK_TRACE_ENTRY();
 
     GetApp()->LoadImGuiEffect(Resources);
+    _appEventUnsubscriber += GetApp()->OnBeforePresent += [this]() FO_DEFERRED { CompletePendingMapperWindowScreenshot(); };
 
     MapsFileSys.AddDirSource("", false, true, true);
 
@@ -493,6 +524,52 @@ void MapperEngine::DrawMapperFrame()
         CurDraw();
 
         SprMngr.EndScene();
+    }
+}
+
+void MapperEngine::SaveMapperScreenshot(string_view file_path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!file_path.empty(), "Screenshot file path is empty");
+
+    DrawMapperFrame();
+
+    nptr<RenderTarget> main_rt = SprMngr.GetMainRenderTarget();
+    FO_VERIFY_AND_THROW(main_rt, "SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
+    SaveMapperTextureToTga(file_path, main_rt->GetTexture());
+}
+
+void MapperEngine::RequestMapperWindowScreenshot(string_view file_path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!file_path.empty(), "Screenshot file path is empty");
+    FO_VERIFY_AND_THROW(_pendingWindowScreenshotPath.empty(), "A mapper window screenshot is already pending", _pendingWindowScreenshotPath);
+    _pendingWindowScreenshotPath = file_path;
+}
+
+void MapperEngine::CompletePendingMapperWindowScreenshot()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_pendingWindowScreenshotPath.empty()) {
+        return;
+    }
+
+    string file_path = std::exchange(_pendingWindowScreenshotPath, {});
+
+    try {
+        nptr<RenderTarget> main_rt = SprMngr.GetMainRenderTarget();
+        FO_VERIFY_AND_THROW(main_rt, "SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
+        ptr<RenderTexture> texture = main_rt->GetTexture();
+        GetApp()->RenderImGuiToTexture(texture);
+        SaveMapperTextureToTga(file_path, texture);
+        WriteLog("Mapper window screenshot saved: {}", file_path);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Mapper window screenshot failed: {} ({})", file_path, ex.what());
+        ReportExceptionAndContinue(ex);
     }
 }
 

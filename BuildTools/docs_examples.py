@@ -1,30 +1,46 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import copy
+import fnmatch
 import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+import docs_localization
+import docs_description_translations
+
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "Examples/PublicRepositories.json"
 DEFAULT_MODEL = "Docs/generated/public-examples.json"
-DEFAULT_INDEX = "Docs/generated/public-examples/index.md"
+DEFAULT_INDEX = "Docs/en/reference/public-examples/index.md"
+RUSSIAN_INDEX = "Docs/ru/reference/public-examples/index.md"
+LEGACY_INDEX = "Docs/generated/public-examples/index.md"
 GENERATED_BY = "BuildTools/docs_examples.py"
-OUTPUT_PATHS = (DEFAULT_INDEX,)
+CANONICAL_OUTPUT_PATHS = (DEFAULT_INDEX,)
+RUSSIAN_OUTPUT_PATHS = (RUSSIAN_INDEX,)
+LEGACY_OUTPUT_PATHS = (LEGACY_INDEX,)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 REPOSITORY_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]*$")
 REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 PLACEHOLDER_PATTERN = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
+ENGINE_PROVENANCE_PATTERN = re.compile(
+    r"^(https://github\.com/[^/]+/fonline/blob/)[0-9a-f]{40}(/.+)$"
+)
 VALID_STATUSES = {"source-ready", "planned", "blocked", "published"}
 VALID_TIERS = {"foundation", "tutorial", "showcase", "advanced"}
 VALID_REMOTE_VISIBILITIES = {"private", "public"}
 VALID_REMOTE_STATES = {"reserved", "source-staged", "published"}
+VALID_REMOTE_CHECK_STATES = {"not-observed", "failing", "passing"}
 VALID_ASSET_POLICIES = {
     "none",
     "project-original-or-permissive",
@@ -63,6 +79,14 @@ def _relative_path(value: object, label: str) -> str:
     if "\\" in path or relative.is_absolute() or ".." in relative.parts:
         raise ValueError(f"{label} must be a repository-relative forward-slash path")
     return path
+
+
+def _relative_pattern(value: object, label: str) -> str:
+    pattern = _required_string(value, label)
+    relative = PurePosixPath(pattern)
+    if "\\" in pattern or relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"{label} must be a repository-relative forward-slash pattern")
+    return pattern
 
 
 def _path(root: Path, relative: str) -> Path:
@@ -214,20 +238,50 @@ def _validate_repositories(root: Path, raw: object, program: dict[str, Any]) -> 
         visibility = _required_string(remote.get("visibility"), f"{label}.remote.visibility")
         remote_state = _required_string(remote.get("state"), f"{label}.remote.state")
         created_on = _required_string(remote.get("created_on"), f"{label}.remote.created_on")
+        verified_on = _required_string(remote.get("verified_on"), f"{label}.remote.verified_on")
+        default_branch = _required_string(remote.get("default_branch"), f"{label}.remote.default_branch")
+        head_commit = _required_string(remote.get("head_commit"), f"{label}.remote.head_commit")
+        checks_state = _required_string(
+            remote.get("required_checks_state"),
+            f"{label}.remote.required_checks_state",
+        )
         if visibility not in VALID_REMOTE_VISIBILITIES:
             raise ValueError(f"unsupported {label}.remote.visibility: {visibility}")
         if remote_state not in VALID_REMOTE_STATES:
             raise ValueError(f"unsupported {label}.remote.state: {remote_state}")
-        try:
-            date.fromisoformat(created_on)
-        except ValueError as error:
-            raise ValueError(f"{label}.remote.created_on must be an ISO date") from error
+        if checks_state not in VALID_REMOTE_CHECK_STATES:
+            raise ValueError(f"unsupported {label}.remote.required_checks_state: {checks_state}")
+        if default_branch != program["default_branch"]:
+            raise ValueError(f"{label}.remote.default_branch must match program.default_branch")
+        if not REVISION_PATTERN.fullmatch(head_commit):
+            raise ValueError(f"{label}.remote.head_commit must be a 40-character lowercase commit")
+        for field_name, field_value in (("created_on", created_on), ("verified_on", verified_on)):
+            try:
+                date.fromisoformat(field_value)
+            except ValueError as error:
+                raise ValueError(f"{label}.remote.{field_name} must be an ISO date") from error
+        if date.fromisoformat(verified_on) < date.fromisoformat(created_on):
+            raise ValueError(f"{label}.remote.verified_on must not precede created_on")
         if status == "published" and (visibility != "public" or remote_state != "published"):
             raise ValueError(f"{label} published status requires a public, published remote")
+        if status == "published" and checks_state != "passing":
+            raise ValueError(f"{label} published status requires passing required checks")
         if remote_state == "published" and (visibility != "public" or status != "published"):
             raise ValueError(f"{label}.remote published state requires public visibility and published status")
         if remote_state == "source-staged" and status != "source-ready":
             raise ValueError(f"{label}.remote source-staged state requires source-ready status")
+        engine_revision = remote.get("engine_revision")
+        if remote_state == "reserved" and engine_revision is not None:
+            raise ValueError(f"{label}.remote.engine_revision requires staged source")
+        if remote_state != "reserved":
+            normalized_engine_revision = _required_string(
+                engine_revision,
+                f"{label}.remote.engine_revision",
+            )
+            if not REVISION_PATTERN.fullmatch(normalized_engine_revision):
+                raise ValueError(
+                    f"{label}.remote.engine_revision must be a 40-character lowercase commit"
+                )
         source_path = repository.get("source_path")
         if source_path is not None:
             normalized_source = _relative_path(source_path, f"{label}.source_path")
@@ -238,6 +292,15 @@ def _validate_repositories(root: Path, raw: object, program: dict[str, Any]) -> 
                 repository.get("source_required_files"),
                 f"{label}.source_required_files",
             )
+            source_excludes = _string_list(
+                repository.get("source_excludes"),
+                f"{label}.source_excludes",
+                allow_empty=True,
+            )
+            normalized_excludes = [
+                _relative_pattern(pattern, f"{label}.source_excludes entry")
+                for pattern in source_excludes
+            ]
             for source_required_file in source_required_files:
                 normalized_required_file = _relative_path(
                     source_required_file,
@@ -248,8 +311,19 @@ def _validate_repositories(root: Path, raw: object, program: dict[str, Any]) -> 
                         f"{label}.source_required_files path does not exist: "
                         f"{normalized_source}/{normalized_required_file}"
                     )
+                if _matches_source_exclusion(normalized_required_file, normalized_excludes):
+                    raise ValueError(
+                        f"{label}.source_required_files path is excluded from staging: "
+                        f"{normalized_required_file}"
+                    )
+            _required_string(repository.get("display_name"), f"{label}.display_name")
+            _required_string(repository.get("primary_check"), f"{label}.primary_check")
         elif "source_required_files" in repository:
             raise ValueError(f"{label}.source_required_files requires source_path")
+        elif "source_excludes" in repository or "primary_check" in repository:
+            raise ValueError(f"{label}.source_excludes and primary_check require source_path")
+        else:
+            _required_string(repository.get("display_name"), f"{label}.display_name")
         _required_string(repository.get("purpose"), f"{label}.purpose")
         _required_string(repository.get("exit_gate"), f"{label}.exit_gate")
         _string_list(repository.get("capabilities"), f"{label}.capabilities")
@@ -325,6 +399,32 @@ def _escape(value: object) -> str:
 def render_index(model: dict[str, Any]) -> str:
     program = model["program"]
     compatibility = program["compatibility"]
+    summary = model["summary"]
+    required_check_states = ", ".join(sorted({
+        str(repository["remote"]["required_checks_state"])
+        for repository in model["repositories"]
+    }))
+    observed_engine_pins = ", ".join(
+        f"`{_escape(repository['id'])}`="
+        + (
+            f"`{_escape(repository['remote']['engine_revision'])}`"
+            if repository["remote"].get("engine_revision")
+            else "not observed"
+        )
+        for repository in model["repositories"]
+    )
+    current_repository_rows = [
+        f"- `{_escape(repository['id'])}`: source `{_escape(repository['status'])}`; "
+        f"remote `{_escape(repository['remote']['visibility'])}` / "
+        f"`{_escape(repository['remote']['state'])}`; Engine pin "
+        + (
+            f"`{_escape(repository['remote']['engine_revision'])}`"
+            if repository["remote"].get("engine_revision")
+            else "not observed"
+        )
+        + f"; required checks `{_escape(repository['remote']['required_checks_state'])}`."
+        for repository in model["repositories"]
+    ]
     lines = [
         "---",
         "title: Generated Public Example Repository Registry",
@@ -337,7 +437,7 @@ def render_index(model: dict[str, Any]) -> str:
         "",
         "> Generated reference. Do not edit this page directly. Update `Examples/PublicRepositories.json` or the governance overlay, then run `python BuildTools/docs_examples.py --write`.",
         "",
-        "[Human policy](../../PublicExampleRepositories.md) | [Canonical JSON](../public-examples.json) | [Source registry](../../../Examples/PublicRepositories.json)",
+        "[Human policy](../../how-to/build/public-example-repositories.md) | [Canonical JSON](../../../generated/public-examples.json) | [Source registry](../../../../Examples/PublicRepositories.json)",
         "",
         "This registry describes illustrative embedding-project repositories. Engine behavior remains normative only in Engine source, tests, and owning documentation.",
         "",
@@ -351,6 +451,18 @@ def render_index(model: dict[str, Any]) -> str:
         f"| Development ref | `{_escape(compatibility['development_engine_ref'])}` ({_escape(compatibility['scheduled_cadence'])}) |",
         f"| Update delivery | `{_escape(compatibility['update_delivery'])}` |",
         f"| Contract digest | `{_escape(model['contract_digest'])}` |",
+        "",
+        "## Publication evidence",
+        "",
+        "Read each repository's source status, remote visibility/state, observed required-check state, exact Engine pin, update-delivery policy, and Contract digest together. Only `published` source with a `public` / `published` remote and `passing` observed checks is publication evidence. A private, reserved, source-staged, planned, or not-observed row remains pre-publication evidence even when its source is ready.",
+        "",
+        "## Current registry state",
+        "",
+        f"- Source/remote: `{summary['source_ready_count']}` source-ready, `{summary['private_count']}` private, and `{summary['published_count']}` published repositories.",
+        f"- Observed required-check states: `{_escape(required_check_states)}`.",
+        f"- Observed Engine pins: {observed_engine_pins}.",
+        f"- Program values required in the same report: release Engine ref `{_escape(compatibility['release_engine_ref'])}`, update delivery `{_escape(compatibility['update_delivery'])}`, Contract digest `{_escape(model['contract_digest'])}`.",
+        *current_repository_rows,
         "",
         "## Portfolio",
         "",
@@ -372,12 +484,21 @@ def render_index(model: dict[str, Any]) -> str:
             "",
             f"## {_escape(repository['repository'])}",
             "",
-            f"Stable ID: `{_escape(repository['id'])}`  ",
-            f"Engine-owned source: {source_path}  ",
-            f"Remote: `{_escape(repository['remote']['visibility'])}` / `{_escape(repository['remote']['state'])}` "
-            f"(created `{_escape(repository['remote']['created_on'])}`)  ",
-            f"Dependencies: {dependencies}  ",
-            f"Asset policy: `{_escape(repository['asset_policy'])}`",
+            f"- Stable ID: `{_escape(repository['id'])}`",
+            f"- Engine-owned source: {source_path}",
+            f"- Remote: `{_escape(repository['remote']['visibility'])}` / "
+            f"`{_escape(repository['remote']['state'])}` (created `{_escape(repository['remote']['created_on'])}`)",
+            f"- Remote observation: `{_escape(repository['remote']['verified_on'])}`, "
+            f"branch `{_escape(repository['remote']['default_branch'])}`, "
+            f"head `{_escape(repository['remote']['head_commit'])}`, "
+            f"required checks `{_escape(repository['remote']['required_checks_state'])}`",
+            *(
+                [f"- Observed Engine pin: `{_escape(repository['remote']['engine_revision'])}`"]
+                if repository['remote'].get('engine_revision')
+                else []
+            ),
+            f"- Dependencies: {dependencies}",
+            f"- Asset policy: `{_escape(repository['asset_policy'])}`",
             "",
             "Capabilities:",
             "",
@@ -392,16 +513,118 @@ def render_index(model: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+RUSSIAN_REPLACEMENTS = {
+    "Generated Public Example Repository Registry": "Сгенерированный реестр публичных репозиториев-примеров",
+    "> Generated reference. Do not edit this page directly. Update `Examples/PublicRepositories.json` or the governance overlay, then run `python BuildTools/docs_examples.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `Examples/PublicRepositories.json` или управляющий overlay, затем выполните `python BuildTools/docs_examples.py --write`.",
+    "[Human policy](../../how-to/build/public-example-repositories.md) | [Canonical JSON](../../../generated/public-examples.json) | [Source registry](../../../../Examples/PublicRepositories.json)":
+        "[Политика для разработчиков](../../how-to/build/public-example-repositories.md) | [Канонический JSON](../../../generated/public-examples.json) | [Исходный реестр](../../../../Examples/PublicRepositories.json)",
+    "This registry describes illustrative embedding-project repositories. Engine behavior remains normative only in Engine source, tests, and owning documentation.":
+        "Этот реестр описывает демонстрационные репозитории встраивающих проектов. Нормативное поведение движка определяется только исходным кодом Engine, тестами и документацией-владельцем.",
+    "## Program contract": "## Контракт программы",
+    "## Publication evidence": "## Свидетельства публикации",
+    "Read each repository's source status, remote visibility/state, observed required-check state, exact Engine pin, update-delivery policy, and Contract digest together. Only `published` source with a `public` / `published` remote and `passing` observed checks is publication evidence. A private, reserved, source-staged, planned, or not-observed row remains pre-publication evidence even when its source is ready.":
+        "Проверяйте вместе source status каждого репозитория, visibility/state remote, состояние наблюдённых required checks, точный Engine pin, политику update delivery и Contract digest. Свидетельством публикации является только source со статусом `published`, remote `public` / `published` и наблюдёнными checks `passing`. Строка private, reserved, source-staged, planned или not-observed остаётся предпубликационным свидетельством, даже если её исходники готовы.",
+    "## Current registry state": "## Текущее состояние реестра",
+    "- Source/remote:": "- Source/remote:",
+    "- Observed required-check states:": "- Наблюдённые состояния required checks:",
+    "- Observed Engine pins:": "- Наблюдённые Engine pins:",
+    "- Program values required in the same report:": "- Значения программы, обязательные в том же отчёте:",
+    "## Portfolio": "## Портфель",
+    "| Field | Value |": "| Поле | Значение |",
+    "| Order | Repository | Tier | Source status | Remote | Owner | Purpose |":
+        "| Порядок | Репозиторий | Уровень | Статус исходников | Remote | Владелец | Назначение |",
+    "| Organization |": "| Организация |",
+    "| Engine repository |": "| Репозиторий движка |",
+    "| Release Engine ref |": "| Ревизия Engine для релиза |",
+    "| Development ref |": "| Ревизия для разработки |",
+    "| Update delivery |": "| Доставка обновлений |",
+    "| Contract digest |": "| Digest контракта |",
+    "- Stable ID:": "- Стабильный ID:",
+    "- Engine-owned source:": "- Исходники под ответственностью Engine:",
+    "- Remote:": "- Remote:",
+    "- Remote observation:": "- Наблюдение remote:",
+    "- Observed Engine pin:": "- Зафиксированная ревизия Engine:",
+    "- Dependencies:": "- Зависимости:",
+    "- Asset policy:": "- Политика ресурсов:",
+    "Capabilities:": "Возможности:",
+    "Required checks:": "Обязательные проверки:",
+    "Exit gate:": "Критерий завершения:",
+    "Not assigned": "Не назначено",
+    "None": "Нет",
+}
+
+
+def render_russian_index(english_content: str, russian_base_content: str) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        RUSSIAN_REPLACEMENTS.items(), key=lambda item: -len(item[0])
+    ):
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated public examples page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        "generated-public-examples-index",
+        DEFAULT_INDEX,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def render_legacy_index(english_content: str) -> str:
+    english_path = "../../en/reference/public-examples/index.md"
+    russian_path = "../../ru/reference/public-examples/index.md"
+    lines = [
+        "# Generated Public Example Repository Registry",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in english_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def render_outputs(root: Path, manifest_relative_path: str = DEFAULT_MANIFEST) -> dict[str, str]:
     model_content = render_model(root, manifest_relative_path)
     model = json.loads(model_content)
+    english_content = render_index(model)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "public-examples",
+        model,
+    )
+    russian_base_content = render_index(russian_model)
     return {
         DEFAULT_MODEL: model_content,
-        DEFAULT_INDEX: render_index(model),
+        DEFAULT_INDEX: english_content,
+        RUSSIAN_INDEX: render_russian_index(english_content, russian_base_content),
+        LEGACY_INDEX: render_legacy_index(english_content),
     }
 
 
-def _validate_provenance(path: Path, repository_root: Path, *, require_files: bool) -> None:
+def _validate_provenance(
+    path: Path,
+    repository_root: Path,
+    *,
+    require_files: bool,
+    allowed_missing_prefixes: tuple[str, ...] = (),
+) -> None:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or raw.get("schema_version") != 1:
         raise ValueError(f"asset provenance schema_version must be 1: {path}")
@@ -427,10 +650,194 @@ def _validate_provenance(path: Path, repository_root: Path, *, require_files: bo
             raise ValueError(f"{label}.source must be project-original or an HTTPS URL")
         if not re.fullmatch(r"[0-9a-f]{64}", sha256):
             raise ValueError(f"{label}.sha256 must be a lowercase SHA-256 digest")
-        if require_files and not _path(repository_root, asset_path).is_file():
-            raise ValueError(f"asset provenance path does not exist: {asset_path}")
+        asset_file = _path(repository_root, asset_path)
+        allowed_missing = any(
+            asset_path == prefix or asset_path.startswith(prefix + "/")
+            for prefix in allowed_missing_prefixes
+        )
+        if require_files:
+            if not asset_file.is_file() and not allowed_missing:
+                raise ValueError(f"asset provenance path does not exist: {asset_path}")
+            if not asset_file.is_file():
+                ids.add(asset_id)
+                paths.add(asset_path)
+                continue
+            actual_sha256 = hashlib.sha256(asset_file.read_bytes()).hexdigest()
+            if actual_sha256 != sha256:
+                raise ValueError(
+                    f"asset provenance digest does not match {asset_path}: "
+                    f"expected {sha256}, actual {actual_sha256}"
+                )
         ids.add(asset_id)
         paths.add(asset_path)
+
+
+def _matches_source_exclusion(relative_path: str, patterns: list[str]) -> bool:
+    if ".git" in PurePosixPath(relative_path).parts:
+        return True
+    for pattern in patterns:
+        if pattern.endswith("/**"):
+            prefix = pattern[:-3].rstrip("/")
+            if relative_path == prefix or relative_path.startswith(prefix + "/"):
+                return True
+        if fnmatch.fnmatchcase(relative_path, pattern):
+            return True
+    return False
+
+
+def _is_link(path: Path) -> bool:
+    return path.is_symlink() or bool(getattr(path, "is_junction", lambda: False)())
+
+
+def _copy_repository_source(source_root: Path, output_root: Path, exclusions: list[str]) -> int:
+    copied = 0
+    for current_root, directory_names, file_names in os.walk(source_root, followlinks=False):
+        current = Path(current_root)
+        relative_current = current.relative_to(source_root)
+        retained_directories: list[str] = []
+        for directory_name in sorted(directory_names):
+            candidate = current / directory_name
+            relative = (relative_current / directory_name).as_posix()
+            if _matches_source_exclusion(relative, exclusions):
+                continue
+            if _is_link(candidate):
+                raise ValueError(f"source staging refuses directory links: {relative}")
+            retained_directories.append(directory_name)
+        directory_names[:] = retained_directories
+
+        for file_name in sorted(file_names):
+            source_path = current / file_name
+            relative = (relative_current / file_name).as_posix()
+            if _matches_source_exclusion(relative, exclusions):
+                continue
+            if _is_link(source_path):
+                raise ValueError(f"source staging refuses file links: {relative}")
+            destination_relative = "TUTORIAL.md" if relative == "README.md" else relative
+            destination_path = _path(output_root, destination_relative)
+            if destination_path.exists():
+                raise ValueError(f"source staging destination collision: {destination_relative}")
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path, destination_path)
+            copied += 1
+    return copied
+
+
+def _render_template_file(source_path: Path, replacements: dict[str, str]) -> str:
+    text = source_path.read_text(encoding="utf-8")
+    for placeholder, value in replacements.items():
+        text = text.replace(placeholder, value)
+    unresolved = sorted(set(PLACEHOLDER_PATTERN.findall(text)))
+    if unresolved:
+        raise ValueError(f"unresolved publication placeholders in {source_path.name}: {unresolved}")
+    return text
+
+
+def _pin_engine_provenance(path: Path, engine_revision: str) -> None:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or not isinstance(raw.get("assets"), list):
+        raise ValueError(f"asset provenance is not a valid object: {path}")
+    changed = False
+    for asset in raw["assets"]:
+        if not isinstance(asset, dict) or not isinstance(asset.get("source"), str):
+            continue
+        source = asset["source"]
+        match = ENGINE_PROVENANCE_PATTERN.fullmatch(source)
+        if match is not None:
+            asset["source"] = f"{match.group(1)}{engine_revision}{match.group(2)}"
+            changed = True
+    if changed:
+        path.write_text(
+            json.dumps(raw, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+
+
+def stage_repository(
+    engine_root: Path,
+    repository_id: str,
+    output_root: Path,
+    engine_revision: str,
+    *,
+    check_engine_git: bool = True,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, object]:
+    if not REVISION_PATTERN.fullmatch(engine_revision):
+        raise ValueError("staged Engine revision must be an exact lowercase 40-character commit")
+    model = generate_model(engine_root, manifest_relative_path)
+    repositories = {str(repository["id"]): repository for repository in model["repositories"]}
+    if repository_id not in repositories:
+        raise ValueError(f"unknown public example repository id: {repository_id}")
+    repository = repositories[repository_id]
+    if repository["status"] != "source-ready" or not repository.get("source_path"):
+        raise ValueError(f"public example repository is not source-ready: {repository_id}")
+    if check_engine_git:
+        _validate_staging_engine_revision(engine_root, engine_revision)
+
+    source_root = _path(engine_root, str(repository["source_path"])).resolve()
+    output_root = output_root.resolve()
+    if output_root.exists():
+        raise ValueError(f"source staging output already exists: {output_root}")
+    if output_root == source_root or source_root in output_root.parents:
+        raise ValueError("source staging output must be outside the example source directory")
+
+    program = model["program"]
+    publication = program["publication"]
+    repository_slug = str(repository["repository"]).split("/", 1)[1]
+    replacements = {
+        "{{CODEOWNER}}": f"@{program['organization']}",
+        "{{ENGINE_REVISION}}": engine_revision,
+        "{{PRIMARY_CHECK_COMMAND}}": str(repository["primary_check"]),
+        "{{REPOSITORY_ID}}": repository_id,
+        "{{REPOSITORY_NAME}}": str(repository["display_name"]),
+        "{{REPOSITORY_SLUG}}": repository_slug,
+        "{{SUMMARY}}": str(repository["purpose"]),
+    }
+    exclusions = [str(pattern) for pattern in repository.get("source_excludes", [])]
+    output_root.mkdir(parents=True)
+    try:
+        source_file_count = _copy_repository_source(source_root, output_root, exclusions)
+        template_root = _path(engine_root, str(publication["template_path"]))
+        for source, destination in publication["copy_files"].items():
+            destination_path = _path(output_root, destination)
+            if destination == publication["asset_provenance_path"] and destination_path.is_file():
+                continue
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            destination_path.write_text(
+                _render_template_file(_path(template_root, source), replacements),
+                encoding="utf-8",
+                newline="\n",
+            )
+        provenance_path = _path(output_root, str(publication["asset_provenance_path"]))
+        _pin_engine_provenance(provenance_path, engine_revision)
+        _validate_provenance(
+            provenance_path,
+            output_root,
+            require_files=True,
+            allowed_missing_prefixes=("Engine",),
+        )
+        for relative_path in publication["required_files"]:
+            required_path = _path(output_root, relative_path)
+            if not required_path.is_file():
+                raise ValueError(f"required staged repository file is missing: {relative_path}")
+            unresolved = PLACEHOLDER_PATTERN.findall(required_path.read_text(encoding="utf-8"))
+            if unresolved:
+                raise ValueError(
+                    f"unresolved publication placeholders in {relative_path}: "
+                    f"{sorted(set(unresolved))}"
+                )
+    except Exception:
+        shutil.rmtree(output_root)
+        raise
+
+    return {
+        "repository_id": repository_id,
+        "repository": str(repository["repository"]),
+        "engine_revision": engine_revision,
+        "output_root": str(output_root),
+        "source_file_count": source_file_count,
+        "governance_file_count": len(publication["copy_files"]),
+    }
 
 
 def _run_git(repository_root: Path, *arguments: str) -> str:
@@ -446,6 +853,48 @@ def _run_git(repository_root: Path, *arguments: str) -> str:
     if result.returncode != 0:
         raise ValueError(f"git {' '.join(arguments)} failed: {result.stderr.strip()}")
     return result.stdout.strip()
+
+
+def _validate_staging_engine_revision(engine_root: Path, engine_revision: str) -> None:
+    checkout_revision = _run_git(engine_root, "rev-parse", "HEAD")
+    if checkout_revision != engine_revision:
+        raise ValueError(
+            "staged Engine revision must match the current Engine checkout: "
+            f"requested {engine_revision}, checkout {checkout_revision}"
+        )
+    dirty = _run_git(engine_root, "status", "--porcelain", "--untracked-files=all")
+    if dirty:
+        first_path = dirty.splitlines()[0]
+        raise ValueError(
+            "source staging requires a clean Engine working tree; "
+            f"first pending path: {first_path}"
+        )
+    remote_branches = _run_git(engine_root, "branch", "-r", "--contains", engine_revision)
+    if not remote_branches:
+        raise ValueError(
+            "staged Engine revision is not contained by a fetched remote-tracking branch; "
+            "fetch and publish the Engine change before materializing a release candidate"
+        )
+
+
+def _validate_gitmodules(path: Path, submodule_path: str, engine_url: str) -> None:
+    if not path.is_file():
+        raise ValueError("required public example repository file is missing: .gitmodules")
+    parser = configparser.ConfigParser(interpolation=None)
+    try:
+        parser.read_string(path.read_text(encoding="utf-8"))
+    except configparser.Error as error:
+        raise ValueError(f".gitmodules must be valid INI: {error}") from error
+    matching_sections = [
+        section
+        for section in parser.sections()
+        if section.startswith('submodule "') and parser.get(section, "path", fallback="") == submodule_path
+    ]
+    if len(matching_sections) != 1:
+        raise ValueError(f".gitmodules must define exactly one submodule path for {submodule_path}")
+    actual_url = parser.get(matching_sections[0], "url", fallback="")
+    if actual_url != engine_url:
+        raise ValueError(f".gitmodules Engine URL must be {engine_url}")
 
 
 def verify_repository(
@@ -484,6 +933,7 @@ def verify_repository(
     if not REVISION_PATTERN.fullmatch(revision):
         raise ValueError("example repository Engine revision must be an exact lowercase 40-character commit")
     submodule_path = _relative_path(engine.get("submodule_path"), "example-repository.json engine.submodule_path")
+    _validate_gitmodules(repository_root / ".gitmodules", submodule_path, str(program["engine_clone_url"]))
     _required_string(metadata.get("primary_check"), "example-repository.json primary_check")
     if metadata.get("asset_provenance") != publication["asset_provenance_path"]:
         raise ValueError("example repository asset_provenance path does not match the program registry")
@@ -523,7 +973,7 @@ def verify_repository(
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate and validate the FOnline public example repository program")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST)
@@ -531,10 +981,33 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--verify-repository", type=Path)
+    mode.add_argument("--stage-repository", metavar="ID")
     parser.add_argument("--engine-mode", choices=("pinned", "current"), default="pinned")
-    args = parser.parse_args(argv)
+    parser.add_argument("--engine-revision")
+    parser.add_argument("--output", type=Path)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = create_parser().parse_args(argv)
     root = args.root.resolve()
     try:
+        if args.stage_repository is not None:
+            if args.engine_revision is None or args.output is None:
+                raise ValueError("--stage-repository requires --engine-revision and --output")
+            result = stage_repository(
+                root,
+                args.stage_repository,
+                args.output,
+                args.engine_revision,
+                manifest_relative_path=args.manifest,
+            )
+            print(
+                f"Staged public example repository source: {result['repository']} at "
+                f"{result['output_root']} ({result['source_file_count']} source files, "
+                f"Engine {result['engine_revision']})"
+            )
+            return 0
         if args.verify_repository is not None:
             result = verify_repository(root, args.verify_repository, args.engine_mode, manifest_relative_path=args.manifest)
             print(

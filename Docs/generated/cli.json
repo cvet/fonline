@@ -21,8 +21,8 @@
   },
   "program": "buildtools.py",
   "description": "Shared BuildTools helpers",
-  "usage": "usage: buildtools.py [-h]\n                     {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
-  "help_output": "usage: buildtools.py [-h]\n                     {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
+  "usage": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
+  "help_output": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
   "global_arguments": [],
   "commands": [
     {
@@ -30,8 +30,8 @@
       "name": "env",
       "summary": "resolve BuildTools environment",
       "description": null,
-      "usage": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary]\n                         [--summary-only]",
-      "help_output": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary]\n                         [--summary-only]\n\noptions:\n  -h, --help            show this help message and exit\n  --shell {bash,cmd,plain}\n                        environment output syntax\n  --summary             append the resolved environment summary\n  --summary-only        print only the resolved environment summary\n",
+      "usage": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]",
+      "help_output": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]\n\noptions:\n  -h, --help            show this help message and exit\n  --shell {bash,cmd,plain}\n                        environment output syntax\n  --summary             append the resolved environment summary\n  --summary-only        print only the resolved environment summary\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.env.argument.shell",
@@ -93,7 +93,7 @@
       "summary": "configure and build a target",
       "description": null,
       "usage": "usage: buildtools.py build [-h] platform target [config]",
-      "help_output": "usage: buildtools.py build [-h] platform target [config]\n\npositional arguments:\n  platform    engine platform key, such as linux, win64, web, or android-arm64\n  target      BuildTools target profile, such as client, server, baker, or\n              unit-tests\n  config      CMake build configuration\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "help_output": "usage: buildtools.py build [-h] platform target [config]\n\npositional arguments:\n  platform    engine platform key, such as linux, win64, web, or android-arm64\n  target      BuildTools target profile, such as client, server, baker, or unit-tests\n  config      CMake build configuration\n\noptions:\n  -h, --help  show this help message and exit\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.build.argument.platform",
@@ -296,8 +296,8 @@
       "name": "prepare-workspace",
       "summary": "prepare shared workspace parts",
       "description": null,
-      "usage": "usage: buildtools.py prepare-workspace [-h] [--check]\n                                       {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]",
-      "help_output": "usage: buildtools.py prepare-workspace [-h] [--check]\n                                       {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]\n\npositional arguments:\n  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}\n                        workspace components to prepare\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]",
+      "help_output": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]\n\npositional arguments:\n  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}\n                        workspace components to prepare\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-workspace.argument.parts",
@@ -382,8 +382,8 @@
       "name": "package-android-debug",
       "summary": "package the local android debug client",
       "description": null,
-      "usage": "usage: buildtools.py package-android-debug [-h]\n                                           devname\n                                           {android-arm32,android-arm64,android-x86}\n                                           configs [configs ...]",
-      "help_output": "usage: buildtools.py package-android-debug [-h]\n                                           devname\n                                           {android-arm32,android-arm64,android-x86}\n                                           configs [configs ...]\n\npositional arguments:\n  devname               short project name for binary/directory naming (e.g.\n                        LF)\n  {android-arm32,android-arm64,android-x86}\n                        Android target platform (e.g. android-arm64)\n  configs               config names to package (e.g. LocalTest)\n\noptions:\n  -h, --help            show this help message and exit\n",
+      "usage": "usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]",
+      "help_output": "usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]\n\npositional arguments:\n  devname               short project name for binary/directory naming (e.g. LF)\n  {android-arm32,android-arm64,android-x86}\n                        Android target platform (e.g. android-arm64)\n  configs               config names to package (e.g. LocalTest)\n\noptions:\n  -h, --help            show this help message and exit\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.package-android-debug.argument.devname",
@@ -466,8 +466,8 @@
       "name": "prepare-host-workspace",
       "summary": "prepare host workspace and prerequisites",
       "description": null,
-      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
-      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host\n                        defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
@@ -499,6 +499,7 @@
           "choices": [
             "common-packages",
             "linux-packages",
+            "showcase-display-packages",
             "web-packages",
             "android-packages",
             "windows-cross-packages",
@@ -543,5 +544,5 @@
     "global_argument_count": 0,
     "command_argument_count": 24
   },
-  "contract_digest": "de65387247c562f7232b85e632f7f23ceb35f75e88d35b5989bcdc2fbb2ff6b1"
+  "contract_digest": "7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf"
 }

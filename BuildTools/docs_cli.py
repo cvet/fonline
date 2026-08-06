@@ -6,26 +6,42 @@ import html
 import importlib.util
 import json
 import os
+import re
 import sys
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
 from urllib.parse import quote
+
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_SOURCE = "BuildTools/buildtools.py"
 DEFAULT_MODEL = "Docs/generated/cli.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/cli"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/buildtools"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/buildtools"
+LEGACY_OUTPUT_DIR = "Docs/generated/cli"
 GENERATED_BY = "BuildTools/docs_cli.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
 PROGRAM = "buildtools.py"
+HELP_COLUMNS = 240
 PAGE_DEFINITIONS = (
     ("index.md", "generated-cli-index", "Generated BuildTools CLI Reference"),
     ("commands.md", "generated-cli-commands", "BuildTools Commands"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 
 
 @contextmanager
@@ -33,7 +49,7 @@ def _stable_argparse_environment() -> Iterator[None]:
     previous_argv0 = sys.argv[0]
     previous_columns = os.environ.get("COLUMNS")
     sys.argv[0] = PROGRAM
-    os.environ["COLUMNS"] = "80"
+    os.environ["COLUMNS"] = str(HELP_COLUMNS)
     try:
         yield
     finally:
@@ -108,6 +124,12 @@ def _type_name(action: argparse.Action) -> str | None:
     return name if isinstance(name, str) and name else str(action.type)
 
 
+def _is_required(action: argparse.Action) -> bool:
+    if action.option_strings:
+        return bool(action.required)
+    return action.nargs not in (argparse.OPTIONAL, argparse.ZERO_OR_MORE)
+
+
 def _argument_model(command_id: str, action: argparse.Action) -> dict[str, object]:
     if not action.dest or action.dest == argparse.SUPPRESS:
         raise ValueError(f"Argument in {command_id} must have a stable destination")
@@ -121,7 +143,7 @@ def _argument_model(command_id: str, action: argparse.Action) -> dict[str, objec
         "action": _action_kind(action),
         "option_strings": option_strings,
         "metavar": metavar,
-        "required": bool(action.required),
+        "required": _is_required(action),
         "nargs": 1 if action.nargs is None else _serializable(action.nargs, f"{command_id}.{action.dest}.nargs"),
         "choices": _serializable(choices, f"{command_id}.{action.dest}.choices"),
         "default": _serializable(action.default, f"{command_id}.{action.dest}.default"),
@@ -280,9 +302,123 @@ def _page_header(document_id: str, title: str) -> list[str]:
         "`python BuildTools/docs_cli.py --write`.",
         "",
         "[Reference index](index.md) | [Commands](commands.md) | "
-        "[Canonical JSON model](../cli.json) | [Generation contract](../../GeneratedApiAndMetadata.md)",
+        "[Canonical JSON model](../../../generated/cli.json) | "
+        "[Generation contract](../metadata/)",
         "",
     ]
+
+
+def _render_legacy_page(canonical_path: str, title: str, canonical_content: str) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/buildtools/{filename}"
+    russian_path = f"../../ru/reference/buildtools/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated BuildTools CLI Reference": "Сгенерированный справочник CLI BuildTools",
+    "BuildTools Commands": "Команды BuildTools",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit this page directly. Update `BuildTools/buildtools.py`, then run `python BuildTools/docs_cli.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/buildtools.py`, затем выполните `python BuildTools/docs_cli.py --write`.",
+    "[Reference index](index.md) | [Commands](commands.md) | [Canonical JSON model](../../../generated/cli.json) | [Generation contract](../metadata/)":
+        "[Индекс справочника](index.md) | [Команды](commands.md) | [Каноническая JSON-модель](../../../generated/cli.json) | [Контракт генерации](../metadata/)",
+    "This reference is generated from the same `argparse.ArgumentParser` used by the executable BuildTools entry point. Parser changes therefore make the committed model and pages stale.":
+        "Этот справочник создаётся из того же `argparse.ArgumentParser`, который использует исполняемая точка входа BuildTools. Поэтому изменение парсера делает устаревшими зафиксированную модель и страницы.",
+    "## Contract status": "## Статус контракта",
+    "Stability": "Стабильность",
+    "Since": "Начиная с версии",
+    "Not declared": "Не объявлено",
+    "Support policy": "Политика поддержки",
+    "Source parser": "Исходный парсер",
+    "Contract digest": "Дайджест контракта",
+    "## Coverage": "## Покрытие",
+    "[Commands](commands.md)": "[Команды](commands.md)",
+    "Global arguments": "Глобальные аргументы",
+    "Arguments accepted before a command.": "Аргументы, принимаемые перед командой.",
+    "## Top-level help": "## Справка верхнего уровня",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded from this slice:": "Исключено из этого среза:",
+    "Excluded surfaces remain implementation details until an owning parser-backed contract and compatibility policy are published.":
+        "Исключённые поверхности остаются деталями реализации, пока для них не будут опубликованы владеющий контракт на основе парсера и политика совместимости.",
+    "Run commands from the engine repository root with `python BuildTools/buildtools.py <command>`. The exact usage and help blocks below are emitted by the executable parser.":
+        "Запускайте команды из корня репозитория движка через `python BuildTools/buildtools.py <command>`. Точные блоки usage и справки ниже созданы исполняемым парсером.",
+    "No parser description is declared.": "Описание в парсере не объявлено.",
+    "Stable ID:": "Стабильный ID:",
+    "No command-specific arguments.": "У команды нет собственных аргументов.",
+    "### Exact `--help` output": "### Точный вывод `--help`",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
+    "| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |":
+        "| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    content = re.sub(
+        r"Commands with (\d+) command-specific arguments\.",
+        r"Команды с \1 собственными аргументами.",
+        content,
+    )
+    content = content.replace(" | yes | ", " | да | ").replace(" | no | ", " | нет | ")
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("Generated BuildTools CLI page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
 
 
 def _render_index(model: dict[str, object]) -> str:
@@ -417,7 +553,10 @@ def _render_commands(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("Unsupported generated BuildTools CLI model")
     commands = model.get("commands")
@@ -432,17 +571,37 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("Every BuildTools CLI command and argument must have a unique non-empty ID")
 
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/commands.md": _render_commands(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/commands.md": _render_commands(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path, title, canonical_pages[canonical_path]
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("Generated BuildTools CLI reference page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
 
 
 def render_reference_pages(root: Path, source_relative_path: str = DEFAULT_SOURCE) -> dict[str, str]:
-    return generate_reference_pages(generate_cli_model(root, source_relative_path))
+    model = generate_cli_model(root, source_relative_path)
+    russian_model = docs_description_translations.apply_translations(root, "cli", model)
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -458,7 +617,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_cli_model(root, args.source)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(root, "cli", model)
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate BuildTools CLI documentation: {exception}", file=sys.stderr)
         return 1

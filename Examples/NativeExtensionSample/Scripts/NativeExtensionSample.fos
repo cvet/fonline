@@ -1,0 +1,33 @@
+namespace NativeExtensionSample
+{
+
+string GetSampleName()
+{
+    return "FOnline Native Extension Sample";
+}
+
+#if SERVER
+
+///@ Setting Server bool NativeSample.ExitAfterStart
+
+[[ModuleInit]]
+void InitNativeExtensionSample()
+{
+    Game.OnStart.Subscribe(OnServerStart);
+}
+
+[[Event]]
+void OnServerStart()
+{
+    int32 value = Game.NativeExtensionValue(1);
+    Game.Log("native_extension_value=" + value);
+
+    if (Settings.NativeSample.ExitAfterStart) {
+        Game.Log("native_extension_smoke_passed");
+        Game.RequestQuit(true);
+    }
+}
+
+#endif
+
+}

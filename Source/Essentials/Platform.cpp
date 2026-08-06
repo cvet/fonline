@@ -518,12 +518,12 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
         auto processor_info = make_ptr(raw_processor_info);
         auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
-        auto load_info = make_span(load_info_data, processor_count);
+        const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), processor_count};
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 
         for (natural_t i = 0; i < processor_count; i++) {
-            processor_cpu_load_info_data_t& info = load_info[i];
+            const processor_cpu_load_info_data_t& info = load_info[i];
             uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
             uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
             uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);

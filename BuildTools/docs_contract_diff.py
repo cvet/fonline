@@ -14,10 +14,13 @@ from typing import Any
 
 import docs_api
 import docs_api_diff
+import docs_ai_control_protocol
+import docs_audio
 import docs_cli
 import docs_cmake
 import docs_effect_format
 import docs_font_format
+import docs_gui_runtime
 import docs_helper_cli
 import docs_image_format
 import docs_map_format
@@ -27,6 +30,7 @@ import docs_package
 import docs_particle_format
 import docs_prototype_format
 import docs_text_format
+import docs_video
 
 
 SCHEMA_VERSION = 1
@@ -45,6 +49,10 @@ DOMAIN_ORDER = (
     "image-format",
     "particle-format",
     "font-format",
+    "audio",
+    "video",
+    "gui-runtime",
+    "ai-control-protocol",
 )
 DEFAULT_CURRENT_DIR = "Docs/generated"
 DEFAULT_DISPOSITIONS = docs_api_diff.DEFAULT_DISPOSITIONS
@@ -66,6 +74,10 @@ MODEL_FILES = {
     "image-format": Path(docs_image_format.DEFAULT_MODEL).name,
     "particle-format": Path(docs_particle_format.DEFAULT_MODEL).name,
     "font-format": Path(docs_font_format.DEFAULT_MODEL).name,
+    "audio": Path(docs_audio.DEFAULT_MODEL).name,
+    "video": Path(docs_video.DEFAULT_MODEL).name,
+    "gui-runtime": Path(docs_gui_runtime.DEFAULT_MODEL).name,
+    "ai-control-protocol": Path(docs_ai_control_protocol.DEFAULT_MODEL).name,
 }
 EXPECTED_SCHEMAS = {
     "api": docs_api.SCHEMA_VERSION,
@@ -82,6 +94,10 @@ EXPECTED_SCHEMAS = {
     "image-format": docs_image_format.SCHEMA_VERSION,
     "particle-format": docs_particle_format.SCHEMA_VERSION,
     "font-format": docs_font_format.SCHEMA_VERSION,
+    "audio": docs_audio.SCHEMA_VERSION,
+    "video": docs_video.SCHEMA_VERSION,
+    "gui-runtime": docs_gui_runtime.SCHEMA_VERSION,
+    "ai-control-protocol": docs_ai_control_protocol.SCHEMA_VERSION,
 }
 SOURCE_IDENTITY_FIELDS = {
     "cmake": ("source_manifest",),
@@ -111,6 +127,10 @@ SOURCE_IDENTITY_FIELDS = {
     "image-format": ("source_manifest",),
     "particle-format": ("source_manifest",),
     "font-format": ("source_manifest",),
+    "audio": ("source_manifest",),
+    "video": ("source_manifest",),
+    "gui-runtime": ("source_manifest",),
+    "ai-control-protocol": ("source_manifest",),
 }
 COLLECTIONS = {
     "cmake": ("options", "stages", "helpers"),
@@ -140,6 +160,10 @@ ENTRY_ID_PATTERN = {
     "image-format": re.compile(r"^image-format\."),
     "particle-format": re.compile(r"^particle-format\."),
     "font-format": re.compile(r"^font-format\."),
+    "audio": re.compile(r"^audio\."),
+    "video": re.compile(r"^video\."),
+    "gui-runtime": re.compile(r"^gui-runtime\."),
+    "ai-control-protocol": re.compile(r"^ai-control-protocol\."),
 }
 
 
@@ -348,6 +372,60 @@ def _flatten_entries(domain: str, model: dict[str, Any]) -> list[dict[str, Any]]
                 _require_array(model.get(collection), f"font-format.{collection}")
             ):
                 append_entry(entry, f"font-format.{collection}[{index}]")
+    elif domain == "audio":
+        for collection in (
+            "formats",
+            "delivery_rules",
+            "decoding_rules",
+            "playback_rules",
+            "validation_rules",
+        ):
+            for index, entry in enumerate(
+                _require_array(model.get(collection), f"audio.{collection}")
+            ):
+                append_entry(entry, f"audio.{collection}[{index}]")
+    elif domain == "video":
+        for collection in (
+            "formats",
+            "delivery_rules",
+            "decoding_rules",
+            "fullscreen_rules",
+            "embedded_rules",
+            "validation_rules",
+        ):
+            for index, entry in enumerate(
+                _require_array(model.get(collection), f"video.{collection}")
+            ):
+                append_entry(entry, f"video.{collection}[{index}]")
+    elif domain == "gui-runtime":
+        for collection in (
+            "types",
+            "screen_api",
+            "annotations",
+            "lifecycle_rules",
+            "layout_rules",
+            "input_rules",
+            "integration_rules",
+            "validation_rules",
+        ):
+            for index, entry in enumerate(
+                _require_array(model.get(collection), f"gui-runtime.{collection}")
+            ):
+                append_entry(entry, f"gui-runtime.{collection}[{index}]")
+    elif domain == "ai-control-protocol":
+        for collection in (
+            "wire_rules",
+            "methods",
+            "error_codes",
+            "command_fields",
+            "security_rules",
+            "integration_rules",
+            "validation_rules",
+        ):
+            for index, entry in enumerate(
+                _require_array(model.get(collection), f"ai-control-protocol.{collection}")
+            ):
+                append_entry(entry, f"ai-control-protocol.{collection}[{index}]")
     else:
         raise ContractDiffError(f"Unsupported generic contract domain: {domain}")
 
@@ -493,6 +571,22 @@ def _model_metadata(domain: str, model: dict[str, Any]) -> dict[str, Any]:
             "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
         }
     if domain == "font-format":
+        return {
+            "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
+        }
+    if domain == "audio":
+        return {
+            "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
+        }
+    if domain == "video":
+        return {
+            "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
+        }
+    if domain == "gui-runtime":
+        return {
+            "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
+        }
+    if domain == "ai-control-protocol":
         return {
             "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
         }

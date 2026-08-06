@@ -4,6 +4,8 @@
   var body = document.body;
   var navigationToggle = document.querySelector("[data-nav-toggle]");
   var navigationScrim = document.querySelector("[data-nav-scrim]");
+  var navigationSidebar = document.querySelector(".docs-sidebar");
+  var mobileNavigation = window.matchMedia("(max-width: 900px)");
   var themeToggle = document.querySelector("[data-theme-toggle]");
   var searchDialog = document.querySelector("[data-search-dialog]");
   var searchInput = document.querySelector("[data-search-input]");
@@ -11,24 +13,73 @@
   var searchResults = document.querySelector("[data-search-results]");
   var searchIndex = null;
   var searchIndexPromise = null;
+  var pageLocale = document.documentElement.lang === "ru" ? "ru" : "en";
 
-  function setNavigation(open) {
-    body.classList.toggle("nav-open", open);
+  function ui(english, russian) {
+    return pageLocale === "ru" ? russian : english;
+  }
+
+  function navigationFocusables() {
+    if (!navigationSidebar || !navigationToggle) {
+      return [];
+    }
+    return [navigationToggle].concat(
+      Array.from(
+        navigationSidebar.querySelectorAll(
+          "a[href], button:not([disabled]), summary, input:not([disabled]), [tabindex]:not([tabindex='-1'])"
+        )
+      )
+    );
+  }
+
+  function updateNavigationAccessibility() {
+    if (!navigationSidebar) {
+      return;
+    }
+    var hidden = mobileNavigation.matches && !body.classList.contains("nav-open");
+    navigationSidebar.inert = hidden;
+    if (hidden) {
+      navigationSidebar.setAttribute("aria-hidden", "true");
+    } else {
+      navigationSidebar.removeAttribute("aria-hidden");
+    }
+  }
+
+  function setNavigation(open, restoreFocus) {
+    var willOpen = mobileNavigation.matches && open;
+    var wasOpen = body.classList.contains("nav-open");
+    body.classList.toggle("nav-open", willOpen);
     if (navigationToggle) {
-      navigationToggle.setAttribute("aria-expanded", String(open));
-      navigationToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+      navigationToggle.setAttribute("aria-expanded", String(willOpen));
+      navigationToggle.setAttribute(
+        "aria-label",
+        willOpen
+          ? ui("Close navigation", "Закрыть навигацию")
+          : ui("Open navigation", "Открыть навигацию")
+      );
+    }
+    updateNavigationAccessibility();
+    if (willOpen && navigationSidebar) {
+      var firstSidebarControl = navigationSidebar.querySelector(
+        "button:not([disabled]), a[href], summary, input:not([disabled]), [tabindex]:not([tabindex='-1'])"
+      );
+      if (firstSidebarControl) {
+        firstSidebarControl.focus();
+      }
+    } else if (wasOpen && restoreFocus && navigationToggle) {
+      navigationToggle.focus();
     }
   }
 
   if (navigationToggle) {
     navigationToggle.addEventListener("click", function () {
-      setNavigation(!body.classList.contains("nav-open"));
+      setNavigation(!body.classList.contains("nav-open"), true);
     });
   }
 
   if (navigationScrim) {
     navigationScrim.addEventListener("click", function () {
-      setNavigation(false);
+      setNavigation(false, true);
     });
   }
 
@@ -38,12 +89,22 @@
     });
   });
 
+  mobileNavigation.addEventListener("change", function () {
+    setNavigation(false);
+  });
+  updateNavigationAccessibility();
+
   function updateThemeButton() {
     if (!themeToggle) {
       return;
     }
     var isDark = document.documentElement.dataset.theme === "dark";
-    themeToggle.setAttribute("aria-label", isDark ? "Use light theme" : "Use dark theme");
+    themeToggle.setAttribute(
+      "aria-label",
+      isDark
+        ? ui("Use light theme", "Использовать светлую тему")
+        : ui("Use dark theme", "Использовать тёмную тему")
+    );
   }
 
   if (themeToggle) {
@@ -89,12 +150,12 @@
       var button = document.createElement("button");
       button.type = "button";
       button.className = "copy-code";
-      button.textContent = "Copy";
+      button.textContent = ui("Copy", "Копировать");
       button.addEventListener("click", function () {
         navigator.clipboard.writeText(code.textContent || "").then(function () {
-          button.textContent = "Copied";
+          button.textContent = ui("Copied", "Скопировано");
           window.setTimeout(function () {
-            button.textContent = "Copy";
+            button.textContent = ui("Copy", "Копировать");
           }, 1400);
         });
       });
@@ -102,8 +163,21 @@
     });
   }
 
+  function updateScrollableTables() {
+    document.querySelectorAll(".docs-content table").forEach(function (table) {
+      var isScrollable = table.scrollWidth > table.clientWidth + 1;
+      if (isScrollable) {
+        table.tabIndex = 0;
+        table.dataset.docsScrollable = "true";
+      } else if (table.dataset.docsScrollable === "true") {
+        table.removeAttribute("tabindex");
+        delete table.dataset.docsScrollable;
+      }
+    });
+  }
+
   function tokenize(query) {
-    var matches = query.toLowerCase().match(/[a-z0-9_][a-z0-9_.:+/?<>-]*/g) || [];
+    var matches = query.toLowerCase().match(/[\p{L}\p{N}_][\p{L}\p{N}_.:+/?<>-]*/gu) || [];
     var tokens = [];
     matches.forEach(function (match) {
       var normalized = match.replace(/^[./:+?<>-]+|[./:+?<>-]+$/g, "");
@@ -119,7 +193,10 @@
       return Promise.resolve(searchIndex);
     }
     if (!searchIndexPromise) {
-      searchIndexPromise = fetch(searchDialog.dataset.searchUrl, { credentials: "same-origin" })
+      var searchUrl = pageLocale === "ru" && searchDialog.dataset.searchUrlRu
+        ? searchDialog.dataset.searchUrlRu
+        : searchDialog.dataset.searchUrl;
+      searchIndexPromise = fetch(searchUrl, { credentials: "same-origin" })
         .then(function (response) {
           if (!response.ok) {
             throw new Error("Unable to load search index");
@@ -134,11 +211,10 @@
     return searchIndexPromise;
   }
 
-  function addPostingScores(scores, matches, postings, multiplier) {
+  function collectPostingScores(tokenScores, postings, multiplier) {
     postings.forEach(function (posting) {
       var documentIndex = posting[0];
-      scores.set(documentIndex, (scores.get(documentIndex) || 0) + posting[1] * multiplier);
-      matches.set(documentIndex, (matches.get(documentIndex) || 0) + 1);
+      tokenScores.set(documentIndex, Math.max(tokenScores.get(documentIndex) || 0, posting[1] * multiplier));
     });
   }
 
@@ -150,23 +226,30 @@
     var scores = new Map();
     var matches = new Map();
     var allTerms = Object.keys(index.terms);
+    var effectiveTokenCount = 0;
 
     tokens.forEach(function (token) {
+      var tokenScores = new Map();
       if (index.terms[token]) {
-        addPostingScores(scores, matches, index.terms[token], 1);
-        return;
-      }
-      if (token.length < 3) {
-        return;
-      }
-      var prefixMatches = 0;
-      for (var termIndex = 0; termIndex < allTerms.length && prefixMatches < 32; termIndex += 1) {
-        var term = allTerms[termIndex];
-        if (term.indexOf(token) === 0) {
-          addPostingScores(scores, matches, index.terms[term], 0.55);
-          prefixMatches += 1;
+        collectPostingScores(tokenScores, index.terms[token], 1);
+      } else if (token.length >= 3) {
+        var prefixMatches = 0;
+        for (var termIndex = 0; termIndex < allTerms.length && prefixMatches < 32; termIndex += 1) {
+          var term = allTerms[termIndex];
+          if (term.indexOf(token) === 0) {
+            collectPostingScores(tokenScores, index.terms[term], 0.55);
+            prefixMatches += 1;
+          }
         }
       }
+      if (!tokenScores.size) {
+        return;
+      }
+      effectiveTokenCount += 1;
+      tokenScores.forEach(function (tokenScore, documentIndex) {
+        scores.set(documentIndex, (scores.get(documentIndex) || 0) + tokenScore);
+        matches.set(documentIndex, (matches.get(documentIndex) || 0) + 1);
+      });
     });
 
     var normalizedQuery = query.trim().toLowerCase();
@@ -184,7 +267,7 @@
         return { document: document, score: score, matches: matches.get(documentIndex) || 0 };
       })
       .filter(function (result) {
-        return result.matches >= Math.max(1, tokens.length - 1);
+        return result.matches >= Math.max(1, Math.ceil(effectiveTokenCount * 0.6));
       })
       .sort(function (left, right) {
         return right.matches - left.matches || right.score - left.score || left.document.title.localeCompare(right.document.title);
@@ -205,7 +288,7 @@
       title.className = "search-result-title";
       title.textContent = result.document.title;
       meta.className = "search-result-meta";
-      meta.textContent = result.document.section_title + " / " + result.document.diataxis;
+      meta.textContent = result.document.section_title + " / " + result.document.diataxis_title;
       summary.className = "search-result-summary";
       summary.textContent = result.document.summary || result.document.path;
       link.appendChild(title);
@@ -219,18 +302,26 @@
   function runSearch() {
     var query = searchInput.value.trim();
     if (query.length < 2) {
-      searchStatus.textContent = "Type at least 2 characters.";
+      searchStatus.textContent = ui("Type at least 2 characters.", "Введите не менее 2 символов.");
       searchResults.replaceChildren();
       return;
     }
     loadSearchIndex()
       .then(function (index) {
         var results = searchDocuments(index, query);
-        searchStatus.textContent = results.length ? results.length + " result" + (results.length === 1 ? "" : "s") : "No matching documents.";
+        searchStatus.textContent = results.length
+          ? ui(
+              results.length + " result" + (results.length === 1 ? "" : "s"),
+              "Найдено: " + results.length
+            )
+          : ui("No matching documents.", "Совпадений нет.");
         renderSearchResults(results);
       })
       .catch(function () {
-        searchStatus.textContent = "Search is temporarily unavailable.";
+        searchStatus.textContent = ui(
+          "Search is temporarily unavailable.",
+          "Поиск временно недоступен."
+        );
         searchResults.replaceChildren();
       });
   }
@@ -241,7 +332,10 @@
       searchDialog.showModal();
     }
     loadSearchIndex().catch(function () {
-      searchStatus.textContent = "Search is temporarily unavailable.";
+      searchStatus.textContent = ui(
+        "Search is temporarily unavailable.",
+        "Поиск временно недоступен."
+      );
     });
     window.setTimeout(function () {
       searchInput.focus();
@@ -266,7 +360,24 @@
 
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
-      setNavigation(false);
+      if (searchDialog && searchDialog.open) {
+        searchDialog.close();
+      }
+      setNavigation(false, true);
+    }
+    if (event.key === "Tab" && mobileNavigation.matches && body.classList.contains("nav-open")) {
+      var focusables = navigationFocusables();
+      var currentIndex = focusables.indexOf(document.activeElement);
+      if (focusables.length) {
+        event.preventDefault();
+        var direction = event.shiftKey ? -1 : 1;
+        var nextIndex = currentIndex + direction;
+        if (currentIndex === -1) {
+          nextIndex = event.shiftKey ? focusables.length - 1 : 0;
+        }
+        nextIndex = (nextIndex + focusables.length) % focusables.length;
+        focusables[nextIndex].focus();
+      }
     }
     var target = event.target;
     var isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
@@ -278,4 +389,6 @@
 
   buildTableOfContents();
   addCopyButtons();
+  updateScrollableTables();
+  window.addEventListener("resize", updateScrollableTables);
 }());

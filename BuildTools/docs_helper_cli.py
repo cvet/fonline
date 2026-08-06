@@ -13,12 +13,16 @@ from typing import Any
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/HelperCliInterface.json"
 DEFAULT_MODEL = "Docs/generated/helper-cli.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/helper-cli"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/helper-cli"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/helper-cli"
+LEGACY_OUTPUT_DIR = "Docs/generated/helper-cli"
 GENERATED_BY = "BuildTools/docs_helper_cli.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -26,7 +30,16 @@ PAGE_DEFINITIONS = (
     ("index.md", "generated-helper-cli-index", "Generated Helper CLI Reference"),
     ("commands.md", "generated-helper-cli-commands", "Helper Commands"),
 )
-OUTPUT_PATHS = tuple(f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS)
+CANONICAL_OUTPUT_PATHS = tuple(
+    f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 HELPER_ID_PATTERN = re.compile(r"^helper-cli\.[a-z0-9]+(?:-[a-z0-9]+)*$")
 VALID_STABILITY = {"stable", "experimental", "deprecated", "internal"}
 
@@ -359,9 +372,46 @@ def _page_header(document_id: str, title: str) -> list[str]:
         "or the owning executable parser, then run `python BuildTools/docs_helper_cli.py --write`.",
         "",
         "[Reference index](index.md) | [Commands](commands.md) | "
-        "[Canonical JSON model](../helper-cli.json) | [Generation contract](../../GeneratedApiAndMetadata.md)",
+        "[Canonical JSON model](../../../generated/helper-cli.json) | "
+        "[Generation contract](../metadata/)",
         "",
     ]
+
+
+def _render_legacy_page(canonical_path: str, title: str, canonical_content: str) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/helper-cli/{filename}"
+    russian_path = f"../../ru/reference/helper-cli/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _render_index(model: dict[str, object]) -> str:
@@ -468,12 +518,12 @@ def _render_commands(model: dict[str, object]) -> str:
                 "",
                 str(helper["description"]),
                 "",
-                f"Stable ID: `{helper_id}`  ",
-                f"Program: `{helper['program']}`  ",
-                f"Owner: `{helper['owner']}`  ",
-                f"Audience: {', '.join(f'`{audience}`' for audience in helper['audiences'])}  ",
-                f"Invocation owner: {helper['invocation_owner']}  ",
-                f"Parser source: {_source_link(model, str(helper['source']))}",
+                f"- Stable ID: `{helper_id}`",
+                f"- Program: `{helper['program']}`",
+                f"- Owner: `{helper['owner']}`",
+                f"- Audience: {', '.join(f'`{audience}`' for audience in helper['audiences'])}",
+                f"- Invocation owner: {helper['invocation_owner']}",
+                f"- Parser source: {_source_link(model, str(helper['source']))}",
                 "",
                 "### Top-level arguments",
                 "",
@@ -503,7 +553,104 @@ def _render_commands(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+RUSSIAN_TITLES = {
+    "Generated Helper CLI Reference": "Сгенерированный справочник вспомогательных CLI",
+    "Helper Commands": "Команды вспомогательных CLI",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit this page directly. Update `BuildTools/HelperCliInterface.json` or the owning executable parser, then run `python BuildTools/docs_helper_cli.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/HelperCliInterface.json` или владеющий исполняемый парсер, затем выполните `python BuildTools/docs_helper_cli.py --write`.",
+    "[Reference index](index.md) | [Commands](commands.md) | [Canonical JSON model](../../../generated/helper-cli.json) | [Generation contract](../metadata/)":
+        "[Индекс справочника](index.md) | [Команды](commands.md) | [Каноническая JSON-модель](../../../generated/helper-cli.json) | [Контракт генерации](../metadata/)",
+    "This reference is generated from the `argparse.ArgumentParser` objects used by executable engine helper scripts. The manifest owns purpose and audience; source parsers own executable syntax.":
+        "Этот справочник создаётся из объектов `argparse.ArgumentParser`, используемых исполняемыми вспомогательными скриптами движка. Манифест владеет назначением и аудиторией, а исходные парсеры владеют исполняемым синтаксисом.",
+    "## Contract status": "## Статус контракта",
+    "Stability": "Стабильность",
+    "Since": "Начиная с версии",
+    "Not declared": "Не объявлено",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Digest контракта",
+    "## Inventory": "## Инвентарь",
+    "## Coverage": "## Покрытие",
+    "The model contains ": "Модель содержит ",
+    " subcommands, ": " подкоманд, ",
+    " global arguments, and ": " глобальных аргументов и ",
+    " subcommand arguments.": " аргументов подкоманд.",
+    "Included:": "Включено:",
+    "Excluded:": "Исключено:",
+    "Commands are shown with exact parser-generated usage and help at a fixed 80-column width. Invoke a helper from the engine repository root unless its invocation owner sets another working directory.":
+        "Команды приведены с точными созданными парсером usage и справкой фиксированной ширины 80 столбцов. Запускайте helper из корня репозитория движка, если владелец вызова не задаёт другой рабочий каталог.",
+    "- Stable ID:": "- Стабильный ID:",
+    "- Program:": "- Программа:",
+    "- Owner:": "- Владелец:",
+    "- Audience:": "- Аудитория:",
+    "- Invocation owner:": "- Владелец вызова:",
+    "- Parser source:": "- Исходный парсер:",
+    "### Top-level arguments": "### Аргументы верхнего уровня",
+    "No arguments at this level.": "На этом уровне аргументов нет.",
+    "### Exact top-level `--help` output":
+        "### Точный вывод `--help` верхнего уровня",
+    "#### Exact `--help` output": "#### Точный вывод `--help`",
+    "No parser description is declared.": "Описание parser не объявлено.",
+    "Not documented in the parser.": "Не документировано в parser.",
+    " | yes | ": " | да | ",
+    " | no | ": " | нет | ",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Stable ID | Helper | Owner | Invocation owner | Parser source | Commands / global args |":
+        "| Стабильный ID | Helper | Владелец | Владелец вызова | Исходный парсер | Команды / глобальные аргументы |",
+    "| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |":
+        "| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |",
+}
+
+
+def _replace_outside_fences(content: str, replacements: dict[str, str]) -> str:
+    lines: list[str] = []
+    in_fence = False
+    ordered = sorted(replacements.items(), key=lambda item: -len(item[0]))
+    for line in content.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            lines.append(line)
+            continue
+        if not in_fence:
+            for english, russian in ordered:
+                line = line.replace(english, russian)
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    content = _replace_outside_fences(
+        content,
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS, **RUSSIAN_TABLE_HEADERS},
+    )
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated helper CLI page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if model.get("schema_version") != SCHEMA_VERSION or model.get("generated_by") != GENERATED_BY:
         raise ValueError("unsupported generated helper CLI model")
     helpers = model.get("helpers")
@@ -527,13 +674,44 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every helper CLI entry must have a unique non-empty ID")
 
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/commands.md": _render_commands(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/commands.md": _render_commands(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path, title, canonical_pages[canonical_path]
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated helper CLI reference page set does not match OUTPUT_PATHS")
     return {path: content.rstrip() + "\n" for path, content in sorted(pages.items())}
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_helper_cli_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "helper-cli",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -549,7 +727,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_helper_cli_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "helper-cli",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(f"Unable to generate helper CLI documentation: {exception}", file=sys.stderr)
         return 1

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/gameplay_test_runner.py",
+  "suite": "minimal-multiplayer-tutorial",
+  "status": "passed",
+  "duration_ms": 595,
+  "scenario_count": 2,
+  "passed_count": 2,
+  "failed_count": 0,
+  "scenarios": [
+    {
+      "id": "content-test",
+      "status": "passed",
+      "duration_ms": 42,
+      "timed_out": false,
+      "reasons": [],
+      "processes": [
+        {
+          "id": "server",
+          "exit_code": 0,
+          "expected_exit_code": 0,
+          "missing_markers": [],
+          "forbidden_markers": []
+        }
+      ]
+    },
+    {
+      "id": "server-client-interaction",
+      "status": "passed",
+      "duration_ms": 552,
+      "timed_out": false,
+      "reasons": [],
+      "processes": [
+        {
+          "id": "server",
+          "exit_code": 0,
+          "expected_exit_code": 0,
+          "missing_markers": [],
+          "forbidden_markers": []
+        },
+        {
+          "id": "client",
+          "exit_code": 0,
+          "expected_exit_code": 0,
+          "missing_markers": [],
+          "forbidden_markers": []
+        }
+      ]
+    }
+  ]
+}

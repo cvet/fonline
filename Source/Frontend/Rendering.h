@@ -94,6 +94,7 @@ enum class EffectUsage : uint8_t
 #endif
 };
 
+// Vertex assembly topology used when submitting primitive draw buffers.
 ///@ ExportEnum
 enum class RenderPrimitiveType : uint8_t
 {
@@ -103,6 +104,11 @@ enum class RenderPrimitiveType : uint8_t
     TriangleList,
     TriangleStrip,
 };
+///@ EnumValueDoc RenderPrimitiveType PointList // Draws each submitted vertex as an independent point primitive.
+///@ EnumValueDoc RenderPrimitiveType LineList // Draws each pair of submitted vertices as an independent line segment.
+///@ EnumValueDoc RenderPrimitiveType LineStrip // Draws connected line segments and enables primitive restart where supported.
+///@ EnumValueDoc RenderPrimitiveType TriangleList // Draws each group of three submitted vertices as an independent triangle.
+///@ EnumValueDoc RenderPrimitiveType TriangleStrip // Draws a connected triangle strip and enables primitive restart where supported.
 
 enum class BlendFuncType : uint8_t
 {
@@ -299,12 +305,11 @@ public:
     };
 
     // GLSL: uniform ParticleSamplingBuf { vec4 ParticleSampling; };
-    //   .x = point-sample flag (0 = sample the atlas as it is filtered, 1 = snap to texel centres)
-    //   .yzw reserved.
-    // Filtering is a per-node property in particle formats but a per-atlas one here, so a node that wants point
-    // sampling from a linearly filtered atlas gets it by snapping the coordinate to the texel centre - a bilinear fetch
-    // at a texel centre returns exactly that texel, so this is true point sampling rather than an approximation.
-    // (Particle runtimes, per draw.)
+    //   .x = point-sample flag (0 = sample the atlas as filtered, 1 = snap to texel centres)
+    //   .y = shader-clamp flag for atlas-safe Clamp addressing
+    //   .z = distortion intensity
+    //   .w = background-texture vertical-flip flag
+    // Particle runtimes define these values per draw. Ordinary color effects use x/y; distortion effects also use z/w.
     struct ParticleSamplingBuffer
     {
         float32_t ParticleSampling[4] {};

@@ -38,13 +38,17 @@ VALID_DOMAINS = {
     "image-format",
     "particle-format",
     "font-format",
+    "audio",
+    "video",
+    "gui-runtime",
+    "ai-control-protocol",
 }
 VALID_CLASSIFICATIONS = {"breaking", "compatible"}
 DOC_FIELDS = {"description", "examples"}
 POLICY_FIELDS = {"stability", "since", "deprecated", "contract"}
 IGNORED_SYMBOL_FIELDS = {"source"}
 CHANGE_ID_PATTERN = re.compile(
-    r"^(api|cmake|cli|package|helper-cli|native-extension|prototype-format|map-format|model-format|text-format|effect-format|image-format|particle-format|font-format)-change\.[a-z-]+\.[0-9a-f]{16}$"
+    r"^(api|cmake|cli|package|helper-cli|native-extension|prototype-format|map-format|model-format|text-format|effect-format|image-format|particle-format|font-format|audio|video|gui-runtime|ai-control-protocol)-change\.[a-z-]+\.[0-9a-f]{16}$"
 )
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 

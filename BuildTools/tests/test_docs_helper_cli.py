@@ -4,6 +4,7 @@ import copy
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,7 @@ sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
 
 import docs_cli  # noqa: E402
 import docs_helper_cli  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 FIXTURE_PARSER = """
@@ -72,6 +74,22 @@ def _write_fixture(root: Path) -> None:
         json.dumps(_fixture_manifest(), indent=2) + "\n",
         encoding="utf-8",
     )
+    docs = root / "Docs"
+    docs.mkdir()
+    (docs / "description-translations.ru.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_locale": "en",
+                "target_locale": "ru",
+                "enforcement": "registered-translations-current",
+                "domains": {},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 class DocumentationHelperCliTests(unittest.TestCase):
@@ -81,14 +99,15 @@ class DocumentationHelperCliTests(unittest.TestCase):
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_helper_cli.py")
         self.assertEqual(model["summary"], {
-            "helper_count": 7,
-            "command_count": 11,
-            "global_argument_count": 18,
-            "command_argument_count": 35,
+            "helper_count": 9,
+            "command_count": 16,
+            "global_argument_count": 26,
+            "command_argument_count": 48,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
         self.assertEqual(model["helpers"][-1]["id"], "helper-cli.createmsi")
         self.assertIn("helper-cli.windows7-import-check", [helper["id"] for helper in model["helpers"]])
+        self.assertIn("helper-cli.ai-control-client", [helper["id"] for helper in model["helpers"]])
 
         identities = [
             entry["id"]
@@ -120,7 +139,7 @@ class DocumentationHelperCliTests(unittest.TestCase):
         )
 
         environment = dict(os.environ)
-        environment["COLUMNS"] = "80"
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
         for helper in model["helpers"]:
             with self.subTest(helper=helper["id"]):
                 result = subprocess.run(
@@ -193,6 +212,63 @@ class DocumentationHelperCliTests(unittest.TestCase):
             f"{docs_helper_cli.DEFAULT_OUTPUT_DIR}/commands.md"
         ]
         self.assertIn("A &#124; B &#123;shape&#125; &lt;unsafe&gt;", escaped_page)
+
+        for filename, _, _ in docs_helper_cli.PAGE_DEFINITIONS:
+            canonical = pages[f"{docs_helper_cli.DEFAULT_OUTPUT_DIR}/{filename}"]
+            legacy = pages[f"{docs_helper_cli.LEGACY_OUTPUT_DIR}/{filename}"]
+            self.assertIn(f"../../en/reference/helper-cli/{filename}", legacy)
+            self.assertIn(f"../../ru/reference/helper-cli/{filename}", legacy)
+            for heading in re.findall(r"^(#{2,3} .+)$", canonical, flags=re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
+
+    def test_russian_pages_translate_model_prose_and_preserve_exact_help(self) -> None:
+        pages = docs_helper_cli.render_reference_pages(ENGINE_ROOT)
+        self.assertIn(
+            "Сгенерированный справочник вспомогательных CLI",
+            pages["Docs/ru/reference/helper-cli/index.md"],
+        )
+        self.assertIn(
+            "исходники встроенных ресурсов",
+            pages["Docs/ru/reference/helper-cli/commands.md"],
+        )
+        self.assertNotIn(
+            "Generate engine configuration, metadata registration",
+            pages["Docs/ru/reference/helper-cli/commands.md"],
+        )
+        for (_, document_id, _), english_path, russian_path in zip(
+            docs_helper_cli.PAGE_DEFINITIONS,
+            docs_helper_cli.CANONICAL_OUTPUT_PATHS,
+            docs_helper_cli.RUSSIAN_OUTPUT_PATHS,
+            strict=True,
+        ):
+            english = pages[english_path]
+            russian = pages[russian_path]
+            self.assertIn(
+                docs_localization.translation_metadata_line(
+                    document_id,
+                    english_path,
+                    docs_localization.normalized_sha256(english),
+                ),
+                russian,
+            )
+            self.assertEqual(
+                re.findall(r"```[^\n]*\n(.*?)```", english, re.DOTALL),
+                re.findall(r"```[^\n]*\n(.*?)```", russian, re.DOTALL),
+            )
+
+        manifest = json.loads(
+            (ENGINE_ROOT / "Docs/documentation-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        generated_paths = manifest["generated_artifacts"]["helper_cli_reference"][
+            "paths"
+        ]
+        self.assertTrue(
+            set(docs_helper_cli.RUSSIAN_OUTPUT_PATHS).issubset(generated_paths)
+        )
 
     def test_write_check_and_stale_detection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

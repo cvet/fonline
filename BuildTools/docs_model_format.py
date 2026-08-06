@@ -11,12 +11,16 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import docs_cli
+import docs_description_translations
+import docs_localization
 
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "BuildTools/ModelFormatInterface.json"
 DEFAULT_MODEL = "Docs/generated/model-format.json"
-DEFAULT_OUTPUT_DIR = "Docs/generated/model-format"
+DEFAULT_OUTPUT_DIR = "Docs/en/reference/model-format"
+RUSSIAN_OUTPUT_DIR = "Docs/ru/reference/model-format"
+LEGACY_OUTPUT_DIR = "Docs/generated/model-format"
 GENERATED_BY = "BuildTools/docs_model_format.py"
 REPOSITORY = "cvet/fonline"
 SOURCE_REF = "master"
@@ -29,9 +33,16 @@ PAGE_DEFINITIONS = (
     ("animation.md", "generated-model-format-animation", "Model Animation Directives"),
     ("validation.md", "generated-model-format-validation", "Model Format Validation"),
 )
-OUTPUT_PATHS = tuple(
+CANONICAL_OUTPUT_PATHS = tuple(
     f"{DEFAULT_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
 )
+RUSSIAN_OUTPUT_PATHS = tuple(
+    f"{RUSSIAN_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+LEGACY_OUTPUT_PATHS = tuple(
+    f"{LEGACY_OUTPUT_DIR}/{filename}" for filename, _, _ in PAGE_DEFINITIONS
+)
+OUTPUT_PATHS = CANONICAL_OUTPUT_PATHS + RUSSIAN_OUTPUT_PATHS + LEGACY_OUTPUT_PATHS
 ENTRY_ID_PATTERN = re.compile(
     r"^model-format\.(limit|asset|token|rule)\.[A-Za-z0-9][A-Za-z0-9.-]*$"
 )
@@ -470,7 +481,8 @@ def _header(document_id: str, title: str) -> list[str]:
         "[Index](index.md) | [Syntax](syntax.md) | [Tokens](tokens.md) | "
         "[Composition](composition.md) | [Assets](assets.md) | "
         "[Animation](animation.md) | [Validation](validation.md) | "
-        "[Canonical JSON](../model-format.json) | [Guide](../../ModelFormat.md)",
+        "[Canonical JSON](../../../generated/model-format.json) | "
+        "[Guide](../../how-to/content/model-format.md)",
         "",
     ]
 
@@ -771,7 +783,7 @@ def _render_animation(model: dict[str, object]) -> str:
             "This page lists `.fo3d` directives that participate in animation "
             "selection or movement-pose composition. Effective durations, alias "
             "materialization, and script lookup are documented in "
-            "[ModelAnimation.md](../../ModelAnimation.md).",
+            "[Model Animation](../../how-to/content/model-animation.md).",
             "",
         ]
     )
@@ -799,7 +811,7 @@ def _render_animation(model: dict[str, object]) -> str:
             "",
             "These directives drive 3D skeletal clips and model composition. "
             "`NextX` / `NextY` sprite-frame offsets and movement-projected frame "
-            "selection belong to [SpriteRootMotion.md](../../SpriteRootMotion.md).",
+            "selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).",
             "",
         ]
     )
@@ -863,7 +875,191 @@ def _render_validation(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
+def _render_legacy_page(
+    canonical_path: str,
+    title: str,
+    canonical_content: str,
+) -> str:
+    filename = PurePosixPath(canonical_path).name
+    english_path = f"../../en/reference/model-format/{filename}"
+    russian_path = f"../../ru/reference/model-format/{filename}"
+    lines = [
+        f"# {title}",
+        "",
+        "> Legacy route.",
+        "",
+        "The canonical generated reference moved to locale-specific paths.",
+        "",
+        f"[English]({english_path}) | [Russian]({russian_path})",
+        "",
+    ]
+    for line in canonical_content.splitlines():
+        heading = re.fullmatch(r"(#{2,3}) (.+)", line)
+        if heading:
+            lines.extend(
+                [
+                    f"{heading.group(1)} {heading.group(2)}",
+                    "",
+                    f"Continue with the [canonical reference]({english_path}).",
+                    "",
+                ]
+            )
+        for anchor in re.findall(r'<a id="([^"]+)"></a>', line):
+            lines.extend(
+                [
+                    f'<a id="{anchor}"></a>',
+                    f"- [`{anchor}`]({english_path}#{anchor})",
+                    "",
+                ]
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+RUSSIAN_TITLES = {
+    "Generated Model Format Reference": "Справочник формата моделей",
+    "Model Description Syntax": "Синтаксис описания моделей",
+    "Model Description Tokens": "Токены описания моделей",
+    "Model Composition": "Композиция моделей",
+    "Model Assets And Limits": "Ресурсы и лимиты моделей",
+    "Model Animation Directives": "Директивы анимации моделей",
+    "Model Format Validation": "Валидация формата моделей",
+}
+
+RUSSIAN_REPLACEMENTS = {
+    "> Generated reference. Do not edit directly. Update `BuildTools/ModelFormatInterface.json`, then run `python BuildTools/docs_model_format.py --write`.":
+        "> Сгенерированный справочник. Не редактируйте напрямую. Обновите `BuildTools/ModelFormatInterface.json`, затем запустите `python BuildTools/docs_model_format.py --write`.",
+    "[Index](index.md) | [Syntax](syntax.md) | [Tokens](tokens.md) | [Composition](composition.md) | [Assets](assets.md) | [Animation](animation.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/model-format.json) | [Guide](../../how-to/content/model-format.md)":
+        "[Индекс](index.md) | [Синтаксис](syntax.md) | [Токены](tokens.md) | [Композиция](composition.md) | [Ресурсы](assets.md) | [Анимация](animation.md) | [Валидация](validation.md) | [Каноническая JSON-модель](../../../generated/model-format.json) | [Руководство](../../how-to/content/model-format.md)",
+    "This reference describes the reusable Engine-owned `.fo3d` language and the model assets it composes. Concrete game models and layer meanings remain project-owned.":
+        "Справочник описывает переиспользуемый язык `.fo3d`, принадлежащий движку, и собираемые им ресурсы моделей. Конкретные игровые модели и семантика слоёв принадлежат проекту.",
+    "## Contract status": "## Состояние контракта",
+    "Stability": "Стабильность",
+    "Support policy": "Политика поддержки",
+    "Source manifest": "Исходный манифест",
+    "Contract digest": "Дайджест контракта",
+    "Source extension": "Расширение исходника",
+    "Mesh inputs": "Входные меши",
+    "Runtime side": "Runtime-сторона",
+    "[Tokens](tokens.md)": "[Токены](tokens.md)",
+    " groups / ": " группы / ",
+    " spellings": " написаний",
+    "Every accepted current parser token.": "Все принимаемые текущим parser токены.",
+    "[Assets](assets.md)": "[Ресурсы](assets.md)",
+    "Mesh, description, texture, effect, and particle inputs.":
+        "Входы мешей, описаний, текстур, эффектов и частиц.",
+    "[Validation](validation.md)": "[Валидация](validation.md)",
+    "Authoring, baking, runtime, and legacy rules.":
+        "Правила авторинга, запекания, runtime и legacy.",
+    "## Boundary": "## Граница",
+    "Included:": "Включено:",
+    "Excluded:": "Не включено:",
+    "The parser is stateful and whitespace-tokenized. A compact line is legal, but directive order determines the current layer link and mesh selector.":
+        "Parser хранит состояние и разделяет вход по whitespace. Компактная строка допустима, но порядок directives определяет текущий layer link и selector mesh.",
+    "## Minimal concrete description": "## Минимальное конкретное описание",
+    "## Include template": "## Include-шаблон",
+    "## Syntax rules": "## Правила синтаксиса",
+    "The manifest token set is compared directly with `ModelDescriptionParser::ParseToken`. A new or removed parser spelling makes generation fail until this table is reconciled.":
+        "Набор токенов манифеста напрямую сравнивается с `ModelDescriptionParser::ParseToken`. Добавление или удаление parser spelling останавливает генерацию, пока таблица не будет согласована.",
+    "Runtime composition starts from the default Root data, then activates links whose `Layer` and `Value` match the current model-layer array.":
+        "Runtime-композиция начинается с default `Root`, затем активирует links, у которых `Layer` и `Value` совпадают с текущим model-layer array.",
+    "## Layer composition flow": "## Процесс композиции слоёв",
+    "1. Copy the project-provided layer array.":
+        "1. Скопировать предоставленный проектом layer array.",
+    "2. Apply exact `AnimLayerValue` overrides for the requested animation.":
+        "2. Применить точные overrides `AnimLayerValue` для запрошенной animation.",
+    "3. Apply default Root transforms, materials, effects, disables, and cuts.":
+        "3. Применить default `Root`: transforms, materials, effects, disables и cuts.",
+    "4. Activate matching layer Root entries and child/particle attachments.":
+        "4. Активировать совпавшие layer `Root`, child attachments и particle attachments.",
+    "5. Remove children and particles whose links are no longer active.":
+        "5. Удалить children и particles, links которых перестали быть активны.",
+    "6. Regenerate combined meshes when composition, materials, effects, or cuts changed.":
+        "6. Перегенерировать combined meshes при изменении composition, materials, effects или cuts.",
+    "## Composition directives": "## Директивы композиции",
+    "## Attachment choice": "## Выбор attachment",
+    "- Use `Attach child.fo3d` when the child needs its own model description, layers, materials, cuts, or animation declarations.":
+        "- Используйте `Attach child.fo3d`, если child нужны собственные description, layers, materials, cuts или animations.",
+    "- Use `Attach child.fbx` or `Attach child.obj` for a direct baked hierarchy.":
+        "- Используйте `Attach child.fbx` или `Attach child.obj` для прямой baked hierarchy.",
+    "- Add `Link Bone` to place the complete child under one parent bone.":
+        "- Добавьте `Link Bone`, чтобы поместить весь child под одной parent bone.",
+    "- Omit `Link` only when parent and child intentionally share same-named bones and the child should follow the parent skeleton.":
+        "- Не задавайте `Link` только когда parent и child намеренно имеют одноимённые bones и child должен следовать parent skeleton.",
+    "- Use `AttachParticles ... Link Bone`; the runtime requires a target bone.":
+        "- Для particles используйте `AttachParticles ... Link Bone`; runtime требует target bone.",
+    "`ModelMeshBaker` bakes mesh sources before `ModelInfoBaker` validates and serializes concrete `.fo3d` descriptions.":
+        "`ModelMeshBaker` запекает исходники мешей до того, как `ModelInfoBaker` проверяет и сериализует конкретные `.fo3d`.",
+    "## Asset inputs": "## Входные ресурсы",
+    "## Compile-time limits": "## Compile-time лимиты",
+    "The defaults above come from the generated project-interface contract. A project may override them, but client binaries, baked resources, model layer properties, shaders, and packaged content must agree.":
+        "Defaults взяты из generated project-interface contract. Проект может их переопределить, но client binaries, baked resources, model layer properties, shaders и packaged content должны использовать одинаковые значения.",
+    "This page lists `.fo3d` directives that participate in animation selection or movement-pose composition. Effective durations, alias materialization, and script lookup are documented in [Model Animation](../../how-to/content/model-animation.md).":
+        "Здесь перечислены directives `.fo3d`, участвующие в выборе анимации и композиции позы движения. Effective durations, materialization aliases и script lookup описаны в [Model Animation](../../how-to/content/model-animation.md).",
+    "## Separation from 2D root motion": "## Отделение от 2D root motion",
+    "These directives drive 3D skeletal clips and model composition. `NextX` / `NextY` sprite-frame offsets and movement-projected frame selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).":
+        "Эти directives управляют 3D skeletal clips и model composition. Offsets `NextX` / `NextY` и выбор кадров по направлению движения принадлежат [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).",
+    "## Contract rules": "## Правила контракта",
+    "## Removed legacy spellings": "## Удалённые legacy-написания",
+    "The accepted compatibility spelling `Subset` is listed separately in [Tokens](tokens.md) as deprecated because it consumes an argument but does not select a mesh.":
+        "Compatibility spelling `Subset` отдельно помечен как deprecated в [токенах](tokens.md): он забирает argument, но не выбирает mesh.",
+    "## Validation commands": "## Команды проверки",
+    "Finish with a visible client scene that exercises every authored layer combination, attachment, material override, cut, animation, draw size, and interaction bound used by the project.":
+        "Завершите видимой client scene, которая покрывает все используемые проектом сочетания слоёв, attachments, material overrides, cuts, animations, draw size и interaction bounds.",
+}
+
+RUSSIAN_TABLE_HEADERS = {
+    "| Field | Value |": "| Поле | Значение |",
+    "| Reference | Entries | Purpose |":
+        "| Справочник | Записей | Назначение |",
+    "| Stable ID | Rule | Requirement | Why |":
+        "| Стабильный ID | Правило | Требование | Причина |",
+    "| Stable ID | Token spellings | Category | Syntax | Context | Stability | Authoring contract | Runtime effect |":
+        "| Стабильный ID | Написания token | Категория | Синтаксис | Контекст | Стабильность | Контракт авторинга | Runtime-эффект |",
+    "| Directive | Context | Authoring contract | Runtime effect | Source |":
+        "| Directive | Контекст | Контракт авторинга | Runtime-эффект | Источник |",
+    "| Stable ID | Asset | Extensions | Purpose | Requirements | Source |":
+        "| Стабильный ID | Ресурс | Расширения | Назначение | Требования | Источник |",
+    "| Stable ID | Project option | Runtime constant | Default | Meaning |":
+        "| Стабильный ID | Опция проекта | Runtime-константа | По умолчанию | Смысл |",
+    "| Directive | Syntax | Authoring contract | Runtime effect |":
+        "| Directive | Синтаксис | Контракт авторинга | Runtime-эффект |",
+    "| Stable ID | Rule | Requirement | Why | Source |":
+        "| Стабильный ID | Правило | Требование | Причина | Источник |",
+    "| Removed token | Replacement | Current contract |":
+        "| Удалённый token | Замена | Текущий контракт |",
+}
+
+
+def _render_russian_page(
+    document_id: str,
+    canonical_path: str,
+    english_content: str,
+    russian_base_content: str,
+) -> str:
+    content = russian_base_content.replace("locale: en", "locale: ru", 1)
+    for english, russian in sorted(
+        {**RUSSIAN_TITLES, **RUSSIAN_REPLACEMENTS}.items(),
+        key=lambda item: -len(item[0]),
+    ):
+        content = content.replace(english, russian)
+    for english, russian in RUSSIAN_TABLE_HEADERS.items():
+        content = content.replace(english, russian)
+    front_matter_end = content.find("\n---\n", 4)
+    if front_matter_end < 0:
+        raise ValueError("generated model format page has no front matter")
+    insert_at = front_matter_end + len("\n---\n")
+    marker = docs_localization.translation_metadata_line(
+        document_id,
+        canonical_path,
+        docs_localization.normalized_sha256(english_content),
+    )
+    return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
+
+
+def generate_reference_pages(
+    model: dict[str, object],
+    russian_model: dict[str, object] | None = None,
+) -> dict[str, str]:
     if (
         model.get("schema_version") != SCHEMA_VERSION
         or model.get("generated_by") != GENERATED_BY
@@ -880,7 +1076,7 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         or len(identities) != len(set(identities))
     ):
         raise ValueError("every model format entry must have a unique non-empty ID")
-    pages = {
+    canonical_pages = {
         f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
         f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(model),
         f"{DEFAULT_OUTPUT_DIR}/tokens.md": _render_tokens(model),
@@ -889,11 +1085,49 @@ def generate_reference_pages(model: dict[str, object]) -> dict[str, str]:
         f"{DEFAULT_OUTPUT_DIR}/animation.md": _render_animation(model),
         f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
     }
+    localized_model = model if russian_model is None else russian_model
+    russian_base_pages = {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/syntax.md": _render_syntax(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/tokens.md": _render_tokens(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/composition.md": _render_composition(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/assets.md": _render_assets(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/animation.md": _render_animation(localized_model),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
+    }
+    pages = dict(canonical_pages)
+    for (filename, document_id, title), canonical_path in zip(
+        PAGE_DEFINITIONS, CANONICAL_OUTPUT_PATHS, strict=True
+    ):
+        pages[f"{RUSSIAN_OUTPUT_DIR}/{filename}"] = _render_russian_page(
+            document_id,
+            canonical_path,
+            canonical_pages[canonical_path],
+            russian_base_pages[canonical_path],
+        )
+        pages[f"{LEGACY_OUTPUT_DIR}/{filename}"] = _render_legacy_page(
+            canonical_path,
+            title,
+            canonical_pages[canonical_path],
+        )
     if set(pages) != set(OUTPUT_PATHS):
         raise ValueError("generated model format page set does not match OUTPUT_PATHS")
     return {
         path: content.rstrip() + "\n" for path, content in sorted(pages.items())
     }
+
+
+def render_reference_pages(
+    root: Path,
+    manifest_relative_path: str = DEFAULT_MANIFEST,
+) -> dict[str, str]:
+    model = generate_model_format_model(root, manifest_relative_path)
+    russian_model = docs_description_translations.apply_translations(
+        root,
+        "model-format",
+        model,
+    )
+    return generate_reference_pages(model, russian_model)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -912,7 +1146,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         model_content = render_model_format_model(root, args.manifest)
         model = json.loads(model_content)
-        pages = generate_reference_pages(model)
+        russian_model = docs_description_translations.apply_translations(
+            root,
+            "model-format",
+            model,
+        )
+        pages = generate_reference_pages(model, russian_model)
     except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
         print(
             f"Unable to generate model format documentation: {exception}",

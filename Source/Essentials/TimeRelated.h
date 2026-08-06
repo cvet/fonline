@@ -44,7 +44,9 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
+// Signed nanosecond-resolution duration stored as a 64-bit count.
 ///@ ExportValueType Layout = int64-value
+///@ ValueFieldDoc timespan value // Signed duration count in nanoseconds.
 class timespan
 {
 public:
@@ -132,7 +134,9 @@ struct time_desc_t
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
 auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
+// Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time.
 ///@ ExportValueType Layout = int64-value
+///@ ValueFieldDoc nanotime value // Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time.
 class nanotime
 {
 public:
@@ -202,7 +206,9 @@ private:
 };
 static_assert(some_strong_type<nanotime>);
 
+// Engine-synchronized time point stored as a signed 64-bit millisecond count for shared game-time state.
 ///@ ExportValueType Layout = int64-value
+///@ ValueFieldDoc synctime value // Milliseconds in the Engine-synchronized game-time domain.
 class synctime
 {
 public:

@@ -28,8 +28,12 @@ class ValidationTarget(TypedDict):
 	config: str
 	compiler: NotRequired[str]
 	run_target: NotRequired[str]
+	project: NotRequired[str]
 	workspace_parts: NotRequired[tuple[str, ...]]
 	msan_libcxx: NotRequired[bool]
+	host_target: NotRequired[str]
+	host_run_target: NotRequired[str]
+	showcase_web_runtime: NotRequired[bool]
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
@@ -42,6 +46,7 @@ def make_validation_target(
 	config_name: str,
 	compiler_name: str | None = None,
 	run_target_name: str | None = None,
+	project_name: str | None = None,
 	workspace_parts: Sequence[str] = (),
 	msan_libcxx: bool = False,
 ) -> ValidationTarget:
@@ -54,6 +59,8 @@ def make_validation_target(
 		validation_target['compiler'] = compiler_name
 	if run_target_name is not None:
 		validation_target['run_target'] = run_target_name
+	if project_name is not None:
+		validation_target['project'] = project_name
 	if workspace_parts:
 		validation_target['workspace_parts'] = tuple(workspace_parts)
 	if msan_libcxx:
@@ -115,6 +122,13 @@ SINGLE_CLIENT_VALIDATION_PLATFORMS = {
 BUILD_TARGETS: dict[str, FlagMap] = {
 	**{target_name: make_flag_map(flag_name) for target_name, flag_name in SINGLE_FLAG_BUILD_TARGETS.items()},
 	'starter-smoke': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'native-extension-smoke': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'tutorial-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'showcase-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_MAPPER', 'FO_BUILD_BAKER'),
+	'showcase-web': make_flag_map('FO_BUILD_CLIENT'),
+	'showcase-web-package': make_flag_map('FO_BUILD_CLIENT'),
+	'showcase-web-package-host': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'package-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
 	'toolset': make_flag_map('FO_BUILD_ASCOMPILER', 'FO_BUILD_BAKER'),
 	'full': make_flag_map(
 		'FO_BUILD_CLIENT',
@@ -145,6 +159,37 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'linux-starter-smoke': make_validation_target('linux', 'starter-smoke', 'Release', run_target_name='RunStarterSmoke'),
 	'win64-starter-smoke': make_validation_target('win64', 'starter-smoke', 'Release', run_target_name='RunStarterSmoke'),
+	'linux-native-extension-smoke': make_validation_target('linux', 'native-extension-smoke', 'Release', run_target_name='RunNativeExtensionChecks', project_name='NativeExtensionSample'),
+	'win64-native-extension-smoke': make_validation_target('win64', 'native-extension-smoke', 'Release', run_target_name='RunNativeExtensionChecks', project_name='NativeExtensionSample'),
+	'linux-tutorial-smoke': make_validation_target('linux', 'tutorial-smoke', 'Release', run_target_name='RunTutorialChecks', project_name='MinimalMultiplayer'),
+	'win64-tutorial-smoke': make_validation_target('win64', 'tutorial-smoke', 'Release', run_target_name='RunTutorialChecks', project_name='MinimalMultiplayer'),
+	'linux-showcase-smoke': make_validation_target('linux', 'showcase-smoke', 'Release', run_target_name='RunShowcaseChecks', project_name='ContentShowcase'),
+	'linux-showcase-capture': make_validation_target('linux', 'showcase-smoke', 'Release', run_target_name='RunShowcaseCapture', project_name='ContentShowcase'),
+	'win64-showcase-smoke': make_validation_target('win64', 'showcase-smoke', 'Release', run_target_name='RunShowcaseChecks', project_name='ContentShowcase'),
+	'web-showcase-build': make_validation_target('web', 'showcase-web', 'Release', run_target_name='RunShowcaseWebChecks', project_name='ContentShowcase'),
+	'web-showcase-package': {
+		'platform': 'web',
+		'target': 'showcase-web-package',
+		'config': 'Release',
+		'run_target': 'RunShowcaseWebPackageChecks',
+		'project': 'ContentShowcase',
+		'host_target': 'showcase-web-package-host',
+		'host_run_target': 'ForceBakeResources',
+	},
+	'web-showcase-runtime': {
+		'platform': 'web',
+		'target': 'showcase-web-package',
+		'config': 'Release',
+		'run_target': 'RunShowcaseWebPackageChecks',
+		'project': 'ContentShowcase',
+		'host_target': 'showcase-web-package-host',
+		'host_run_target': 'ForceBakeResources',
+		'showcase_web_runtime': True,
+	},
+	'linux-tutorial-package': make_validation_target('linux', 'package-smoke', 'Release', run_target_name='RunTutorialPackageChecks', project_name='MinimalMultiplayer'),
+	'win64-tutorial-package': make_validation_target('win64', 'package-smoke', 'Release', run_target_name='RunTutorialPackageChecks', project_name='MinimalMultiplayer'),
+	'win64-package-smoke': make_validation_target('win64', 'package-smoke', 'Release', run_target_name='RunPackagingChecks', project_name='PackagingMatrix'),
+	'linux-package-smoke': make_validation_target('linux', 'package-smoke', 'Release', run_target_name='RunPackagingChecks', project_name='PackagingMatrix'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
@@ -188,9 +233,9 @@ XWIN_HTTP_RETRY_COUNT = '5'
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
 # nullable type suffix (parsed natively by the engine since the
-# `asBC_RefCpyChk` change) and the project style is to keep `?` attached to
-# the type. The same regex is used by `Tools/Formatter/format_project.py`
-# in the embedding project; keep them in sync if the suffix shape changes.
+# `asBC_RefCpyChk` change) and the Engine convention is to keep `?` attached
+# to the type. Embedding-project formatter wrappers that duplicate this repair
+# must keep the suffix shape in sync.
 # The type token is either an uppercase identifier with optional namespace
 # and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
 # etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
@@ -215,7 +260,8 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
 # literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project.
+# Embedding-project formatter wrappers that duplicate these repairs must keep
+# them in sync with this Engine-owned implementation.
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -256,6 +302,10 @@ LINUX_PACKAGE_GROUPS = {
 	'linux-packages': (
 		'7',
 		['libc++-dev', 'libc++abi-dev', 'libx11-dev', 'libxcursor-dev', 'libxrandr-dev', 'libxss-dev', 'libxtst-dev', 'libjack-dev', 'libpulse-dev', 'libasound-dev', 'freeglut3-dev', 'libssl-dev', 'libevent-dev', 'libxi-dev', 'libzstd-dev'],
+	),
+	'showcase-display-packages': (
+		'1',
+		['xvfb', 'xauth', 'mesa-utils', 'libgl1-mesa-dri'],
 	),
 	'web-packages': (
 		'2',
@@ -327,8 +377,8 @@ def resolve_buildtools_cmake_path(env: Mapping[str, str], file_name: str) -> Pat
 	return resolve_buildtools_path(env, 'cmake', file_name)
 
 
-def resolve_validation_project_source(env: Mapping[str, str]) -> Path:
-	return Path(env['FO_ENGINE_ROOT']) / 'Examples' / 'MinimalProject'
+def resolve_validation_project_source(env: Mapping[str, str], project_name: str) -> Path:
+	return Path(env['FO_ENGINE_ROOT']) / 'Examples' / project_name
 
 
 def resolve_workspace_path(env: Mapping[str, str], *parts: str) -> Path:
@@ -362,6 +412,14 @@ def resolve_validation_project_workspace(env: Mapping[str, str]) -> Path:
 
 def resolve_validation_build_dir(env: Mapping[str, str], name: str) -> Path:
 	return resolve_workspace_path(env, f'validate-{name}')
+
+
+def resolve_showcase_host_server(output_root: Path, host_platform: str) -> Path:
+	if host_platform == 'win64':
+		return output_root / 'Binaries' / 'Server-Windows-win64' / 'FOCS_ServerHeadless.exe'
+	if host_platform == 'linux':
+		return output_root / 'Binaries' / 'Server-Linux-x64' / 'FOCS_ServerHeadless'
+	raise SystemExit(f'Unsupported Content Showcase Web host: {host_platform}')
 
 
 def resolve_workspace_emsdk_root(workspace: Path) -> str:
@@ -507,6 +565,7 @@ def resolve_env() -> EnvMap:
 	workspace = Path(os.environ.get('FO_WORKSPACE') or (Path.cwd() / 'Workspace')).resolve()
 	output = Path(os.environ.get('FO_OUTPUT') or (workspace / 'output')).resolve()
 	binary_output_postfix = os.environ.get('FO_BINARY_OUTPUT_POSTFIX', '')
+	explicit_emsdk = os.environ.get('FO_EMSDK', '')
 	third_party = engine_root / 'ThirdParty'
 
 	env: EnvMap = {
@@ -515,7 +574,7 @@ def resolve_env() -> EnvMap:
 		'FO_WORKSPACE': str(workspace),
 		'FO_OUTPUT': str(output),
 		'FO_BINARY_OUTPUT_POSTFIX': binary_output_postfix,
-		'FO_EMSDK': resolve_workspace_emsdk_root(workspace),
+		'FO_EMSDK': str(Path(explicit_emsdk).resolve()) if explicit_emsdk else resolve_workspace_emsdk_root(workspace),
 		'FO_EMSCRIPTEN_VERSION': read_first_line(third_party / 'emscripten'),
 		'FO_ANDROID_NDK_VERSION': read_first_line(third_party / 'android-ndk'),
 		'FO_ANDROID_SDK_VERSION': read_first_line(third_party / 'android-sdk'),
@@ -723,8 +782,14 @@ def ensure_empty_dir(path: Path) -> None:
 	ensure_dir(path)
 
 
-def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_ok: bool = False) -> None:
-	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok)
+def copy_directory(
+	source_path: str | Path,
+	target_path: str | Path,
+	dirs_exist_ok: bool = False,
+	ignore_patterns: Sequence[str] = (),
+) -> None:
+	ignore = shutil.ignore_patterns(*ignore_patterns) if ignore_patterns else None
+	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok, ignore=ignore)
 
 
 def download_file(url: str, target_path: Path, label: str) -> None:
@@ -1395,6 +1460,7 @@ HOST_DEFAULT_FEATURES = {
 LINUX_FEATURE_PACKAGE_GROUPS = {
 	'common-packages': ['common-packages'],
 	'linux-packages': ['linux-packages'],
+	'showcase-display-packages': ['showcase-display-packages'],
 	'web-packages': ['web-packages'],
 	'android-packages': ['android-packages'],
 	'windows-cross-packages': ['windows-cross-packages'],
@@ -1878,13 +1944,28 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 	return bool(match and match.group(1).strip() != expected_generator)
 
 
-def prepare_validation_project(env: Mapping[str, str]) -> Path:
+def prepare_validation_project(env: Mapping[str, str], project_name: str) -> Path:
 	workspace = Path(env['FO_WORKSPACE'])
 	validation_root = resolve_validation_project_workspace(env)
-	source_root = resolve_validation_project_source(env)
+	source_root = resolve_validation_project_source(env, project_name)
 	ensure_dir(workspace)
 	remove_path_if_exists(validation_root)
-	copy_directory(source_root, validation_root, dirs_exist_ok=True)
+	copy_directory(
+		source_root,
+		validation_root,
+		dirs_exist_ok=True,
+		ignore_patterns=(
+			'Engine',
+			'Build',
+			'Baking',
+			'Cache',
+			'Resources',
+			'ServerResources',
+			'PlatformBinaries',
+			'__pycache__',
+			'*.log',
+		),
+	)
 	engine_link = validation_root / 'Engine'
 	ensure_directory_link(engine_link, env['FO_ENGINE_ROOT'])
 	return validation_root
@@ -1898,7 +1979,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	if workspace_parts:
 		prepare_workspace(workspace_parts, False, env)
 
-	validation_root = prepare_validation_project(env)
+	validation_root = prepare_validation_project(env, validation.get('project', 'MinimalProject'))
 	platform_name = validation['platform']
 	target_name = validation['target']
 	config = validation['config']
@@ -1918,6 +1999,41 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	build_dir = resolve_validation_build_dir(env, name)
 	ensure_dir(build_dir)
 
+	host_target = validation.get('host_target')
+	shared_output: Path | None = None
+	host_platform: str | None = None
+	if host_target:
+		host_run_target = validation.get('host_run_target')
+		if not host_run_target:
+			raise SystemExit(f'Validation target {name} has host_target without host_run_target')
+		if os.name == 'nt':
+			host_platform = 'win64'
+		elif sys.platform.startswith('linux'):
+			host_platform = 'linux'
+		else:
+			raise SystemExit(f'Validation target {name} has no supported native host on {sys.platform}')
+
+		shared_output = resolve_validation_build_dir(env, f'{name}-output')
+		host_build_dir = resolve_validation_build_dir(env, f'{name}-host')
+		remove_path_if_exists(shared_output)
+		ensure_dir(shared_output)
+		ensure_dir(host_build_dir)
+		shared_output_args = make_output_path_cmake_args(str(shared_output))
+		host_env = make_platform_configure_env(host_platform, compiler_name)
+		run_platform_configure_build(
+			host_platform,
+			host_target,
+			str(validation_root),
+			host_build_dir,
+			config,
+			env,
+			extra_cmake_args=shared_output_args,
+			compiler_name=compiler_name,
+		)
+		log('Run host prerequisite', host_run_target)
+		run_cmake_target(host_build_dir, config, host_run_target, env=host_env)
+		extra_cmake_args.extend(shared_output_args)
+
 	run_platform_configure_build(
 		platform_name,
 		target_name,
@@ -1936,6 +2052,26 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 
 		if name == 'code-coverage' and os.environ.get('CODECOV_TOKEN'):
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
+
+	if validation.get('showcase_web_runtime'):
+		if shared_output is None or host_platform is None:
+			raise SystemExit(f'Validation target {name} has no native host output')
+		log('Run Content Showcase Web browser runtime')
+		run(
+			[
+				sys.executable,
+				validation_root / 'capture_showcase_web.py',
+				'--server',
+				resolve_showcase_host_server(shared_output, host_platform),
+				'--package-dir',
+				shared_output / 'FOCS-ShowcaseWeb' / 'FOCS-Client-ShowcaseRelease-Web',
+				'--config',
+				validation_root / 'FOnlineContentShowcase.fomain',
+				'--playwright-root',
+				validation_root / 'WebTests',
+			],
+			cwd=validation_root,
+		)
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
@@ -2323,6 +2459,7 @@ def create_parser() -> argparse.ArgumentParser:
 		choices=[
 			'common-packages',
 			'linux-packages',
+			'showcase-display-packages',
 			'web-packages',
 			'android-packages',
 			'windows-cross-packages',

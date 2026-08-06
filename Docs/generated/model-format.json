@@ -290,12 +290,14 @@
       "id": "model-format.asset.particle",
       "name": "Particle attachment",
       "extensions": [
-        ".fopts"
+        ".spk",
+        ".efk"
       ],
       "stability": "experimental",
-      "description": "A layer-selected AttachParticles entry instantiates a particle resource on a model bone while that layer value remains active.",
+      "description": "A layer-selected AttachParticles entry instantiates a baked SPARK or Effekseer particle resource on a model bone while that layer value remains active.",
       "requirements": [
         "the particle resource must exist in baked resources",
+        "reference the baked .spk or .efk path, not its .spark or .efkproj authoring source",
         "author a non-empty Link bone; runtime particle creation requires it"
       ],
       "source": [
@@ -508,11 +510,11 @@
         "AttachParticles"
       ],
       "category": "composition",
-      "syntax": "AttachParticles <particle.fopts>",
+      "syntax": "AttachParticles <particle.spk|particle.efk>",
       "context": "selected Layer/Value",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Creates a layer-selected particle link. The resource path is stored verbatim rather than relative to the description.",
+      "description": "Creates a layer-selected baked-particle link. The resource path is stored verbatim rather than relative to the description.",
       "runtime_effect": "The client creates the particle on the Link bone and removes it when the activating layer value is no longer selected.",
       "source": [
         {
@@ -876,7 +878,7 @@
       "repeatable": true,
       "stability": "experimental",
       "description": "Maps a state/action pair to a source animation clip. ModelFile selects the primary model source, ~ reverses playback, and Base selects the first source clip before conversion into the baked runtime rig.",
-      "runtime_effect": "The first declaration for a pair is registered; model-specific lookup and substitutions are described in ModelAnimation.md.",
+      "runtime_effect": "The first declaration for a pair is registered; model-specific lookup and substitutions are described in the canonical model-animation guide.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1388,7 +1390,7 @@
       "id": "model-format.rule.mesh-before-info",
       "name": "Baker order",
       "requirement": "Run ModelMeshBaker before ModelInfoBaker so every mesh, hierarchy, material, animation, and cut reference can be validated from baked data.",
-      "rationale": "Built-in baker orders are 4 for ModelMesh and 5 for ModelInfo.",
+      "rationale": "Built-in baker orders are 4 for ModelMesh and 6 for ModelInfo.",
       "source": [
         {
           "path": "Source/Tools/ModelMeshBaker.h",
@@ -1512,5 +1514,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "6aa5884b57138ce170ba7f63222631e1ea8178765ec33ce10e51e95b83bfdaa5"
+  "contract_digest": "1a1f6cf520f128c6b673332880d7400ea1981baeafe903bfa249df184a7d0037"
 }

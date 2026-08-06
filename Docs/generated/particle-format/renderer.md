@@ -1,31 +1,64 @@
----
-title: Particle Rendering Contract
-document_id: generated-particle-format-renderer
-locale: en
-generated: true
----
-
 # Particle Rendering Contract
 
-> Generated reference. Do not edit this page directly. Update `BuildTools/ParticleFormatInterface.json`, then run `python BuildTools/docs_particle_format.py --write`.
+> Legacy route.
 
-[Reference index](index.md) | [Source rules](xml.md) | [Formats and backends](objects.md) | [Rendering](renderer.md) | [Tooling](tooling.md) | [Runtime](runtime.md) | [Integration](integration.md) | [Validation](validation.md) | [Canonical JSON model](../particle-format.json)
+The canonical generated reference moved to locale-specific paths.
 
-| Stable ID | Backend | Field or route | Default | Behavior | Source |
-| --- | --- | --- | --- | --- | --- |
-| <a id="entry-particle-format-renderer-spark-draw-route-33d3052e2a"></a><code>particle-format.renderer.spark-draw-route</code> | <code>spark</code> | <code>DrawInScene</code> | false | Use atlas rendering for ordinary particle sprites; enable DrawInScene when the effect must share the map scene and depth path. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-spark-resources-adfe5fd277"></a><code>particle-format.renderer.spark-resources</code> | <code>spark</code> | <code>EffectName / TextureName</code> | empty | Select a baked FOnline effect and a texture path valid for the particle resource source. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-spark-draw-size-fefedac23c"></a><code>particle-format.renderer.spark-draw-size</code> | <code>spark</code> | <code>DrawWidth / DrawHeight</code> | backend and project settings | Set stable draw bounds for atlas particles and validate that the effect is not clipped. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-effekseer-direct-scene-0d5ec0ef77"></a><code>particle-format.renderer.effekseer-direct-scene</code> | <code>effekseer</code> | <code>GetDrawInScene</code> | true | Treat Effekseer effects as direct-scene particles and validate their supported renderer capabilities in the FOnline client. | [Source/Client/EffekseerExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/EffekseerExtension.cpp) |
-| <a id="entry-particle-format-renderer-draw-size-662487dc50"></a><code>particle-format.renderer.draw-size</code> | <code>spark</code> | <code>draw size</code> | 0;0, then Render.DefaultParticleDrawWidth/Height | One integer sets width only; two set width and height. A zero maximum dimension falls back to the corresponding Render.DefaultParticleDraw* setting. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-draw-in-scene-a7e188f669"></a><code>particle-format.renderer.draw-in-scene</code> | <code>spark</code> | <code>draw in scene</code> | false | When any group renderer enables draw in scene, the whole ParticleSprite uses the direct map-scene path instead of atlas refresh. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-effect-523b98acdc"></a><code>particle-format.renderer.effect</code> | <code>spark</code> | <code>effect</code> | empty | Name a baked .fofx resource compatible with EffectUsage::QuadSprite; the renderer loads it through EffectManager. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-blend-mode-2bfb69446a"></a><code>particle-format.renderer.blend-mode</code> | <code>spark</code> | <code>blend mode</code> | unused | Do not author blend mode: the descriptor declares it, but SparkQuadRenderer neither imports, exports, nor applies it. Select blending in the .fofx effect instead. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-texture-4d5923b047"></a><code>particle-format.renderer.texture</code> | <code>spark</code> | <code>texture</code> | empty | Resolve a supported sprite resource relative to the .spark source directory and load its atlas texture through the provided texture loader. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-scale-aa7a6d63b1"></a><code>particle-format.renderer.scale</code> | <code>spark</code> | <code>scale</code> | 1;1 | One value changes X while retaining default Y; two values set X and Y particle-quad scale. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-atlas-dimensions-c28a72a068"></a><code>particle-format.renderer.atlas-dimensions</code> | <code>spark</code> | <code>atlas dimensions</code> | 1;1 | One value sets the X cell count; two set X and Y. The particle texture-index parameter chooses atlas cells. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-look-orientation-87063d9162"></a><code>particle-format.renderer.look-orientation</code> | <code>spark</code> | <code>look orientation</code> | LOOK_CAMERA_PLANE | Use one of the four recognized look-orientation names; other strings leave the default orientation unchanged. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-up-orientation-2c74e5b894"></a><code>particle-format.renderer.up-orientation</code> | <code>spark</code> | <code>up orientation</code> | UP_CAMERA | Use one of the four recognized up-orientation names; other strings leave the default orientation unchanged. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-locked-axis-f9c8e2062d"></a><code>particle-format.renderer.locked-axis</code> | <code>spark</code> | <code>locked axis</code> | LOCK_UP | Use LOCK_LOOK or LOCK_UP when an axis-based orientation mode needs one vector held fixed. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-locked-look-vector-7a841ee327"></a><code>particle-format.renderer.locked-look-vector</code> | <code>spark</code> | <code>locked look vector</code> | (0,0,1) | Provide the world/local look vector used by the selected oriented-quad mode. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
-| <a id="entry-particle-format-renderer-locked-up-vector-c2b37d2317"></a><code>particle-format.renderer.locked-up-vector</code> | <code>spark</code> | <code>locked up vector</code> | (0,1,0) | Provide the world/local up vector used by the selected oriented-quad mode. | [Source/Client/SparkExtension.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SparkExtension.cpp) |
+[English](../../en/reference/particle-format/renderer.md) | [Russian](../../ru/reference/particle-format/renderer.md)
+
+<a id="entry-particle-format-renderer-spark-draw-route-33d3052e2a"></a>
+- [`entry-particle-format-renderer-spark-draw-route-33d3052e2a`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-spark-draw-route-33d3052e2a)
+
+<a id="entry-particle-format-renderer-spark-resources-adfe5fd277"></a>
+- [`entry-particle-format-renderer-spark-resources-adfe5fd277`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-spark-resources-adfe5fd277)
+
+<a id="entry-particle-format-renderer-effekseer-direct-scene-0d5ec0ef77"></a>
+- [`entry-particle-format-renderer-effekseer-direct-scene-0d5ec0ef77`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-direct-scene-0d5ec0ef77)
+
+<a id="entry-particle-format-renderer-effekseer-geometry-735a96c0fe"></a>
+- [`entry-particle-format-renderer-effekseer-geometry-735a96c0fe`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-geometry-735a96c0fe)
+
+<a id="entry-particle-format-renderer-effekseer-material-profile-c513985513"></a>
+- [`entry-particle-format-renderer-effekseer-material-profile-c513985513`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-material-profile-c513985513)
+
+<a id="entry-particle-format-renderer-effekseer-depth-cull-sort-9180841a84"></a>
+- [`entry-particle-format-renderer-effekseer-depth-cull-sort-9180841a84`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-depth-cull-sort-9180841a84)
+
+<a id="entry-particle-format-renderer-effekseer-distortion-7e36af2766"></a>
+- [`entry-particle-format-renderer-effekseer-distortion-7e36af2766`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-distortion-7e36af2766)
+
+<a id="entry-particle-format-renderer-effekseer-global-exclusions-7cc681e75a"></a>
+- [`entry-particle-format-renderer-effekseer-global-exclusions-7cc681e75a`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effekseer-global-exclusions-7cc681e75a)
+
+<a id="entry-particle-format-renderer-draw-in-scene-a7e188f669"></a>
+- [`entry-particle-format-renderer-draw-in-scene-a7e188f669`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-draw-in-scene-a7e188f669)
+
+<a id="entry-particle-format-renderer-effect-523b98acdc"></a>
+- [`entry-particle-format-renderer-effect-523b98acdc`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-effect-523b98acdc)
+
+<a id="entry-particle-format-renderer-blend-mode-2bfb69446a"></a>
+- [`entry-particle-format-renderer-blend-mode-2bfb69446a`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-blend-mode-2bfb69446a)
+
+<a id="entry-particle-format-renderer-texture-4d5923b047"></a>
+- [`entry-particle-format-renderer-texture-4d5923b047`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-texture-4d5923b047)
+
+<a id="entry-particle-format-renderer-scale-aa7a6d63b1"></a>
+- [`entry-particle-format-renderer-scale-aa7a6d63b1`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-scale-aa7a6d63b1)
+
+<a id="entry-particle-format-renderer-atlas-dimensions-c28a72a068"></a>
+- [`entry-particle-format-renderer-atlas-dimensions-c28a72a068`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-atlas-dimensions-c28a72a068)
+
+<a id="entry-particle-format-renderer-look-orientation-87063d9162"></a>
+- [`entry-particle-format-renderer-look-orientation-87063d9162`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-look-orientation-87063d9162)
+
+<a id="entry-particle-format-renderer-up-orientation-2c74e5b894"></a>
+- [`entry-particle-format-renderer-up-orientation-2c74e5b894`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-up-orientation-2c74e5b894)
+
+<a id="entry-particle-format-renderer-locked-axis-f9c8e2062d"></a>
+- [`entry-particle-format-renderer-locked-axis-f9c8e2062d`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-locked-axis-f9c8e2062d)
+
+<a id="entry-particle-format-renderer-locked-look-vector-7a841ee327"></a>
+- [`entry-particle-format-renderer-locked-look-vector-7a841ee327`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-locked-look-vector-7a841ee327)
+
+<a id="entry-particle-format-renderer-locked-up-vector-c2b37d2317"></a>
+- [`entry-particle-format-renderer-locked-up-vector-c2b37d2317`](../../en/reference/particle-format/renderer.md#entry-particle-format-renderer-locked-up-vector-c2b37d2317)

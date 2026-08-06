@@ -1,185 +1,426 @@
----
-title: Engine Events
-document_id: generated-api-events
-locale: en
-generated: true
----
-
 # Engine Events
 
-> Generated reference. Do not edit this page directly. Update engine metadata, regenerate `Docs/generated/api.json`, then run `python BuildTools/docs_reference.py --write`.
+> Legacy route.
 
-A dash in the description column means that the owning source metadata has no documentation comment. Every contract cell identifies an explicit source classification or the default `internal` policy; script reachability alone does not make a symbol public or stable.
+The canonical generated reference moved to locale-specific paths.
 
-[Reference index](index.md) | [Canonical JSON model](../api.json) | [Generation contract](../../GeneratedApiAndMetadata.md)
-
-This page contains **121** exported engine events.
+[English](../../en/reference/script-api/events.md) | [Russian](../../ru/reference/script-api/events.md)
 
 <a id="group-event-client-game-dc8d6b5523"></a>
+- [`group-event-client-game-dc8d6b5523`](../../en/reference/script-api/events.md#group-event-client-game-dc8d6b5523)
+
 ## <code>Game</code> (client)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Game.OnConnected()</code> | <a id="symbol-script-event-client-game-onconnected-658361e7ce"></a><code>script.event.client.Game.OnConnected</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:159](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L159) | - |
-| <code>event Game.OnConnecting()</code> | <a id="symbol-script-event-client-game-onconnecting-2b0300a8c3"></a><code>script.event.client.Game.OnConnecting</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:155](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L155) | - |
-| <code>event Game.OnConnectingFailed()</code> | <a id="symbol-script-event-client-game-onconnectingfailed-f6fcaaa5b1"></a><code>script.event.client.Game.OnConnectingFailed</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:157](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L157) | - |
-| <code>event Game.OnCritterAction(bool localCall, Critter cr, CritterAction action, int32 actionData, AbstractItem? contextItem)</code> | <a id="symbol-script-event-client-game-oncritteraction-786f365adb"></a><code>script.event.client.Game.OnCritterAction</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:255](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L255) | - |
-| <code>event Game.OnCritterAnimationFallout(hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, int32&amp; fStateAnim, int32&amp; fActionAnim, int32&amp; fStateAnimEx, int32&amp; fActionAnimEx, uint32&amp; flags)</code> | <a id="symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3"></a><code>script.event.client.Game.OnCritterAnimationFallout</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:265](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L265) | - |
-| <code>event Game.OnCritterAnimationFrames(hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, int32&amp; pass, uint32&amp; flags, int32&amp; ox, int32&amp; oy, string&amp; animName)</code> | <a id="symbol-script-event-client-game-oncritteranimationframes-49ed07db22"></a><code>script.event.client.Game.OnCritterAnimationFrames</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:261](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L261) | - |
-| <code>event Game.OnCritterAnimationInit(Critter cr, CritterStateAnim&amp; stateAnim, CritterActionAnim&amp; actionAnim, AbstractItem? contextItem)</code> | <a id="symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd"></a><code>script.event.client.Game.OnCritterAnimationInit</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:257](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L257) | - |
-| <code>event Game.OnCritterAnimationProcess(Critter cr, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem? contextItem, bool refreshAnim)</code> | <a id="symbol-script-event-client-game-oncritteranimationprocess-2920f469c4"></a><code>script.event.client.Game.OnCritterAnimationProcess</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:259](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L259) | - |
-| <code>event Game.OnCritterAnimationSubstitute(hstring baseModelName, CritterStateAnim baseStateAnim, CritterActionAnim baseActionAnim, hstring&amp; modelName, CritterStateAnim&amp; stateAnim, CritterActionAnim&amp; actionAnim)</code> | <a id="symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29"></a><code>script.event.client.Game.OnCritterAnimationSubstitute</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:263](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L263) | - |
-| <code>event Game.OnCritterIn(Critter cr)</code> | <a id="symbol-script-event-client-game-oncritterin-e1b8a98004"></a><code>script.event.client.Game.OnCritterIn</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:227](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L227) | - |
-| <code>event Game.OnCritterOut(Critter cr)</code> | <a id="symbol-script-event-client-game-oncritterout-b3f3a0aa5e"></a><code>script.event.client.Game.OnCritterOut</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:229](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L229) | - |
-| <code>event Game.OnCritterVisibilityModeChanged(Critter cr, CritterVisibilityMode mode)</code> | <a id="symbol-script-event-client-game-oncrittervisibilitymodechanged-0952ac1d0a"></a><code>script.event.client.Game.OnCritterVisibilityModeChanged</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:231](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L231) | - |
-| <code>event Game.OnCustomEntityIn(Entity entity)</code> | <a id="symbol-script-event-client-game-oncustomentityin-7377e6daad"></a><code>script.event.client.Game.OnCustomEntityIn</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:241](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L241) | - |
-| <code>event Game.OnCustomEntityOut(Entity entity)</code> | <a id="symbol-script-event-client-game-oncustomentityout-32d3516d56"></a><code>script.event.client.Game.OnCustomEntityOut</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:243](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L243) | - |
-| <code>event Game.OnDisconnected()</code> | <a id="symbol-script-event-client-game-ondisconnected-a26dbdc2a7"></a><code>script.event.client.Game.OnDisconnected</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:161](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L161) | - |
-| <code>event Game.OnFinish()</code> | <a id="symbol-script-event-client-game-onfinish-fad510d7ad"></a><code>script.event.client.Game.OnFinish</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:153](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L153) | - |
-| <code>event Game.OnInfoMessage(EngineInfoMessage infoMessage, string extraText)</code> | <a id="symbol-script-event-client-game-oninfomessage-21c3d47956"></a><code>script.event.client.Game.OnInfoMessage</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:165](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L165) | - |
-| <code>event Game.OnInputLost()</code> | <a id="symbol-script-event-client-game-oninputlost-bf45c2e794"></a><code>script.event.client.Game.OnInputLost</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:225](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L225) | - |
-| <code>event Game.OnItemInvIn(Item item)</code> | <a id="symbol-script-event-client-game-oniteminvin-a2904f52e7"></a><code>script.event.client.Game.OnItemInvIn</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:237](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L237) | - |
-| <code>event Game.OnItemInvOut(Item item)</code> | <a id="symbol-script-event-client-game-oniteminvout-f118e38564"></a><code>script.event.client.Game.OnItemInvOut</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:239](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L239) | - |
-| <code>event Game.OnItemMapIn(Item item)</code> | <a id="symbol-script-event-client-game-onitemmapin-ebf8a17943"></a><code>script.event.client.Game.OnItemMapIn</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:233](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L233) | - |
-| <code>event Game.OnItemMapOut(Item item)</code> | <a id="symbol-script-event-client-game-onitemmapout-2d0cbbda2f"></a><code>script.event.client.Game.OnItemMapOut</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:235](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L235) | - |
-| <code>event Game.OnKeyDown(KeyCode key, string text)</code> | <a id="symbol-script-event-client-game-onkeydown-fa08a341a7"></a><code>script.event.client.Game.OnKeyDown</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:221](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L221) | - |
-| <code>event Game.OnKeyUp(KeyCode key)</code> | <a id="symbol-script-event-client-game-onkeyup-b4f6d4e19d"></a><code>script.event.client.Game.OnKeyUp</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:223](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L223) | - |
-| <code>event Game.OnLoginSuccess()</code> | <a id="symbol-script-event-client-game-onloginsuccess-808174afeb"></a><code>script.event.client.Game.OnLoginSuccess</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:163](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L163) | - |
-| <code>event Game.OnLoop()</code> | <a id="symbol-script-event-client-game-onloop-554f5d7bda"></a><code>script.event.client.Game.OnLoop</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:167](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L167) | - |
-| <code>event Game.OnMapLoad()</code> | <a id="symbol-script-event-client-game-onmapload-38b76e19bc"></a><code>script.event.client.Game.OnMapLoad</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:247](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L247) | - |
-| <code>event Game.OnMapLoaded()</code> | <a id="symbol-script-event-client-game-onmaploaded-e7d30b4dcc"></a><code>script.event.client.Game.OnMapLoaded</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L249) | - |
-| <code>event Game.OnMapUnload()</code> | <a id="symbol-script-event-client-game-onmapunload-45ea9f5d8e"></a><code>script.event.client.Game.OnMapUnload</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:251](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L251) | - |
-| <code>event Game.OnMapView(mpos hex)</code> | <a id="symbol-script-event-client-game-onmapview-95423da3cc"></a><code>script.event.client.Game.OnMapView</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:269](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L269) | - |
-| <code>event Game.OnMouseDown(MouseButton button)</code> | <a id="symbol-script-event-client-game-onmousedown-8aa3340262"></a><code>script.event.client.Game.OnMouseDown</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:201](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L201) | - |
-| <code>event Game.OnMouseMove(ipos offsetPos)</code> | <a id="symbol-script-event-client-game-onmousemove-e21eadeb9d"></a><code>script.event.client.Game.OnMouseMove</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:205](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L205) | - |
-| <code>event Game.OnMouseUp(MouseButton button)</code> | <a id="symbol-script-event-client-game-onmouseup-b36373dd0b"></a><code>script.event.client.Game.OnMouseUp</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:203](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L203) | - |
-| <code>event Game.OnPreLoadMap(hstring locPid, hstring mapPid, isize&amp; screenSize)</code> | <a id="symbol-script-event-client-game-onpreloadmap-55e681efcd"></a><code>script.event.client.Game.OnPreLoadMap</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:245](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L245) | - |
-| <code>event Game.OnReceiveItems(Item[] items, any contextParam)</code> | <a id="symbol-script-event-client-game-onreceiveitems-4e19145d0d"></a><code>script.event.client.Game.OnReceiveItems</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:253](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L253) | - |
-| <code>event Game.OnRenderIface()</code> | <a id="symbol-script-event-client-game-onrenderiface-90ab8725fc"></a><code>script.event.client.Game.OnRenderIface</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:171](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L171) | - |
-| <code>event Game.OnRenderMap_AfterFlatSprites(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-afterflatsprites-facd4f7ad8"></a><code>script.event.client.Game.OnRenderMap_AfterFlatSprites</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:181](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L181) | - |
-| <code>event Game.OnRenderMap_AfterFlushMap(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-afterflushmap-b39c47473c"></a><code>script.event.client.Game.OnRenderMap_AfterFlushMap</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:199](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L199) | - |
-| <code>event Game.OnRenderMap_AfterFog(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-afterfog-4b89aa0547"></a><code>script.event.client.Game.OnRenderMap_AfterFog</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:193](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L193) | - |
-| <code>event Game.OnRenderMap_AfterLighting(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-afterlighting-29cf792667"></a><code>script.event.client.Game.OnRenderMap_AfterLighting</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:185](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L185) | - |
-| <code>event Game.OnRenderMap_AfterSprites(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-aftersprites-90b6211c34"></a><code>script.event.client.Game.OnRenderMap_AfterSprites</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:189](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L189) | - |
-| <code>event Game.OnRenderMap_AfterSpritesAndFog(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-afterspritesandfog-7d07ecb18b"></a><code>script.event.client.Game.OnRenderMap_AfterSpritesAndFog</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:195](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L195) | - |
-| <code>event Game.OnRenderMap_AfterTiles(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-aftertiles-891e7500ec"></a><code>script.event.client.Game.OnRenderMap_AfterTiles</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:177](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L177) | - |
-| <code>event Game.OnRenderMap_BeforeFlatSprites(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforeflatsprites-4f09c5e039"></a><code>script.event.client.Game.OnRenderMap_BeforeFlatSprites</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:179](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L179) | - |
-| <code>event Game.OnRenderMap_BeforeFlushMap(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforeflushmap-63b392fff2"></a><code>script.event.client.Game.OnRenderMap_BeforeFlushMap</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:197](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L197) | - |
-| <code>event Game.OnRenderMap_BeforeFog(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforefog-7b96e2c24f"></a><code>script.event.client.Game.OnRenderMap_BeforeFog</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:191](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L191) | - |
-| <code>event Game.OnRenderMap_BeforeLighting(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforelighting-01a2c15e01"></a><code>script.event.client.Game.OnRenderMap_BeforeLighting</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:183](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L183) | - |
-| <code>event Game.OnRenderMap_BeforeSprites(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforesprites-7432b18909"></a><code>script.event.client.Game.OnRenderMap_BeforeSprites</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:187](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L187) | - |
-| <code>event Game.OnRenderMap_BeforeTiles(Map map, irect drawArea)</code> | <a id="symbol-script-event-client-game-onrendermap-beforetiles-cb0712728a"></a><code>script.event.client.Game.OnRenderMap_BeforeTiles</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:175](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L175) | - |
-| <code>event Game.OnRenderMap_Rebuild(Map map)</code> | <a id="symbol-script-event-client-game-onrendermap-rebuild-23ca13c89e"></a><code>script.event.client.Game.OnRenderMap_Rebuild</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:173](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L173) | - |
-| <code>event Game.OnScreenScroll()</code> | <a id="symbol-script-event-client-game-onscreenscroll-fff668eaad"></a><code>script.event.client.Game.OnScreenScroll</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:169](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L169) | - |
-| <code>event Game.OnScreenSizeChanged()</code> | <a id="symbol-script-event-client-game-onscreensizechanged-f6367258eb"></a><code>script.event.client.Game.OnScreenSizeChanged</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:267](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L267) | - |
-| <code>event Game.OnStart()</code> | <a id="symbol-script-event-client-game-onstart-be89bde213"></a><code>script.event.client.Game.OnStart</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:151](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L151) | - |
-| <code>event Game.OnTouchDoubleTap(ipos screenPos)</code> | <a id="symbol-script-event-client-game-ontouchdoubletap-62c0019e2c"></a><code>script.event.client.Game.OnTouchDoubleTap</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:215](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L215) | - |
-| <code>event Game.OnTouchDown(int64 fingerId, ipos screenPos)</code> | <a id="symbol-script-event-client-game-ontouchdown-92ae1d78a8"></a><code>script.event.client.Game.OnTouchDown</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:207](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L207) | - |
-| <code>event Game.OnTouchMove(int64 fingerId, ipos screenPos, ipos offsetPos)</code> | <a id="symbol-script-event-client-game-ontouchmove-d68249203b"></a><code>script.event.client.Game.OnTouchMove</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:209](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L209) | - |
-| <code>event Game.OnTouchScroll(ipos screenPos, ipos offsetPos)</code> | <a id="symbol-script-event-client-game-ontouchscroll-7ac02b1756"></a><code>script.event.client.Game.OnTouchScroll</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:217](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L217) | - |
-| <code>event Game.OnTouchTap(ipos screenPos)</code> | <a id="symbol-script-event-client-game-ontouchtap-556fcd5fdc"></a><code>script.event.client.Game.OnTouchTap</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:213](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L213) | - |
-| <code>event Game.OnTouchUp(int64 fingerId, ipos screenPos)</code> | <a id="symbol-script-event-client-game-ontouchup-06a2b919b2"></a><code>script.event.client.Game.OnTouchUp</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:211](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L211) | - |
-| <code>event Game.OnTouchZoom(ipos screenPos, float32 factor)</code> | <a id="symbol-script-event-client-game-ontouchzoom-48b8c13ec5"></a><code>script.event.client.Game.OnTouchZoom</code> | client, mapper | <code>internal</code> (default) | - | [Source/Client/Client.h:219](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L219) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-client-game-onconnected-658361e7ce"></a>
+- [`symbol-script-event-client-game-onconnected-658361e7ce`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onconnected-658361e7ce)
+
+<a id="symbol-script-event-client-game-onconnecting-2b0300a8c3"></a>
+- [`symbol-script-event-client-game-onconnecting-2b0300a8c3`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onconnecting-2b0300a8c3)
+
+<a id="symbol-script-event-client-game-onconnectingfailed-f6fcaaa5b1"></a>
+- [`symbol-script-event-client-game-onconnectingfailed-f6fcaaa5b1`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onconnectingfailed-f6fcaaa5b1)
+
+<a id="symbol-script-event-client-game-oncritteraction-786f365adb"></a>
+- [`symbol-script-event-client-game-oncritteraction-786f365adb`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteraction-786f365adb)
+
+<a id="symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3"></a>
+- [`symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3)
+
+<a id="symbol-script-event-client-game-oncritteranimationframes-49ed07db22"></a>
+- [`symbol-script-event-client-game-oncritteranimationframes-49ed07db22`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationframes-49ed07db22)
+
+<a id="symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd"></a>
+- [`symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd)
+
+<a id="symbol-script-event-client-game-oncritteranimationprocess-2920f469c4"></a>
+- [`symbol-script-event-client-game-oncritteranimationprocess-2920f469c4`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationprocess-2920f469c4)
+
+<a id="symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29"></a>
+- [`symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29)
+
+<a id="symbol-script-event-client-game-oncritterin-e1b8a98004"></a>
+- [`symbol-script-event-client-game-oncritterin-e1b8a98004`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritterin-e1b8a98004)
+
+<a id="symbol-script-event-client-game-oncritterout-b3f3a0aa5e"></a>
+- [`symbol-script-event-client-game-oncritterout-b3f3a0aa5e`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritterout-b3f3a0aa5e)
+
+<a id="symbol-script-event-client-game-oncrittervisibilitymodechanged-0952ac1d0a"></a>
+- [`symbol-script-event-client-game-oncrittervisibilitymodechanged-0952ac1d0a`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncrittervisibilitymodechanged-0952ac1d0a)
+
+<a id="symbol-script-event-client-game-oncustomentityin-7377e6daad"></a>
+- [`symbol-script-event-client-game-oncustomentityin-7377e6daad`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncustomentityin-7377e6daad)
+
+<a id="symbol-script-event-client-game-oncustomentityout-32d3516d56"></a>
+- [`symbol-script-event-client-game-oncustomentityout-32d3516d56`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncustomentityout-32d3516d56)
+
+<a id="symbol-script-event-client-game-ondisconnected-a26dbdc2a7"></a>
+- [`symbol-script-event-client-game-ondisconnected-a26dbdc2a7`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ondisconnected-a26dbdc2a7)
+
+<a id="symbol-script-event-client-game-onfinish-fad510d7ad"></a>
+- [`symbol-script-event-client-game-onfinish-fad510d7ad`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onfinish-fad510d7ad)
+
+<a id="symbol-script-event-client-game-oninfomessage-21c3d47956"></a>
+- [`symbol-script-event-client-game-oninfomessage-21c3d47956`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oninfomessage-21c3d47956)
+
+<a id="symbol-script-event-client-game-oninputlost-bf45c2e794"></a>
+- [`symbol-script-event-client-game-oninputlost-bf45c2e794`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oninputlost-bf45c2e794)
+
+<a id="symbol-script-event-client-game-oniteminvin-a2904f52e7"></a>
+- [`symbol-script-event-client-game-oniteminvin-a2904f52e7`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oniteminvin-a2904f52e7)
+
+<a id="symbol-script-event-client-game-oniteminvout-f118e38564"></a>
+- [`symbol-script-event-client-game-oniteminvout-f118e38564`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oniteminvout-f118e38564)
+
+<a id="symbol-script-event-client-game-onitemmapin-ebf8a17943"></a>
+- [`symbol-script-event-client-game-onitemmapin-ebf8a17943`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onitemmapin-ebf8a17943)
+
+<a id="symbol-script-event-client-game-onitemmapout-2d0cbbda2f"></a>
+- [`symbol-script-event-client-game-onitemmapout-2d0cbbda2f`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onitemmapout-2d0cbbda2f)
+
+<a id="symbol-script-event-client-game-onkeydown-fa08a341a7"></a>
+- [`symbol-script-event-client-game-onkeydown-fa08a341a7`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onkeydown-fa08a341a7)
+
+<a id="symbol-script-event-client-game-onkeyup-b4f6d4e19d"></a>
+- [`symbol-script-event-client-game-onkeyup-b4f6d4e19d`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onkeyup-b4f6d4e19d)
+
+<a id="symbol-script-event-client-game-onloginsuccess-808174afeb"></a>
+- [`symbol-script-event-client-game-onloginsuccess-808174afeb`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onloginsuccess-808174afeb)
+
+<a id="symbol-script-event-client-game-onloop-554f5d7bda"></a>
+- [`symbol-script-event-client-game-onloop-554f5d7bda`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onloop-554f5d7bda)
+
+<a id="symbol-script-event-client-game-onmapload-38b76e19bc"></a>
+- [`symbol-script-event-client-game-onmapload-38b76e19bc`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmapload-38b76e19bc)
+
+<a id="symbol-script-event-client-game-onmaploaded-e7d30b4dcc"></a>
+- [`symbol-script-event-client-game-onmaploaded-e7d30b4dcc`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmaploaded-e7d30b4dcc)
+
+<a id="symbol-script-event-client-game-onmapunload-45ea9f5d8e"></a>
+- [`symbol-script-event-client-game-onmapunload-45ea9f5d8e`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmapunload-45ea9f5d8e)
+
+<a id="symbol-script-event-client-game-onmapview-95423da3cc"></a>
+- [`symbol-script-event-client-game-onmapview-95423da3cc`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmapview-95423da3cc)
+
+<a id="symbol-script-event-client-game-onmousedown-8aa3340262"></a>
+- [`symbol-script-event-client-game-onmousedown-8aa3340262`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmousedown-8aa3340262)
+
+<a id="symbol-script-event-client-game-onmousemove-e21eadeb9d"></a>
+- [`symbol-script-event-client-game-onmousemove-e21eadeb9d`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmousemove-e21eadeb9d)
+
+<a id="symbol-script-event-client-game-onmouseup-b36373dd0b"></a>
+- [`symbol-script-event-client-game-onmouseup-b36373dd0b`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onmouseup-b36373dd0b)
+
+<a id="symbol-script-event-client-game-onpreloadmap-55e681efcd"></a>
+- [`symbol-script-event-client-game-onpreloadmap-55e681efcd`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onpreloadmap-55e681efcd)
+
+<a id="symbol-script-event-client-game-onreceiveitems-4e19145d0d"></a>
+- [`symbol-script-event-client-game-onreceiveitems-4e19145d0d`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onreceiveitems-4e19145d0d)
+
+<a id="symbol-script-event-client-game-onrenderiface-90ab8725fc"></a>
+- [`symbol-script-event-client-game-onrenderiface-90ab8725fc`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrenderiface-90ab8725fc)
+
+<a id="symbol-script-event-client-game-onrendermap-afterflatsprites-facd4f7ad8"></a>
+- [`symbol-script-event-client-game-onrendermap-afterflatsprites-facd4f7ad8`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-afterflatsprites-facd4f7ad8)
+
+<a id="symbol-script-event-client-game-onrendermap-afterflushmap-b39c47473c"></a>
+- [`symbol-script-event-client-game-onrendermap-afterflushmap-b39c47473c`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-afterflushmap-b39c47473c)
+
+<a id="symbol-script-event-client-game-onrendermap-afterfog-4b89aa0547"></a>
+- [`symbol-script-event-client-game-onrendermap-afterfog-4b89aa0547`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-afterfog-4b89aa0547)
+
+<a id="symbol-script-event-client-game-onrendermap-afterlighting-29cf792667"></a>
+- [`symbol-script-event-client-game-onrendermap-afterlighting-29cf792667`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-afterlighting-29cf792667)
+
+<a id="symbol-script-event-client-game-onrendermap-aftersprites-90b6211c34"></a>
+- [`symbol-script-event-client-game-onrendermap-aftersprites-90b6211c34`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-aftersprites-90b6211c34)
+
+<a id="symbol-script-event-client-game-onrendermap-afterspritesandfog-7d07ecb18b"></a>
+- [`symbol-script-event-client-game-onrendermap-afterspritesandfog-7d07ecb18b`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-afterspritesandfog-7d07ecb18b)
+
+<a id="symbol-script-event-client-game-onrendermap-aftertiles-891e7500ec"></a>
+- [`symbol-script-event-client-game-onrendermap-aftertiles-891e7500ec`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-aftertiles-891e7500ec)
+
+<a id="symbol-script-event-client-game-onrendermap-beforeflatsprites-4f09c5e039"></a>
+- [`symbol-script-event-client-game-onrendermap-beforeflatsprites-4f09c5e039`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforeflatsprites-4f09c5e039)
+
+<a id="symbol-script-event-client-game-onrendermap-beforeflushmap-63b392fff2"></a>
+- [`symbol-script-event-client-game-onrendermap-beforeflushmap-63b392fff2`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforeflushmap-63b392fff2)
+
+<a id="symbol-script-event-client-game-onrendermap-beforefog-7b96e2c24f"></a>
+- [`symbol-script-event-client-game-onrendermap-beforefog-7b96e2c24f`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforefog-7b96e2c24f)
+
+<a id="symbol-script-event-client-game-onrendermap-beforelighting-01a2c15e01"></a>
+- [`symbol-script-event-client-game-onrendermap-beforelighting-01a2c15e01`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforelighting-01a2c15e01)
+
+<a id="symbol-script-event-client-game-onrendermap-beforesprites-7432b18909"></a>
+- [`symbol-script-event-client-game-onrendermap-beforesprites-7432b18909`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforesprites-7432b18909)
+
+<a id="symbol-script-event-client-game-onrendermap-beforetiles-cb0712728a"></a>
+- [`symbol-script-event-client-game-onrendermap-beforetiles-cb0712728a`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-beforetiles-cb0712728a)
+
+<a id="symbol-script-event-client-game-onrendermap-rebuild-23ca13c89e"></a>
+- [`symbol-script-event-client-game-onrendermap-rebuild-23ca13c89e`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onrendermap-rebuild-23ca13c89e)
+
+<a id="symbol-script-event-client-game-onscreenscroll-fff668eaad"></a>
+- [`symbol-script-event-client-game-onscreenscroll-fff668eaad`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onscreenscroll-fff668eaad)
+
+<a id="symbol-script-event-client-game-onscreensizechanged-f6367258eb"></a>
+- [`symbol-script-event-client-game-onscreensizechanged-f6367258eb`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onscreensizechanged-f6367258eb)
+
+<a id="symbol-script-event-client-game-onstart-be89bde213"></a>
+- [`symbol-script-event-client-game-onstart-be89bde213`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onstart-be89bde213)
+
+<a id="symbol-script-event-client-game-ontouchdoubletap-62c0019e2c"></a>
+- [`symbol-script-event-client-game-ontouchdoubletap-62c0019e2c`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchdoubletap-62c0019e2c)
+
+<a id="symbol-script-event-client-game-ontouchdown-92ae1d78a8"></a>
+- [`symbol-script-event-client-game-ontouchdown-92ae1d78a8`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchdown-92ae1d78a8)
+
+<a id="symbol-script-event-client-game-ontouchmove-d68249203b"></a>
+- [`symbol-script-event-client-game-ontouchmove-d68249203b`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchmove-d68249203b)
+
+<a id="symbol-script-event-client-game-ontouchscroll-7ac02b1756"></a>
+- [`symbol-script-event-client-game-ontouchscroll-7ac02b1756`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchscroll-7ac02b1756)
+
+<a id="symbol-script-event-client-game-ontouchtap-556fcd5fdc"></a>
+- [`symbol-script-event-client-game-ontouchtap-556fcd5fdc`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchtap-556fcd5fdc)
+
+<a id="symbol-script-event-client-game-ontouchup-06a2b919b2"></a>
+- [`symbol-script-event-client-game-ontouchup-06a2b919b2`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchup-06a2b919b2)
+
+<a id="symbol-script-event-client-game-ontouchzoom-48b8c13ec5"></a>
+- [`symbol-script-event-client-game-ontouchzoom-48b8c13ec5`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ontouchzoom-48b8c13ec5)
 
 <a id="group-event-mapper-game-930de6f34a"></a>
+- [`group-event-mapper-game-930de6f34a`](../../en/reference/script-api/events.md#group-event-mapper-game-930de6f34a)
+
 ## <code>Game</code> (mapper)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Game.OnEditMapLoad(Map map)</code> | <a id="symbol-script-event-mapper-game-oneditmapload-278b5a0a91"></a><code>script.event.mapper.Game.OnEditMapLoad</code> | mapper | <code>internal</code> (default) | - | [Source/Tools/Mapper.h:321](https://github.com/cvet/fonline/blob/master/Source/Tools/Mapper.h#L321) | - |
-| <code>event Game.OnEditMapSave(Map map)</code> | <a id="symbol-script-event-mapper-game-oneditmapsave-f4236b2a74"></a><code>script.event.mapper.Game.OnEditMapSave</code> | mapper | <code>internal</code> (default) | - | [Source/Tools/Mapper.h:323](https://github.com/cvet/fonline/blob/master/Source/Tools/Mapper.h#L323) | - |
-| <code>event Game.OnInspectorProperties(Entity entity, int32[]&amp; properties)</code> | <a id="symbol-script-event-mapper-game-oninspectorproperties-f63d681eaa"></a><code>script.event.mapper.Game.OnInspectorProperties</code> | mapper | <code>internal</code> (default) | - | [Source/Tools/Mapper.h:325](https://github.com/cvet/fonline/blob/master/Source/Tools/Mapper.h#L325) | - |
-| <code>event Game.OnMapperMessage(string&amp; text)</code> | <a id="symbol-script-event-mapper-game-onmappermessage-7149522cd1"></a><code>script.event.mapper.Game.OnMapperMessage</code> | mapper | <code>internal</code> (default) | - | [Source/Tools/Mapper.h:319](https://github.com/cvet/fonline/blob/master/Source/Tools/Mapper.h#L319) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-mapper-game-oneditmapload-278b5a0a91"></a>
+- [`symbol-script-event-mapper-game-oneditmapload-278b5a0a91`](../../en/reference/script-api/events.md#symbol-script-event-mapper-game-oneditmapload-278b5a0a91)
+
+<a id="symbol-script-event-mapper-game-oneditmapsave-f4236b2a74"></a>
+- [`symbol-script-event-mapper-game-oneditmapsave-f4236b2a74`](../../en/reference/script-api/events.md#symbol-script-event-mapper-game-oneditmapsave-f4236b2a74)
+
+<a id="symbol-script-event-mapper-game-oninspectorproperties-f63d681eaa"></a>
+- [`symbol-script-event-mapper-game-oninspectorproperties-f63d681eaa`](../../en/reference/script-api/events.md#symbol-script-event-mapper-game-oninspectorproperties-f63d681eaa)
+
+<a id="symbol-script-event-mapper-game-onmappermessage-7149522cd1"></a>
+- [`symbol-script-event-mapper-game-onmappermessage-7149522cd1`](../../en/reference/script-api/events.md#symbol-script-event-mapper-game-onmappermessage-7149522cd1)
 
 <a id="group-event-server-critter-ec6a771c23"></a>
+- [`group-event-server-critter-ec6a771c23`](../../en/reference/script-api/events.md#group-event-server-critter-ec6a771c23)
+
 ## <code>Critter</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount)</code> | <a id="symbol-script-event-server-critter-onbarter-4b2c3ca17a"></a><code>script.event.server.Critter.OnBarter</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:199](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L199) | - |
-| <code>event Critter.OnCritterAppeared(Critter appearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterappeared-500b0c9202"></a><code>script.event.server.Critter.OnCritterAppeared</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:173](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L173) | - |
-| <code>event Critter.OnCritterAppearedDist1(Critter appearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterappeareddist1-685243ef2a"></a><code>script.event.server.Critter.OnCritterAppearedDist1</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:175](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L175) | - |
-| <code>event Critter.OnCritterAppearedDist2(Critter appearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterappeareddist2-c79ebef10a"></a><code>script.event.server.Critter.OnCritterAppearedDist2</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:177](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L177) | - |
-| <code>event Critter.OnCritterAppearedDist3(Critter appearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterappeareddist3-5ee12d245d"></a><code>script.event.server.Critter.OnCritterAppearedDist3</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:179](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L179) | - |
-| <code>event Critter.OnCritterDisappeared(Critter disappearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterdisappeared-29acb35bbb"></a><code>script.event.server.Critter.OnCritterDisappeared</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:181](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L181) | - |
-| <code>event Critter.OnCritterDisappearedDist1(Critter disappearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterdisappeareddist1-fb913c29c3"></a><code>script.event.server.Critter.OnCritterDisappearedDist1</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:183](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L183) | - |
-| <code>event Critter.OnCritterDisappearedDist2(Critter disappearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterdisappeareddist2-6034a3f362"></a><code>script.event.server.Critter.OnCritterDisappearedDist2</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:185](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L185) | - |
-| <code>event Critter.OnCritterDisappearedDist3(Critter disappearedCr)</code> | <a id="symbol-script-event-server-critter-oncritterdisappeareddist3-ef1ed7ca0a"></a><code>script.event.server.Critter.OnCritterDisappearedDist3</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:187](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L187) | - |
-| <code>event Critter.OnCritterVisibilityModeChanged(Critter targetCr, CritterVisibilityMode mode)</code> | <a id="symbol-script-event-server-critter-oncrittervisibilitymodechanged-becfb88bc9"></a><code>script.event.server.Critter.OnCritterVisibilityModeChanged</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:189](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L189) | - |
-| <code>event Critter.OnFinish()</code> | <a id="symbol-script-event-server-critter-onfinish-e5339abe37"></a><code>script.event.server.Critter.OnFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:171](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L171) | - |
-| <code>event Critter.OnItemOnMapAppeared(Item item, Critter? dropper)</code> | <a id="symbol-script-event-server-critter-onitemonmapappeared-495cf93657"></a><code>script.event.server.Critter.OnItemOnMapAppeared</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:191](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L191) | - |
-| <code>event Critter.OnItemOnMapChanged(Item item)</code> | <a id="symbol-script-event-server-critter-onitemonmapchanged-69cde8755c"></a><code>script.event.server.Critter.OnItemOnMapChanged</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:195](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L195) | - |
-| <code>event Critter.OnItemOnMapDisappeared(Item item, Critter? picker)</code> | <a id="symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27"></a><code>script.event.server.Critter.OnItemOnMapDisappeared</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:193](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L193) | - |
-| <code>event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers)</code> | <a id="symbol-script-event-server-critter-ontalk-68f57764b6"></a><code>script.event.server.Critter.OnTalk</code> | server | <code>internal</code> (default) | - | [Source/Server/Critter.h:197](https://github.com/cvet/fonline/blob/master/Source/Server/Critter.h#L197) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-critter-onbarter-4b2c3ca17a"></a>
+- [`symbol-script-event-server-critter-onbarter-4b2c3ca17a`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onbarter-4b2c3ca17a)
+
+<a id="symbol-script-event-server-critter-oncritterappeared-500b0c9202"></a>
+- [`symbol-script-event-server-critter-oncritterappeared-500b0c9202`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterappeared-500b0c9202)
+
+<a id="symbol-script-event-server-critter-oncritterappeareddist1-685243ef2a"></a>
+- [`symbol-script-event-server-critter-oncritterappeareddist1-685243ef2a`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterappeareddist1-685243ef2a)
+
+<a id="symbol-script-event-server-critter-oncritterappeareddist2-c79ebef10a"></a>
+- [`symbol-script-event-server-critter-oncritterappeareddist2-c79ebef10a`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterappeareddist2-c79ebef10a)
+
+<a id="symbol-script-event-server-critter-oncritterappeareddist3-5ee12d245d"></a>
+- [`symbol-script-event-server-critter-oncritterappeareddist3-5ee12d245d`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterappeareddist3-5ee12d245d)
+
+<a id="symbol-script-event-server-critter-oncritterdisappeared-29acb35bbb"></a>
+- [`symbol-script-event-server-critter-oncritterdisappeared-29acb35bbb`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterdisappeared-29acb35bbb)
+
+<a id="symbol-script-event-server-critter-oncritterdisappeareddist1-fb913c29c3"></a>
+- [`symbol-script-event-server-critter-oncritterdisappeareddist1-fb913c29c3`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterdisappeareddist1-fb913c29c3)
+
+<a id="symbol-script-event-server-critter-oncritterdisappeareddist2-6034a3f362"></a>
+- [`symbol-script-event-server-critter-oncritterdisappeareddist2-6034a3f362`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterdisappeareddist2-6034a3f362)
+
+<a id="symbol-script-event-server-critter-oncritterdisappeareddist3-ef1ed7ca0a"></a>
+- [`symbol-script-event-server-critter-oncritterdisappeareddist3-ef1ed7ca0a`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterdisappeareddist3-ef1ed7ca0a)
+
+<a id="symbol-script-event-server-critter-oncrittervisibilitymodechanged-becfb88bc9"></a>
+- [`symbol-script-event-server-critter-oncrittervisibilitymodechanged-becfb88bc9`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncrittervisibilitymodechanged-becfb88bc9)
+
+<a id="symbol-script-event-server-critter-onfinish-e5339abe37"></a>
+- [`symbol-script-event-server-critter-onfinish-e5339abe37`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onfinish-e5339abe37)
+
+<a id="symbol-script-event-server-critter-onitemonmapappeared-495cf93657"></a>
+- [`symbol-script-event-server-critter-onitemonmapappeared-495cf93657`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onitemonmapappeared-495cf93657)
+
+<a id="symbol-script-event-server-critter-onitemonmapchanged-69cde8755c"></a>
+- [`symbol-script-event-server-critter-onitemonmapchanged-69cde8755c`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onitemonmapchanged-69cde8755c)
+
+<a id="symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27"></a>
+- [`symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27)
+
+<a id="symbol-script-event-server-critter-ontalk-68f57764b6"></a>
+- [`symbol-script-event-server-critter-ontalk-68f57764b6`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-ontalk-68f57764b6)
 
 <a id="group-event-server-game-c7d83d636e"></a>
+- [`group-event-server-game-c7d83d636e`](../../en/reference/script-api/events.md#group-event-server-game-c7d83d636e)
+
 ## <code>Game</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Game.OnCritterFinish(Critter cr)</code> | <a id="symbol-script-event-server-game-oncritterfinish-6e8bc76941"></a><code>script.event.server.Game.OnCritterFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:183](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L183) | - |
-| <code>event Game.OnCritterInit(Critter cr, bool firstTime)</code> | <a id="symbol-script-event-server-game-oncritterinit-08f05416b0"></a><code>script.event.server.Game.OnCritterInit</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:181](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L181) | - |
-| <code>event Game.OnCritterItemMoved(Critter cr, Item item, CritterItemSlot fromSlot)</code> | <a id="symbol-script-event-server-game-oncritteritemmoved-629adbbf94"></a><code>script.event.server.Game.OnCritterItemMoved</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:191](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L191) | - |
-| <code>event Game.OnCritterLoad(Critter cr)</code> | <a id="symbol-script-event-server-game-oncritterload-d49eb36a1a"></a><code>script.event.server.Game.OnCritterLoad</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:185](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L185) | - |
-| <code>event Game.OnCritterMoved(Critter cr, mpos oldHex)</code> | <a id="symbol-script-event-server-game-oncrittermoved-4bbbed1767"></a><code>script.event.server.Game.OnCritterMoved</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:155](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L155) | - |
-| <code>event Game.OnCritterPreLoad(Critter cr)</code> | <a id="symbol-script-event-server-game-oncritterpreload-ed4087a79f"></a><code>script.event.server.Game.OnCritterPreLoad</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:179](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L179) | - |
-| <code>event Game.OnCritterSendInitialInfo(Critter cr)</code> | <a id="symbol-script-event-server-game-oncrittersendinitialinfo-30d2d6bf5f"></a><code>script.event.server.Game.OnCritterSendInitialInfo</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:189](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L189) | - |
-| <code>event Game.OnCritterStartMoving(Critter cr, bool wasMoving)</code> | <a id="symbol-script-event-server-game-oncritterstartmoving-bcbb5de45d"></a><code>script.event.server.Game.OnCritterStartMoving</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:157](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L157) | - |
-| <code>event Game.OnCritterStopMoving(Critter cr)</code> | <a id="symbol-script-event-server-game-oncritterstopmoving-b4e9cae02c"></a><code>script.event.server.Game.OnCritterStopMoving</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:159](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L159) | - |
-| <code>event Game.OnCritterTransfer(Critter cr, Map? prevMap)</code> | <a id="symbol-script-event-server-game-oncrittertransfer-74d620850f"></a><code>script.event.server.Game.OnCritterTransfer</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:161](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L161) | - |
-| <code>event Game.OnCritterUnload(Critter cr)</code> | <a id="symbol-script-event-server-game-oncritterunload-e50ff3481f"></a><code>script.event.server.Game.OnCritterUnload</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:187](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L187) | - |
-| <code>event Game.OnFinish()</code> | <a id="symbol-script-event-server-game-onfinish-75f2676c6d"></a><code>script.event.server.Game.OnFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:143](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L143) | - |
-| <code>event Game.OnGenerateWorld()</code> | <a id="symbol-script-event-server-game-ongenerateworld-dcedb49e02"></a><code>script.event.server.Game.OnGenerateWorld</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:139](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L139) | - |
-| <code>event Game.OnGlobalMapCritterIn(Critter cr)</code> | <a id="symbol-script-event-server-game-onglobalmapcritterin-0d069886ff"></a><code>script.event.server.Game.OnGlobalMapCritterIn</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:163](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L163) | - |
-| <code>event Game.OnGlobalMapCritterOut(Critter cr)</code> | <a id="symbol-script-event-server-game-onglobalmapcritterout-87d12a9e8a"></a><code>script.event.server.Game.OnGlobalMapCritterOut</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:165](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L165) | - |
-| <code>event Game.OnInit()</code> | <a id="symbol-script-event-server-game-oninit-a47fba48dd"></a><code>script.event.server.Game.OnInit</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:137](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L137) | - |
-| <code>event Game.OnItemFinish(Item item)</code> | <a id="symbol-script-event-server-game-onitemfinish-e1da260b2d"></a><code>script.event.server.Game.OnItemFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:195](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L195) | - |
-| <code>event Game.OnItemInit(Item item, bool firstTime)</code> | <a id="symbol-script-event-server-game-oniteminit-3d091a4888"></a><code>script.event.server.Game.OnItemInit</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:193](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L193) | - |
-| <code>event Game.OnLocationFinish(Location location)</code> | <a id="symbol-script-event-server-game-onlocationfinish-3391fbb9ee"></a><code>script.event.server.Game.OnLocationFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:169](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L169) | - |
-| <code>event Game.OnLocationInit(Location location, bool firstTime)</code> | <a id="symbol-script-event-server-game-onlocationinit-3c1343d630"></a><code>script.event.server.Game.OnLocationInit</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:167](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L167) | - |
-| <code>event Game.OnMapCritterIn(Map map, Critter cr)</code> | <a id="symbol-script-event-server-game-onmapcritterin-633df28641"></a><code>script.event.server.Game.OnMapCritterIn</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:175](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L175) | - |
-| <code>event Game.OnMapCritterOut(Map map, Critter cr)</code> | <a id="symbol-script-event-server-game-onmapcritterout-7ba9d111d7"></a><code>script.event.server.Game.OnMapCritterOut</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:177](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L177) | - |
-| <code>event Game.OnMapFinish(Map map)</code> | <a id="symbol-script-event-server-game-onmapfinish-2134bf5dbe"></a><code>script.event.server.Game.OnMapFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:173](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L173) | - |
-| <code>event Game.OnMapInit(Map map, bool firstTime)</code> | <a id="symbol-script-event-server-game-onmapinit-a5149bbdd8"></a><code>script.event.server.Game.OnMapInit</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:171](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L171) | - |
-| <code>event Game.OnPlayerCritterSwitched(Player player, Critter cr, Critter prevCr)</code> | <a id="symbol-script-event-server-game-onplayercritterswitched-f55489ed2e"></a><code>script.event.server.Game.OnPlayerCritterSwitched</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:149](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L149) | - |
-| <code>event Game.OnPlayerDirCritter(Player player, Critter cr, mdir&amp; dir)</code> | <a id="symbol-script-event-server-game-onplayerdircritter-14ff95c219"></a><code>script.event.server.Game.OnPlayerDirCritter</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:153](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L153) | - |
-| <code>event Game.OnPlayerLogin(Player player, Player? unloginedPlayer)</code> | <a id="symbol-script-event-server-game-onplayerlogin-e62583f697"></a><code>script.event.server.Game.OnPlayerLogin</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:145](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L145) | - |
-| <code>event Game.OnPlayerLogout(Player player)</code> | <a id="symbol-script-event-server-game-onplayerlogout-52f84bb04e"></a><code>script.event.server.Game.OnPlayerLogout</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:147](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L147) | - |
-| <code>event Game.OnPlayerMoveCritter(Player player, Critter cr, int32&amp; speed)</code> | <a id="symbol-script-event-server-game-onplayermovecritter-f612ab415d"></a><code>script.event.server.Game.OnPlayerMoveCritter</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:151](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L151) | - |
-| <code>event Game.OnStart()</code> | <a id="symbol-script-event-server-game-onstart-60703820d5"></a><code>script.event.server.Game.OnStart</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:141](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L141) | - |
-| <code>event Game.OnStaticItemWalk(StaticItem item, Critter cr, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-game-onstaticitemwalk-fabd334506"></a><code>script.event.server.Game.OnStaticItemWalk</code> | server | <code>internal</code> (default) | - | [Source/Server/Server.h:197](https://github.com/cvet/fonline/blob/master/Source/Server/Server.h#L197) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-game-oncritterfinish-6e8bc76941"></a>
+- [`symbol-script-event-server-game-oncritterfinish-6e8bc76941`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterfinish-6e8bc76941)
+
+<a id="symbol-script-event-server-game-oncritterinit-08f05416b0"></a>
+- [`symbol-script-event-server-game-oncritterinit-08f05416b0`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterinit-08f05416b0)
+
+<a id="symbol-script-event-server-game-oncritteritemmoved-629adbbf94"></a>
+- [`symbol-script-event-server-game-oncritteritemmoved-629adbbf94`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritteritemmoved-629adbbf94)
+
+<a id="symbol-script-event-server-game-oncritterload-d49eb36a1a"></a>
+- [`symbol-script-event-server-game-oncritterload-d49eb36a1a`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterload-d49eb36a1a)
+
+<a id="symbol-script-event-server-game-oncrittermoved-4bbbed1767"></a>
+- [`symbol-script-event-server-game-oncrittermoved-4bbbed1767`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncrittermoved-4bbbed1767)
+
+<a id="symbol-script-event-server-game-oncritterpreload-ed4087a79f"></a>
+- [`symbol-script-event-server-game-oncritterpreload-ed4087a79f`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterpreload-ed4087a79f)
+
+<a id="symbol-script-event-server-game-oncrittersendinitialinfo-30d2d6bf5f"></a>
+- [`symbol-script-event-server-game-oncrittersendinitialinfo-30d2d6bf5f`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncrittersendinitialinfo-30d2d6bf5f)
+
+<a id="symbol-script-event-server-game-oncritterstartmoving-bcbb5de45d"></a>
+- [`symbol-script-event-server-game-oncritterstartmoving-bcbb5de45d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterstartmoving-bcbb5de45d)
+
+<a id="symbol-script-event-server-game-oncritterstopmoving-b4e9cae02c"></a>
+- [`symbol-script-event-server-game-oncritterstopmoving-b4e9cae02c`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterstopmoving-b4e9cae02c)
+
+<a id="symbol-script-event-server-game-oncrittertransfer-74d620850f"></a>
+- [`symbol-script-event-server-game-oncrittertransfer-74d620850f`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncrittertransfer-74d620850f)
+
+<a id="symbol-script-event-server-game-oncritterunload-e50ff3481f"></a>
+- [`symbol-script-event-server-game-oncritterunload-e50ff3481f`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterunload-e50ff3481f)
+
+<a id="symbol-script-event-server-game-onfinish-75f2676c6d"></a>
+- [`symbol-script-event-server-game-onfinish-75f2676c6d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onfinish-75f2676c6d)
+
+<a id="symbol-script-event-server-game-ongenerateworld-dcedb49e02"></a>
+- [`symbol-script-event-server-game-ongenerateworld-dcedb49e02`](../../en/reference/script-api/events.md#symbol-script-event-server-game-ongenerateworld-dcedb49e02)
+
+<a id="symbol-script-event-server-game-onglobalmapcritterin-0d069886ff"></a>
+- [`symbol-script-event-server-game-onglobalmapcritterin-0d069886ff`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onglobalmapcritterin-0d069886ff)
+
+<a id="symbol-script-event-server-game-onglobalmapcritterout-87d12a9e8a"></a>
+- [`symbol-script-event-server-game-onglobalmapcritterout-87d12a9e8a`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onglobalmapcritterout-87d12a9e8a)
+
+<a id="symbol-script-event-server-game-oninit-a47fba48dd"></a>
+- [`symbol-script-event-server-game-oninit-a47fba48dd`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oninit-a47fba48dd)
+
+<a id="symbol-script-event-server-game-onitemfinish-e1da260b2d"></a>
+- [`symbol-script-event-server-game-onitemfinish-e1da260b2d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onitemfinish-e1da260b2d)
+
+<a id="symbol-script-event-server-game-oniteminit-3d091a4888"></a>
+- [`symbol-script-event-server-game-oniteminit-3d091a4888`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oniteminit-3d091a4888)
+
+<a id="symbol-script-event-server-game-onlocationfinish-3391fbb9ee"></a>
+- [`symbol-script-event-server-game-onlocationfinish-3391fbb9ee`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onlocationfinish-3391fbb9ee)
+
+<a id="symbol-script-event-server-game-onlocationinit-3c1343d630"></a>
+- [`symbol-script-event-server-game-onlocationinit-3c1343d630`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onlocationinit-3c1343d630)
+
+<a id="symbol-script-event-server-game-onmapcritterin-633df28641"></a>
+- [`symbol-script-event-server-game-onmapcritterin-633df28641`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onmapcritterin-633df28641)
+
+<a id="symbol-script-event-server-game-onmapcritterout-7ba9d111d7"></a>
+- [`symbol-script-event-server-game-onmapcritterout-7ba9d111d7`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onmapcritterout-7ba9d111d7)
+
+<a id="symbol-script-event-server-game-onmapfinish-2134bf5dbe"></a>
+- [`symbol-script-event-server-game-onmapfinish-2134bf5dbe`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onmapfinish-2134bf5dbe)
+
+<a id="symbol-script-event-server-game-onmapinit-a5149bbdd8"></a>
+- [`symbol-script-event-server-game-onmapinit-a5149bbdd8`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onmapinit-a5149bbdd8)
+
+<a id="symbol-script-event-server-game-onplayercritterswitched-f55489ed2e"></a>
+- [`symbol-script-event-server-game-onplayercritterswitched-f55489ed2e`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayercritterswitched-f55489ed2e)
+
+<a id="symbol-script-event-server-game-onplayerdircritter-14ff95c219"></a>
+- [`symbol-script-event-server-game-onplayerdircritter-14ff95c219`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayerdircritter-14ff95c219)
+
+<a id="symbol-script-event-server-game-onplayerlogin-e62583f697"></a>
+- [`symbol-script-event-server-game-onplayerlogin-e62583f697`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayerlogin-e62583f697)
+
+<a id="symbol-script-event-server-game-onplayerlogout-52f84bb04e"></a>
+- [`symbol-script-event-server-game-onplayerlogout-52f84bb04e`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayerlogout-52f84bb04e)
+
+<a id="symbol-script-event-server-game-onplayermovecritter-f612ab415d"></a>
+- [`symbol-script-event-server-game-onplayermovecritter-f612ab415d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayermovecritter-f612ab415d)
+
+<a id="symbol-script-event-server-game-onstart-60703820d5"></a>
+- [`symbol-script-event-server-game-onstart-60703820d5`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onstart-60703820d5)
+
+<a id="symbol-script-event-server-game-onstaticitemwalk-fabd334506"></a>
+- [`symbol-script-event-server-game-onstaticitemwalk-fabd334506`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onstaticitemwalk-fabd334506)
 
 <a id="group-event-server-item-72a74c2903"></a>
+- [`group-event-server-item-72a74c2903`](../../en/reference/script-api/events.md#group-event-server-item-72a74c2903)
+
 ## <code>Item</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Item.OnCritterWalk(Critter critter, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a><code>script.event.server.Item.OnCritterWalk</code> | server | <code>internal</code> (default) | - | [Source/Server/Item.h:84](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L84) | - |
-| <code>event Item.OnFinish()</code> | <a id="symbol-script-event-server-item-onfinish-6b74680abd"></a><code>script.event.server.Item.OnFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Item.h:82](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L82) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a>
+- [`symbol-script-event-server-item-oncritterwalk-a45f313e76`](../../en/reference/script-api/events.md#symbol-script-event-server-item-oncritterwalk-a45f313e76)
+
+<a id="symbol-script-event-server-item-onfinish-6b74680abd"></a>
+- [`symbol-script-event-server-item-onfinish-6b74680abd`](../../en/reference/script-api/events.md#symbol-script-event-server-item-onfinish-6b74680abd)
 
 <a id="group-event-server-location-7a8778e0e8"></a>
+- [`group-event-server-location-7a8778e0e8`](../../en/reference/script-api/events.md#group-event-server-location-7a8778e0e8)
+
 ## <code>Location</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Location.OnFinish()</code> | <a id="symbol-script-event-server-location-onfinish-dcee4b9fe5"></a><code>script.event.server.Location.OnFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Location.h:74](https://github.com/cvet/fonline/blob/master/Source/Server/Location.h#L74) | - |
-| <code>event Location.OnMapAdded(Map map)</code> | <a id="symbol-script-event-server-location-onmapadded-037a094588"></a><code>script.event.server.Location.OnMapAdded</code> | server | <code>internal</code> (default) | - | [Source/Server/Location.h:76](https://github.com/cvet/fonline/blob/master/Source/Server/Location.h#L76) | - |
-| <code>event Location.OnMapRemoved(Map map)</code> | <a id="symbol-script-event-server-location-onmapremoved-8769c89a16"></a><code>script.event.server.Location.OnMapRemoved</code> | server | <code>internal</code> (default) | - | [Source/Server/Location.h:78](https://github.com/cvet/fonline/blob/master/Source/Server/Location.h#L78) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-location-onfinish-dcee4b9fe5"></a>
+- [`symbol-script-event-server-location-onfinish-dcee4b9fe5`](../../en/reference/script-api/events.md#symbol-script-event-server-location-onfinish-dcee4b9fe5)
+
+<a id="symbol-script-event-server-location-onmapadded-037a094588"></a>
+- [`symbol-script-event-server-location-onmapadded-037a094588`](../../en/reference/script-api/events.md#symbol-script-event-server-location-onmapadded-037a094588)
+
+<a id="symbol-script-event-server-location-onmapremoved-8769c89a16"></a>
+- [`symbol-script-event-server-location-onmapremoved-8769c89a16`](../../en/reference/script-api/events.md#symbol-script-event-server-location-onmapremoved-8769c89a16)
 
 <a id="group-event-server-map-2873173f4b"></a>
+- [`group-event-server-map-2873173f4b`](../../en/reference/script-api/events.md#group-event-server-map-2873173f4b)
+
 ## <code>Map</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Map.OnCheckLook(Critter cr, Critter target)</code> | <a id="symbol-script-event-server-map-onchecklook-4dae2b8c8c"></a><code>script.event.server.Map.OnCheckLook</code> | server | <code>internal</code> (default) | - | [Source/Server/Map.h:179](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L179) | - |
-| <code>event Map.OnCheckTrapLook(Critter cr, Item item)</code> | <a id="symbol-script-event-server-map-onchecktraplook-7fea5348d0"></a><code>script.event.server.Map.OnCheckTrapLook</code> | server | <code>internal</code> (default) | - | [Source/Server/Map.h:181](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L181) | - |
-| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>internal</code> (default) | - | [Source/Server/Map.h:177](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L177) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-map-onchecklook-4dae2b8c8c"></a>
+- [`symbol-script-event-server-map-onchecklook-4dae2b8c8c`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onchecklook-4dae2b8c8c)
+
+<a id="symbol-script-event-server-map-onchecktraplook-7fea5348d0"></a>
+- [`symbol-script-event-server-map-onchecktraplook-7fea5348d0`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onchecktraplook-7fea5348d0)
+
+<a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a>
+- [`symbol-script-event-server-map-onfinish-2b73dbc8d5`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onfinish-2b73dbc8d5)
 
 <a id="group-event-server-player-e1c621f0ad"></a>
+- [`group-event-server-player-e1c621f0ad`](../../en/reference/script-api/events.md#group-event-server-player-e1c621f0ad)
+
 ## <code>Player</code> (server)
 
-| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>event Player.OnAllowCommand(string arg1, uint8 arg2)</code> | <a id="symbol-script-event-server-player-onallowcommand-09ebfe1d03"></a><code>script.event.server.Player.OnAllowCommand</code> | server | <code>internal</code> (default) | - | [Source/Server/Player.h:122](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L122) | - |
-| <code>event Player.OnGetAccess(int32 arg1, string&amp; arg2)</code> | <a id="symbol-script-event-server-player-ongetaccess-6f0d670efc"></a><code>script.event.server.Player.OnGetAccess</code> | server | <code>internal</code> (default) | - | [Source/Server/Player.h:120](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L120) | - |
-| <code>event Player.OnLogout()</code> | <a id="symbol-script-event-server-player-onlogout-d843cf423c"></a><code>script.event.server.Player.OnLogout</code> | server | <code>internal</code> (default) | - | [Source/Server/Player.h:124](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L124) | - |
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-player-onallowcommand-09ebfe1d03"></a>
+- [`symbol-script-event-server-player-onallowcommand-09ebfe1d03`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onallowcommand-09ebfe1d03)
+
+<a id="symbol-script-event-server-player-ongetaccess-6f0d670efc"></a>
+- [`symbol-script-event-server-player-ongetaccess-6f0d670efc`](../../en/reference/script-api/events.md#symbol-script-event-server-player-ongetaccess-6f0d670efc)
+
+<a id="symbol-script-event-server-player-onlogout-d843cf423c"></a>
+- [`symbol-script-event-server-player-onlogout-d843cf423c`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onlogout-d843cf423c)

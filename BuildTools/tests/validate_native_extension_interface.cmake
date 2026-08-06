@@ -18,7 +18,7 @@ endif()
 string(JSON _roleCount LENGTH "${FO_NATIVE_EXTENSION_INTERFACE_JSON}" roles)
 string(JSON _hookCount LENGTH "${FO_NATIVE_EXTENSION_INTERFACE_JSON}" hooks)
 string(JSON _bindingCount LENGTH "${FO_NATIVE_EXTENSION_INTERFACE_JSON}" binding_rules)
-if(NOT _roleCount EQUAL 5 OR NOT _hookCount EQUAL 10 OR NOT _bindingCount EQUAL 6)
+if(NOT _roleCount EQUAL 5 OR NOT _hookCount EQUAL 8 OR NOT _bindingCount EQUAL 6)
 	message(FATAL_ERROR "Unexpected native extension interface shape: ${_roleCount} roles, ${_hookCount} hooks, ${_bindingCount} binding rules")
 endif()
 

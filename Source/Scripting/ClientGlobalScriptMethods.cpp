@@ -44,12 +44,14 @@
 
 FO_BEGIN_NAMESPACE
 
+// Returns whether the client currently has a chosen critter.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Client_Game_HasChosen(ptr<ClientEngine> client)
 {
     return !!client->GetChosen();
 }
 
+// Returns the chosen critter, or throws when none is currently assigned; check HasChosen first when absence is expected.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<CritterView> Client_Game_Chosen(ptr<ClientEngine> client)
 {
@@ -62,12 +64,14 @@ FO_SCRIPT_API ptr<CritterView> Client_Game_Chosen(ptr<ClientEngine> client)
     return chosen;
 }
 
+// Returns whether the client currently has a replicated Player view.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Client_Game_HasCurPlayer(ptr<ClientEngine> client)
 {
     return !!client->GetCurPlayer();
 }
 
+// Returns the current Player view, or throws when none is available; check HasCurPlayer first when absence is expected.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<PlayerView> Client_Game_CurPlayer(ptr<ClientEngine> client)
 {
@@ -80,12 +84,14 @@ FO_SCRIPT_API ptr<PlayerView> Client_Game_CurPlayer(ptr<ClientEngine> client)
     return cur_player;
 }
 
+// Returns whether the client currently has a Location view.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Client_Game_HasCurLocation(ptr<ClientEngine> client)
 {
     return !!client->GetCurLocation();
 }
 
+// Returns the current Location view, or throws when none is available; check HasCurLocation first when absence is expected.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<LocationView> Client_Game_CurLocation(ptr<ClientEngine> client)
 {
@@ -98,12 +104,14 @@ FO_SCRIPT_API ptr<LocationView> Client_Game_CurLocation(ptr<ClientEngine> client
     return cur_location;
 }
 
+// Returns whether the client is currently displaying a local Map view.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Client_Game_HasCurMap(ptr<ClientEngine> client)
 {
     return !!client->GetCurMap();
 }
 
+// Returns the current local Map view, or throws when none is loaded; check HasCurMap first when absence is expected.
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<MapView> Client_Game_CurMap(ptr<ClientEngine> client)
 {
@@ -116,54 +124,63 @@ FO_SCRIPT_API ptr<MapView> Client_Game_CurMap(ptr<ClientEngine> client)
     return cur_map;
 }
 
+// Returns the latest mouse position processed by the client input pipeline.
 ///@ ExportMethod Getter
 FO_SCRIPT_API ipos32 Client_Game_MousePos(ptr<ClientEngine> client)
 {
     return client->MousePos;
 }
 
+// Returns whether the active input backend currently exposes mouse input.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsMouseAvailable(ptr<ClientEngine> client)
 {
     return client->SprMngr.GetInput()->IsMouseAvailable();
 }
 
+// Returns a snapshot of the active input backend's gamepad state.
 ///@ ExportMethod
 FO_SCRIPT_API GamepadState Client_Game_GetGamepadState(ptr<ClientEngine> client)
 {
     return client->SprMngr.GetInput()->GetGamepadState();
 }
 
+// Returns whether the client window is currently fullscreen.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(ptr<ClientEngine> client)
 {
     return client->SprMngr.IsFullscreen();
 }
 
+// Switches the client window between fullscreen and windowed modes.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ToggleFullscreen(ptr<ClientEngine> client)
 {
     client->SprMngr.ToggleFullscreen();
 }
 
+// Requests minimization of the client window.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_MinimizeWindow(ptr<ClientEngine> client)
 {
     client->SprMngr.MinimizeWindow();
 }
 
+// Returns whether a connection attempt is currently in progress.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsConnecting(ptr<ClientEngine> client)
 {
     return client->IsConnecting();
 }
 
+// Returns whether the client connection is currently established.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsConnected(ptr<ClientEngine> client)
 {
     return client->IsConnected();
 }
 
+// Returns edge-to-edge hex distance between two critters on the same map after subtracting both multihex radii; throws for off-map or different-map inputs.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<CritterView> cr1, ptr<CritterView> cr2)
 {
@@ -185,6 +202,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
     return multihex < dist ? dist - multihex : 0;
 }
 
+// Returns center-to-center hex distance between two items on the same map; throws for off-map or different-map inputs.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<ItemView> item1, ptr<ItemView> item2)
 {
@@ -204,6 +222,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
     return GeometryHelper::GetDistance(hex_item1->GetHex(), hex_item2->GetHex());
 }
 
+// Returns edge-to-center hex distance from a critter to an item on the same map after subtracting the critter multihex radius; throws for off-map or different-map inputs.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<CritterView> cr, ptr<ItemView> item)
 {
@@ -225,6 +244,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
     return multihex < dist ? dist - multihex : 0;
 }
 
+// Returns center-to-edge hex distance from an item to a critter on the same map after subtracting the critter multihex radius; throws for off-map or different-map inputs.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<ItemView> item, ptr<CritterView> cr)
 {
@@ -246,6 +266,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
     return multihex < dist ? dist - multihex : 0;
 }
 
+// Returns edge-to-center hex distance from an on-map critter to a hex after subtracting its multihex radius; throws when the critter is off map.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<CritterView> cr, mpos hex)
 {
@@ -262,6 +283,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
     return multihex < dist ? dist - multihex : 0;
 }
 
+// Returns center-to-edge hex distance from a hex to an on-map critter after subtracting its multihex radius; throws when the critter is off map.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex, ptr<CritterView> cr)
 {
@@ -278,6 +300,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex
     return multihex < dist ? dist - multihex : 0;
 }
 
+// Returns center-to-center hex distance from a hex to an on-map item; throws when the item is off map.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex, ptr<ItemView> item)
 {
@@ -292,6 +315,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex
     return GeometryHelper::GetDistance(hex_item->GetHex(), hex);
 }
 
+// Returns center-to-center hex distance from an on-map item to a hex; throws when the item is off map.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<ItemView> item, mpos hex)
 {
@@ -306,12 +330,14 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
     return GeometryHelper::GetDistance(hex_item->GetHex(), hex);
 }
 
+// Writes every current texture atlas to a timestamped diagnostic TGA directory whose name includes total atlas memory use.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
     client->SprMngr.GetAtlasMngr()->DumpAtlases();
 }
 
+// Changes the logical screen size and, for a non-virtual window, the native client window size to the supplied dimensions.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetResolution(ptr<ClientEngine> client, int32_t width, int32_t height)
 {
@@ -322,30 +348,35 @@ FO_SCRIPT_API void Client_Game_SetResolution(ptr<ClientEngine> client, int32_t w
     }
 }
 
+// Prepares or refreshes the current local-map minimap for the supplied zoom and rectangle, then draws its line primitives.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawMiniMap(ptr<ClientEngine> client, int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h)
 {
     client->DrawMiniMap(zoom, x, y, w, h);
 }
 
+// Reapplies the current AlwaysOnTop setting to the client window.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_RefreshAlwaysOnTop(ptr<ClientEngine> client)
 {
     client->SprMngr.SetAlwaysOnTop(client->Settings->AlwaysOnTop);
 }
 
+// Returns the connection's cumulative sent-byte counter narrowed to uint32.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_BytesSend(ptr<ClientEngine> client)
 {
     return numeric_cast<uint32_t>(client->GetConnection()->GetBytesSend());
 }
 
+// Returns the connection's cumulative received-byte counter narrowed to uint32.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ptr<ClientEngine> client)
 {
     return numeric_cast<uint32_t>(client->GetConnection()->GetBytesReceived());
 }
 
+// Finds a live item by nonzero id, searching the chosen inventory first and then visible map/global-map items and critter inventories; returns null when absent or destroyed.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Game_GetItem(ptr<ClientEngine> client, ident_t itemId)
 {
@@ -415,6 +446,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Game_GetItem(ptr<ClientEngine> client, ident
     return item;
 }
 
+// Finds a critter by id on the current local map, or among global-map critters when no local map is loaded; returns null for zero, absent, or destroying local-map entries.
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Game_GetCritter(ptr<ClientEngine> client, ident_t crId)
 {
@@ -441,6 +473,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Game_GetCritter(ptr<ClientEngine> client,
     }
 }
 
+// Returns current local-map or global-map critters that satisfy the requested CritterFindType filter.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, CritterFindType findType)
 {
@@ -474,6 +507,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine>
     return critters;
 }
 
+// Returns current local-map or global-map critters that match the optional prototype id and requested CritterFindType filter; an empty id matches every prototype.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, hstring pid, CritterFindType findType)
 {
@@ -527,6 +561,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine>
     return critters;
 }
 
+// Returns current local-map or global-map critters whose prototype id matches the supplied prototype and that satisfy the requested CritterFindType filter.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, ptr<ProtoCritter> proto, CritterFindType findType)
 {
@@ -558,6 +593,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine>
     return critters;
 }
 
+// Drops null handles and stably sorts critters by map render depth: hex Y, hex X, then sprite sort value when available, with handle order as the final tie-breaker.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<ClientEngine> client, readonly_vector<nptr<CritterView>> critters)
 {
@@ -601,12 +637,14 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
     return sorted_critters;
 }
 
+// Starts a named sound through the client sound resource catalog and returns whether playback was accepted.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
     return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
 }
 
+// Starts named music with the supplied repeat delay and returns whether playback was accepted; an empty name stops current music and returns true.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view musicName, timespan repeatTime)
 {
@@ -618,18 +656,21 @@ FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view m
     return client->SndMngr.PlayMusic(musicName, repeatTime);
 }
 
+// Starts fullscreen video playback, optionally queueing behind an active video; a nonqueued request replaces playback and clears the queue, and an empty name stops it.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PlayVideo(ptr<ClientEngine> client, string_view videoName, bool canInterrupt, bool enqueue)
 {
     client->PlayVideo(videoName, canInterrupt, enqueue);
 }
 
+// Returns whether a fullscreen video clip is currently active.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsVideoPlaying(ptr<ClientEngine> client)
 {
     return client->IsVideoPlaying();
 }
 
+// Creates an independently drawable video playback object from a required resource, configures looping, and transfers ownership to the script.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngine> client, string_view videoName, bool looped)
 {
@@ -652,6 +693,7 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
     return video;
 }
 
+// During RenderIface, advances and draws a non-null video playback into a positive-size rectangle and marks the object stopped when its clip ends.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<VideoPlayback> video, ipos32 pos, isize32 size)
 {
@@ -682,12 +724,14 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<
     }
 }
 
+// Returns the text for a key from the requested language pack, using the current pack for an empty or current language name and caching other loaded packs.
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, string_view langName, TextPackKey textKey)
 {
     return string(client->GetLangPack(langName).GetText(textKey));
 }
 
+// Returns the current-language text variant for a key after skipping the requested nonnegative number of variants.
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)
 {
@@ -698,18 +742,21 @@ FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey t
     return string(client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount)));
 }
 
+// Returns the number of current-language text variants registered for a key.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetTextCount(ptr<ClientEngine> client, TextPackKey textKey)
 {
     return numeric_cast<int32_t>(client->GetCurLang().GetTextCount(textKey));
 }
 
+// Returns whether the current language pack contains the supplied text key.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsTextPresent(ptr<ClientEngine> client, TextPackKey textKey)
 {
     return client->GetCurLang().IsTextPresent(textKey);
 }
 
+// Returns a copy of text with occurrences of the supplied substring replaced by another string.
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_view text, string_view from, string_view to)
 {
@@ -718,6 +765,7 @@ FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_vi
     return strex(text).replace(from, to);
 }
 
+// Returns a copy of text with occurrences of the supplied substring replaced by the decimal representation of an integer.
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_view text, string_view from, int64_t to)
 {
@@ -726,6 +774,7 @@ FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_vi
     return strex(text).replace(from, strex("{}", to));
 }
 
+// Preloads each named model through the 3D model manager; throws when the 3D submodule or model sprite factory is unavailable.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(ptr<ClientEngine> client, readonly_vector<string> fnames)
 {
@@ -743,6 +792,7 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ptr<ClientEngine> client, readonly
 #endif
 }
 
+// Binds a .fofnt or .fnt resource to a client font slot with the supplied default scale; throws for any other extension.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font, string_view fontFname, float32_t defaultScale = 1.0f)
 {
@@ -757,18 +807,21 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
     }
 }
 
+// Rebinds effect slots selected by EffectType to an effect resource; subtype selects entity, font, or offscreen instances where that effect class requires one.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {
     client->SetEffect(effectType, effectSubtype, effectPath);
 }
 
+// Writes one script float at a validated index in the selected effect instance's script-value buffer.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffectScriptValue(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
 {
     client->SetEffectScriptValue(effectType, effectSubtype, valueIndex, value);
 }
 
+// Copies a validated slice of the supplied values into the selected effect instance's script-value buffer starting at valueStartIndex.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffectScriptValues(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, readonly_vector<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1)
 {
@@ -781,12 +834,14 @@ FO_SCRIPT_API void Client_Game_SetEffectScriptValues(ptr<ClientEngine> client, E
     client->SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values_span, valuesOffset, valuesCount);
 }
 
+// Clears all script values associated with the selected effect instance.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype)
 {
     client->ClearEffectScriptValues(effectType, effectSubtype);
 }
 
+// Injects a mouse-move input event when the requested position differs from the current client mouse position, including the computed delta.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseMove(ptr<ClientEngine> client, ipos32 pos)
 {
@@ -797,6 +852,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseMove(ptr<ClientEngine> client, ipos3
     }
 }
 
+// Moves the simulated mouse to the requested position when needed, then injects a button-down event.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseDown(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
 {
@@ -809,6 +865,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseDown(ptr<ClientEngine> client, ipos3
     client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
 }
 
+// Moves the simulated mouse to the requested position when needed, then injects a button-up event.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseUp(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
 {
@@ -821,6 +878,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseUp(ptr<ClientEngine> client, ipos32 
     client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
 }
 
+// Moves the simulated mouse when needed and injects either a wheel step or a matching button-down/button-up pair.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos32 pos, MouseButton button)
 {
@@ -842,30 +900,35 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos
     }
 }
 
+// Injects a touch-down event for the supplied finger id and client position.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchDown(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
 {
     client->ProcessInputEvent(InputEvent {InputEvent::TouchDownEvent {fingerId, pos.x, pos.y}});
 }
 
+// Injects a touch-move event with the supplied finger id, position, and movement offset.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchMove(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos, ipos32 offsetPos)
 {
     client->ProcessInputEvent(InputEvent {InputEvent::TouchMoveEvent {fingerId, pos.x, pos.y, offsetPos.x, offsetPos.y}});
 }
 
+// Injects a touch-up event for the supplied finger id and client position.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchUp(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
 {
     client->ProcessInputEvent(InputEvent {InputEvent::TouchUpEvent {fingerId, pos.x, pos.y}});
 }
 
+// Injects a touch-tap event at the supplied client position.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32 pos)
 {
     client->ProcessInputEvent(InputEvent {InputEvent::TouchTapEvent {pos.x, pos.y}});
 }
 
+// Injects a key-down event carrying optional text followed by key-up; KeyCode::None is a no-op.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, string_view text = "")
 {
@@ -877,6 +940,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCod
     client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key}});
 }
 
+// Injects key1 down, a complete key2 press, then key1 up, skipping either KeyCode::None value and doing nothing when both are None.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
@@ -898,48 +962,56 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
     }
 }
 
+// Loads a named sprite into the interface atlas, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
+// Loads a hashed sprite resource into the interface atlas, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::IfaceSprites);
 }
 
+// Loads a named sprite into the map-sprite atlas, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
 }
 
+// Loads a hashed sprite resource into the map-sprite atlas, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::MapSprites);
 }
 
+// Loads a named sprite as a separate one-image texture, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
 }
 
+// Loads a hashed sprite resource as a separate one-image texture, starts its default animation, and returns a client-local handle, or zero when unresolved.
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::OneImage);
 }
 
+// Releases a client-local sprite handle, stopping its animation and retaining the resource in the reuse cache; unknown handles are ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_FreeSprite(ptr<ClientEngine> client, uint32_t sprId)
 {
     client->AnimFree(sprId);
 }
 
+// Returns the current sprite size for a client-local handle, or a zero size when the handle is unknown.
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Client_Game_GetSpriteSize(ptr<ClientEngine> client, uint32_t sprId)
 {
@@ -952,6 +1024,7 @@ FO_SCRIPT_API isize32 Client_Game_GetSpriteSize(ptr<ClientEngine> client, uint32
     return sprite->GetSize();
 }
 
+// Hit-tests a client position against the current sprite frame and returns false when the handle is unknown.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsSpriteHit(ptr<ClientEngine> client, uint32_t sprId, ipos32 pos)
 {
@@ -964,6 +1037,7 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(ptr<ClientEngine> client, uint32_t sp
     return client->SprMngr.SpriteHitTest(sprite, pos);
 }
 
+// Stops animation for a client-local sprite handle; unknown handles are ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_StopSprite(ptr<ClientEngine> client, uint32_t sprId)
 {
@@ -976,6 +1050,7 @@ FO_SCRIPT_API void Client_Game_StopSprite(ptr<ClientEngine> client, uint32_t spr
     sprite->Stop();
 }
 
+// Sets the normalized playback time of a client-local sprite; unknown handles are ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t sprId, float32_t normalizedTime)
 {
@@ -988,6 +1063,7 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
     sprite->SetTime(normalizedTime);
 }
 
+// Changes the scale of a loaded particle sprite and returns false for an unknown handle or non-particle sprite.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_SetParticleScale(ptr<ClientEngine> client, uint32_t sprId, float32_t scale)
 {
@@ -1007,6 +1083,7 @@ FO_SCRIPT_API bool Client_Game_SetParticleScale(ptr<ClientEngine> client, uint32
     return true;
 }
 
+// Starts the named animation on a client-local sprite with the requested looping and reverse flags; unknown handles are ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t sprId, hstring animName, bool looped, bool reversed)
 {
@@ -1019,6 +1096,7 @@ FO_SCRIPT_API void Client_Game_PlaySprite(ptr<ClientEngine> client, uint32_t spr
     sprite->Play(animName, looped, reversed);
 }
 
+// Starts a loaded particle sprite with a deterministic seed and returns false for an unknown handle, non-particle sprite, or rejected playback.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlayParticleWithSeed(ptr<ClientEngine> client, uint32_t sprId, int32_t seed)
 {
@@ -1037,6 +1115,7 @@ FO_SCRIPT_API bool Client_Game_PlayParticleWithSeed(ptr<ClientEngine> client, ui
     return particle_sprite->PlayWithSeed(seed);
 }
 
+// Advances a loaded particle sprite through its prewarm phase and returns false for an unknown handle or non-particle sprite.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_t sprId)
 {
@@ -1056,6 +1135,7 @@ FO_SCRIPT_API bool Client_Game_PrewarmParticle(ptr<ClientEngine> client, uint32_
     return true;
 }
 
+// Measures formatted text inside the supplied size, writing its resulting extent and line count, and throws when the selected font cannot be evaluated.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
 {
@@ -1064,12 +1144,14 @@ FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, string_view
     }
 }
 
+// Returns how many complete lines of the selected font fit within a positive-size rectangle, or zero for nonpositive dimensions.
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetTextLines(ptr<ClientEngine> client, isize32 size, FontType font)
 {
     return client->FontMngr.GetLinesCount(size, "", font);
 }
 
+// During RenderIface, draws a loaded sprite at an integer position; offs applies bottom-center anchoring plus the sprite offset, and an empty color uses neutral tint.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t sprId, ipos32 pos, ucolor color = ucolor {}, bool offs = false)
 {
@@ -1094,6 +1176,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     client->SprMngr.DrawSprite(sprite, {x, y}, color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, draws a loaded sprite at a floating-point position using its intrinsic size; an empty color uses neutral tint.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t sprId, fpos32 pos, ucolor color)
 {
@@ -1110,6 +1193,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     client->SprMngr.DrawSpriteSizeExt(sprite, pos, fsize32(sprite->GetSize()), false, false, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, draws a loaded sprite at a floating-point position scaled to the supplied size; an empty color uses neutral tint.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t sprId, fpos32 pos, fsize32 size, ucolor color)
 {
@@ -1126,6 +1210,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     client->SprMngr.DrawSpriteSizeExt(sprite, pos, size, false, false, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, draws a loaded sprite into an integer rectangle with optional fitting and sprite-offset application; an empty color uses neutral tint.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t sprId, ipos32 pos, isize32 size, ucolor color = ucolor {}, bool fit = true, bool offs = false)
 {
@@ -1143,6 +1228,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     client->SprMngr.DrawSpriteSizeExt(sprite, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, tiles a loaded sprite over the supplied rectangle using sprSize as the tile dimensions; an empty color uses neutral tint.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawSpritePattern(ptr<ClientEngine> client, uint32_t sprId, ipos32 pos, isize32 size, isize32 sprSize, ucolor color)
 {
@@ -1159,6 +1245,7 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(ptr<ClientEngine> client, uint3
     client->SprMngr.DrawSpritePattern(sprite, pos, size, sprSize, color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, draws a UV region of a loaded sprite into the supplied rectangle and returns the renderer result, or false for an unknown handle.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ptr<ClientEngine> client, uint32_t sprId, fpos32 uv0, fpos32 uv1, ipos32 pos, isize32 size, ucolor color = ucolor {})
 {
@@ -1175,6 +1262,7 @@ FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ptr<ClientEngine> client, uint32
     return client->SprMngr.DrawSpriteRegion(sprite, uv0, uv1, fpos32(pos), fsize32(size), color != ucolor::clear ? color : Color::Neutral);
 }
 
+// During RenderIface, draws nonempty formatted text in the supplied rectangle; negative dimensions extend left or up, and an empty color uses text white.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
@@ -1202,6 +1290,7 @@ FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view te
     client->FontMngr.DrawText(irect32 {x, y, width, height}, text, color != ucolor::clear ? color : Color::TextWhite, format);
 }
 
+// During RenderIface, draws primitive points decoded from complete x, y, packed-color triplets; empty data is ignored and trailing incomplete values are dropped.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawPrimitive(ptr<ClientEngine> client, RenderPrimitiveType primitiveType, readonly_vector<int32_t> data)
 {
@@ -1223,6 +1312,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(ptr<ClientEngine> client, RenderPri
     client->SprMngr.DrawPoints(points, primitiveType);
 }
 
+// Draws the resolved current 2D critter frame into the supplied bounds, forwarding scratch and center scaling modes; unresolved animation tuples are ignored.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, mdir dir, int32_t l, int32_t t, int32_t r, int32_t b, bool scratch, bool center, ucolor color)
 {
@@ -1233,6 +1323,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring m
     }
 }
 
+// Draws a cached 3D critter instance using layers and optional position values x, y, rotations, scales, speed, normalized time, and scissor bounds; throws without 3D support.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, readonly_vector<int32_t> layers, readonly_vector<float32_t> position, ucolor color)
 {
@@ -1344,6 +1435,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 #endif
 }
 
+// Returns positive draw and view bounds for a previously loaded 3D critter instance, false when unavailable, and throws without 3D support.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect)
 {
@@ -1381,12 +1473,14 @@ FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, 
 #endif
 }
 
+// Pushes a drawing scissor rectangle onto the client renderer stack.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PushDrawScissor(ptr<ClientEngine> client, ipos32 pos, isize32 size)
 {
     client->SprMngr.PushScissor(irect32 {pos, size});
 }
 
+// Pops the top drawing scissor rectangle from the client renderer stack.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PopDrawScissor(ptr<ClientEngine> client)
 {
@@ -1414,6 +1508,7 @@ static auto TakeActiveOffscreenSurface(ptr<ClientEngine> client) -> ptr<RenderTa
     return rt;
 }
 
+// During RenderIface, pushes a pooled screen-sized offscreen render target, clearing it when forced, dirty, or resized; presentations must consume active surfaces in stack order.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client, bool forceClear)
 {
@@ -1456,6 +1551,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client
     }
 }
 
+// During RenderIface, consumes the active offscreen surface and draws it over the screen with the selected offscreen effect.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype)
 {
@@ -1465,6 +1561,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     client->SprMngr.DrawRenderTarget(rt, true);
 }
 
+// During RenderIface, consumes the active offscreen surface and draws the clamped same-position source and destination rectangle with the selected effect.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size)
 {
@@ -1481,6 +1578,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
+// During RenderIface, sets the first four script values when supported, then consumes and draws the active offscreen surface in the clamped rectangle.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size, float32_t scriptValue0, float32_t scriptValue1, float32_t scriptValue2, float32_t scriptValue3)
 {
@@ -1508,6 +1606,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
+// During RenderIface, consumes the active offscreen surface and draws independently clamped source and destination rectangles with the selected effect.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, int32_t fromX, int32_t fromY, int32_t fromW, int32_t fromH, int32_t toX, int32_t toY, int32_t toW, int32_t toH)
 {
@@ -1526,6 +1625,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
+// Reads the main render target, corrects backend vertical flipping, creates parent directories, and writes a TGA screenshot to a required nonempty path.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_view filePath)
 {
@@ -1577,6 +1677,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
     WriteSimpleTga(path, size, std::move(pixels));
 }
 
+// Creates parent directories and truncates the target file before writing the supplied text bytes; write and directory failures throw.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
@@ -1606,12 +1707,14 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view fi
     }
 }
 
+// Stores the complete byte array under a client cache entry name.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_view name, readonly_vector<uint8_t> data)
 {
     client->Cache.SetData(name, data);
 }
 
+// Stores a resized copy of the byte array under a client cache entry, truncating or zero-extending it to a required nonnegative dataSize.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_view name, readonly_vector<uint8_t> data, int32_t dataSize)
 {
@@ -1624,36 +1727,42 @@ FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_vie
     client->Cache.SetData(name, data_copy);
 }
 
+// Returns the bytes stored under a client cache entry name, or an empty array when the entry cannot be read.
 ///@ ExportMethod
 FO_SCRIPT_API vector<uint8_t> Client_Game_GetCacheData(ptr<ClientEngine> client, string_view name)
 {
     return client->Cache.GetData(name);
 }
 
+// Stores a string under a client cache entry name.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetCacheText(ptr<ClientEngine> client, string_view name, string_view str)
 {
     client->Cache.SetString(name, str);
 }
 
+// Returns the string stored under a client cache entry name, or an empty string when the entry cannot be read.
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetCacheText(ptr<ClientEngine> client, string_view name)
 {
     return client->Cache.GetString(name);
 }
 
+// Returns whether the named client cache entry exists.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsCacheEntry(ptr<ClientEngine> client, string_view name)
 {
     return client->Cache.HasEntry(name);
 }
 
+// Removes the named client cache entry when present.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_RemoveCacheEntry(ptr<ClientEngine> client, string_view name)
 {
     client->Cache.RemoveEntry(name);
 }
 
+// Replaces the cached user configuration with key/value lines serialized as `key = value`.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_map<string, string> keyValues)
 {
@@ -1666,6 +1775,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
+// Replaces the cached user configuration with consecutive key/value pairs serialized as `key = value`, ignoring an unmatched final element.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_vector<string> keyValues)
 {
@@ -1678,12 +1788,14 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
+// Moves the native input backend's mouse cursor to the supplied client position.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetMousePos(ptr<ClientEngine> client, ipos32 pos)
 {
     client->SprMngr.SetMousePosition(pos);
 }
 
+// Forces the client's logical mouse position to the supplied value after each input poll without moving the native cursor.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetForcedMousePos(ptr<ClientEngine> client, ipos32 pos)
 {
@@ -1691,18 +1803,21 @@ FO_SCRIPT_API void Client_Game_SetForcedMousePos(ptr<ClientEngine> client, ipos3
     client->HasForcedMousePos = true;
 }
 
+// Stops overriding the client's logical mouse position after input polling.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ClearForcedMousePos(ptr<ClientEngine> client)
 {
     client->HasForcedMousePos = false;
 }
 
+// Loads the named language pack, makes it current, and updates the client Language setting.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ChangeLanguage(ptr<ClientEngine> client, string_view langName)
 {
     client->ChangeLanguage(langName);
 }
 
+// Requests a taskbar or window-manager attention flash only when the client window is unfocused.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_FlashUnfocusedWindow(ptr<ClientEngine> client)
 {
@@ -1711,18 +1826,21 @@ FO_SCRIPT_API void Client_Game_FlashUnfocusedWindow(ptr<ClientEngine> client)
     }
 }
 
+// Queues a client connection request for processing by the main loop.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Connect(ptr<ClientEngine> client)
 {
     client->Connect();
 }
 
+// Cancels any pending connection request and disconnects the active transport.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Disconnect(ptr<ClientEngine> client)
 {
     client->Disconnect();
 }
 
+// Enables or disables the active input backend's on-screen keyboard.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool enabled)
 {

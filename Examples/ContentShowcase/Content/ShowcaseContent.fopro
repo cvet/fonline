@@ -1,0 +1,53 @@
+[ProtoCritter]
+$Name = ShowcasePlayer
+$Text engl = "Gallery visitor"
+$Text russ = "Посетитель галереи"
+
+[ProtoItem]
+$Name = ShowcaseFloor
+$Text engl = "Floor tile"
+$Text russ = "Плитка пола"
+Static = True
+NoBlock = True
+ShootThru = True
+NoLightInfluence = True
+PicMap = Showcase/Tiles/ShowcaseFloor.tga
+
+[ProtoItem]
+$Name = ShowcaseBeacon
+$Text engl = "Animated signal beacon"
+$Text russ = "Анимированный сигнальный маяк"
+Static = True
+NoBlock = True
+ShootThru = True
+LightSource = True
+LightThru = True
+LightIntensity = 85
+LightDistance = 7
+LightColor = 4294049791
+PicMap = Showcase/Sprites/Beacon.fofrm
+
+[ProtoItem]
+$Name = ShowcasePanel
+$Text engl = "Telemetry panel"
+$Text russ = "Панель телеметрии"
+Static = True
+NoBlock = True
+ShootThru = True
+NoLightInfluence = True
+PicMap = Showcase/Sprites/ShowcasePanel.tga
+
+[ProtoItem]
+$Name = ShowcaseParticle
+$Text engl = "SPARK emitter"
+$Text russ = "Эмиттер SPARK"
+Static = True
+NoBlock = True
+ShootThru = True
+PicMap = Showcase/Particles/Showcase.spk
+
+[ProtoLocation]
+$Name = ShowcaseLocation
+$Text engl = "Rendering gallery"
+$Text russ = "Галерея рендеринга"
+

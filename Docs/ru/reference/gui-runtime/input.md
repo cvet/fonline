@@ -1,0 +1,24 @@
+---
+title: Контракт ввода GUI
+document_id: generated-gui-runtime-input
+locale: ru
+generated: true
+---
+
+<!-- docs-translation: {"document_id":"generated-gui-runtime-input","locale":"ru","source_path":"Docs/en/reference/gui-runtime/input.md","source_sha256":"b46b1e7d250b46d437dd6e8d45cd51279f3b9cc3c5e6ce9cb832d821275fdee1"} -->
+
+# Контракт ввода GUI
+
+> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/GuiRuntimeInterface.json`, затем выполните `python BuildTools/docs_gui_runtime.py --write`.
+
+[Индекс](index.md) | [Типы](types.md) | [API экранов](screen-api.md) | [Жизненный цикл](lifecycle.md) | [Компоновка](layout-rendering.md) | [Ввод](input.md) | [Интеграция](integration-validation.md) | [Канонический JSON](../../../generated/gui-runtime.json) | [Руководство](../../how-to/runtime/gui.md)
+
+| Стабильный ID | Правило | Требование | Причина | Источник |
+| --- | --- | --- | --- | --- |
+| <a id="entry-gui-runtime-input-event-subscriptions-714452fbc5"></a><code>gui-runtime.input.event-subscriptions</code> | Подписки на события ввода | Подключите Input.fos один раз; его ModuleInit подписывает события мыши, клавиатуры и потери ввода Game и передаёт их в callback-функции Gui. | Проекты не должны дублировать одинаковые пересылающие подписки. | [Source/Scripting/AngelScript/CoreScripts/Input.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Input.fos) |
+| <a id="entry-gui-runtime-input-active-screen-hit-order-595bde49cb"></a><code>gui-runtime.input.active-screen-hit-order</code> | Порядок hit активных экранов | Ввод мыши начинается с верхнего активного экрана; потомки проверяются от последнего к первому, поэтому более поздние визуально и интерактивно выше ранних соседей. | Стек экранов и порядок дерева совместно определяют приоритет hit. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-modal-and-close-on-miss-a6e1667324"></a><code>gui-runtime.input.modal-and-close-on-miss</code> | Поведение modal и close-on-miss | Закрывайте close-on-miss экран при необработанном левом клике; только немодальный экран может искать hit среди нижних активных экранов и выводить один из них вперёд. | Модальные экраны блокируют fallthrough, а немодальные окна могут менять порядок при взаимодействии. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-focus-console-order-f5af73490d"></a><code>gui-runtime.input.focus-console-order</code> | Порядок диспетчеризации клавиатуры | Передавайте глобальный ввод активным экранам сверху вниз, затем активной консоли, затем focused-объектам, когда консоль отсутствует или неактивна. | Глобальные shortcuts, ввод команд и focused-controls имеют разные приоритеты. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-press-repeat-d7673d17fb"></a><code>gui-runtime.input.press-repeat</code> | Повтор pressed-объекта | После mouse down начинайте повторные pressed callbacks через 500 мс и продолжайте каждые 40 мс, пока указатель попадает в pressed-объект. | Элементы, использующие OnMousePressed, зависят от этих фиксированных интервалов. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-drag-and-drop-052734939d"></a><code>gui-runtime.input.drag-and-drop</code> | Drag and drop | Начинайте перетаскивание от draggable pressed-объекта, рисуйте его в cursor pass и проверяйте зарегистрированные drop handlers по порядку до первого true. | Среда владеет механикой жеста и диспетчеризации, а проекты — семантикой переноса. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-input-loss-reset-63b8a81b7a"></a><code>gui-runtime.input.loss-reset</code> | Сброс при потере ввода | При потере фокуса/ввода освободите отслеживаемые клавиши и кнопки мыши, снимите hover и фокус, отмените pressed-объект как lost и уведомите drop menu. | Alt-tab и изменения фокуса окна не должны оставлять залипший ввод или drag-state. | [Source/Scripting/AngelScript/CoreScripts/Input.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Input.fos), [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import copy
 import io
+import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -16,6 +18,8 @@ ENGINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
 
 import docs_cli  # noqa: E402
+import docs_description_translations  # noqa: E402
+import docs_localization  # noqa: E402
 
 
 FIXTURE_PARSER = """
@@ -35,6 +39,21 @@ def _write_fixture(root: Path) -> None:
     source = root / docs_cli.DEFAULT_SOURCE
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_text(textwrap.dedent(FIXTURE_PARSER).lstrip(), encoding="utf-8")
+    catalog = root / docs_description_translations.DEFAULT_CATALOG
+    catalog.parent.mkdir(parents=True, exist_ok=True)
+    catalog.write_text(
+        json.dumps(
+            {
+                "schema_version": docs_description_translations.SCHEMA_VERSION,
+                "source_locale": "en",
+                "target_locale": "ru",
+                "enforcement": "registered-translations-current",
+                "domains": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 class DocumentationCliTests(unittest.TestCase):
@@ -49,6 +68,14 @@ class DocumentationCliTests(unittest.TestCase):
         self.assertEqual(model["commands"][0]["id"], "cli.buildtools.command.env")
         self.assertEqual(model["commands"][-1]["name"], "prepare-host-workspace")
         self.assertIn("build-auxiliary", {command["name"] for command in model["commands"]})
+        self.assertNotIn("\n", model["usage"])
+        prepare_workspace = next(
+            command for command in model["commands"] if command["name"] == "prepare-host-workspace"
+        )
+        parts = next(
+            argument for argument in prepare_workspace["arguments"] if argument["destination"] == "features"
+        )
+        self.assertFalse(parts["required"])
 
         identities = [
             entry["id"]
@@ -61,7 +88,7 @@ class DocumentationCliTests(unittest.TestCase):
         )
 
         environment = dict(os.environ)
-        environment["COLUMNS"] = "80"
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
         result = subprocess.run(
             [sys.executable, str(ENGINE_ROOT / docs_cli.DEFAULT_SOURCE), "--help"],
             cwd=ENGINE_ROOT,
@@ -134,6 +161,39 @@ class DocumentationCliTests(unittest.TestCase):
             f"{docs_cli.DEFAULT_OUTPUT_DIR}/commands.md"
         ]
         self.assertIn("A &#124; B &#123;shape&#125; &lt;unsafe&gt;", escaped_page)
+
+        for filename, _, _ in docs_cli.PAGE_DEFINITIONS:
+            canonical = pages[f"{docs_cli.DEFAULT_OUTPUT_DIR}/{filename}"]
+            legacy = pages[f"{docs_cli.LEGACY_OUTPUT_DIR}/{filename}"]
+            self.assertIn(f"../../en/reference/buildtools/{filename}", legacy)
+            self.assertIn(f"../../ru/reference/buildtools/{filename}", legacy)
+            for heading in re.findall(r"^(#{2,3} .+)$", canonical, flags=re.MULTILINE):
+                self.assertIn(heading, legacy)
+            for anchor in re.findall(r'<a id="([^"]+)"></a>', canonical):
+                self.assertIn(f'<a id="{anchor}"></a>', legacy)
+
+        localized_pages = docs_cli.render_reference_pages(ENGINE_ROOT)
+        english_commands = localized_pages[
+            f"{docs_cli.DEFAULT_OUTPUT_DIR}/commands.md"
+        ]
+        russian_commands = localized_pages[
+            f"{docs_cli.RUSSIAN_OUTPUT_DIR}/commands.md"
+        ]
+        self.assertIn("Определить окружение BuildTools.", russian_commands)
+        self.assertIn("Синтаксис вывода окружения.", russian_commands)
+        self.assertNotIn("resolve BuildTools environment\n\nStable ID", russian_commands)
+        self.assertEqual(
+            re.findall(r"```text\n(.*?)```", english_commands, flags=re.DOTALL),
+            re.findall(r"```text\n(.*?)```", russian_commands, flags=re.DOTALL),
+        )
+        self.assertIn(
+            docs_localization.translation_metadata_line(
+                "generated-cli-commands",
+                f"{docs_cli.DEFAULT_OUTPUT_DIR}/commands.md",
+                docs_localization.normalized_sha256(english_commands),
+            ),
+            russian_commands,
+        )
 
     def test_cli_write_check_and_stale_detection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

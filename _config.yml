@@ -20,13 +20,43 @@ defaults:
     values:
       layout: default
 exclude:
-  - BuildTools/
+  - Docs/_meta/
+  - Docs/DocumentationBacklog.md
+  - Docs/DocumentationExpansionPlan.md
+  - Docs/DocumentationResearchTemplate.md
+  - Docs/DocumentationVerificationReport.md
+  - Docs/ProductionDocumentationPlan.md
+  - Docs/generated/external-project-evidence.json
+  - Docs/generated/external-project-evidence/
+  - BuildTools/__pycache__/
+  - BuildTools/android-project/
+  - BuildTools/angelscript-debugger/
+  - BuildTools/cmake/
+  - BuildTools/docs-browser/
+  - BuildTools/docker/
+  - BuildTools/EffekseerEditor/
+  - BuildTools/fonline-tools/
+  - BuildTools/msicreator/
+  - BuildTools/natvis/
+  - BuildTools/sanitizers/
+  - BuildTools/tests/
+  - BuildTools/web/
   - Build/
   - Build-*/
+  - CLAUDE.md
+  - Examples/ContentShowcase/Build/
+  - Examples/ContentShowcase/Engine/
+  - Examples/ContentShowcase/WebTests/node_modules/
+  - Examples/MinimalMultiplayer/Build/
+  - Examples/MinimalMultiplayer/Engine/
+  - Examples/MinimalProject/Build/
+  - Examples/MinimalProject/Engine/
+  - Examples/NativeExtensionSample/Build/
+  - Examples/NativeExtensionSample/Engine/
+  - Examples/PublicRepositoryTemplate/
   - Gemfile
   - Gemfile.lock
   - Resources/
-  - Source/
   - Temp/
   - ThirdParty/
   - Workspace/
