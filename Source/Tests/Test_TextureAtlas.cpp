@@ -372,6 +372,87 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
     CHECK(churned_pages <= 7);
 }
 
+// Long-run churn guard. Releasing a slot hands it back without coalescing it with neighbouring free
+// space, so the free list drifts away from the exact maximal set as a session runs. That drift must be
+// self-limiting: DefragmentFreeRectangles() rebuilds the exact set from the live allocations whenever a
+// placement misses, so fragmentation can never permanently consume atlas space or force extra pages.
+// This test runs sustained allocate/release churn far past the point where a leak would show and pins
+// both halves of that contract - bounded page growth, and full space recovery.
+TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
+{
+    constexpr isize32 atlas_size = {2048, 2048};
+    constexpr size_t rounds = 400;
+    constexpr size_t live_target = 96;
+
+    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
+    uint32_t random_state = 0xC0FFEEu;
+    size_t rejected = 0;
+
+    auto next_size = [&random_state]() -> isize32 {
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t width = 24 + numeric_cast<int32_t>(random_state % 200u);
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t height = 24 + numeric_cast<int32_t>(random_state % 200u);
+        return {width, height};
+    };
+
+    // Fill to the working set, then churn: release a slot and allocate a differently sized replacement,
+    // which is the pattern that fragments the free list without changing the live count.
+    while (live.size() < live_target) {
+        auto allocation = layout->Allocate(next_size());
+
+        if (!allocation) {
+            break;
+        }
+
+        live.emplace_back(std::move(allocation));
+    }
+
+    REQUIRE(live.size() == live_target);
+    size_t live_after_fill = live.size();
+
+    for (size_t round = 0; round < rounds; round++) {
+        random_state = random_state * 1664525u + 1013904223u;
+        size_t victim = random_state % live.size();
+        live[victim].reset();
+
+        auto replacement = layout->Allocate(next_size());
+
+        if (replacement) {
+            live[victim] = std::move(replacement);
+        }
+        else {
+            rejected++;
+            live[victim] = layout->Allocate({24, 24});
+        }
+    }
+
+    // A single page absorbed the whole run: fragmentation never made the atlas claim to be full, which
+    // is what keeps same-type art on one page and therefore one draw call.
+    CAPTURE(rejected);
+    CHECK(rejected == 0);
+
+    size_t live_after_churn = 0;
+
+    for (const auto& allocation : live) {
+        if (allocation) {
+            live_after_churn++;
+        }
+    }
+
+    CAPTURE(live_after_fill);
+    CAPTURE(live_after_churn);
+    CHECK(live_after_churn == live_after_fill);
+
+    // Releasing everything must return the atlas to pristine: a full-page allocation has to succeed,
+    // which only holds if the freed slots were genuinely reclaimed and coalesced rather than lost.
+    live.clear();
+
+    auto whole_page = layout->Allocate(atlas_size);
+    CHECK(whole_page);
+}
+
 TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
 {
     vector<isize32> corpus = MakeAtlasCorpus();
