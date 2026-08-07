@@ -1366,6 +1366,14 @@ void ServerEngine::DrawGui()
 
     auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
+    // The external lock owns only the engine sync point, it does not pre-lock the world. The panels
+    // below read cover-requiring entity state (Player::GetConnection, Location::GetMapsCount and the
+    // per-entity property tables), so take every registered entity into this context explicitly, the
+    // same way the shutdown path does. Without it every panel throws "Entity access without sync" as
+    // soon as the world is non-empty. The walk is O(entities), matching what the panels already do,
+    // and the world is already stopped at the sync point for the duration of the frame.
+    SyncWholeWorld(*RequireCurrentSyncContext());
+
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
     auto info_row = [](string_view key, string_view value) {
