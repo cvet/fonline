@@ -1699,10 +1699,159 @@ namespace ScriptBuiltins
         if (anys.length() != 2) return -12;
         if (string(anys[1]) != "second") return -13;
 
+        // The remaining scalar widths and value types each take their own converter branch
+        cr.TestInt8 = 7;
+        if (cr.TestInt8 != 7) return -30;
+
+        cr.TestInt16 = 300;
+        if (cr.TestInt16 != 300) return -31;
+
+        cr.TestInt64 = 5000000000;
+        if (cr.TestInt64 != 5000000000) return -32;
+
+        cr.TestUInt16 = 65000;
+        if (cr.TestUInt16 != 65000) return -33;
+
+        cr.TestUInt32 = 4000000000;
+        if (cr.TestUInt32 != 4000000000) return -34;
+
+        cr.TestUInt64 = 9000000000;
+        if (cr.TestUInt64 != 9000000000) return -35;
+
+        cr.TestBoolArray = {true, false, true};
+        array<bool> bools = cr.TestBoolArray;
+        if (bools.length() != 3 || !bools[0] || bools[1]) return -36;
+
+        cr.TestInt64Array = {1, 5000000000};
+        array<int64> int64s = cr.TestInt64Array;
+        if (int64s.length() != 2 || int64s[1] != 5000000000) return -37;
+
+        cr.TestIdent = cr.Id;
+        if (cr.TestIdent != cr.Id) return -38;
+
+        cr.TestIdentArray = {cr.Id};
+        array<ident> idents = cr.TestIdentArray;
+        if (idents.length() != 1 || idents[0] != cr.Id) return -39;
+
+        cr.TestTimeSpan = timespan(5, 3);
+        if (cr.TestTimeSpan != timespan(5, 3)) return -40;
+
+        cr.TestColor = ucolor(1, 2, 3, 4);
+        if (cr.TestColor != ucolor(1, 2, 3, 4)) return -41;
+
+        cr.TestColorArray = {ucolor(1, 2, 3, 4), ucolor(5, 6, 7, 8)};
+        array<ucolor> colors = cr.TestColorArray;
+        if (colors.length() != 2 || colors[1] != ucolor(5, 6, 7, 8)) return -42;
+
+        dict<string, string> stringStrings = dict<string, string>();
+        stringStrings.set("k", "v");
+        cr.TestStringStringDict = stringStrings;
+        if (cr.TestStringStringDict.get("k") != "v") return -43;
+
+        dict<hstring, string> hashStrings = dict<hstring, string>();
+        hashStrings.set("hk".hstr(), "hv");
+        cr.TestHashStringDict = hashStrings;
+        if (cr.TestHashStringDict.get("hk".hstr()) != "hv") return -44;
+
+        dict<int, hstring> hashValues = dict<int, hstring>();
+        hashValues.set(1, "hv".hstr());
+        cr.TestHashValueDict = hashValues;
+        if (cr.TestHashValueDict.get(1) != "hv".hstr()) return -45;
+
         cr.TestProtoArray = {Game.GetProtoCritter("UnitTestCr".hstr())};
         array<ProtoCritter> protos = cr.TestProtoArray;
         if (protos.length() != 1) return -14;
         if (protos[0].ProtoId != "UnitTestCr".hstr()) return -15;
+
+        // The geometry, time and float value types each take their own converter branch as well
+        cr.TestNanoTime = Game.FrameTime;
+        if (cr.TestNanoTime != Game.FrameTime) return -46;
+
+        cr.TestSyncTime = Game.SynchronizedTime;
+        if (cr.TestSyncTime != Game.SynchronizedTime) return -47;
+
+        cr.TestMapPos = mpos(3, 4);
+        if (cr.TestMapPos != mpos(3, 4)) return -48;
+
+        // msize is the one geometry value type with no component constructor, so it is built field by field
+        msize mapSize;
+        mapSize.width = 20;
+        mapSize.height = 30;
+        cr.TestMapSize = mapSize;
+        if (cr.TestMapSize.width != 20 || cr.TestMapSize.height != 30) return -49;
+
+        cr.TestIntPos = ipos(-5, 6);
+        if (cr.TestIntPos != ipos(-5, 6)) return -50;
+
+        cr.TestIntSize = isize(7, 8);
+        if (cr.TestIntSize != isize(7, 8)) return -51;
+
+        cr.TestIntRect = irect(1, 2, 3, 4);
+        if (cr.TestIntRect != irect(1, 2, 3, 4)) return -52;
+
+        cr.TestFloatPos = fpos(1.5f, 2.5f);
+        if (cr.TestFloatPos != fpos(1.5f, 2.5f)) return -53;
+
+        cr.TestFloatSize = fsize(3.5f, 4.5f);
+        if (cr.TestFloatSize != fsize(3.5f, 4.5f)) return -54;
+
+        cr.TestFloat64 = 1.25;
+        if (cr.TestFloat64 != 1.25) return -55;
+
+        cr.TestMapPosArray = {mpos(1, 1), mpos(2, 2)};
+        array<mpos> mapPositions = cr.TestMapPosArray;
+        if (mapPositions.length() != 2 || mapPositions[1] != mpos(2, 2)) return -56;
+
+        cr.TestTimeSpanArray = {timespan(1, 3), timespan(2, 3)};
+        array<timespan> spans = cr.TestTimeSpanArray;
+        if (spans.length() != 2 || spans[1] != timespan(2, 3)) return -57;
+
+        cr.TestNanoTimeArray = {Game.FrameTime};
+        if (cr.TestNanoTimeArray.length() != 1) return -58;
+
+        cr.TestInt8Array = {1, -2};
+        array<int8> int8s = cr.TestInt8Array;
+        if (int8s.length() != 2 || int8s[1] != -2) return -59;
+
+        cr.TestInt16Array = {300, -400};
+        array<int16> int16s = cr.TestInt16Array;
+        if (int16s.length() != 2 || int16s[1] != -400) return -60;
+
+        cr.TestUInt16Array = {1, 65000};
+        array<uint16> uint16s = cr.TestUInt16Array;
+        if (uint16s.length() != 2 || uint16s[1] != 65000) return -61;
+
+        cr.TestUInt32Array = {1, 4000000000};
+        array<uint32> uint32s = cr.TestUInt32Array;
+        if (uint32s.length() != 2 || uint32s[1] != 4000000000) return -62;
+
+        cr.TestUInt64Array = {1, 9000000000};
+        array<uint64> uint64s = cr.TestUInt64Array;
+        if (uint64s.length() != 2 || uint64s[1] != 9000000000) return -63;
+
+        cr.TestFloat64Array = {1.25, 2.5};
+        array<double> float64s = cr.TestFloat64Array;
+        if (float64s.length() != 2 || float64s[1] != 2.5) return -64;
+
+        dict<ident, int> identKeys = dict<ident, int>();
+        identKeys.set(cr.Id, 9);
+        cr.TestIdentKeyDict = identKeys;
+        if (cr.TestIdentKeyDict.get(cr.Id) != 9) return -65;
+
+        dict<int, ident> identValues = dict<int, ident>();
+        identValues.set(1, cr.Id);
+        cr.TestIdentValueDict = identValues;
+        if (cr.TestIdentValueDict.get(1) != cr.Id) return -66;
+
+        dict<hstring, hstring> hashHashes = dict<hstring, hstring>();
+        hashHashes.set("hk".hstr(), "hv".hstr());
+        cr.TestHashHashDict = hashHashes;
+        if (cr.TestHashHashDict.get("hk".hstr()) != "hv".hstr()) return -67;
+
+        dict<string, array<hstring>> hashArrays = dict<string, array<hstring>>();
+        hashArrays.set("k", {"a".hstr(), "b".hstr()});
+        cr.TestDictOfHashArray = hashArrays;
+        if (cr.TestDictOfHashArray.get("k").length() != 2) return -68;
 
         Game.DestroyCritter(cr);
         return 1;
@@ -3023,6 +3172,49 @@ namespace ScriptBuiltins
         std::pair<string_view, string_view> {"any [ ]", "TestAnyArray"},
         std::pair<string_view, string_view> {"ProtoCritter", "TestProto"},
         std::pair<string_view, string_view> {"ProtoCritter [ ]", "TestProtoArray"},
+        // The remaining scalar widths and the value types, each of which the property/script converters
+        // handle through its own branch
+        std::pair<string_view, string_view> {"int8", "TestInt8"},
+        std::pair<string_view, string_view> {"int16", "TestInt16"},
+        std::pair<string_view, string_view> {"int64", "TestInt64"},
+        std::pair<string_view, string_view> {"uint16", "TestUInt16"},
+        std::pair<string_view, string_view> {"uint32", "TestUInt32"},
+        std::pair<string_view, string_view> {"uint64", "TestUInt64"},
+        std::pair<string_view, string_view> {"bool [ ]", "TestBoolArray"},
+        std::pair<string_view, string_view> {"int64 [ ]", "TestInt64Array"},
+        std::pair<string_view, string_view> {"ident", "TestIdent"},
+        std::pair<string_view, string_view> {"ident [ ]", "TestIdentArray"},
+        std::pair<string_view, string_view> {"timespan", "TestTimeSpan"},
+        std::pair<string_view, string_view> {"ucolor", "TestColor"},
+        std::pair<string_view, string_view> {"ucolor [ ]", "TestColorArray"},
+        std::pair<string_view, string_view> {"string = > string", "TestStringStringDict"},
+        std::pair<string_view, string_view> {"hstring = > string", "TestHashStringDict"},
+        std::pair<string_view, string_view> {"int32 = > hstring", "TestHashValueDict"},
+        // The remaining engine value types and the narrow-scalar arrays, each of which the property/script
+        // converters reach through its own branch
+        std::pair<string_view, string_view> {"nanotime", "TestNanoTime"},
+        std::pair<string_view, string_view> {"synctime", "TestSyncTime"},
+        std::pair<string_view, string_view> {"mpos", "TestMapPos"},
+        std::pair<string_view, string_view> {"msize", "TestMapSize"},
+        std::pair<string_view, string_view> {"ipos", "TestIntPos"},
+        std::pair<string_view, string_view> {"isize", "TestIntSize"},
+        std::pair<string_view, string_view> {"irect", "TestIntRect"},
+        std::pair<string_view, string_view> {"fpos", "TestFloatPos"},
+        std::pair<string_view, string_view> {"fsize", "TestFloatSize"},
+        std::pair<string_view, string_view> {"mpos [ ]", "TestMapPosArray"},
+        std::pair<string_view, string_view> {"timespan [ ]", "TestTimeSpanArray"},
+        std::pair<string_view, string_view> {"nanotime [ ]", "TestNanoTimeArray"},
+        std::pair<string_view, string_view> {"int8 [ ]", "TestInt8Array"},
+        std::pair<string_view, string_view> {"int16 [ ]", "TestInt16Array"},
+        std::pair<string_view, string_view> {"uint16 [ ]", "TestUInt16Array"},
+        std::pair<string_view, string_view> {"uint32 [ ]", "TestUInt32Array"},
+        std::pair<string_view, string_view> {"uint64 [ ]", "TestUInt64Array"},
+        std::pair<string_view, string_view> {"float64", "TestFloat64"},
+        std::pair<string_view, string_view> {"float64 [ ]", "TestFloat64Array"},
+        std::pair<string_view, string_view> {"ident = > int32", "TestIdentKeyDict"},
+        std::pair<string_view, string_view> {"int32 = > ident", "TestIdentValueDict"},
+        std::pair<string_view, string_view> {"hstring = > hstring", "TestHashHashDict"},
+        std::pair<string_view, string_view> {"string = > hstring [ ]", "TestDictOfHashArray"},
     };
 
     static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
