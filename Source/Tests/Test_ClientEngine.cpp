@@ -1708,17 +1708,17 @@ ViewBoundsMinZ = -1
 ViewBoundsMaxX = 1
 ViewBoundsMaxY = 1
 ViewBoundsMaxZ = 1
-StateAnimations = 1
-ActionAnimations = 1
-DurationsMs = 1000
-BoundsStateAnimations = 1
-BoundsActionAnimations = 1
-BoundsMinX = -1
-BoundsMinY = -1
-BoundsMinZ = -1
-BoundsMaxX = 1
-BoundsMaxY = 1
-BoundsMaxZ = 1
+StateAnimations = 1 1 1 1
+ActionAnimations = 1 3 5 17
+DurationsMs = 1000 2000 1000 1000
+BoundsStateAnimations = 1 1 1 1
+BoundsActionAnimations = 1 3 5 17
+BoundsMinX = -1 -1 -1 -1
+BoundsMinY = -1 -1 -1 -1
+BoundsMinZ = -1 -1 -1 -1
+BoundsMaxX = 1 1 1 1
+BoundsMaxY = 1 1 1 1
+BoundsMaxZ = 1 1 1 1
 )",
             model_path)
                               .str();
@@ -1739,8 +1739,13 @@ BoundsMaxZ = 1
         string description = strex(
             "Model {}\n"
             "Anim 1 1 {} Base\n"
+            "Anim 1 3 {} Base\n"
+            "Anim 1 5 {} Base\n"
+            "Anim 1 17 {} Base\n"
             "AnimSpeed 1 1 1.5\n"
+            "AnimSpeed 1 3 0.5\n"
             "AnimLayerValue 1 1 1 1\n"
+            "AnimLayerValue 1 3 1 2\n"
             "Layer 1\n"
             "Value 1\n"
             "Root\n"
@@ -1760,7 +1765,7 @@ BoundsMaxZ = 1
             "Root\n"
             "Link Root\n"
             "Scale* 0.5\n",
-            mesh_name, mesh_name)
+            mesh_name, mesh_name, mesh_name, mesh_name, mesh_name)
                                  .str();
 
         rig.AddSourceFile(model_path, description, 1);
@@ -2132,6 +2137,27 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         // A speed override and a missing animation are the two remaining arms of PlayAnim
         REQUIRE_NOTHROW(ignore_unused(model->PlayAnim(state_anim, action_anim, layers.data(), 0.5f, ModelAnimFlags::None)));
         CHECK_FALSE(model->PlayAnim(static_cast<CritterStateAnim>(9), static_cast<CritterActionAnim>(9), layers.data(), 0.0f, ModelAnimFlags::None));
+
+        // Switching between the authored animations is what runs the cross-fade and the per-animation
+        // speed and layer-value overrides, none of which a single-animation model can reach
+        for (CritterActionAnim authored : {CritterActionAnim::Idle, CritterActionAnim::Walk, CritterActionAnim::Run, CritterActionAnim::TurnRight, CritterActionAnim::Walk, CritterActionAnim::Idle}) {
+            CHECK(model->HasAnimation(state_anim, authored));
+            REQUIRE_NOTHROW(ignore_unused(model->PlayAnim(state_anim, authored, layers.data(), 0.0f, ModelAnimFlags::None)));
+
+            for (int32_t frame = 0; frame < 3; frame++) {
+                REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+            }
+
+            ignore_unused(model->GetAnimDuration(state_anim, authored));
+        }
+
+        // Movement animations are chosen from the authored walk/run pair rather than played by name
+        for (int32_t speed : {0, 5, 20}) {
+            REQUIRE_NOTHROW(model->SetMovementState(true, speed != 0, speed));
+            REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        }
+
+        REQUIRE_NOTHROW(model->SetMovementState(false, false, 0));
 
         ignore_unused(model->GetSpriteBounds());
         ignore_unused(model->GetAttachPoints());
