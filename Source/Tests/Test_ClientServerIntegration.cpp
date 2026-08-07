@@ -231,6 +231,41 @@ namespace ClientServerIntegrationServer
     }
 
 
+    int EveryArgCalls = 0;
+    int EveryArgMismatch = 0;
+
+    // Every wire-representable argument shape in one inbound call, so each type's marshalling branch runs
+    [[ServerRemoteCall]]
+    void UnitTestEveryArgToServer(Player player, int8 i8, int16 i16, int i32, int64 i64, uint8 u8, uint16 u16, uint32 u32, uint64 u64, float f32, double f64, bool flag, string text, hstring hash, ident id, timespan span, ucolor color, mpos hex, ipos offset, int[] ints, string[] texts, hstring[] hashes)
+    {
+        EveryArgCalls++;
+
+        if (i8 != 1 || i16 != 2 || i32 != 3 || i64 != 4) EveryArgMismatch |= 1;
+        if (u8 != 5 || u16 != 6 || u32 != 7 || u64 != 8) EveryArgMismatch |= 2;
+        if (f32 != 1.5f || f64 != 2.5) EveryArgMismatch |= 4;
+        if (!flag || text != "wire" || hash != "UnitTestSharedItem".hstr()) EveryArgMismatch |= 8;
+        if (span != timespan(9, 3)) EveryArgMismatch |= 16;
+        if (color != ucolor(1, 2, 3, 4)) EveryArgMismatch |= 32;
+        if (hex != mpos(4, 5) || offset != ipos(-6, 7)) EveryArgMismatch |= 64;
+        if (ints.length() != 2 || ints[1] != 20) EveryArgMismatch |= 128;
+        if (texts.length() != 2 || texts[1] != "b") EveryArgMismatch |= 256;
+        if (hashes.length() != 2 || hashes[1] != "UnitTestSharedCritter".hstr()) EveryArgMismatch |= 512;
+
+        // Send the same shapes back the other way
+        player.ClientCall.UnitTestEveryArgToClient(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, flag, text, hash, id, span, color, hex, offset, ints, texts, hashes);
+    }
+
+    int UnitTestGetEveryArgCalls()
+    {
+        return EveryArgCalls;
+    }
+
+    int UnitTestGetEveryArgMismatch()
+    {
+        return EveryArgMismatch;
+    }
+
+
     int SwitchedCritters = 0;
 
     int UnitTestGetSwitchedCritters()
@@ -349,6 +384,46 @@ namespace ClientServerIntegrationClient
         CurPlayer.ServerCall.UnitTestWorldStep(step);
     }
 
+    int EveryArgEchoes = 0;
+    int EveryArgEchoMismatch = 0;
+
+    int UnitTestSendEveryArg()
+    {
+        int[] ints = {10, 20};
+        string[] texts = {"a", "b"};
+        hstring[] hashes = {"UnitTestSharedItem".hstr(), "UnitTestSharedCritter".hstr()};
+
+        CurPlayer.ServerCall.UnitTestEveryArgToServer(1, 2, 3, 4, 5, 6, 7, 8, 1.5f, 2.5, true, "wire", "UnitTestSharedItem".hstr(), CurPlayer.Id, timespan(9, 3), ucolor(1, 2, 3, 4), mpos(4, 5), ipos(-6, 7), ints, texts, hashes);
+        return 0;
+    }
+
+    [[ClientRemoteCall]]
+    void UnitTestEveryArgToClient(int8 i8, int16 i16, int i32, int64 i64, uint8 u8, uint16 u16, uint32 u32, uint64 u64, float f32, double f64, bool flag, string text, hstring hash, ident id, timespan span, ucolor color, mpos hex, ipos offset, int[] ints, string[] texts, hstring[] hashes)
+    {
+        EveryArgEchoes++;
+
+        if (i8 != 1 || i16 != 2 || i32 != 3 || i64 != 4) EveryArgEchoMismatch |= 1;
+        if (u8 != 5 || u16 != 6 || u32 != 7 || u64 != 8) EveryArgEchoMismatch |= 2;
+        if (f32 != 1.5f || f64 != 2.5) EveryArgEchoMismatch |= 4;
+        if (!flag || text != "wire" || hash != "UnitTestSharedItem".hstr()) EveryArgEchoMismatch |= 8;
+        if (span != timespan(9, 3)) EveryArgEchoMismatch |= 16;
+        if (color != ucolor(1, 2, 3, 4)) EveryArgEchoMismatch |= 32;
+        if (hex != mpos(4, 5) || offset != ipos(-6, 7)) EveryArgEchoMismatch |= 64;
+        if (ints.length() != 2 || ints[1] != 20) EveryArgEchoMismatch |= 128;
+        if (texts.length() != 2 || texts[1] != "b") EveryArgEchoMismatch |= 256;
+        if (hashes.length() != 2 || hashes[1] != "UnitTestSharedCritter".hstr()) EveryArgEchoMismatch |= 512;
+    }
+
+    int UnitTestGetEveryArgEchoes()
+    {
+        return EveryArgEchoes;
+    }
+
+    int UnitTestGetEveryArgEchoMismatch()
+    {
+        return EveryArgEchoMismatch;
+    }
+
     int ClientPings = 0;
 
     // Inbound on the client side: the engine dispatches it as void <namespace>::<CallName>(args...) with no
@@ -448,6 +523,46 @@ namespace ClientServerIntegrationClient
         CurMap.GetVisibleHexes();
         CurMap.RebuildFog();
         CurMap.RedrawMap();
+
+        // The map query surface only answers against a real session world, so it is walked here rather
+        // than from the mapper, which has no chosen critter and no critter list to search
+        mpos here = Chosen.Hex;
+        mpos there = mpos(here.x + 3, here.y + 2);
+
+        CurMap.GetPath(here, there, 0);
+        CurMap.GetPath(Chosen, there, 1);
+        if (CurMap.GetPathLength(here, there, 0) < 0) return -7;
+        if (CurMap.GetPathLength(Chosen, there, 1) < 0) return -8;
+
+        CurMap.GetCritterOnHex(here, CritterFindType::Any);
+        CurMap.GetCritterInRadius(here, 5, CritterFindType::Any);
+        CurMap.GetCrittersOnHex(here, CritterFindType::Any);
+        CurMap.GetCrittersInRadius(here, 5, CritterFindType::NonDead);
+        CurMap.GetCrittersInPath(here, there, 0.0f, 6, CritterFindType::Any);
+
+        mpos preBlockHex;
+        mpos blockHex;
+        CurMap.GetCrittersWithBlockInPath(here, there, 0.0f, 6, CritterFindType::Any, preBlockHex, blockHex);
+
+        mpos walked = here;
+        CurMap.MoveHexByDir(walked, mdir(0));
+        CurMap.MoveHexByDir(walked, mdir(3), 2);
+
+        CurMap.MoveScreenToHex(there, ipos16(0, 0), 20, true);
+        CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
+        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8));
+
+        // Sprite drawing is rejected outside a render event, so only the item creation runs here
+        CurMap.CreateLocalItem("UnitTestSharedItem".hstr(), there);
+
+        // The inventory side of the same surface
+        Chosen.CountItem("UnitTestSharedItem".hstr());
+        Chosen.GetItem("UnitTestSharedItem".hstr());
+        Chosen.GetItems();
+        Chosen.GetBodyAngle();
+
+        ipos bonePos;
+        Chosen.GetBonePos("Root".hstr(), bonePos);
 
         return 0;
     }
@@ -667,6 +782,10 @@ End
                     {"UnitTestLogin", "ClientServerIntegrationServer.fos", "In"},
                     {"UnitTestWorldStep", "ClientServerIntegrationServer.fos", "In", "int32", "", "step"},
                     {"UnitTestClientPing", "ClientServerIntegrationServer.fos", "Out", "int32", "", "value"},
+                    // One call per direction carrying every wire-representable argument shape, so the
+                    // marshalling walks each type's own branch on both sides
+                    {"UnitTestEveryArgToServer", "ClientServerIntegrationServer.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
+                    {"UnitTestEveryArgToClient", "ClientServerIntegrationServer.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
                 }},
         });
 
@@ -724,6 +843,8 @@ End
                     {"UnitTestLogin", "ClientServerIntegrationClient.fos", "Out"},
                     {"UnitTestWorldStep", "ClientServerIntegrationClient.fos", "Out", "int32", "", "step"},
                     {"UnitTestClientPing", "ClientServerIntegrationClient.fos", "In", "int32", "", "value"},
+                    {"UnitTestEveryArgToServer", "ClientServerIntegrationClient.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
+                    {"UnitTestEveryArgToClient", "ClientServerIntegrationClient.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
                 }},
         });
 
@@ -1089,6 +1210,36 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
         client->MainLoop();
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
+
+    // Every wire-representable argument shape, sent to the server and echoed back
+    int32_t every_arg_result = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendEveryArg"), every_arg_result));
+    CHECK(every_arg_result == 0);
+
+    int32_t every_arg_echoes = 0;
+
+    for (int32_t i = 0; i < 500 && every_arg_echoes == 0; i++) {
+        client->MainLoop();
+        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetEveryArgEchoes"), every_arg_echoes));
+
+        if (every_arg_echoes == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    CHECK(every_arg_echoes == 1);
+
+    int32_t every_arg_echo_mismatch = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetEveryArgEchoMismatch"), every_arg_echo_mismatch));
+    CHECK(every_arg_echo_mismatch == 0);
+
+    int32_t every_arg_calls = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetEveryArgCalls"), every_arg_calls));
+    CHECK(every_arg_calls == 1);
+
+    int32_t every_arg_mismatch = -1;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetEveryArgMismatch"), every_arg_mismatch));
+    CHECK(every_arg_mismatch == 0);
 
     int32_t world_steps = 0;
     REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
