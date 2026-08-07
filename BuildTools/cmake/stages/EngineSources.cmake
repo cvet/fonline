@@ -417,6 +417,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
