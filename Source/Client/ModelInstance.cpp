@@ -1841,6 +1841,41 @@ void ModelInstance::GenerateCombinedMeshes()
 
         combined_mesh->SpriteBoundsValid = true;
         vector<bool> included_vertices(vertices.size());
+        // Second dedup pass, by skinned identity rather than by index. Meshes split vertices at UV and
+        // normal seams, so the same position appears under several indices; those skin to the same
+        // world point and project identically, so sweeping them all is pure duplicate work. The key
+        // includes the blend data because two vertices sharing a position but not their bone weights
+        // move apart once posed and must both be kept.
+        struct SpriteVertexKey
+        {
+            vec3 Position {};
+            float32_t BlendIndices[MODEL_BONES_PER_VERTEX] {};
+            float32_t BlendWeights[MODEL_BONES_PER_VERTEX] {};
+        };
+        auto key_hash = [](const SpriteVertexKey& key) noexcept -> size_t {
+            size_t hash = std::hash<float32_t> {}(key.Position.x) ^ (std::hash<float32_t> {}(key.Position.y) << 1) ^ (std::hash<float32_t> {}(key.Position.z) << 2);
+
+            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                hash ^= std::hash<float32_t> {}(key.BlendIndices[influence]) << (influence + 3);
+                hash ^= std::hash<float32_t> {}(key.BlendWeights[influence]) << (influence + 7);
+            }
+
+            return hash;
+        };
+        auto key_equal = [](const SpriteVertexKey& first, const SpriteVertexKey& second) noexcept -> bool {
+            if (first.Position != second.Position) {
+                return false;
+            }
+
+            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                if (first.BlendIndices[influence] != second.BlendIndices[influence] || first.BlendWeights[influence] != second.BlendWeights[influence]) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+        std::unordered_set<SpriteVertexKey, decltype(key_hash), decltype(key_equal)> unique_sprite_vertices(16, key_hash, key_equal);
 
         for (vindex_t vertex_index : indices) {
             if (numeric_cast<size_t>(vertex_index) >= vertices.size()) {
@@ -1856,8 +1891,19 @@ void ModelInstance::GenerateCombinedMeshes()
             }
 
             if (!included_vertices[vertex_index]) {
-                combined_mesh->SpriteVertices.emplace_back(vertex_index);
                 included_vertices[vertex_index] = true;
+
+                SpriteVertexKey key;
+                key.Position = vertex.Position;
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    key.BlendIndices[influence] = vertex.BlendIndices[influence];
+                    key.BlendWeights[influence] = vertex.BlendWeights[influence];
+                }
+
+                if (unique_sprite_vertices.insert(key).second) {
+                    combined_mesh->SpriteVertices.emplace_back(vertex_index);
+                }
             }
 
             float32_t total_weight = 0.0f;
