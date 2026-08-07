@@ -112,7 +112,7 @@ namespace FOnline
 
         public static int LineTracerHex(Map map, mpos fromHex, mdir dir, int dist, ITraceContext context)
         {
-            return LineTracerHex(map, fromHex, (float)(dir.angle), dist, default(ipos), default(ipos), context);
+            return LineTracerHex(map, fromHex, (dir.angle), dist, default(ipos), default(ipos), context);
         }
 
         public static int LineTracerHex(Map map, mpos fromHex, float dirAngle, int dist, ipos startOffset, ipos targetOffset, ITraceContext context)
@@ -124,7 +124,7 @@ namespace FOnline
 
         public static int LineTracerHex(Map map, mpos fromHex, mdir dir, int dist, ipos startOffset, ipos targetOffset, ITraceContext context)
         {
-            return LineTracerHex(map, fromHex, (float)(dir.angle), dist, startOffset, targetOffset, context);
+            return LineTracerHex(map, fromHex, (dir.angle), dist, startOffset, targetOffset, context);
         }
 
         public static int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOffset, ITraceContext context)

@@ -128,7 +128,7 @@ namespace FOnline
                     return _Current;
                 }
 
-                float t = Math.ClampF((float)((Game.FrameTime - _StartTick).milliseconds) / (float)_DurationMs, 0.0f, 1.0f);
+                float t = Math.ClampF(((Game.FrameTime - _StartTick).milliseconds) / _DurationMs, 0.0f, 1.0f);
                 _Current = Math.Lerp(_From, _To, _ApplyEasing(t));
 
                 if (t >= 1.0f || _Current == _To) {

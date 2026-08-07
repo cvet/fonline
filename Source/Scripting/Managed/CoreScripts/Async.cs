@@ -20,7 +20,7 @@ namespace FOnline
         public static Task YieldAsync(int ms)
         {
             var completion = new TaskCompletionSource<bool>();
-            StartTimeEvent(new timespan((long)ms * 1_000_000L), () => completion.TrySetResult(true));
+            StartTimeEvent(new timespan(ms * 1_000_000L), () => completion.TrySetResult(true));
             return completion.Task;
         }
     }

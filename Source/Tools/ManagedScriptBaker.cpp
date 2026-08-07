@@ -961,6 +961,10 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     file << "    <Nullable>enable</Nullable>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
+    // Runs the IDE* code-style analyzers during the build, at whatever severity `.editorconfig` assigns them.
+    // Without it those rules exist only inside an IDE, so a diagnostic like "unnecessary suppression operator"
+    // -- the one that tells a proved invariant apart from a silenced warning -- never reaches CI.
+    file << "    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>\n";
     file << "    <GenerateDependencyFile>false</GenerateDependencyFile>\n";
     file << "    <DebugType>embedded</DebugType>\n";
     file << "    <Optimize>true</Optimize>\n";
@@ -1002,6 +1006,9 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <Nullable>enable</Nullable>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
+    // See the host-project emitter above: this is what makes the IDE* code-style analyzers run in the build
+    // rather than only in an editor, so `.editorconfig` severities become a CI gate.
+    file << "    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>\n";
     file << "    <NoWarn>$(NoWarn);8981</NoWarn>\n";
     file << "    <GenerateDependencyFile>false</GenerateDependencyFile>\n";
     file << "    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>\n";

@@ -470,7 +470,7 @@ namespace FOnline
             value |= (long)(dataArray[curPos++]) << 24;
             value |= (long)(dataArray[curPos++]) << 16;
             value |= (long)(dataArray[curPos++]) << 8;
-            value |= (long)(dataArray[curPos++]);
+            value |= (dataArray[curPos++]);
             return this;
         }
 
@@ -522,7 +522,7 @@ namespace FOnline
             value |= (ulong)(dataArray[curPos++]) << 24;
             value |= (ulong)(dataArray[curPos++]) << 16;
             value |= (ulong)(dataArray[curPos++]) << 8;
-            value |= (ulong)(dataArray[curPos++]);
+            value |= (dataArray[curPos++]);
             return this;
         }
 
@@ -535,7 +535,7 @@ namespace FOnline
             value |= (uint)dataArray[curPos++] << 24;
             value |= (uint)dataArray[curPos++] << 16;
             value |= (uint)dataArray[curPos++] << 8;
-            value |= (uint)dataArray[curPos++];
+            value |= dataArray[curPos++];
             return this;
         }
 

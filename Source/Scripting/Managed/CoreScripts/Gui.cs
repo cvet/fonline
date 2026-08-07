@@ -1026,16 +1026,16 @@ namespace FOnline
                 int b = t + Size.height;
 
                 if (l < rect[0]) {
-                    rect[0] = (int)(l);
+                    rect[0] = (l);
                 }
                 if (t < rect[1]) {
-                    rect[1] = (int)(t);
+                    rect[1] = (t);
                 }
                 if (r > rect[2]) {
-                    rect[2] = (int)(r);
+                    rect[2] = (r);
                 }
                 if (b > rect[3]) {
-                    rect[3] = (int)(b);
+                    rect[3] = (b);
                 }
 
                 for (int i = 0; i < _Children.Count; i++) {
@@ -1055,7 +1055,7 @@ namespace FOnline
                     }
                 }
                 else {
-                    rect[0] = (int)(rect[1] = rect[2] = rect[3] = 0);
+                    rect[0] = (rect[1] = rect[2] = rect[3] = 0);
                 }
                 wholeSize.width = rect[2] - rect[0];
                 wholeSize.height = rect[3] - rect[1];
@@ -1308,7 +1308,7 @@ namespace FOnline
             {
                 int result = 0;
                 _Count(name, deepCount, ref result);
-                return (int)(result);
+                return (result);
             }
 
             public void _Count(in string name, bool deepCount, ref int result)
@@ -1336,7 +1336,7 @@ namespace FOnline
                 _Size = _BaseSize;
                 Object? parent = _Parent;
                 ipos parentAbsolutePos = parent != null ? parent._AbsolutePos : default(ipos);
-                isize parentSize = parent != null ? parent._Size : new isize((int)(Settings.View_ScreenWidth), (int)(Settings.View_ScreenHeight));
+                isize parentSize = parent != null ? parent._Size : new isize((Settings.View_ScreenWidth), (Settings.View_ScreenHeight));
                 isize parentBaseSize = parent != null ? parent._BaseSize : _BaseSize;
 
                 // Dock
@@ -3075,7 +3075,7 @@ namespace FOnline
                         if (!_IsMoveIgnoreBorders) {
                             Object? parent = _Parent;
                             ipos parentAbsolutePos = parent != null ? parent._AbsolutePos : default(ipos);
-                            isize parentSize = parent != null ? parent._Size : new isize((int)(Settings.View_ScreenWidth), (int)(Settings.View_ScreenHeight));
+                            isize parentSize = parent != null ? parent._Size : new isize((Settings.View_ScreenWidth), (Settings.View_ScreenHeight));
                             ipos prevPos = newPos;
 
                             if (newPos.x < parentAbsolutePos.x) {
@@ -3522,7 +3522,7 @@ namespace FOnline
                 }
 
                 if (!_InvertMessages) {
-                    _TextFlags = (FontFlag)(FontFlag.KeepTail | FontFlag.AlignBottom);
+                    _TextFlags = (FontFlag.KeepTail | FontFlag.AlignBottom);
                     _TextSkipLines = _ScrollLines;
                 }
                 else {
@@ -5258,7 +5258,7 @@ namespace FOnline
                 }
             }
 
-            return (int)(count);
+            return (count);
         }
 
         public static void Highlight(GuiScreen screenNum, string objName, timespan duration, int skip = 0, bool all = false)
@@ -5268,11 +5268,11 @@ namespace FOnline
                 int count = screen != null ? screen.Count(objName) : 0;
 
                 for (int i = 0; i < count; i++) {
-                    Game.StartTimeEvent(Time.Asap(), (Callback_void_anyArray)HighlightProcess, [((int)(screenNum)).ToString(System.Globalization.CultureInfo.InvariantCulture), objName, (duration.milliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture), (i).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+                    Game.StartTimeEvent(Time.Asap(), HighlightProcess, [((int)(screenNum)).ToString(System.Globalization.CultureInfo.InvariantCulture), objName, (duration.milliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture), (i).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
                 }
             }
             else {
-                Game.StartTimeEvent(Time.Asap(), (Callback_void_anyArray)HighlightProcess, [((int)(screenNum)).ToString(System.Globalization.CultureInfo.InvariantCulture), objName, (duration.milliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture), (skip).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+                Game.StartTimeEvent(Time.Asap(), HighlightProcess, [((int)(screenNum)).ToString(System.Globalization.CultureInfo.InvariantCulture), objName, (duration.milliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture), (skip).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
             }
         }
 
@@ -5324,9 +5324,9 @@ namespace FOnline
                 intensity = intensity < 1.0f ? intensity : 2.0f - intensity;
 
                 ucolor color = panelSpr != null ? panelColor : textColor;
-                color.red = (byte)(color.red + Math.RoundToInt((float)(255 - color.red) * intensity));
-                color.green = (byte)(color.green + Math.RoundToInt((float)(255 - color.green) * intensity));
-                color.blue = (byte)(color.blue + Math.RoundToInt((float)(255 - color.blue) * intensity));
+                color.red = (byte)(color.red + Math.RoundToInt((255 - color.red) * intensity));
+                color.green = (byte)(color.green + Math.RoundToInt((255 - color.green) * intensity));
+                color.blue = (byte)(color.blue + Math.RoundToInt((255 - color.blue) * intensity));
 
                 if (panelSpr != null) {
                     panelSpr.Color = color;

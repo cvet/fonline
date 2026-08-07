@@ -19,8 +19,18 @@ namespace FOnline
     // parts are generated per target), so this file only contributes the invariant helpers.
     public static partial class Game
     {
+        // `[DoesNotReturnIf(false)]` on the condition is what makes an invariant check mean something to the
+        // compiler, exactly as it does for System.Diagnostics.Debug.Assert. It states that the method does not
+        // return when `condition` is false, so past the call the flow analysis may assume it was true. For the
+        // dominant form `Verify(x != null, ...)` that narrows `x` to non-null for the rest of the method, and
+        // the `x!` suppressions that would otherwise be needed afterwards become unnecessary.
+        //
+        // This only reaches conditions the null-state analysis can follow -- `Verify(x != null, ...)` narrows,
+        // `Verify(IsValid(x), ...)` cannot, since nothing ties the helper's result to x's null state. Annotate
+        // such a helper with `[MemberNotNullWhen]`/`[NotNullWhen]` rather than reaching for `!` at the call.
+
         // verify(cond, message) -- the common form. Throws when the invariant is broken.
-        public static void Verify(bool condition, string message)
+        public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message)
         {
             if (!condition)
             {
@@ -30,7 +40,8 @@ namespace FOnline
 
         // verify(cond, message, arg0[, arg1...]) -- the variadic context form. The AngelScript `throw` appends
         // each context value on its own "\n- <value>" line; this reproduces that layout so logs read identically.
-        public static void Verify(bool condition, string message, params object?[] args)
+        public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message,
+                                  params object?[] args)
         {
             if (!condition)
             {
@@ -40,7 +51,9 @@ namespace FOnline
 
         // verify(x != null, message) narrowing form: returns the value typed non-null so the C# nullable-flow
         // analysis treats it as live afterward (honoring the repo's zero-warning rule on nullable references).
-        public static T VerifyNotNull<T>(T? value, string message)
+        // `[NotNull]` narrows the *argument* too, so a caller that ignores the return value still gets the
+        // narrowing -- otherwise only the returned copy would be known non-null.
+        public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull] T? value, string message)
             where T : class
         {
             if (value == null)

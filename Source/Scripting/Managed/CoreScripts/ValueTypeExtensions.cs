@@ -396,7 +396,7 @@ namespace FOnline
         public byte red
         {
             get => (byte)(value & 0xFF);
-            set => this.value = (this.value & 0xFFFFFF00u) | (uint)value;
+            set => this.value = (this.value & 0xFFFFFF00u) | value;
         }
         public byte green
         {
