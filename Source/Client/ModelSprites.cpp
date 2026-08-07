@@ -423,8 +423,9 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     // Size the sprite frame from the posed geometry before drawing anything. GetSpriteBounds derives the frame extent
     // from the skinned skeleton and the baked particle box - there is no shader/GPU read-back - so the required size is
     // fully known without a render. Pose the model (advancing the animation only on the first pass), measure, and grow
-    // the frame if the pose overflows it; the extent is frame-size-invariant, so it settles in one grow. The re-poses
-    // are cheap CPU work, not renders.
+    // the frame if the pose overflows it. Merge placements in root-relative coordinates instead of replacing one with
+    // the next: pixel rounding or a live world-space particle can otherwise alternate between adjacent pivots forever
+    // even though the size is unchanged. The re-poses are cheap CPU work, not renders.
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {
@@ -432,16 +433,19 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         bounds = model_spr->_model->GetSpriteBounds();
 
         if (bounds) {
-            isize32 settled_frame_size {
-                std::max(render_frame_size.width, bounds->RequiredFrameSize.width),
-                std::max(render_frame_size.height, bounds->RequiredFrameSize.height),
+            ModelSpriteFramePlacement current_placement {
+                .Size = render_frame_size,
+                .Pivot = model_spr->GetModel()->GetFramePivot(),
             };
+            ModelSpriteFramePlacement required_placement {.Size = bounds->RequiredFrameSize, .Pivot = bounds->Pivot};
+            optional<ModelSpriteFramePlacement> settled_placement = MergeModelSpriteFramePlacements(current_placement, required_placement);
+            FO_VERIFY_AND_THROW(settled_placement, "Model sprite frame placements could not be merged", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot);
 
             // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame.
-            if (settled_frame_size != render_frame_size || bounds->Pivot != model_spr->GetModel()->GetFramePivot()) {
-                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", render_frame_size, settled_frame_size);
-                model_spr->_model->SetupFrame(settled_frame_size, bounds->Pivot);
-                render_frame_size = settled_frame_size;
+            if (settled_placement->Size != current_placement.Size || settled_placement->Pivot != current_placement.Pivot) {
+                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot, settled_placement->Size, settled_placement->Pivot);
+                model_spr->_model->SetupFrame(settled_placement->Size, settled_placement->Pivot);
+                render_frame_size = settled_placement->Size;
                 continue;
             }
         }
