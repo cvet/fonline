@@ -801,7 +801,13 @@ namespace LocEntity
     {
         return BakerTests::MakeMetadataBlob({
             {"Entity", {{"CoverageTarget"}}},
-            {"EntityHolder", {{"Server", "Critter", "CoverageTarget", "CoverageItems", "Persistent"}}},
+            {"EntityHolder",
+                {
+                    {"Server", "Critter", "CoverageTarget", "CoverageItems", "Persistent"},
+                    // A location survives a restart while an off-map critter does not, so the reload path
+                    // needs a holder on something that comes back
+                    {"Server", "Location", "CoverageTarget", "CoverageLocItems", "Persistent"},
+                }},
         });
     }
 
@@ -1618,6 +1624,87 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.WaitCommitChanges();
 
         CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+    }
+}
+
+TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
+{
+    // Custom inner entities are written by one server and read back by the next one, and that read path -
+    // the inner-entities entry walk and the per-entity load - runs nowhere else in the suite: every other
+    // test in this file keeps the world in memory for the lifetime of one engine.
+    auto storage_dir = std::filesystem::temp_directory_path() / string {"fo_engine_custom_entity_reload_test"};
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_dir, remove_error);
+    std::filesystem::create_directories(storage_dir);
+
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    });
+
+    string storage_option = strex("JSON {}", storage_dir.generic_string()).str();
+
+    ident_t location_id;
+    ident_t custom_id;
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
+        string startup_error = WaitForStart(server.as_ptr());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("TestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            location_id = location->GetId();
+
+            auto custom = server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.ToHashedString("CoverageLocItems"), {});
+            REQUIRE(custom->IsPersistent());
+            custom_id = custom->GetId();
+        }
+
+        server->Shutdown();
+    }
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = WaitForStart(server.as_ptr());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        hstring custom_type = server->Hashes.ToHashedString("CoverageTarget");
+
+        // Only the registry lookups are asserted here: reading an entity's properties needs that entity
+        // covered by the current sync context, and a test holding just the engine lock has no way to take
+        // a pre-existing entity into it
+        CHECK(server->EntityMngr.GetLocation(location_id) != nullptr);
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) != nullptr);
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}) == nullptr);
     }
 }
 
