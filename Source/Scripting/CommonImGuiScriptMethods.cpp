@@ -1327,9 +1327,9 @@ FO_SCRIPT_API void Common_ImGui_SetItemTooltip([[maybe_unused]] ptr<ScriptImGui>
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
+FO_SCRIPT_API bool Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
 {
-    ImGui::BeginTooltip();
+    return ImGui::BeginTooltip();
 }
 
 ///@ ExportMethod
