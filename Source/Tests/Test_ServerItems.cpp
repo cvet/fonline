@@ -175,11 +175,11 @@ namespace ServerItemsTest
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
+        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
 
-        unlogined_player->SetName(name);
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        notLoggedIn_player->SetName(name);
+        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(notLoggedIn_player);
 
         return player;
     }

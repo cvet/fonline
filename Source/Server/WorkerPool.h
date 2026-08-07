@@ -43,7 +43,7 @@ enum class WorkerJobType : size_t
 {
     None = 0,
     Player = 1,
-    UnloginedPlayer = 2,
+    NotLoggedInPlayer = 2,
     CritterMovement = 3,
     TimeEvent = 4,
 };

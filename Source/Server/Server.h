@@ -117,10 +117,10 @@ public:
     void Unlock();
     void DrawGui();
 
-    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
-    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>;
-    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>;
-    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>;
+    auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> notLoggedIn_player) -> ptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, ident_t player_id) -> ptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> notLoggedIn_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
@@ -143,7 +143,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*notLoggedInPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, ptr<Player> /*player*/);
     ///@ ExportEvent
@@ -258,7 +258,7 @@ private:
     void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
+    void ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player);
     void ProcessPlayer(ptr<Player> player);
     void ProcessConnection(ptr<Player> player);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
@@ -325,9 +325,9 @@ private:
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
     auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
-    void OnPlayerConnected(ptr<Player> unlogined_player);
-    auto UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>;
-    void OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_player);
+    void OnPlayerConnected(ptr<Player> notLoggedIn_player);
+    auto NotLoggedInPlayerJob(ptr<Player> notLoggedIn_player) -> std::optional<timespan>;
+    void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> notLoggedIn_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
@@ -358,8 +358,8 @@ private:
     optional<UpdaterBackend> _updaterBackend {};
     TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
-    mutable mutex _unloginedPlayersLocker {};
-    vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
+    mutable mutex _notLoggedInPlayersLocker {};
+    vector<refcount_ptr<Player>> _notLoggedInPlayers FO_TSA_GUARDED_BY(_notLoggedInPlayersLocker) {};
     mutable mutex _connRateLocker {};
     unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 

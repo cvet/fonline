@@ -81,23 +81,23 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
     FO_STACK_TRACE_ENTRY();
 
     auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
-        auto registrator = _meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+        auto registrar = _meta->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrar, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrar, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrar, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrar, props);
         }
         else {
-            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrar, props);
         }
     };
 

@@ -179,10 +179,10 @@ namespace
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -458,8 +458,8 @@ namespace ServerEngineInitGateTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -568,12 +568,12 @@ namespace ServerEngineInitGateTest
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-        server->RequireCurrentSyncContext()->SyncEntity(unlogined_player);
+        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        server->RequireCurrentSyncContext()->SyncEntity(notLoggedIn_player);
 
-        unlogined_player->SetName(name);
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        notLoggedIn_player->SetName(name);
+        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(notLoggedIn_player);
 
         return player;
     }
@@ -2702,9 +2702,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     SECTION("SingletonOwnedEntityEnsureIsIdempotent")
     {
         EntityLock singleton_lock;
-        auto registrator = server->GetPropertyRegistrator("Critter");
-        REQUIRE(registrator);
-        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrator, nullptr);
+        auto registrar = server->GetPropertyRegistrar("Critter");
+        REQUIRE(registrar);
+        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
         CHECK_FALSE(singleton_owned_entity->GetEntityLock());
         singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
 
