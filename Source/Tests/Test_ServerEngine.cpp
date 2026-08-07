@@ -30,6 +30,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <filesystem>
+
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptScripting.h"
@@ -884,6 +886,90 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
+}
+
+TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
+{
+    // Everything else in this suite runs against an in-memory database, so the world-load path that a real
+    // server takes on every restart never runs. A file-backed JSON storage makes it reachable: one server
+    // writes the world, a second one on the same directory has to read it back.
+    auto storage_dir = std::filesystem::temp_directory_path() / string {"fo_engine_world_reload_test"};
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_dir, remove_error);
+    std::filesystem::create_directories(storage_dir);
+
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    });
+
+    string storage_option = strex("JSON {}", storage_dir.generic_string()).str();
+
+    ident_t location_id;
+    ident_t critter_id;
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        auto server = MakeServerEngine(settings);
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            // Runtime entities are temporary by default, so they have to be marked persistent before the
+            // restart has anything to read back
+            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            location_id = location->GetId();
+
+            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+        }
+
+        CHECK(server->EntityMngr.GetLocationsCount() >= 1);
+        CHECK(server->EntityMngr.GetCrittersCount() >= 1);
+
+        server->Shutdown();
+    }
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        auto server = MakeServerEngine(settings);
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.get_no_const()->Unlock(); }); });
+
+        // The restarted server rebuilt the location from its stored document, so the same id resolves again.
+        // The critter is not asserted on: it was created off-map, and critters are reached through the map
+        // or the global map they live on, so a placeless one has nothing to load it from.
+        CHECK(server->EntityMngr.GetLocationsCount() >= 1);
+        CHECK(static_cast<bool>(server->EntityMngr.GetLocation(location_id)));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(ident_t {})));
+        ignore_unused(critter_id);
+    }
 }
 
 TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
@@ -2967,8 +3053,21 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    // The world is deliberately left empty: every per-entity panel trips
-    // "Entity access without sync" once it has a real row to render (see the plan notes)
+    // Populate the world so the per-entity panels render real rows instead of empty tables
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        (void)server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+        (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
+        (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+    }
+
+    REQUIRE(server->EntityMngr.GetCrittersCount() >= 1);
+    REQUIRE(server->EntityMngr.GetPlayersCount() >= 1);
+    REQUIRE(server->EntityMngr.GetLocationsCount() >= 1);
+
     // The diagnostic panels are normally only reachable through the windowed server application, so the
     // test drives a backend-less ImGui context directly: no renderer is attached and the draw data is
     // discarded, but every panel builder runs for real
@@ -3013,7 +3112,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
                 window->StateStorage.SetInt(ImGui::GetID(panel_id.data(), panel_id.data() + panel_id.size()), 1);
             }
 
-            ImGui::LogToBuffer();
+            ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(server->DrawGui());
 
             // LogFinish() drops the captured text, so take it while the log is still open
