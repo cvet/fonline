@@ -129,11 +129,56 @@ struct DataAccessor
     virtual ~DataAccessor() = default;
 };
 
+class ScriptCallReturnValueOwner final
+{
+public:
+    ScriptCallReturnValueOwner() noexcept = default;
+    explicit ScriptCallReturnValueOwner(function<void()>&& cleanup) noexcept :
+        _cleanup {std::move(cleanup)}
+    {
+    }
+
+    ScriptCallReturnValueOwner(const ScriptCallReturnValueOwner&) = delete;
+    auto operator=(const ScriptCallReturnValueOwner&) -> ScriptCallReturnValueOwner& = delete;
+
+    ScriptCallReturnValueOwner(ScriptCallReturnValueOwner&& other) noexcept :
+        _cleanup {std::move(other._cleanup)}
+    {
+        other._cleanup = {};
+    }
+
+    auto operator=(ScriptCallReturnValueOwner&& other) noexcept -> ScriptCallReturnValueOwner&
+    {
+        if (this != &other) {
+            Reset(std::move(other._cleanup));
+            other._cleanup = {};
+        }
+
+        return *this;
+    }
+
+    ~ScriptCallReturnValueOwner() noexcept { Reset(); }
+
+    void Reset(function<void()>&& cleanup = {}) noexcept
+    {
+        function<void()> previous = std::move(_cleanup);
+        _cleanup = std::move(cleanup);
+
+        if (previous) {
+            previous();
+        }
+    }
+
+private:
+    function<void()> _cleanup {};
+};
+
 struct FuncCallData
 {
     ptr<const DataAccessor> Accessor;
     const_span<ptr<void>> ArgsData {};
     nptr<void> RetData {};
+    ScriptCallReturnValueOwner RetValueOwner {};
 };
 
 namespace NativeDataProvider
@@ -675,7 +720,7 @@ class ScriptSystemBackend
 {
 public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t MANAGED_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
 
@@ -748,6 +793,8 @@ public:
 
     [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>;
     [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types, const ComplexTypeDesc& ret_type) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFuncCandidates(hstring func_name) noexcept -> vector<ptr<ScriptFuncDesc>>;
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
@@ -875,6 +922,8 @@ private:
             return typeid(raw_t).hash_code();
         }
     }
+
+    static auto AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool;
 
     unordered_map<size_t, unique_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};

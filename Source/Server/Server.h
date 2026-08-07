@@ -189,6 +189,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterItemTransferIn, ptr<Critter> /*cr*/, ptr<Item> /*sourceItem*/, ptr<Item> /*resultItem*/, int32_t /*count*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);

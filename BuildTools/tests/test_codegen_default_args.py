@@ -42,6 +42,7 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
         '#define FO_BUILD_HASH "build-hash"',
         '#define FO_DEV_NAME "DEV"',
         '#define FO_NICE_NAME "Nice Name"',
+        f'#define FO_GENERATED_SOURCE_DIR "{tmp_path.as_posix()}"',
         '#define FO_COMPATIBILITY_VERSION "0123456789abcdef"',
         '#define FO_GIT_BRANCH "test-branch"',
     ]

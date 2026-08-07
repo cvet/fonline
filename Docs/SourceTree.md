@@ -53,7 +53,7 @@ Server behavior is usually where persistence, validation, and authoritative enti
 
 ## `Source/Scripting/`
 
-Script integration and script-visible native method registration. It is split into integration folders (`AngelScript`, `Native`, `Mono`) and method registration files grouped by runtime side and entity type, such as common/client/server global methods and critter/item/map/player methods.
+Script integration and script-visible native method registration. It is split into integration folders (`AngelScript`, `Native`, `Managed`) and method registration files grouped by runtime side and entity type, such as common/client/server global methods and critter/item/map/player methods.
 
 Use [Nullability.md](Nullability.md) when changing nullable script/native signatures.
 

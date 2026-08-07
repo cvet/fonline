@@ -60,6 +60,23 @@ FO_DISABLE_WARNINGS_POP()
 FO_BEGIN_NAMESPACE
 
 static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
+
+// Configuration the bytecode was compiled under. The preprocessor defines that gate script code (currently
+// MANAGED) change what the bytecode contains, so bytecode built in one configuration must never be loaded by a
+// runtime built in another: the mismatch is otherwise invisible and surfaces as wrong behaviour far away - a
+// managed-off build of GameState.fos, for example, keeps the subscriptions the managed owner also registers.
+static constexpr uint8_t AS_BYTECODE_CONFIG_MANAGED = 0x01;
+
+[[nodiscard]] static constexpr auto GetScriptBytecodeConfigFlags() noexcept -> uint8_t
+{
+    uint8_t flags = 0;
+
+#if FO_MANAGED_SCRIPTING
+    flags |= AS_BYTECODE_CONFIG_MANAGED;
+#endif
+
+    return flags;
+}
 static constexpr uint8_t AS_BYTECODE_POINTER_SIZE = sizeof(void*);
 static constexpr uint8_t AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
 static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
@@ -357,6 +374,9 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     auto source_pointer_size = reader.Read<uint8_t>();
     auto source_endian_tag = reader.Read<uint8_t>();
+    uint8_t source_config_flags = reader.Read<uint8_t>();
+
+    FO_VERIFY_AND_THROW(source_config_flags == GetScriptBytecodeConfigFlags(), "Script bytecode was compiled for a different build configuration", source_config_flags, GetScriptBytecodeConfigFlags());
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
         WriteLog("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
@@ -581,6 +601,12 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         break;
     }
 
+#if FO_MANAGED_SCRIPTING
+    Preprocessor::Define(preprocessor_context.get(), "MANAGED 1");
+#else
+    Preprocessor::Define(preprocessor_context.get(), "MANAGED 0");
+#endif
+
     auto loader = ScriptLoader(&root_script, &final_script_files);
     Preprocessor::StringOutStream errors;
     Preprocessor::LexemList lexems;
@@ -664,6 +690,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.Write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
     writer.Write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
     writer.Write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
+    writer.Write<uint8_t>(GetScriptBytecodeConfigFlags());
     writer.Write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     if (!buf.empty()) {
         writer.WriteObjectArray(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});

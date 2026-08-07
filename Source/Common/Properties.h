@@ -448,7 +448,14 @@ public:
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
+    // Resolves a live property by the name it is registered under, with no migration rewrite.
+    // This is the lookup for every runtime access: script/native property bridges, editors, tooling.
     [[nodiscard]] auto FindProperty(string_view property_name) const -> nptr<const Property>;
+    // Resolves a name that was read out of stored data (saved entities, baked protos and maps, authored
+    // property text), applying the `MigrationRule Property` rewrite so an obsolete stored name lands on
+    // its replacement. Load paths only: the rewrite makes a live property whose name equals some rule's
+    // old name unreachable, which is correct when reading old data and wrong for live access.
+    [[nodiscard]] auto FindPersistedProperty(string_view property_name) const -> nptr<const Property>;
     [[nodiscard]] auto GetPropertyByIndex(int32_t property_index) const noexcept -> nptr<const Property>;
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }

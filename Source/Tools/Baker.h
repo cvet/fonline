@@ -96,6 +96,10 @@ protected:
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
     shared_ptr<BakingContext> _context;
+
+private:
+    // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func
+    // bound by attribute (e.g. a C# [ItemTrigger]). Consults the manifest ManagedScriptBaker emits.
 };
 
 class MasterBaker final

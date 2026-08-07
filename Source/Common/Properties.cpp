@@ -1226,7 +1226,9 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
             continue;
         }
 
-        auto prop = registrator->FindProperty(key);
+        // Keys come from a stored document (baked proto/map sections, authored property text), so an
+        // obsolete stored name has to migrate onto its replacement here
+        auto prop = registrator->FindPersistedProperty(key);
 
         if (!prop) {
             WriteLog("Failed to load unknown property {}", key);
@@ -2312,18 +2314,24 @@ auto PropertyRegistrator::FindProperty(string_view property_name) const -> nptr<
 {
     FO_STACK_TRACE_ENTRY();
 
-    string key = string(property_name);
-    hstring hkey = _hashResolver->ToHashedString(key);
-
-    if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
-        key = rule.value();
-    }
-
-    if (auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
+    if (auto it = _registeredPropertiesLookup.find(property_name); it != _registeredPropertiesLookup.end()) {
         return it->second;
     }
 
     return nullptr;
+}
+
+auto PropertyRegistrator::FindPersistedProperty(string_view property_name) const -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    hstring hkey = _hashResolver->ToHashedString(property_name);
+
+    if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
+        return FindProperty(rule.value().as_str());
+    }
+
+    return FindProperty(property_name);
 }
 
 auto PropertyRegistrator::GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>

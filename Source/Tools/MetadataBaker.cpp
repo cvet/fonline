@@ -65,7 +65,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (ext != "fos") {
+        if (ext != "fos" && ext != "cs") {
             continue;
         }
 
@@ -1538,6 +1538,23 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
         string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
+
+        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading
+        // stored data. If the old name is also a live registered property, the rule still migrates stored
+        // values correctly, but the live property now shares its name - which is exactly what a rename
+        // with a forgotten old declaration looks like. Deliberate re-typings (park the old values in a
+        // legacy slot, reuse the name for a new type) look identical, so this only warns.
+        if (rule_name == "Property") {
+            auto registrator = ctx.Meta.GetPropertyRegistrator(extra_info);
+
+            if (registrator) {
+                auto live_prop = registrator->FindProperty(target);
+
+                if (live_prop) {
+                    WriteLog(LogType::Warning, "Property migration rule shares its old name with a live property: {}.{} is registered as {} while stored values migrate to {}", extra_info, target, live_prop->GetViewTypeName(), replacement);
+                }
+            }
+        }
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);
