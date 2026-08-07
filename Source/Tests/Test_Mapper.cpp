@@ -2696,6 +2696,52 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
     map_ptr->RebuildMap();
 
+    SECTION("CritterViewsAnimateAndMoveOverFrames")
+    {
+        // A critter view only advances its animation while the map is processed, so nothing under the
+        // per-frame animation walk runs in a test that just builds the map and looks at it
+        auto critters = map_ptr->GetCritters();
+        REQUIRE_FALSE(critters.empty());
+
+        ptr<CritterHexView> critter = critters.front().as_ptr();
+
+        auto process_frames = [&map_ptr](int32_t count) {
+            for (int32_t frame = 0; frame < count; frame++) {
+                REQUIRE_NOTHROW(map_ptr->Process());
+            }
+        };
+
+        // Queued animations play one after another, and appending adds to the queue instead of replacing
+        REQUIRE_NOTHROW(critter->AppendAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr));
+        REQUIRE_NOTHROW(critter->AppendAnim(CritterStateAnim::Unarmed, CritterActionAnim::Walk, nullptr));
+        process_frames(12);
+
+        // The action path picks its own animation for each kind of action
+        for (CritterAction action : {CritterAction::Refresh, CritterAction::MoveItem, CritterAction::Knockout, CritterAction::StandUp, CritterAction::Dead, CritterAction::Respawn}) {
+            REQUIRE_NOTHROW(critter->Action(action, 0, nullptr, true));
+            process_frames(3);
+        }
+
+        // Direction changes and the view refresh rebuild the sprite the animation walks over
+        for (int32_t dir = 0; dir < 6; dir++) {
+            REQUIRE_NOTHROW(critter->ChangeLookDir(mdir {numeric_cast<uint8_t>(dir)}));
+            REQUIRE_NOTHROW(critter->ChangeMoveDir(mdir {numeric_cast<uint8_t>(dir)}));
+            process_frames(2);
+        }
+
+        REQUIRE_NOTHROW(critter->RefreshView(false));
+        REQUIRE_NOTHROW(critter->RefreshView(true));
+        REQUIRE_NOTHROW(critter->RefreshModel());
+        process_frames(4);
+
+        ignore_unused(critter->IsAnimPlaying());
+        ignore_unused(critter->IsMoving());
+
+        ipos32 name_pos {};
+        ignore_unused(critter->GetNameTextPos(name_pos));
+        ignore_unused(critter->GetViewRect());
+    }
+
     SECTION("LightSourcesSurviveRebuildsAndMoves")
     {
         REQUIRE_NOTHROW(map_ptr->RebuildMap());

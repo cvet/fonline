@@ -500,6 +500,10 @@ namespace ClientServerIntegrationClient
         // Writing a client-modifiable property is what drives the server property handler
         chosen.UnitTestClientMark = 21;
 
+        // A client-local item lives only on this side and carries no server id; it is created here rather
+        // than in the polled inspection so the map does not grow one per poll
+        CurMap.CreateLocalItem("UnitTestSharedItem".hstr(), mpos(start.x + 2, start.y));
+
         return 0;
     }
 
@@ -552,8 +556,44 @@ namespace ClientServerIntegrationClient
         CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
         CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8));
 
-        // Sprite drawing is rejected outside a render event, so only the item creation runs here
-        CurMap.CreateLocalItem("UnitTestSharedItem".hstr(), there);
+        // The global lookups resolve against the current map, so they only answer in a session
+        if (Game.GetCritter(Chosen.Id) is null) return -9;
+        // A zero id is rejected rather than answered - the two lookups disagree on which, so both are probed
+        int zeroIdRejections = 0;
+        try { if (Game.GetCritter(ident()) !is null) return -10; } catch { zeroIdRejections++; }
+        if (Game.GetCritters("UnitTestSharedCritter".hstr(), CritterFindType::Any).isEmpty()) return -11;
+        if (!Game.GetCritters("UnitTestSharedItem".hstr(), CritterFindType::Any).isEmpty()) return -12;
+
+        Game.GetCritters(Game.GetProtoCritter("UnitTestSharedCritter".hstr()), CritterFindType::Any);
+        Game.GetCritters(CritterFindType::NonDead);
+        Game.SortCrittersByDeep(Game.GetCritters(CritterFindType::Any));
+
+        // Distance is only defined for entities placed on the map, so the map items are used rather
+        // than the chosen critter's inventory
+        // A client-local item carries no server id, so the lookup is done against a server-owned one
+        Item[] mapItems = CurMap.GetItems();
+
+        for (uint i = 0; i < mapItems.length(); i++) {
+            Item mapItem = mapItems[i];
+
+            if (mapItem.Id.value == 0) {
+                continue;
+            }
+
+            if (Game.GetItem(mapItem.Id) is null) return -13;
+            if (Game.GetDistance(Chosen, mapItem) < 0) return -14;
+            if (Game.GetDistance(mapItem, Chosen) < 0) return -15;
+            if (Game.GetDistance(mapItem, mapItem) != 0) return -16;
+            Game.GetDistance(mapItem, Chosen.Hex);
+            Game.GetDistance(Chosen.Hex, mapItem);
+            break;
+        }
+
+        try { if (Game.GetItem(ident()) !is null) return -17; } catch { zeroIdRejections++; }
+        if (zeroIdRejections == 0) return -19;
+        if (Game.GetDistance(Chosen, Chosen) != 0) return -18;
+        Game.GetDistance(Chosen, Chosen.Hex);
+        Game.GetDistance(Chosen.Hex, Chosen);
 
         // The inventory side of the same surface
         Chosen.CountItem("UnitTestSharedItem".hstr());
