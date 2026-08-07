@@ -41,6 +41,7 @@
 #include "Baker.h"
 #include "Client.h"
 #include "DataSerialization.h"
+#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -62,9 +63,184 @@ namespace TestClientServerIntegration
 
 namespace ClientServerIntegrationServer
 {
+    int LoginCalls = 0;
+
     void UnitTestEntry()
     {
         UnitTestNoop();
+    }
+
+    // Inbound remote call: the engine dispatches it as void <namespace>::<CallName>(Player player, args...)
+    [[ServerRemoteCall]]
+    void UnitTestLogin(Player player)
+    {
+        LoginCalls++;
+
+        // The login insert refuses an empty document, so the fresh session carries at least one stored value
+        player.UnitTestLoginMark = 7;
+
+        Player loggedPlayer = Game.LoginPlayerToNewRecord(player);
+
+        // Handing the session a controlled critter drives the client through the whole world-entry protocol:
+        // load map, add critter, initial property sync
+        Critter cr = Game.CreateCritter("UnitTestSharedCritter".hstr(), true);
+        loggedPlayer.SwitchCritter(cr);
+        SwitchedCritters++;
+
+        // Entering a real map is what makes the client run the load-map protocol instead of staying global
+        // Each session gets its own location. Reusing one across logins would need the handler to acquire
+        // explicit cover for the already-existing location and map, which the login context does not carry.
+        hstring[] mapPids = {"UnitTestSharedMap".hstr()};
+        Location loc = Game.CreateLocation("UnitTestSharedLocation".hstr(), mapPids);
+        Map map = loc.GetMapByIndex(0);
+        cr.TransferToMap(map, mpos(10, 10));
+
+        // Inventory and map items each take their own send path to the owning client
+        cr.AddItem("UnitTestSharedItem".hstr(), 3);
+        map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr(), 1);
+
+        // A second critter on the same map arrives at the client as a foreign critter, which is a different
+        // send path from the controlled one, and moving it drives the position updates
+        Critter npc = Game.CreateCritter("UnitTestSharedCritter".hstr(), false);
+        npc.TransferToMap(map, mpos(10, 11));
+        NpcCritters++;
+
+        // Condition, action and attachment each push their own message down to the watching client
+        npc.SetCondition(CritterCondition::Knockout, CritterActionAnim(1), null);
+        npc.SetCondition(CritterCondition::Alive, CritterActionAnim(1), null);
+        npc.Action(CritterAction::StandUp, 0, null);
+        // Attach and detach both push a message; leaving the attachment live would trip a client-side
+        // verification when the session tears down with attached critters still linked
+        npc.AttachToCritter(cr);
+        npc.DetachFromCritter();
+        cr.SendItems(cr.GetItems(), true, false);
+    }
+
+    int NpcCritters = 0;
+
+    int UnitTestGetNpcCritters()
+    {
+        return NpcCritters;
+    }
+
+    int WorldSteps = 0;
+
+    // A second inbound call is how the test runs server-side world changes inside a proper sync context:
+    // the handler is entered with the calling player covered, the same way the login handler is
+    [[ServerRemoteCall]]
+    [[Async]]
+    void UnitTestWorldStep(Player player, int step)
+    {
+        WorldSteps++;
+
+        Critter? controlled = player.GetControlledCritter();
+
+        if (controlled is null) {
+            return;
+        }
+
+        Critter cr = controlled;
+
+        // The handler is entered with the calling player covered; everything else it reaches - the
+        // controlled critter's map and its contents - has to be acquired explicitly
+        Map? crMapCover = cr.GetMap();
+
+        if (crMapCover !is null) {
+            Game.Sync(cr, crMapCover);
+        }
+        else {
+            Game.Sync(cr);
+        }
+
+        if (step == 0) {
+            // Adding an item and pushing it out onto the map both send item messages to the owning client
+            Item added = cr.AddItem("UnitTestSharedItem".hstr(), 2);
+
+            if (crMapCover !is null) {
+                Game.MoveItem(added, 1, crMapCover, mpos(10, 10));
+            }
+        }
+        else if (step == 2) {
+            // Moving the controlled critter sends a position update down to its own client
+            cr.TransferToHex(mpos(11, 11));
+            cr.TransferToHex(mpos(10, 10));
+        }
+        else if (step == 1) {
+            // The reverse direction: the server calls into the logged-in client
+            player.ClientCall.UnitTestClientPing(42);
+
+            // Property writes on the controlled critter fan out as synchronized property messages
+            cr.UnitTestClientMark = 11;
+            cr.SetCondition(CritterCondition::Knockout, CritterActionAnim(1), null);
+            cr.SetCondition(CritterCondition::Alive, CritterActionAnim(1), null);
+        }
+        else if (step == 3) {
+            // A second critter appearing on the map is what makes the client build a view for someone
+            // other than its own character, which is a different message family from everything above
+            if (crMapCover !is null) {
+                Map crMap = crMapCover;
+                Critter npc = crMap.AddCritter("UnitTestSharedCritter".hstr(), mpos(12, 12), mdir(0));
+                Game.Sync(npc);
+                SpawnedNpcId = npc.Id;
+
+                npc.SetDir(mdir(1));
+                npc.Action(CritterAction::Refresh, 0, null);
+                npc.UnitTestClientMark = 7;
+            }
+        }
+        else if (step == 4) {
+            // Repeated property writes on the observed critter keep the synchronized-property path busy.
+            // Moving it is not reachable from here: TransferToHex on a critter the caller does not control
+            // reaches past what an inbound remote call can cover - see the sync-contract note in the plan.
+            if (crMapCover !is null && SpawnedNpcId.value != 0) {
+                Map crMap = crMapCover;
+                Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
+
+                if (npcHandle !is null) {
+                    Critter npc = npcHandle;
+                    Game.Sync(npc);
+                    npc.UnitTestClientMark = 8;
+                }
+            }
+        }
+        else if (step == 5) {
+            // A property write on a critter the client only observes is a different fan-out from a write
+            // on its own character, which step 1 already covers
+            if (crMapCover !is null && SpawnedNpcId.value != 0) {
+                Map crMap = crMapCover;
+                Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
+
+                if (npcHandle !is null) {
+                    Critter npc = npcHandle;
+                    Game.Sync(npc);
+                    npc.UnitTestClientMark = 9;
+
+                    for (uint8 dir = 0; dir < 6; dir++) {
+                        npc.SetDir(mdir(dir));
+                    }
+                }
+            }
+        }
+    }
+
+    ident SpawnedNpcId;
+
+    int UnitTestGetWorldSteps()
+    {
+        return WorldSteps;
+    }
+
+
+    int SwitchedCritters = 0;
+
+    int UnitTestGetSwitchedCritters()
+    {
+        return SwitchedCritters;
+    }
+
+    int UnitTestGetLoginCalls()
+    {
+        return LoginCalls;
     }
 }
 )"},
@@ -162,6 +338,119 @@ namespace ClientServerIntegrationClient
     {
         return cr.ModelName.str;
     }
+
+    void UnitTestSendLogin()
+    {
+        CurPlayer.ServerCall.UnitTestLogin();
+    }
+
+    void UnitTestSendWorldStep(int step)
+    {
+        CurPlayer.ServerCall.UnitTestWorldStep(step);
+    }
+
+    int ClientPings = 0;
+
+    // Inbound on the client side: the engine dispatches it as void <namespace>::<CallName>(args...) with no
+    // player argument, which is the only shape difference from the server-side handler
+    [[ClientRemoteCall]]
+    void UnitTestClientPing(int value)
+    {
+        ClientPings += value;
+    }
+
+    int UnitTestGetClientPings()
+    {
+        return ClientPings;
+    }
+
+    int UnitTestDriveChosen()
+    {
+        if (!HasChosen) return -1;
+
+        // Both of these travel to the server as player commands and come back as authoritative state
+        Chosen.MoveToHex(mpos(12, 12), ipos(0, 0), 10);
+        Chosen.ChangeDir(mdir(2));
+
+        return 0;
+    }
+
+    int UnitTestWriteChosenProperty()
+    {
+        if (!HasChosen) return -1;
+
+        // A ModifiableByClient property is the one thing a client may write straight into the world state,
+        // and each entity kind takes its own send-value path on the way out
+        Chosen.UnitTestClientMark = 5;
+
+        Item[] ownItems = Chosen.GetItems();
+
+        if (!ownItems.isEmpty()) {
+            ownItems[0].UnitTestItemMark = 6;
+        }
+
+        if (HasCurPlayer) {
+            CurPlayer.UnitTestPlayerMark = 7;
+        }
+
+        // Map and location writes are not driven here: the server applies an inbound property write on a
+        // worker that covers the player and its critter, not the map or location behind them
+        return 0;
+    }
+
+    // Driving the chosen critter from the client is what makes it send movement messages, which is the
+    // only way the server-side move handlers are entered
+    int UnitTestDriveChosenMovement()
+    {
+        if (!HasChosen) return -1;
+        if (!HasCurMap) return -2;
+
+        Critter chosen = Chosen;
+        mpos start = chosen.Hex;
+
+        // A path request, a direction step and a stop each send their own message
+        chosen.MoveToHex(mpos(start.x + 2, start.y + 1), ipos(0, 0), 1000);
+        chosen.StopMove();
+
+        for (uint8 dir = 0; dir < 6; dir++) {
+            chosen.MoveToDir(mdir(dir), 1000);
+        }
+
+        chosen.StopMove();
+
+        // A cut path and a zero-speed request are the remaining argument shapes
+        chosen.MoveToHex(mpos(start.x + 1, start.y), 1, ipos(4, 4), 500);
+        chosen.StopMove();
+
+        // Writing a client-modifiable property is what drives the server property handler
+        chosen.UnitTestClientMark = 21;
+
+        return 0;
+    }
+
+    int UnitTestInspectChosenWorld()
+    {
+        if (!HasChosen) return -1;
+        if (!HasCurMap) return -2;
+
+        // The inventory and the map contents arrived over the wire, so the client can enumerate both
+        if (Chosen.GetItems().isEmpty()) return -3;
+
+        // Map contents are not asserted on: the world steps move items between the inventory and the map,
+        // so the count here depends on which step last landed
+        CurMap.GetItems();
+
+        if (CurMap.GetCritters(CritterFindType::Any).isEmpty()) return -5;
+        if (CurMap.GetCritter(Chosen.Id) is null) return -6;
+
+        CurMap.GetHexScreenPos(Chosen.Hex);
+        CurMap.IsHexVisible(Chosen.Hex);
+        CurMap.GetVisibleHexes();
+        CurMap.RebuildFog();
+        CurMap.RedrawMap();
+
+        return 0;
+    }
 }
 )"},
                 {"Scripts/ClientServerIntegrationClientShared.fos", R"(
@@ -247,9 +536,139 @@ End
         return bake_dir;
     }
 
+    // The server static map blob carries three counts (hashes, items, critters); the client one stops after
+    // the hash table and the static items, so the two sides get differently sized empty blobs.
+    static auto MakeEmptyServerMapBlob() -> vector<uint8_t>
+    {
+        vector<uint8_t> map_data;
+        auto writer = DataWriter(map_data);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        return map_data;
+    }
+
+    // A static map with authored content, so map creation runs the content generator instead of skipping it.
+    // Layout: the hash table, then the critter records, then the item records; each record is an id, the
+    // prototype's hash and a properties blob (empty here, so every value stays at its prototype default).
+    template<typename TEngine>
+    static auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
+    {
+        hstring critter_pid = engine.Hashes.ToHashedString("UnitTestSharedCritter");
+        hstring item_pid = engine.Hashes.ToHashedString("UnitTestSharedItem");
+
+        // A default-constructed property set still serializes to a non-empty blob, so it is produced here
+        // rather than writing a zero size the reader cannot restore from
+        auto make_default_props_blob = [&engine](string_view type_name) {
+            auto registrator = engine.GetPropertyRegistrator(engine.Hashes.ToHashedString(type_name));
+            REQUIRE(static_cast<bool>(registrator));
+
+            Properties props {registrator};
+            vector<uint8_t> props_data;
+            set<hstring> str_hashes;
+            props.StoreAllData(props_data, str_hashes);
+            return props_data;
+        };
+
+        vector<uint8_t> critter_props = make_default_props_blob("Critter");
+        vector<uint8_t> item_props = make_default_props_blob("Item");
+
+        vector<uint8_t> map_data;
+        auto writer = DataWriter(map_data);
+
+        const vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
+
+        for (const string& hashed_string : hashed_strings) {
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_string.length()));
+            writer.WriteStringBytes(hashed_string);
+        }
+
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5001});
+        writer.Write<hstring::hash_t>(critter_pid.as_hash());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(critter_props.size()));
+
+        if (!critter_props.empty()) {
+            writer.WriteBytes({critter_props.data(), critter_props.size()});
+        }
+
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5002});
+        writer.Write<hstring::hash_t>(item_pid.as_hash());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
+
+        if (!item_props.empty()) {
+            writer.WriteBytes({item_props.data(), item_props.size()});
+        }
+
+        return map_data;
+    }
+
+    static auto MakeEmptyClientMapBlob() -> vector<uint8_t>
+    {
+        vector<uint8_t> map_data;
+        auto writer = DataWriter(map_data);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        return map_data;
+    }
+
+    template<typename TEngine>
+    static auto MakeMapProtoBlob(TEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
+    {
+        vector<uint8_t> props_data;
+        set<hstring> str_hashes;
+
+        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
+        REQUIRE(static_cast<bool>(registrator));
+
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        proto.SetSize(map_size);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
+
+        vector<uint8_t> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32_t>(uint32_t {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.WriteStringBytes(type_name.as_str());
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.WriteStringBytes(proto_name);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
+        if (!props_data.empty()) {
+            writer.WriteBytes({props_data.data(), props_data.size()});
+        }
+
+        return protos_data;
+    }
+
     static auto MakeServerTestResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        // The login handshake is a remote call, so both sides declare it: inbound on the server, outbound on
+        // the client. The subsystem hint is the owning script file, whose stem becomes the handler namespace.
+        auto metadata_blob = BakerTests::MakeMetadataBlob({
+            {"Property",
+                {
+                    {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
+                    {"Critter", "Common", "int32", "UnitTestClientMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    // One client-writable property per entity kind, so each send-value handler has a path
+                    {"Item", "Common", "int32", "UnitTestItemMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    {"Player", "Common", "int32", "UnitTestPlayerMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    {"Map", "Common", "int32", "UnitTestMapMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
+                    {"Location", "Common", "int32", "UnitTestLocationMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
+                }},
+            {"RemoteCall",
+                {
+                    {"UnitTestLogin", "ClientServerIntegrationServer.fos", "In"},
+                    {"UnitTestWorldStep", "ClientServerIntegrationServer.fos", "In", "int32", "", "step"},
+                    {"UnitTestClientPing", "ClientServerIntegrationServer.fos", "Out", "int32", "", "value"},
+                }},
+        });
 
         auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
         compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -260,11 +679,26 @@ End
         BakerServerEngine proto_engine {compiler_resources};
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
+
+        // A location plus its map lets the logged-in critter enter the world, which is what drives the
+        // client through the load-map / add-critter / property-sync protocol
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
+        auto fomap_blob = MakeStaticServerMapBlob(proto_engine);
+
         auto script_blob = MakeServerScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-server", proto_blob);
+        runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-server", location_blob);
+        runtime_source->AddFile("ClientServerIntegrationItem.fopro-bin-server", item_blob);
+        runtime_source->AddFile("UnitTestSharedMap.fopro-bin-server", map_blob);
+        runtime_source->AddFile("UnitTestSharedMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("ClientServerIntegration.fos-bin-server", script_blob);
 
         FileSystem resources;
@@ -274,7 +708,24 @@ End
 
     static auto MakeClientTestResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeMetadataBlob({
+            {"Property",
+                {
+                    {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
+                    {"Critter", "Common", "int32", "UnitTestClientMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    // One client-writable property per entity kind, so each send-value handler has a path
+                    {"Item", "Common", "int32", "UnitTestItemMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    {"Player", "Common", "int32", "UnitTestPlayerMark", "Mutable", "PublicSync", "ModifiableByClient"},
+                    {"Map", "Common", "int32", "UnitTestMapMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
+                    {"Location", "Common", "int32", "UnitTestLocationMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
+                }},
+            {"RemoteCall",
+                {
+                    {"UnitTestLogin", "ClientServerIntegrationClient.fos", "Out"},
+                    {"UnitTestWorldStep", "ClientServerIntegrationClient.fos", "Out", "int32", "", "step"},
+                    {"UnitTestClientPing", "ClientServerIntegrationClient.fos", "In", "int32", "", "value"},
+                }},
+        });
 
         auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
@@ -285,11 +736,24 @@ End
         BakerClientEngine proto_engine {compiler_resources};
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
+
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
+        auto fomap_blob = MakeEmptyClientMapBlob();
+
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-client", proto_blob);
+        runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-client", location_blob);
+        runtime_source->AddFile("ClientServerIntegrationItem.fopro-bin-client", item_blob);
+        runtime_source->AddFile("UnitTestSharedMap.fopro-bin-client", map_blob);
+        runtime_source->AddFile("UnitTestSharedMap.fomap-bin-client", fomap_blob);
         runtime_source->AddFile("ClientServerIntegration.fos-bin-client", script_blob);
 
         FileSystem resources;
@@ -502,6 +966,346 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
 
     REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetDisconnectedCalls"), disconnected_calls));
     CHECK(disconnected_calls >= 1);
+}
+
+TEST_CASE("ClientLogsInThroughARemoteCall")
+{
+    using namespace TestClientServerIntegration;
+
+    auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+
+    auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    // The connected-but-unlogined session only accepts a remote call, which is how a real client logs in
+    REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendLogin")));
+
+    int32_t login_success_calls = 0;
+    bool logged_in = false;
+
+    for (int32_t i = 0; i < 2000 && !logged_in; i++) {
+        client->MainLoop();
+
+        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
+        logged_in = login_success_calls >= 1;
+
+        if (!logged_in) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    CHECK(logged_in);
+    CHECK(login_success_calls >= 1);
+
+    int32_t server_login_calls = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetLoginCalls"), server_login_calls));
+    CHECK(server_login_calls == 1);
+
+    CHECK(client->IsConnected());
+    REQUIRE(static_cast<bool>(client->GetCurPlayer()));
+
+    int32_t switched_critters = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
+    CHECK(switched_critters == 1);
+
+    // The controlled critter arrives over the wire, so the client ends up with a chosen critter of its own
+    bool has_chosen = false;
+
+    for (int32_t i = 0; i < 2000 && !has_chosen; i++) {
+        client->MainLoop();
+        has_chosen = static_cast<bool>(client->GetChosen());
+
+        if (!has_chosen) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    CHECK(has_chosen);
+
+    // Player commands round-trip: the client sends move and direction, the server validates and applies them
+    int32_t drive_result = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
+    CHECK(drive_result == 0);
+
+    for (int32_t i = 0; i < 200; i++) {
+        client->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    int32_t npc_critters = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetNpcCritters"), npc_critters));
+    CHECK(npc_critters == 1);
+
+    int32_t write_result = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestWriteChosenProperty"), write_result));
+    CHECK(write_result == 0);
+
+    for (int32_t i = 0; i < 100; i++) {
+        client->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    // Drive the server-side world steps through the second remote call, so each one runs with proper cover
+    for (int32_t step = 0; step < 6; step++) {
+        REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
+
+        for (int32_t i = 0; i < 100; i++) {
+            client->MainLoop();
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    int32_t client_pings = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetClientPings"), client_pings));
+    CHECK(client_pings == 42);
+
+    // Movement and property writes from the client side enter the server through their own message
+    // handlers, which nothing else in the suite reaches
+    int32_t movement_result = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosenMovement"), movement_result));
+    CHECK(movement_result == 0);
+
+    for (int32_t i = 0; i < 200; i++) {
+        client->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    int32_t world_steps = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
+    CHECK(world_steps == 6);
+
+    // The world arrives asynchronously and the instrumented build is much slower, so the inspection polls
+    // instead of asserting on the first attempt
+    int32_t inspect_result = -1;
+
+    for (int32_t i = 0; i < 1000 && inspect_result != 0; i++) {
+        client->MainLoop();
+        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), inspect_result));
+
+        if (inspect_result != 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    CHECK(inspect_result == 0);
+
+    // Fog of war is a client-only path: the mapper's map view returns from PrepareFogToDraw before it
+    // starts, so the shapes and their draw slots are only reachable from a session map
+    {
+        auto session_map = client->GetCurMap();
+        REQUIRE(session_map);
+        ptr<MapView> map_view = session_map.as_ptr();
+
+        REQUIRE(ImGui::GetCurrentContext() == nullptr);
+        ImGuiExt::Init();
+
+        auto destroy_context = scope_exit([]() noexcept {
+            safe_call([] {
+                if (ImGui::GetCurrentContext() != nullptr) {
+                    ImGui::DestroyContext();
+                }
+            });
+        });
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+        io.DeltaTime = 1.0f / 60.0f;
+        io.IniFilename = nullptr;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+        // A hex-anchored shape and one that follows the chosen critter are the two ways a fog layer is made
+        REQUIRE_NOTHROW(ignore_unused(map_view->AddFog(mpos {8, 8}, DrawOrderType::Light, nullptr).get()));
+        REQUIRE_NOTHROW(ignore_unused(map_view->AddFog(client->GetChosen(), DrawOrderType::Light, nullptr).get()));
+        REQUIRE_NOTHROW(map_view->RebuildFog());
+
+        for (int32_t frame = 0; frame < 4; frame++) {
+            ImGui::NewFrame();
+            REQUIRE_NOTHROW(map_view->Process());
+            REQUIRE_NOTHROW(map_view->DrawMap());
+            ImGui::Render();
+        }
+
+        // Scrolling walks hexes in and out of the view field, which is what runs the per-hex show/hide
+        // bookkeeping over real content instead of an empty viewport
+        for (const mpos& center : {mpos {4, 4}, mpos {12, 12}, mpos {8, 4}, mpos {10, 10}}) {
+            REQUIRE_NOTHROW(map_view->InstantScrollTo(center));
+
+            ImGui::NewFrame();
+            REQUIRE_NOTHROW(map_view->Process());
+            REQUIRE_NOTHROW(map_view->DrawMap());
+            ImGui::Render();
+        }
+
+        // A smooth scroll advances over frames rather than snapping, and zoom rebuilds the view field
+        REQUIRE_NOTHROW(map_view->ScrollToHex(mpos {6, 6}, ipos16 {0, 0}, 20, true));
+
+        for (float32_t zoom : {1.5f, 0.75f, 1.0f}) {
+            REQUIRE_NOTHROW(map_view->ChangeZoom(zoom, fpos32 {0.5f, 0.5f}));
+
+            ImGui::NewFrame();
+            REQUIRE_NOTHROW(map_view->Process());
+            REQUIRE_NOTHROW(map_view->DrawMap());
+            ImGui::Render();
+        }
+    }
+
+    // The server diagnostic panels only have real rows to render once a world exists, which is exactly the
+    // state this session leaves behind: a logged-in player, a location with a map, critters and items
+    {
+        REQUIRE(ImGui::GetCurrentContext() == nullptr);
+        ImGuiExt::Init();
+
+        auto destroy_context = scope_exit([]() noexcept {
+            safe_call([] {
+                if (ImGui::GetCurrentContext() != nullptr) {
+                    ImGui::DestroyContext();
+                }
+            });
+        });
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+        io.DeltaTime = 1.0f / 60.0f;
+        io.IniFilename = nullptr;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+        // Collapsing headers opt out of the log auto-expansion, so the root panels are seeded open by hand;
+        // otherwise the per-map, per-critter and per-item rows never render even with a populated world
+        constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###UnloginedPlayers", "###Locations", "Data base"};
+
+        for (int32_t frame = 0; frame < 3; frame++) {
+            ImGui::NewFrame();
+
+            if (ImGui::Begin("ServerDiagnostics")) {
+                ptr<ImGuiWindow> window = ImGui::GetCurrentWindow();
+
+                for (string_view panel_id : ROOT_PANEL_IDS) {
+                    window->StateStorage.SetInt(ImGui::GetID(panel_id.data(), panel_id.data() + panel_id.size()), 1);
+                }
+
+                ImGui::LogToBuffer(12);
+                REQUIRE_NOTHROW(server->DrawGui());
+                ImGui::LogFinish();
+            }
+
+            ImGui::End();
+            ImGui::Render();
+        }
+    }
+
+    client->Disconnect();
+    REQUIRE(WaitForDisconnected(client, server));
+}
+
+TEST_CASE("TwoClientsShareOneMapSession")
+{
+    using namespace TestClientServerIntegration;
+
+    auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto first_settings = MakeClientTestSettings(port);
+    auto second_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto first = MakeClientEngine(first_settings);
+    auto second = MakeClientEngine(second_settings);
+
+    auto shutdown = scope_exit([&server, &first, &second]() noexcept {
+        safe_call([&second] { second->Shutdown(); });
+        safe_call([&first] { first->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    auto login = [&server](ptr<ClientEngine> client, size_t expected_connections) {
+        client->Connect();
+        REQUIRE(WaitForConnected(client, server, expected_connections));
+        REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendLogin")));
+
+        for (int32_t i = 0; i < 2000; i++) {
+            client->MainLoop();
+
+            if (client->GetChosen()) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    };
+
+    REQUIRE(login(first.as_ptr(), 1));
+    REQUIRE(login(second.as_ptr(), 2));
+
+    // Both sessions land on their own map instance, so each still sees exactly one player critter of its
+    // own; what this drives is the server fanning world state out to two independent player views at once
+    for (int32_t i = 0; i < 300; i++) {
+        first->MainLoop();
+        second->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    int32_t first_result = -1;
+    int32_t second_result = -1;
+
+    for (int32_t i = 0; i < 1000 && (first_result != 0 || second_result != 0); i++) {
+        first->MainLoop();
+        second->MainLoop();
+        REQUIRE(first->CallFunc(first->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), first_result));
+        REQUIRE(second->CallFunc(second->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), second_result));
+
+        if (first_result != 0 || second_result != 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    CHECK(first_result == 0);
+    CHECK(second_result == 0);
+
+    // Dropping one session must not disturb the other
+    first->Disconnect();
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    for (int32_t i = 0; i < 100; i++) {
+        second->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(second->IsConnected());
+    CHECK(static_cast<bool>(second->GetChosen()));
+
+    second->Disconnect();
+    REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
 TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
