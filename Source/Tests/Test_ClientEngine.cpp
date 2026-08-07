@@ -2628,6 +2628,82 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
+TEST_CASE("MultiFrameSpritesPlayAndCopy")
+{
+    // A single-frame sprite resolves to an atlas sprite, so the sheet's own playback - frame stepping,
+    // looping, reversing and the copy that a second user of the same animation gets - has nothing to run
+    // on until the fixture serves a real multi-frame sprite.
+    auto settings = MakeClientTestSettings();
+
+    vector<pair<string, vector<uint8_t>>> sprite_resources;
+    sprite_resources.emplace_back(string {"AnimSheet.png"}, BakerTests::MakeMultiFrameBakedSprite(4, 2, 2, 40));
+
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(sprite_resources)));
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto sheet = client->SprMngr.LoadSprite(client->Hashes.ToHashedString("AnimSheet.png"), AtlasType::IfaceSprites);
+    REQUIRE(sheet);
+    CHECK(sheet->GetSize() == isize32 {2, 2});
+
+    SECTION("PlaybackAdvancesThroughTheFramesAndWrapsWhenLooped")
+    {
+        REQUIRE_NOTHROW(sheet->PlayDefault());
+        CHECK(sheet->IsPlaying());
+
+        // The frame clock is driven by the game time, so the update is run over enough frames to wrap
+        for (int32_t frame = 0; frame < 24; frame++) {
+            client->GameTime.FrameAdvance(false);
+            ignore_unused(sheet->Update());
+        }
+
+        CHECK(sheet->IsPlaying());
+
+        // Seeking addresses a frame directly rather than waiting for the clock
+        for (float32_t normalized_time : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
+            REQUIRE_NOTHROW(sheet->SetTime(normalized_time));
+            ignore_unused(sheet->Update());
+        }
+
+        // A one-shot run stops at the end instead of wrapping
+        REQUIRE_NOTHROW(sheet->Play({}, false, false));
+
+        for (int32_t frame = 0; frame < 24; frame++) {
+            client->GameTime.FrameAdvance(false);
+            ignore_unused(sheet->Update());
+        }
+
+        // Reversed playback walks the same frames the other way
+        REQUIRE_NOTHROW(sheet->Play({}, true, true));
+
+        for (int32_t frame = 0; frame < 12; frame++) {
+            client->GameTime.FrameAdvance(false);
+            ignore_unused(sheet->Update());
+        }
+
+        REQUIRE_NOTHROW(sheet->Stop());
+        CHECK_FALSE(sheet->IsPlaying());
+    }
+
+    SECTION("ACopyPlaysIndependentlyOfTheSpriteItWasMadeFrom")
+    {
+        auto copy = sheet->MakeCopy();
+        REQUIRE(copy);
+        CHECK(copy != sheet);
+
+        copy->PlayDefault();
+        CHECK(copy->IsPlaying());
+        CHECK_FALSE(sheet->IsPlaying());
+
+        for (int32_t frame = 0; frame < 12; frame++) {
+            client->GameTime.FrameAdvance(false);
+            ignore_unused(copy->Update());
+        }
+
+        CHECK(copy->IsPlaying());
+    }
+}
+
 TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 {
     auto settings = MakeClientTestSettings();

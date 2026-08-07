@@ -2044,6 +2044,9 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     // The particle preview sub-editor initialises only when a preview effect is configured and a map is
     // shown; without both it returns immediately and none of its windows ever draw
     BakerTests::OverrideSetting(settings.ParticlePreviewEffect, string {"Particles/MapperEditorTest.spk"});
+
+    // Every particle renderer draws a wireframe overlay on top of its geometry when this is on
+    BakerTests::OverrideSetting(settings.DrawWireframe, true);
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
