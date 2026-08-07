@@ -153,6 +153,237 @@ Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 [../Source/Tests/README.md](../Source/Tests/README.md) for current local task
 notes.
 
+Coverage is a per-platform, per-environment measurement, and the denominator
+reflects that in two different ways:
+
+- Sources **not compiled** into the current build produce no coverage mapping
+  and are reported separately as untouched. Direct3D rendering drops out of a
+  Linux run this way with no configuration; measure it on a Windows run.
+- Sources that **compile here but cannot execute in a headless test process**
+  are listed in `ENVIRONMENT_EXCLUDED_SOURCES`, each with a written reason —
+  code needing a GPU context, an audio device, a video decoder, real sockets,
+  Mongo, or a debugger attach, plus the deliberately process-killing
+  diagnostic self-test.
+
+The summary prints the scoped headline, a combined all-sources figure, and the
+excluded bucket file-by-file with reasons, so the split stays auditable. Adding
+an entry there is a routing decision, not a write-off: it must be covered by the
+layer that can run it — a windowed/rendering run on the owning platform, or an
+integration suite with real endpoints.
+
+### Covering ImGui diagnostic panels
+
+`DrawGui()` implementations normally only run inside the windowed application,
+but they are reachable from unit tests through a backend-less ImGui context: no
+renderer is attached and the draw data is discarded, while every panel builder
+runs for real. `Test_ServerEngine.cpp` shows the pattern. Three details matter:
+
+- Declare `ImGuiBackendFlags_RendererHasTextures` on the IO. The legacy
+  `GetTexDataAsRGBA32` / `GetTexDataAsAlpha8` atlas-upload entry points are
+  compiled out by `IMGUI_DISABLE_OBSOLETE_FUNCTIONS`, so letting ImGui own the
+  atlas is the only way to satisfy the "font atlas is not built" check in
+  `NewFrame()`.
+- A collapsed `TreeNode` skips its body, so a plain frame only covers the
+  outermost level. Force-opening the stored state does not help: ImGui writes a
+  node's open state only once something opens it, so a node that was never
+  clicked has no `StateStorage` entry to flip. Wrap the draw call in
+  `ImGui::LogToBuffer(depth)` / `ImGui::LogFinish()` instead — auto-expanding tree
+  nodes is a documented side effect of logging. Collapsing headers carry
+  `ImGuiTreeNodeFlags_NoAutoOpenOnLog` and opt out, so seed their ids into the
+  window's `StateStorage` by hand.
+- Logging also captures the rendered text, which is the cheapest way to prove
+  the walk really descended instead of rendering a row of closed headers. Read
+  the buffer before `LogFinish()`, which clears it, and assert on markers from
+  the nested panels so a renamed panel fails the test rather than silently
+  dropping coverage.
+- **Pass an explicit depth to `LogToBuffer`.** The default auto-open depth is 2,
+  so anything nested deeper stays collapsed and its body never runs. Raising it
+  (`ImGui::LogToBuffer(12)`) took the SPARK particle editor from 27% to 48%
+  without a single new assertion, because its object inspector is a deep
+  reflective tree.
+- **Collapsing headers need their state seeded by hand** even with logging on:
+  they opt out of log auto-expansion, so a panel whose body lives under one never
+  renders. Seed with
+  `window->StateStorage.SetInt(ImGui::GetID(id), 1)` inside the enclosing
+  `Begin()` before drawing.
+- Destroy the context at scope exit — other tests assert that no ImGui context
+  leaks between test cases.
+
+### Pressing a widget so the branch behind it runs
+
+Drawing a panel covers its layout, not its behaviour: the body of every button,
+checkbox, selectable and tree node stays unreachable because nothing is ever
+clicked. `Test_ImGuiHarness.h` closes that gap, and `Test_ImGui.cpp` pins the
+harness itself against a window the test owns. The rules that matter:
+
+- `ImGuiTestHarness::ActivateItem(window, label)` queues an activation for the
+  widget that `label` builds inside `window`. ImGui consumes it when it meets the
+  widget again, so a press needs **two frames**: one to submit the widget and one
+  to run the branch behind it.
+- **Draw only the panel that owns the control.** A neighbouring window that calls
+  `ImGui::SetKeyboardFocusHere()` while it appears queues a focus move, and
+  `NavMoveRequestApplyResult()` overwrites the pending activation before the
+  target widget is ever reached — the press silently disappears. The mapper's
+  Map Browser does exactly this, which is why the mapper control test draws one
+  panel per press instead of the whole editor.
+- A code activation leaves the pressed widget owning `ActiveId` with no input
+  source that would ever release it, so the harness clears the active id before
+  queueing the next press. Without that, only the first press of a run lands.
+- Controls laid out inside `ImGui::BeginChild` belong to the child's id stack.
+  Address them with `ActivateChildItem(window, {child, …}, label)`, which rebuilds
+  the `"<parent>/<label>_<id>"` name ImGui gives a child window and walks a chain
+  of them for nested children.
+- `SetItemOpen(window, label)` seeds a collapsing header, tree node or menu open;
+  `SetWindowCollapsed` folds the window itself.
+- A press that runs but changes nothing observable usually means the fixture
+  disabled the feature rather than that the press was lost — the mapper zoom
+  buttons are no-ops until `MapZoomEnabled` is overridden on, because the
+  headless direct-draw path turns map zoom off.
+
+### What an inbound remote call can reach
+
+The handler is entered with the calling player covered, plus - transitively - the critter it controls.
+Everything else needs an explicit `Game.Sync(...)`, and some native paths reach further than any cover a
+script can prepare. Reachable on a *second* critter after `Game.Sync(npc)`: `Map.AddCritter`,
+`Critter.SetDir`, `Critter.Action` and synchronized property writes. Not reachable on a critter the caller
+does not control: `TransferToHex`, `SetCondition`, `DestroyItem`, `AttachToCritter` and
+`Game.DestroyCritter`, plus moving a map item into an inventory and reusing one location across two logins.
+
+A script-level `catch` around a failing call does **not** contain the damage: the sync violation still
+tears the session down, so the next remote call never arrives. A test that probes these operations behind
+`try`/`catch` therefore reports "the last step was never sent" rather than the operation that actually
+failed - drive only what is reachable.
+
+### Covering the crash reporter
+
+`ExceptionHandling.cpp` publishes `SetCrashStackTrace`, `SetCrashSignalInfo`,
+`SetCrashSehInfo`, `SetCrashTerminationInfo` and `GetCrashStream` to
+`backward.hpp` only — they carry no engine namespace and appear in no engine
+header, so a test declares them exactly as that header does. The report is
+emitted through the base log on the first write to the crash stream, so point
+`LogToFile` at a private file, write one line into `GetCrashStream()` and read
+the report back instead of letting "FATAL ERROR!" leak into the test console.
+Restore the log with `LogToFile("/dev/null")` (`"NUL"` on Windows); there is no
+"stop logging to a file" call. `ReportExceptionAndExit` and
+`ReportStrongAssertAndExit` kill the process and stay uncovered by design.
+
+### Covering the text formatter without a real font asset
+
+`FontManager` refuses to answer any metric for an unbound slot, so text
+measurement, wrapping and drawing are unreachable until a font exists. Both
+loader formats can be synthesized in-memory, which is cheaper and more stable
+than shipping a binary asset:
+
+- The `.fofnt` path is a plain text descriptor. `Version 2`, an `Image` line
+  naming a sprite that the same data source provides, `LineHeight` / `YAdvance`,
+  then one `Letter '<ch>'` block per glyph with `PositionX/Y`, `Width`,
+  `Height`, `OffsetX/Y` and `XAdvance`, terminated by `End`. Every glyph may
+  point at the same cell — the formatter only reads the metrics.
+- The `.fnt` path is BMFont binary: the `BMF\3` signature followed by the info,
+  common, pages and chars blocks. Each block is a type byte, a `uint32` length
+  and the payload; the loader validates that the info block's four padding bytes
+  read as `1/1/1/1` and that the common block declares exactly one page, and it
+  reads 20 bytes per glyph from the chars block.
+
+Bind with a scale in `(0..1]` — larger scales are rejected on purpose, because
+the intended fix for bigger text is a bigger font asset.
+
+`SplitLines` paginates into rect-sized pages rather than into individual lines:
+it emits an entry only once the text overflows the rect height, so a test that
+wants several entries needs a short rect, not merely embedded newlines.
+
+### Driving a logged-in client↔server session
+
+A connected client is not a logged-in one: the pre-login session accepts only a
+remote call, so login is script-driven from the client. The pieces that have to
+line up:
+
+- Declare the login call in both metadata blobs with opposite directions —
+  `"In"` on the server, `"Out"` on the client. The `SubsystemHint` token is the
+  owning script **file**, and its stem is the namespace the inbound handler is
+  looked up in.
+- The inbound handler is `void <namespace>::<CallName>(Player player, args...)`
+  and must carry `[[ServerRemoteCall]]`.
+- The client invokes it as `CurPlayer.ServerCall.<CallName>(...)`; the server
+  invokes client-bound calls as `player.ClientCall` / `critter.PlayerClientCall`.
+- The reverse direction is symmetric: declare the call `"Out"` in the server blob
+  and `"In"` in the client blob, and give the client handler `[[ClientRemoteCall]]`.
+  Its shape is `void <namespace>::<CallName>(args...)` — no player argument,
+  which is the only difference from the server-side handler.
+- Login inserts the player document **before** `OnPlayerLogin` fires, and the
+  database refuses an empty document, while every engine-owned `Player` property
+  is read-only from script. A test fixture therefore has to declare its own
+  persistent player property and set it in the handler.
+- To reach the world-entry protocol (load map, add critter, initial property
+  sync), the handler continues with `Game.CreateCritter(pid, true)` →
+  `player.SwitchCritter(cr)` → `Game.CreateLocation(pid, mapPids)` →
+  `cr.TransferToMap(map, hex)`.
+- The two static map resources have different layouts: `.fomap-bin-server`
+  carries three counts (hashes, items, critters), `.fomap-bin-client` stops after
+  the hash table and the static items. An empty client blob is two `uint32`
+  zeros; a third one fails the load with "Not all data read".
+
+### Reaching the world-reload path
+
+Server tests default to the in-memory database, which means the branch a real
+server takes on every restart — "Restore world" and `EntityManager::LoadEntities`
+— never runs. Point the settings at the file-backed JSON storage instead
+(`DbStorage = "JSON <dir>"`), let one server write the world and shut down, then
+start a second server on the same directory. Two constraints:
+
+- Runtime entities are temporary; call
+  `EntityMngr.MakePersistent(entity, true, true)` on anything the restart is
+  expected to find.
+- Entities are reloaded through their owner. A critter created off-map is never
+  reloaded, because critters are reached through the map or the global map they
+  live on.
+
+### Instantiating a 3D model headlessly
+
+The Null renderer serves the whole model path, so a `ModelInstance` can be
+created, posed and drawn without a GPU. The fixture chain is what makes it work:
+
+- Bake a **triangle** mesh, not a single vertex — the info baker computes static
+  bounds and rejects degenerate geometry.
+- Produce the description with the real `ModelInfoBaker`, handing the
+  `ModelSourceAsset` straight to its loader callback instead of reproducing a
+  source-file format.
+- The baking rig needs `Metadata.fometa-client` added as a **baked** file, and
+  the mesh needs a **source** entry as well as its baked output, because the info
+  baker resolves it through the source loader.
+- The runtime additionally requires `ModelAnimationInfo.foinfo` — a plain config
+  keyed by the model resource name, with `BoundsVersion = 2`, the twelve
+  model/view bounds keys, and at least one animation duration record.
+
+Get the manager from the live client with
+`client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()->GetModelMngr()`.
+
+### Authoring static map content for a server fixture
+
+A `.fomap-bin-server` blob is the hash table, then the critter records, then the
+item records. Each record is `ident` (`int64`), the prototype hash (`uint64`) and
+a properties blob preceded by its `uint32` size. Writing a zero size fails with
+"Unexpected end of buffer" — a default-constructed `Properties` still serializes
+to a non-empty payload, so produce it with `props.StoreAllData(...)` rather than
+assuming empty means zero bytes. With content present, map creation runs the
+content generator instead of skipping it.
+
+The client-side `.fomap-bin-client` blob is a different, shorter layout (hash
+table plus static items only).
+
+### Writing into a real Maps root from the mapper
+
+`SaveMap` / `SaveMapToDir` resolve the on-disk Maps root from an existing map
+container, so a memory-only fixture cannot reach them. Point a resource pack at
+a temp directory with `InputDirs = <dir>` (the plural key — the singular one is
+silently ignored), drop a reference `.fomap` there, and set
+`ProtoFileExtensions` to include `fomap` so the container is recognised. The
+same fixture gives `DrawMapListWindowImGui` real entries to enumerate.
+
+Prefer `SaveMapToDir` in tests: plain `SaveMap` falls back to the first source
+file's directory when the map has no container of its own, which in a test
+process is the working directory — it will write into the repository.
+
 ## Current test inventory
 
 Current count: **95** `Test_*.cpp` suites.
@@ -195,6 +426,7 @@ Current count: **95** `Test_*.cpp` suites.
 ### Common runtime model
 
 - `Source/Tests/Test_AnyData.cpp`
+- `Source/Tests/Test_ApplicationHeadless.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -254,6 +486,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`

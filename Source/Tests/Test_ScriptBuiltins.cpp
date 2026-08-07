@@ -407,7 +407,7 @@ namespace ScriptBuiltins
 
     int StringFindLast(string s, string sub)
     {
-        return s.findLast(sub, 0);
+        return s.findLast(sub);
     }
 
     string StringToLower(string s)
@@ -1299,6 +1299,1592 @@ namespace ScriptBuiltins
         return result;
     }
 
+    class DictNoCompareKey
+    {
+        int Value = 0;
+    }
+
+    class DictComparableKey
+    {
+        int Value = 0;
+
+        int opCmp(const DictComparableKey? other) const
+        {
+            if (other is null) return 1;
+            if (Value < other.Value) return -1;
+            if (Value > other.Value) return 1;
+            return 0;
+        }
+
+        bool opEquals(const DictComparableKey? other) const
+        {
+            return other !is null && Value == other.Value;
+        }
+    }
+
+    int DictAccessorOps()
+    {
+        dict<string, int> d = {};
+        d.set("a", 1);
+
+        if (d["a"] != 1) return -1;
+
+        d["b"] = 5;
+        if (d.length() != 2) return -2;
+        if (d["b"] != 5) return -3;
+
+        d.setIfNotExist("a", 100);
+        d.setIfNotExist("c", 7);
+        if (d["a"] != 1) return -4;
+        if (d["c"] != 7) return -5;
+
+        if (d.get("a", 42) != 1) return -6;
+        if (d.get("missing", 42) != 42) return -7;
+
+        if (d.remove("missing")) return -8;
+        if (!d.remove("c")) return -9;
+        if (d.length() != 2) return -10;
+
+        return 1;
+    }
+
+    int DictKeysValuesOps()
+    {
+        dict<int, int> d = {};
+        d.set(3, 30);
+        d.set(1, 10);
+        d.set(2, 20);
+
+        int[] keys = d.getKeys();
+        int[] values = d.getValues();
+
+        if (keys.length() != 3) return -1;
+        if (values.length() != 3) return -2;
+        if (keys[0] != 1 || keys[1] != 2 || keys[2] != 3) return -3;
+        if (values[0] != 10 || values[1] != 20 || values[2] != 30) return -4;
+
+        dict<string, string> sd = {};
+        sd.set("k", "v");
+
+        string[] string_keys = sd.getKeys();
+        string[] string_values = sd.getValues();
+        if (string_keys.length() != 1 || string_keys[0] != "k") return -5;
+        if (string_values.length() != 1 || string_values[0] != "v") return -6;
+
+        dict<int, int> empty = {};
+        if (empty.getKeys().length() != 0) return -7;
+        if (empty.getValues().length() != 0) return -8;
+
+        return 1;
+    }
+
+    int DictInitListOps()
+    {
+        dict<string, int> d = {{"a", 1}, {"b", 2}, {"c", 3}};
+        if (d.length() != 3) return -1;
+        if (d.get("a") != 1 || d.get("b") != 2 || d.get("c") != 3) return -2;
+
+        dict<int, string> mixed = {{1, "one"}, {2, "two"}};
+        if (mixed.length() != 2) return -3;
+        if (mixed.get(2) != "two") return -4;
+
+        dict<int, int64> wide = {{1, 5}, {2, 9}};
+        if (wide.get(2) != 9) return -5;
+
+        return 1;
+    }
+
+    int DictCloneEqualsOps()
+    {
+        dict<string, int> d = {};
+        d.set("a", 1);
+        d.set("b", 2);
+
+        dict<string, int> clone = d.clone();
+        if (clone.length() != 2) return -1;
+        if (!(clone == d)) return -2;
+
+        clone.set("b", 20);
+        if (clone == d) return -3;
+        if (d.get("b") != 2) return -4;
+
+        dict<string, int> copy = dict<string, int>(d);
+        if (!(copy == d)) return -5;
+
+        copy.set("c", 3);
+        if (copy == d) return -6;
+        if (d.length() != 2) return -7;
+
+        dict<string, int> other_keys = {};
+        other_keys.set("a", 1);
+        other_keys.set("z", 2);
+        if (other_keys == d) return -8;
+
+        dict<string, int> empty = {};
+        if (empty == d) return -9;
+        if (!(d == d)) return -10;
+
+        return 1;
+    }
+
+    int DictRemoveValuesOps()
+    {
+        dict<int, int> d = {};
+        d.set(1, 7);
+        d.set(2, 8);
+        d.set(3, 7);
+
+        if (d.removeValues(7) != 2) return -1;
+        if (d.length() != 1) return -2;
+        if (!d.exists(2)) return -3;
+        if (d.removeValues(99) != 0) return -4;
+
+        dict<int, string> sd = {};
+        sd.set(1, "keep");
+        sd.set(2, "drop");
+        sd.set(3, "drop");
+        if (sd.removeValues("drop") != 2) return -5;
+        if (sd.length() != 1) return -6;
+
+        return 1;
+    }
+
+    int DictWideIntegerOps()
+    {
+        // Keys and values that share their low 32 bits must stay distinct
+        int64 base = 4294967296;
+        int64 first = base + 1;
+        int64 second = base * 2 + 1;
+
+        dict<int64, int64> d = {};
+        d.set(first, first);
+        d.set(second, second);
+
+        if (d.length() != 2) return -1;
+        if (d.get(first) != first) return -2;
+        if (d.get(second) != second) return -3;
+
+        dict<int64, int64> other = {};
+        other.set(first, first);
+        other.set(second, first);
+        if (d == other) return -4;
+
+        if (d.removeValues(second) != 1) return -5;
+        if (d.length() != 1) return -6;
+        if (!d.exists(first)) return -7;
+
+        uint64 ubase = 4294967296;
+        dict<uint64, uint64> ud = {};
+        ud.set(ubase + 5, ubase + 5);
+        ud.set(ubase * 2 + 5, ubase * 2 + 5);
+        if (ud.removeValues(ubase + 5) != 1) return -8;
+        if (ud.length() != 1) return -9;
+
+        return 1;
+    }
+
+    int ArrayWideIntegerOps()
+    {
+        int64 base = 4294967296;
+        int64 first = base + 1;
+        int64 second = base * 2 + 1;
+
+        int64[] values = {first, second};
+        if (values.find(second) != 1) return -1;
+        if (values.find(base * 3 + 1) != -1) return -2;
+
+        int64[] same = {first, second};
+        if (!(values == same)) return -3;
+
+        int64[] different = {first, base * 3 + 1};
+        if (values == different) return -4;
+
+        values.sortDesc();
+        if (values[0] != second || values[1] != first) return -5;
+
+        uint64 ubase = 4294967296;
+        uint64[] uvalues = {ubase * 2 + 5, ubase + 5};
+        uvalues.sortAsc();
+        if (uvalues[0] != ubase + 5 || uvalues[1] != ubase * 2 + 5) return -6;
+        if (uvalues.find(ubase * 2 + 5) != 1) return -7;
+        if (uvalues.find(ubase * 3 + 5) != -1) return -8;
+
+        return 1;
+    }
+
+    int DictEnumKeyOps()
+    {
+        dict<GenderType, int> gd = {};
+        gd.set(GenderType::Male, 1);
+        gd.set(GenderType::Female, 2);
+        if (gd.length() != 2) return -1;
+        if (gd.get(GenderType::Female) != 2) return -2;
+
+        dict<GenderType, int> gd_same = {};
+        gd_same.set(GenderType::Male, 1);
+        gd_same.set(GenderType::Female, 2);
+        if (!(gd == gd_same)) return -3;
+
+        gd_same.set(GenderType::Female, 3);
+        if (gd == gd_same) return -4;
+
+        dict<WideEnum, int> wd = {};
+        wd.set(WideEnum::High, 20);
+        wd.set(WideEnum::Low, 10);
+        if (wd.getKey(0) != WideEnum::Low) return -5;
+        if (wd.getValue(1) != 20) return -6;
+
+        dict<int, WideEnum> wv = {};
+        wv.set(1, WideEnum::Low);
+        wv.set(2, WideEnum::High);
+        if (wv.removeValues(WideEnum::High) != 1) return -7;
+        if (wv.length() != 1) return -8;
+
+        return 1;
+    }
+
+    int DictHandleValueOps()
+    {
+        DictComparableKey a = DictComparableKey();
+        a.Value = 1;
+        DictComparableKey b = DictComparableKey();
+        b.Value = 2;
+
+        dict<int, DictComparableKey> d = {};
+        d.set(1, a);
+        d.set(2, b);
+
+        if (d.length() != 2) return -1;
+        if (d.get(1).Value != 1) return -2;
+
+        dict<int, DictComparableKey> same = {};
+        same.set(1, a);
+        same.set(2, b);
+        if (!(d == same)) return -3;
+
+        same.set(2, a);
+        if (d == same) return -4;
+
+        if (d.removeValues(b) != 1) return -5;
+        if (d.length() != 1) return -6;
+
+        d.clear();
+        if (!d.isEmpty()) return -7;
+
+        return 1;
+    }
+
+    int DictHandleKeyOps()
+    {
+        DictComparableKey low = DictComparableKey();
+        low.Value = 1;
+        DictComparableKey high = DictComparableKey();
+        high.Value = 3;
+
+        dict<DictComparableKey, int> d = {};
+        d.set(low, 10);
+        d.set(high, 30);
+
+        if (d.length() != 2) return -1;
+        if (d.get(low) != 10) return -2;
+        if (!d.exists(high)) return -3;
+
+        DictComparableKey same_low = DictComparableKey();
+        same_low.Value = 1;
+        if (!d.exists(same_low)) return -4;
+        if (d.get(same_low) != 10) return -5;
+
+        DictComparableKey missing = DictComparableKey();
+        missing.Value = 9;
+        if (d.exists(missing)) return -6;
+
+        if (!d.remove(same_low)) return -7;
+        if (d.length() != 1) return -8;
+
+        return 1;
+    }
+
+    void DictMissingKeyThrows()
+    {
+        dict<string, int> d = {};
+        int value = d.get("missing");
+    }
+
+    void DictKeyIndexOutOfBoundsThrows()
+    {
+        dict<string, int> d = {};
+        d.set("a", 1);
+        string key = d.getKey(1);
+    }
+
+    void DictValueIndexOutOfBoundsThrows()
+    {
+        dict<string, int> d = {};
+        d.set("a", 1);
+        int value = d.getValue(-1);
+    }
+
+    void DictNoCompareKeyThrows()
+    {
+        DictNoCompareKey first = DictNoCompareKey();
+        DictNoCompareKey second = DictNoCompareKey();
+        dict<DictNoCompareKey, int> d = {};
+        d.set(first, 1);
+        d.set(second, 2);
+    }
+
+    // === Entity property conversion operations ===
+
+    int PropertyScalarConversionOps()
+    {
+        Critter cr = Game.CreateCritter("UnitTestCr".hstr(), false);
+
+        cr.TestString = "value";
+        if (cr.TestString != "value") return -1;
+        cr.TestString = "";
+        if (!cr.TestString.isEmpty()) return -2;
+
+        cr.TestHash = "hashed".hstr();
+        if (cr.TestHash != "hashed".hstr()) return -3;
+
+        cr.TestEnum = GenderType::Female;
+        if (cr.TestEnum != GenderType::Female) return -4;
+        cr.TestEnum = GenderType::Male;
+        if (cr.TestEnum != GenderType::Male) return -5;
+
+        cr.TestAny = any("boxed");
+        if (string(cr.TestAny) != "boxed") return -6;
+
+        cr.TestProto = Game.GetProtoCritter("UnitTestCr".hstr());
+        if (cr.TestProto.ProtoId != "UnitTestCr".hstr()) return -7;
+
+        Game.DestroyCritter(cr);
+        return 1;
+    }
+
+    int PropertyArrayConversionOps()
+    {
+        Critter cr = Game.CreateCritter("UnitTestCr".hstr(), false);
+
+        cr.TestIntArray = {1, 2, 3};
+        array<int> ints = cr.TestIntArray;
+        if (ints.length() != 3) return -1;
+        if (ints[0] != 1 || ints[2] != 3) return -2;
+
+        cr.TestIntArray = {};
+        if (!cr.TestIntArray.isEmpty()) return -3;
+
+        cr.TestFloatArray = {1.5f, 2.5f};
+        array<float> floats = cr.TestFloatArray;
+        if (floats.length() != 2) return -4;
+        if (floats[1] != 2.5f) return -5;
+
+        cr.TestStringArray = {"a", "", "ccc"};
+        array<string> strings = cr.TestStringArray;
+        if (strings.length() != 3) return -6;
+        if (strings[0] != "a" || !strings[1].isEmpty() || strings[2] != "ccc") return -7;
+
+        cr.TestHashArray = {"one".hstr(), "two".hstr()};
+        array<hstring> hashes = cr.TestHashArray;
+        if (hashes.length() != 2) return -8;
+        if (hashes[1] != "two".hstr()) return -9;
+
+        cr.TestEnumArray = {GenderType::Female, GenderType::Male};
+        array<GenderType> enums = cr.TestEnumArray;
+        if (enums.length() != 2) return -10;
+        if (enums[0] != GenderType::Female) return -11;
+
+        cr.TestAnyArray = {any("first"), any("second")};
+        array<any> anys = cr.TestAnyArray;
+        if (anys.length() != 2) return -12;
+        if (string(anys[1]) != "second") return -13;
+
+        // The remaining scalar widths and value types each take their own converter branch
+        cr.TestInt8 = 7;
+        if (cr.TestInt8 != 7) return -30;
+
+        cr.TestInt16 = 300;
+        if (cr.TestInt16 != 300) return -31;
+
+        cr.TestInt64 = 5000000000;
+        if (cr.TestInt64 != 5000000000) return -32;
+
+        cr.TestUInt16 = 65000;
+        if (cr.TestUInt16 != 65000) return -33;
+
+        cr.TestUInt32 = 4000000000;
+        if (cr.TestUInt32 != 4000000000) return -34;
+
+        cr.TestUInt64 = 9000000000;
+        if (cr.TestUInt64 != 9000000000) return -35;
+
+        cr.TestBoolArray = {true, false, true};
+        array<bool> bools = cr.TestBoolArray;
+        if (bools.length() != 3 || !bools[0] || bools[1]) return -36;
+
+        cr.TestInt64Array = {1, 5000000000};
+        array<int64> int64s = cr.TestInt64Array;
+        if (int64s.length() != 2 || int64s[1] != 5000000000) return -37;
+
+        cr.TestIdent = cr.Id;
+        if (cr.TestIdent != cr.Id) return -38;
+
+        cr.TestIdentArray = {cr.Id};
+        array<ident> idents = cr.TestIdentArray;
+        if (idents.length() != 1 || idents[0] != cr.Id) return -39;
+
+        cr.TestTimeSpan = timespan(5, 3);
+        if (cr.TestTimeSpan != timespan(5, 3)) return -40;
+
+        cr.TestColor = ucolor(1, 2, 3, 4);
+        if (cr.TestColor != ucolor(1, 2, 3, 4)) return -41;
+
+        cr.TestColorArray = {ucolor(1, 2, 3, 4), ucolor(5, 6, 7, 8)};
+        array<ucolor> colors = cr.TestColorArray;
+        if (colors.length() != 2 || colors[1] != ucolor(5, 6, 7, 8)) return -42;
+
+        dict<string, string> stringStrings = dict<string, string>();
+        stringStrings.set("k", "v");
+        cr.TestStringStringDict = stringStrings;
+        if (cr.TestStringStringDict.get("k") != "v") return -43;
+
+        dict<hstring, string> hashStrings = dict<hstring, string>();
+        hashStrings.set("hk".hstr(), "hv");
+        cr.TestHashStringDict = hashStrings;
+        if (cr.TestHashStringDict.get("hk".hstr()) != "hv") return -44;
+
+        dict<int, hstring> hashValues = dict<int, hstring>();
+        hashValues.set(1, "hv".hstr());
+        cr.TestHashValueDict = hashValues;
+        if (cr.TestHashValueDict.get(1) != "hv".hstr()) return -45;
+
+        cr.TestProtoArray = {Game.GetProtoCritter("UnitTestCr".hstr())};
+        array<ProtoCritter> protos = cr.TestProtoArray;
+        if (protos.length() != 1) return -14;
+        if (protos[0].ProtoId != "UnitTestCr".hstr()) return -15;
+
+        // The geometry, time and float value types each take their own converter branch as well
+        cr.TestNanoTime = Game.FrameTime;
+        if (cr.TestNanoTime != Game.FrameTime) return -46;
+
+        cr.TestSyncTime = Game.SynchronizedTime;
+        if (cr.TestSyncTime != Game.SynchronizedTime) return -47;
+
+        cr.TestMapPos = mpos(3, 4);
+        if (cr.TestMapPos != mpos(3, 4)) return -48;
+
+        // msize is the one geometry value type with no component constructor, so it is built field by field
+        msize mapSize;
+        mapSize.width = 20;
+        mapSize.height = 30;
+        cr.TestMapSize = mapSize;
+        if (cr.TestMapSize.width != 20 || cr.TestMapSize.height != 30) return -49;
+
+        cr.TestIntPos = ipos(-5, 6);
+        if (cr.TestIntPos != ipos(-5, 6)) return -50;
+
+        cr.TestIntSize = isize(7, 8);
+        if (cr.TestIntSize != isize(7, 8)) return -51;
+
+        cr.TestIntRect = irect(1, 2, 3, 4);
+        if (cr.TestIntRect != irect(1, 2, 3, 4)) return -52;
+
+        cr.TestFloatPos = fpos(1.5f, 2.5f);
+        if (cr.TestFloatPos != fpos(1.5f, 2.5f)) return -53;
+
+        cr.TestFloatSize = fsize(3.5f, 4.5f);
+        if (cr.TestFloatSize != fsize(3.5f, 4.5f)) return -54;
+
+        cr.TestFloat64 = 1.25;
+        if (cr.TestFloat64 != 1.25) return -55;
+
+        cr.TestMapPosArray = {mpos(1, 1), mpos(2, 2)};
+        array<mpos> mapPositions = cr.TestMapPosArray;
+        if (mapPositions.length() != 2 || mapPositions[1] != mpos(2, 2)) return -56;
+
+        cr.TestTimeSpanArray = {timespan(1, 3), timespan(2, 3)};
+        array<timespan> spans = cr.TestTimeSpanArray;
+        if (spans.length() != 2 || spans[1] != timespan(2, 3)) return -57;
+
+        cr.TestNanoTimeArray = {Game.FrameTime};
+        if (cr.TestNanoTimeArray.length() != 1) return -58;
+
+        cr.TestInt8Array = {1, -2};
+        array<int8> int8s = cr.TestInt8Array;
+        if (int8s.length() != 2 || int8s[1] != -2) return -59;
+
+        cr.TestInt16Array = {300, -400};
+        array<int16> int16s = cr.TestInt16Array;
+        if (int16s.length() != 2 || int16s[1] != -400) return -60;
+
+        cr.TestUInt16Array = {1, 65000};
+        array<uint16> uint16s = cr.TestUInt16Array;
+        if (uint16s.length() != 2 || uint16s[1] != 65000) return -61;
+
+        cr.TestUInt32Array = {1, 4000000000};
+        array<uint32> uint32s = cr.TestUInt32Array;
+        if (uint32s.length() != 2 || uint32s[1] != 4000000000) return -62;
+
+        cr.TestUInt64Array = {1, 9000000000};
+        array<uint64> uint64s = cr.TestUInt64Array;
+        if (uint64s.length() != 2 || uint64s[1] != 9000000000) return -63;
+
+        cr.TestFloat64Array = {1.25, 2.5};
+        array<double> float64s = cr.TestFloat64Array;
+        if (float64s.length() != 2 || float64s[1] != 2.5) return -64;
+
+        dict<ident, int> identKeys = dict<ident, int>();
+        identKeys.set(cr.Id, 9);
+        cr.TestIdentKeyDict = identKeys;
+        if (cr.TestIdentKeyDict.get(cr.Id) != 9) return -65;
+
+        dict<int, ident> identValues = dict<int, ident>();
+        identValues.set(1, cr.Id);
+        cr.TestIdentValueDict = identValues;
+        if (cr.TestIdentValueDict.get(1) != cr.Id) return -66;
+
+        dict<hstring, hstring> hashHashes = dict<hstring, hstring>();
+        hashHashes.set("hk".hstr(), "hv".hstr());
+        cr.TestHashHashDict = hashHashes;
+        if (cr.TestHashHashDict.get("hk".hstr()) != "hv".hstr()) return -67;
+
+        dict<string, array<hstring>> hashArrays = dict<string, array<hstring>>();
+        hashArrays.set("k", {"a".hstr(), "b".hstr()});
+        cr.TestDictOfHashArray = hashArrays;
+        if (cr.TestDictOfHashArray.get("k").length() != 2) return -68;
+
+        Game.DestroyCritter(cr);
+        return 1;
+    }
+
+    int PropertyDictConversionOps()
+    {
+        Critter cr = Game.CreateCritter("UnitTestCr".hstr(), false);
+
+        dict<string, int> stringKeys = {};
+        stringKeys.set("a", 1);
+        stringKeys.set("bb", 2);
+        cr.TestStringKeyDict = stringKeys;
+
+        dict<string, int> readStringKeys = cr.TestStringKeyDict;
+        if (readStringKeys.length() != 2) return -1;
+        if (readStringKeys.get("bb") != 2) return -2;
+
+        dict<int, string> stringValues = {};
+        stringValues.set(1, "one");
+        stringValues.set(2, "");
+        cr.TestStringValueDict = stringValues;
+
+        dict<int, string> readStringValues = cr.TestStringValueDict;
+        if (readStringValues.length() != 2) return -3;
+        if (readStringValues.get(1) != "one") return -4;
+        if (!readStringValues.get(2).isEmpty()) return -5;
+
+        dict<hstring, int> hashKeys = {};
+        hashKeys.set("k1".hstr(), 10);
+        cr.TestHashKeyDict = hashKeys;
+
+        dict<hstring, int> readHashKeys = cr.TestHashKeyDict;
+        if (readHashKeys.length() != 1) return -6;
+        if (readHashKeys.get("k1".hstr()) != 10) return -7;
+
+        dict<GenderType, int> enumKeys = {};
+        enumKeys.set(GenderType::Female, 5);
+        cr.TestEnumKeyDict = enumKeys;
+
+        dict<GenderType, int> readEnumKeys = cr.TestEnumKeyDict;
+        if (readEnumKeys.length() != 1) return -8;
+        if (readEnumKeys.get(GenderType::Female) != 5) return -9;
+
+        dict<string, int> emptyDict = {};
+        cr.TestStringKeyDict = emptyDict;
+        if (!cr.TestStringKeyDict.isEmpty()) return -10;
+
+        Game.DestroyCritter(cr);
+        return 1;
+    }
+
+    int PropertyDictOfArrayConversionOps()
+    {
+        Critter cr = Game.CreateCritter("UnitTestCr".hstr(), false);
+
+        dict<int, array<int>> intLists = {};
+        array<int> first = {1, 2};
+        array<int> second = {};
+        intLists.set(1, first);
+        intLists.set(2, second);
+        cr.TestDictOfArray = intLists;
+
+        dict<int, array<int>> readIntLists = cr.TestDictOfArray;
+        if (readIntLists.length() != 2) return -1;
+        if (readIntLists.get(1).length() != 2) return -2;
+        if (readIntLists.get(1)[1] != 2) return -3;
+        if (!readIntLists.get(2).isEmpty()) return -4;
+
+        dict<string, array<string>> stringLists = {};
+        array<string> words = {"a", "", "ccc"};
+        stringLists.set("key", words);
+        cr.TestDictOfStringArray = stringLists;
+
+        dict<string, array<string>> readStringLists = cr.TestDictOfStringArray;
+        if (readStringLists.length() != 1) return -5;
+
+        array<string> readWords = readStringLists.get("key");
+        if (readWords.length() != 3) return -6;
+        if (readWords[0] != "a" || !readWords[1].isEmpty() || readWords[2] != "ccc") return -7;
+
+        dict<int, array<int>> emptyLists = {};
+        cr.TestDictOfArray = emptyLists;
+        if (!cr.TestDictOfArray.isEmpty()) return -8;
+
+        Game.DestroyCritter(cr);
+        return 1;
+    }
+
+    // === Extended string operations ===
+
+    int StringRawAndIndexOps()
+    {
+        // length() counts characters while rawLength() counts bytes
+        string ascii = "abc";
+        if (ascii.length() != 3) return -1;
+        if (ascii.rawLength() != 3) return -2;
+
+        string multibyte = "aЯb";
+        if (multibyte.length() != 3) return -3;
+        if (multibyte.rawLength() != 4) return -4;
+
+        // opIndex works in characters, so a multi-byte character comes back whole
+        if (multibyte[0] != "a") return -5;
+        if (multibyte[1] != "Я") return -6;
+        if (multibyte[2] != "b") return -7;
+
+        multibyte[1] = "xy";
+        if (multibyte != "axyb") return -8;
+
+        multibyte[1] = "";
+        if (multibyte != "ayb") return -9;
+
+        // rawGet/rawSet address bytes and clamp silently instead of failing
+        string raw = "abc";
+        if (raw.rawGet(0) != 97) return -10;
+        if (raw.rawGet(-1) != 0) return -11;
+        if (raw.rawGet(99) != 0) return -12;
+
+        raw.rawSet(0, 122);
+        if (raw != "zbc") return -13;
+
+        raw.rawSet(-1, 122);
+        raw.rawSet(99, 122);
+        if (raw != "zbc") return -14;
+
+        raw.rawResize(2);
+        if (raw != "zb") return -15;
+
+        raw.rawResize(4);
+        if (raw.rawLength() != 4) return -16;
+
+        raw.clear();
+        if (!raw.isEmpty()) return -17;
+
+        return 1;
+    }
+
+    int StringSearchOps()
+    {
+        string text = "one,two,three,two";
+
+        if (text.find("two") != 4) return -1;
+        if (text.find("two", 5) != 14) return -2;
+        if (text.find("missing") != -1) return -3;
+
+        if (text.findLast("two") != 14) return -4;
+        if (text.findLast("two", 10) != 4) return -5;
+
+        if (text.findFirstOf(",") != 3) return -6;
+        if (text.findFirstOf(",", 4) != 7) return -7;
+        if (text.findFirstNotOf("one") != 3) return -8;
+
+        if (text.findLastOf(",") != 13) return -9;
+        if (text.findLastOf(",", 6) != 3) return -90;
+        if (text.findLastNotOf("otw") != 13) return -10;
+        if (text.findLastNotOf(",", 3) != 2) return -91;
+
+        // A negative index counts back from the end, so the defaults search the whole string
+        if (text.findLast("two", -1) != 14) return -92;
+        if (text.findLastOf(",", -1) != 13) return -93;
+
+        if (!text.startsWith("one")) return -11;
+        if (text.startsWith("two")) return -12;
+        if (!text.endsWith("two")) return -13;
+        if (text.endsWith("one")) return -14;
+
+        if (text.replace("two", "TWO") != "one,TWO,three,TWO") return -15;
+        if (text.substr(4, 3) != "two") return -16;
+        if (text.substr(14) != "two") return -17;
+
+        return 1;
+    }
+
+    int StringTrimAndCaseOps()
+    {
+        string padded = "  value  ";
+        if (padded.trim() != "value") return -1;
+        if (padded.trimBegin() != "value  ") return -2;
+        if (padded.trimEnd() != "  value") return -3;
+
+        string custom = "xxvaluexx";
+        if (custom.trim("x") != "value") return -4;
+        if (custom.trimBegin("x") != "valuexx") return -5;
+        if (custom.trimEnd("x") != "xxvalue") return -6;
+
+        if ("MiXeD".lower() != "mixed") return -7;
+        if ("MiXeD".upper() != "MIXED") return -8;
+
+        return 1;
+    }
+
+    int StringSplitJoinOps()
+    {
+        string text = "a,b,,c";
+
+        array<string> parts = text.split(",");
+        if (parts.length() != 4) return -1;
+        if (parts[0] != "a" || parts[1] != "b" || parts[2] != "" || parts[3] != "c") return -2;
+
+        array<string> compact = text.split(",", true);
+        if (compact.length() != 3) return -3;
+        if (compact[2] != "c") return -4;
+
+        array<string> kept = text.split(",", false);
+        if (kept.length() != 4) return -5;
+
+        if (",".join(compact) != "a,b,c") return -6;
+
+        array<string> single = {"only"};
+        if ("-".join(single) != "only") return -7;
+
+        array<string> empty = {};
+        if (!"-".join(empty).isEmpty()) return -8;
+
+        return 1;
+    }
+
+    int StringConversionOps()
+    {
+        if ("42".toInt() != 42) return -1;
+        if ("nope".toInt() != 0) return -2;
+        if ("nope".toInt(7) != 7) return -3;
+
+        if ("9000000000".toInt64() != 9000000000) return -4;
+        if ("nope".toInt64(5) != 5) return -5;
+
+        if ("1.5".toFloat() != 1.5f) return -6;
+        if ("nope".toFloat(2.5f) != 2.5f) return -7;
+
+        if ("2.25".toDouble() != 2.25) return -8;
+        if ("nope".toDouble(3.5) != 3.5) return -9;
+
+        int intResult = 0;
+        if (!"42".tryToInt(intResult)) return -10;
+        if (intResult != 42) return -11;
+        if ("nope".tryToInt(intResult)) return -12;
+
+        int64 int64Result = 0;
+        if (!"9000000000".tryToInt64(int64Result)) return -13;
+        if (int64Result != 9000000000) return -14;
+        if ("nope".tryToInt64(int64Result)) return -15;
+
+        float floatResult = 0.0f;
+        if (!"1.5".tryToFloat(floatResult)) return -16;
+        if (floatResult != 1.5f) return -17;
+        if ("nope".tryToFloat(floatResult)) return -18;
+
+        double doubleResult = 0.0;
+        if (!"2.25".tryToDouble(doubleResult)) return -19;
+        if (doubleResult != 2.25) return -20;
+        if ("nope".tryToDouble(doubleResult)) return -21;
+
+        return 1;
+    }
+
+    int StringNumericOperatorOps()
+    {
+        // Every numeric overload has assign, add-assign, add and reversed-add forms
+        string fromInt64 = "";
+        fromInt64 = int64(-9000000000);
+        if (fromInt64 != "-9000000000") return -1;
+        fromInt64 += int64(1);
+        if (!fromInt64.endsWith("1")) return -2;
+        if (("v" + int64(7)) != "v7") return -3;
+        if ((int64(7) + "v") != "7v") return -4;
+
+        string fromUint64 = "";
+        fromUint64 = uint64(9000000000);
+        if (fromUint64 != "9000000000") return -5;
+        fromUint64 += uint64(1);
+        if (!fromUint64.endsWith("1")) return -6;
+        if (("v" + uint64(7)) != "v7") return -7;
+        if ((uint64(7) + "v") != "7v") return -8;
+
+        string fromFloat = "";
+        fromFloat = 1.5f;
+        if (fromFloat.isEmpty()) return -9;
+        fromFloat += 2.5f;
+        if (fromFloat.isEmpty()) return -10;
+        if (("v" + 1.5f).isEmpty()) return -11;
+        if ((1.5f + "v").isEmpty()) return -12;
+
+        string fromDouble = "";
+        fromDouble = 2.25;
+        if (fromDouble.isEmpty()) return -13;
+        fromDouble += 3.25;
+        if (fromDouble.isEmpty()) return -14;
+        if (("v" + 2.25).isEmpty()) return -15;
+        if ((2.25 + "v").isEmpty()) return -16;
+
+        string fromAny = "";
+        fromAny = any("boxed");
+        if (fromAny != "boxed") return -17;
+        fromAny += any("-tail");
+        if (fromAny != "boxed-tail") return -18;
+        if (("v" + any("x")) != "vx") return -19;
+        if ((any("x") + "v") != "xv") return -20;
+
+        return 1;
+    }
+
+    void StringIndexOutOfBoundsThrows()
+    {
+        string text = "abc";
+        string value = text[5];
+    }
+
+    void StringNegativeIndexThrows()
+    {
+        // A negative index counts back from the end, so only one past the start is out of range
+        string text = "abc";
+        string value = text[-5];
+    }
+
+    void StringSetIndexOutOfBoundsThrows()
+    {
+        string text = "abc";
+        text[5] = "z";
+    }
+
+    void StringNegativeRawResizeThrows()
+    {
+        string text = "abc";
+        text.rawResize(-1);
+    }
+
+    // === Common engine method operations ===
+
+    int CommonResourceAndRandomOps()
+    {
+        Game.Log("ScriptBuiltins common method log message");
+
+        if (!Game.IsResourcePresent("ScriptBuiltinsTest.focfg")) return -1;
+        if (Game.IsResourcePresent("NoSuchResource.focfg")) return -2;
+
+        string content = Game.ReadResource("ScriptBuiltinsTest.focfg");
+        if (!content.startsWith("[TestSection]")) return -3;
+        if (!Game.ReadResource("NoSuchResource.focfg").isEmpty()) return -4;
+
+        dict<string, string> section = Game.ReadConfigSection("ScriptBuiltinsTest.focfg", "TestSection");
+        if (section.length() != 2) return -5;
+        if (section.get("FirstKey") != "FirstValue") return -6;
+        if (section.get("SecondKey") != "SecondValue") return -7;
+
+        dict<string, string> missing = Game.ReadConfigSection("ScriptBuiltinsTest.focfg", "NoSuchSection");
+        if (!missing.isEmpty()) return -8;
+
+        if (Game.Random(5, 5) != 5) return -9;
+
+        for (int i = 0; i < 20; i++) {
+            int value = Game.Random(1, 3);
+            if (value < 1 || value > 3) return -10;
+        }
+
+        if (Game.GetUnixTime() == 0) return -11;
+        if (Game.GetLanguage().str.isEmpty()) return -12;
+
+        return 1;
+    }
+
+    int ContextNestedCallDepth(int depth)
+    {
+        if (depth <= 0) {
+            return 0;
+        }
+
+        return 1 + ContextNestedCallDepth(depth - 1);
+    }
+
+    int ContextNestedCallOps()
+    {
+        if (ContextNestedCallDepth(8) != 8) return -1;
+        if (ContextNestedCallDepth(0) != 0) return -2;
+
+        return 1;
+    }
+
+    void ContextNestedThrowLeaf()
+    {
+        throw("Nested script failure for stack collection");
+    }
+
+    void ContextNestedThrowMiddle()
+    {
+        ContextNestedThrowLeaf();
+    }
+
+    void ContextNestedThrowThrows()
+    {
+        // A throw several frames deep makes the context manager walk every script stack level
+        ContextNestedThrowMiddle();
+    }
+
+    int CommonProtoQueryOps()
+    {
+        if (!Game.CheckProtoCritter("UnitTestCr".hstr())) return -1;
+        if (Game.CheckProtoCritter("NoSuchCritter".hstr())) return -2;
+
+        ProtoCritter proto = Game.GetProtoCritter("UnitTestCr".hstr());
+        if (proto.ProtoId != "UnitTestCr".hstr()) return -3;
+
+        array<ProtoCritter> allCritters = Game.GetProtoCritters();
+        if (allCritters.isEmpty()) return -4;
+
+        // The property-filtered overload compares the authored value of the named property
+        array<ProtoCritter> byProperty = Game.GetProtoCritters(CritterProperty::TestEnum, 0);
+        if (byProperty.length() != allCritters.length()) return -5;
+
+        array<ProtoCritter> byMissingProperty = Game.GetProtoCritters(CritterProperty::TestEnum, 12345);
+        if (!byMissingProperty.isEmpty()) return -6;
+
+        // The fixture declares no item, map or location protos, so these answer empty rather than failing
+        if (!Game.GetProtoItems().isEmpty()) return -7;
+        if (!Game.GetProtoItems(ItemProperty::Hidden, 0).isEmpty()) return -8;
+        if (Game.CheckProtoItem("NoSuchItem".hstr())) return -9;
+
+        if (!Game.GetProtoMaps().isEmpty()) return -10;
+        if (Game.CheckProtoMap("NoSuchMap".hstr())) return -11;
+
+        if (!Game.GetProtoLocations().isEmpty()) return -12;
+        if (Game.CheckProtoLocation("NoSuchLocation".hstr())) return -13;
+
+        return 1;
+    }
+
+    [[TimeEvent]]
+    void OnGlobalTickTimer()
+    {
+    }
+
+    [[TimeEvent]]
+    void OnGlobalDataTimer(any data)
+    {
+    }
+
+    [[TimeEvent]]
+    void OnGlobalArrayTimer(array<any> data)
+    {
+    }
+
+    int CommonGlobalTimeEventOps()
+    {
+        uint32 plainId = Game.StartTimeEvent(timespan(60, 3), OnGlobalTickTimer);
+        if (plainId == 0) return -1;
+        if (Game.CountTimeEvent(OnGlobalTickTimer) != 1) return -2;
+
+        uint32 dataId = Game.StartTimeEvent(timespan(60, 3), OnGlobalDataTimer, any("payload"));
+        if (dataId == 0) return -3;
+        if (Game.CountTimeEvent(OnGlobalDataTimer) != 1) return -4;
+
+        array<any> payload = {any("a"), any("b")};
+        uint32 arrayId = Game.StartTimeEvent(timespan(60, 3), OnGlobalArrayTimer, payload);
+        if (arrayId == 0) return -5;
+        if (Game.CountTimeEvent(OnGlobalArrayTimer) != 1) return -6;
+
+        uint32 repeatId = Game.StartTimeEvent(timespan(60, 3), timespan(5, 3), OnGlobalTickTimer);
+        if (repeatId == 0) return -7;
+        if (Game.CountTimeEvent(OnGlobalTickTimer) != 2) return -8;
+
+        Game.StopTimeEvent(OnGlobalTickTimer);
+        if (Game.CountTimeEvent(OnGlobalTickTimer) != 0) return -9;
+
+        Game.StopTimeEvent(OnGlobalDataTimer);
+        Game.StopTimeEvent(OnGlobalArrayTimer);
+        if (Game.CountTimeEvent(OnGlobalDataTimer) != 0) return -10;
+        if (Game.CountTimeEvent(OnGlobalArrayTimer) != 0) return -11;
+
+        return 1;
+    }
+
+    int CommonUtf8Ops()
+    {
+        int length = 0;
+        uint ascii = Game.DecodeUtf8("A", length);
+        if (ascii != 65) return -1;
+        if (length != 1) return -2;
+
+        string encoded = Game.EncodeUtf8(65);
+        if (encoded != "A") return -3;
+
+        // Two-byte and three-byte sequences round-trip through the same pair, and the reported
+        // length is the encoded byte count rather than the character count
+        string cyrillic = Game.EncodeUtf8(1071);
+        if (cyrillic.isEmpty()) return -4;
+
+        int cyrillicLength = 0;
+        if (Game.DecodeUtf8(cyrillic, cyrillicLength) != 1071) return -5;
+        if (cyrillicLength != 2) return -6;
+
+        string cjk = Game.EncodeUtf8(20320);
+        if (cjk.isEmpty()) return -7;
+
+        int cjkLength = 0;
+        if (Game.DecodeUtf8(cjk, cjkLength) != 20320) return -8;
+        if (cjkLength != 3) return -9;
+
+        return 1;
+    }
+
+    int CommonGeometryOps()
+    {
+        mpos origin = mpos(100, 100);
+        mpos nearHex = mpos(105, 100);
+
+        if (Game.GetDistance(origin, origin) != 0) return -1;
+        if (Game.GetDistance(origin, nearHex) <= 0) return -2;
+
+        mdir dir = Game.GetDirection(origin, nearHex);
+        mdir dirWithOffset = Game.GetDirection(origin, nearHex, 15.0f);
+        if (Game.GetDirAngleDiff(dir, dir) != 0) return -3;
+        if (Game.GetDirAngleDiff(dir, dirWithOffset) < 0) return -4;
+
+        mdir opposite = Game.RotateDirAngle(dir, true, 180);
+        if (Game.GetDirAngleDiff(dir, opposite) != 180) return -5;
+
+        mdir back = Game.RotateDirAngle(opposite, false, 180);
+        if (Game.GetDirAngleDiff(dir, back) != 0) return -6;
+
+        mdir lineDir = Game.GetLineDirAngle(ZERO_IPOS, ipos(10, 0));
+        if (Game.GetDirAngleDiff(lineDir, lineDir) != 0) return -7;
+
+        ipos interval = ZERO_IPOS;
+        Game.GetHexInterval(origin, nearHex, interval);
+        if (interval.x == 0 && interval.y == 0) return -8;
+
+        ipos sameInterval = ipos(7, 7);
+        Game.GetHexInterval(origin, origin, sameInterval);
+        if (sameInterval.x != 0 || sameInterval.y != 0) return -9;
+
+        return 1;
+    }
+
+    int CommonTraceHexLineOps()
+    {
+        msize mapSize;
+        mapSize.width = 200;
+        mapSize.height = 200;
+
+        mpos fromHex = mpos(100, 100);
+        mpos toHex = mpos(110, 100);
+
+        mpos[] line = Game.TraceHexLine(mapSize, fromHex, toHex, 20, 0.0f, ZERO_IPOS, ZERO_IPOS);
+        if (line.isEmpty()) return -1;
+        if (line[0] == fromHex) return -2;
+
+        // The distance argument caps the walk, and a zero distance yields nothing at all
+        mpos[] limited = Game.TraceHexLine(mapSize, fromHex, toHex, 3, 0.0f, ZERO_IPOS, ZERO_IPOS);
+        if (limited.length() != 3) return -3;
+        if (limited[0] != line[0]) return -4;
+
+        mpos[] none = Game.TraceHexLine(mapSize, fromHex, toHex, 0, 0.0f, ZERO_IPOS, ZERO_IPOS);
+        if (!none.isEmpty()) return -5;
+
+        // Tracing onto the origin hex still walks, but never past the requested distance
+        mpos[] sameHex = Game.TraceHexLine(mapSize, fromHex, fromHex, 20, 0.0f, ZERO_IPOS, ZERO_IPOS);
+        if (sameHex.length() > 20) return -6;
+
+        mpos[] angleOffset = Game.TraceHexLine(mapSize, fromHex, toHex, 20, 45.0f, ZERO_IPOS, ZERO_IPOS);
+        if (angleOffset.isEmpty()) return -7;
+
+        mpos targetHex = mpos(0, 0);
+        mpos[] angled = Game.TraceHexLine(mapSize, fromHex, 0.0f, 5, ZERO_IPOS, ZERO_IPOS, targetHex);
+        if (angled.isEmpty()) return -8;
+        if (targetHex == fromHex) return -9;
+
+        return 1;
+    }
+
+    int CommonTimePackingOps()
+    {
+        nanotime precision = Game.GetPrecisionTime();
+        if (precision == ZERO_NANOTIME) return -1;
+
+        // PackTime resolves a calendar date against the current clock, so the round trip is exact down to
+        // the millisecond; the sub-millisecond fields absorb the drift between the two clock samples
+        nanotime packed = Game.PackTime(2030, 8, 3, 12, 30, 45, 250, 0, 0);
+
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+        int millisecond = 0;
+        int microsecond = 0;
+        int nanosecond = 0;
+        Game.UnpackTime(packed, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+
+        if (year != 2030) return -2;
+        if (month != 8) return -3;
+        if (day != 3) return -4;
+        if (hour != 12) return -5;
+        if (minute != 30) return -6;
+        if (second != 45) return -7;
+        if (millisecond < 249 || millisecond > 251) return -8;
+        if (microsecond < 0 || microsecond > 999) return -9;
+        if (nanosecond < 0 || nanosecond > 999) return -10;
+
+        nanotime laterPacked = Game.PackTime(2031, 8, 3, 12, 30, 45, 250, 0, 0);
+        if (!(laterPacked > packed)) return -11;
+
+        synctime packedSync = Game.PackSynchronizedTime(2030, 8, 3, 12, 30, 45, 250);
+
+        int syncYear = 0;
+        int syncMonth = 0;
+        int syncDay = 0;
+        int syncHour = 0;
+        int syncMinute = 0;
+        int syncSecond = 0;
+        int syncMillisecond = 0;
+        Game.UnpackSynchronizedTime(packedSync, syncYear, syncMonth, syncDay, syncHour, syncMinute, syncSecond, syncMillisecond);
+
+        if (syncYear != 2030) return -12;
+        if (syncMonth != 8) return -13;
+        if (syncDay != 3) return -14;
+        if (syncHour != 12) return -15;
+        if (syncMinute != 30) return -16;
+        if (syncSecond != 45) return -17;
+        if (syncMillisecond < 249 || syncMillisecond > 251) return -18;
+
+        return 1;
+    }
+
+    // === Global binding operations ===
+
+    funcdef void GlobalNameOfCallback();
+
+    void GlobalNameOfTarget()
+    {
+    }
+
+    int GlobalNameOfOps()
+    {
+        GlobalNameOfCallback cb = GlobalNameOfCallback(GlobalNameOfTarget);
+        string name = NameOf(cb);
+        if (!name.endsWith("GlobalNameOfTarget")) return -1;
+        if (!name.startsWith("ScriptBuiltins")) return -2;
+        return 1;
+    }
+
+    int GlobalRuntimeHelperOps()
+    {
+        int globalBefore = GetGlobalExceptionCount();
+        int contextBefore = GetContextExceptionCount();
+        if (globalBefore < 0) return -1;
+        if (contextBefore < 0) return -2;
+
+        RunScriptGC();
+
+        if (IsGameDestroying) return -3;
+
+        return 1;
+    }
+
+    int GlobalEngineSettingOps()
+    {
+        // Group accessors are chained one level at a time
+        if (Settings.Common.GameName.isEmpty()) return -1;
+        if (Settings.Network.ServerPort <= 0) return -2;
+
+        bool debugBuild = Settings.Common.DebugBuild;
+        bool packaged = Settings.Common.Packaged;
+        if (debugBuild && packaged) return -3;
+
+        // Writable engine settings round-trip through the setter
+        int oldVolume = Settings.Audio.SoundVolume;
+        Settings.Audio.SoundVolume = 42;
+        if (Settings.Audio.SoundVolume != 42) return -4;
+        Settings.Audio.SoundVolume = oldVolume;
+        if (Settings.Audio.SoundVolume != oldVolume) return -5;
+
+        string oldProxy = Settings.ClientNetwork.ProxyHost;
+        Settings.ClientNetwork.ProxyHost = "unit-test-proxy";
+        if (Settings.ClientNetwork.ProxyHost != "unit-test-proxy") return -6;
+        Settings.ClientNetwork.ProxyHost = oldProxy;
+
+        bool oldUdp = Settings.ClientNetwork.UseUdp;
+        Settings.ClientNetwork.UseUdp = !oldUdp;
+        if (Settings.ClientNetwork.UseUdp == oldUdp) return -7;
+        Settings.ClientNetwork.UseUdp = oldUdp;
+
+        // Vector settings are exposed as arrays
+        array<int> dayColorTime = Settings.View.GlobalDayColorTime;
+        if (dayColorTime.length() != 4) return -8;
+
+        array<string> secretTokens = Settings.Common.SecretSettingTokens;
+        if (secretTokens.isEmpty()) return -9;
+
+        return 1;
+    }
+
+    int GlobalGameSettingOps()
+    {
+        // Game settings are stored as text and converted per declared type on every read and write
+        Settings.TestSettings.StringValue = "game-setting";
+        if (Settings.TestSettings.StringValue != "game-setting") return -1;
+
+        Settings.TestSettings.AnyValue = any("boxed");
+        if (string(Settings.TestSettings.AnyValue) != "boxed") return -2;
+
+        Settings.TestSettings.BoolValue = true;
+        if (!Settings.TestSettings.BoolValue) return -3;
+        Settings.TestSettings.BoolValue = false;
+        if (Settings.TestSettings.BoolValue) return -4;
+
+        Settings.TestSettings.Int8Value = -8;
+        if (Settings.TestSettings.Int8Value != -8) return -5;
+
+        Settings.TestSettings.Int16Value = -1600;
+        if (Settings.TestSettings.Int16Value != -1600) return -6;
+
+        Settings.TestSettings.Int32Value = -320000;
+        if (Settings.TestSettings.Int32Value != -320000) return -7;
+
+        Settings.TestSettings.Int64Value = -6400000000;
+        if (Settings.TestSettings.Int64Value != -6400000000) return -8;
+
+        Settings.TestSettings.UInt8Value = 200;
+        if (Settings.TestSettings.UInt8Value != 200) return -9;
+
+        Settings.TestSettings.UInt16Value = 60000;
+        if (Settings.TestSettings.UInt16Value != 60000) return -10;
+
+        Settings.TestSettings.UInt32Value = 4000000000;
+        if (Settings.TestSettings.UInt32Value != 4000000000) return -11;
+
+        Settings.TestSettings.UInt64Value = 12800000000;
+        if (Settings.TestSettings.UInt64Value != 12800000000) return -12;
+
+        Settings.TestSettings.Float32Value = 1.5f;
+        if (Settings.TestSettings.Float32Value != 1.5f) return -13;
+
+        Settings.TestSettings.Float64Value = 2.25;
+        if (Settings.TestSettings.Float64Value != 2.25) return -14;
+
+        Settings.TestSettings.EnumValue = GenderType::Female;
+        if (Settings.TestSettings.EnumValue != GenderType::Female) return -15;
+
+        // A setting without a group hangs directly off the root object
+        Settings.UngroupedTestSetting = 77;
+        if (Settings.UngroupedTestSetting != 77) return -16;
+
+        return 1;
+    }
+
+    void GlobalThrowNoArgsThrows()
+    {
+        throw("Global throw with no context");
+    }
+
+    void GlobalThrowOneArgThrows()
+    {
+        throw("Global throw with one context", 42);
+    }
+
+    void GlobalThrowThreeArgsThrows()
+    {
+        throw("Global throw with three contexts", 1, "two", true);
+    }
+
+    void GlobalThrowTenArgsThrows()
+    {
+        throw("Global throw with ten contexts", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    }
+
+    void GlobalNameOfNonFunctionThrows()
+    {
+        int value = 0;
+        string name = NameOf(value);
+    }
+
+    void GlobalNameOfNullThrows()
+    {
+        GlobalNameOfCallback? cb = null;
+        string name = NameOf(cb);
+    }
+
+    void GlobalInvokeMissingFuncThrows()
+    {
+        Invoke("ScriptBuiltins::NoSuchFunction");
+    }
+
+    // === Reflection operations ===
+
+    interface ReflectionShape
+    {
+        int Area();
+    }
+
+    class ReflectionBase : ReflectionShape
+    {
+        int Width = 2;
+        int Height = 3;
+
+        int Area()
+        {
+            return Width * Height;
+        }
+    }
+
+    class ReflectionDerived : ReflectionBase
+    {
+        int Depth = 4;
+
+        int Volume()
+        {
+            return Area() * Depth;
+        }
+    }
+
+    int ReflectionTypeInfoOps()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+        if (derived is null) return -1;
+
+        if (derived.nameWithoutNamespace != "ReflectionDerived") return -2;
+        if (!derived.name.endsWith("ReflectionDerived")) return -3;
+        if (derived.module.isEmpty()) return -4;
+        if (derived.isGlobal) return -5;
+        if (!derived.isClass) return -6;
+        if (derived.isInterface) return -7;
+        if (derived.isEnum) return -8;
+        if (derived.isFunction) return -9;
+        if (derived.size <= 0) return -10;
+
+        reflection::type base = derived.baseType;
+        if (base is null) return -11;
+        if (base.nameWithoutNamespace != "ReflectionBase") return -12;
+        if (!derived.derivesFrom(base)) return -13;
+        if (base.derivesFrom(derived)) return -14;
+        if (derived == base) return -15;
+        if (!(derived == reflection::typeof<ReflectionDerived>())) return -16;
+
+        return 1;
+    }
+
+    int ReflectionInterfaceAndMemberOps()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+        reflection::type shape = reflection::typeof<ReflectionShape>();
+
+        if (!shape.isInterface) return -1;
+        if (shape.isClass) return -2;
+        if (derived.interfaceCount != 1) return -3;
+
+        reflection::type iface = derived.getInterface(0);
+        if (iface is null) return -4;
+        if (!(iface == shape)) return -5;
+        if (!derived.implements(shape)) return -6;
+        if (shape.implements(derived)) return -7;
+        if (derived.getInterface(1) !is null) return -8;
+        if (derived.getInterface(-1) !is null) return -9;
+
+        if (derived.methodsCount <= 0) return -10;
+        if (derived.getMethodDeclaration(0).isEmpty()) return -11;
+        if (derived.getMethodDeclaration(0, true, true, true).isEmpty()) return -12;
+        if (!derived.getMethodDeclaration(1000).isEmpty()) return -13;
+
+        if (derived.propertiesCount != 3) return -14;
+        if (derived.getPropertyDeclaration(0).isEmpty()) return -15;
+        if (derived.getPropertyDeclaration(0, true).isEmpty()) return -16;
+        if (!derived.getPropertyDeclaration(-1).isEmpty()) return -17;
+        if (!derived.getPropertyDeclaration(1000).isEmpty()) return -18;
+
+        // A class is not an enum, so the enum accessors stay empty instead of failing
+        if (derived.enumLength != 0) return -19;
+        if (!derived.enumNames.isEmpty()) return -20;
+        if (!derived.enumValues.isEmpty()) return -21;
+
+        return 1;
+    }
+
+    int ReflectionInstantiateOps()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+
+        ReflectionDerived? made = null;
+        derived.instantiate(made);
+        if (made is null) return -1;
+        if (made.Area() != 6) return -2;
+        if (made.Volume() != 24) return -3;
+
+        made.Width = 5;
+
+        ReflectionDerived? copied = null;
+        derived.instantiate(made, copied);
+        if (copied is null) return -4;
+        if (copied.Width != 5) return -5;
+        if (copied is made) return -6;
+
+        copied.Width = 9;
+        if (made.Width != 5) return -7;
+
+        // A base handle is a legal target for a derived instance
+        ReflectionBase? asBase = null;
+        derived.instantiate(asBase);
+        if (asBase is null) return -8;
+        if (asBase.Area() != 6) return -9;
+
+        return 1;
+    }
+
+    int ReflectionTypeOfInstanceOps()
+    {
+        ReflectionDerived instance = ReflectionDerived();
+        ReflectionBase asBase = instance;
+
+        // The two-argument factory resolves the runtime type, not the declared one
+        reflection::type runtime = reflection::typeof<ReflectionBase>(asBase);
+        if (runtime is null) return -1;
+        if (runtime.nameWithoutNamespace != "ReflectionDerived") return -2;
+        if (!(runtime == reflection::typeof<ReflectionDerived>())) return -3;
+
+        return 1;
+    }
+
+    int ReflectionModuleAndEnumOps()
+    {
+        array<string> modules = reflection::getLoadedModules();
+        if (modules.isEmpty()) return -1;
+
+        string current = reflection::getCurrentModule();
+        if (current.isEmpty()) return -2;
+        if (modules.find(current) == -1) return -3;
+
+        array<reflection::type> globalEnums = reflection::getGlobalEnums();
+        if (globalEnums.isEmpty()) return -4;
+
+        array<reflection::type> moduleEnums = reflection::getEnums();
+        array<reflection::type> namedEnums = reflection::getEnums(current);
+        if (moduleEnums.length() != namedEnums.length()) return -5;
+
+        // An unknown module name yields an empty list instead of failing
+        array<reflection::type> missingEnums = reflection::getEnums("NoSuchModule");
+        if (!missingEnums.isEmpty()) return -6;
+
+        reflection::type gender = reflection::typeof<GenderType>();
+        if (gender is null) return -7;
+        if (!gender.isEnum) return -8;
+        // An enum is not an object type, so the object-shaped predicates must answer, not fail
+        if (gender.isClass) return -9;
+        if (gender.isInterface) return -90;
+        if (gender.isFunction) return -91;
+        // Application-registered enums are shared, plain script classes are not
+        if (!gender.isShared) return -92;
+        if (reflection::typeof<ReflectionDerived>().isShared) return -93;
+        if (gender.isGlobal != true) return -10;
+        if (!gender.module.startsWith("(global")) return -11;
+        if (gender.enumLength != 2) return -12;
+
+        array<string> names = gender.enumNames;
+        array<int> values = gender.enumValues;
+        if (names.length() != 2 || values.length() != 2) return -13;
+        if (names.find("Male") == -1 || names.find("Female") == -1) return -14;
+        if (values.find(0) == -1 || values.find(1) == -1) return -15;
+
+        reflection::type wide = reflection::typeof<WideEnum>();
+        if (wide.enumLength != 2) return -16;
+
+        array<int> wideValues = wide.enumValues;
+        if (wideValues.find(650) == -1) return -17;
+        if (wideValues.find(12) == -1) return -18;
+
+        return 1;
+    }
+
+    int ReflectionCallstackOps()
+    {
+        string[] modules = {};
+        string[] names = {};
+        int[] lines = {};
+        int[] columns = {};
+
+        int count = reflection::getCallstack(modules, names, lines, columns);
+        if (count <= 0) return -1;
+        if (modules.length() != count) return -2;
+        if (names.length() != count) return -3;
+        if (lines.length() != count) return -4;
+        if (columns.length() != count) return -5;
+        if (names[0].isEmpty()) return -6;
+        if (lines[0] <= 0) return -7;
+
+        string[] detailedModules = {};
+        string[] detailedNames = {};
+        int[] detailedLines = {};
+        int[] detailedColumns = {};
+
+        int detailed = reflection::getCallstack(detailedModules, detailedNames, detailedLines, detailedColumns, true, true, false);
+        if (detailed != count) return -8;
+        if (detailedNames[0] == names[0]) return -9;
+
+        return 1;
+    }
+
+    void ReflectionInstantiateNonHandleThrows()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+        int notHandle = 0;
+        derived.instantiate(notHandle);
+    }
+
+    void ReflectionInstantiateIncompatibleThrows()
+    {
+        reflection::type base = reflection::typeof<ReflectionBase>();
+        ReflectionDerived? made = null;
+        base.instantiate(made);
+    }
+
+    void ReflectionInstantiateCopyNonHandleSourceThrows()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+        int notHandle = 0;
+        ReflectionDerived? made = null;
+        derived.instantiate(notHandle, made);
+    }
+
+    void ReflectionInstantiateCopyNullSourceThrows()
+    {
+        reflection::type derived = reflection::typeof<ReflectionDerived>();
+        ReflectionDerived? source = null;
+        ReflectionDerived? made = null;
+        derived.instantiate(source, made);
+    }
+
+    void ReflectionInstantiateCopyWrongRuntimeTypeThrows()
+    {
+        reflection::type base = reflection::typeof<ReflectionBase>();
+        ReflectionDerived? source = ReflectionDerived();
+        ReflectionBase? made = null;
+        base.instantiate(source, made);
+    }
+
     // === Math operations ===
 
     float MathAbs(float v)
@@ -1424,7 +3010,7 @@ namespace ScriptBuiltins
         if (sub != "Hello") return -3;
 
         if (s.find("l") != 2) return -4;
-        if (s.findLast("l", 0) != 10) return -5;
+        if (s.findLast("l") != 10) return -5;
         if (s.find("xyz") != -1) return -6;
 
         if (s.lower() != "hello, world!") return -7;
@@ -1547,21 +3133,105 @@ namespace ScriptBuiltins
             });
     }
 
+    // One game setting per script-visible value type, so the generic setting accessors are driven end to end
+    static constexpr std::array GAME_SETTING_TYPES = {
+        std::pair<string_view, string_view> {"TestSettings.StringValue", "string"},
+        std::pair<string_view, string_view> {"TestSettings.AnyValue", "any"},
+        std::pair<string_view, string_view> {"TestSettings.BoolValue", "bool"},
+        std::pair<string_view, string_view> {"TestSettings.Int8Value", "int8"},
+        std::pair<string_view, string_view> {"TestSettings.Int16Value", "int16"},
+        std::pair<string_view, string_view> {"TestSettings.Int32Value", "int32"},
+        std::pair<string_view, string_view> {"TestSettings.Int64Value", "int64"},
+        std::pair<string_view, string_view> {"TestSettings.UInt8Value", "uint8"},
+        std::pair<string_view, string_view> {"TestSettings.UInt16Value", "uint16"},
+        std::pair<string_view, string_view> {"TestSettings.UInt32Value", "uint32"},
+        std::pair<string_view, string_view> {"TestSettings.UInt64Value", "uint64"},
+        std::pair<string_view, string_view> {"TestSettings.Float32Value", "float32"},
+        std::pair<string_view, string_view> {"TestSettings.Float64Value", "float64"},
+        std::pair<string_view, string_view> {"TestSettings.EnumValue", "GenderType"},
+        std::pair<string_view, string_view> {"UngroupedTestSetting", "int32"},
+    };
+
+    // One critter property per shape the property/script object converters have to handle
+    static constexpr std::array GAME_PROPERTY_TYPES = {
+        std::pair<string_view, string_view> {"string", "TestString"},
+        std::pair<string_view, string_view> {"hstring", "TestHash"},
+        std::pair<string_view, string_view> {"GenderType", "TestEnum"},
+        std::pair<string_view, string_view> {"int32 [ ]", "TestIntArray"},
+        std::pair<string_view, string_view> {"float32 [ ]", "TestFloatArray"},
+        std::pair<string_view, string_view> {"string [ ]", "TestStringArray"},
+        std::pair<string_view, string_view> {"hstring [ ]", "TestHashArray"},
+        std::pair<string_view, string_view> {"GenderType [ ]", "TestEnumArray"},
+        std::pair<string_view, string_view> {"string = > int32", "TestStringKeyDict"},
+        std::pair<string_view, string_view> {"int32 = > string", "TestStringValueDict"},
+        std::pair<string_view, string_view> {"hstring = > int32", "TestHashKeyDict"},
+        std::pair<string_view, string_view> {"GenderType = > int32", "TestEnumKeyDict"},
+        std::pair<string_view, string_view> {"int32 = > int32 [ ]", "TestDictOfArray"},
+        std::pair<string_view, string_view> {"string = > string [ ]", "TestDictOfStringArray"},
+        std::pair<string_view, string_view> {"any", "TestAny"},
+        std::pair<string_view, string_view> {"any [ ]", "TestAnyArray"},
+        std::pair<string_view, string_view> {"ProtoCritter", "TestProto"},
+        std::pair<string_view, string_view> {"ProtoCritter [ ]", "TestProtoArray"},
+        // The remaining scalar widths and the value types, each of which the property/script converters
+        // handle through its own branch
+        std::pair<string_view, string_view> {"int8", "TestInt8"},
+        std::pair<string_view, string_view> {"int16", "TestInt16"},
+        std::pair<string_view, string_view> {"int64", "TestInt64"},
+        std::pair<string_view, string_view> {"uint16", "TestUInt16"},
+        std::pair<string_view, string_view> {"uint32", "TestUInt32"},
+        std::pair<string_view, string_view> {"uint64", "TestUInt64"},
+        std::pair<string_view, string_view> {"bool [ ]", "TestBoolArray"},
+        std::pair<string_view, string_view> {"int64 [ ]", "TestInt64Array"},
+        std::pair<string_view, string_view> {"ident", "TestIdent"},
+        std::pair<string_view, string_view> {"ident [ ]", "TestIdentArray"},
+        std::pair<string_view, string_view> {"timespan", "TestTimeSpan"},
+        std::pair<string_view, string_view> {"ucolor", "TestColor"},
+        std::pair<string_view, string_view> {"ucolor [ ]", "TestColorArray"},
+        std::pair<string_view, string_view> {"string = > string", "TestStringStringDict"},
+        std::pair<string_view, string_view> {"hstring = > string", "TestHashStringDict"},
+        std::pair<string_view, string_view> {"int32 = > hstring", "TestHashValueDict"},
+        // The remaining engine value types and the narrow-scalar arrays, each of which the property/script
+        // converters reach through its own branch
+        std::pair<string_view, string_view> {"nanotime", "TestNanoTime"},
+        std::pair<string_view, string_view> {"synctime", "TestSyncTime"},
+        std::pair<string_view, string_view> {"mpos", "TestMapPos"},
+        std::pair<string_view, string_view> {"msize", "TestMapSize"},
+        std::pair<string_view, string_view> {"ipos", "TestIntPos"},
+        std::pair<string_view, string_view> {"isize", "TestIntSize"},
+        std::pair<string_view, string_view> {"irect", "TestIntRect"},
+        std::pair<string_view, string_view> {"fpos", "TestFloatPos"},
+        std::pair<string_view, string_view> {"fsize", "TestFloatSize"},
+        std::pair<string_view, string_view> {"mpos [ ]", "TestMapPosArray"},
+        std::pair<string_view, string_view> {"timespan [ ]", "TestTimeSpanArray"},
+        std::pair<string_view, string_view> {"nanotime [ ]", "TestNanoTimeArray"},
+        std::pair<string_view, string_view> {"int8 [ ]", "TestInt8Array"},
+        std::pair<string_view, string_view> {"int16 [ ]", "TestInt16Array"},
+        std::pair<string_view, string_view> {"uint16 [ ]", "TestUInt16Array"},
+        std::pair<string_view, string_view> {"uint32 [ ]", "TestUInt32Array"},
+        std::pair<string_view, string_view> {"uint64 [ ]", "TestUInt64Array"},
+        std::pair<string_view, string_view> {"float64", "TestFloat64"},
+        std::pair<string_view, string_view> {"float64 [ ]", "TestFloat64Array"},
+        std::pair<string_view, string_view> {"ident = > int32", "TestIdentKeyDict"},
+        std::pair<string_view, string_view> {"int32 = > ident", "TestIdentValueDict"},
+        std::pair<string_view, string_view> {"hstring = > hstring", "TestHashHashDict"},
+        std::pair<string_view, string_view> {"string = > hstring [ ]", "TestDictOfHashArray"},
+    };
+
     static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
     {
         vector<uint8_t> metadata;
         auto writer = DataWriter(metadata);
 
-        writer.Write<uint16_t>(uint16_t {1}); // 1 section
-
-        string_view section_name = "Enum";
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-        writer.WriteStringBytes(section_name);
-        writer.Write<uint32_t>(uint32_t {2}); // 2 entries
+        writer.Write<uint16_t>(uint16_t {3}); // 3 sections
 
         auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
             writer.WriteStringBytes(token);
+        };
+        auto write_section_header = [&](string_view section_name, uint32_t entries_count) {
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
+            writer.WriteStringBytes(section_name);
+            writer.Write<uint32_t>(entries_count);
         };
         auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
             writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
@@ -1573,8 +3243,29 @@ namespace ScriptBuiltins
             write_token(second_value);
         };
 
+        write_section_header("Enum", uint32_t {2});
         write_enum("GenderType", "uint8", "Male", "0", "Female", "1");
         write_enum("WideEnum", "uint16", "Low", "12", "High", "650");
+
+        write_section_header("Setting", numeric_cast<uint32_t>(GAME_SETTING_TYPES.size()));
+
+        for (const auto& [setting_name, setting_type] : GAME_SETTING_TYPES) {
+            writer.Write<uint32_t>(uint32_t {2}); // 2 tokens
+            write_token(setting_name);
+            write_token(setting_type);
+        }
+
+        write_section_header("Property", numeric_cast<uint32_t>(GAME_PROPERTY_TYPES.size()));
+
+        for (const auto& [property_type, property_name] : GAME_PROPERTY_TYPES) {
+            // Sync tags are only legal on Common properties, so a server-only property carries none
+            writer.Write<uint32_t>(uint32_t {5}); // 5 tokens
+            write_token("Critter");
+            write_token("Server");
+            write_token(property_type);
+            write_token(property_name);
+            write_token("Mutable");
+        }
 
         return metadata;
     }
@@ -1594,7 +3285,11 @@ namespace ScriptBuiltins
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
+        string_view config_text = "[TestSection]\nFirstKey=FirstValue\nSecondKey=SecondValue\n";
+        vector<uint8_t> config_blob(config_text.begin(), config_text.end());
+
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
+        runtime_source->AddFile("ScriptBuiltinsTest.focfg", config_blob);
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptBuiltins.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptBuiltins.fos-bin-server", script_blob);
@@ -2624,6 +4319,398 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
     }
+
+    auto run_success_func = [&server, &fn](string_view func_name) {
+        auto func = server->FindFunc<int32_t>(fn(func_name));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        INFO(func_name);
+        CHECK(func.GetResult() == 1);
+    };
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+        auto func = server->FindFunc<void>(fn(func_name));
+        REQUIRE(func);
+
+        auto prev_callback = GetExceptionCallback();
+        string message;
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        CHECK_FALSE(func.Call());
+        INFO(func_name);
+        INFO(message);
+        CHECK(message.find(expected_message) != string::npos);
+    };
+
+    run_success_func("ScriptBuiltins::DictAccessorOps");
+    run_success_func("ScriptBuiltins::DictKeysValuesOps");
+    run_success_func("ScriptBuiltins::DictInitListOps");
+    run_success_func("ScriptBuiltins::DictCloneEqualsOps");
+    run_success_func("ScriptBuiltins::DictRemoveValuesOps");
+    run_success_func("ScriptBuiltins::DictWideIntegerOps");
+    run_success_func("ScriptBuiltins::ArrayWideIntegerOps");
+    run_success_func("ScriptBuiltins::DictEnumKeyOps");
+    run_success_func("ScriptBuiltins::DictHandleValueOps");
+    run_success_func("ScriptBuiltins::DictHandleKeyOps");
+
+    run_throwing_func("ScriptBuiltins::DictMissingKeyThrows", "Key not found");
+    run_throwing_func("ScriptBuiltins::DictKeyIndexOutOfBoundsThrows", "Index out of bounds");
+    run_throwing_func("ScriptBuiltins::DictValueIndexOutOfBoundsThrows", "Index out of bounds");
+    run_throwing_func("ScriptBuiltins::DictNoCompareKeyThrows", "Type does not have a matching opCmp method");
+
+    // Direct ScriptDict API coverage
+    {
+        ScriptMessages messages;
+        nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
+        auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
+
+        RegisterAngelScriptArray(as_engine.get());
+        RegisterAngelScriptDict(as_engine.get());
+
+        nptr<AngelScript::asITypeInfo> int_dict_type = as_engine->GetTypeInfoByDecl("dict<int,int>");
+        REQUIRE(int_dict_type != nullptr);
+        nptr<AngelScript::asITypeInfo> string_key_dict_type = as_engine->GetTypeInfoByDecl("dict<int64,int64>");
+        REQUIRE(string_key_dict_type != nullptr);
+
+        auto dict = ScriptDict::Create(int_dict_type.get());
+
+        CHECK(dict->IsEmpty());
+        CHECK(dict->GetSize() == 0);
+        CHECK(dict->GetDictTypeId() == int_dict_type->GetTypeId());
+        CHECK(dict->GetDictObjectType().get() == int_dict_type.get());
+        CHECK(dict->GetRefCount() == 1);
+        CHECK_FALSE(dict->GetFlag());
+
+        dict->SetFlag();
+        CHECK(dict->GetFlag());
+        dict->AddRef();
+        CHECK_FALSE(dict->GetFlag());
+        CHECK(dict->GetRefCount() == 2);
+        dict->Release();
+        CHECK(dict->GetRefCount() == 1);
+
+        int32_t first_key = 1;
+        int32_t first_value = 10;
+        int32_t second_key = 2;
+        int32_t second_value = 20;
+        int32_t missing_key = 7;
+        int32_t replacement_value = 11;
+        int32_t default_value = -1;
+
+        dict->Set(&first_key, &first_value);
+        dict->Set(&second_key, &second_value);
+        CHECK(dict->GetSize() == 2);
+        CHECK_FALSE(dict->IsEmpty());
+
+        dict->Set(&first_key, &replacement_value);
+        CHECK(dict->GetSize() == 2);
+        CHECK(*dict->ValueAs<int32_t>(dict->Get(&first_key).get()) == replacement_value);
+
+        dict->SetIfNotExist(&first_key, &first_value);
+        CHECK(*dict->ValueAs<int32_t>(dict->Get(&first_key).get()) == replacement_value);
+        dict->SetIfNotExist(&missing_key, &first_value);
+        CHECK(dict->GetSize() == 3);
+
+        CHECK(dict->Exists(&missing_key));
+        CHECK(dict->Remove(&missing_key));
+        CHECK_FALSE(dict->Remove(&missing_key));
+        CHECK(dict->GetSize() == 2);
+
+        CHECK_THROWS_AS(dict->Get(&missing_key), ScriptException);
+        CHECK(*dict->ValueAs<int32_t>(dict->GetDefault(&missing_key, &default_value).get()) == default_value);
+        CHECK(*dict->ValueAs<int32_t>(dict->GetDefault(&second_key, &default_value).get()) == second_value);
+
+        CHECK(*dict->ValueAs<int32_t>(dict->GetOrCreate(&second_key).get()) == second_value);
+        CHECK(*dict->ValueAs<int32_t>(dict->GetOrCreate(&missing_key).get()) == 0);
+        CHECK(dict->GetSize() == 3);
+        CHECK(dict->Remove(&missing_key));
+
+        CHECK(*dict->KeyAtAs<int32_t>(0) == first_key);
+        CHECK(*dict->ValueAtAs<int32_t>(0) == replacement_value);
+        CHECK(*dict->KeyAtAs<int32_t>(1) == second_key);
+        CHECK_THROWS_AS(dict->GetKey(-1), ScriptException);
+        CHECK_THROWS_AS(dict->GetKey(2), ScriptException);
+        CHECK_THROWS_AS(dict->GetValue(-1), ScriptException);
+        CHECK_THROWS_AS(dict->GetValue(2), ScriptException);
+
+        CHECK(dict->GetMap()->size() == 2);
+
+        auto keys = dict->GetKeys();
+        auto values = dict->GetValues();
+        REQUIRE(keys->GetSize() == 2);
+        REQUIRE(values->GetSize() == 2);
+        CHECK(*keys->AtAs<int32_t>(0) == first_key);
+        CHECK(*keys->AtAs<int32_t>(1) == second_key);
+        CHECK(*values->AtAs<int32_t>(0) == replacement_value);
+        CHECK(*values->AtAs<int32_t>(1) == second_value);
+
+        auto copy = SafeAlloc::MakeRefCounted<ScriptDict>(*dict);
+        CHECK(copy->GetSize() == 2);
+        CHECK(*copy == *dict);
+        CHECK(*dict == *dict);
+
+        copy->Set(&second_key, &default_value);
+        CHECK_FALSE(*copy == *dict);
+        copy->Remove(&second_key);
+        CHECK_FALSE(*copy == *dict);
+
+        auto other_type_dict = ScriptDict::Create(string_key_dict_type.get());
+        CHECK_FALSE(*dict == *other_type_dict);
+        CHECK_THROWS_AS(*copy = *other_type_dict, ScriptException);
+
+        *copy = *dict;
+        CHECK(*copy == *dict);
+        *copy = *copy;
+        CHECK(*copy == *dict);
+
+        dict->EnumReferences(as_engine.get());
+        dict->ReleaseAllHandles();
+        CHECK(dict->IsEmpty());
+
+        // Wide integer keys and values must not collapse to their low 32 bits
+        auto wide_dict = ScriptDict::Create(string_key_dict_type.get());
+        auto wide_other = ScriptDict::Create(string_key_dict_type.get());
+
+        int64_t wide_first = int64_t {1} << 32 | 1;
+        int64_t wide_second = int64_t {2} << 32 | 1;
+
+        wide_dict->Set(&wide_first, &wide_first);
+        wide_dict->Set(&wide_second, &wide_second);
+        CHECK(wide_dict->GetSize() == 2);
+
+        wide_other->Set(&wide_first, &wide_first);
+        wide_other->Set(&wide_second, &wide_first);
+        CHECK_FALSE(*wide_dict == *wide_other);
+
+        CHECK(wide_dict->RemoveValues(&wide_second) == 1);
+        CHECK(wide_dict->GetSize() == 1);
+        CHECK(wide_dict->Exists(&wide_first));
+    }
+
+    // Dict template callback diagnostics
+    {
+        ScriptMessages messages;
+        nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
+        auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
+
+        RegisterAngelScriptArray(as_engine.get());
+        RegisterAngelScriptDict(as_engine.get());
+
+        CHECK(BuildAngelScriptModule(as_engine.get(), "DictVoidKeyRejected", "void Test() { dict<void,int> values; }\n") < 0);
+        CHECK(!messages.Entries.empty());
+        messages.Entries.clear();
+
+        CHECK(BuildAngelScriptModule(as_engine.get(), "DictVoidValueRejected", "void Test() { dict<int,void> values; }\n") < 0);
+        CHECK(!messages.Entries.empty());
+        messages.Entries.clear();
+
+        RegisterArrayNoDefaultValue(as_engine.get());
+        CHECK(BuildAngelScriptModule(as_engine.get(), "DictNoDefaultValueRejected", "void Test() { dict<int,ArrayNoDefaultValue> values; }\n") < 0);
+        CHECK(HasScriptMessage(messages, "The subtype has no default constructor"));
+        messages.Entries.clear();
+
+        REQUIRE(as_engine->RegisterObjectType("DictNativeRef", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
+        CHECK(BuildAngelScriptModule(as_engine.get(), "DictRefValueRejected", "void Test() { dict<int,DictNativeRef> values; }\n") < 0);
+        CHECK(HasScriptMessage(messages, "Can't store references in dict"));
+    }
+
+    // Dict value comparator diagnostics for native value sub-types
+    {
+        ScriptMessages messages;
+        nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
+        auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
+
+        RegisterAngelScriptArray(as_engine.get());
+        RegisterAngelScriptDict(as_engine.get());
+        RegisterArrayComparableValue(as_engine.get(), "DictNoCompareNativeValue", false, false);
+        RegisterArrayComparableValue(as_engine.get(), "DictMultiEqualsNativeValue", true, false);
+        RegisterArrayComparableValue(as_engine.get(), "DictMultiCmpNativeValue", false, true);
+
+        auto check_value_comparator_throw = [&as_engine](string_view dict_decl, string_view expected_message) {
+            nptr<AngelScript::asITypeInfo> dict_type = as_engine->GetTypeInfoByDecl(string {dict_decl}.c_str());
+            REQUIRE(dict_type != nullptr);
+
+            auto dict = ScriptDict::Create(dict_type.get());
+            int32_t key = 1;
+            ArrayComparableValue value {1};
+            dict->Set(&key, &value);
+
+            INFO(dict_decl);
+
+            try {
+                (void)dict->RemoveValues(&value);
+                FAIL("Dict value comparison was expected to throw");
+            }
+            catch (const ScriptException& ex) {
+                CHECK(string_view(ex.what()).find(expected_message) != string_view::npos);
+            }
+        };
+
+        check_value_comparator_throw("dict<int,DictNoCompareNativeValue>", "Type does not have a matching opEquals or opCmp method");
+        check_value_comparator_throw("dict<int,DictMultiEqualsNativeValue>", "Type has multiple matching opEquals or opCmp methods");
+
+        nptr<AngelScript::asITypeInfo> multi_cmp_key_dict_type = as_engine->GetTypeInfoByDecl("dict<DictMultiCmpNativeValue,int>");
+        REQUIRE(multi_cmp_key_dict_type != nullptr);
+
+        auto multi_cmp_key_dict = ScriptDict::Create(multi_cmp_key_dict_type.get());
+        ArrayComparableValue low_key {1};
+        ArrayComparableValue high_key {3};
+        int32_t key_value = 5;
+
+        try {
+            multi_cmp_key_dict->Set(&low_key, &key_value);
+            multi_cmp_key_dict->Set(&high_key, &key_value);
+            FAIL("Dict key comparison was expected to throw");
+        }
+        catch (const ScriptException& ex) {
+            CHECK(string_view(ex.what()).find("Type has multiple matching opCmp methods") != string_view::npos);
+        }
+    }
+}
+
+TEST_CASE("ScriptBuiltinsGlobalBindings")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto run_success_func = [&server, &fn](string_view func_name) {
+        auto func = server->FindFunc<int32_t>(fn(func_name));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        INFO(func_name);
+        CHECK(func.GetResult() == 1);
+    };
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+        auto func = server->FindFunc<void>(fn(func_name));
+        REQUIRE(func);
+
+        auto prev_callback = GetExceptionCallback();
+        string message;
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        CHECK_FALSE(func.Call());
+        INFO(func_name);
+        INFO(message);
+        CHECK(message.find(expected_message) != string::npos);
+    };
+
+    run_success_func("ScriptBuiltins::PropertyScalarConversionOps");
+    run_success_func("ScriptBuiltins::PropertyArrayConversionOps");
+    run_success_func("ScriptBuiltins::PropertyDictConversionOps");
+    run_success_func("ScriptBuiltins::PropertyDictOfArrayConversionOps");
+
+    run_success_func("ScriptBuiltins::StringRawAndIndexOps");
+    run_success_func("ScriptBuiltins::StringSearchOps");
+    run_success_func("ScriptBuiltins::StringTrimAndCaseOps");
+    run_success_func("ScriptBuiltins::StringSplitJoinOps");
+    run_success_func("ScriptBuiltins::StringConversionOps");
+    run_success_func("ScriptBuiltins::StringNumericOperatorOps");
+
+    run_throwing_func("ScriptBuiltins::StringIndexOutOfBoundsThrows", "Out of range");
+    run_throwing_func("ScriptBuiltins::StringNegativeIndexThrows", "Out of range");
+    run_throwing_func("ScriptBuiltins::StringSetIndexOutOfBoundsThrows", "Out of range");
+    run_throwing_func("ScriptBuiltins::StringNegativeRawResizeThrows", "String resize length must not be negative");
+
+    run_success_func("ScriptBuiltins::CommonResourceAndRandomOps");
+    run_success_func("ScriptBuiltins::ContextNestedCallOps");
+    run_throwing_func("ScriptBuiltins::ContextNestedThrowThrows", "Nested script failure for stack collection");
+
+    run_success_func("ScriptBuiltins::CommonProtoQueryOps");
+    run_success_func("ScriptBuiltins::CommonGlobalTimeEventOps");
+    run_success_func("ScriptBuiltins::CommonUtf8Ops");
+    run_success_func("ScriptBuiltins::CommonGeometryOps");
+    run_success_func("ScriptBuiltins::CommonTraceHexLineOps");
+    run_success_func("ScriptBuiltins::CommonTimePackingOps");
+    run_success_func("ScriptBuiltins::GlobalNameOfOps");
+    run_success_func("ScriptBuiltins::GlobalRuntimeHelperOps");
+    run_success_func("ScriptBuiltins::GlobalEngineSettingOps");
+    run_success_func("ScriptBuiltins::GlobalGameSettingOps");
+
+    run_throwing_func("ScriptBuiltins::GlobalThrowNoArgsThrows", "Global throw with no context");
+    run_throwing_func("ScriptBuiltins::GlobalThrowOneArgThrows", "Global throw with one context");
+    run_throwing_func("ScriptBuiltins::GlobalThrowThreeArgsThrows", "Global throw with three contexts");
+    run_throwing_func("ScriptBuiltins::GlobalThrowTenArgsThrows", "Global throw with ten contexts");
+    run_throwing_func("ScriptBuiltins::GlobalNameOfNonFunctionThrows", "argument must be a function reference");
+    run_throwing_func("ScriptBuiltins::GlobalNameOfNullThrows", "function reference is null");
+    run_throwing_func("ScriptBuiltins::GlobalInvokeMissingFuncThrows", "Script function not found");
+}
+
+TEST_CASE("ScriptBuiltinsReflectionOperations")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto run_success_func = [&server, &fn](string_view func_name) {
+        auto func = server->FindFunc<int32_t>(fn(func_name));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        INFO(func_name);
+        CHECK(func.GetResult() == 1);
+    };
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+        auto func = server->FindFunc<void>(fn(func_name));
+        REQUIRE(func);
+
+        auto prev_callback = GetExceptionCallback();
+        string message;
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        CHECK_FALSE(func.Call());
+        INFO(func_name);
+        INFO(message);
+        CHECK(message.find(expected_message) != string::npos);
+    };
+
+    run_success_func("ScriptBuiltins::ReflectionTypeInfoOps");
+    run_success_func("ScriptBuiltins::ReflectionInterfaceAndMemberOps");
+    run_success_func("ScriptBuiltins::ReflectionInstantiateOps");
+    run_success_func("ScriptBuiltins::ReflectionTypeOfInstanceOps");
+    run_success_func("ScriptBuiltins::ReflectionModuleAndEnumOps");
+    run_success_func("ScriptBuiltins::ReflectionCallstackOps");
+
+    // The "handle must be null" guard is deliberately not probed: AngelScript clears every `?&out`
+    // slot before the call, so a script can never hand a non-null instance handle to instantiate()
+    run_throwing_func("ScriptBuiltins::ReflectionInstantiateNonHandleThrows", "not an handle");
+    run_throwing_func("ScriptBuiltins::ReflectionInstantiateIncompatibleThrows", "incompatible types");
+    run_throwing_func("ScriptBuiltins::ReflectionInstantiateCopyNonHandleSourceThrows", "not an handle");
+    run_throwing_func("ScriptBuiltins::ReflectionInstantiateCopyNullSourceThrows", "handle must be not null");
+    run_throwing_func("ScriptBuiltins::ReflectionInstantiateCopyWrongRuntimeTypeThrows", "incompatible runtime type");
 }
 
 TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
