@@ -1057,6 +1057,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     mat44 identity {1.0f};
+    // The model matrix here is the identity, so the clip matrix is the frame projection itself.
+    // Combining once keeps the per-vertex sweep below to a single matrix-vector product each.
+    mat44 frame_clip_matrix = _frameProj * identity;
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
     bool has_projected_point = false;
     float32_t min_x {};
@@ -1069,7 +1072,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     auto project_sprite_length = [&](float32_t world_length) -> optional<float32_t> {
         vec3 projected_origin {};
         vec3 projected_offset {};
-        if (!ProjectPoint(vec3 {}, identity, _frameProj, viewport, projected_origin) || !ProjectPoint(vec3 {world_length, 0.0f, 0.0f}, identity, _frameProj, viewport, projected_offset)) {
+        if (!ProjectPointClip(vec3 {}, frame_clip_matrix, viewport, projected_origin) || !ProjectPointClip(vec3 {world_length, 0.0f, 0.0f}, frame_clip_matrix, viewport, projected_offset)) {
             return std::nullopt;
         }
         if (!std::isfinite(projected_origin.x) || !std::isfinite(projected_offset.x)) {
@@ -1082,11 +1085,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Merge a projected world point into the frame envelope, grown by a padding in sprite pixels. The padding carries a
     // particle's camera-facing billboard radius, which is a screen-space disc around the particle position rather than
     // another world point; mesh geometry passes zero.
+    vec3 last_projected_point {};
     auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
         vec3 projected_pos {};
-        if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
+        if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
             return false;
         }
+
+        last_projected_point = projected_pos;
 
         float32_t sprite_x = projected_pos.x / frame_scale;
         float32_t sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
@@ -1108,10 +1114,15 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return true;
     };
 
+    // Holds the facing-0 projection of the world point itself, captured before the shadow projection
+    // below overwrites last_projected_point, so the all-facings sweep can reuse it.
+    vec3 world_point_projection {};
     auto include_world_point = [&](vec3 world_pos) -> bool {
         if (!include_projected_point(world_pos, 0.0f)) {
             return false;
         }
+
+        world_point_projection = last_projected_point;
 
         if (include_shadow) {
             vec3 shadow_pos = world_pos;
@@ -1159,14 +1170,15 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_min_y {};
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
-    auto include_mesh_all_facings = [&](vec3 world_pos, float32_t padding) {
-        vec3 projected_0 {};
+    // Takes the facing-0 projection from the caller: include_world_point has already projected this
+    // exact point through the same clip matrix, and recomputing it here doubled up one of the three
+    // per-vertex projections in the hot sweep.
+    auto include_mesh_all_facings = [&](vec3 world_pos, vec3 projected_0, float32_t padding) {
         vec3 projected_90 {};
         vec3 projected_180 {};
 
-        if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_0) || //
-            !ProjectPoint(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, identity, _frameProj, viewport, projected_90) || //
-            !ProjectPoint(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, identity, _frameProj, viewport, projected_180)) {
+        if (!ProjectPointClip(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_90) || //
+            !ProjectPointClip(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_180)) {
             return;
         }
         if (!std::isfinite(projected_0.x) || !std::isfinite(projected_0.y) || !std::isfinite(projected_90.x) || !std::isfinite(projected_90.y) || !std::isfinite(projected_180.x) || !std::isfinite(projected_180.y)) {
@@ -1251,7 +1263,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                     return std::nullopt;
                 }
 
-                include_mesh_all_facings(vec3 {transformed_pos}, 0.0f);
+                include_mesh_all_facings(vec3 {transformed_pos}, world_point_projection, 0.0f);
             }
         }
     }
@@ -1335,7 +1347,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 // Keep the emitting effect (e.g. furnace smoke) inside the frame at every facing, not just the
                 // current one, so a turn does not clip it - same all-facings envelope the mesh geometry uses. Only
                 // the particle position is swept; the quad faces the camera at every facing.
-                include_mesh_all_facings(corner, *billboard_padding);
+                include_mesh_all_facings(corner, last_projected_point, *billboard_padding);
             }
 
             has_geometry = true;
@@ -1829,6 +1841,41 @@ void ModelInstance::GenerateCombinedMeshes()
 
         combined_mesh->SpriteBoundsValid = true;
         vector<bool> included_vertices(vertices.size());
+        // Second dedup pass, by skinned identity rather than by index. Meshes split vertices at UV and
+        // normal seams, so the same position appears under several indices; those skin to the same
+        // world point and project identically, so sweeping them all is pure duplicate work. The key
+        // includes the blend data because two vertices sharing a position but not their bone weights
+        // move apart once posed and must both be kept.
+        struct SpriteVertexKey
+        {
+            vec3 Position {};
+            float32_t BlendIndices[MODEL_BONES_PER_VERTEX] {};
+            float32_t BlendWeights[MODEL_BONES_PER_VERTEX] {};
+        };
+        auto key_hash = [](const SpriteVertexKey& key) noexcept -> size_t {
+            size_t hash = std::hash<float32_t> {}(key.Position.x) ^ (std::hash<float32_t> {}(key.Position.y) << 1) ^ (std::hash<float32_t> {}(key.Position.z) << 2);
+
+            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                hash ^= std::hash<float32_t> {}(key.BlendIndices[influence]) << (influence + 3);
+                hash ^= std::hash<float32_t> {}(key.BlendWeights[influence]) << (influence + 7);
+            }
+
+            return hash;
+        };
+        auto key_equal = [](const SpriteVertexKey& first, const SpriteVertexKey& second) noexcept -> bool {
+            if (first.Position != second.Position) {
+                return false;
+            }
+
+            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                if (first.BlendIndices[influence] != second.BlendIndices[influence] || first.BlendWeights[influence] != second.BlendWeights[influence]) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+        std::unordered_set<SpriteVertexKey, decltype(key_hash), decltype(key_equal)> unique_sprite_vertices(16, key_hash, key_equal);
 
         for (vindex_t vertex_index : indices) {
             if (numeric_cast<size_t>(vertex_index) >= vertices.size()) {
@@ -1844,8 +1891,19 @@ void ModelInstance::GenerateCombinedMeshes()
             }
 
             if (!included_vertices[vertex_index]) {
-                combined_mesh->SpriteVertices.emplace_back(vertex_index);
                 included_vertices[vertex_index] = true;
+
+                SpriteVertexKey key;
+                key.Position = vertex.Position;
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    key.BlendIndices[influence] = vertex.BlendIndices[influence];
+                    key.BlendWeights[influence] = vertex.BlendWeights[influence];
+                }
+
+                if (unique_sprite_vertices.insert(key).second) {
+                    combined_mesh->SpriteVertices.emplace_back(vertex_index);
+                }
             }
 
             float32_t total_weight = 0.0f;
@@ -2629,7 +2687,18 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+    return ProjectPointClip(obj_pos, proj_matrix * model_matrix, viewport, out_pos);
+}
+
+// Projects with an already-combined clip matrix. Callers that project many points through the same
+// pair - the sprite-frame bounds sweep runs three projections per mesh vertex - would otherwise redo
+// the 4x4 matrix product per point, which dominates that loop. Combining once is exact, so results are
+// identical to the two-matrix overload.
+auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    glm::vec<4, float32_t, glm::defaultp> clip_pos = clip_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
 
     if (clip_pos.w == 0.0f) {
         return false;
