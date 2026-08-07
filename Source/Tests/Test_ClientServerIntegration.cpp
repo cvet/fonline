@@ -504,6 +504,19 @@ namespace ClientServerIntegrationClient
         // than in the polled inspection so the map does not grow one per poll
         CurMap.CreateLocalItem("UnitTestSharedItem".hstr(), mpos(start.x + 2, start.y));
 
+        // Each entity kind has its own client-writable property, and each one takes its own arm of the
+        // send-value handler on the client and of the property handler on the server
+        CurPlayer.UnitTestPlayerMark = 31;
+
+        Item[] ownItems = chosen.GetItems();
+
+        if (!ownItems.isEmpty()) {
+            ownItems[0].UnitTestItemMark = 41;
+        }
+
+        // The minimap builds its own hex walk, which nothing else in the suite reaches
+        Game.DrawMiniMap(1, 0, 0, 64, 64);
+
         return 0;
     }
 
