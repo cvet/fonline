@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="generated-content-pipeline-title generated-content-pipeline-description">
+  <title id="generated-content-pipeline-title">Generated content dependency order</title>
+  <desc id="generated-content-pipeline-description">Authoritative inputs flow through configure, code generation, compilation, baking, validation, and documentation delivery.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#42534a"/>
+    </marker>
+    <style>
+      text { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #17211c; }
+      .diagram-title { font-size: 28px; font-weight: 700; }
+      .diagram-subtitle { font-size: 15px; fill: #4c5b53; }
+      .band-title { font-size: 16px; font-weight: 700; }
+      .node-title { font-size: 16px; font-weight: 700; }
+      .node-line { font-size: 13px; fill: #35433b; }
+      .source-note { font-size: 12px; fill: #58675f; }
+      .edge { fill: none; stroke: #42534a; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1120" height="650" rx="6" fill="#f8faf8" stroke="#c9d2cc"/>
+  <text class="diagram-title" x="560" y="47" text-anchor="middle">Generated content dependency order</text>
+  <text class="diagram-subtitle" x="560" y="76" text-anchor="middle">Authoritative inputs flow through configure, code generation, compilation, baking, validation, and documentation delivery.</text>
+  <rect x="24" y="112" width="250" height="464" rx="6" fill="#fff1cf" fill-opacity="0.38" stroke="#8a5a00" stroke-opacity="0.58"/>
+  <text class="band-title" x="149" y="146" text-anchor="middle">1. Authoritative inputs</text>
+  <rect x="298" y="112" width="250" height="464" rx="6" fill="#e7f0fa" fill-opacity="0.38" stroke="#2d5e91" stroke-opacity="0.58"/>
+  <text class="band-title" x="423" y="146" text-anchor="middle">2. Generate and build</text>
+  <rect x="572" y="112" width="250" height="464" rx="6" fill="#fbe6e2" fill-opacity="0.38" stroke="#a33a2b" stroke-opacity="0.58"/>
+  <text class="band-title" x="697" y="146" text-anchor="middle">3. Prove behavior</text>
+  <rect x="846" y="112" width="250" height="464" rx="6" fill="#e4f3f2" fill-opacity="0.38" stroke="#287274" stroke-opacity="0.58"/>
+  <text class="band-title" x="971" y="146" text-anchor="middle">4. Deliver contracts</text>
+  <path class="edge" d="M 250 230 C 274.48 230, 297.52 230, 322 230"/>
+  <path class="edge" d="M 250 376 C 250 326.36, 322 279.64, 322 230"/>
+  <path class="edge" d="M 423 280 C 423 304, 423 302, 423 326"/>
+  <path class="edge" d="M 524 376 C 524 326.36, 596 279.64, 596 230"/>
+  <path class="edge" d="M 697 280 C 697 304, 697 302, 697 326"/>
+  <path class="edge" d="M 798 376 C 798 326.36, 870 279.64, 870 230"/>
+  <path class="edge" d="M 971 280 C 971 304, 971 302, 971 326"/>
+  <rect x="48" y="180" width="202" height="100" rx="6" fill="#dff3e9" stroke="#176b55" stroke-width="2"/>
+  <text class="node-title" x="149" y="211" text-anchor="middle">Engine inputs</text>
+  <text class="node-line" x="149" y="237" text-anchor="middle">source, interface models</text>
+  <text class="node-line" x="149" y="257" text-anchor="middle">generators and tests</text>
+  <rect x="48" y="326" width="202" height="100" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="149" y="357" text-anchor="middle">Game inputs</text>
+  <text class="node-line" x="149" y="383" text-anchor="middle">.fomain, scripts, content</text>
+  <text class="node-line" x="149" y="403" text-anchor="middle">assets and extensions</text>
+  <rect x="322" y="180" width="202" height="100" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="423" y="211" text-anchor="middle">Configure and codegen</text>
+  <text class="node-line" x="423" y="237" text-anchor="middle">CMake project graph</text>
+  <text class="node-line" x="423" y="257" text-anchor="middle">generated native API</text>
+  <rect x="322" y="326" width="202" height="100" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="423" y="357" text-anchor="middle">Compile and bake</text>
+  <text class="node-line" x="423" y="383" text-anchor="middle">native + AngelScript</text>
+  <text class="node-line" x="423" y="403" text-anchor="middle">resources + metadata</text>
+  <rect x="596" y="180" width="202" height="100" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="697" y="211" text-anchor="middle">Focused validation</text>
+  <text class="node-line" x="697" y="237" text-anchor="middle">unit, parser, gameplay</text>
+  <text class="node-line" x="697" y="257" text-anchor="middle">platform smoke routes</text>
+  <rect x="596" y="326" width="202" height="100" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="697" y="357" text-anchor="middle">Contract review</text>
+  <text class="node-line" x="697" y="383" text-anchor="middle">generated model diff</text>
+  <text class="node-line" x="697" y="403" text-anchor="middle">migration dispositions</text>
+  <rect x="870" y="180" width="202" height="100" rx="6" fill="#e4f3f2" stroke="#287274" stroke-width="2"/>
+  <text class="node-title" x="971" y="211" text-anchor="middle">Documentation</text>
+  <text class="node-line" x="971" y="237" text-anchor="middle">reference, diagrams</text>
+  <text class="node-line" x="971" y="257" text-anchor="middle">routes and search</text>
+  <rect x="870" y="326" width="202" height="100" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="971" y="357" text-anchor="middle">Reviewed delivery</text>
+  <text class="node-line" x="971" y="383" text-anchor="middle">site + AI artifacts</text>
+  <text class="node-line" x="971" y="403" text-anchor="middle">clean reproducible diff</text>
+  <text class="source-note" x="560" y="622" text-anchor="middle">Source-backed diagram: 6 checked paths; full provenance in Docs/generated/diagrams.json</text>
+</svg>

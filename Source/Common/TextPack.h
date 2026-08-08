@@ -41,13 +41,22 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
+// Hashed name that identifies a text-pack collection.
 ///@ ExportValueType Layout = hstring-Name
+///@ ValueFieldDoc TextPackName Name // Hashed text-pack collection name.
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Hashed name that identifies a language in localized text resources.
 ///@ ExportValueType Layout = hstring-Name
+///@ ValueFieldDoc LanguageName Name // Hashed language identifier used to select localized text resources.
 using LanguageName = strong_type<hstring, struct LanguageName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Text lookup key composed of a collection name and up to three hashed key components.
 ///@ ExportValueType Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
+///@ ValueFieldDoc TextPackKey Collection // Text-pack collection in which the key is resolved.
+///@ ValueFieldDoc TextPackKey Key1 // Primary hashed lookup-key component.
+///@ ValueFieldDoc TextPackKey Key2 // Optional second hashed lookup-key component.
+///@ ValueFieldDoc TextPackKey Key3 // Optional third hashed lookup-key component.
 struct TextPackKey
 {
     constexpr TextPackKey() noexcept = default;

@@ -1,0 +1,721 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_video.py",
+  "source_manifest": "BuildTools/VideoInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed contract for FOnline Ogg/Theora video delivery, decoding, fullscreen playback, script-owned playback, rendering, and validation boundaries.",
+  "scope": {
+    "surface": "video",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The current CPU-decoded Ogg/Theora path is revision-pinned while focused native fixtures, production cinematic evidence, and a versioned compatibility policy are missing.",
+    "included": [
+      "OGV raw-copy delivery and exact-path resource loading",
+      "Ogg packetization and Theora header/frame decoding",
+      "CPU YCbCr-to-RGBA conversion and texture upload",
+      "fullscreen playback, queues, input interruption, and separate music pairing",
+      "script-created rectangular VideoPlayback instances",
+      "current diagnostics, limitations, and embedding-project validation"
+    ],
+    "excluded": [
+      "project cinematic catalogs, story triggers, subtitle systems, localization, skip policy, and save-state consequences",
+      "container audio decoding, voice tracks, audio mixing, and synchronization beyond a separately started music resource",
+      "hardware/platform media decoders, streaming from disk or network, adaptive bitrate, and DRM",
+      "MP4, WebM, AVI, MPEG, animated images, and non-Theora Ogg video",
+      "mastering, accessibility, licensing, attribution, and source provenance"
+    ]
+  },
+  "sources": {
+    "video_clip": "Source/Client/VideoClip.cpp",
+    "video_clip_header": "Source/Client/VideoClip.h",
+    "client": "Source/Client/Client.cpp",
+    "client_header": "Source/Client/Client.h",
+    "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "sprite_manager": "Source/Client/SpriteManager.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
+    "third_party": "BuildTools/cmake/stages/ThirdParty.cmake",
+    "native_test_directory": "Source/Tests"
+  },
+  "outputs": {
+    "resource_extension": "ogv",
+    "container": "Ogg",
+    "codec": "Theora",
+    "read_chunk_bytes": 1024,
+    "max_logical_streams": 10,
+    "pixel_formats": [
+      "TH_PF_420",
+      "TH_PF_422",
+      "TH_PF_444"
+    ],
+    "output_channels": 4,
+    "output_alpha": 255,
+    "whole_resource_buffered": true,
+    "container_audio_decoded": false,
+    "fullscreen_path_separator": "|",
+    "fullscreen_stretches_to_target": true,
+    "script_draw_event": "RenderIface",
+    "runtime_side": "client",
+    "native_test_files": []
+  },
+  "formats": [
+    {
+      "id": "video.format.ogv",
+      "name": "Ogg video resource",
+      "extension": ".ogv",
+      "stability": "experimental",
+      "requirement": "Deliver an Ogg resource containing a Theora video stream through a client-visible RawCopy pack and pass its exact resource path to the video API.",
+      "rationale": "OGV is the stock raw-copy convention; the decoder reads Ogg pages and feeds Theora headers and packets rather than dispatching a generic media framework.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "RawCopyFileExtensions",
+            "\"ogv\""
+          ]
+        },
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "ogg_sync_pageout",
+            "th_decode_headerin",
+            "th_decode_packetin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.format.theora",
+      "name": "Theora elementary video in Ogg",
+      "stability": "experimental",
+      "requirement": "Use a decodable Theora stream with valid dimensions, frame-rate metadata, and one of the supported 4:2:0, 4:2:2, or 4:4:4 pixel formats.",
+      "rationale": "The bundled path links libtheora directly and has no alternate codec dispatch.",
+      "source": [
+        {
+          "path": "BuildTools/cmake/stages/ThirdParty.cmake",
+          "anchors": [
+            "# Theora",
+            "AddStaticThirdPartyLibrary(Theora",
+            "APPEND_TO FO_CLIENT_LIBS"
+          ]
+        },
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "#include \"theora/theoradec.h\"",
+            "TH_PF_420",
+            "TH_PF_422",
+            "TH_PF_444"
+          ]
+        }
+      ]
+    }
+  ],
+  "delivery_rules": [
+    {
+      "id": "video.delivery.raw-copy",
+      "name": "Raw-copy delivery",
+      "stability": "experimental",
+      "requirement": "Keep ogv in Baking.RawCopyFileExtensions and include RawCopy in the client-only resource pack that owns video files.",
+      "rationale": "There is no video baker; playback consumes the delivered bytes.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "RawCopyFileExtensions",
+            "\"ogv\""
+          ]
+        },
+        {
+          "path": "Source/Tools/RawCopyBaker.cpp",
+          "anchors": [
+            "RawCopyBaker",
+            "WriteData"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.delivery.exact-path",
+      "name": "Exact resource path",
+      "stability": "experimental",
+      "requirement": "Pass the complete delivered video path, including its extension; video lookup has no default suffix or normalized stem index.",
+      "rationale": "Both fullscreen and script-owned paths call Resources.ReadFile with the supplied path.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "Resources.ReadFile(names.front())"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Resources.ReadFile(videoName)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.delivery.client-only",
+      "name": "Client runtime ownership",
+      "stability": "experimental",
+      "requirement": "Deliver video to client resources and invoke playback on the client or mapper runtime.",
+      "rationale": "Decoding, texture creation, drawing, and exported methods live in the client layer.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlayVideo",
+            "Client_Game_CreateVideoPlayback",
+            "Client_Game_DrawVideoPlayback"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.delivery.memory-budget",
+      "name": "Whole-resource memory budget",
+      "stability": "experimental",
+      "requirement": "Budget compressed file bytes, one CPU RGBA frame, and one GPU texture for each active playback; the stock path is not streaming from the resource store.",
+      "rationale": "ReadFile.GetData moves the complete resource into VideoClip.RawVideoData before packet decoding.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "vector<uint8_t> RawVideoData",
+            "RawVideoData = std::move(video_data)",
+            "RenderedTextureData.resize"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "VideoClip clip {file.GetData()}",
+            "CreateTexture(clip.GetSize()"
+          ]
+        }
+      ]
+    }
+  ],
+  "decoding_rules": [
+    {
+      "id": "video.decoding.ogg-pages",
+      "name": "Ogg page and packet ingestion",
+      "stability": "experimental",
+      "requirement": "Treat the input as Ogg pages read into the sync layer in 1024-byte portions and support at most ten simultaneously discovered logical streams.",
+      "rationale": "DecodePacket owns a fixed ten-stream state table and copies bounded portions from the in-memory resource.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "static constexpr size_t COUNT = 10",
+            "read_bytes = std::min(1024, read_bytes)",
+            "ogg_sync_buffer",
+            "ogg_stream_packetout"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.headers",
+      "name": "Theora header selection",
+      "stability": "experimental",
+      "requirement": "Provide a stream whose headers are accepted by th_decode_headerin and whose setup can allocate a decoder context.",
+      "rationale": "Construction fails when packet seeking, setup data, or decoder allocation fails.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "Decode header packet failed",
+            "th_decode_headerin",
+            "Setup info is null",
+            "Theora decoder context allocation failed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.frame-clock",
+      "name": "Clock-derived frame selection",
+      "stability": "experimental",
+      "requirement": "Author valid fps numerator and denominator metadata; frame selection derives the target frame from elapsed monotonic time and decoder cost.",
+      "rationale": "RenderFrame multiplies elapsed seconds by the Theora fps ratio and decodes the positive frame difference.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "AverageRenderTime",
+            "fps_numerator",
+            "fps_denominator",
+            "next_frame_diff"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.pixel-formats",
+      "name": "Supported chroma subsampling",
+      "stability": "experimental",
+      "requirement": "Use TH_PF_420, TH_PF_422, or TH_PF_444; any other Theora pixel format stops playback.",
+      "rationale": "The CPU conversion chooses chroma divisors only for those three enum values.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "case TH_PF_420:",
+            "case TH_PF_422:",
+            "case TH_PF_444:",
+            "Wrong pixel format"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.rgba-output",
+      "name": "CPU RGBA output",
+      "stability": "experimental",
+      "requirement": "Expect each decoded frame to be converted from YCbCr to opaque RGBA on the CPU before texture upload.",
+      "rationale": "RenderFrame writes clamped RGB components and alpha 0xFF into RenderedTextureData.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "// YUV to RGB",
+            "std::clamp(cr",
+            "pixel.comp.a = 0xFF"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.error-stop",
+      "name": "Decode failure stops playback",
+      "stability": "experimental",
+      "requirement": "Treat malformed frame data, color output failure, unsupported pixel format, and end-of-stream as stop conditions and inspect client logs.",
+      "rationale": "Frame errors log and call Stop; end-of-stream also stops the clip.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "Frame does not contain encoded video data",
+            "th_decode_ycbcr_out() failed",
+            "Stop();",
+            "if (last_frame)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.decoding.no-container-audio",
+      "name": "No container-audio decode",
+      "stability": "experimental",
+      "requirement": "Do not rely on an audio stream embedded in the Ogg video; author audio as a separate client music resource when needed.",
+      "rationale": "VideoClip links Theora packet decoding only, while fullscreen pairing starts SoundManager music from the path after a vertical bar.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "th_decode_headerin",
+            "th_decode_packetin"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "split('|')",
+            "SndMngr.PlayMusic(names[1]"
+          ]
+        }
+      ]
+    }
+  ],
+  "fullscreen_rules": [
+    {
+      "id": "video.fullscreen.play-api",
+      "name": "Fullscreen playback entry point",
+      "stability": "experimental",
+      "requirement": "Use Game.PlayVideo(videoName, canInterrupt, enqueue) for the built-in fullscreen path.",
+      "rationale": "The exported client method delegates to ClientEngine.PlayVideo.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlayVideo",
+            "client->PlayVideo(videoName, canInterrupt, enqueue)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.replace",
+      "name": "Replacement clears current queue",
+      "stability": "experimental",
+      "requirement": "A non-enqueued request replaces the active clip and clears every queued request before attempting to load the new path.",
+      "rationale": "PlayVideo resets _video and clears _videoQueue before resource lookup.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "_video.reset()",
+            "_videoQueue.clear()",
+            "Resources.ReadFile(names.front())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.enqueue",
+      "name": "Queue while active",
+      "stability": "experimental",
+      "requirement": "Set enqueue only to append behind an already active fullscreen clip; with no active clip, the request starts immediately and clears any stale queue.",
+      "rationale": "The enqueue branch is conditional on _video, and ProcessVideo starts queued entries sequentially.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "if (_video && enqueue)",
+            "_videoQueue.emplace_back",
+            "if (!_video && !_videoQueue.empty())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.interrupt",
+      "name": "Input interruption",
+      "stability": "experimental",
+      "requirement": "When canInterrupt is true, key-down, mouse-down, and touch input events stop the active clip; design project skip policy around this broad input set.",
+      "rationale": "ProcessInputEvent stops the clip before normal input handling for the enumerated event classes.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "_videoCanInterrupt",
+            "KeyDownEvent",
+            "MouseDownEvent",
+            "TouchDoubleTapEvent",
+            "_video->Clip.Stop()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.music-pair",
+      "name": "Separate music pairing",
+      "stability": "experimental",
+      "requirement": "Use video-path|music-path to stop current music and start a separate one-shot music resource alongside the video; additional separators are not a playlist.",
+      "rationale": "PlayVideo splits the request, loads the first component, and uses only names[1] for SoundManager music.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "split('|')",
+            "SndMngr.StopMusic()",
+            "names[1].empty()",
+            "SndMngr.PlayMusic(names[1], timespan::zero)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.music-stop",
+      "name": "Completion stops music",
+      "stability": "experimental",
+      "requirement": "Expect fullscreen clip completion or interruption to stop the client's current music group, including music not started by the video.",
+      "rationale": "ProcessVideo unconditionally calls StopMusic when the active clip reports stopped.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "if (_video->Clip.IsStopped())",
+            "_video.reset()",
+            "SndMngr.StopMusic()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.draw-order",
+      "name": "Late fullscreen draw",
+      "stability": "experimental",
+      "requirement": "Expect the built-in frame to draw after Game.OnRenderIface and stretch over the complete current render target without alpha blending.",
+      "rationale": "MainLoop calls ProcessVideo after OnRenderIface, and DrawTexture without source/target regions fills the target.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "OnRenderIface.Fire()",
+            "ProcessVideo()",
+            "SprMngr.DrawTexture(_video->Tex, false)"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "if (!region_from && !region_to)",
+            "width_to_i",
+            "height_to_i"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.missing-file",
+      "name": "Missing fullscreen resource",
+      "stability": "experimental",
+      "requirement": "Validate fullscreen resource existence before transitions; a missing file silently leaves no active clip after current playback and queue were cleared.",
+      "rationale": "The void PlayVideo path returns when ReadFile fails and exposes no failure result.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "auto file = Resources.ReadFile(names.front())",
+            "if (!file)",
+            "return;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.fullscreen.status",
+      "name": "Playing status includes queued work",
+      "stability": "experimental",
+      "requirement": "Interpret Game.IsVideoPlaying as active-or-queued state, not proof that a frame is currently visible.",
+      "rationale": "ClientEngine reports true for an active playback or a non-empty queue.",
+      "source": [
+        {
+          "path": "Source/Client/Client.h",
+          "anchors": [
+            "IsVideoPlaying() const noexcept",
+            "!!_video || !_videoQueue.empty()"
+          ]
+        }
+      ]
+    }
+  ],
+  "embedded_rules": [
+    {
+      "id": "video.embedded.create",
+      "name": "Script-owned playback creation",
+      "stability": "experimental",
+      "requirement": "Use Game.CreateVideoPlayback(exactPath, looped) to create an independent ref-counted playback and texture.",
+      "rationale": "The exported PassOwnership method loads the resource, constructs VideoClip, creates a texture, and stores both in VideoPlayback.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "ExportMethod PassOwnership",
+            "Client_Game_CreateVideoPlayback",
+            "PlaybackResources.emplace"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.missing-file",
+      "name": "Creation failure throws",
+      "stability": "experimental",
+      "requirement": "Catch or prevent a missing script-owned video resource; creation throws Video file not found.",
+      "rationale": "Unlike fullscreen PlayVideo, CreateVideoPlayback converts a missing ReadFile result into ScriptException.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "throw ScriptException(\"Video file not found\"",
+            "videoName"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.render-event",
+      "name": "RenderIface-only drawing",
+      "stability": "experimental",
+      "requirement": "Call Game.DrawVideoPlayback only from Game.OnRenderIface handling.",
+      "rationale": "The method throws outside the client script draw scope.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_DrawVideoPlayback",
+            "CanDrawInScripts",
+            "only in RenderIface event"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.positive-size",
+      "name": "Positive target size advances",
+      "stability": "experimental",
+      "requirement": "Pass a positive width and height every frame; zero or negative size skips frame decode, texture upload, and drawing.",
+      "rationale": "RenderFrame is called only inside the positive-size branch.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "if (size.width > 0 && size.height > 0)",
+            "Clip.RenderFrame()",
+            "DrawTexture(resources->Tex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.rectangle",
+      "name": "Caller-owned rectangle and aspect",
+      "stability": "experimental",
+      "requirement": "Choose and maintain the target rectangle and aspect policy in project UI code; the Engine draws exactly the supplied position and size.",
+      "rationale": "DrawVideoPlayback constructs irect32 directly from the script arguments.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "irect32 r = {pos.x, pos.y, size.width, size.height}",
+            "DrawTexture(resources->Tex, false, nullptr, &r)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.stopped",
+      "name": "Stopped field lifecycle",
+      "stability": "experimental",
+      "requirement": "Poll VideoPlayback.Stopped only after continuing to draw the instance; the flag becomes true when DrawVideoPlayback observes that the clip stopped.",
+      "rationale": "The draw method clears resources and sets the exported field after the stop check.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "if (resources->Clip.IsStopped())",
+            "PlaybackResources.reset()",
+            "video->Stopped = true"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.h",
+          "anchors": [
+            "ExportRefType Client RefCounted Export = Stopped",
+            "bool Stopped"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.embedded.null-noop",
+      "name": "Null and completed instances are no-ops",
+      "stability": "experimental",
+      "requirement": "Passing null or an instance whose playback resources were cleared performs no draw and does not throw.",
+      "rationale": "DrawVideoPlayback returns early for both states after enforcing render scope.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "if (!video)",
+            "if (!video->PlaybackResources)",
+            "return;"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "video.validation.raw-copy",
+      "name": "Delivered-byte validation",
+      "stability": "experimental",
+      "requirement": "Bake and inspect the exact client resource path and bytes before runtime playback.",
+      "rationale": "RawCopy is the only delivery transform and runtime paths are exact.",
+      "source": [
+        {
+          "path": "Source/Tools/RawCopyBaker.cpp",
+          "anchors": [
+            "RawCopyBaker",
+            "WriteData"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.validation.visible-client",
+      "name": "Visible-client requirement",
+      "stability": "experimental",
+      "requirement": "Validate first frame, motion, end, skip, queue, resize, and texture cleanup in a visible client on every claimed platform.",
+      "rationale": "No headless or source-only check proves texture upload and presentation.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "UpdateTextureRegion",
+            "DrawTexture",
+            "ProcessInputEvent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.validation.no-native-fixture",
+      "name": "Missing native video fixture",
+      "stability": "experimental",
+      "requirement": "Treat the lack of Test_*Video* or Test_*Theora* as a coverage gap and keep visible regression evidence mandatory.",
+      "rationale": "The current native test inventory contains no focused video decoder/playback source.",
+      "source": [
+        {
+          "path": "Source/Tests/README.md",
+          "anchors": [
+            "Catch2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.validation.loop-risk",
+      "name": "Looping requires explicit proof",
+      "stability": "experimental",
+      "requirement": "Do not promise looping cinematics until a multi-cycle visible regression proves decoder rewind and frame continuity for the exact asset.",
+      "rationale": "SetLooped is exposed through creation, but the current source has no focused loop fixture.",
+      "source": [
+        {
+          "path": "Source/Client/VideoClip.cpp",
+          "anchors": [
+            "void VideoClip::SetLooped",
+            "if (_impl->Looped)",
+            "Resume()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video.validation.project-boundary",
+      "name": "Embedding-project acceptance",
+      "stability": "experimental",
+      "requirement": "An embedding project owns cinematic triggers, recipients, skip/queue policy, subtitles, localization, aspect fit, audio strategy, save consequences, assets, provenance, budgets, and acceptance tests.",
+      "rationale": "The Engine supplies decoder and presentation primitives, not a game cinematic system.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlayVideo",
+            "Client_Game_CreateVideoPlayback",
+            "Client_Game_DrawVideoPlayback"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 34,
+    "format_count": 2,
+    "delivery_rule_count": 4,
+    "decoding_rule_count": 7,
+    "fullscreen_rule_count": 9,
+    "embedded_rule_count": 7,
+    "validation_rule_count": 5,
+    "entries_by_stability": {
+      "experimental": 34
+    }
+  },
+  "contract_digest": "d7ae03dfdb79ca2a61ab6fd9c07a5fd15f3f2c016954653d3d6bee327e360e68"
+}

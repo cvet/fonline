@@ -1,0 +1,3631 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_prototype_format.py",
+  "source_manifest": "BuildTools/PrototypeFormatInterface.json",
+  "source_parser": "Source/Tools/ProtoBaker.cpp",
+  "config_parser": "Source/Common/ConfigFile.cpp",
+  "property_parser": "Source/Common/Properties.cpp",
+  "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+  "api_model_generator": "BuildTools/docs_api.py",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed authoring contract for FOnline prototype files.",
+  "scope": {
+    "surface": "prototype-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned.",
+    "included": [
+      "prototype file discovery and side-specific bake outputs",
+      "section forms, prototype identity, inheritance, and migration",
+      "property applicability and strict text-value validation",
+      "built-in InitScript callback signature validation",
+      "built-in HasProtos entity types and their engine-owned property catalog"
+    ],
+    "excluded": [
+      "project-authored entity and FixedType declarations or properties",
+      "nested map placement sections addressed as $Name/Critter or $Name/Item",
+      "gameplay balance, content ids, directory taxonomy, and localization policy",
+      "runtime persistence records and project migration rollout policy"
+    ]
+  },
+  "sources": {
+    "source_parser": "Source/Tools/ProtoBaker.cpp",
+    "config_parser": "Source/Common/ConfigFile.cpp",
+    "property_parser": "Source/Common/Properties.cpp",
+    "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "api_model_generator": "BuildTools/docs_api.py",
+    "api_model": "Docs/generated/api.json",
+    "tests": [
+      "Source/Tests/Test_ProtoBaker.cpp",
+      "Source/Tests/Test_ConfigFile.cpp",
+      "Source/Tests/Test_Properties.cpp",
+      "Source/Tests/Test_ProtoManager.cpp",
+      "Source/Tests/Test_EntityProtos.cpp"
+    ]
+  },
+  "file_selection": {
+    "setting": "Baking.ProtoFileExtensions",
+    "setting_anchor": "FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions",
+    "output_pattern": "<pack>.fopro-bin-<side>",
+    "runtime_sides": [
+      "server",
+      "client",
+      "mapper"
+    ],
+    "nested_sections_skipped": true,
+    "description": "The engine defaults are read from Settings.inc; embedding projects may add extensions without changing the grammar. ProtoBaker consumes every top-level prototype/fixed-type section and skips nested map placements.",
+    "engine_defaults": [
+      "fopro"
+    ]
+  },
+  "section_forms": [
+    {
+      "id": "prototype-format.section.proto-entity",
+      "name": "Prototype entity section",
+      "syntax": "[Proto<Type>]",
+      "resolves_to": "Entity metadata type <Type> with HasProtos",
+      "stability": "experimental",
+      "description": "Declares a prototype for a built-in or project-authored entity type whose metadata enables prototypes.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "starts_with(\"Proto\")",
+          "HasProtos"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.section.fixed-type",
+      "name": "Fixed type section",
+      "syntax": "[<FixedType>]",
+      "resolves_to": "A metadata type declared with ///@ FixedType",
+      "stability": "experimental",
+      "description": "Declares a prototype-like fixed value defined by embedding-project metadata.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "meta->IsFixedType(section_name)"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.section.fomap-proto-map",
+      "name": "Map prototype section",
+      "syntax": "[ProtoMap]",
+      "resolves_to": "Map",
+      "stability": "experimental",
+      "description": "Each top-level ProtoMap anchor declares a Map prototype. Nested $Name/Item and $Name/Critter placement sections are skipped by ProtoBaker and consumed by MapBaker.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "ConfigFileOption::SkipNestedSections",
+          "strvex(section_name).starts_with(\"Proto\")"
+        ]
+      }
+    }
+  ],
+  "directives": [
+    {
+      "id": "prototype-format.directive.name",
+      "name": "$Name",
+      "syntax": "$Name = <PrototypeId>",
+      "default": "source file name without its extension",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Sets the prototype identity within its resolved type. The identity is migration-resolved before duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "section_kv.count(\"$Name\")",
+          "file.GetNameNoExt()"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.directive.parent",
+      "name": "$Parent",
+      "syntax": "$Parent = <ParentId> [<ParentId> ...]",
+      "default": "no parents",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Lists same-type parent prototypes separated by spaces. Parents are merged left to right and the child is applied last.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "cur_kv.count(\"$Parent\")",
+          "split(' ')",
+          "fill_parent_recursive"
+        ]
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "prototype-format.rule.config-syntax",
+      "name": "Configuration syntax",
+      "requirement": "Use repeated INI-like sections, key = value assignments, # comments, whitespace-prefixed trailing backslash continuation, and key += value append where appropriate.",
+      "stability": "experimental",
+      "description": "Prototype files use the shared ConfigFile parser; quoted or escaped comment characters remain part of the value.",
+      "source": {
+        "path": "Source/Common/ConfigFile.cpp",
+        "anchors": [
+          "ConfigFile::ParseConfigKeyValueLine",
+          "append_value",
+          "inside_double_quotes",
+          "accum_line.append(\" \")"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.file-filter",
+      "name": "Extension filter",
+      "requirement": "Only files whose extension occurs in Baking.ProtoFileExtensions enter ProtoBaker.",
+      "stability": "experimental",
+      "description": "Directories and conventional extension names do not select a prototype type; the section does.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "Settings->ProtoFileExtensions",
+          "filtered_files.emplace_back"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identity-per-type",
+      "name": "Identity and duplicates",
+      "requirement": "A migration-resolved prototype id must be unique within its resolved type across the complete pack input.",
+      "stability": "experimental",
+      "description": "The same text id may exist in different prototype types; duplicate ids in one type fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "Proto already loaded",
+          "all_file_protos[type_name]"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identifier-characters",
+      "name": "Reserved identifier characters",
+      "requirement": "Prototype ids must not contain / or $ because both characters are reserved for nested section addressing.",
+      "stability": "experimental",
+      "description": "The baker rejects either character after applying the file-basename fallback and before hashing or duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "name.find('/') != string::npos",
+          "name.find('$') != string::npos",
+          "Proto name must not contain a slash or dollar sign"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-scope",
+      "name": "Inheritance scope",
+      "requirement": "Every parent must resolve inside the same prototype type and current pack input.",
+      "stability": "experimental",
+      "description": "Parents may be declared in another file, but cross-type and missing parents fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "file_proto_pids.find(parent_pid)",
+          "Proto fail to load parent"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-precedence",
+      "name": "Inheritance precedence",
+      "requirement": "Merge ancestors depth first, then parents from left to right, then the child; later property values replace earlier values.",
+      "stability": "experimental",
+      "description": "$-prefixed control directives are not copied into the merged property map.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "fill_parent_recursive(parent_name",
+          "insert_map_values(it_parent->second",
+          "insert_map_values(file_kv"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.acyclic-inheritance",
+      "name": "Acyclic inheritance",
+      "requirement": "Prototype parent graphs must be acyclic.",
+      "stability": "experimental",
+      "description": "The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "function<void(string_view",
+          "fill_parent_recursive(parent_name"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.property-resolution",
+      "name": "Property resolution",
+      "requirement": "Every non-control key must resolve to a property available for the current bake side.",
+      "stability": "experimental",
+      "description": "Unknown, disabled-for-this-side, virtual, and temporary properties are rejected; opposite-side-only properties are skipped for that side.",
+      "source": {
+        "path": "Source/Common/Properties.cpp",
+        "anchors": [
+          "Failed to load unknown property",
+          "Failed to load virtual property",
+          "Failed to load temporary property"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.strict-values",
+      "name": "Strict text values",
+      "requirement": "Property values must parse according to the metadata type without overflow, unknown enum/prototype references, non-finite numbers, or malformed collection structure.",
+      "stability": "experimental",
+      "description": "The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializator.cpp",
+        "anchors": [
+          "ParseStrictIntText",
+          "ParseStrictFloatText",
+          "LoadPropertyFromText"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.init-script-signature",
+      "name": "InitScript callback signatures",
+      "requirement": "A non-empty built-in Item, Critter, Map, or Location InitScript property must resolve to a global void callback receiving that entity type and bool firstTime.",
+      "stability": "experimental",
+      "description": "Server baking validates ScriptFuncType metadata for every authored callback property and rejects missing functions or mismatched signatures before runtime.",
+      "source": {
+        "path": "Source/Tools/Baker.cpp",
+        "anchors": [
+          "\"ItemInit\"",
+          "\"CritterInit\"",
+          "\"MapInit\"",
+          "\"LocationInit\"",
+          "Script function signature does not match property binding"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-reference",
+      "name": "Prototype references",
+      "requirement": "FixedType and Proto entity property references must resolve after migration unless the property is nullable and the authored value is empty.",
+      "stability": "experimental",
+      "description": "A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializator.cpp",
+        "anchors": [
+          "Proto reference does not exist",
+          "Proto MigrationRule"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-migration",
+      "name": "Prototype migration",
+      "requirement": "Proto migration rules are applied to declared ids, parent ids, lookups, and persisted references before final resolution.",
+      "stability": "experimental",
+      "description": "Author migrations in native/project metadata with ///@ MigrationRule Proto <Type> <Old> <NewOrRemove>.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          "CheckMigrationRule(proto_rule_name, type_name, pid)",
+          "CheckMigrationRule(proto_rule_name, type_name, parent_pid)"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.side-specific-output",
+      "name": "Side-specific output",
+      "requirement": "The same source set is parsed and serialized separately for server, client, and mapper metadata.",
+      "stability": "experimental",
+      "description": "A source property can be meaningful on one side and skipped on another; server output also validates script callback properties.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [
+          ".fopro-bin-server",
+          ".fopro-bin-client",
+          ".fopro-bin-mapper",
+          "ValidateProperties"
+        ]
+      }
+    }
+  ],
+  "entity_types": [
+    {
+      "id": "prototype-format.entity.Critter",
+      "name": "Critter",
+      "section": "[ProtoCritter]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 48
+      }
+    },
+    {
+      "id": "prototype-format.entity.Item",
+      "name": "Item",
+      "section": "[ProtoItem]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": true,
+        "abstract": true,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 49
+      }
+    },
+    {
+      "id": "prototype-format.entity.Location",
+      "name": "Location",
+      "section": "[ProtoLocation]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 46
+      }
+    },
+    {
+      "id": "prototype-format.entity.Map",
+      "name": "Map",
+      "section": "[ProtoMap]",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "capabilities": {
+        "global": false,
+        "prototypes": true,
+        "statics": false,
+        "abstract": false,
+        "time_events": true
+      },
+      "stability": "internal",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 47
+      }
+    }
+  ],
+  "properties": [
+    {
+      "id": "prototype-format.property.Critter.AttachMaster",
+      "entity": "Critter",
+      "name": "AttachMaster",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the attachment master; zero when the critter is not attached.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 369
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Condition",
+      "entity": "Critter",
+      "name": "Condition",
+      "type": "CritterCondition",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current life-state condition used by animation, filtering, and gameplay queries.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 383
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ControlledByPlayer",
+      "entity": "Critter",
+      "name": "ControlledByPlayer",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Classifies the critter as player-controllable independently of its current online state.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 357
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.CustomHolderEntry",
+      "entity": "Critter",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, names the holder entry through which it is attached.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.CustomHolderId",
+      "entity": "Critter",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 86
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.DeadDrawNoFlatten",
+      "entity": "Critter",
+      "name": "DeadDrawNoFlatten",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 394
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Dir",
+      "entity": "Critter",
+      "name": "Dir",
+      "type": "mdir",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current facing direction on the map grid.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 328
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Elevation",
+      "entity": "Critter",
+      "name": "Elevation",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Vertical rendering elevation of the critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 325
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ExplicitlyPersistent",
+      "entity": "Critter",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 92
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.GlobalMapTripId",
+      "entity": "Critter",
+      "name": "GlobalMapTripId",
+      "type": "uint32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server-assigned identifier shared by members of the same current global-map trip.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 316
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Hex",
+      "entity": "Critter",
+      "name": "Hex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Origin hex currently occupied by the critter on its map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 319
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.HexOffset",
+      "entity": "Critter",
+      "name": "HexOffset",
+      "type": "ipos16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Sub-hex map-space offset used by movement interpolation and rendering.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 322
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.HideSprite",
+      "entity": "Critter",
+      "name": "HideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Hides the current client map sprite without removing the critter's map presence.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 372
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.InitScript",
+      "entity": "Critter",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "CritterInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server initialization function called after the critter-init event for a newly created or restored critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 310
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsAttached",
+      "entity": "Critter",
+      "name": "IsAttached",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Reports that this critter currently follows another critter as an attachment.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 366
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsChosen",
+      "entity": "Critter",
+      "name": "IsChosen",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Reports that this critter is the locally chosen critter on the current client.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 360
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.IsPlayerOffline",
+      "entity": "Critter",
+      "name": "IsPlayerOffline",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Client-side connection state reported for a player-controlled critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 363
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ItemIds",
+      "entity": "Critter",
+      "name": "ItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Persistent identifiers of the items directly held in the critter's inventory.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 331
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightColor",
+      "entity": "Critter",
+      "name": "LightColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "RGBA color emitted by the critter's client-side light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 409
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightDistance",
+      "entity": "Critter",
+      "name": "LightDistance",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Radius in hexes reached by the critter's client-side light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 403
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightFlags",
+      "entity": "Critter",
+      "name": "LightFlags",
+      "type": "uint16",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 406
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightIntensity",
+      "entity": "Critter",
+      "name": "LightIntensity",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Signed percentage intensity of the critter's client-side light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 400
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LightSource",
+      "entity": "Critter",
+      "name": "LightSource",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Enables a client-side map light source centered on this critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 397
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.LookDistance",
+      "entity": "Critter",
+      "name": "LookDistance",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "OwnerSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Maximum map-view distance in hexes used by server visibility processing.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 389
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.MapId",
+      "entity": "Critter",
+      "name": "MapId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the map currently containing the critter; zero while it is on the global map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 313
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ModelLayers",
+      "entity": "Critter",
+      "name": "ModelLayers",
+      "type": "int32[]",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "mutable",
+      "persistent": false,
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Fixed-size client values passed to the 3D model layer and animation resolver.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 352
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ModelName",
+      "entity": "Critter",
+      "name": "ModelName",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Sprite or 3D model resource used to present the critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 334
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.MovingSpeed",
+      "entity": "Critter",
+      "name": "MovingSpeed",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current server movement speed published for active movement.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 375
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.Multihex",
+      "entity": "Critter",
+      "name": "Multihex",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Radius in hexes occupied by the critter in movement, pathfinding, and distance checks.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 337
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.NameOffset",
+      "entity": "Critter",
+      "name": "NameOffset",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Vertical pixel adjustment applied to the critter name label.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 386
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ScaleFactor",
+      "entity": "Critter",
+      "name": "ScaleFactor",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "3D model scale in thousandths; zero selects the default scale of 1000.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 340
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist1",
+      "entity": "Critter",
+      "name": "ShowCritterDist1",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Optional first visibility-event distance in hexes; zero disables this distance group.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 343
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist2",
+      "entity": "Critter",
+      "name": "ShowCritterDist2",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Optional second visibility-event distance in hexes; zero disables this distance group.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 346
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.ShowCritterDist3",
+      "entity": "Critter",
+      "name": "ShowCritterDist3",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Optional third visibility-event distance in hexes; zero disables this distance group.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 349
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.VisibilityMode",
+      "entity": "Critter",
+      "name": "VisibilityMode",
+      "type": "CritterVisibilityMode",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Visibility detail mode assigned to this critter from the current client's viewpoint.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 378
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.AlwaysHideSprite",
+      "entity": "Item",
+      "name": "AlwaysHideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Prevents the item sprite from being drawn at runtime and hides it by default in Mapper.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 203
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Colorize",
+      "entity": "Item",
+      "name": "Colorize",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Enables ColorizeColor tinting for the item's map sprite.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 293
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ColorizeColor",
+      "entity": "Item",
+      "name": "ColorizeColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "RGBA tint applied when Colorize is enabled; alpha also supplies the default sprite opacity.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 238
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ContainerId",
+      "entity": "Item",
+      "name": "ContainerId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the parent item while Ownership is ItemContainer; zero otherwise.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 147
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ContainerStack",
+      "entity": "Item",
+      "name": "ContainerStack",
+      "type": "any",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Project-defined grouping key used to select and merge items inside a container.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 150
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Corner",
+      "entity": "Item",
+      "name": "Corner",
+      "type": "CornerType",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Wall-corner orientation used by map lighting and transparent-foreground behavior.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 170
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Count",
+      "entity": "Item",
+      "name": "Count",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Positive quantity represented by this item; non-stackable items must have a value of one.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 161
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CritterId",
+      "entity": "Item",
+      "name": "CritterId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the owning critter while Ownership is CritterInventory; zero otherwise.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 137
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CritterSlot",
+      "entity": "Item",
+      "name": "CritterSlot",
+      "type": "CritterItemSlot",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Inventory or equipment slot occupied while the item belongs to a critter.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 144
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CustomHolderEntry",
+      "entity": "Item",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, names the holder entry through which it is attached.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.CustomHolderId",
+      "entity": "Item",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 86
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DisableEgg",
+      "entity": "Item",
+      "name": "DisableEgg",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Disables transparent-foreground egg processing for the item's map sprite.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 173
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawFlatten",
+      "entity": "Item",
+      "name": "DrawFlatten",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Renders the item in a flat map pass instead of the normal depth-sorted item pass.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 272
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawMultihexLines",
+      "entity": "Item",
+      "name": "DrawMultihexLines",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Draws repeated item sprites on footprint hexes generated by MultihexLines.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 187
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawMultihexMesh",
+      "entity": "Item",
+      "name": "DrawMultihexMesh",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Draws repeated item sprites on the explicit MultihexMesh hexes.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 190
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.DrawOrderOffsetHexY",
+      "entity": "Item",
+      "name": "DrawOrderOffsetHexY",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Signed Y-hex offset used only when calculating the item's sprite draw order.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 275
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Elevation",
+      "entity": "Item",
+      "name": "Elevation",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Vertical rendering elevation of the map item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 132
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ExplicitlyPersistent",
+      "entity": "Item",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 92
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Hex",
+      "entity": "Item",
+      "name": "Hex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Origin map hex used while the item is placed on a map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 129
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Hidden",
+      "entity": "Item",
+      "name": "Hidden",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server visibility flag that suppresses a dynamic item from client views while set.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 195
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.HideSprite",
+      "entity": "Item",
+      "name": "HideSprite",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Hides the current client map sprite without removing the item's map presence.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 198
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.InitScript",
+      "entity": "Item",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server initialization function called after the item-init event for a newly created or restored item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 113
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.InnerItemIds",
+      "entity": "Item",
+      "name": "InnerItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Persistent identifiers of the items directly contained by this item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 155
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsGag",
+      "entity": "Item",
+      "name": "IsGag",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks a blocking item as conditionally passable through the map gag callback.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 288
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsRoofTile",
+      "entity": "Item",
+      "name": "IsRoofTile",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Selects roof rendering instead of ground-tile rendering when IsTile is enabled.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 264
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsScenery",
+      "entity": "Item",
+      "name": "IsScenery",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Classifies the item as scenery for Mapper filtering and flat-render lighting rules.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 255
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsTile",
+      "entity": "Item",
+      "name": "IsTile",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Classifies the item as a ground or roof tile rendered in a tile layer.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 261
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsTrigger",
+      "entity": "Item",
+      "name": "IsTrigger",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Includes the item in map trigger lookup and movement-trigger processing.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 249
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.IsWall",
+      "entity": "Item",
+      "name": "IsWall",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Classifies the item as a wall for Mapper filtering and map presentation.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 258
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightColor",
+      "entity": "Item",
+      "name": "LightColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "RGBA color emitted by the item's light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 235
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightDistance",
+      "entity": "Item",
+      "name": "LightDistance",
+      "type": "int16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Radius in hexes reached by the item's light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 229
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightFlags",
+      "entity": "Item",
+      "name": "LightFlags",
+      "type": "uint16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 232
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightIntensity",
+      "entity": "Item",
+      "name": "LightIntensity",
+      "type": "int8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Signed percentage intensity of the item's light source.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 226
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightSource",
+      "entity": "Item",
+      "name": "LightSource",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Enables a map light source centered on this item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 223
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.LightThru",
+      "entity": "Item",
+      "name": "LightThru",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Allows map light propagation through every hex occupied by the item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 218
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MapId",
+      "entity": "Item",
+      "name": "MapId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the owning map while Ownership is MapHex; zero otherwise.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 126
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexGeneration",
+      "entity": "Item",
+      "name": "MultihexGeneration",
+      "type": "MultihexGenerationType",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Mapper coalescing strategy used to build MultihexMesh from compatible item placements.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 184
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexLines",
+      "entity": "Item",
+      "name": "MultihexLines",
+      "type": "uint8[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Direction and step-count pairs that trace additional footprint hexes from each mesh origin.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 178
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.MultihexMesh",
+      "entity": "Item",
+      "name": "MultihexMesh",
+      "type": "mpos[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Explicit map hexes that share this item's footprint and optional repeated sprite.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 181
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoBlock",
+      "entity": "Item",
+      "name": "NoBlock",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Allows movement through every hex occupied by the item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 208
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoHighlight",
+      "entity": "Item",
+      "name": "NoHighlight",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Prevents the client from applying normal item highlight presentation.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 280
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.NoLightInfluence",
+      "entity": "Item",
+      "name": "NoLightInfluence",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Prevents ambient map lighting from tinting the item's sprite.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 285
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Offset",
+      "entity": "Item",
+      "name": "Offset",
+      "type": "ipos16",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Pixel offset applied to the item's map sprite from its origin hex.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 167
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Ownership",
+      "entity": "Item",
+      "name": "Ownership",
+      "type": "ItemOwnership",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current placement category: map hex, critter inventory, item container, or nowhere.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 123
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.PicInv",
+      "entity": "Item",
+      "name": "PicInv",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Sprite resource used to present the item in inventory interfaces.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 252
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.PicMap",
+      "entity": "Item",
+      "name": "PicMap",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "Resource",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Sprite resource used to render the item on a map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 164
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.ShootThru",
+      "entity": "Item",
+      "name": "ShootThru",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Allows projectile traces through every hex occupied by the item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 213
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Stackable",
+      "entity": "Item",
+      "name": "Stackable",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Allows equal items to merge into one entity whose Count is greater than one.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 158
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.Static",
+      "entity": "Item",
+      "name": "Static",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks map-authored item data as static scenery rather than a dynamic item entity.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 118
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.StaticScript",
+      "entity": "Item",
+      "name": "StaticScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemStatic",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server callback invoked when a critter interacts with this static item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 243
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.TileLayer",
+      "entity": "Item",
+      "name": "TileLayer",
+      "type": "uint8",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Zero-based ground- or roof-tile draw layer selected for a tile item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 267
+      }
+    },
+    {
+      "id": "prototype-format.property.Item.TriggerScript",
+      "entity": "Item",
+      "name": "TriggerScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "ItemTrigger",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server callback invoked when a critter enters or leaves this trigger item.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 246
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.CustomHolderEntry",
+      "entity": "Location",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, names the holder entry through which it is attached.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.CustomHolderId",
+      "entity": "Location",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 86
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.ExplicitlyPersistent",
+      "entity": "Location",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 92
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.InitScript",
+      "entity": "Location",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "LocationInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server initialization function called after the location-init event for a newly created or restored location.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 498
+      }
+    },
+    {
+      "id": "prototype-format.property.Location.MapIds",
+      "entity": "Location",
+      "name": "MapIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Persistent identifiers of the maps owned by this location, in location-map order.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 501
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CritterIds",
+      "entity": "Map",
+      "name": "CritterIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Persistent identifiers of the non-player critters owned by this map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 435
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CustomHolderEntry",
+      "entity": "Map",
+      "name": "CustomHolderEntry",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, names the holder entry through which it is attached.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 89
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.CustomHolderId",
+      "entity": "Map",
+      "name": "CustomHolderId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 86
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.DayColor",
+      "entity": "Map",
+      "name": "DayColor",
+      "type": "uint8[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Channel-major RGB values for the map's corresponding daylight color keyframes.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 469
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.DayColorTime",
+      "entity": "Map",
+      "name": "DayColorTime",
+      "type": "int32[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Map-specific daylight color keyframe times expressed in minutes of the day cycle.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 466
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ExplicitlyPersistent",
+      "entity": "Map",
+      "name": "ExplicitlyPersistent",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty",
+        "SharedProperty"
+      ],
+      "stability": "internal",
+      "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity.",
+      "source": {
+        "path": "Source/Common/Entity.h",
+        "line": 92
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.FixedDayTime",
+      "entity": "Map",
+      "name": "FixedDayTime",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Map-local day-time override value, conventionally expressed in minutes and interpreted by game scripts.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 461
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.GlobalDayColor",
+      "entity": "Map",
+      "name": "GlobalDayColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current client-side global daylight color supplied through SetDayColors for scripts and effects.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 475
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.GlobalDayLightCapacity",
+      "entity": "Map",
+      "name": "GlobalDayLightCapacity",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current daylight capacity percentage for light sources flagged as global, clamped to 0 through 100.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 481
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.InitScript",
+      "entity": "Map",
+      "name": "InitScript",
+      "type": "hstring",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "Persistent",
+        "ScriptFuncType",
+        "=",
+        "MapInit",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Server initialization function called after the map-init event for a newly created or restored map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 426
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ItemIds",
+      "entity": "Map",
+      "name": "ItemIds",
+      "type": "ident[]",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Persistent identifiers of the dynamic items placed directly on this map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 438
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.LocId",
+      "entity": "Map",
+      "name": "LocId",
+      "type": "ident",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Identifier of the location that owns this map.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 429
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.LocMapIndex",
+      "entity": "Map",
+      "name": "LocMapIndex",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "server"
+      ],
+      "skipped_sides": [
+        "client",
+        "mapper"
+      ],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Zero-based position of this map in its owning location's map list.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 432
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.MapDayColor",
+      "entity": "Map",
+      "name": "MapDayColor",
+      "type": "ucolor",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current client-side map tint supplied through SetDayColors and consumed by map rendering.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 472
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.MapDayLightCapacity",
+      "entity": "Map",
+      "name": "MapDayLightCapacity",
+      "type": "int32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current daylight capacity percentage for ordinary map light sources, clamped to 0 through 100.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 478
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ScrollAxialArea",
+      "entity": "Map",
+      "name": "ScrollAxialArea",
+      "type": "irect",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Axial-coordinate rectangle that bounds map scrolling; a zero rectangle leaves the full map available.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 450
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.ScrollOffset",
+      "entity": "Map",
+      "name": "ScrollOffset",
+      "type": "ipos",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Rounded client viewport offset in map-space pixels.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 447
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.Size",
+      "entity": "Map",
+      "name": "Size",
+      "type": "msize",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Width and height of the map grid in hexes.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 441
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.SpritesZoom",
+      "entity": "Map",
+      "name": "SpritesZoom",
+      "type": "float32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Current client map-sprite zoom factor.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 453
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.SpritesZoomTarget",
+      "entity": "Map",
+      "name": "SpritesZoomTarget",
+      "type": "float32",
+      "nullable": false,
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [
+        "server"
+      ],
+      "authorable": false,
+      "excluded_reason": "temporary",
+      "mutability": "read-only",
+      "persistent": false,
+      "flags": [
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Target zoom factor toward which the client map view is interpolating.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 456
+      }
+    },
+    {
+      "id": "prototype-format.property.Map.WorkHex",
+      "entity": "Map",
+      "name": "WorkHex",
+      "type": "mpos",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "read-only",
+      "persistent": true,
+      "flags": [
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Authoring work hex used as the initial Mapper view center.",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 444
+      }
+    }
+  ],
+  "summary": {
+    "section_form_count": 3,
+    "directive_count": 2,
+    "rule_count": 13,
+    "entity_type_count": 4,
+    "property_count": 113,
+    "authorable_property_count": 92,
+    "excluded_property_count": 21,
+    "properties_by_entity": {
+      "Critter": 35,
+      "Item": 52,
+      "Location": 5,
+      "Map": 21
+    },
+    "authorable_properties_by_entity": {
+      "Critter": 21,
+      "Item": 52,
+      "Location": 5,
+      "Map": 14
+    }
+  },
+  "contract_digest": "ae2a5ac0e5472fff22a70752fbacd37600b636ba46d326ec96965a856cbf7dfe"
+}

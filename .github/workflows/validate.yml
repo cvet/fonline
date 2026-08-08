@@ -24,6 +24,210 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
+  documentation:
+    name: Validate documentation
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - run: python3 BuildTools/tests/test_docs_api.py
+    - run: python3 BuildTools/tests/test_docs_api_diff.py
+    - run: python3 BuildTools/tests/test_docs_ai_delivery.py
+    - run: python3 BuildTools/tests/test_docs_ai_eval.py
+    - run: python3 BuildTools/tests/test_docs_ai_model_eval.py
+    - run: python3 BuildTools/tests/test_docs_ai_model_review.py
+    - run: python3 BuildTools/tests/test_docs_snippets.py
+    - run: python3 BuildTools/tests/test_docs_documentation_quality_foundations.py
+    - run: python3 BuildTools/tests/test_docs_documentation_operations_foundations.py
+    - run: python3 BuildTools/tests/test_docs_governance_foundations.py
+    - run: python3 BuildTools/tests/test_docs_site.py
+    - run: python3 BuildTools/tests/test_docs_site_layout.py
+    - run: python3 BuildTools/tests/test_docs_site_artifact.py
+    - run: python3 BuildTools/tests/test_docs_browser.py
+    - run: python3 BuildTools/tests/test_docs_testing_foundations.py
+    - run: python3 BuildTools/tests/test_docs_build_foundations.py
+    - run: python3 BuildTools/tests/test_docs_build_release_foundations.py
+    - run: python3 BuildTools/tests/test_docs_profiling.py
+    - run: python3 BuildTools/tests/test_docs_viewer_tools.py
+    - run: python3 BuildTools/tests/test_docs_mapper_tools.py
+    - run: python3 BuildTools/tests/test_docs_contract_diff.py
+    - run: python3 BuildTools/tests/test_docs_cli.py
+    - run: python3 BuildTools/tests/test_docs_helper_cli.py
+    - run: python3 BuildTools/tests/test_docs_native_extension.py
+    - run: python3 BuildTools/tests/test_docs_project_dependencies.py
+    - run: python3 BuildTools/tests/test_gameplay_test_runner.py
+    - run: python3 BuildTools/tests/test_docs_gameplay_testing.py
+    - run: python3 BuildTools/tests/test_minimal_multiplayer_package.py
+    - run: python3 BuildTools/tests/test_docs_angelscript_style.py
+    - run: python3 BuildTools/tests/test_docs_prototype_format.py
+    - run: python3 BuildTools/tests/test_docs_map_format.py
+    - run: python3 BuildTools/tests/test_docs_model_format.py
+    - run: python3 BuildTools/tests/test_docs_text_format.py
+    - run: python3 BuildTools/tests/test_docs_effect_format.py
+    - run: python3 BuildTools/tests/test_docs_image_format.py
+    - run: python3 BuildTools/tests/test_docs_particle_format.py
+    - run: python3 BuildTools/tests/test_docs_font_format.py
+    - run: python3 BuildTools/tests/test_docs_audio.py
+    - run: python3 BuildTools/tests/test_docs_video.py
+    - run: python3 BuildTools/tests/test_docs_gui_runtime.py
+    - run: python3 BuildTools/tests/test_ai_control_protocol.py
+    - run: python3 BuildTools/tests/test_docs_ai_control_protocol.py
+    - run: python3 BuildTools/tests/test_docs_package.py
+    - run: python3 BuildTools/tests/test_package_security.py
+    - run: python3 BuildTools/tests/test_docs_security_and_secrets.py
+    - run: python3 BuildTools/tests/test_docs_release_operations.py
+    - run: python3 BuildTools/tests/test_docs_backup_recovery.py
+    - run: python3 BuildTools/tests/test_docs_release_safety_foundations.py
+    - run: python3 BuildTools/tests/test_docs_examples.py
+    - run: python3 BuildTools/tests/test_docs_support_matrix.py
+    - run: python3 BuildTools/tests/test_docs_public_api.py
+    - run: python3 BuildTools/tests/test_docs_external_evidence.py
+    - run: python3 BuildTools/tests/test_docs_diagrams.py
+    - run: python3 BuildTools/tests/test_docs_screenshots.py
+    - run: python3 BuildTools/tests/test_docs_localization.py
+    - run: python3 BuildTools/tests/test_docs_description_translations.py
+    - run: python3 BuildTools/tests/test_docs_configuration_tools.py
+    - run: python3 BuildTools/tests/test_docs_metadata_essentials.py
+    - run: python3 BuildTools/tests/test_docs_cmake.py
+    - run: python3 BuildTools/tests/test_angelscript_cmake.py
+    - run: python3 BuildTools/tests/test_docs_reference.py
+    - run: python3 BuildTools/tests/test_docs_script_lifecycle.py
+    - run: python3 BuildTools/tests/test_docs_model_animation.py
+    - run: python3 BuildTools/tests/test_docs_sprite_root_motion.py
+    - run: python3 BuildTools/tests/test_docs_web_debugging.py
+    - run: python3 BuildTools/tests/test_docs_android_debugging.py
+    - run: python3 BuildTools/tests/test_docs_debugging.py
+    - run: python3 BuildTools/tests/test_docs_metadata.py
+    - run: python3 BuildTools/tests/test_docs_inventory.py
+    - run: python3 BuildTools/tests/test_docs_validate.py
+    - run: cmake -P BuildTools/tests/validate_project_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_package_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_native_extension_interface.cmake
+    - run: python3 BuildTools/docs_api.py --check
+    - run: python3 BuildTools/docs_cli.py --check
+    - run: python3 BuildTools/docs_helper_cli.py --check
+    - run: python3 BuildTools/docs_native_extension.py --check
+    - run: python3 BuildTools/docs_prototype_format.py --check
+    - run: python3 BuildTools/docs_map_format.py --check
+    - run: python3 BuildTools/docs_model_format.py --check
+    - run: python3 BuildTools/docs_text_format.py --check
+    - run: python3 BuildTools/docs_effect_format.py --check
+    - run: python3 BuildTools/docs_image_format.py --check
+    - run: python3 BuildTools/docs_particle_format.py --check
+    - run: python3 BuildTools/docs_font_format.py --check
+    - run: python3 BuildTools/docs_audio.py --check
+    - run: python3 BuildTools/docs_video.py --check
+    - run: python3 BuildTools/docs_gui_runtime.py --check
+    - run: python3 BuildTools/docs_ai_control_protocol.py --check
+    - run: python3 BuildTools/docs_package.py --check
+    - run: python3 BuildTools/docs_examples.py --check
+    - run: python3 BuildTools/docs_support_matrix.py --check
+    - run: python3 BuildTools/docs_public_api.py --check
+    - run: python3 BuildTools/docs_external_evidence.py --check
+    - run: python3 BuildTools/docs_diagrams.py --check
+    - run: python3 BuildTools/docs_screenshots.py --check
+    - run: python3 BuildTools/docs_localization.py --check --enforce-complete
+    - run: python3 BuildTools/docs_description_translations.py --check --enforce-complete
+    - run: python3 BuildTools/docs_cmake.py --check
+    - run: python3 BuildTools/docs_reference.py --check
+    - run: python3 BuildTools/docs_inventory.py --check
+    - run: python3 BuildTools/docs_snippets.py --check
+    - run: python3 BuildTools/docs_site.py --check
+    - run: python3 BuildTools/docs_ai_eval.py --check
+    - run: python3 BuildTools/docs_ai_delivery.py --check
+    - run: python3 BuildTools/docs_validate.py
+    - name: Classify generated contract changes against the base revision
+      env:
+        CONTRACT_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        python3 BuildTools/docs_contract_diff.py \
+          --baseline-git-ref "$CONTRACT_BASE_REF" \
+          --current-dir Docs/generated \
+          --dispositions Docs/contract-change-dispositions.json \
+          --json-output Workspace/contract-diff.json \
+          --markdown-output Workspace/contract-diff.md \
+          --allow-missing-baseline \
+          --write \
+          --enforce
+    - name: Upload generated contract diff report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: contract-diff-${{ github.sha }}
+        path: Workspace/contract-diff.*
+        if-no-files-found: ignore
+        retention-days: 14
+  documentation-snippets:
+    name: Parse documentation snippets
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - run: python3 BuildTools/docs_snippets.py --check --external
+  documentation-site:
+    name: Build documentation site
+    needs: [documentation, documentation-snippets]
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build GitHub Pages-compatible site
+      uses: actions/jekyll-build-pages@v1
+      with:
+        source: ./
+        destination: ./_site
+        verbose: true
+    - name: Validate rendered documentation site
+      run: >-
+        python3 BuildTools/docs_site_artifact.py
+        --site-dir _site
+        --json-output Workspace/docs-site-artifact-report.json
+    - name: Use pinned Node.js for browser validation
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24.16.0
+        cache: npm
+        cache-dependency-path: BuildTools/docs-browser/package-lock.json
+    - name: Install pinned browser-audit dependencies
+      working-directory: BuildTools/docs-browser
+      run: npm ci
+    - name: Install pinned Chromium and host dependencies
+      working-directory: BuildTools/docs-browser
+      run: npx playwright install --with-deps chromium
+    - name: Validate rendered site in desktop and mobile Chromium
+      working-directory: BuildTools/docs-browser
+      run: npm run audit
+    - name: Upload rendered-site validation report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site-validation-${{ github.sha }}
+        path: Workspace/docs-site-artifact-report.json
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload browser validation report and screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-browser-validation-${{ github.sha }}
+        path: |
+          Workspace/docs-browser-audit-report.json
+          Workspace/docs-browser-screenshots/
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload rendered site
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site-${{ github.sha }}
+        path: _site/
+        if-no-files-found: error
+        retention-days: 14
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-24.04
@@ -77,13 +281,37 @@ jobs:
         - win32-client
         - win64-client
         - win64-server
-        - win64-editor
         - win64-mapper
         - win64-ascompiler
         - win64-baker
+        - win64-starter-smoke
+        - win64-native-extension-smoke
+        - win64-tutorial-smoke
+        - win64-showcase-smoke
+        - win64-tutorial-package
+        - win64-package-smoke
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
+    - name: Upload immutable packaging evidence
+      if: matrix.app == 'win64-package-smoke'
+      uses: actions/upload-artifact@v4
+      with:
+        name: packaging-evidence-${{ matrix.app }}-${{ github.sha }}
+        path: |
+          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/*.zip
+          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/packaging-manifest.json
+        if-no-files-found: error
+    - name: Upload immutable tutorial packaging evidence
+      if: matrix.app == 'win64-tutorial-package'
+      uses: actions/upload-artifact@v4
+      with:
+        name: tutorial-packaging-evidence-${{ matrix.app }}-${{ github.sha }}
+        path: |
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/*.zip
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-packaging-manifest.json
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-package-runtime-report.json
+        if-no-files-found: error
   ubuntu:
     name: Ubuntu validate (${{ matrix.app }})
     runs-on: ubuntu-24.04
@@ -104,13 +332,11 @@ jobs:
           prepare: android-packages android-arm64
         - app: web-client
           prepare: web-packages web
+        - app: web-showcase-runtime
+          prepare: linux-packages web-packages linux web
         - app: linux-server
           prepare: linux-packages linux
         - app: linux-gcc-server
-          prepare: linux-packages linux
-        - app: linux-editor
-          prepare: linux-packages linux
-        - app: linux-gcc-editor
           prepare: linux-packages linux
         - app: linux-mapper
           prepare: linux-packages linux
@@ -124,10 +350,81 @@ jobs:
           prepare: linux-packages linux
         - app: linux-gcc-baker
           prepare: linux-packages linux
+        - app: linux-starter-smoke
+          prepare: linux-packages linux
+        - app: linux-native-extension-smoke
+          prepare: linux-packages linux
+        - app: linux-tutorial-smoke
+          prepare: linux-packages linux
+        - app: linux-showcase-smoke
+          prepare: linux-packages linux
+        - app: linux-showcase-capture
+          prepare: linux-packages showcase-display-packages linux
+        - app: linux-tutorial-package
+          prepare: linux-packages linux
+        - app: linux-package-smoke
+          prepare: linux-packages linux
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh ${{ matrix.prepare }}
-    - run: BuildTools/validate.sh ${{matrix.app}}
+    - name: Install Content Showcase browser runtime
+      if: matrix.app == 'web-showcase-runtime'
+      working-directory: Examples/ContentShowcase/WebTests
+      run: |
+        npm ci
+        npx playwright install --with-deps chromium
+    - name: Run validation
+      if: matrix.app != 'linux-showcase-capture'
+      run: BuildTools/validate.sh ${{matrix.app}}
+    - name: Run Linux OpenGL capture
+      if: matrix.app == 'linux-showcase-capture'
+      env:
+        LIBGL_ALWAYS_SOFTWARE: '1'
+        SDL_VIDEODRIVER: x11
+      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" BuildTools/validate.sh ${{matrix.app}}
+    - name: Upload Content Showcase Web runtime evidence
+      if: matrix.app == 'web-showcase-runtime'
+      uses: actions/upload-artifact@v4
+      with:
+        name: showcase-web-runtime-${{ github.sha }}
+        path: |
+          Workspace/validate-web-showcase-runtime-output/FOCS-ShowcaseWeb/FOCS-Client-ShowcaseRelease-Web.zip
+          Workspace/validate-web-showcase-runtime-output/FOCS-ShowcaseWeb/FOCS-Client-ShowcaseRelease-Web/
+          Workspace/validation-project/Workspace/showcase-web-runtime-report.json
+          Workspace/validation-project/Workspace/showcase-web-server.log
+          Workspace/validation-project/Workspace/web-webgl2.png
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload Content Showcase Linux OpenGL evidence
+      if: matrix.app == 'linux-showcase-capture'
+      uses: actions/upload-artifact@v4
+      with:
+        name: showcase-linux-opengl-${{ github.sha }}
+        path: |
+          Examples/ContentShowcase/captures/linux-opengl.png
+          Examples/ContentShowcase/captures/capture-contract.json
+          Examples/ContentShowcase/Workspace/showcase-capture-report.json
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload immutable packaging evidence
+      if: matrix.app == 'linux-package-smoke'
+      uses: actions/upload-artifact@v4
+      with:
+        name: packaging-evidence-${{ matrix.app }}-${{ github.sha }}
+        path: |
+          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/*.tar.gz
+          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/packaging-manifest.json
+        if-no-files-found: error
+    - name: Upload immutable tutorial packaging evidence
+      if: matrix.app == 'linux-tutorial-package'
+      uses: actions/upload-artifact@v4
+      with:
+        name: tutorial-packaging-evidence-${{ matrix.app }}-${{ github.sha }}
+        path: |
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/*.tar.gz
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-packaging-manifest.json
+          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-package-runtime-report.json
+        if-no-files-found: error
   macos:
     name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})
     runs-on: ${{ matrix.runner }}

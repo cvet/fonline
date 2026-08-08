@@ -147,6 +147,7 @@ funcdef bool DragAndDropHandler(Object obj, Object? target);
 //   void SetNotCatchable(bool enabled)
 //   void SetCheckTransparentOnHit(bool enabled)
 //   void SetFocusGroup(bool enabled)
+//   void SetHasOnDraw(bool enabled)
 //   Object? FindMouseHit()
 //   Object? FindHit(ipos pos)
 //   bool IsMouseHit()
@@ -249,7 +250,7 @@ funcdef bool DragAndDropHandler(Object obj, Object? target);
 //   void SetPadding(int x, int y)
 // MessageBox : Text : Object
 //   string[] MessageTexts
-//   int[] MessageTypes
+//   MessageBoxType[] MessageTypes
 //   string[] MessageTimes
 //   MessageBoxType[] DisplayedMessages
 //   bool InvertMessages

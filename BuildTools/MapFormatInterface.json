@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "description": "Source-backed authoring, baking, and runtime contract for FOnline map containers.",
+  "scope": {
+    "surface": "map-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned.",
+    "included": [
+      "one or more ProtoMap anchors with nested map-addressed Critter and Item sections",
+      "map identity, placement ids, prototype references, ownership, and property overrides",
+      "mapper normalization, side-specific baking, and runtime materialization",
+      "engine-owned Map, Critter, and Item property catalogs"
+    ],
+    "excluded": [
+      "project-authored properties, prototype ids, map catalogs, and directory taxonomy",
+      "quest, encounter, balance, visual-kit, and level-design policy",
+      "runtime save records and dynamic entities created after map materialization",
+      "pathfinding, combat geometry, lighting design, and renderer-specific composition guidance"
+    ]
+  },
+  "sources": {
+    "source_loader": "Source/Common/MapLoader.cpp",
+    "config_parser": "Source/Common/ConfigFile.cpp",
+    "source_baker": "Source/Tools/MapBaker.cpp",
+    "prototype_baker": "Source/Tools/ProtoBaker.cpp",
+    "text_baker": "Source/Tools/ProtoTextBaker.cpp",
+    "source_mapper": "Source/Tools/Mapper.cpp",
+    "map_serializer": "Source/Client/MapView.cpp",
+    "server_loader": "Source/Server/MapManager.cpp",
+    "client_loader": "Source/Client/MapView.cpp",
+    "api_model_generator": "BuildTools/docs_api.py",
+    "api_model": "Docs/generated/api.json",
+    "tests": [
+      "Source/Tests/Test_MapLoader.cpp",
+      "Source/Tests/Test_MapBaker.cpp",
+      "Source/Tests/Test_ProtoBaker.cpp",
+      "Source/Tests/Test_Mapper.cpp",
+      "Source/Tests/Test_ServerMapOperations.cpp"
+    ]
+  },
+  "outputs": {
+    "source_selection": "Baking.ProtoFileExtensions plus at least one [ProtoMap] anchor",
+    "conventional_extension": ".fomap",
+    "server_pattern": "<MapId>.fomap-bin-server",
+    "client_pattern": "<MapId>.fomap-bin-client",
+    "runtime_sides": ["server", "client", "mapper"],
+    "description": "MapBaker emits one coupled server/client resource pair for every map declared by a ProtoMap anchor."
+  },
+  "sections": [
+    {
+      "id": "map-format.section.proto-map",
+      "name": "Map prototype",
+      "syntax": "[ProtoMap]",
+      "receiver": "Map",
+      "cardinality": "one or more per container",
+      "stability": "experimental",
+      "description": "Declares map-level properties and starts the context used by following [$Name/Critter] and [$Name/Item] sections.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["MAP_ANCHOR_SECTION", "anchor_names.emplace_back", "Invalid map format, no ProtoMap anchor declared"]
+      }
+    },
+    {
+      "id": "map-format.section.critter",
+      "name": "Critter placement",
+      "syntax": "[$Name/Critter] or [<MapId>/Critter]",
+      "receiver": "Critter",
+      "cardinality": "zero or more per declared map",
+      "stability": "experimental",
+      "description": "Places a critter prototype and applies per-placement Critter property overrides.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["nested_type != \"Critter\"", "collect_map_sections(\"Critter\")", "Proto critter invalid data"]
+      }
+    },
+    {
+      "id": "map-format.section.item",
+      "name": "Item placement",
+      "syntax": "[$Name/Item] or [<MapId>/Item]",
+      "receiver": "Item",
+      "cardinality": "zero or more per declared map",
+      "stability": "experimental",
+      "description": "Places a map, inventory, or container item and applies per-placement Item property overrides.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["nested_type != \"Item\"", "collect_map_sections(\"Item\")", "Proto item invalid data"]
+      }
+    }
+  ],
+  "directives": [
+    {
+      "id": "map-format.directive.map-name",
+      "name": "$Name",
+      "applies_to": "ProtoMap",
+      "syntax": "$Name = <MapId>",
+      "required": false,
+      "default": "source file basename",
+      "stability": "experimental",
+      "description": "Selects the Map prototype id and both baked resource basenames. Without $Name the anchor resolves to the source basename; multi-map containers should name every anchor explicitly.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["anchor_name_it = section_kv->find(\"$Name\")", "string_view {file_stem}"]
+      }
+    },
+    {
+      "id": "map-format.directive.map-parent",
+      "name": "$Parent",
+      "applies_to": "ProtoMap",
+      "syntax": "$Parent = <ParentMapId> [<ParentMapId> ...]",
+      "required": false,
+      "default": "no parents",
+      "stability": "experimental",
+      "description": "Uses ordinary Map prototype inheritance during prototype baking. Mapper save output is flattened and does not preserve this directive.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["cur_kv.count(\"$Parent\")", "fill_parent_recursive"]
+      }
+    },
+    {
+      "id": "map-format.directive.map-text",
+      "name": "$Text <language>",
+      "applies_to": "ProtoMap",
+      "syntax": "$Text <language> = <localized text>",
+      "required": false,
+      "default": "no map text",
+      "stability": "experimental",
+      "description": "Contributes localized prototype text and is preserved as an extra ProtoMap field by mapper load/save.",
+      "source": {
+        "path": "Source/Tools/ProtoTextBaker.cpp",
+        "anchors": ["starts_with(\"$Text\")", "Proto text key must start with $Text"]
+      }
+    },
+    {
+      "id": "map-format.directive.entity-id",
+      "name": "$Id",
+      "applies_to": "Critter, Item",
+      "syntax": "$Id = <positive integer>",
+      "required": false,
+      "default": "next available positive id",
+      "stability": "experimental",
+      "description": "Provides a shared placement identity used by ownership references. Missing, non-positive, or duplicate ids are repaired during load; authored maps should not rely on repair.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["Automatic id fixier", "busy_ids", "process_id"]
+      }
+    },
+    {
+      "id": "map-format.directive.entity-proto",
+      "name": "$Proto",
+      "applies_to": "Critter, Item",
+      "syntax": "$Proto = <PrototypeId>",
+      "required": true,
+      "default": "none",
+      "stability": "experimental",
+      "description": "Resolves the base Critter or Item prototype before placement overrides are applied.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": ["kv->find(\"$Proto\")", "GetProtoCritter", "GetProtoItem"]
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "id": "map-format.ownership.map-hex",
+      "name": "MapHex",
+      "value": 0,
+      "supported": true,
+      "owner_property": "Hex",
+      "stability": "experimental",
+      "description": "Places the item on a map hex. Static items must use this mode.",
+      "source": {
+        "path": "Source/Server/MapManager.cpp",
+        "anchors": ["ItemOwnership::MapHex", "Item is not placed on map hex"]
+      }
+    },
+    {
+      "id": "map-format.ownership.critter-inventory",
+      "name": "CritterInventory",
+      "value": 1,
+      "supported": true,
+      "owner_property": "CritterId",
+      "stability": "experimental",
+      "description": "Creates a non-static item in the inventory of the placed critter identified by CritterId.",
+      "source": {
+        "path": "Source/Server/MapManager.cpp",
+        "anchors": ["ItemOwnership::CritterInventory", "GetCritterId"]
+      }
+    },
+    {
+      "id": "map-format.ownership.item-container",
+      "name": "ItemContainer",
+      "value": 2,
+      "supported": true,
+      "owner_property": "ContainerId",
+      "stability": "experimental",
+      "description": "Creates a non-static item inside the placed non-static item identified by ContainerId.",
+      "source": {
+        "path": "Source/Server/MapManager.cpp",
+        "anchors": ["ItemOwnership::ItemContainer", "GetContainerId"]
+      }
+    },
+    {
+      "id": "map-format.ownership.nowhere",
+      "name": "Nowhere",
+      "value": 3,
+      "supported": false,
+      "owner_property": "none",
+      "stability": "experimental",
+      "description": "Exists in the enum but is not a supported authored map-placement mode.",
+      "source": {
+        "path": "Source/Server/MapManager.cpp",
+        "anchors": ["Map item load produced item with unsupported ownership"]
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "map-format.rule.config-syntax",
+      "name": "Configuration syntax",
+      "requirement": "Use INI-like repeated sections, key = value assignments, # comments, backslash continuation, and key += value append where the property parser supports it.",
+      "stability": "experimental",
+      "description": ".fomap uses the shared ConfigFile parser.",
+      "source": {"path": "Source/Common/ConfigFile.cpp", "anchors": ["ConfigFile::ParseConfigKeyValueLine", "append_value"]}
+    },
+    {
+      "id": "map-format.rule.closed-section-set",
+      "name": "Closed section set",
+      "requirement": "Use top-level ProtoMap anchors and nested <owner>/Critter or <owner>/Item sections only.",
+      "stability": "experimental",
+      "description": "[$Name/...] binds to the preceding anchor. An explicit owner must name a declared map; a contextual nested section before the first anchor is rejected.",
+      "source": {"path": "Source/Common/MapLoader.cpp", "anchors": ["expected a ProtoMap anchor or nested map content", "Nested map section appears before any ProtoMap anchor", "addressed to an undeclared map"]}
+    },
+    {
+      "id": "map-format.rule.map-identity",
+      "name": "Map identity",
+      "requirement": "Give every map in a multi-map container a unique ProtoMap $Name; a single unnamed anchor inherits the source basename.",
+      "stability": "experimental",
+      "description": "Map identity, targeted bake lookup, and baked output names come from declared map ids, not container filenames.",
+      "source": {"path": "Source/Tools/MapBaker.cpp", "anchors": ["ResolveMapNames(file)", "target_map_name", "candidate_map_names"]}
+    },
+    {
+      "id": "map-format.rule.shared-placement-ids",
+      "name": "Shared placement ids",
+      "requirement": "Use explicit positive ids unique across all Critter and Item sections in one map.",
+      "stability": "experimental",
+      "description": "The loader repairs omitted, non-positive, and duplicate ids, but repaired values can invalidate hand-authored owner references.",
+      "source": {"path": "Source/Common/MapLoader.cpp", "anchors": ["unordered_set<ident_t::underlying_type> busy_ids", "id <= 0"]}
+    },
+    {
+      "id": "map-format.rule.prototype-resolution",
+      "name": "Prototype resolution",
+      "requirement": "Every Critter and Item section must name an existing prototype with $Proto.",
+      "stability": "experimental",
+      "description": "Missing and unresolved prototypes are accumulated as map-load errors.",
+      "source": {"path": "Source/Common/MapLoader.cpp", "anchors": ["Proto critter '{}' not found", "Proto item '{}' not found", "Map load error"]}
+    },
+    {
+      "id": "map-format.rule.property-overrides",
+      "name": "Property overrides",
+      "requirement": "Use properties valid for the section receiver and bake side; values override the resolved base prototype.",
+      "stability": "experimental",
+      "description": "MapBaker copies the prototype properties, applies section text, validates resources, and serializes side-specific data.",
+      "source": {"path": "Source/Tools/MapBaker.cpp", "anchors": ["props.ApplyFromText(*kv)", "ValidateProperties(props"]}
+    },
+    {
+      "id": "map-format.rule.normalized-order",
+      "name": "Normalized entity order",
+      "requirement": "Do not use textual interleaving as an ordering contract.",
+      "stability": "experimental",
+      "description": "The loader processes all Critter sections before all Item sections, and mapper save emits critters with inventory items before map items with direct children.",
+      "source": {"path": "Source/Client/MapView.cpp", "anchors": ["// Critters", "// Items", "fill_item(inv_items[j])"]}
+    },
+    {
+      "id": "map-format.rule.ownership-references",
+      "name": "Ownership references",
+      "requirement": "CritterInventory and ItemContainer placements must reference a materializable owner id through CritterId or ContainerId.",
+      "stability": "experimental",
+      "description": "Unmapped owner ids skip child creation; direct children of placed critters and non-static map items are the supported mapper/runtime shape.",
+      "source": {"path": "Source/Server/MapManager.cpp", "anchors": ["Map id to owner", "id_map.count(owner_id) == 0", "Add children items"]}
+    },
+    {
+      "id": "map-format.rule.static-items",
+      "name": "Static item placement",
+      "requirement": "A Static item must use MapHex ownership.",
+      "stability": "experimental",
+      "description": "Static items become immutable map-grid entries and contribute movement, shooting, trigger, and multihex state.",
+      "source": {"path": "Source/Server/MapManager.cpp", "anchors": ["if (item->GetStatic())", "StaticItemsById", "MoveBlocked"]}
+    },
+    {
+      "id": "map-format.rule.bounds",
+      "name": "Map bounds",
+      "requirement": "Critter Hex and MapHex item Hex values must be inside ProtoMap Size before runtime loading.",
+      "stability": "experimental",
+      "description": "Server load rejects invalid positions. Mapper editing commands may clamp positions, which is not a substitute for source validation.",
+      "source": {"path": "Source/Server/MapManager.cpp", "anchors": ["Invalid critter position on map", "Invalid item position on map"]}
+    },
+    {
+      "id": "map-format.rule.side-specific-bake",
+      "name": "Side-specific bake",
+      "requirement": "Treat server and client map binaries as a coupled output and regenerate both after source or referenced prototype changes.",
+      "stability": "experimental",
+      "description": "The server receives critters and all items; the client receives visible static items and its required string hashes.",
+      "source": {"path": "Source/Tools/MapBaker.cpp", "anchors": ["// Server side", "// Client side", "map_client_item_count"]}
+    },
+    {
+      "id": "map-format.rule.hidden-static-items",
+      "name": "Hidden static items",
+      "requirement": "Do not expect a Hidden static item entity in the client map payload.",
+      "stability": "experimental",
+      "description": "Its client-side property strings are still hashed, but the item record is omitted.",
+      "source": {"path": "Source/Tools/MapBaker.cpp", "anchors": ["For hidden items keep only string hashes for client", "if (!is_hidden)"]}
+    },
+    {
+      "id": "map-format.rule.runtime-materialization",
+      "name": "Runtime materialization",
+      "requirement": "Use Static only for immutable map-hex fixtures; use non-static placements for generated critters, map items, inventories, and containers.",
+      "stability": "experimental",
+      "description": "The server remaps authored ids for generated critters and non-static map items before attaching direct child items.",
+      "source": {"path": "Source/Server/MapManager.cpp", "anchors": ["GenerateMapContent", "id_map.emplace", "ChildItemBillets"]}
+    },
+    {
+      "id": "map-format.rule.mapper-round-trip",
+      "name": "Mapper round-trip",
+      "requirement": "Review mapper-saved diffs as normalized output, not byte-preserving serialization.",
+      "stability": "experimental",
+      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, flattens inherited map properties, and preserves sibling map blocks byte-exact in a multi-map container.",
+      "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["SpliceMapIntoFomapContent", "Sections of other maps are preserved byte-exact", "SetHeaderExtraFields"]}
+    },
+    {
+      "id": "map-format.rule.multihex-mesh",
+      "name": "Multihex mesh serialization",
+      "requirement": "MultihexMesh must contain x/y coordinate pairs; mapper save normalizes it into backslash-continued pairs.",
+      "stability": "experimental",
+      "description": "An odd coordinate count fails mapper serialization.",
+      "source": {"path": "Source/Client/MapView.cpp", "anchors": ["Mapper item MultihexMesh field must contain x/y coordinate pairs", "fomap.append(i == 0 ? \"\\\\\\n\""]}
+    },
+    {
+      "id": "map-format.rule.error-aggregation",
+      "name": "Error aggregation",
+      "requirement": "Treat any accumulated entity load or property/resource validation error as a failed map bake.",
+      "stability": "experimental",
+      "description": "Entity diagnostics are logged individually before MapLoader or MapBaker throws the aggregate failure.",
+      "source": {"path": "Source/Tools/MapBaker.cpp", "anchors": ["Map validation error(s)", "Map baking error"]}
+    }
+  ]
+}

@@ -2253,6 +2253,65 @@ void Application::BeginFrame()
     _onFrameBeginDispatcher();
 }
 
+static void RenderImGuiDrawData(Renderer& renderer, RenderEffect& effect, RenderDrawBuffer& draw_buf, const ImDrawData& draw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fb_width = iround<int32_t>(draw_data.DisplaySize.x * draw_data.FramebufferScale.x);
+    int32_t fb_height = iround<int32_t>(draw_data.DisplaySize.y * draw_data.FramebufferScale.y);
+
+    if (fb_width <= 0 || fb_height <= 0) {
+        return;
+    }
+
+    ImVec2 clip_off = draw_data.DisplayPos;
+    ImVec2 clip_scale = draw_data.FramebufferScale;
+
+    for (int32_t cmd = 0; cmd < draw_data.CmdListsCount; cmd++) {
+        ptr<const ImDrawList> cmd_list = draw_data.CmdLists[cmd];
+
+        draw_buf.Vertices.resize(cmd_list->VtxBuffer.Size);
+        draw_buf.VertCount = draw_buf.Vertices.size();
+
+        for (int32_t i = 0; i < cmd_list->VtxBuffer.Size; i++) {
+            Vertex2D& v = draw_buf.Vertices[i];
+            const ImDrawVert& iv = cmd_list->VtxBuffer[i];
+            v.PosX = iv.pos.x;
+            v.PosY = iv.pos.y;
+            v.TexU = iv.uv.x;
+            v.TexV = iv.uv.y;
+            v.Color = ucolor {iv.col};
+        }
+
+        draw_buf.Indices.resize(cmd_list->IdxBuffer.Size);
+        draw_buf.IndCount = draw_buf.Indices.size();
+
+        for (int32_t i = 0; i < cmd_list->IdxBuffer.Size; i++) {
+            draw_buf.Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
+        }
+
+        draw_buf.Upload(effect.GetUsage());
+
+        for (int32_t cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
+            ptr<const ImDrawCmd> pcmd = make_ptr(&cmd_list->CmdBuffer[cmd_i]);
+            FO_VERIFY_AND_THROW(pcmd->UserCallback == nullptr, "Unexpected ImGui user callback in draw command");
+
+            int32_t clip_rect_l = iround<int32_t>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
+            int32_t clip_rect_t = iround<int32_t>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
+            int32_t clip_rect_r = iround<int32_t>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
+            int32_t clip_rect_b = iround<int32_t>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
+
+            if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
+                renderer.EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
+                auto disable_scissor = scope_exit([&renderer]() noexcept { safe_call([&] { renderer.DisableScissor(); }); });
+                nptr<RenderTexture> texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
+                FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
+                effect.DrawBuffer(make_ptr(&draw_buf), pcmd->IdxOffset, pcmd->ElemCount, texture);
+            }
+        }
+    }
+}
+
 void Application::EndFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2271,7 +2330,7 @@ void Application::EndFrame()
     ImGui::Render();
     UpdateNativeCursorVisibility(ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantTextInput);
 
-    auto draw_data = make_nptr(ImGui::GetDrawData());
+    nptr<ImDrawData> draw_data = make_nptr(ImGui::GetDrawData());
     FO_VERIFY_AND_THROW(draw_data, "ImGui produced no draw data after rendering");
 
     if (draw_data->Textures != nullptr) {
@@ -2318,59 +2377,11 @@ void Application::EndFrame()
         }
     }
 
-    int32_t fb_width = iround<int32_t>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-    int32_t fb_height = iround<int32_t>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-
-    if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
-        // Scissor/clipping
-        auto clip_off = draw_data->DisplayPos;
-        auto clip_scale = draw_data->FramebufferScale;
-
-        // Render command lists
-        for (int32_t cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
-            ptr<const ImDrawList> cmd_list = draw_data->CmdLists[cmd];
-
-            _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
-            _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
-
-            for (int32_t i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-                auto& v = _imguiDrawBuf->Vertices[i];
-                const auto& iv = cmd_list->VtxBuffer[i];
-                v.PosX = iv.pos.x;
-                v.PosY = iv.pos.y;
-                v.TexU = iv.uv.x;
-                v.TexV = iv.uv.y;
-                v.Color = ucolor {iv.col};
-            }
-
-            _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
-            _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
-
-            for (int32_t i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-                _imguiDrawBuf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
-            }
-
-            _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
-
-            for (int32_t cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
-                auto pcmd = make_ptr(&cmd_list->CmdBuffer[cmd_i]);
-                FO_VERIFY_AND_THROW(pcmd->UserCallback == nullptr, "Unexpected ImGui user callback in draw command");
-
-                int32_t clip_rect_l = iround<int32_t>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
-                int32_t clip_rect_t = iround<int32_t>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-                int32_t clip_rect_r = iround<int32_t>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
-                int32_t clip_rect_b = iround<int32_t>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
-
-                if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
-                    active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    auto texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
-                    FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
-                    _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, texture);
-                    active_renderer->DisableScissor();
-                }
-            }
-        }
+    if (_imguiEffect && _imguiDrawBuf) {
+        RenderImGuiDrawData(*active_renderer, *_imguiEffect, *_imguiDrawBuf, *draw_data);
     }
+
+    _onBeforePresentDispatcher();
 
     // Frame complete, swap buffers
     active_renderer->Present();
@@ -2380,6 +2391,23 @@ void Application::EndFrame()
 #if FO_TRACY
     FrameMark;
 #endif
+}
+
+void Application::RenderImGuiToTexture(ptr<RenderTexture> target)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_imguiEffect && _imguiDrawBuf, "ImGui renderer is not initialized");
+
+    auto draw_data = make_nptr(ImGui::GetDrawData());
+    FO_VERIFY_AND_THROW(draw_data, "ImGui produced no draw data after rendering");
+
+    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+    nptr<RenderTexture> previous_target = Render.GetRenderTarget();
+    Render.SetRenderTarget(target);
+    auto restore_target = scope_exit([&]() noexcept { safe_call([&] { Render.SetRenderTarget(previous_target); }); });
+
+    RenderImGuiDrawData(*active_renderer, *_imguiEffect, *_imguiDrawBuf, *draw_data);
 }
 
 auto Application::IsHeadless() const noexcept -> bool

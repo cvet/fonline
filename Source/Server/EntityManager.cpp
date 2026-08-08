@@ -369,7 +369,7 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
 // Thread-safety analysis is disabled here: LoadEntities runs single-threaded during server init (before the worker
 // pool processes any entity), so it reads the registry maps without _registryLock and iterates them while calling
 // back into the engine (CallInit / ProcessVisible*), which itself re-locks the registry - holding the lock across
-// that would self-deadlock. See Engine/Docs/ThreadSafetyAnalysis.md.
+// that would self-deadlock. See Engine/Docs/en/contributing/coding-contracts/thread-safety-analysis.md.
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();

@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_inventory.py",
+  "script_api": {
+    "export_method_declarations": 953,
+    "method_file_count": 18,
+    "method_files": [
+      {
+        "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+        "export_method_declarations": 38
+      },
+      {
+        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
+        "export_method_declarations": 33
+      },
+      {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "export_method_declarations": 118
+      },
+      {
+        "path": "Source/Scripting/ClientImGuiScriptMethods.cpp",
+        "export_method_declarations": 2
+      },
+      {
+        "path": "Source/Scripting/ClientItemScriptMethods.cpp",
+        "export_method_declarations": 16
+      },
+      {
+        "path": "Source/Scripting/ClientLocationScriptMethods.cpp",
+        "export_method_declarations": 0
+      },
+      {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "export_method_declarations": 59
+      },
+      {
+        "path": "Source/Scripting/ClientPlayerScriptMethods.cpp",
+        "export_method_declarations": 0
+      },
+      {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "export_method_declarations": 77
+      },
+      {
+        "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
+        "export_method_declarations": 236
+      },
+      {
+        "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
+        "export_method_declarations": 56
+      },
+      {
+        "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "export_method_declarations": 61
+      },
+      {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "export_method_declarations": 35
+      },
+      {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "export_method_declarations": 115
+      },
+      {
+        "path": "Source/Scripting/ServerItemScriptMethods.cpp",
+        "export_method_declarations": 9
+      },
+      {
+        "path": "Source/Scripting/ServerLocationScriptMethods.cpp",
+        "export_method_declarations": 10
+      },
+      {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "export_method_declarations": 76
+      },
+      {
+        "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
+        "export_method_declarations": 12
+      }
+    ]
+  },
+  "engine_tests": {
+    "test_file_count": 98,
+    "files": [
+      "Source/Tests/Test_AngelScriptAlignment.cpp",
+      "Source/Tests/Test_AngelScriptAttributes.cpp",
+      "Source/Tests/Test_AngelScriptBaker.cpp",
+      "Source/Tests/Test_AngelScriptBytecode.cpp",
+      "Source/Tests/Test_AngelScriptCall.cpp",
+      "Source/Tests/Test_AnyData.cpp",
+      "Source/Tests/Test_BakerSetup.cpp",
+      "Source/Tests/Test_BaseLogging.cpp",
+      "Source/Tests/Test_BasicCore.cpp",
+      "Source/Tests/Test_CacheStorage.cpp",
+      "Source/Tests/Test_ClientDataValidation.cpp",
+      "Source/Tests/Test_ClientEngine.cpp",
+      "Source/Tests/Test_ClientRuntimeApi.cpp",
+      "Source/Tests/Test_ClientServerIntegration.cpp",
+      "Source/Tests/Test_Common.cpp",
+      "Source/Tests/Test_CommonHelpers.cpp",
+      "Source/Tests/Test_CommonScriptMethods.cpp",
+      "Source/Tests/Test_Compressor.cpp",
+      "Source/Tests/Test_ConfigBaker.cpp",
+      "Source/Tests/Test_ConfigFile.cpp",
+      "Source/Tests/Test_Containers.cpp",
+      "Source/Tests/Test_DataBase.cpp",
+      "Source/Tests/Test_DataSerialization.cpp",
+      "Source/Tests/Test_DataSource.cpp",
+      "Source/Tests/Test_DiskFileSystem.cpp",
+      "Source/Tests/Test_EffectBaker.cpp",
+      "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+      "Source/Tests/Test_EngineMetadata.cpp",
+      "Source/Tests/Test_EntityLifecycle.cpp",
+      "Source/Tests/Test_EntityProtos.cpp",
+      "Source/Tests/Test_EntitySync.cpp",
+      "Source/Tests/Test_ExceptionHandling.cpp",
+      "Source/Tests/Test_ExtendedTypes.cpp",
+      "Source/Tests/Test_FileSystem.cpp",
+      "Source/Tests/Test_FogOfWar.cpp",
+      "Source/Tests/Test_GenericUtils.cpp",
+      "Source/Tests/Test_Geometry.cpp",
+      "Source/Tests/Test_GlobalData.cpp",
+      "Source/Tests/Test_HashedString.cpp",
+      "Source/Tests/Test_ImGui.cpp",
+      "Source/Tests/Test_ImageBaker.cpp",
+      "Source/Tests/Test_LineTracer.cpp",
+      "Source/Tests/Test_LocationAndEntityMgmt.cpp",
+      "Source/Tests/Test_Logging.cpp",
+      "Source/Tests/Test_MapBaker.cpp",
+      "Source/Tests/Test_MapLoader.cpp",
+      "Source/Tests/Test_Mapper.cpp",
+      "Source/Tests/Test_MemorySystem.cpp",
+      "Source/Tests/Test_MetadataBaker.cpp",
+      "Source/Tests/Test_ModelAnimation.cpp",
+      "Source/Tests/Test_ModelAnimationConverter.cpp",
+      "Source/Tests/Test_ModelAnimationData.cpp",
+      "Source/Tests/Test_ModelAnimationPoseProcedural.cpp",
+      "Source/Tests/Test_ModelAnimationRuntime.cpp",
+      "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ModelMeshData.cpp",
+      "Source/Tests/Test_ModelSkeletonCompatibility.cpp",
+      "Source/Tests/Test_ModelSourceLoader.cpp",
+      "Source/Tests/Test_ModelSpriteLayout.cpp",
+      "Source/Tests/Test_Movement.cpp",
+      "Source/Tests/Test_NetBuffer.cpp",
+      "Source/Tests/Test_NetSockets.cpp",
+      "Source/Tests/Test_NetworkClient.cpp",
+      "Source/Tests/Test_NetworkServer.cpp",
+      "Source/Tests/Test_NetworkUdp.cpp",
+      "Source/Tests/Test_OzzAnimation.cpp",
+      "Source/Tests/Test_ParticleBaker.cpp",
+      "Source/Tests/Test_PathFinding.cpp",
+      "Source/Tests/Test_Platform.cpp",
+      "Source/Tests/Test_Properties.cpp",
+      "Source/Tests/Test_ProtoBaker.cpp",
+      "Source/Tests/Test_ProtoManager.cpp",
+      "Source/Tests/Test_ProtoTextBaker.cpp",
+      "Source/Tests/Test_RawCopyBaker.cpp",
+      "Source/Tests/Test_Rendering.cpp",
+      "Source/Tests/Test_SafeArithmetics.cpp",
+      "Source/Tests/Test_ScriptBuiltins.cpp",
+      "Source/Tests/Test_ScriptEntityOps.cpp",
+      "Source/Tests/Test_ServerAdvancedOps.cpp",
+      "Source/Tests/Test_ServerEngine.cpp",
+      "Source/Tests/Test_ServerEventContracts.cpp",
+      "Source/Tests/Test_ServerItems.cpp",
+      "Source/Tests/Test_ServerMapOperations.cpp",
+      "Source/Tests/Test_ServerScriptMethods.cpp",
+      "Source/Tests/Test_Settings.cpp",
+      "Source/Tests/Test_SettingsStorage.cpp",
+      "Source/Tests/Test_SmartPointers.cpp",
+      "Source/Tests/Test_StackTrace.cpp",
+      "Source/Tests/Test_StringUtils.cpp",
+      "Source/Tests/Test_StrongType.cpp",
+      "Source/Tests/Test_TextBaker.cpp",
+      "Source/Tests/Test_TextPack.cpp",
+      "Source/Tests/Test_TextureAtlas.cpp",
+      "Source/Tests/Test_TimeRelated.cpp",
+      "Source/Tests/Test_Timer.cpp",
+      "Source/Tests/Test_TwoDimensionalGrid.cpp",
+      "Source/Tests/Test_WorkThread.cpp",
+      "Source/Tests/Test_WorkerPool.cpp"
+    ]
+  },
+  "settings": {
+    "declaration_count": 271,
+    "source": "Source/Common/Settings.inc"
+  }
+}

@@ -1,0 +1,849 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_text_format.py",
+  "source_manifest": "BuildTools/TextFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed authoring, baking, normalization, runtime lookup, and rendering contract for FOnline text packs and prototype-localized text.",
+  "scope": {
+    "surface": "text-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The contract is generated for a pinned Engine revision. Projects own language policy, pack catalogs, translation workflow, semantic key conventions, and any game-specific lexem or argument formatter.",
+    "included": [
+      ".fotxt file naming, brace-field syntax, multiline values, structured keys, and duplicate variants",
+      "BakeLanguages ordering, incremental rebakes, bake-time language normalization, and binary output names",
+      "$Text prototype fields, inheritance, output-pack routing, escape decoding, and validation",
+      "client and server script lookup surfaces, language switching, and inline renderer color tags"
+    ],
+    "excluded": [
+      "project language priorities, translation ownership, terminology, and release-readiness policy",
+      "project-specific lexems, argument substitution, random-choice syntax, dialog formatting, and chat wrappers",
+      "concrete pack names beyond the five Engine-generated prototype packs",
+      "font selection, layout, shaping, and general GUI authoring"
+    ]
+  },
+  "sources": {
+    "text_pack_header": "Source/Common/TextPack.h",
+    "text_pack": "Source/Common/TextPack.cpp",
+    "text_baker": "Source/Tools/TextBaker.cpp",
+    "proto_text_baker": "Source/Tools/ProtoTextBaker.cpp",
+    "client_runtime": "Source/Client/Client.cpp",
+    "client_script_api": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "server_runtime": "Source/Server/Server.cpp",
+    "server_script_api": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+    "common_script_api": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+    "script_types": "Source/Scripting/AngelScript/AngelScriptTypes.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "renderer": "Source/Client/FontManager.cpp",
+    "renderer_header": "Source/Client/FontManager.h",
+    "tests": [
+      "Source/Tests/Test_TextPack.cpp",
+      "Source/Tests/Test_TextBaker.cpp",
+      "Source/Tests/Test_ProtoTextBaker.cpp"
+    ]
+  },
+  "outputs": {
+    "source_extension": ".fotxt",
+    "baked_extension": ".fotxt-bin",
+    "source_filename": "<TextPack>.<Language>.fotxt",
+    "baked_filename": "<ResourcePack>.<TextPack>.<Language>.fotxt-bin",
+    "raw_entry": "{Key1}{Key2}{Text}",
+    "raw_key3": "empty",
+    "prototype_packs": [
+      "Items",
+      "Critters",
+      "Maps",
+      "Locations",
+      "Protos"
+    ]
+  },
+  "setting_defaults": {
+    "Baking.BakeLanguages": [
+      "engl"
+    ],
+    "Client.Language": "engl"
+  },
+  "syntax_rules": [
+    {
+      "id": "text-format.syntax.entry",
+      "name": "Raw entry shape",
+      "requirement": "A parsed .fotxt entry contains Key1, Key2, and Text in three brace-delimited fields; the collection is the text-pack filename segment.",
+      "rationale": "LoadFromString supplies the collection separately and constructs TextPackKey from the two authored key fields.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "if (!ExtractBraceToken(line, offset, token1, false, nullptr))",
+            "if (!ExtractBraceToken(line, offset, token2, false, nullptr))",
+            "if (!ExtractBraceToken(line, offset, token3, true, &sstr))",
+            "TextPackKey::FromParts(*_hashResolver, collection, token1, token2)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.key-tuple",
+      "name": "Structured key identity",
+      "requirement": "TextPackKey identity is Collection plus Key1, Key2, and Key3, each represented as a hashed string wrapper.",
+      "rationale": "Raw .fotxt entries leave Key3 empty, while prototype $Text fields may populate Key2 and Key3.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.h",
+          "anchors": [
+            "TextPackName Collection {};",
+            "hstring Key1 {};",
+            "hstring Key2 {};",
+            "hstring Key3 {};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.multiline-text",
+      "name": "Multiline value",
+      "requirement": "Only the third field may continue across physical lines; joined lines retain newline characters until the first closing brace.",
+      "rationale": "The first two ExtractBraceToken calls disable multiline input and the third enables it.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "line += \"\\n\" + additional_line;",
+            "ExtractBraceToken(line, offset, token3, true, &sstr)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.comment-boundary",
+      "name": "No comment grammar",
+      "requirement": "The parser skips a physical line only when it cannot find the first opening brace; comment conventions are project policy and comment text must not contain parseable brace fields.",
+      "rationale": "LoadFromString has no comment-token branch and begins parsing at the first opening brace anywhere on the line.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "auto first = line.find('{', offset);",
+            "if (first == string::npos)",
+            "continue;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.empty-fields",
+      "name": "Required and optional fields",
+      "requirement": "The collection and Key1 must be non-empty; Key2 and Text may be empty.",
+      "rationale": "The parser rejects only an empty collection or first key after all three fields were extracted.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "if (collection.empty() || token1.empty())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.variants",
+      "name": "Duplicate-key variants",
+      "requirement": "Multiple entries may share the same complete TextPackKey and remain ordered variants in the baked multimap.",
+      "rationale": "Variant count and indexed selection are explicit runtime operations; duplicate cardinality is not language-normalized.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.h",
+          "anchors": [
+            "multimap<TextPackKey, string> _strData {};"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextPack.cpp",
+          "anchors": [
+            "CHECK(restored.GetStrCount(dialogs_twenty) == 2);",
+            "CHECK(restored.GetStr(dialogs_twenty, 1) == \"Gamma\");"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.syntax.no-closing-brace-escape",
+      "name": "Closing-brace boundary",
+      "requirement": "The first closing brace terminates each field; the raw format has no escape sequence for a literal closing brace inside Text.",
+      "rationale": "ExtractBraceToken searches directly for the next closing brace and does not decode escapes.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "auto last = line.find('}', first);",
+            "token = line.substr(first + 1, last - first - 1);"
+          ]
+        }
+      ]
+    }
+  ],
+  "language_rules": [
+    {
+      "id": "text-format.language.filename",
+      "name": "Source filename",
+      "requirement": "A .fotxt basename contains exactly two dot-separated segments: text-pack name and language identifier.",
+      "rationale": "TextBaker rejects every other basename shape.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "auto name_pair = strex(file_header.GetNameNoExt()).split('.');",
+            "name_pair.size() == 2",
+            "Text filename must contain pack name and language suffix"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.identifier",
+      "name": "Language identifier",
+      "requirement": "The Engine treats the filename suffix as an opaque configured string and imposes no fixed character count.",
+      "rationale": "Acceptance is equality against Baking.BakeLanguages; no length or locale-shape validator exists in TextBaker.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "std::ranges::find(_context->Settings->BakeLanguages, lang_name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.base",
+      "name": "Base language",
+      "requirement": "Baking.BakeLanguages must be non-empty and its first entry is the base language used for normalization.",
+      "rationale": "Both text bakers reject an empty list and TextPack::FixPacks normalizes every later language against the first pack set.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "if (_context->Settings->BakeLanguages.empty())",
+            "const auto& default_lang = _context->Settings->BakeLanguages.front();"
+          ]
+        },
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "const auto& base_lang_pack = lang_packs.front().second;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.default-source-required",
+      "name": "Base source required",
+      "requirement": "For every changed raw text pack, the selected file set must contain the base-language source.",
+      "rationale": "TextBaker cannot normalize a changed pack without the base language and throws before parsing output.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "if (languages.count(default_lang) == 0)",
+            "throw TextBakerException(\"Default language not found\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.incremental-pack-set",
+      "name": "Incremental pack completion",
+      "requirement": "When one language file of a text pack changes, TextBaker includes every configured language file for that same pack in the rebake.",
+      "rationale": "A partial language update must still pass complete-pack normalization.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "// Ensure full language set for changed text packs",
+            "packs_to_complete.contains(text_pack_name)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextBaker.cpp",
+          "anchors": [
+            "BakeCheckerCompletesChangedPackLanguages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.unsupported",
+      "name": "Unsupported language",
+      "requirement": "A raw text file whose suffix is absent from Baking.BakeLanguages is warned and skipped.",
+      "rationale": "Unsupported raw languages do not create binary packs.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "WriteLog(LogType::Warning, \"Unsupported language: {}. Skip\", lang_name);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.bake-time-fallback",
+      "name": "Bake-time fallback",
+      "requirement": "Missing language packs and missing keys are copied from the base language during baking; packs and keys absent from the base are removed from non-base languages.",
+      "rationale": "Runtime lookup loads already-normalized binary packs and does not perform fallback.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "// Remove packs that are not in the base language pack",
+            "// Add packs that are in the base language pack but not in this pack",
+            "// Normalize texts to the base language",
+            "text_pack.FixStr(it->second);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.variant-cardinality",
+      "name": "Variant cardinality",
+      "requirement": "Normalization aligns key presence, not the number or ordering of duplicate variants under an existing key.",
+      "rationale": "FixStr tests only whether a key count is zero and preserves all existing variants when the key exists.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "bool has_same_entry = _strData.count(key) != 0;",
+            "if (!has_same_entry)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.binary-name",
+      "name": "Baked filename",
+      "requirement": "Raw and prototype text bakers emit <ResourcePack>.<TextPack>.<Language>.fotxt-bin.",
+      "rationale": "TextPack::LoadFromResources later requires exactly those three basename segments.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "_context->WriteData(strex(\"{}.{}.{}.fotxt-bin\", _context->PackName, pack_name, lang_name)"
+          ]
+        },
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "Baked text filename must contain pack prefix, text pack name and language suffix"
+          ]
+        }
+      ]
+    }
+  ],
+  "proto_text_rules": [
+    {
+      "id": "text-format.proto.syntax",
+      "name": "Prototype text key",
+      "requirement": "Prototype text uses $Text [Language] [Key2] [Key3] = Value and accepts at most four key tokens including $Text.",
+      "rationale": "The prototype id becomes Key1 and the optional trailing tokens become Key2 and Key3.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "Prototype text key has too many tokens",
+            "string_view key2 = key_tok.size() >= 3",
+            "string_view key3 = key_tok.size() >= 4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.default-language",
+      "name": "Omitted language",
+      "requirement": "When the language token is omitted, a $Text field belongs to the first Baking.BakeLanguages entry.",
+      "rationale": "The same ordered base-language contract is shared with raw text packs.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.escape-decoding",
+      "name": "Escaped value decoding",
+      "requirement": "Prototype $Text values pass through StringEscaping::DecodeString before entering the text pack.",
+      "rationale": "Sequences such as \\n become actual newline characters in the baked value.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "StringEscaping::DecodeString(value)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ProtoTextBaker.cpp",
+          "anchors": [
+            "$Text engl Long = Line\\nBreak",
+            "== \"Line\\nBreak\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.inheritance",
+      "name": "Inherited text",
+      "requirement": "Parent $Text fields are merged recursively before the child fields.",
+      "rationale": "A child inherits missing exact text keys while its own exact key assignment replaces the inherited value.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "fill_parent_recursive(parent_name, it_parent->second);",
+            "insert_map_values(it_parent->second, proto_kv);",
+            "insert_map_values(file_kv, proto_kv);",
+            "to_kv[key] = value;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.pack-routing",
+      "name": "Generated pack routing",
+      "requirement": "Item, Critter, Map, and Location prototypes route to Items, Critters, Maps, and Locations; other non-exported HasProtos entity or fixed types route to Protos.",
+      "rationale": "These five names are the reusable Engine-generated prototype text-pack set.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "return \"Items\";",
+            "return \"Critters\";",
+            "return \"Maps\";",
+            "return \"Locations\";",
+            "return \"Protos\";",
+            "if (!type_desc.Exported && type_desc.HasProtos)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.complete-output-set",
+      "name": "Complete output set",
+      "requirement": "ProtoTextBaker creates all five generated packs for every configured language, including empty packs.",
+      "rationale": "The binary output shape is deterministic across projects and language sets.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "empty_lang_pack.try_emplace(\"Items\"",
+            "empty_lang_pack.try_emplace(\"Critters\"",
+            "empty_lang_pack.try_emplace(\"Maps\"",
+            "empty_lang_pack.try_emplace(\"Locations\"",
+            "empty_lang_pack.try_emplace(\"Protos\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.intersections",
+      "name": "Cross-type intersections",
+      "requirement": "Two prototype sources may not emit the same complete key into one generated pack and language.",
+      "rationale": "Intersections are counted as errors and abort prototype text baking.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "text_pack.CheckIntersections(proto_text.second)",
+            "Proto text intersection detected",
+            "throw ProtoTextBakerException(\"Errors during proto texts parsing\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.proto.unsupported-language",
+      "name": "Unsupported prototype language",
+      "requirement": "A $Text language absent from Baking.BakeLanguages is warned and omitted.",
+      "rationale": "Prototype-localized text follows the configured output-language set.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "WriteLog(LogType::Warning, \"Unsupported language {} in proto {}\", proto_text.first, pid);"
+          ]
+        }
+      ]
+    }
+  ],
+  "runtime_methods": [
+    {
+      "id": "text-format.runtime.get-language",
+      "name": "Game.GetLanguage",
+      "signature": "LanguageName Game.GetLanguage()",
+      "sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "behavior": "Returns the current Engine Language setting as a strong LanguageName wrapper.",
+      "missing_behavior": "Not applicable.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API LanguageName Common_Game_GetLanguage",
+            "engine->Settings->Language"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.get-current-text",
+      "name": "Game.GetText current language",
+      "signature": "string Game.GetText(TextPackKey textKey, int32 skipCount = 0)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Returns the zero-based variant selected by skipCount from the current client language; the default is the first variant.",
+      "missing_behavior": "A missing key or out-of-range index returns an empty string; a negative index throws.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)",
+            "Skip count arg must not be negative",
+            "client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount))"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.get-language-text",
+      "name": "Game.GetText explicit language",
+      "signature": "string Game.GetText(string langName, TextPackKey textKey)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "An empty langName or the current language uses the current pack; another langName loads or reuses a cached pack and returns its first variant.",
+      "missing_behavior": "An absent or unsupported non-empty language has no automatic fallback and therefore yields an empty string for the key.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, string_view langName, TextPackKey textKey)"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&",
+            "if (lang_name.empty() || lang_name == Settings->Language)",
+            "lang_pack.LoadFromResources(Resources, lang_name);",
+            "_langPackCache.emplace_back"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.get-count",
+      "name": "Game.GetTextCount",
+      "signature": "int32 Game.GetTextCount(TextPackKey textKey)",
+      "sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "behavior": "Returns the number of variants stored under the complete key.",
+      "missing_behavior": "Returns zero when the key is absent.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API int32_t Client_Game_GetTextCount"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API int32_t Server_Game_GetTextCount"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.is-present",
+      "name": "Game.IsTextPresent",
+      "signature": "bool Game.IsTextPresent(TextPackKey textKey)",
+      "sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "behavior": "Reports whether at least one variant exists under the complete key.",
+      "missing_behavior": "Returns false when the key is absent.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API bool Client_Game_IsTextPresent"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API bool Server_Game_IsTextPresent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.change-language",
+      "name": "Game.ChangeLanguage",
+      "signature": "void Game.ChangeLanguage(string langName)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Loads langName into the current client pack and writes the Language setting.",
+      "missing_behavior": "The Engine does not validate the identifier, apply another fallback, or invoke a project GUI refresh callback.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API void Client_Game_ChangeLanguage"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "void ClientEngine::ChangeLanguage(string_view lang_name)",
+            "Settings->Language = lang_name;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.server-boundary",
+      "name": "Server text boundary",
+      "signature": "server: IsTextPresent and GetTextCount only",
+      "sides": [
+        "server"
+      ],
+      "behavior": "The server loads one pack for Settings.Language and exposes presence and count queries.",
+      "missing_behavior": "There is no server script Game.GetText overload in the Engine API.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Server/Server.cpp",
+          "anchors": [
+            "_defaultLang.LoadFromResources(Resources, Settings->Language);"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+          "anchors": [
+            "Server_Game_IsTextPresent",
+            "Server_Game_GetTextCount"
+          ]
+        }
+      ]
+    }
+  ],
+  "rendering_rules": [
+    {
+      "id": "text-format.rendering.inline-color",
+      "name": "Inline color tags",
+      "requirement": "The client font renderer recognizes @color:HEX@ to push a six- or eight-hex-digit color and @color@ to restore the previous color.",
+      "rationale": "Color tags are renderer syntax, independent from text-pack parsing and project lexem formatting.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "if (value.size() != 6 && value.size() != 8)",
+            "if (value.empty())",
+            "reset = true;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.rendering.no-colorize",
+      "name": "NoColorize",
+      "requirement": "FontFlag.NoColorize strips valid inline color tags while rendering all glyphs with the base color.",
+      "rationale": "The formatting pass always removes recognized tags, but writes per-glyph colors only when colorization is enabled.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.h",
+          "anchors": [
+            "NoColorize = 0x0080"
+          ]
+        },
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize))"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "text-format.validation.malformed-raw",
+      "name": "Malformed raw text",
+      "requirement": "A raw source with a missing required field or unterminated value fails the text bake even if other entries parsed successfully.",
+      "rationale": "LoadFromString reports aggregate failure and TextBaker rejects the complete source file.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "return !failed;"
+          ]
+        },
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "throw TextPackException(\"Invalid text file\", file.GetPath());"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextPack.cpp",
+          "anchors": [
+            "MalformedLoadFromStringReportsFailureAfterKeepingValidEntries"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.validation.empty-languages",
+      "name": "Empty BakeLanguages",
+      "requirement": "TextBaker, ProtoTextBaker, and TextPack normalization reject an empty Baking.BakeLanguages list.",
+      "rationale": "No deterministic base language can be selected.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "throw TextBakerException(\"No bake languages specified\")"
+          ]
+        },
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "throw ProtoTextBakerException(\"No bake languages specified\")"
+          ]
+        },
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "Text pack normalization cannot choose a base language because BakeLanguages is empty"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.validation.raw-unsupported-warning",
+      "name": "Unsupported raw language warning",
+      "requirement": "Unsupported raw language files produce a warning and no output for that language.",
+      "rationale": "Projects can keep unrelated sources in a broader input tree without silently publishing them.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/TextBaker.cpp",
+          "anchors": [
+            "Unsupported language: {}. Skip"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.validation.proto-token-count",
+      "name": "Prototype key token count",
+      "requirement": "A prototype $Text key with more than Language, Key2, and Key3 after $Text fails baking.",
+      "rationale": "TextPackKey has no additional key field.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "Prototype text key has too many tokens"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ProtoTextBaker.cpp",
+          "anchors": [
+            "TooManyTextTokens"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.validation.proto-intersection",
+      "name": "Prototype output intersection",
+      "requirement": "Duplicate complete keys produced by different prototype type sources in one output pack fail baking.",
+      "rationale": "The generated pack must not depend on iteration order across type catalogs.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ProtoTextBaker.cpp",
+          "anchors": [
+            "Proto text intersection detected",
+            "Errors during proto texts parsing"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ProtoTextBaker.cpp",
+          "anchors": [
+            "ProtoTextIntersection"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 38,
+    "syntax_rule_count": 7,
+    "language_rule_count": 9,
+    "proto_text_rule_count": 8,
+    "runtime_method_count": 7,
+    "rendering_rule_count": 2,
+    "validation_rule_count": 5,
+    "entries_by_stability": {
+      "experimental": 38
+    }
+  },
+  "contract_digest": "79169437ee821a74a039524b8bfc29c6f65b7cc5251f55dab0b5d640b714cb2c"
+}

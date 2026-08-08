@@ -154,6 +154,7 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
     }
 }
 
+// Draws a client sprite in an ImGui layout slot at the requested positive size and UV range; partial UV drawing requires an atlas sprite, while a missing sprite leaves the slot blank.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f})
 {
@@ -167,6 +168,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, ui
     DrawItemSprite(client, sprId, imageSize, uv0, uv1, ucolor::clear);
 }
 
+// Creates a uniquely identified ImGui image button, draws its standard state frame plus optional background and sprite tint, and returns whether it was pressed; size and UV validation match Image.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ptr<ScriptImGui> self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f}, ucolor bgColor = ucolor {}, ucolor tintColor = ucolor {})
 {

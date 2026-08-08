@@ -33,7 +33,6 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
-#include "NetworkClient.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE

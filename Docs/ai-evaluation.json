@@ -1,0 +1,1398 @@
+{
+  "schema_version": 1,
+  "source_ref": "master",
+  "minimum_retrieval_success_rate": 1.0,
+  "categories": [
+    {"id": "architecture", "title": "Architecture and ownership"},
+    {"id": "scripting", "title": "Scripting lifecycle and concurrency"},
+    {"id": "content", "title": "Content and authored formats"},
+    {"id": "debugging", "title": "Testing and debugging"},
+    {"id": "migration", "title": "Engine adoption and contract migration"},
+    {"id": "release", "title": "Support and packaging"}
+  ],
+  "tasks": [
+    {
+      "id": "architecture-engine-project-boundary",
+      "category": "architecture",
+      "question": "Which responsibilities belong to the reusable engine versus an embedding game project, and where should architecture-wide behavior versus source navigation be documented?",
+      "primary_document_id": "engine-architecture",
+      "supporting_document_ids": ["source-tree"],
+      "retrieval_checks": [
+        {
+          "query": "engine project architecture ownership boundary",
+          "expected_document_ids": ["engine-architecture"],
+          "max_rank": 3
+        },
+        {
+          "query": "Source Applications Common Client Server Frontend Scripting",
+          "expected_document_ids": ["engine-architecture", "source-tree"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "ownership-split",
+          "description": "Separate product content and policy from reusable runtime and tooling.",
+          "document_id": "engine-architecture",
+          "anchor": "big-picture",
+          "required_terms": ["game project owns content", "engine owns reusable runtime systems"]
+        },
+        {
+          "id": "documentation-routing",
+          "description": "Route broad behavior and source navigation to their owning pages.",
+          "document_id": "engine-architecture",
+          "anchor": "where-to-document-changes",
+          "required_terms": ["Architecture-wide behavior", "Source navigation"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not infer the public engine boundary from one embedding project's directory layout."
+      ]
+    },
+    {
+      "id": "architecture-source-change-routing",
+      "category": "architecture",
+      "question": "Where should a contributor start for a baker, rendering frontend, script binding, or server-authority change?",
+      "primary_document_id": "source-tree",
+      "supporting_document_ids": ["engine-architecture", "tools"],
+      "retrieval_checks": [
+        {
+          "query": "where change baker mapper developer tools Source Tools",
+          "expected_document_ids": ["source-tree", "tools"],
+          "max_rank": 3
+        },
+        {
+          "query": "application rendering frontend source directory",
+          "expected_document_ids": ["source-tree", "engine-architecture"],
+          "max_rank": 3
+        },
+        {
+          "query": "Source/Tools Source/Scripting Source/Frontend Source/Server baker classes Mapper AnimationViewer ParticleViewer",
+          "expected_document_ids": ["source-tree"],
+          "max_rank": 2
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "quick-directory-routing",
+          "description": "Name the source directories for tools, scripting, frontend, and server work.",
+          "document_id": "source-tree",
+          "anchor": "quick-routing",
+          "required_terms": ["Source/Tools/", "Source/Scripting/", "Source/Frontend/", "Source/Server/"]
+        },
+        {
+          "id": "tool-layer-boundary",
+          "description": "Treat baker implementations as source-backed tools instead of inferring a target name.",
+          "document_id": "source-tree",
+          "anchor": "sourcetools",
+          "required_terms": ["Source/Tools/", "baker classes", "Build/resource pipeline docs should cite these files"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not guess a universal target or filename from a project-specific executable, substitute a broad architecture page for the Source Tree owner, or place ServerApp.cpp and server variant application entry files under Source/Server instead of Source/Applications.",
+        "Do not omit that Source/Tools contains the baker classes and that build/resource pipeline documentation should cite those source files plus the invoking CMake stage."
+      ]
+    },
+    {
+      "id": "architecture-ai-control-boundary",
+      "category": "architecture",
+      "question": "How can a FOnline project expose a client to an AI or MCP adapter while keeping game-specific commands outside Engine behavior, securing the listener, and proving the integration at the right evidence layers?",
+      "primary_document_id": "ai-control-protocol-guide",
+      "supporting_document_ids": ["native-extensions-guide", "gameplay-testing", "security-and-secrets"],
+      "retrieval_checks": [
+        {
+          "query": "AiControl NDJSON auth observe events act command_completed",
+          "expected_document_ids": ["ai-control-protocol-guide"],
+          "max_rank": 2
+        },
+        {
+          "query": "AI client bridge loopback token shipping build server authority",
+          "expected_document_ids": ["ai-control-protocol-guide", "security-and-secrets"],
+          "max_rank": 3
+        },
+        {
+          "query": "Last Frontier TLA MCP action schema project owned",
+          "expected_document_ids": ["ai-control-protocol-guide"],
+          "max_rank": 2
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "ai-control-engine-envelope",
+          "description": "Limit the reusable Engine contract to the transport, methods, bounds, and command lifecycle.",
+          "document_id": "ai-control-protocol-guide",
+          "anchor": "what-the-engine-owns",
+          "required_terms": ["UTF-8 newline-delimited JSON", "auth", "ping", "status", "observe", "events", "act", "command_completed"]
+        },
+        {
+          "id": "ai-control-project-schema",
+          "description": "Keep observations, actions, MCP namespaces, and game policy in the embedding project.",
+          "document_id": "ai-control-protocol-guide",
+          "anchor": "what-the-project-owns",
+          "required_terms": ["observation fields", "MCP tool names", "Last Frontier", "TLA"]
+        },
+        {
+          "id": "ai-control-threat-boundary",
+          "description": "Apply loopback-first operation, non-empty remote tokens, plaintext awareness, and shipping exclusion.",
+          "document_id": "ai-control-protocol-guide",
+          "anchor": "security-boundary",
+          "required_terms": ["Bind loopback by default", "non-empty token", "plaintext", "Compile the listener and remote-command path out of production clients", "runtime setting alone"]
+        },
+        {
+          "id": "ai-control-evidence-limit",
+          "description": "Distinguish protocol proof from native client and server-authority validation.",
+          "document_id": "ai-control-protocol-guide",
+          "anchor": "validation",
+          "required_terms": ["not a FOnline runtime proof", "real client", "server rejection", "release artifacts"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not publish lf_*, tla_*, one project's observation schema, or administrator actions as generic FOnline protocol methods.",
+        "Do not say the listener may be compiled into a production or shipping client when explicitly enabled; shipping exclusion means the listener and remote-command path are absent from release artifacts.",
+        "Do not omit Last Frontier and TLA as project-owned schema examples or the server-rejection evidence layer from native integration validation."
+      ]
+    },
+    {
+      "id": "architecture-project-dependencies",
+      "category": "architecture",
+      "question": "How should an embedding game classify an Engine, project, companion, tool-only, or system dependency; link it by role; separate development copy from release delivery by explicitly enumerating package declarations, licenses and notices, runtime-file hashes, signing ownership, and an isolated packaged start; distinguish requested, compiled, and initialized states; and preserve shared-library ABI and allocator ownership? Use the word licenses explicitly; notices alone do not satisfy that evidence class.",
+      "primary_document_id": "project-local-dependencies",
+      "supporting_document_ids": ["native-extensions-guide", "third-party-maintenance", "packaging-and-release"],
+      "retrieval_checks": [
+        {
+          "query": "project local dependency AddProjectLibraries roles CMake target",
+          "expected_document_ids": ["project-local-dependencies"],
+          "max_rank": 3
+        },
+        {
+          "query": "vendored imported SDK runtime payload license dependency record",
+          "expected_document_ids": ["project-local-dependencies"],
+          "max_rank": 3
+        },
+        {
+          "query": "project dependency find_package handler allocator ABI package validation",
+          "expected_document_ids": ["project-local-dependencies"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "dependency-ownership-selection",
+          "description": "Classify Engine, project, companion, tool-only, and system dependencies before integration.",
+          "document_id": "project-local-dependencies",
+          "anchor": "choose-the-owner-first",
+          "required_terms": ["Engine", "Embedding project", "companion repository", "Operating-system framework"]
+        },
+        {
+          "id": "role-scoped-project-linking",
+          "description": "Use the public role-scoped helper before core libraries consume the dependency.",
+          "document_id": "project-local-dependencies",
+          "anchor": "integrate-at-the-project-boundary",
+          "required_terms": ["AddProjectLibraries", "ROLES", "LIBRARIES", "BuildCoreLibraries"]
+        },
+        {
+          "id": "dependency-runtime-delivery",
+          "description": "Treat development copies, package payloads, licenses, hashes, signing, and isolated acceptance as separate release work.",
+          "document_id": "project-local-dependencies",
+          "anchor": "package-runtime-payloads",
+          "required_terms": ["package declarations", "licenses", "notices", "isolated directory", "runtime file hashes", "signatures"]
+        },
+        {
+          "id": "dependency-platform-and-abi",
+          "description": "Separate requested, compiled, and initialized states and preserve allocator/ABI ownership.",
+          "document_id": "project-local-dependencies",
+          "anchor": "respect-abi-allocation-and-lifetime",
+          "required_terms": ["ABI", "allocator", "ownership", "shared-library"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not append directly to internal FO_*_LIBS lists, use an unpinned dependency, infer runtime availability from headers, or treat a local post-build copy as package acceptance.",
+        "Do not summarize release delivery without separately naming licenses, runtime-file hashes, signing ownership, package declarations, and an isolated packaged start.",
+        "Do not use either notices or licenses as a synonym for the other; report both licenses and notices."
+      ]
+    },
+    {
+      "id": "scripting-module-yield-lifecycle",
+      "category": "scripting",
+      "question": "How do module initialization, async propagation, and Yield interact in AngelScript, and within AngelScriptBackend shutdown what exact condition stops full garbage collection and how are survivors handled? Keep the separate client/server entity shutdown outside this answer.",
+      "primary_document_id": "script-lifecycle-concurrency",
+      "supporting_document_ids": ["scripting-runtime"],
+      "retrieval_checks": [
+        {
+          "query": "AngelScript module initialization Async Yield suspension",
+          "expected_document_ids": ["script-lifecycle-concurrency"],
+          "max_rank": 3
+        },
+        {
+          "query": "script module cleanup callbacks mutable global state",
+          "expected_document_ids": ["script-lifecycle-concurrency", "scripting-runtime"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "module-init-order",
+          "description": "Explain module initialization as a defined lifecycle rather than arbitrary startup.",
+          "document_id": "script-lifecycle-concurrency",
+          "anchor": "module-initialization",
+          "required_terms": ["ModuleInit", "module initialization", "Init"]
+        },
+        {
+          "id": "yield-contract",
+          "description": "Explain that Yield requires async propagation and creates a suspension boundary.",
+          "document_id": "script-lifecycle-concurrency",
+          "anchor": "async-propagation-and-yield",
+          "required_terms": ["[[Async]]", "Yield", "suspend"]
+        },
+        {
+          "id": "shutdown-gc-stop-condition",
+          "description": "Preserve the two-part AngelScriptBackend garbage-collection stop condition and the survivor-reporting boundary without ordering another owner's teardown.",
+          "document_id": "script-lifecycle-concurrency",
+          "anchor": "destruction-and-shutdown",
+          "required_terms": ["empty or stable", "unreclaimable survivors", "backend links"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not invent a project-specific module loader or callback order.",
+        "Do not call ModuleInit indexing bake-time discovery; the runtime indexes valid init functions and stores their priorities.",
+        "Do not claim that shutdown garbage collection always runs until no live objects remain; the live set may become stable and unreclaimable survivors are reported.",
+        "Do not invent one total order that interleaves client/server entity cleanup with the backend-internal module and garbage-collection stages."
+      ]
+    },
+    {
+      "id": "scripting-style-refactoring",
+      "category": "scripting",
+      "question": "How should an Engine or game contributor format and organize AngelScript by namespace/file, source/runtime order, side macros, mutable-state and attributed-call ownership; classify a refactor; and keep module catalogs, generated formats, persistence migrations, and gameplay acceptance in project policy? Explicitly state that dispatcher-owned attributed functions enter through their dispatcher route.",
+      "primary_document_id": "angelscript-style",
+      "supporting_document_ids": ["scripting-runtime", "script-lifecycle-concurrency", "nullability", "generated-content-workflow"],
+      "retrieval_checks": [
+        {
+          "query": "AngelScript style namespace filename formatter nullable named arguments",
+          "expected_document_ids": ["angelscript-style"],
+          "max_rank": 3
+        },
+        {
+          "query": "refactor fos mechanical structural behavioral contract generated files small batches",
+          "expected_document_ids": ["angelscript-style"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "script-module-and-format-baseline",
+          "description": "Route a module by matching namespace and filename and use the Engine formatter wrapper for AngelScript-specific repairs.",
+          "document_id": "angelscript-style",
+          "anchor": "fast-convention",
+          "required_terms": ["namespace matching the file stem", "Engine-aware wrapper", "T?", "generated output"]
+        },
+        {
+          "id": "script-module-side-contract",
+          "description": "Explain source ordering separately from runtime initialization and use value-tested side macros.",
+          "document_id": "angelscript-style",
+          "anchor": "how-scripts-become-a-module",
+          "required_terms": ["Sort N", "SERVER=1", "#if SERVER", "[[ModuleInit(priority)]]"]
+        },
+        {
+          "id": "script-state-and-attribute-boundary",
+          "description": "Keep mutable globals exceptional and enter dispatcher-owned attributed functions through their owning route.",
+          "document_id": "angelscript-style",
+          "anchor": "mutable-state-and-globals",
+          "required_terms": ["Script.MutableGlobalsAllowedNamespaces", "const-only", "compatibility escape hatch", "dispatcher route"]
+        },
+        {
+          "id": "script-refactor-classification",
+          "description": "Classify mechanical, structural, behavioral, and contract changes before selecting proof.",
+          "document_id": "angelscript-style",
+          "anchor": "refactoring-classification",
+          "required_terms": ["Mechanical", "Structural", "Behavioral", "Contract", "Small batches"]
+        },
+        {
+          "id": "script-project-policy-boundary",
+          "description": "Keep comment language, game vocabulary, generated formats, migrations, and gameplay acceptance with the embedding project.",
+          "document_id": "angelscript-style",
+          "anchor": "project-policy-boundary",
+          "required_terms": ["comment language", "gameplay architecture", "generated formats", "migration", "gameplay acceptance"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not copy one game's comment language, migration backlog, generated files, module catalog, or gameplay test commands into the Engine convention.",
+        "Do not omit dispatcher-owned attributed-call entry, generated formats, migrations, or gameplay acceptance when summarizing the Engine/project scripting boundary."
+      ]
+    },
+    {
+      "id": "scripting-entity-synchronization",
+      "category": "scripting",
+      "question": "What dispatcher-specific native entry cover or explicit Game.Sync cover is required when server script code reads or mutates entities, especially across Yield? Begin by distinguishing the SyncContext created by ServerEngine::RunScriptContext from an entity cover: RunScriptContext does not itself cover an entity, while an owning native dispatcher may establish a cover inside the context. State only proven covers and explicit Game.Sync behavior; do not characterize whether unrelated callbacks create or do not create any additional script scope, sync scope, or context.",
+      "primary_document_id": "script-lifecycle-concurrency",
+      "supporting_document_ids": ["testing"],
+      "retrieval_checks": [
+        {
+          "query": "server entity synchronization cover existing player reconnect",
+          "expected_document_ids": ["script-lifecycle-concurrency"],
+          "max_rank": 3
+        },
+        {
+          "query": "Game.Lock Yield synchronization cover",
+          "expected_document_ids": ["script-lifecycle-concurrency"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "entity-cover",
+          "description": "Require the native entry cover or an explicit wider cover for entity access.",
+          "document_id": "script-lifecycle-concurrency",
+          "anchor": "server-entity-synchronization",
+          "required_terms": ["ServerEngine::RunScriptContext()", "SyncContext", "does not itself cover any entity", "owning native dispatcher", "Game.Sync(...)", "complete required set"]
+        },
+        {
+          "id": "cover-suspension",
+          "description": "State that covers do not survive suspension and must be reacquired.",
+          "document_id": "script-lifecycle-concurrency",
+          "anchor": "covers-do-not-survive-suspension",
+          "required_terms": ["Yield", "cover", "reacquire"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat Game.Lock as a replacement for entity synchronization, claim that an unrelated event, setter, callback, or direct entry starts empty, or characterize whether those dispatchers create or do not create an additional script scope, sync scope, or context without their owning native evidence.",
+        "Do not call the SyncContext created by ServerEngine::RunScriptContext an entity cover; an owning native dispatcher may establish an initial cover inside that context."
+      ]
+    },
+    {
+      "id": "content-prototype-inheritance",
+      "category": "content",
+      "question": "How should a game author use prototype identity, multiple inheritance, side-aware properties, and migrations? For side-aware properties, state first that an unknown property fails unconditionally, then distinguish disabled, opposite-side skipped, virtual, and temporary cases.",
+      "primary_document_id": "prototype-format-guide",
+      "supporting_document_ids": ["project-configuration"],
+      "retrieval_checks": [
+        {
+          "query": "prototype Parent multiple inheritance property applicability migration",
+          "expected_document_ids": ["prototype-format-guide"],
+          "max_rank": 3
+        },
+        {
+          "query": "prototype identity Name Parent side property",
+          "expected_document_ids": ["prototype-format-guide"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "prototype-identity",
+          "description": "Define prototype identity explicitly and preserve its migration-before-duplicate boundary.",
+          "document_id": "prototype-format-guide",
+          "anchor": "identity",
+          "required_terms": ["$Name", "source file name without its extension", "passed through", "migration rules before duplicate detection"]
+        },
+        {
+          "id": "prototype-merge-order",
+          "description": "Describe deterministic parent and child merge order and overlap risk.",
+          "document_id": "prototype-format-guide",
+          "anchor": "inheritance",
+          "required_terms": ["$Parent", "left to right", "rightmost parent wins"]
+        },
+        {
+          "id": "prototype-migration",
+          "description": "Treat renamed or removed prototype IDs as compatibility changes.",
+          "document_id": "prototype-format-guide",
+          "anchor": "migrations",
+          "required_terms": ["MigrationRule", "compatibility change", "rename"]
+        },
+        {
+          "id": "prototype-side-property-boundary",
+          "description": "Distinguish unknown, side-disabled, virtual, temporary, and opposite-side skipped properties during baking.",
+          "document_id": "prototype-format-guide",
+          "anchor": "property-applicability",
+          "required_terms": ["unknown property", "disabled on the current side", "virtual property fails", "temporary property fails", "client-only property is skipped in server output", "server-only property is skipped in client/mapper output"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not infer prototype type or gameplay meaning from a project folder name.",
+        "Do not say an unknown property can be skipped by a side flag; the property must be known before side-specific output rules apply, and virtual or temporary authored properties fail."
+      ]
+    },
+    {
+      "id": "content-map-placement-ownership",
+      "category": "content",
+      "question": "How should map placements assign stable IDs and express critter inventory or item-container ownership?",
+      "primary_document_id": "map-format-guide",
+      "supporting_document_ids": ["prototype-format-guide"],
+      "retrieval_checks": [
+        {
+          "query": "fomap placement Id Proto CritterInventory ItemContainer",
+          "expected_document_ids": ["map-format-guide"],
+          "max_rank": 3
+        },
+        {
+          "query": "map authored ownership CritterId ContainerId stable IDs",
+          "expected_document_ids": ["map-format-guide"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "placement-identities",
+          "description": "Require explicit positive IDs unique across critter and item placements.",
+          "document_id": "map-format-guide",
+          "anchor": "placement-identity",
+          "required_terms": ["explicit positive", "unique across both Critter and Item", "$Proto"]
+        },
+        {
+          "id": "ownership-links",
+          "description": "Resolve inventory and container ownership through the correct authored owner IDs.",
+          "document_id": "map-format-guide",
+          "anchor": "item-ownership",
+          "required_terms": ["CritterInventory", "ItemContainer", "CritterId", "ContainerId"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not rely on textual section order as an execution-order guarantee."
+      ]
+    },
+    {
+      "id": "inspect-animation-particle-assets",
+      "category": "content",
+      "question": "How do I inspect critter animations and baked particle effects without starting a gameplay session, reproduce the focused result, and distinguish process-start smoke, focused-viewer, Mapper, and client evidence for production acceptance? State what exact Engine/project revisions, configuration, controls, logs, and captures must be retained as provenance for each evidence layer.",
+      "primary_document_id": "viewer-tools",
+      "supporting_document_ids": ["mapper-tools", "model-animation", "particle-format-guide"],
+      "retrieval_checks": [
+        {
+          "query": "AnimationViewer 1.00x Name level Direct draw hierarchy attachments",
+          "expected_document_ids": ["viewer-tools"],
+          "max_rank": 3
+        },
+        {
+          "query": "ParticleViewer fixed seed prewarm draw in scene baked spk efk",
+          "expected_document_ids": ["viewer-tools", "particle-format-guide"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "viewer-selection-boundary",
+          "description": "Choose the focused viewer and retain later Mapper and client validation.",
+          "document_id": "viewer-tools",
+          "anchor": "purpose",
+          "required_terms": ["AnimationViewer", "ParticleViewer", "Mapper", "representative client scene"]
+        },
+        {
+          "id": "animation-review-controls",
+          "description": "Review scale, facing, clips, roots, and model hierarchy.",
+          "document_id": "viewer-tools",
+          "anchor": "animation-review-workflow",
+          "required_terms": ["1.00x", "Angle", "Root", "Loop", "hierarchy"]
+        },
+        {
+          "id": "particle-reproducibility",
+          "description": "Pin particle seed, prewarm, and direction and compare render paths.",
+          "document_id": "viewer-tools",
+          "anchor": "particle-review-workflow",
+          "required_terms": ["Seed", "Prewarm", "Direction", "Draw in scene", "Replay"]
+        },
+        {
+          "id": "viewer-production-evidence-layers",
+          "description": "Keep focused inspection, Mapper placement, client behavior, and retained provenance as separate evidence layers.",
+          "document_id": "viewer-tools",
+          "anchor": "production-review-contract",
+          "required_terms": ["focused viewer", "Mapper", "representative client scene", "exact revisions", "process-start smoke"]
+        },
+        {
+          "id": "viewer-mapper-evidence-boundary",
+          "description": "For the later Mapper layer, state only that it proves placement, depth, and composition; do not prescribe placement, coordinate, or screenshot APIs.",
+          "document_id": "viewer-tools",
+          "anchor": "production-review-contract",
+          "required_terms": ["use Mapper to prove map placement, depth, and composition"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat a focused viewer as an authoring editor or as proof of gameplay behavior.",
+        "Do not invent a Windows -> Mapper command or another launch route: say only to open Mapper unless an exact complete command is copied from the supplied viewer guide.",
+        "For the later Mapper evidence layer, do not prescribe placement or screenshot APIs and do not claim that a full-window capture contains only map rendering; state only that Mapper validates placement, depth, and composition.",
+        "Do not omit retained provenance: record exact Engine/project revisions, configuration, inspected identity, renderer/backend, pinned controls, logs, and separate captures for process smoke, focused viewer, Mapper, and representative client evidence."
+      ]
+    },
+    {
+      "id": "content-author-map-particles",
+      "category": "content",
+      "question": "How do I edit a map in Mapper, author a SPARK particle, preview it reproducibly, and capture the complete tool window?",
+      "primary_document_id": "particle-authoring-tools",
+      "supporting_document_ids": ["mapper-interactive-manual", "mapper-tools", "particle-format-guide"],
+      "retrieval_checks": [
+        {
+          "query": "Mapper Workspace Controls Inspector History edit map",
+          "expected_document_ids": ["mapper-interactive-manual"],
+          "max_rank": 3
+        },
+        {
+          "query": "SPARK particle editor Adding mode Removing mode Auto replay Documentation.spark",
+          "expected_document_ids": ["particle-authoring-tools"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "mapper-work-surfaces",
+          "description": "Orient the author among the map browser, controls, workspace, inspector, and history.",
+          "document_id": "mapper-interactive-manual",
+          "anchor": "screen-orientation",
+          "required_terms": ["Map browser", "Controls", "Workspace", "Inspector", "History"]
+        },
+        {
+          "id": "spark-source-editing",
+          "description": "Use the SPARK source editor modes and deliberate save/discard path.",
+          "document_id": "particle-authoring-tools",
+          "anchor": "spark-editor",
+          "required_terms": ["Adding mode", "Removing mode", "Save", "Discard"]
+        },
+        {
+          "id": "particle-preview-reproducibility",
+          "description": "Rebake and pin the effect, scale, seed, prewarm state, backend, and replay action for a reproducible Mapper preview.",
+          "document_id": "particle-authoring-tools",
+          "anchor": "reproducible-startup-preview",
+          "required_terms": ["Mapper.ParticlePreviewEffect", "Mapper.ParticlePreviewScale", "Mapper.ParticlePreviewSeed", "Mapper.ParticlePreviewPrewarm", "backend", "Play", "Restart"]
+        },
+        {
+          "id": "full-window-capture",
+          "description": "Choose the deferred full-window API and wait before quitting.",
+          "document_id": "mapper-interactive-manual",
+          "anchor": "screenshot-and-automation-contract",
+          "required_terms": ["Game.RequestMapperWindowScreenshot", "Deferred", "Full Mapper frame", "one request may be pending", "allow at least one more", "Mapper loop"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat Mapper preview as runtime acceptance or hand-edit baked .spk/.efk output.",
+        "Do not omit that Game.RequestMapperWindowScreenshot is deferred, only one request may be pending, and the caller must allow one further loop before quitting."
+      ]
+    },
+    {
+      "id": "automate-mapper-map-capture",
+      "category": "content",
+      "question": "How should I automate Mapper map capture while preserving save safety, reproducible rendering, and the boundary between Engine primitives and project policy?",
+      "primary_document_id": "mapper-tools",
+      "supporting_document_ids": ["mapper-interactive-manual", "map-format-guide"],
+      "retrieval_checks": [
+        {
+          "query": "Mapper headless batch warmup SaveMapperScreenshot non-uniform pixels",
+          "expected_document_ids": ["mapper-tools"],
+          "max_rank": 3
+        },
+        {
+          "query": "Mapper dirty marker History Ctrl+S serialized diff runtime scene",
+          "expected_document_ids": ["mapper-interactive-manual"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "mapper-save-safety",
+          "description": "Preserve the human save and runtime-validation boundary around authored map changes.",
+          "document_id": "mapper-interactive-manual",
+          "anchor": "undo-reset-and-save-discipline",
+          "required_terms": ["dirty marker", "History", "Ctrl+S", "text diff", "runtime scene"]
+        },
+        {
+          "id": "mapper-batch-lifecycle",
+          "description": "Drive one warmed map at a time through the reusable loop and quit only after the batch.",
+          "document_id": "mapper-tools",
+          "anchor": "headless-capture-integration",
+          "required_terms": ["Game.OnStart", "Game.OnLoop", "warmup loops", "Game.SaveMapperScreenshot", "Game.RequestQuit"]
+        },
+        {
+          "id": "mapper-screenshot-boundary",
+          "description": "Select map-only or full-window capture deliberately and validate visual output.",
+          "document_id": "mapper-tools",
+          "anchor": "screenshot-contract",
+          "required_terms": ["SaveMapperScreenshot", "RequestMapperWindowScreenshot", "TGA only", "one further loop", "non-uniform test map", "pixel inspection"]
+        },
+        {
+          "id": "mapper-project-ownership",
+          "description": "Keep batch policy and downstream artifact processing in the embedding project.",
+          "document_id": "mapper-tools",
+          "anchor": "ownership-boundary",
+          "required_terms": ["embedding project", "output naming", "batch plan", "generated assets"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not use Render.NullRenderer for visual capture or treat file existence as pixel evidence.",
+        "Do not attach the one-further-loop rule to synchronous Game.SaveMapperScreenshot: it applies to deferred RequestMapperWindowScreenshot before quit, and only one full-window request may be pending."
+      ]
+    },
+    {
+      "id": "testing-gameplay-harness",
+      "category": "debugging",
+      "question": "How should an embedding game choose a test boundary and run deterministic server/client gameplay smoke tests with actionable failure evidence?",
+      "primary_document_id": "gameplay-testing",
+      "supporting_document_ids": ["testing", "first-test-tutorial", "minimal-multiplayer-readme"],
+      "retrieval_checks": [
+        {
+          "query": "gameplay integration test boundary deterministic fixture narrow first",
+          "expected_document_ids": ["gameplay-testing"],
+          "max_rank": 3
+        },
+        {
+          "query": "server client smoke ready marker forbidden marker common deadline JSON report",
+          "expected_document_ids": ["gameplay-testing"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "gameplay-boundary-selection",
+          "description": "Select the narrowest owner and add evidence for every crossed runtime or artifact boundary.",
+          "document_id": "gameplay-testing",
+          "anchor": "select-the-narrowest-owning-boundary",
+          "required_terms": ["boundary-based test selection", "Run narrow-first", "focused failure location"]
+        },
+        {
+          "id": "gameplay-runner-contract",
+          "description": "Use semantic readiness/required/forbidden markers under one deadline with bounded cleanup and structured evidence.",
+          "document_id": "gameplay-testing",
+          "anchor": "readiness-and-marker-semantics",
+          "required_terms": ["BuildTools/gameplay_test_runner.py", "ready_marker", "required_markers", "forbidden_markers", "common deadline"]
+        },
+        {
+          "id": "gameplay-project-boundary",
+          "description": "Keep game fixtures, script registration, filters, content, backends, and acceptance thresholds in the embedding project.",
+          "document_id": "gameplay-testing",
+          "anchor": "project-owned-boundary",
+          "required_terms": ["script test registration API", "fixture catalog", "gameplay assertions", "acceptance thresholds"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not turn one game's test registry, content ids, accounts, databases, ports, runners, or acceptance thresholds into an Engine API.",
+        "Do not replace the runner's one common monotonic deadline with independent process deadlines, and do not omit that the embedding project owns its script test registration API, fixture catalog, gameplay assertions, and acceptance thresholds."
+      ]
+    },
+    {
+      "id": "debugging-native-script-route",
+      "category": "debugging",
+      "question": "How should a contributor choose between native debugging, the AngelScript debugger, and focused Engine tests, and which distinct TCP endpoint range and UDP discovery port does script attach use?",
+      "primary_document_id": "debugging",
+      "supporting_document_ids": ["testing"],
+      "retrieval_checks": [
+        {
+          "query": "native AngelScript debugger attach focused tests",
+          "expected_document_ids": ["debugging"],
+          "max_rank": 3
+        },
+        {
+          "query": "debugger route selection native script runtime failure",
+          "expected_document_ids": ["debugging"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "debugger-route-selection",
+          "description": "Select the debugger or test route from the failing ownership layer.",
+          "document_id": "debugging",
+          "anchor": "fast-route-selection",
+          "required_terms": ["native", "AngelScript", "test"]
+        },
+        {
+          "id": "script-debugger-contract",
+          "description": "Enable and attach the AngelScript debugger while distinguishing its process-selected TCP endpoint from UDP discovery.",
+          "document_id": "debugging",
+          "anchor": "angelscript-debugger",
+          "required_terms": ["Script.DebuggerEnabled", "43000..44999", "UDP", "43001"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not prescribe a private project's launch profile as an Engine default.",
+        "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001."
+      ]
+    },
+    {
+      "id": "debugging-reproducible-tracy-capture",
+      "category": "debugging",
+      "question": "How should I capture and compare Tracy profiles with no mixed boundaries using these exact orders: client = regular server ready, stale-port check, profiled client, tracy-capture; server = stale-port check, profiled server ready, regular client workload driver, tracy-capture? Also state exactly how multi-config and single-config generators select the profiling configuration, record the warm-up condition, run one capture at a time, and repeat the same case at least three times.",
+      "primary_document_id": "profiling",
+      "supporting_document_ids": ["testing", "server-runtime"],
+      "retrieval_checks": [
+        {
+          "query": "Tracy Profiling_OnDemand profiled client regular server capture",
+          "expected_document_ids": ["profiling"],
+          "max_rank": 3
+        },
+        {
+          "query": "server performance reproducible workload Tracy frame jobs capture",
+          "expected_document_ids": ["profiling", "server-runtime"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "profiling-build-mode",
+          "description": "Choose on-demand steady-state or total startup tracing through a real profiling configuration.",
+          "document_id": "profiling",
+          "anchor": "build-configurations",
+          "required_terms": ["Profiling_OnDemand", "Profiling_Total", "single-config"]
+        },
+        {
+          "id": "profiling-process-boundary",
+          "description": "Profile one standalone side and keep its client or server counterpart regular.",
+          "document_id": "profiling",
+          "anchor": "choose-one-measurement-boundary",
+          "required_terms": ["Profiled process", "Regular counterpart", "default port"]
+        },
+        {
+          "id": "profiling-startup-order",
+          "description": "Preserve the exact client and server startup order and place the stale-port check immediately before each profiled process.",
+          "document_id": "profiling",
+          "anchor": "capture-decision",
+          "required_terms": ["Reject a stale process on the default Tracy port", "Regular server", "Profiled client", "Profiled server", "Regular client workload driver", "tracy-capture"]
+        },
+        {
+          "id": "profiling-reproducibility",
+          "description": "Record workload provenance and reject noisy or incomparable attempts.",
+          "document_id": "profiling",
+          "anchor": "design-a-reproducible-workload",
+          "required_terms": ["warm-up condition", "one capture at a time", "at least three"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not instrument both standalone sides on the default Tracy port and infer attribution afterward.",
+        "Do not move the client-route stale-port check before regular-server startup; the regular server must be ready before the check immediately preceding the profiled client.",
+        "Do not express uncertainty that the Regular counterpart might hold the Tracy port; it participates through the ordinary game client/server connection and neither opens nor owns a Tracy endpoint.",
+        "Do not omit or reverse generator configuration rules: a multi-config generator selects the profile with cmake --build --config, while a single-config generator sets CMAKE_BUILD_TYPE at configure time.",
+        "Do not omit reproducibility: record the warm-up condition, run one capture at a time, and repeat the same case at least three times."
+      ]
+    },
+    {
+      "id": "debugging-web-client-layers",
+      "category": "debugging",
+      "question": "How do I distinguish web packaging, HTTP serving, browser startup, and server-connection failures?",
+      "primary_document_id": "web-debugging",
+      "supporting_document_ids": ["debugging"],
+      "retrieval_checks": [
+        {
+          "query": "web client package serve browser diagnostics server connection",
+          "expected_document_ids": ["web-debugging"],
+          "max_rank": 3
+        },
+        {
+          "query": "Wasm browser cache HTTP WebSocket troubleshooting",
+          "expected_document_ids": ["web-debugging"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "browser-diagnostics",
+          "description": "Use browser console, network, and Wasm evidence before changing engine code.",
+          "document_id": "web-debugging",
+          "anchor": "browser-diagnostics",
+          "required_terms": ["console", "Network", "WebAssembly"]
+        },
+        {
+          "id": "web-layer-troubleshooting",
+          "description": "Separate build, serving, browser, and server transport layers.",
+          "document_id": "web-debugging",
+          "anchor": "troubleshooting-by-layer",
+          "required_terms": ["Browser package", "HTTP", "Client cannot connect"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume a successful cross-build proves browser runtime behavior."
+      ]
+    },
+    {
+      "id": "migration-complete-engine-range",
+      "category": "migration",
+      "question": "How should an embedding project adopt a new Engine revision without missing configuration, save, network, updater, or documentation changes?",
+      "primary_document_id": "engine-upgrade-guide",
+      "supporting_document_ids": ["api-change-management", "generated-content-workflow"],
+      "retrieval_checks": [
+        {
+          "query": "upgrade Engine revision complete range configuration saves updater ABI",
+          "expected_document_ids": ["engine-upgrade-guide"],
+          "max_rank": 3
+        },
+        {
+          "query": "engine adoption backup restore generated contracts rebake compatibility",
+          "expected_document_ids": ["engine-upgrade-guide"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "complete-range-audit",
+          "description": "Audit every commit and changed path between the exact old and new Engine pins.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "audit-the-complete-engine-range",
+          "required_terms": ["old and new pins", "git -C Engine log", "Classify changes"]
+        },
+        {
+          "id": "compatibility-boundaries",
+          "description": "Review gameplay, updater, and frozen client ABI boundaries independently.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "protect-network-and-client-compatibility",
+          "required_terms": ["CompatibilityVersion", "updater protocol generation", "frozen client host/runtime ABI"]
+        },
+        {
+          "id": "complete-adoption-workflow",
+          "description": "Carry the audited range through configuration reconciliation, generated and baked data, persisted-state protection, validation, and same-change documentation updates.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "reconcile-project-configuration",
+          "required_terms": ["Reconcile project configuration", "Rebuild generated and baked data", "Protect persisted state", "Validate the adoption", "Update documentation in the same work"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat a submodule pointer update as sufficient review evidence.",
+        "Do not stop after recording pins and safety refs; audit and classify the complete old-to-new range and decide CompatibilityVersion, updater protocol generation, and frozen client host/runtime ABI independently."
+      ]
+    },
+    {
+      "id": "migration-contract-diff-disposition",
+      "category": "migration",
+      "question": "How is a generated public or modeled contract change compared, classified independently from baseline stability, and then given a maintainer-authored migration disposition without claiming that --write or --enforce populates reviewed ledger decisions?",
+      "primary_document_id": "api-change-management",
+      "supporting_document_ids": ["engine-upgrade-guide"],
+      "retrieval_checks": [
+        {
+          "query": "contract diff breaking disposition ledger migration release note",
+          "expected_document_ids": ["api-change-management"],
+          "max_rank": 3
+        },
+        {
+          "query": "baseline contract sha256 change id enforce generated models",
+          "expected_document_ids": ["api-change-management"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "stable-model-matching",
+          "description": "Compare stable IDs and contract hashes rather than labels or source positions.",
+          "document_id": "api-change-management",
+          "anchor": "stable-matching-and-normalization",
+          "required_terms": ["stable IDs", "contract_sha256", "source provenance"]
+        },
+        {
+          "id": "disposition-fields",
+          "description": "Bind reviewed migration, release, compatibility, and owner decisions to the exact change.",
+          "document_id": "api-change-management",
+          "anchor": "disposition-ledger",
+          "required_terms": ["change_id", "migration", "release_note", "compatibility", "owner", "--write", "--enforce", "does not make the owner's migration or release decision"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not use an internal label to hide a modeled public compatibility break.",
+        "Do not derive additive, documentation, policy, or breaking classification from baseline stability; classify the change first, then apply the baseline stability disposition rule.",
+        "Do not claim --write or --enforce authors reviewed migration dispositions; the maintainer must populate and review the ledger fields."
+      ]
+    },
+    {
+      "id": "release-support-evidence",
+      "category": "release",
+      "question": "What evidence levels distinguish compilation, process smoke, source capability, and project qualification, and which versioned runtime, renderer, networking, packaging, and updater evidence is required before a release support claim?",
+      "primary_document_id": "support-matrix",
+      "supporting_document_ids": ["generated-support-matrix-index"],
+      "retrieval_checks": [
+        {
+          "query": "build gated smoke gated source capable project qualified",
+          "expected_document_ids": ["support-matrix"],
+          "max_rank": 3
+        },
+        {
+          "query": "support claim renderer package device runtime evidence",
+          "expected_document_ids": ["support-matrix"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "support-levels",
+          "description": "Distinguish compilation, process smoke, source capability, and project qualification.",
+          "document_id": "support-matrix",
+          "anchor": "support-vocabulary",
+          "required_terms": ["Build-gated", "Smoke-gated", "Source-capable", "Project-qualified"]
+        },
+        {
+          "id": "project-release-evidence",
+          "description": "Require versioned runtime, packaging, renderer, network, and updater evidence for release.",
+          "document_id": "support-matrix",
+          "anchor": "project-release-matrix",
+          "required_terms": ["Runtime", "Renderer", "Networking", "Packaging", "Updater"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not equate one successful local build with maintained release support.",
+        "Do not omit Runtime from the five separately versioned project-release evidence dimensions: Runtime, Renderer, Networking, Packaging, and Updater must all be stated."
+      ]
+    },
+    {
+      "id": "release-package-capability",
+      "category": "release",
+      "question": "Which package targets are accepted, which platforms and payloads are implemented versus unsupported, and which output packs exist, including the signed-or-debug Apk boundary; what build then force-bake then package sequence prepares them; and which release responsibilities remain project-owned without calling capability support? For the payload section, explicitly summarize the Windows PE, Linux ELF, Android Gradle, and Web JavaScript/Wasm contents rather than returning only package.payload token names.",
+      "primary_document_id": "packaging-and-release",
+      "supporting_document_ids": ["generated-package-index", "generated-package-matrix", "generated-package-payloads"],
+      "retrieval_checks": [
+        {
+          "query": "package targets platforms packs payloads artifacts",
+          "expected_document_ids": ["packaging-and-release", "generated-package-index", "generated-package-matrix"],
+          "max_rank": 3
+        },
+        {
+          "query": "Zip TarGz Apk Wix output package",
+          "expected_document_ids": ["generated-package-payloads", "generated-package-matrix"],
+          "max_rank": 3
+        },
+        {
+          "query": "build bake package sign hash accept rollback release",
+          "expected_document_ids": ["packaging-and-release"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "release-procedure",
+          "description": "Build declared variants, force-bake the selected config, and package only after inputs exist.",
+          "document_id": "packaging-and-release",
+          "anchor": "build-bake-then-package",
+          "required_terms": ["application variant", "ForceBakeResources", "MakePackage"]
+        },
+        {
+          "id": "package-boundary",
+          "description": "Separate Engine packager capabilities from project release policy, secrets, and signing.",
+          "document_id": "generated-package-index",
+          "anchor": "boundary",
+          "required_terms": ["embedding-project package matrices", "release policy", "signing credentials"]
+        },
+        {
+          "id": "output-pack-contract",
+          "description": "Select an implemented compatible output-producing pack and name its artifact.",
+          "document_id": "generated-package-payloads",
+          "anchor": "output-producing-packs",
+          "required_terms": ["Raw", "Zip", "TarGz", "Wix", "Apk"]
+        },
+        {
+          "id": "package-target-platform-payload-catalog",
+          "description": "Name all six accepted targets, distinguish the four implemented payload platforms from unsupported macOS and iOS packaging, summarize each implemented payload, and preserve the signed-or-debug APK boundary.",
+          "document_id": "packaging-and-release",
+          "anchor": "package-decision",
+          "required_terms": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer", "PE", "ELF", "Gradle", "JavaScript/Wasm", "unsupported", "signed", "debug"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not call macOS or iOS packaging supported, claim signing, store acceptance, or installer support from an Engine payload alone, describe package capability as a universal Engine guarantee, say output packs combine with any target/platform, or call the Gradle debug-key APK unsigned."
+      ]
+    },
+    {
+      "id": "release-secret-provisioning",
+      "category": "release",
+      "question": "How should a game provide runtime and signing credentials without baking, logging, or publishing them, and what must happen after exposure?",
+      "primary_document_id": "security-and-secrets",
+      "supporting_document_ids": ["project-configuration", "packaging-and-release"],
+      "retrieval_checks": [
+        {
+          "query": "TARGET_ENV secret baked config command line redaction",
+          "expected_document_ids": ["security-and-secrets"],
+          "max_rank": 3
+        },
+        {
+          "query": "Android signing passwords Gradle environment Windows CodeSigningHook",
+          "expected_document_ids": ["security-and-secrets", "packaging-and-release"],
+          "max_rank": 3
+        },
+        {
+          "query": "credential exposure revoke rotate CI artifact incident",
+          "expected_document_ids": ["security-and-secrets"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "secret-resolution-time",
+          "description": "Distinguish baking-host substitutions from target-time directives.",
+          "document_id": "security-and-secrets",
+          "anchor": "choose-the-right-configuration-form",
+          "required_terms": ["$ENV{NAME}", "$TARGET_ENV{NAME}", "concrete value can enter baked config"]
+        },
+        {
+          "id": "redaction-is-narrow",
+          "description": "Do not mistake command-line log masking for secret storage or complete redaction.",
+          "document_id": "security-and-secrets",
+          "anchor": "understand-redaction-limits",
+          "required_terms": ["command-line override log", "does not", "target-time directives"]
+        },
+        {
+          "id": "package-host-handoff",
+          "description": "Keep signing secrets on the protected packaging host and out of generated project files.",
+          "document_id": "security-and-secrets",
+          "anchor": "package-and-sign-without-copying-credentials",
+          "required_terms": ["Packaging.CodeSigningHook", "FO_ANDROID_RELEASE_STORE_PASSWORD", "FO_ANDROID_RELEASE_KEY_PASSWORD"]
+        },
+        {
+          "id": "exposure-response",
+          "description": "Revoke and rotate exposed material rather than trusting deletion or history rewriting.",
+          "document_id": "security-and-secrets",
+          "anchor": "provision-rotate-and-revoke",
+          "required_terms": ["revoke", "rotate", "Rewriting git history"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat Common.SecretSettingTokens, CI masking, or deletion of a leaked value as credential security."
+      ]
+    },
+    {
+      "id": "release-server-rollout",
+      "category": "release",
+      "question": "How should I deploy, prove ready, stop, and roll back a packaged FOnline server without confusing process liveness with application readiness or Server.ShutdownGraceMs with the total stop timeout? State that a detached daemon parent exits before its child completes startup. End with the complete prohibition: never mix binaries, baked resources, config, client packs, native updater payloads, or data from incompatible release units.",
+      "primary_document_id": "release-operations",
+      "supporting_document_ids": ["packaging-and-release", "server-runtime", "client-updater", "persistence"],
+      "retrieval_checks": [
+        {
+          "query": "FOnline server readiness health file Start server complete service daemon rollout",
+          "expected_document_ids": ["release-operations"],
+          "max_rank": 2
+        },
+        {
+          "query": "ShutdownGraceMs Server stopped rollback immutable release unit",
+          "expected_document_ids": ["release-operations"],
+          "max_rank": 2
+        },
+        {
+          "query": "SERVICE_CONTROL_STOP daemon fork headless supervisor startup failure",
+          "expected_document_ids": ["release-operations"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "server-process-choice",
+          "description": "Prefer the foreground headless process under a real supervisor and state the detached daemon boundary.",
+          "document_id": "release-operations",
+          "anchor": "choose-the-server-process",
+          "required_terms": ["foreground headless binary", "parent exits before the child completes startup", "not readiness evidence"]
+        },
+        {
+          "id": "server-readiness-gate",
+          "description": "Require runtime initialization and a functional probe rather than process existence alone.",
+          "document_id": "release-operations",
+          "anchor": "define-readiness-and-health",
+          "required_terms": ["Start server complete!", "project-owned functional probe", "is explicitly not ready"]
+        },
+        {
+          "id": "server-stop-boundary",
+          "description": "Use graceful platform signals and do not misread the worker drain setting as a total stop timeout.",
+          "document_id": "release-operations",
+          "anchor": "stop-safely",
+          "required_terms": ["SIGTERM", "SERVICE_CONTROL_STOP", "bounds only the first worker-pool drain", "Server stopped!"]
+        },
+        {
+          "id": "server-rollback-unit",
+          "description": "Roll back a compatible immutable artifact/config/data unit through the same readiness gate.",
+          "document_id": "release-operations",
+          "anchor": "roll-back",
+          "required_terms": ["new controlled deployment", "data-compatible", "Never mix binaries, baked resources, config, client packs, native updater payloads, or data from incompatible release units"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat a live process, daemon parent exit, open listener, health file containing Starting..., or ShutdownGraceMs as sufficient end-to-end operational evidence.",
+        "Do not claim that the health file moves below Client.UserWritablePath: it remains in the working directory, while only the log moves after settings load.",
+        "Do not omit or abbreviate the rollback unit boundary: never mix binaries, baked resources, config, client packs, native updater payloads, or data from incompatible release units.",
+        "Do not describe an unspecified parent process: name the detached daemon and state that its parent exits before the child completes startup."
+      ]
+    },
+    {
+      "id": "release-backup-restore",
+      "category": "release",
+      "question": "How should I back up and restore an FOnline server without mistaking the recovery oplog or a partial live copy for a complete recovery point, and how should the project measure RPO/RTO through disaster-recovery drills? Answer in five explicit parts: durable set; pending/committed oplog limits; quiesced capture; isolated semantic restore across restart; measured DR drill. In the oplog part, state explicitly that only a command whose backend write reports failure is appended to the pending oplog.",
+      "primary_document_id": "backup-and-recovery",
+      "supporting_document_ids": ["persistence", "release-operations", "engine-upgrade-guide", "security-and-secrets"],
+      "retrieval_checks": [
+        {
+          "query": "FOnline DbSQLite Storage.sqlite WAL backup oplog restore",
+          "expected_document_ids": ["backup-and-recovery"],
+          "max_rank": 2
+        },
+        {
+          "query": "DbPendingChanges committed oplog not backup replay conflict",
+          "expected_document_ids": ["backup-and-recovery", "persistence"],
+          "max_rank": 2
+        },
+        {
+          "query": "RPO RTO isolated semantic restore Server stopped recovery drill",
+          "expected_document_ids": ["backup-and-recovery"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "backend-durable-set",
+          "description": "Distinguish the durable set and consistency boundary for Memory, JSON, SQLite, and Mongo.",
+          "document_id": "backup-and-recovery",
+          "anchor": "identify-the-durable-set",
+          "required_terms": ["Memory", "Storage.sqlite", "WAL", "provider-native"]
+        },
+        {
+          "id": "oplog-not-backup",
+          "description": "Explain what the pending and committed recovery logs can and cannot recover.",
+          "document_id": "backup-and-recovery",
+          "anchor": "understand-the-recovery-oplog",
+          "required_terms": ["not a backup", "backend write reports failure", "committed prefix", "cannot reconstruct successful changes"]
+        },
+        {
+          "id": "quiesced-backup-gate",
+          "description": "Require a graceful stop and complete backend/oplog capture when no reviewed online method exists.",
+          "document_id": "backup-and-recovery",
+          "anchor": "take-a-quiesced-backup",
+          "required_terms": ["Server stopped!", "both oplog files", "isolated environment", "backup candidate"]
+        },
+        {
+          "id": "isolated-semantic-restore",
+          "description": "Restore a compatible release unit in isolation and validate game semantics across a restart.",
+          "document_id": "backup-and-recovery",
+          "anchor": "restore-safely",
+          "required_terms": ["Never mix binaries, resources, and data", "Start server complete!", "project-owned semantic probe", "perform a reversible write", "stop gracefully, restart", "prove the write survived"]
+        },
+        {
+          "id": "recovery-objectives-drill",
+          "description": "Keep RPO/RTO and real disaster-recovery drills project-owned and measured.",
+          "document_id": "backup-and-recovery",
+          "anchor": "rehearse-disaster-recovery",
+          "required_terms": ["off-site", "measure RPO/RTO", "semantic checks", "corrective action"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat an Engine recovery oplog, one SQLite file copied from a live WAL database, a successful provider snapshot, or a backend-only restore as complete production recovery evidence.",
+        "Do not omit any durable-set row: Memory has none, JSON needs the complete tree, SQLite needs Storage.sqlite plus active WAL sidecars, and Mongo needs a provider-native consistent backup.",
+        "Do not make committed-prefix matching a condition under which an oplog can reconstruct successful post-backup changes; those successful changes and unreported power loss remain outside the oplog contract.",
+        "Do not omit that only a command whose backend write reports failure is appended to the pending oplog, while the committed oplog records only the committed prefix of that pending recovery log.",
+        "Do not omit the isolated semantic restore proof: use one exact compatible release unit, reach Start server complete!, run a project-owned semantic probe, make a reversible write, stop and restart, and prove the write survived."
+      ]
+    },
+    {
+      "id": "migration-build-interface-selection",
+      "category": "migration",
+      "question": "How should an embedding project select CMake inputs and the exact main BuildTools, helper-script, or package.py interface without inventing a second interface or assuming cross-revision compatibility?",
+      "primary_document_id": "buildtools-pipeline",
+      "supporting_document_ids": ["generated-cmake-index", "generated-cli-index", "generated-helper-cli-index"],
+      "retrieval_checks": [
+        {
+          "query": "FOnline CMake option override precedence FO_ SetOption embedding project",
+          "expected_document_ids": ["generated-cmake-index", "buildtools-pipeline"],
+          "max_rank": 3
+        },
+        {
+          "query": "CMake stages helpers game project supplies values ownership model",
+          "expected_document_ids": ["buildtools-pipeline"],
+          "max_rank": 2
+        },
+        {
+          "query": "Generated BuildTools CLI Reference top-level commands arguments create_parser",
+          "expected_document_ids": ["generated-cli-index"],
+          "max_rank": 3
+        },
+        {
+          "query": "helper command lines revision-pinned implementation interfaces automation pin engine revision",
+          "expected_document_ids": ["generated-helper-cli-index"],
+          "max_rank": 2
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "build-interface-ownership",
+          "description": "Separate Engine-owned stages and helpers from values supplied by the embedding game.",
+          "document_id": "buildtools-pipeline",
+          "anchor": "ownership-model",
+          "required_terms": ["engine supplies CMake stages and helpers", "game project supplies values"]
+        },
+        {
+          "id": "cmake-override-order",
+          "description": "Use the generated project-interface order when more than one CMake input source exists.",
+          "document_id": "generated-cmake-index",
+          "anchor": "option-override-precedence",
+          "required_terms": ["matching FO_ environment variable", "existing CMake cache or -D value", "SetOption value", "declared interface default"]
+        },
+        {
+          "id": "main-cli-boundary",
+          "description": "Take main BuildTools syntax from its executable parser-backed reference and keep helper/package surfaces separate.",
+          "document_id": "generated-cli-index",
+          "anchor": "boundary",
+          "required_terms": ["BuildTools/buildtools.py create_parser()", "helper-script command lines", "package.py declaration and payload contracts"]
+        },
+        {
+          "id": "helper-cli-ownership-and-support",
+          "description": "Use the helper inventory for exact syntax, owner, invocation context, and revision support.",
+          "document_id": "generated-helper-cli-index",
+          "anchor": "contract-status",
+          "required_terms": ["revision-pinned implementation interfaces", "automation must pin an engine revision", "BuildTools/HelperCliInterface.json"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not infer public commands from filenames, copy stale help into prose, merge the main/helper/package CLI domains, or assume an unpinned compatibility line.",
+        "Do not omit that package.py owns package declaration and payload contracts separately from the main BuildTools parser and helper-script command lines."
+      ]
+    },
+    {
+      "id": "migration-public-contract-selection",
+      "category": "migration",
+      "question": "How should an embedding project decide whether a reachable FOnline native script symbol is a supported compatibility contract, resolve disagreements through owning source metadata, machine model, generated reference, then handwritten guidance, and select the right exact-commit revision-pinned reference? State only that the exact commit must be recorded: do not propose or exemplify any file, CI variable/configuration, config field, environment/path variable, submodule, or other pin-storage mechanism.",
+      "primary_document_id": "legacy-public-api-entry",
+      "supporting_document_ids": ["generated-api-index", "api-change-management", "generated-api-metadata"],
+      "retrieval_checks": [
+        {
+          "query": "FOnline public contract reachable symbol stability internal exact Engine revision",
+          "expected_document_ids": ["legacy-public-api-entry"],
+          "max_rank": 2
+        },
+        {
+          "query": "native script API generated inventory methods properties events source provenance",
+          "expected_document_ids": ["generated-api-index"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "public-contract-stability-boundary",
+          "description": "Treat reachability and inventory coverage separately from an explicit compatibility promise.",
+          "document_id": "legacy-public-api-entry",
+          "anchor": "contract-surfaces",
+          "required_terms": ["reachable symbol", "compatibility promise", "stability label"]
+        },
+        {
+          "id": "native-inventory-boundary",
+          "description": "Use the generated native reference as an inventory, require the pinned experimental scope, and retain the fail-closed internal fallback.",
+          "document_id": "legacy-public-api-entry",
+          "anchor": "native-script-api-status",
+          "required_terms": ["inventory", "experimental", "exact Engine revision pin", "unannotated native symbols remain", "internal"]
+        },
+        {
+          "id": "contract-source-order",
+          "description": "Resolve disagreements through owning source metadata, machine models, generated references, and then handwritten guidance.",
+          "document_id": "legacy-public-api-entry",
+          "anchor": "source-of-truth-order",
+          "required_terms": ["owning Engine source", "machine model", "generated human reference", "Handwritten guides"]
+        },
+        {
+          "id": "public-contract-revision-pin",
+          "description": "Pin an exact Engine commit and compare every generated contract domain before adoption.",
+          "document_id": "legacy-public-api-entry",
+          "anchor": "revision-pinning-and-upgrades",
+          "required_terms": ["exact commit", "compare all generated contract domains", "Engine Upgrade Guide"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not infer stable support from symbol reachability, generated inventory presence, one project's usage, or an unpinned Engine branch; do not invent annotation syntax, file paths, a dedicated pin file, CI variable, config field, or another pin-storage mechanism; do not treat FO_ENGINE_ROOT or FO_WORKSPACE path variables as an Engine commit pin; do not substitute a semantic-version tag or branch for the required exact Engine commit; and do not claim every inventory symbol needs an individual tag because the current validated inventory-pinned scope classifies the complete inventory."
+      ]
+    },
+    {
+      "id": "architecture-essentials-and-metadata-ownership",
+      "category": "architecture",
+      "question": "When a change touches Essentials and a script-visible generated contract, what exact umbrella order applies, how is reverse dependency pressure moved, how are new files wired through FO_ESSENTIALS_SOURCE and EssentialsLib, who supplies metadata inputs, what is the status of generated files, and how are all generated domains and required dispositions validated?",
+      "primary_document_id": "native-essentials",
+      "supporting_document_ids": ["generated-api-metadata", "generated-api-index", "api-change-management"],
+      "retrieval_checks": [
+        {
+          "query": "FOnline Essentials strict dependency DAG umbrella include FO_ESSENTIALS_SOURCE",
+          "expected_document_ids": ["native-essentials"],
+          "max_rank": 2
+        },
+        {
+          "query": "Engine metadata codegen machinery embedding project configuration generated build artifacts all eighteen canonical models",
+          "expected_document_ids": ["generated-api-metadata"],
+          "max_rank": 2
+        },
+        {
+          "query": "FOnline metadata generated models contract diff dispositions validation",
+          "expected_document_ids": ["generated-api-metadata", "api-change-management"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "essentials-dependency-boundary",
+          "description": "Preserve the exact umbrella order and solve lower-layer dependency pressure without introducing a cycle.",
+          "document_id": "native-essentials",
+          "anchor": "include-and-dependency-model",
+          "required_terms": ["strict dependency DAG", "BasicCore", "GlobalData", "StackTrace", "BaseLogging", "SmartPointers", "MemorySystem", "Containers", "StringUtils", "Platform", "ExceptionHandling", "Threading", "SafeArithmetics", "DataSerialization", "HashedString", "StrongType", "TimeRelated", "ExtendedTypes", "Compressor", "WorkThread", "Logging", "DiskFileSystem", "CommonHelpers", "NetSockets", "move the dependency upward through parameters"]
+        },
+        {
+          "id": "essentials-build-inventory",
+          "description": "Route every new low-level source through the checked Essentials source list and core library.",
+          "document_id": "native-essentials",
+          "anchor": "build-integration",
+          "required_terms": ["FO_ESSENTIALS_SOURCE", "EssentialsLib", "correct dependency point"]
+        },
+        {
+          "id": "metadata-source-ownership",
+          "description": "Keep reusable generator machinery in Engine while the embedding project supplies its own inputs.",
+          "document_id": "generated-api-metadata",
+          "anchor": "ownership-model",
+          "required_terms": ["engine owns the reusable metadata/codegen machinery", "embedding project supplies project configuration", "Generated files are build artifacts"]
+        },
+        {
+          "id": "metadata-contract-diff",
+          "description": "Compare every generated domain and require reviewed dispositions for compatibility breaks.",
+          "document_id": "generated-api-metadata",
+          "anchor": "multi-domain-diff-and-change-disposition",
+          "required_terms": ["all eighteen canonical generated models", "exact domain-bound entry", "does not bypass the gate"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not bypass Essentials layering, add a .cpp to the Essentials.h umbrella, hand-edit generated output, treat an embedding project's metadata as reusable Engine authority, or infer compatibility from reachability alone.",
+        "Do not answer an exact umbrella-order request by naming Essentials.h or saying the order is defined there; list every header group from BasicCore through NetSockets in order."
+      ]
+    },
+    {
+      "id": "release-package-support-and-example-evidence",
+      "category": "release",
+      "question": "Using the generated FOnline references, state the internal exact-revision package boundary and exclusions, distinguish all four support evidence states build_gated, smoke_gated, source_capable, and not_in_public_matrix, and report the current example registry's release Engine ref, update delivery, Contract digest, per-repository source status, remote visibility/state, observed Engine pin, and observed checks rather than only naming the pages.",
+      "primary_document_id": "generated-package-index",
+      "supporting_document_ids": ["generated-package-declaration", "generated-package-matrix", "generated-package-payloads", "generated-package-cli", "generated-support-matrix-index", "generated-public-examples-index"],
+      "retrieval_checks": [
+        {
+          "query": "DefinePackage package.py targets platforms pack tokens payload effects",
+          "expected_document_ids": ["generated-package-index"],
+          "max_rank": 3
+        },
+        {
+          "query": "FOnline build_gated smoke_gated source_capable not_in_public_matrix generated support matrix",
+          "expected_document_ids": ["generated-support-matrix-index"],
+          "max_rank": 2
+        },
+        {
+          "query": "FOnline public example repository exact Engine pin source-ready private source-staged",
+          "expected_document_ids": ["generated-public-examples-index"],
+          "max_rank": 2
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "package-revision-and-project-boundary",
+          "description": "Pin the internal package interface to an Engine revision and keep the embedding project's release matrix separate.",
+          "document_id": "generated-package-index",
+          "anchor": "contract-status",
+          "required_terms": ["internal", "embedding projects must pin an engine revision", "BuildTools/PackageInterface.json"]
+        },
+        {
+          "id": "package-scope-boundary",
+          "description": "Separate accepted package dimensions and payload effects from project release, secrets, deployment, and signing policy.",
+          "document_id": "generated-package-index",
+          "anchor": "boundary",
+          "required_terms": ["package.py targets", "embedding-project package matrices", "installer signing credentials"]
+        },
+        {
+          "id": "support-evidence-levels",
+          "description": "Distinguish compilation, process smoke, source capability, and unsupported public combinations.",
+          "document_id": "generated-support-matrix-index",
+          "anchor": "evidence-levels",
+          "required_terms": ["build_gated", "smoke_gated", "source_capable", "not_in_public_matrix"]
+        },
+        {
+          "id": "example-publication-state",
+          "description": "Use the generated registry for exact Engine refs, remote visibility/state, source readiness, and observed checks.",
+          "document_id": "generated-public-examples-index",
+          "anchor": "program-contract",
+          "required_terms": ["exact-commit", "reviewed-pull-request", "Contract digest", "`project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.", "`minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.", "`content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.", "`native-extension-sample`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`."]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat a syntactically valid package, a build-only lane, a private reserved repository, or unobserved required checks as production release evidence.",
+        "Do not collapse per-repository values into mixed, predominantly, uniformly, or similar summaries; enumerate the exact source status, remote visibility/state, observed Engine pin, and observed checks for all four repositories."
+      ]
+    }
+  ]
+}

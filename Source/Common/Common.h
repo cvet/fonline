@@ -42,6 +42,11 @@
 
 FO_BEGIN_NAMESPACE
 
+// The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
+// pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
+// removal, or stable-ID change instead of silently extending this experimental promise.
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2472 InventorySha256=75fca70d7e56ae0647d004411014c7b7bd1a2a8422075941895fea957345602b
+
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 33
 
@@ -93,7 +98,9 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 // Explicit-entity access check (validates a passed-in entity argument rather than `this`).
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
+// Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value.
 ///@ ExportValueType Name = ident Layout = int64-value
+///@ ValueFieldDoc ident value // Signed 64-bit identity payload; zero represents an empty identity.
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
@@ -383,6 +390,7 @@ struct GameSettings
     static constexpr int32_t MAX_MAP_SIZE = 4000;
 };
 
+// Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy.
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16_t
 {
@@ -429,6 +437,46 @@ enum class EngineInfoMessage : uint16_t
     KickedFromGame = 5000,
     ServerLog = 5001,
 };
+///@ EnumValueDoc EngineInfoMessage None // Selects no conventional engine information-message slot.
+///@ EnumValueDoc EngineInfoMessage NetWrongLogin // Identifies a login rejection caused by an invalid account or login identifier.
+///@ EnumValueDoc EngineInfoMessage NetWrongPass // Identifies a login rejection caused by an invalid password or equivalent authentication secret.
+///@ EnumValueDoc EngineInfoMessage NetPlayerAlready // Identifies account creation rejected because the requested login already exists.
+///@ EnumValueDoc EngineInfoMessage NetPlayerInGame // Identifies login rejected because the account already has an active game session.
+///@ EnumValueDoc EngineInfoMessage NetConnection // Identifies the client status while it is initiating a server connection.
+///@ EnumValueDoc EngineInfoMessage NetConnError // Identifies a generic connection error after a connection attempt or active session failure.
+///@ EnumValueDoc EngineInfoMessage NetConnSuccess // Identifies successful transport connection before or during authentication.
+///@ EnumValueDoc EngineInfoMessage NetHexesBusy // Identifies entry or spawning rejected because the required destination hexes are occupied.
+///@ EnumValueDoc EngineInfoMessage NetDisconnByDemand // Identifies a disconnect requested explicitly by the player or client.
+///@ EnumValueDoc EngineInfoMessage NetConnFail // Identifies failure to establish a connection to the game server.
+///@ EnumValueDoc EngineInfoMessage NetStartLocFail // Identifies failure to resolve the starting location during player entry or creation.
+///@ EnumValueDoc EngineInfoMessage NetStartMapFail // Identifies failure to resolve the starting map during player entry or creation.
+///@ EnumValueDoc EngineInfoMessage NetStartCoordFail // Identifies failure to resolve starting map coordinates during player entry or creation.
+///@ EnumValueDoc EngineInfoMessage NetBdError // Identifies a backend database failure while processing the requested account or game operation.
+///@ EnumValueDoc EngineInfoMessage NetWrongNetProto // Identifies a client/server network-protocol version mismatch.
+///@ EnumValueDoc EngineInfoMessage NetDataTransErr // Identifies an error while transferring or decoding connection data.
+///@ EnumValueDoc EngineInfoMessage NetNetMsgErr // Identifies a malformed, invalid, or otherwise unacceptable network message.
+///@ EnumValueDoc EngineInfoMessage NetSetProtoErr // Identifies an internal server failure while assigning or initializing required prototype state.
+///@ EnumValueDoc EngineInfoMessage NetLoginOk // Identifies successful authentication and transition to game-state or map loading.
+///@ EnumValueDoc EngineInfoMessage NetWrongTagSkill // Identifies character creation rejected because the required tagged-skill selection is invalid.
+///@ EnumValueDoc EngineInfoMessage NetDifferentLang // Identifies a name rejected for mixing characters from different language alphabets.
+///@ EnumValueDoc EngineInfoMessage NetManySymbols // Identifies a name rejected because too much of it consists of non-letter symbols.
+///@ EnumValueDoc EngineInfoMessage NetBeginEndSpaces // Identifies a name rejected because it begins or ends with whitespace.
+///@ EnumValueDoc EngineInfoMessage NetTwoSpace // Identifies a name rejected because it contains consecutive spaces.
+///@ EnumValueDoc EngineInfoMessage NetBanned // Identifies an account that is blocked from logging in.
+///@ EnumValueDoc EngineInfoMessage NetNameWrongChars // Identifies a name containing characters forbidden by the project's account policy.
+///@ EnumValueDoc EngineInfoMessage NetPassWrongChars // Identifies a password containing characters forbidden by the project's account policy.
+///@ EnumValueDoc EngineInfoMessage NetFailToLoadIface // Identifies client startup failure while loading the user interface.
+///@ EnumValueDoc EngineInfoMessage NetFailRunStartScript // Identifies client startup failure while executing the project's start script.
+///@ EnumValueDoc EngineInfoMessage NetLanguageNotSupported // Identifies an unsupported selected language and the need to use a project-defined fallback.
+///@ EnumValueDoc EngineInfoMessage NetKnockKnock // Reserves the legacy knock-knock informational slot; embedding scripts define its concrete liveness or status use.
+///@ EnumValueDoc EngineInfoMessage NetBannedIp // Identifies a connection rejected because its source IP address is blocked.
+///@ EnumValueDoc EngineInfoMessage NetTimeLeft // Identifies a temporary restriction or session timer whose remaining duration is supplied by project text or extra data.
+///@ EnumValueDoc EngineInfoMessage NetBan // Identifies the primary notification that the player or account has been banned.
+///@ EnumValueDoc EngineInfoMessage NetBanReason // Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project.
+///@ EnumValueDoc EngineInfoMessage NetLoginScriptFail // Identifies authentication rejected because a project login script failed.
+///@ EnumValueDoc EngineInfoMessage NetPermanentDeath // Identifies a project-defined permanent-death state that prevents continuing with the affected character or account.
+///@ EnumValueDoc EngineInfoMessage KickedFromGame // Identifies forced removal of the player from the active game session.
+///@ EnumValueDoc EngineInfoMessage ServerLog // Identifies a server-log message whose reader-facing payload is carried in extraText.
 
 static constexpr uint32_t FO_UPDATER_VERSION = 2;
 
@@ -893,6 +941,7 @@ using InterthreadDataCallback = function<void(span<const uint8_t>)>;
 extern mutex InterthreadListenersLocker;
 extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
+// Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers.
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t
 {
@@ -900,7 +949,11 @@ enum class CritterItemSlot : uint8_t
     Main = 1,
     Outside = 255,
 };
+///@ EnumValueDoc CritterItemSlot Inventory // Places the item in the critter's unequipped inventory.
+///@ EnumValueDoc CritterItemSlot Main // Places the item in the critter's main equipped slot.
+///@ EnumValueDoc CritterItemSlot Outside // Marks the item as outside the critter's owned inventory slots.
 
+// High-level life condition of a critter.
 ///@ ExportEnum
 enum class CritterCondition : uint8_t
 {
@@ -908,13 +961,12 @@ enum class CritterCondition : uint8_t
     Knockout = 1,
     Dead = 2,
 };
+///@ EnumValueDoc CritterCondition Alive // Critter is alive and may perform normal gameplay actions.
+///@ EnumValueDoc CritterCondition Knockout // Critter is alive but incapacitated until it stands up or changes condition.
+///@ EnumValueDoc CritterCondition Dead // Critter is dead and uses death-state handling and animation.
 
-// Critter actions
-// Flags for chosen:
-// l - hardcoded local call
-// s - hardcoded server call
-// for all others critters actions call only server
-//  flags actionExt item
+// Engine-originated critter action notifications such as item movement, knockout, death, connection, and respawn.
+// Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action.
 ///@ ExportEnum
 enum class CritterAction : uint16_t
 {
@@ -930,14 +982,29 @@ enum class CritterAction : uint16_t
     Respawn = 22,
     Refresh = 23,
 };
+///@ EnumValueDoc CritterAction None // No critter action notification is selected.
+///@ EnumValueDoc CritterAction MoveItem // Notifies observers that an item moved between critter slots.
+///@ EnumValueDoc CritterAction SwapItems // Notifies observers about the second item participating in a slot swap.
+///@ EnumValueDoc CritterAction DropItem // Notifies observers that the critter dropped an item from a slot.
+///@ EnumValueDoc CritterAction Knockout // Notifies observers that the critter entered the knockout condition.
+///@ EnumValueDoc CritterAction StandUp // Notifies observers that the critter recovered from knockout and stood up.
+///@ EnumValueDoc CritterAction Dead // Notifies observers that the critter entered the dead condition.
+///@ EnumValueDoc CritterAction Connect // Notifies observers that the player-controlled critter connected.
+///@ EnumValueDoc CritterAction Disconnect // Notifies observers that the player-controlled critter disconnected.
+///@ EnumValueDoc CritterAction Respawn // Notifies observers that the critter returned to the alive condition outside knockout recovery.
+///@ EnumValueDoc CritterAction Refresh // Requests observers to refresh the critter's visual action state.
 
+// Persistent critter animation posture passed to model animation resolution.
 ///@ ExportEnum
 enum class CritterStateAnim : uint16_t
 {
     None = 0,
     Unarmed = 1,
 };
+///@ EnumValueDoc CritterStateAnim None // No persistent critter animation posture is selected.
+///@ EnumValueDoc CritterStateAnim Unarmed // Selects the unarmed persistent animation posture.
 
+// Requested critter movement or pose animation passed to model animation resolution.
 ///@ ExportEnum
 enum class CritterActionAnim : uint16_t
 {
@@ -956,7 +1023,22 @@ enum class CritterActionAnim : uint16_t
     IdleProneFront = 86,
     DeadFront = 102,
 };
+///@ EnumValueDoc CritterActionAnim None // No action animation is requested.
+///@ EnumValueDoc CritterActionAnim Idle // Requests the standing idle animation.
+///@ EnumValueDoc CritterActionAnim Walk // Requests forward walking.
+///@ EnumValueDoc CritterActionAnim WalkBack // Requests backward walking.
+///@ EnumValueDoc CritterActionAnim Limp // Requests the limping movement animation.
+///@ EnumValueDoc CritterActionAnim Run // Requests forward running.
+///@ EnumValueDoc CritterActionAnim RunBack // Requests backward running.
+///@ EnumValueDoc CritterActionAnim TurnRight // Requests an in-place right turn.
+///@ EnumValueDoc CritterActionAnim TurnLeft // Requests an in-place left turn.
+///@ EnumValueDoc CritterActionAnim PanicRun // Requests the panic-running animation.
+///@ EnumValueDoc CritterActionAnim SneakWalk // Requests walking in the sneaking posture.
+///@ EnumValueDoc CritterActionAnim SneakRun // Requests running in the sneaking posture.
+///@ EnumValueDoc CritterActionAnim IdleProneFront // Requests the front-facing prone idle animation.
+///@ EnumValueDoc CritterActionAnim DeadFront // Requests the front-facing death animation.
 
+// Perspective used by critter visibility queries: either direction or their union.
 ///@ ExportEnum
 enum class CritterSeeType : uint8_t
 {
@@ -964,14 +1046,21 @@ enum class CritterSeeType : uint8_t
     WhoSeeMe = 1,
     WhoISee = 2,
 };
+///@ EnumValueDoc CritterSeeType Any // Returns the union of incoming and outgoing critter visibility relations.
+///@ EnumValueDoc CritterSeeType WhoSeeMe // Selects critters whose visibility relation currently includes this critter.
+///@ EnumValueDoc CritterSeeType WhoISee // Selects critters currently visible to this critter.
 
+// Visibility override applied to a critter independently of normal perception checks.
 ///@ ExportEnum
 enum class CritterVisibilityMode : uint8_t
 {
     None = 0,
     Full = 1,
 };
+///@ EnumValueDoc CritterVisibilityMode None // Applies no full-visibility override and uses normal perception rules.
+///@ EnumValueDoc CritterVisibilityMode Full // Forces the target into full visibility for the selected relation.
 
+// Composable filters for selecting critters by life state and player-or-NPC ownership.
 ///@ ExportEnum
 enum class CritterFindType : uint8_t
 {
@@ -985,7 +1074,17 @@ enum class CritterFindType : uint8_t
     NonDeadNpc = 0x21,
     DeadNpc = 0x22,
 };
+///@ EnumValueDoc CritterFindType Any // Selects critters without filtering life state or player ownership.
+///@ EnumValueDoc CritterFindType NonDead // Selects alive and knocked-out critters while excluding dead critters.
+///@ EnumValueDoc CritterFindType Dead // Selects dead critters regardless of player ownership.
+///@ EnumValueDoc CritterFindType Players // Selects player-controlled critters regardless of life state.
+///@ EnumValueDoc CritterFindType Npc // Selects non-player critters regardless of life state.
+///@ EnumValueDoc CritterFindType NonDeadPlayers // Selects player-controlled critters that are not dead.
+///@ EnumValueDoc CritterFindType DeadPlayers // Selects dead player-controlled critters.
+///@ EnumValueDoc CritterFindType NonDeadNpc // Selects non-player critters that are not dead.
+///@ EnumValueDoc CritterFindType DeadNpc // Selects dead non-player critters.
 
+// Current ownership location of an item: map hex, critter inventory, item container, or no owner.
 ///@ ExportEnum
 enum class ItemOwnership : uint8_t
 {
@@ -994,7 +1093,12 @@ enum class ItemOwnership : uint8_t
     ItemContainer = 2,
     Nowhere = 3,
 };
+///@ EnumValueDoc ItemOwnership MapHex // Item is placed directly on a map hex.
+///@ EnumValueDoc ItemOwnership CritterInventory // Item is owned by a critter inventory or equipped slot.
+///@ EnumValueDoc ItemOwnership ItemContainer // Item is nested inside another item used as a container.
+///@ EnumValueDoc ItemOwnership Nowhere // Item has no map, critter, or item-container owner.
 
+// Wall-corner orientation used by map geometry and corner-aware rendering.
 ///@ ExportEnum
 enum class CornerType : uint8_t
 {
@@ -1005,7 +1109,14 @@ enum class CornerType : uint8_t
     North = 4,
     EastWest = 5,
 };
+///@ EnumValueDoc CornerType NorthSouth // Selects the combined north-south wall-corner orientation.
+///@ EnumValueDoc CornerType West // Selects the west-facing wall-corner orientation.
+///@ EnumValueDoc CornerType East // Selects the east-facing wall-corner orientation.
+///@ EnumValueDoc CornerType South // Selects the south-facing wall-corner orientation.
+///@ EnumValueDoc CornerType North // Selects the north-facing wall-corner orientation.
+///@ EnumValueDoc CornerType EastWest // Selects the combined east-west wall-corner orientation.
 
+// Policy for generating occupied hexes around a multihex prototype.
 ///@ ExportEnum
 enum class MultihexGenerationType : uint8_t
 {
@@ -1013,6 +1124,9 @@ enum class MultihexGenerationType : uint8_t
     SameSibling = 1,
     AnyUnique = 2,
 };
+///@ EnumValueDoc MultihexGenerationType None // Disables Mapper coalescing of item placements into a multihex mesh.
+///@ EnumValueDoc MultihexGenerationType SameSibling // Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh.
+///@ EnumValueDoc MultihexGenerationType AnyUnique // Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency.
 
 class AnimationResolver
 {
