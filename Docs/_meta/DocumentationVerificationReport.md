@@ -28,6 +28,22 @@ Validation:
 - Seven focused documentation modules passed 47 tests.
 - `LF_UnitTests` built in `RelWithDebInfo`; `ModelSpriteFramePlacementMerge*` passed 22 assertions in two test cases and `GameLevelTimeEvents` passed 68 assertions in one test case.
 
+CI follow-up:
+
+- The first two current-head validation runs rejected a stale
+  `Docs/generated/snippets.json` corpus hash. Regenerating snippets before the
+  dependent site, evaluation, and AI-delivery outputs changed only that hash
+  and its projection in `docs-manifest.json`; the checked corpus remains 307
+  normative snippets, 157 evidence blocks, and 182 external-parser checks.
+- One duplicated `win64-package-smoke` job completed while the other stopped
+  during an asynchronous compressed server write after the packaged client had
+  already passed and unloaded. A clean local rerun of
+  `BuildTools\validate.cmd win64-package-smoke` at the same source revision
+  passed configure, build, packaging, updater synchronization, packaged
+  client/server execution, DLL unload, and graceful server shutdown. No runtime
+  contract or documentation correction is inferred from the single
+  non-reproduced job failure; the refreshed CI head remains authoritative.
+
 ## 2026-05-18 — source-tree and runtime model slice
 
 Scope:
