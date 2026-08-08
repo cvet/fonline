@@ -2,6 +2,32 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain.
 
+## 2026-08-08 - model-frame placement and early time-event dispatch
+
+Scope:
+
+- `Docs/en/explanation/rendering/index.md` and its Russian mirror
+- `Docs/en/explanation/runtime/client.md` and its Russian mirror
+- `Docs/en/explanation/entity-and-property-model/index.md` and its Russian mirror
+
+Source areas checked:
+
+- `Source/Client/ModelSpriteLayout.*` and `Source/Client/ModelSprites.cpp` for current/required frame placement merging, signed pivots, retry bounds, and atlas publication.
+- `Source/Common/TimeEvents.cpp` for the engine-frame-clock deadline check in `TimeEventManager::FireAndAdvance()`.
+- `Source/Tests/Test_ModelSpriteLayout.cpp` and `Source/Tests/Test_CommonScriptMethods.cpp` for the incoming regression cases.
+
+Results:
+
+- Documented the root-relative interval union that prevents adjacent pixel-rounded model pivots from alternating indefinitely and accepts a tight frame whose root pivot lies outside the frame.
+- Documented that an external dispatcher waking before the engine clock reaches `FireTime` receives the remaining delay without firing the callback.
+- Audited the complete incoming Engine and Last Frontier ranges recorded in `Docs/ProductionDocumentationPlan.md`; the Last Frontier MCP, dialog-content, and synchronization-test changes remain project-owned.
+
+Validation:
+
+- Regenerated and checked localization, site, AI-evaluation, and AI-delivery artifacts after the bilingual edits: 197/197 translation pairs, 386 public routes, and 65/65 AI retrieval checks at 0.908 MRR.
+- Seven focused documentation modules passed 47 tests.
+- `LF_UnitTests` built in `RelWithDebInfo`; `ModelSpriteFramePlacementMerge*` passed 22 assertions in two test cases and `GameLevelTimeEvents` passed 68 assertions in one test case.
+
 ## 2026-05-18 — source-tree and runtime model slice
 
 Scope:

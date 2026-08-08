@@ -352,8 +352,11 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   The model is rendered into a reusable 2x scratch target for the automatic
   frame. Per-animation prediction and exact weighted skinning of referenced
   combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
-  the factory expands it and rerenders before copying; the bounded retry loop
-  fails rather than accepting a clipped frame that does not converge. The
+  the factory merges the current and required placements as signed root-relative
+  intervals before expanding and rerendering. This absorbs adjacent pixel-rounded
+  pivot alternation and allows a tight frame to sit wholly on one side of the
+  model root; the bounded retry loop still fails rather than accepting a genuinely
+  unbounded or clipped frame. The
   cropped sprite offset preserves the fixed model root, hit-test coordinates,
   and stable horizontal lighting gradient. Scratch-frame setup does not reserve
   atlas space; allocation happens only after the final crop is known. A changed

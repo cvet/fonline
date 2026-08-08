@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"4c4b905cf90a1a9be4c11c48702c4667017db3ad63e132be0ce16c08fb122042"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"543786b3bc896e09c143e9478e787251d460ffc052afb15a596684b09d8214a1"} -->
 
 # Frontend и рендеринг
 
@@ -366,7 +366,12 @@ shadow. Mesh envelope вычисляется **по всем facings**: projecte
 baked bounds; такой envelope удерживает fixed frame size во время turns даже
 для backpack/weapon. Его расширяют только emitting particle systems: dormant
 effect ничего не резервирует. Если exact envelope больше, frame расширяется и
-перерисовывается; bounded retry loop отклоняет non-converging layout. В atlas
+перерисовывается. Последовательные frame placements объединяются как
+root-relative intervals, поэтому соседние округлённые pivots или живая
+world-space particle не заставляют стабильный frame бесконечно чередоваться.
+Interval anchor знаковый: tight frame может целиком находиться по одну сторону
+от model root, оставляя pivot за пределами frame; bounded retry loop всё равно
+отклоняет действительно unbounded layout. В atlas
 выделяется и копируется только selected region, а crop origin отражается в
 sprite offset, сохраняя root, hit test и map position.
 

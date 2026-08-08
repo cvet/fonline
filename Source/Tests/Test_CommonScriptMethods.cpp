@@ -949,6 +949,17 @@ namespace CommonMethods
         return 0;
     }
 
+    uint32 StartFutureGameTimeEventForEarlyDispatchTest()
+    {
+        globalTimerFired = false;
+        return Game.StartTimeEvent(timespan(60, 3), OnGlobalTimer);
+    }
+
+    bool IsFutureGameTimeEventFired()
+    {
+        return globalTimerFired;
+    }
+
  )") + R"(
 
     // ========== Invoke ==========
@@ -2133,6 +2144,26 @@ TEST_CASE("GameLevelTimeEvents")
     SECTION("WithArrayData")
     {
         RUN_CM_FUNC("TestGameTimeEventWithArrayData");
+    }
+
+    SECTION("EarlyDispatcherWakeDoesNotFire")
+    {
+        auto start_func = server->FindFunc<uint32_t>(get_func("CommonMethods::StartFutureGameTimeEventForEarlyDispatchTest"));
+        REQUIRE(start_func);
+        REQUIRE(start_func.Call());
+        uint32_t event_id = start_func.GetResult();
+        REQUIRE(event_id != 0);
+
+        optional<timespan> remaining = server->TimeEventMngr.FireAndAdvance(server, event_id);
+        REQUIRE(remaining.has_value());
+        CHECK(remaining->milliseconds() > 0);
+
+        auto fired_func = server->FindFunc<bool>(get_func("CommonMethods::IsFutureGameTimeEventFired"));
+        REQUIRE(fired_func);
+        REQUIRE(fired_func.Call());
+        CHECK_FALSE(fired_func.GetResult());
+
+        server->TimeEventMngr.StopTimeEvent(server, ScriptFuncName {}, event_id);
     }
 }
 

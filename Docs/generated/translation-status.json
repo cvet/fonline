@@ -339,8 +339,8 @@
       "english_path": "Docs/en/explanation/entity-and-property-model/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/entity-and-property-model/index.md",
-      "source_sha256": "b75a996331496ab3fe045f431a862e6e75a86724933ade7e248782679b952e82",
-      "source_bytes": 19109,
+      "source_sha256": "7ac756946fa758ba11a0fa75e7284cba07efe995e55de1f5abfe63a98aceffeb",
+      "source_bytes": 19492,
       "status": "current"
     },
     {
@@ -378,8 +378,8 @@
       "english_path": "Docs/en/explanation/rendering/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/rendering/index.md",
-      "source_sha256": "4c4b905cf90a1a9be4c11c48702c4667017db3ad63e132be0ce16c08fb122042",
-      "source_bytes": 99702,
+      "source_sha256": "543786b3bc896e09c143e9478e787251d460ffc052afb15a596684b09d8214a1",
+      "source_bytes": 100040,
       "status": "current"
     },
     {
@@ -404,8 +404,8 @@
       "english_path": "Docs/en/explanation/runtime/client.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client.md",
-      "source_sha256": "8487355c2a831d4e5580f671e80345c355348551884fae9742e0c30224f5f5d0",
-      "source_bytes": 42267,
+      "source_sha256": "b36d77a61958702d5617a22fae61c155b90ddfcb59840fff94b05ff426f578ce",
+      "source_bytes": 42473,
       "status": "current"
     },
     {

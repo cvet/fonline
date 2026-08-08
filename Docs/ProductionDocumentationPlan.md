@@ -5,7 +5,7 @@
 - **Engine baseline:** `67ee893ae721d149cd44ff314abd8036adfd3821`
 - **Last Frontier baseline:** `805caa79976b7cf4f81e46e1cf9ca0f1ea96ba43`
 - **TLA baseline:** `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
-- **Latest reconciliation:** 2026-08-06, Engine audited through `f83305017369020e8e6888e76acf824bb24bf202`, Last Frontier audited through `8a39ad7f8c4d9cf5ee114a44caaa988f2dab5b74`, and TLA through `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
+- **Latest reconciliation:** 2026-08-08, Engine audited through `439fb9231522bc51acfe100772cc954c9d3f0c2c`, Last Frontier audited through `6482e54c8d759c44efc5dfa1c2f4ad481fb54e0c`, and TLA through `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`
 - **Predecessor:** [DocumentationExpansionPlan.md](_meta/DocumentationExpansionPlan.md), which remains the completed historical plan for the first source-coverage pass.
 
 ## Outcome
@@ -66,6 +66,21 @@ the same command before stage setup. Last Frontier's incoming
 `BakePublicResources` integration remains project-owned evidence and is
 reconciled in that repository rather than copied into the standalone Engine
 contract.
+
+The 2026-08-08 reconciliation audited Engine `de7ee86993d5aa860514921f7422d83611979e57..439fb9231522bc51acfe100772cc954c9d3f0c2c`
+and Last Frontier `e14871a6c56ea83f746563dba1e3a26f02fe88fb..6482e54c8d759c44efc5dfa1c2f4ad481fb54e0c`
+in full. Engine model-sprite placement now unions current and required frames as
+signed root-relative intervals, which stabilizes adjacent rounded pivots and
+permits a valid tight frame wholly on one side of the model root; the bilingual
+rendering and client-runtime explanations record that contract. Time-event
+dispatch now rechecks the engine frame clock before firing, returns the remaining
+delay after an early external wake, and is documented in the bilingual entity
+runtime explanation. Focused native regression tests cover both behaviors.
+Last Frontier's partial character-generation observation fields, MCP diagnostic
+tools and playtest modal handling remain project-owned integrations; its dialog
+monologue audit/content repair and synchronization-test contract corrections are
+also reconciled in the embedding project rather than promoted into reusable
+Engine APIs.
 
 The current checked models include an eighteenth experimental AiControl protocol domain with 49 source-backed entries, a standard-library reference client, malformed-peer tests, and a runnable 12-check sample. The generated support model distinguishes ten build-, smoke-, and source-capability profiles. The pinned external-project inventory classifies 30 concerns from exact Last Frontier/TLA paths; generated evidence remains authoritative for current disposition and source counts. Locale groups 45 through 48 moved the generated native script API, cross-domain public contract index, Generated API and Metadata guide, native Essentials reference, package reference, support matrix projection, public-example registry, Configuration and Data Sources reference, and Tools index to canonical EN/RU routes while retaining their former paths as durable pointers. All 197 physical locale pairs are present and complete-parity enforcement is active. The stable-locator description catalog also runs in `complete` mode: all 4,918 reader-facing model values across twenty generated domains have current reviewed Russian overlays, including 2,474 native API descriptions and contract notes plus 221 map/prototype property projections. Exact-source translation memory may reuse a reviewed value only when its complete source and normalized hash match and all donors agree; missing, stale, unknown, ambiguous, or structurally unsafe generated-prose translations fail CI. The latest generated localization, description-translation, site, snippet, evaluation, and AI-delivery counts are recorded in [DocumentationVerificationReport.md](_meta/DocumentationVerificationReport.md); their checked artifacts, rather than this roadmap paragraph, remain authoritative. ADR 0003 and ADR 0004 keep fail-closed whole-document budgets at 2 MiB for AI context and 1.75 MiB per locale for search; truncation and silent document removal remain forbidden.
 

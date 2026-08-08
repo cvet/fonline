@@ -333,8 +333,12 @@ gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
 space and is absorbed by the expansion pass if and when it starts emitting. If that
 exact envelope needs a larger logical frame,
-the client expands the frame and rerenders before copying; a bounded retry loop
-rejects a layout that does not converge. Only the selected region is allocated
+the client expands the frame and rerenders before copying. Successive frame
+placements are merged as root-relative intervals, so adjacent pixel-rounded
+pivots or a live world-space particle cannot make an otherwise stable frame
+alternate forever. The interval anchor is signed: a tight frame may legitimately
+lie completely on one side of the model root, leaving its pivot outside the frame;
+the bounded retry loop still rejects a genuinely unbounded layout. Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base

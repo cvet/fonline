@@ -16407,7 +16407,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: b75a996331496ab3fe045f431a862e6e75a86724933ade7e248782679b952e82
+Content SHA-256: 7ac756946fa758ba11a0fa75e7284cba07efe995e55de1f5abfe63a98aceffeb
 
 ---
 layout: default
@@ -16597,6 +16597,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 `TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
 
 `StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started.
+
+External dispatchers may measure a scheduled delay with a clock that advances differently from the engine frame clock, for example while `DeltaTimeCap` clamps a debugger or no-networking run. `TimeEventManager::FireAndAdvance()` rechecks the stored engine-clock `FireTime` before invoking script; an early dispatcher wake returns the remaining delay and keeps the callback pending.
 
 ## Serialization relationships
 
@@ -17133,7 +17135,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 4c4b905cf90a1a9be4c11c48702c4667017db3ad63e132be0ce16c08fb122042
+Content SHA-256: 543786b3bc896e09c143e9478e787251d460ffc052afb15a596684b09d8214a1
 
 ---
 layout: default
@@ -17470,8 +17472,12 @@ gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
 space and is absorbed by the expansion pass if and when it starts emitting. If that
 exact envelope needs a larger logical frame,
-the client expands the frame and rerenders before copying; a bounded retry loop
-rejects a layout that does not converge. Only the selected region is allocated
+the client expands the frame and rerenders before copying. Successive frame
+placements are merged as root-relative intervals, so adjacent pixel-rounded
+pivots or a live world-space particle cannot make an otherwise stable frame
+alternate forever. The interval anchor is signed: a tight frame may legitimately
+lie completely on one side of the model root, leaving its pivot outside the frame;
+the bounded retry loop still rejects a genuinely unbounded layout. Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base
@@ -18639,7 +18645,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 8487355c2a831d4e5580f671e80345c355348551884fae9742e0c30224f5f5d0
+Content SHA-256: b36d77a61958702d5617a22fae61c155b90ddfcb59840fff94b05ff426f578ce
 
 ---
 layout: default
@@ -18995,8 +19001,11 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   The model is rendered into a reusable 2x scratch target for the automatic
   frame. Per-animation prediction and exact weighted skinning of referenced
   combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
-  the factory expands it and rerenders before copying; the bounded retry loop
-  fails rather than accepting a clipped frame that does not converge. The
+  the factory merges the current and required placements as signed root-relative
+  intervals before expanding and rerendering. This absorbs adjacent pixel-rounded
+  pivot alternation and allows a tight frame to sit wholly on one side of the
+  model root; the bounded retry loop still fails rather than accepting a genuinely
+  unbounded or clipped frame. The
   cropped sprite offset preserves the fixed model root, hit-test coordinates,
   and stable horizontal lighting gradient. Scratch-frame setup does not reserve
   atlas space; allocation happens only after the final crop is known. A changed

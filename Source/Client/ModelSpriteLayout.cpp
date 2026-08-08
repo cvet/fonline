@@ -112,6 +112,36 @@ auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float3
     };
 }
 
+auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpriteFramePlacement required) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The model origin is not required to lie inside a tight frame: an animation or attached effect may put the
+    // complete visible envelope on one side of the root. Treat the pivot as a signed root-relative interval anchor;
+    // only the frame dimensions themselves must be positive.
+    auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
+
+    if (!is_valid(current) || !is_valid(required)) {
+        return std::nullopt;
+    }
+
+    int64_t left = std::max<int64_t>(current.Pivot.x, required.Pivot.x);
+    int64_t top = std::max<int64_t>(current.Pivot.y, required.Pivot.y);
+    int64_t right = std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x);
+    int64_t bottom = std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y);
+    int64_t width = left + right;
+    int64_t height = top + bottom;
+
+    if (width <= 0 || height <= 0 || width > std::numeric_limits<int32_t>::max() || height > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    return ModelSpriteFramePlacement {
+        .Size = {numeric_cast<int32_t>(width), numeric_cast<int32_t>(height)},
+        .Pivot = {numeric_cast<int32_t>(left), numeric_cast<int32_t>(top)},
+    };
+}
+
 auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor) -> ModelBounds3D
 {
     FO_STACK_TRACE_ENTRY();

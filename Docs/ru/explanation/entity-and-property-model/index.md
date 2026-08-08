@@ -6,7 +6,7 @@ document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
 
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"b75a996331496ab3fe045f431a862e6e75a86724933ade7e248782679b952e82"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"7ac756946fa758ba11a0fa75e7284cba07efe995e55de1f5abfe63a98aceffeb"} -->
 
 # Модель сущностей
 
@@ -188,6 +188,8 @@ Holder lock предоставляет инициатор публикации. 
 `TimeEventManager::CancelAllForEntity()` очищает runtime-состояние временных событий сущности до уведомления внешнего dispatcher. Стандартное исключение из одного cancellation hook регистрируется отдельно и не мешает оставшимся cancellation notifications; сама операция имеет `noexcept`, поэтому teardown не может завершиться с частично отправленными уведомлениями.
 
 `StartTimeEvent()` отклоняет и destroyed, и destroying entities, поэтому finish или cancellation callback не могут повторно запланировать работу после начала уничтожения сущности.
+
+Внешний dispatcher может измерять запланированную задержку по часам, которые идут не так, как engine frame clock, например когда `DeltaTimeCap` ограничивает время кадра при работе под debugger или без сети. `TimeEventManager::FireAndAdvance()` повторно сверяет сохранённый engine-clock `FireTime` перед вызовом script; при раннем пробуждении dispatcher получает оставшуюся задержку, а callback остаётся запланированным.
 
 ## Связи сериализации
 
