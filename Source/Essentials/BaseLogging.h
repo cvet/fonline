@@ -38,7 +38,8 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void LogToFile(string_view path, bool append = false);
+extern void LogToFile(string_view path, bool append = false, bool cleanup_rotated_parts = false);
+extern void SetMaxLogFileSize(size_t size);
 extern void SetAsyncLogWriting(bool enabled);
 extern void SuspendAsyncLogWriting() noexcept;
 extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;

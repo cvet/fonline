@@ -134,7 +134,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     if (!settings.UserWritablePath.empty()) {
         string log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
         WriteLog("Switch log to path '{}'", log_path);
-        LogToFile(log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile));
+        LogToFile(log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile), true);
         WriteLog("Starting {}", FO_NICE_NAME);
     }
 
@@ -144,6 +144,10 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     if (IsEnumSet(flags, AppInitFlags::ShowMessageOnException) && settings.HeadlessWindow) {
         SetupExceptionCallback(false);
     }
+
+    // Rotate the log file when it outgrows the configured limit
+    FO_VERIFY_AND_THROW(settings.MaxLogFileSize >= 0, "Common.MaxLogFileSize must not be negative", settings.MaxLogFileSize);
+    SetMaxLogFileSize(numeric_cast<size_t>(settings.MaxLogFileSize));
 
     // Switch logging to a dedicated worker thread once the user setting is known
     if (settings.AsyncLogWrite) {
