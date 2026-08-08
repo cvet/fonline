@@ -48,6 +48,52 @@ TEST_CASE("ModelSpriteParticleFramePlacementClampsExtremeFiniteBounds", "[model]
     CHECK(placement->Pivot.y == 74);
 }
 
+TEST_CASE("ModelSpriteFramePlacementMergeContainsAlternatingEqualSizePivots", "[model][particle]")
+{
+    // Regression: a live attack-frame envelope alternated between adjacent pivots while retaining its 58x86 size.
+    // Replacing the placement never converged; their root-relative union is only one pixel larger on each affected axis.
+    optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}}, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
+
+    REQUIRE(merged);
+    CHECK(merged->Size.width == 59);
+    CHECK(merged->Size.height == 87);
+    CHECK(merged->Pivot.x == 17);
+    CHECK(merged->Pivot.y == 65);
+
+    optional<ModelSpriteFramePlacement> contains_first = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}});
+    optional<ModelSpriteFramePlacement> contains_second = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
+
+    REQUIRE(contains_first);
+    REQUIRE(contains_second);
+    CHECK(contains_first->Size == merged->Size);
+    CHECK(contains_first->Pivot == merged->Pivot);
+    CHECK(contains_second->Size == merged->Size);
+    CHECK(contains_second->Pivot == merged->Pivot);
+}
+
+TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][particle]")
+{
+    // Regression: a preview model's tight envelope was entirely left of its root, so the current X pivot was five
+    // pixels beyond the frame. That is a valid placement and must merge with a wider particle/animation envelope.
+    optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {130, 266}, .Pivot = {135, 210}}, ModelSpriteFramePlacement {.Size = {270, 274}, .Pivot = {98, 191}});
+
+    REQUIRE(merged);
+    CHECK(merged->Size.width == 307);
+    CHECK(merged->Size.height == 293);
+    CHECK(merged->Pivot.x == 135);
+    CHECK(merged->Pivot.y == 210);
+
+    optional<ModelSpriteFramePlacement> contains_current = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {130, 266}, .Pivot = {135, 210}});
+    optional<ModelSpriteFramePlacement> contains_required = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {270, 274}, .Pivot = {98, 191}});
+
+    REQUIRE(contains_current);
+    REQUIRE(contains_required);
+    CHECK(contains_current->Size == merged->Size);
+    CHECK(contains_current->Pivot == merged->Pivot);
+    CHECK(contains_required->Size == merged->Size);
+    CHECK(contains_required->Pivot == merged->Pivot);
+}
+
 TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
 {
     // The view rect anchors the critter name, so it must never advertise more space than the model actually draws in.

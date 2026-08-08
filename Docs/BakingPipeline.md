@@ -101,6 +101,19 @@ Current target responsibilities:
 - Both work from `FO_OUTPUT_PATH`.
 - Resource build-hash state is written through `BuildTools/cmake/helpers/WriteBuildHash.cmake` using `Baking/Resources.build-hash`.
 
+`AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`
+creates another target from the same recipe without duplicating the baker and
+build-hash commands in the embedding project. Because the helper is defined by
+the `ScriptsAndBaking` stage, projects call it after
+`SetupScriptsAndBaking()`:
+
+```cmake
+SetupScriptsAndBaking()
+AddBakingTarget(BakePublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+```
+
 The actual final target names that depend on these commands are project/preset-dependent. Do not document one embedding project's target names as universal engine behavior.
 
 ## Runtime classes

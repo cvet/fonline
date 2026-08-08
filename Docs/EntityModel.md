@@ -179,6 +179,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 `StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started.
 
+External dispatchers may measure a scheduled delay with a clock that advances differently from the engine frame clock, for example while `DeltaTimeCap` clamps a debugger or no-networking run. `FireAndAdvance()` rechecks the stored engine-clock `FireTime` before invoking script; an early dispatcher wake returns the remaining delay and keeps the callback pending.
+
 ## Serialization relationships
 
 Entity state is serialized through property data, not by hand-copying entity fields:
