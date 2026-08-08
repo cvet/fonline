@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
@@ -81,10 +82,44 @@ static void ServerEntry()
     try {
         auto settings = make_ptr(&GetApp()->Settings);
         Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
-        auto server = GetServiceServer();
-        GetApp()->WaitForRequestedQuit();
-        server->Shutdown();
-        Data->Server.reset();
+        AdminServerHost admin_host("ServerServiceAdminHost",
+            AdminServerHostCallbacks {
+                .GetServer = []() -> ServerEngine* { return Data->Server.get(); },
+                .StartServer =
+                    []() {
+                        if (Data->Server == nullptr) {
+                            ptr<GlobalSettings> settings = &GetApp()->Settings;
+                            Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+                        }
+                    },
+                .StopServer =
+                    []() {
+                        if (Data->Server != nullptr) {
+                            Data->Server->Shutdown();
+                            Data->Server.reset();
+                        }
+                    },
+                .RestartServer =
+                    []() {
+                        if (Data->Server != nullptr) {
+                            Data->Server->Shutdown();
+                            Data->Server.reset();
+                        }
+
+                        ptr<GlobalSettings> settings = &GetApp()->Settings;
+                        Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+                    },
+            });
+
+        while (!GetApp()->IsQuitRequested()) {
+            admin_host.Tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+
+        if (Data->Server != nullptr) {
+            Data->Server->Shutdown();
+            Data->Server.reset();
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

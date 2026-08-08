@@ -412,6 +412,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 AppendList(FO_TESTS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AdminPanel.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"

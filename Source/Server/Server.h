@@ -67,6 +67,28 @@ class ServerEngine final : public BaseEngine, public EntityManagerApi
     friend class ServerScriptSystem;
 
 public:
+    struct AdminPanelSnapshotData
+    {
+        bool ServerRunning {};
+        bool ServerStartingError {};
+        string ServerVersion {};
+        string GameVersion {};
+        string CompatibilityVersion {};
+        int64_t UptimeMs {};
+        uint32_t Online {};
+        uint32_t MaxOnline {};
+        uint32_t LoopsPerSecond {};
+        uint32_t Players {};
+        uint32_t Critters {};
+        uint32_t Locations {};
+        uint32_t Maps {};
+        uint32_t Items {};
+        uint32_t DbCommitJobs {};
+        float32_t LoopAvgMs {};
+        float32_t LoopMinMs {};
+        float32_t LoopMaxMs {};
+    };
+
     explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources);
 
     ServerEngine(const ServerEngine&) = delete;
@@ -80,11 +102,13 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
+    [[nodiscard]] auto GetAdminPanelSnapshotData() -> AdminPanelSnapshotData;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
     [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
     [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
+    void SendAdminTextToPlayers(string_view text);
 
     void Shutdown() override;
     void FlushExactSyncTime();

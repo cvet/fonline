@@ -1835,6 +1835,43 @@ auto ServerEngine::GetHealthInfo() const -> string
     return buf;
 }
 
+auto ServerEngine::GetAdminPanelSnapshotData() -> AdminPanelSnapshotData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AdminPanelSnapshotData data {};
+    data.ServerRunning = _started;
+    data.ServerStartingError = _startingError;
+    data.ServerVersion = Settings->GitCommit;
+    data.GameVersion = Settings->GameVersion;
+    data.CompatibilityVersion = Settings->CompatibilityVersion;
+    data.UptimeMs = _stats.Uptime.to_ms<int64_t>();
+    data.Online = numeric_cast<uint32_t>(_stats.CurOnline);
+    data.MaxOnline = numeric_cast<uint32_t>(_stats.MaxOnline);
+    // ServerStats now tracks work jobs instead of legacy main-loop ticks; surface job throughput as the activity rate.
+    data.LoopsPerSecond = numeric_cast<uint32_t>(_stats.JobsPerSecond);
+    data.Players = numeric_cast<uint32_t>(EntityMngr.GetPlayersCount());
+    data.Critters = numeric_cast<uint32_t>(EntityMngr.GetCrittersCount());
+    data.Locations = numeric_cast<uint32_t>(EntityMngr.GetLocationsCount());
+    data.Maps = numeric_cast<uint32_t>(EntityMngr.GetMapsCount());
+    data.Items = numeric_cast<uint32_t>(EntityMngr.GetItemsCount());
+    // Per-commit DB job counters and main-loop timing were removed from ServerStats; report 0 until re-sourced from the new metrics.
+    data.DbCommitJobs = 0;
+    data.LoopAvgMs = 0.0f;
+    data.LoopMinMs = 0.0f;
+    data.LoopMaxMs = 0.0f;
+    return data;
+}
+
+void ServerEngine::SendAdminTextToPlayers(string_view text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& player : EntityMngr.GetPlayers()) {
+        player->Send_InfoMessage(EngineInfoMessage::None, text);
+    }
+}
+
 auto ServerEngine::ShouldAcceptConnection(size_t cur_connections, size_t cur_players, int32_t max_connections, int32_t max_players) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

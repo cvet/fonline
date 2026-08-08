@@ -124,3 +124,39 @@ if(FO_BUILD_BAKER_LIB)
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
         LINK_LIBS ClientLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
+
+if(FO_BUILD_ADMIN_PANEL_LIB AND NOT FO_HEADLESS_ONLY)
+    SetValue(FO_ADMIN_PANEL_LIB_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanel.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelClientCore.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanel.cpp")
+    AddCoreStaticLibrary(AdminPanelLib FO_ADMIN_PANEL_LIB_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib)
+endif()
+
+if(FO_BUILD_ADMIN_PANEL)
+    SetValue(FO_ADMIN_PANEL_HEADLESS_LIB_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanel.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelHeadless.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelClientCore.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelHeadless.cpp")
+    AddCoreStaticLibrary(AdminPanelHeadlessLib FO_ADMIN_PANEL_HEADLESS_LIB_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib screen dom component)
+endif()
+
+if(FO_BUILD_ADMIN_PANEL_LIB AND FO_BUILD_SERVER_LIB)
+    SetValue(FO_ADMIN_PANEL_SERVER_LIB_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelServer.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelCommon.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/AdminPanelServer.cpp")
+    AddCoreStaticLibrary(AdminPanelServerLib FO_ADMIN_PANEL_SERVER_LIB_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib ServerLib)
+endif()
