@@ -41,9 +41,12 @@
 
 FO_BEGIN_NAMESPACE
 
-// File the installer drops next to the exe to mark an installed (non-portable) build. The portable
-// zip has no marker and keeps writing next to the exe.
+// Versioned file the installer drops next to the exe to mark an installed (non-portable) build and
+// identify its per-user directory. The portable zip has no marker and keeps writing next to the exe.
 static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
+static constexpr string_view INSTALLED_MARKER_HEADER = "FONLINE_INSTALLED_CLIENT_V1";
+static constexpr size_t INSTALLED_MARKER_MAX_SIZE = 256;
+static constexpr size_t INSTALLED_DIRECTORY_NAME_MAX_SIZE = 128;
 
 static unique_nptr<Application> App {};
 
@@ -117,8 +120,16 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     TracySetProgramName(FO_NICE_NAME);
 #endif
 
-    // Logging
-    LogToFile(GetExeLogFileName(), IsEnumSet(flags, AppInitFlags::AppendLogFile));
+    // Logging. An installed client resolves this before settings so both the thin host and the
+    // runtime module can report startup/self-update failures without writing under Program Files.
+    string initial_log_path = GetExeLogFileName();
+    const optional<string> installed_root = ResolveCurrentInstalledClientWritableRoot();
+
+    if (installed_root.has_value() && fs_create_directories(*installed_root)) {
+        initial_log_path = strex(*installed_root).combine_path(GetExeLogFileName()).str();
+    }
+
+    LogToFile(initial_log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile));
 
     if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
         LogDisableTags();
@@ -323,7 +334,88 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
     settings.ApplyCommandLine(args);
     settings.ApplyAutoSettings();
+    // Command-line/local overrides may change this bootstrap setting. Resolve it again
+    // idempotently; a valid installed marker remains authoritative for installed packages.
+    ResolveUserWritablePath(settings);
     return settings;
+}
+
+static auto IsSafeInstalledDirectoryName(string_view name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (name.empty() || name.size() > INSTALLED_DIRECTORY_NAME_MAX_SIZE || name == "." || name == ".." || name.back() == '.' || name.back() == ' ') {
+        return false;
+    }
+
+    for (const char ch : name) {
+        if ((ch >= 0 && ch < 0x20) || string_view("<>:\"/\\|?*").find(ch) != string_view::npos) {
+            return false;
+        }
+    }
+
+    const size_t extension_pos = name.find('.');
+    const string device_name = strex(name.substr(0, extension_pos)).lower().rtrim(" ").str();
+
+    if (device_name == "con" || device_name == "prn" || device_name == "aux" || device_name == "nul") {
+        return false;
+    }
+
+    if (device_name.starts_with("com") || device_name.starts_with("lpt")) {
+        const string_view device_digit = string_view(device_name).substr(3);
+        const bool is_ascii_device_digit = device_digit.size() == 1 && device_digit[0] >= '1' && device_digit[0] <= '9';
+        // Windows reserves superscript 1/2/3 as COM/LPT device-number aliases as well.
+        const bool is_superscript_device_digit = device_digit == "\xC2\xB9" || device_digit == "\xC2\xB2" || device_digit == "\xC2\xB3";
+
+        if (is_ascii_device_digit || is_superscript_device_digit) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto ResolveInstalledClientWritableRoot(string_view installed_marker_path, string_view user_data_base) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (user_data_base.empty()) {
+        return std::nullopt;
+    }
+
+    const optional<uint64_t> marker_size = fs_file_size(installed_marker_path);
+
+    if (!marker_size.has_value() || *marker_size > INSTALLED_MARKER_MAX_SIZE) {
+        return std::nullopt;
+    }
+
+    const optional<string> marker_content = fs_read_file(installed_marker_path);
+
+    if (!marker_content.has_value()) {
+        return std::nullopt;
+    }
+
+    const vector<string> marker_lines = strex(*marker_content).normalize_line_endings().split('\n');
+
+    if (marker_lines.size() != 2 || marker_lines[0] != INSTALLED_MARKER_HEADER || !IsSafeInstalledDirectoryName(marker_lines[1])) {
+        return std::nullopt;
+    }
+
+    return fs_resolve_path(strex(user_data_base).combine_path(marker_lines[1]).str());
+}
+
+auto ResolveCurrentInstalledClientWritableRoot() -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const optional<string> exe_path = Platform::GetExePath();
+
+    if (!exe_path.has_value()) {
+        return std::nullopt;
+    }
+
+    const string installed_marker_path = strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str();
+    return ResolveInstalledClientWritableRoot(installed_marker_path, Platform::GetUserDataBase());
 }
 
 void ResolveUserWritablePath(GlobalSettings& settings)
@@ -331,19 +423,12 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     FO_STACK_TRACE_ENTRY();
 
     // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable.
-    string root = string(settings.UserWritablePath);
+    const optional<string> installed_root = ResolveCurrentInstalledClientWritableRoot();
+    string root = installed_root.has_value() ? *installed_root : string(settings.UserWritablePath);
 
     if (root.empty()) {
-        // No explicit path: switch to the per-user writable layout only when the installer marker is
-        // present next to the exe; otherwise stay portable.
-        auto exe_path = Platform::GetExePath();
-
-        if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
-            settings.UserWritablePath = "";
-            return;
-        }
-
-        root = "*";
+        settings.UserWritablePath = "";
+        return;
     }
 
     if (root == "*") {

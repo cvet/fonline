@@ -840,6 +840,8 @@ extern auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
 extern void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 extern auto GetExeLogFileName() -> string;
+extern auto ResolveInstalledClientWritableRoot(string_view installed_marker_path, string_view user_data_base) -> optional<string>;
+extern auto ResolveCurrentInstalledClientWritableRoot() -> optional<string>;
 extern void ResolveUserWritablePath(GlobalSettings& settings);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 extern auto IsQuitSignalReceived() noexcept -> bool;

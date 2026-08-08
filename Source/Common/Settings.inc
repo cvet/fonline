@@ -76,6 +76,14 @@ FIXED_SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout
 FIXED_SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
 FIXED_SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
 FIXED_SETTING(int32_t, Network, UpdateFileMaxPortionSize, 1000000); // Maximum update file portion size in bytes
+FIXED_SETTING(bool, Network, FastUpdateEnabled, false); // If true, the updater may use UDP fast transport when the server advertises endpoints
+FIXED_SETTING(int32_t, Network, FastUpdateChunkSize, 1024); // Fast updater UDP payload chunk size in bytes, supported range 1..60 KiB
+FIXED_SETTING(int32_t, Network, FastUpdateRequestTimeout, 750); // Fast updater request timeout in milliseconds
+FIXED_SETTING(int32_t, Network, FastUpdateMaxRetries, 2); // Fast updater additional retries per endpoint
+FIXED_SETTING(int32_t, Network, FastUpdateMaxSockets, 4); // Maximum concurrent UDP sockets used by the fast updater, clamped to 1..64; sockets share the highest-priority endpoint until retry failover
+FIXED_SETTING(bool, Network, UpdateManifestSignatureRequired, true); // Require an Ed25519-signed updater descriptor before trusting resource or native-binary metadata
+FIXED_SETTING(vector<string>, Network, UpdateManifestTrustedPublicKeys); // Trusted updater signing keys as key-id:public-key-hex entries
+FIXED_SETTING(int64_t, Network, UpdateManifestMinimumReleaseSequence, 1); // Reject signed updater descriptors below this monotonic release sequence
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
@@ -100,6 +108,22 @@ FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP pack
 FIXED_SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 FIXED_SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
 FIXED_SETTING(int32_t, ServerNetwork, NewConnectionRatePerSec, 0); // Max new connections accepted per source host per second (0 = unlimited); bursts above this are dropped at accept
+FIXED_SETTING(bool, ServerNetwork, FastUpdateServerEnabled, false); // If true, server shares update files over the UDP fast updater
+FIXED_SETTING(string, ServerNetwork, FastUpdateBindHost, "0.0.0.0"); // Bind host for UDP fast updater
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdateBindPort, 0); // Bind port for UDP fast updater
+FIXED_SETTING(vector<string>, ServerNetwork, FastUpdateEndpoints); // Advertised UDP fast updater endpoints in host:port[:priority] format
+FIXED_SETTING(string, ServerNetwork, UpdateManifestSigningKey, ""); // Ed25519 key-id:public-key-hex:private-seed-hex; production must resolve it from a deployment secret
+FIXED_SETTING(int64_t, ServerNetwork, UpdateManifestReleaseSequence, 1); // Monotonic signed updater release sequence; bump for every published client release
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdateCookieLifetimeSeconds, 60); // Address-bound fast-updater cookie validity, clamped to 5..300 seconds
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdateChallengeRateLimit, 1024); // Maximum unauthenticated same-size cookie challenges emitted per second
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdateGlobalRateLimit, 67108864); // Global authenticated fast-updater response budget in bytes per second
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdateGlobalBurst, 67108864); // Global authenticated fast-updater response burst budget in bytes
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdatePerAddressRateLimit, 8388608); // Per-address authenticated fast-updater response budget in bytes per second
+FIXED_SETTING(int32_t, ServerNetwork, FastUpdatePerAddressBurst, 8388608); // Per-address authenticated fast-updater response burst budget in bytes
+FIXED_SETTING(bool, ServerNetwork, UpdateSourceFeedbackEnabled, true); // Aggregate authenticated one-shot client source reports for advisory observability; never suppress providers automatically
+FIXED_SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackMinReports, 5); // Minimum distinct client hosts before an advisory failure threshold is logged
+FIXED_SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackFailurePercent, 60); // Failure percentage required for the advisory threshold log
+FIXED_SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackWindowSeconds, 300); // Client source-feedback aggregation window in seconds
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();
@@ -372,7 +396,7 @@ FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
-VARIABLE_SETTING(string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md
+VARIABLE_SETTING(string, Client, UserWritablePath); // Writable data root for cache, logs, and self-update overlay. A valid versioned INSTALLED marker is authoritative and selects its per-user GameName root. Without that marker, empty = portable, "*" = the per-OS user data dir (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and any other value is an explicit absolute path. Resolved after config/command-line overrides; read-only base resources stay layered below writable files. See Docs/ClientUpdater.md
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled

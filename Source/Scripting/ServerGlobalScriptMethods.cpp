@@ -67,6 +67,56 @@ static auto DropDestroyingEntity(refcount_nptr<T> entity) -> refcount_nptr<T>
     return entity;
 }
 
+// SyncScope: immutable updater metadata; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ContentUpdateArtifact>> Server_Game_GetContentUpdateCatalog(ptr<ServerEngine> server)
+{
+    const auto artifacts = server->GetContentUpdateCatalog();
+    return MakeScriptHandleVector<ContentUpdateArtifact>(artifacts);
+}
+
+// SyncScope: updater descriptor control-plane only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_UpsertContentUpdateSource(ptr<ServerEngine> server, uint64_t generation, uint32_t fileId, string_view expectedSha256, string_view provider, string_view sourceKey, string_view transport, string_view locator, int32_t priority, int64_t expiresAt)
+{
+    Sha256Digest expected_sha256 {};
+
+    if (!TryParseSha256Digest(expectedSha256, expected_sha256)) {
+        throw ScriptException("Invalid content update artifact SHA-256", expectedSha256);
+    }
+
+    ContentUpdateSource source {
+        .Provider = string(provider),
+        .SourceKey = string(sourceKey),
+        .Transport = string(transport),
+        .Locator = string(locator),
+        .Priority = priority,
+        .ExpiresAt = expiresAt,
+    };
+
+    return server->UpsertContentUpdateSource(generation, fileId, expected_sha256, std::move(source));
+}
+
+// SyncScope: updater descriptor control-plane only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_RemoveContentUpdateSource(ptr<ServerEngine> server, uint64_t generation, uint32_t fileId, string_view expectedSha256, string_view provider, string_view sourceKey)
+{
+    Sha256Digest expected_sha256 {};
+
+    if (!TryParseSha256Digest(expectedSha256, expected_sha256)) {
+        throw ScriptException("Invalid content update artifact SHA-256", expectedSha256);
+    }
+
+    return server->RemoveContentUpdateSource(generation, fileId, expected_sha256, provider, sourceKey);
+}
+
+// SyncScope: updater descriptor control-plane only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_ClearContentUpdateSources(ptr<ServerEngine> server, uint64_t generation, string_view provider)
+{
+    return server->ClearContentUpdateSources(generation, provider);
+}
+
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)

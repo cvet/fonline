@@ -1535,7 +1535,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
+            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook', 'SetupContentUpdateTransportsHook',
                             'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
@@ -1919,6 +1919,10 @@ def generate_generic_code() -> None:
     if not is_engine_hook_enabled('ClientStartupSettingsHook'):
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
+    if not is_engine_hook_enabled('SetupContentUpdateTransportsHook'):
+        global_lines.append('class ContentUpdateTransportRegistry;')
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void SetupContentUpdateTransportsHook(ContentUpdateTransportRegistry&, GlobalSettings&) { /* Stub */ }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
         global_lines.append('struct BakingContext;')

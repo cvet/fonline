@@ -15,8 +15,10 @@ Use this page when choosing validation for an engine change or when adding/remov
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
 - `BuildTools/codecoverage.py`
+- `BuildTools/tests/`
 - `BuildTools/validate.sh`
 - `BuildTools/validate.cmd`
+- `.github/workflows/validate.yml`
 - parent VS Code task references where available
 
 ## Test runner model
@@ -54,7 +56,12 @@ For broad validation scenarios, the BuildTools validators can run selected scena
 ```bash
 Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
+python3 -m pytest -q Engine/BuildTools/tests
 ```
+
+When working from the engine repository root, use `python3 -m pytest -q BuildTools/tests` for the
+BuildTools Python regression suite. The engine `validate.yml` `unit-tests` job runs that suite before
+the native unit-test validator, so packaging and code-generation regressions are CI-gated as well.
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
