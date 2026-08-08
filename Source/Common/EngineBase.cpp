@@ -143,7 +143,7 @@ struct EngineBaseData
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
-EngineMetadata::EngineMetadata(const MeatdataRegistrar& registrar) :
+EngineMetadata::EngineMetadata(const MetadataRegistrar& registrar) :
     _protoMngr(make_ptr(this))
 {
     FO_STACK_TRACE_ENTRY();
@@ -1173,7 +1173,7 @@ void EngineMetadata::RegisterAnimationInfo(const FileSystem& resources)
     _animationInfos = ReadAnimationInfo(resources, Hashes);
 }
 
-BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrar& registrar) :
+BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MetadataRegistrar& registrar) :
     EngineMetadata(registrar),
     ScriptSystem(),
     Entity(GetPropertyRegistrarForEdit(ENTITY_TYPE_NAME), nullptr, nullptr),

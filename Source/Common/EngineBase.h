@@ -52,9 +52,9 @@ class ScriptImGui;
 class EngineMetadata : public NameResolver
 {
 public:
-    using MeatdataRegistrar = function<void()>;
+    using MetadataRegistrar = function<void()>;
 
-    explicit EngineMetadata(const MeatdataRegistrar& registrar);
+    explicit EngineMetadata(const MetadataRegistrar& registrar);
     EngineMetadata(const EngineMetadata&) = delete;
     EngineMetadata(EngineMetadata&&) noexcept = delete;
     auto operator=(const EngineMetadata&) = delete;
@@ -189,7 +189,7 @@ public:
     unique_del_nptr<uint8_t> UserData {};
 
 protected:
-    explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrar& registrar);
+    explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MetadataRegistrar& registrar);
     ~BaseEngine() override = default;
 
     virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class

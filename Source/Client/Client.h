@@ -89,7 +89,7 @@ class ClientEngine : public BaseEngine, public AnimationResolver
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
-    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrar& mapper_registrar); // For mapper
+    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar); // For mapper
     ClientEngine(const ClientEngine&) = delete;
     ClientEngine(ClientEngine&&) noexcept = delete;
     auto operator=(const ClientEngine&) = delete;
