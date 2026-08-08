@@ -4,6 +4,8 @@
 
 Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `ReportExceptionAndExit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
 
+Need temporary scope timings/memory, state/thread/process or stack checkpoints, debugger breaks, file/packet/PCAP dumps, event-rate/duration statistics, deterministic faults, timeout watchdogs, triggers, counters, histories, or UDP output at an exact native boundary? Use the always-available Essentials module in [Diagnostics.md](Diagnostics.md).
+
 ## Visual Studio Visualizers
 
 For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are included in the generated project automatically.

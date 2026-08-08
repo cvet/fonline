@@ -155,7 +155,7 @@ notes.
 
 ## Current test inventory
 
-Current count: **95** `Test_*.cpp` suites.
+Current count: **99** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -165,6 +165,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
+- `Source/Tests/Test_Diagnostics.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
@@ -191,6 +192,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Common runtime model
 
@@ -260,6 +262,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -304,6 +307,7 @@ unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_ImGui.cpp`
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget

@@ -24,6 +24,8 @@ The essentials layer should stay dependency-light. It is included by most of the
 - `Source/Essentials/BaseLogging.cpp`
 - `Source/Essentials/Logging.h`
 - `Source/Essentials/Logging.cpp`
+- `Source/Essentials/Diagnostics.h`
+- `Source/Essentials/Diagnostics.cpp`
 - `Source/Essentials/ExceptionHandling.h`
 - `Source/Essentials/ExceptionHandling.cpp`
 - `Source/Essentials/MemorySystem.h`
@@ -67,7 +69,7 @@ The essentials layer should stay dependency-light. It is included by most of the
 
 1. `BasicCore.h` — compiler/OS gates, standard library surface, namespace macros, base aliases, exception declaration helpers, and compile-time constants.
 2. `GlobalData.h` — process-wide create/delete callback registration for engine global data.
-3. `StackTrace.h`, `BaseLogging.h`, `ExceptionHandling.h`, `Logging.h` — diagnostic and failure-reporting foundation.
+3. `StackTrace.h`, `BaseLogging.h`, `ExceptionHandling.h`, `Logging.h`, `Diagnostics.h` — diagnostic and failure-reporting foundation. `Diagnostics.h` is deliberately the last `Essentials.h` include, after networking and socket helpers, and is therefore available from every consumer while remaining able to use the complete Essentials layer.
 4. `Threading.h` — Clang Thread Safety Analysis macros (`FO_TSA_*`), the snake_case synchronization primitives (`fo::mutex` / `fo::shared_mutex` / `fo::scoped_lock` / `fo::shared_lock` / `fo::unique_lock`), the `fo::thread` pool-task handle, and the `run_thread` / `run_async` worker pools. Deliberately positioned right after `ExceptionHandling.h` (its deepest dependency) so even low-layer value headers such as `HashedString.h` can guard their state with the primitives. See [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md).
 5. `SmartPointers.h`, `MemorySystem.h` — pointer and allocation helpers.
 6. `Containers.h`, `StringUtils.h`, `CommonHelpers.h` — reusable container/string/utility helpers.
@@ -89,6 +91,8 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 ### Diagnostics and failure handling
 
 `BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`WriteSync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `WriteLog`/`WriteBaseLog` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and a runtime host can open the log early — after `CreateGlobalData()`, `LogToFile(GetExeLogFileName(), false)` (Frontend) — so its pre-`InitApp` diagnostics reach the file. When `AsyncLogWrite` is enabled, the fatal-error handler (`ExceptionHandling`) calls `SuspendAsyncLogWriting()` first, which flips writes back to the synchronous path without joining the worker, so the crash reason and stack trace are flushed inline before the process exits instead of being lost in an undrained async queue. `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
+
+`Diagnostics.*` is the always-included, state-free instrumentation toolbox built on that foundation. Its `diagnostics::snake_case` API provides state/thread/process checkpoints, debugger breaks, resolved stacks, memory scopes, packet hex/file/PCAP dumps, timers and duration aggregation, deterministic fault injection, timeout watchdogs, triggers, sampled hit/rate counters, change detection, bounded histories, and explicit UDP output. The module creates no ambient recorder or engine state; only explicit call sites and objects do work. Investigation call sites remain temporary and are documented in [Diagnostics.md](Diagnostics.md).
 
 ### Memory, pointers, and lifetime utilities
 
@@ -163,6 +167,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
+- `Source/Tests/Test_Diagnostics.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
@@ -187,7 +192,7 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 
 - Compiler/OS gates, namespace, base aliases, and low-level macros: `Source/Essentials/BasicCore.*`.
 - Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
-- Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Debugging.md](Debugging.md).
+- Stack traces, logging, reusable temporary instrumentation, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `Diagnostics.*`, `ExceptionHandling.*`, [Diagnostics.md](Diagnostics.md), and [Debugging.md](Debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](SmartPointers.md).
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking.md](Networking.md).
