@@ -94,6 +94,7 @@ $Text engl Name = Ignored
     {
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
+        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
         local_rig.AddSourceFile("Items/TextItems.fopro", R"([ProtoItem]
 $Name = BaseItem

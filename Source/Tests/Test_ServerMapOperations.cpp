@@ -4812,6 +4812,7 @@ namespace MapOpsTest
     static auto MakeStaticMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
     {
         BakerTests::TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         rig.AddBakedFile("StaticMapCritter.fopro-bin-server", critter_blob);

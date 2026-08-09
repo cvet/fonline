@@ -31,6 +31,7 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
 - `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
+- `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
 - `Source/Scripting/Mono/*.cs`
 - `Source/Scripting/Native/.keepalive`
@@ -38,6 +39,7 @@ Read this page together with:
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -85,6 +87,13 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 - cleanup callbacks and post-cleanup callbacks release backend-owned resources in a controlled order.
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
+
+Separate script contexts may request a registered object's type id concurrently during first use. AngelScript
+assigns that id lazily, so FOnline's vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine
+reader/writer lock and refreshes the local value after acquiring the exclusive lock. No caller may observe the
+pre-lock `-1` after another thread has completed assignment. This protects simultaneous first-login paths that
+construct return-type metadata in different server workers. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads`
+starts 16 native workers against 128 fresh object types and requires every worker to receive the same valid id.
 
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
@@ -212,6 +221,7 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptAttributes.cpp` — attribute parsing, nullable suffix handling, events, remote calls, and callback rules.
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
+- `Source/Tests/Test_AngelScriptCall.cpp` — native/script call shapes, return cleanup, and concurrent lazy type-id assignment.
 - `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_ServerScriptMethods.cpp` — server exported methods.
 - `Source/Tests/Test_ScriptBuiltins.cpp` — built-in script helpers/types.
