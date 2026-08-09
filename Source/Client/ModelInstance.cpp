@@ -1061,6 +1061,29 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Combining once keeps the per-vertex sweep below to a single matrix-vector product each.
     mat44 frame_clip_matrix = _frameProj * identity;
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
+
+    // Every clip matrix in this function is affine - the frame projection is orthographic and each facing delta is a
+    // rotation conjugated by a rigid transform - so its last row is exactly (0, 0, 0, 1) and the perspective divide
+    // is a division by one. Establishing that once per call lets each projection below drop three divisions and skip
+    // the depth component entirely, which no consumer here reads; that is the bulk of the cost of a projection, and
+    // the sweep does three or four of them per vertex. A non-affine matrix arriving here would be an engine defect
+    // rather than bad content, so it is a strong assert and not a recoverable rejection.
+    auto is_affine_clip_matrix = [](const mat44& matrix) noexcept { //
+        return matrix[0][3] == 0.0f && matrix[1][3] == 0.0f && matrix[2][3] == 0.0f && matrix[3][3] == 1.0f;
+    };
+    float32_t viewport_offset_x = numeric_cast<float32_t>(viewport[0]);
+    float32_t viewport_offset_y = numeric_cast<float32_t>(viewport[1]);
+    float32_t viewport_width = numeric_cast<float32_t>(viewport[2]);
+    float32_t viewport_height = numeric_cast<float32_t>(viewport[3]);
+    // Sums in the same order as the general matrix-vector product it replaces, so the result is bit-identical.
+    auto project_affine = [&](vec3 obj_pos, const mat44& clip_matrix) noexcept -> fpos32 {
+        float32_t clip_x = (clip_matrix[0][0] * obj_pos.x + clip_matrix[1][0] * obj_pos.y) + (clip_matrix[2][0] * obj_pos.z + clip_matrix[3][0]);
+        float32_t clip_y = (clip_matrix[0][1] * obj_pos.x + clip_matrix[1][1] * obj_pos.y) + (clip_matrix[2][1] * obj_pos.z + clip_matrix[3][1]);
+
+        return fpos32 {(clip_x * 0.5f + 0.5f) * viewport_width + viewport_offset_x, (clip_y * 0.5f + 0.5f) * viewport_height + viewport_offset_y};
+    };
+
+    FO_STRONG_ASSERT(is_affine_clip_matrix(frame_clip_matrix), "Model sprite frame clip matrix is not affine", _modelInfo->_fileName);
     bool has_projected_point = false;
     float32_t min_x {};
     float32_t min_y {};
@@ -1070,11 +1093,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Sprite-pixel length of a world-space extent under the frame projection. The projection is orthographic, so the
     // difference between two projected points is exact and independent of where they sit in the frame.
     auto project_sprite_length = [&](float32_t world_length) -> optional<float32_t> {
-        vec3 projected_origin {};
-        vec3 projected_offset {};
-        if (!ProjectPointClip(vec3 {}, frame_clip_matrix, viewport, projected_origin) || !ProjectPointClip(vec3 {world_length, 0.0f, 0.0f}, frame_clip_matrix, viewport, projected_offset)) {
-            return std::nullopt;
-        }
+        fpos32 projected_origin = project_affine(vec3 {}, frame_clip_matrix);
+        fpos32 projected_offset = project_affine(vec3 {world_length, 0.0f, 0.0f}, frame_clip_matrix);
+
         if (!std::isfinite(projected_origin.x) || !std::isfinite(projected_offset.x)) {
             return std::nullopt;
         }
@@ -1085,10 +1106,11 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Merge a projected world point into the frame envelope, grown by a padding in sprite pixels. The padding carries a
     // particle's camera-facing billboard radius, which is a screen-space disc around the particle position rather than
     // another world point; mesh geometry passes zero.
-    vec3 last_projected_point {};
+    fpos32 last_projected_point {};
     auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
-        vec3 projected_pos {};
-        if (!ProjectPointClip(world_pos, frame_clip_matrix, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
+        fpos32 projected_pos = project_affine(world_pos, frame_clip_matrix);
+
+        if (!std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
             return false;
         }
 
@@ -1116,7 +1138,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     // Holds the facing-0 projection of the world point itself, captured before the shadow projection
     // below overwrites last_projected_point, so the all-facings sweep can reuse it.
-    vec3 world_point_projection {};
+    fpos32 world_point_projection {};
     auto include_world_point = [&](vec3 world_pos) -> bool {
         if (!include_projected_point(world_pos, 0.0f)) {
             return false;
@@ -1154,6 +1176,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     };
     mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
     mat44 facing_rotation_180 = facing_delta_matrix(180.0f);
+    // Fold the facing rotation into the clip matrix once per call: matrix product is associative, so
+    // Proj*(R*v) == (Proj*R)*v. Each facing sample then costs one matrix-vector product instead of a
+    // rotation followed by a projection, removing two of the five per-vertex products in the sweep.
+    mat44 clip_matrix_facing_90 = frame_clip_matrix * facing_rotation_90;
+    mat44 clip_matrix_facing_180 = frame_clip_matrix * facing_rotation_180;
+
+    FO_STRONG_ASSERT(is_affine_clip_matrix(clip_matrix_facing_90) && is_affine_clip_matrix(clip_matrix_facing_180), "Model sprite facing clip matrix is not affine", _modelInfo->_fileName);
+
     // A point's projected coordinate traces a sinusoid as the model turns; sampling it at facing, +90 and +180 and
     // taking the harmonic range yields its continuous min/max over every facing, independent of which facing the
     // model currently holds (four discrete samples would give a facing-dependent union). This mirrors the layout's
@@ -1162,7 +1192,11 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
         float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
         float64_t sine = numeric_cast<float64_t>(value_90) - center;
-        float64_t radius = std::hypot(cosine, sine);
+        // Plain sqrt rather than std::hypot: both operands are half-differences of sprite-pixel
+        // coordinates, so they are bounded by the frame size and their squares stay near 1e8 against a
+        // float64 range of ~1e308. hypot's overflow-safe scaling buys nothing at that magnitude and
+        // costs several times more, twice per vertex in the hottest sweep in the client.
+        float64_t radius = std::sqrt(cosine * cosine + sine * sine);
         return {numeric_cast<float32_t>(center - radius), numeric_cast<float32_t>(center + radius)};
     };
     bool has_all_facings_point = false;
@@ -1173,14 +1207,10 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // Takes the facing-0 projection from the caller: include_world_point has already projected this
     // exact point through the same clip matrix, and recomputing it here doubled up one of the three
     // per-vertex projections in the hot sweep.
-    auto include_mesh_all_facings = [&](vec3 world_pos, vec3 projected_0, float32_t padding) {
-        vec3 projected_90 {};
-        vec3 projected_180 {};
+    auto include_mesh_all_facings = [&](vec3 world_pos, fpos32 projected_0, float32_t padding) {
+        fpos32 projected_90 = project_affine(world_pos, clip_matrix_facing_90);
+        fpos32 projected_180 = project_affine(world_pos, clip_matrix_facing_180);
 
-        if (!ProjectPointClip(vec3 {facing_rotation_90 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_90) || //
-            !ProjectPointClip(vec3 {facing_rotation_180 * glm::vec4 {world_pos, 1.0f}}, frame_clip_matrix, viewport, projected_180)) {
-            return;
-        }
         if (!std::isfinite(projected_0.x) || !std::isfinite(projected_0.y) || !std::isfinite(projected_90.x) || !std::isfinite(projected_90.y) || !std::isfinite(projected_180.x) || !std::isfinite(projected_180.y)) {
             return;
         }
@@ -1235,28 +1265,16 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 skin_matrices[bone_index] = binding.Owner->GetWorldMatrix(binding.JointIndex) * binding.InverseBindMatrix;
             }
 
-            for (vindex_t vertex_index : combined_mesh->SpriteVertices) {
-                if (numeric_cast<size_t>(vertex_index) >= combined_mesh->MeshBuf->Vertices3D.size()) {
-                    return std::nullopt;
-                }
-
-                const Vertex3D& vertex = combined_mesh->MeshBuf->Vertices3D[vertex_index];
+            // Reads only what generation prepared and proved: no vertex-index bound check, no float-to-index
+            // rounding and no bone-range check per influence, because SpriteBoundsValid above already stands for
+            // all three. The finiteness of the posed point is still checked - that one depends on the runtime
+            // skinning matrices, which generation cannot see.
+            for (const SpriteSweepVertex& sweep_vertex : combined_mesh->SpriteSweepVertices) {
+                glm::vec4 local_pos {sweep_vertex.Position, 1.0f};
                 glm::vec4 transformed_pos {};
 
-                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                    float32_t weight = vertex.BlendWeights[influence];
-
-                    if (weight <= 0.0f) {
-                        continue;
-                    }
-
-                    size_t bone_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
-
-                    if (bone_index >= combined_mesh->CurBoneMatrix) {
-                        return std::nullopt;
-                    }
-
-                    transformed_pos += skin_matrices[bone_index] * glm::vec4 {vertex.Position, 1.0f} * weight;
+                for (uint8_t influence = 0; influence < sweep_vertex.InfluenceCount; influence++) {
+                    transformed_pos += skin_matrices[sweep_vertex.BoneIndices[influence]] * local_pos * sweep_vertex.Weights[influence];
                 }
 
                 if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || !is_float_equal(transformed_pos.w, 1.0f) || !include_world_point(vec3 {transformed_pos})) {
@@ -1819,7 +1837,7 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshBuf->Indices.clear();
         combined_mesh->MeshBuf->IndCount = 0;
         std::ranges::fill(combined_mesh->SkinBindings, SkinBinding {});
-        combined_mesh->SpriteVertices.clear();
+        combined_mesh->SpriteSweepVertices.clear();
         combined_mesh->SpriteBoundsValid = false;
         combined_mesh->HasSpriteGeometry = false;
     }
@@ -1846,36 +1864,20 @@ void ModelInstance::GenerateCombinedMeshes()
         // world point and project identically, so sweeping them all is pure duplicate work. The key
         // includes the blend data because two vertices sharing a position but not their bone weights
         // move apart once posed and must both be kept.
-        struct SpriteVertexKey
-        {
-            vec3 Position {};
-            float32_t BlendIndices[MODEL_BONES_PER_VERTEX] {};
-            float32_t BlendWeights[MODEL_BONES_PER_VERTEX] {};
-        };
+        // Flat float key rather than a struct: the engine's unordered_set alias fixes the comparator to
+        // std::equal_to<>, and an array already compares elementwise, so no equality functor is needed.
+        constexpr size_t SPRITE_VERTEX_KEY_POSITION_SIZE = 3;
+        using SpriteVertexKey = array<float32_t, SPRITE_VERTEX_KEY_POSITION_SIZE + 2 * MODEL_BONES_PER_VERTEX>;
         auto key_hash = [](const SpriteVertexKey& key) noexcept -> size_t {
-            size_t hash = std::hash<float32_t> {}(key.Position.x) ^ (std::hash<float32_t> {}(key.Position.y) << 1) ^ (std::hash<float32_t> {}(key.Position.z) << 2);
+            size_t hash = 0;
 
-            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                hash ^= std::hash<float32_t> {}(key.BlendIndices[influence]) << (influence + 3);
-                hash ^= std::hash<float32_t> {}(key.BlendWeights[influence]) << (influence + 7);
+            for (size_t component = 0; component < key.size(); component++) {
+                hash ^= std::hash<float32_t> {}(key[component]) << component;
             }
 
             return hash;
         };
-        auto key_equal = [](const SpriteVertexKey& first, const SpriteVertexKey& second) noexcept -> bool {
-            if (first.Position != second.Position) {
-                return false;
-            }
-
-            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                if (first.BlendIndices[influence] != second.BlendIndices[influence] || first.BlendWeights[influence] != second.BlendWeights[influence]) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-        std::unordered_set<SpriteVertexKey, decltype(key_hash), decltype(key_equal)> unique_sprite_vertices(16, key_hash, key_equal);
+        unordered_set<SpriteVertexKey, decltype(key_hash)> unique_sprite_vertices;
 
         for (vindex_t vertex_index : indices) {
             if (numeric_cast<size_t>(vertex_index) >= vertices.size()) {
@@ -1890,22 +1892,11 @@ void ModelInstance::GenerateCombinedMeshes()
                 break;
             }
 
-            if (!included_vertices[vertex_index]) {
-                included_vertices[vertex_index] = true;
-
-                SpriteVertexKey key;
-                key.Position = vertex.Position;
-
-                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                    key.BlendIndices[influence] = vertex.BlendIndices[influence];
-                    key.BlendWeights[influence] = vertex.BlendWeights[influence];
-                }
-
-                if (unique_sprite_vertices.insert(key).second) {
-                    combined_mesh->SpriteVertices.emplace_back(vertex_index);
-                }
-            }
-
+            // The same validation as before, but its result is now kept rather than thrown away: the positive
+            // influences land in the prepared sweep vertex in slot order, so the per-frame sweep accumulates in
+            // exactly the order this loop accepts them.
+            SpriteSweepVertex sweep_vertex {};
+            sweep_vertex.Position = vertex.Position;
             float32_t total_weight = 0.0f;
 
             for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
@@ -1933,6 +1924,9 @@ void ModelInstance::GenerateCombinedMeshes()
                     break;
                 }
 
+                sweep_vertex.BoneIndices[sweep_vertex.InfluenceCount] = numeric_cast<uint8_t>(bone_index);
+                sweep_vertex.Weights[sweep_vertex.InfluenceCount] = weight;
+                sweep_vertex.InfluenceCount++;
                 total_weight += weight;
             }
 
@@ -1942,6 +1936,22 @@ void ModelInstance::GenerateCombinedMeshes()
             if (!is_float_equal(total_weight, 1.0f)) {
                 combined_mesh->SpriteBoundsValid = false;
                 break;
+            }
+
+            // Collected after validation, so a prepared vertex is only ever stored once its blend data is proved.
+            if (!included_vertices[vertex_index]) {
+                included_vertices[vertex_index] = true;
+
+                SpriteVertexKey key {vertex.Position.x, vertex.Position.y, vertex.Position.z};
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    key[SPRITE_VERTEX_KEY_POSITION_SIZE + influence] = vertex.BlendIndices[influence];
+                    key[SPRITE_VERTEX_KEY_POSITION_SIZE + MODEL_BONES_PER_VERTEX + influence] = vertex.BlendWeights[influence];
+                }
+
+                if (unique_sprite_vertices.insert(key).second) {
+                    combined_mesh->SpriteSweepVertices.emplace_back(sweep_vertex);
+                }
             }
 
             combined_mesh->HasSpriteGeometry = true;

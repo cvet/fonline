@@ -162,6 +162,21 @@ private:
         mat44 InverseBindMatrix {1.0f};
     };
 
+    // A vertex of the sprite-bounds sweep, prepared once per mesh generation. GenerateCombinedMeshes already proves
+    // that every blend index is an exact in-range integer and every weight is finite and sums to one, and records
+    // that verdict in SpriteBoundsValid - so the per-frame sweep must not re-derive any of it. Storing only the
+    // positive influences also keeps the sweep from walking empty slots, and packing the position beside them turns
+    // a scattered read of the full Vertex3D array into a sequential read of what the sweep actually uses.
+    struct SpriteSweepVertex
+    {
+        vec3 Position {};
+        float32_t Weights[MODEL_BONES_PER_VERTEX] {};
+        uint8_t BoneIndices[MODEL_BONES_PER_VERTEX] {};
+        uint8_t InfluenceCount {};
+    };
+
+    static_assert(MODEL_MAX_BONES <= std::numeric_limits<uint8_t>::max());
+
     struct CombinedMesh
     {
         nptr<RenderEffect> DrawEffect {};
@@ -173,7 +188,7 @@ private:
         vector<int32_t> MeshAnimLayers {};
         size_t CurBoneMatrix {};
         vector<SkinBinding> SkinBindings {};
-        vector<vindex_t> SpriteVertices {};
+        vector<SpriteSweepVertex> SpriteSweepVertices {};
         bool SpriteBoundsValid {};
         bool HasSpriteGeometry {};
         nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
