@@ -37,19 +37,19 @@
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptScripting.h"
+#include "AnimationViewer.h"
 #include "Application.h"
 #include "Baker.h"
 #include "ConfigFile.h"
-#include "AnimationViewer.h"
-#include "ImGuiStuff.h"
-#include "ParticleEditor.h"
-#include "ParticleViewer.h"
-#include "ParticleBaker.h"
 #include "EffectBaker.h"
-#include "SettingsStorage.h"
-#include "SparkParticleEditor.h"
+#include "ImGuiStuff.h"
 #include "MapView.h"
 #include "Mapper.h"
+#include "ParticleBaker.h"
+#include "ParticleEditor.h"
+#include "ParticleViewer.h"
+#include "SettingsStorage.h"
+#include "SparkParticleEditor.h"
 #include "Test_BakerHelpers.h"
 #include "Test_ImGuiHarness.h"
 
@@ -843,7 +843,7 @@ namespace MapperMergeTest
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string(CRITTER_A), [](ProtoCritter&) {}},
+            {string(CRITTER_A), [](ProtoCritter&) { }},
         };
         auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
 
@@ -1601,7 +1601,6 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     mapper->InspectorApplyToAll = false;
 }
 
-
 TEST_CASE("MapperSelectionFollowsLayerVisibility")
 {
     // Select-all walks the placed items once and admits each by its own kind, so a map of plain items only
@@ -1683,6 +1682,41 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         CHECK(mapper->SelectedEntities.size() > items_only);
     }
 
+    SECTION("DeselectingAnAnyUniqueItemRunsTheIncrementalMerge")
+    {
+        // Dropping an item out of the selection re-merges it into its multihex mesh, and for the AnyUnique
+        // strategy that goes through the per-step incremental driver rather than the whole-map coalescer -
+        // a path no other test reaches, because every other fixture item is SameSibling or plain.
+        ptr<MapView> selection_map = mapper->GetCurMap().as_ptr();
+        hstring unique_pid = mapper->Hashes.ToHashedString(TILE_U);
+
+        auto first_unique = selection_map->AddMapperItem(unique_pid, mpos {4, 12}, nullptr);
+        auto second_unique = selection_map->AddMapperItem(unique_pid, mpos {16, 18}, nullptr);
+        REQUIRE_NOTHROW(ignore_unused(first_unique.get()));
+        REQUIRE_NOTHROW(ignore_unused(second_unique.get()));
+
+        mapper->SelectClear();
+        mapper->SelectAdd(first_unique);
+        mapper->SelectAdd(second_unique);
+        REQUIRE(mapper->SelectedEntities.size() == 2);
+
+        // The second one leaving the selection is what offers it to the first one's mesh
+        REQUIRE_NOTHROW(mapper->SelectRemove(second_unique, false));
+        REQUIRE_NOTHROW(mapper->SelectRemove(first_unique, false));
+        CHECK(mapper->SelectedEntities.empty());
+
+        // Same-proto AnyUnique items with identical data collapse into one mesh regardless of distance
+        size_t unique_left = 0;
+
+        for (ptr<const ItemHexView> item : selection_map->GetItems()) {
+            if (!item->IsDestroyed() && item->GetProtoId() == unique_pid) {
+                unique_left++;
+            }
+        }
+
+        CHECK(unique_left == 1);
+    }
+
     SECTION("RemovingAndReAddingASelectionKeepsBothStoresInStep")
     {
         mapper->SelectAll();
@@ -1711,7 +1745,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     // The panels draw their controls in every headless frame but nothing is ever pressed, so the code
     // behind each button stays unreachable. Saving writes real files, so the fixture keeps a private
     // Maps root the same way the save test does.
-    auto maps_dir = std::filesystem::temp_directory_path() / "fo_engine_mapper_controls_test";
+    auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_controls_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
     std::filesystem::create_directories(maps_dir);
@@ -2036,7 +2070,6 @@ TEST_CASE("MapperEditorOperations")
     }
 }
 
-
 TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 {
     auto settings = MakeMapperTestSettings();
@@ -2246,9 +2279,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     CHECK(ImGui::GetFrameCount() >= VIEWER_FRAMES + numeric_cast<int32_t>(PRESSED_CONTROLS.size()) + 9);
 }
 
-
 #if FO_SPARK_PARTICLES
-
 
 TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 {
@@ -2320,7 +2351,6 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
     CHECK(editor.GetAssetPath() == asset_path);
     CHECK_FALSE(editor.IsChanged());
 
-
     editor.BringToFront();
 
     // The window carries a stable "###" id suffix, which is what ImGui matches a window by
@@ -2366,7 +2396,6 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 }
 
 #endif
-
 
 TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 {
@@ -2601,12 +2630,32 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
         // The editor's hotkey tables are wide switch statements, so the whole common key range is walked
         const vector<KeyCode> keys {
-            KeyCode::Escape, KeyCode::Delete, KeyCode::Tab, KeyCode::Space,
-            KeyCode::Up, KeyCode::Down, KeyCode::Left, KeyCode::Right,
-            KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E,
-            KeyCode::F, KeyCode::G, KeyCode::H, KeyCode::L, KeyCode::M,
-            KeyCode::S, KeyCode::V, KeyCode::X, KeyCode::Z,
-            KeyCode::C1, KeyCode::C2, KeyCode::C3, KeyCode::C0,
+            KeyCode::Escape,
+            KeyCode::Delete,
+            KeyCode::Tab,
+            KeyCode::Space,
+            KeyCode::Up,
+            KeyCode::Down,
+            KeyCode::Left,
+            KeyCode::Right,
+            KeyCode::A,
+            KeyCode::B,
+            KeyCode::C,
+            KeyCode::D,
+            KeyCode::E,
+            KeyCode::F,
+            KeyCode::G,
+            KeyCode::H,
+            KeyCode::L,
+            KeyCode::M,
+            KeyCode::S,
+            KeyCode::V,
+            KeyCode::X,
+            KeyCode::Z,
+            KeyCode::C1,
+            KeyCode::C2,
+            KeyCode::C3,
+            KeyCode::C0,
         };
 
         for (KeyCode key : keys) {
@@ -2664,7 +2713,6 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         ImGui::Render();
     }
 }
-
 
 TEST_CASE("MapViewLightingAndViewportOperations")
 {
@@ -2846,7 +2894,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 {
     // Saving resolves the on-disk Maps root from an existing map container, so the fixture needs a real
     // directory with a reference .fomap in it - a memory-only resource set can never reach this path.
-    auto maps_dir = std::filesystem::temp_directory_path() / "fo_engine_mapper_save_test";
+    auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_save_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
     std::filesystem::create_directories(maps_dir);

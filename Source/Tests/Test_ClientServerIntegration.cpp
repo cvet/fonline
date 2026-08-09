@@ -541,6 +541,42 @@ namespace ClientServerIntegrationClient
         CurMap.RebuildFog();
         CurMap.RedrawMap();
 
+        // Fog shapes only build outside mapper mode, so a real session is the only place the fog
+        // preparation and its per-slot draw are reachable at all. One layer follows the chosen critter,
+        // one is pinned to a hex, and one is a traced overlay - three different shape inputs.
+        FogLayer following = CurMap.AddFog(Chosen, DrawOrderType::Last);
+        following.Radius = 5;
+        following.Distance = 7;
+        following.ExtraLength = 2;
+        following.Traced = false;
+
+        FogLayer pinned = CurMap.AddFog(mpos(Chosen.Hex.x + 2, Chosen.Hex.y + 2), DrawOrderType::Last);
+        pinned.Radius = 3;
+        pinned.OvalRoundness = 0.5f;
+        pinned.EdgeNoise = 0.0f;
+
+        FogLayer traced = CurMap.AddFog(Chosen, DrawOrderType::Last);
+        traced.Traced = true;
+        traced.Radius = 4;
+        traced.Distance = 6;
+        traced.CheckShootBlocks = false;
+        traced.OverlayColor = ucolor(200, 40, 40, 128);
+        traced.CenterColor = ucolor(255, 200, 200, 200);
+
+        // The shapes morph over time, so several frames are drawn before the layers are taken down
+        for (int i = 0; i < 4; i++) {
+            CurMap.RebuildFog();
+            CurMap.RedrawMap();
+        }
+
+        pinned.Enabled = false;
+        CurMap.RebuildFog();
+
+        following.Dispose();
+        pinned.Dispose();
+        traced.Dispose();
+        CurMap.RebuildFog();
+
         // The map query surface only answers against a real session world, so it is walked here rather
         // than from the mapper, which has no chosen critter and no critter list to search
         mpos here = Chosen.Hex;
@@ -1150,6 +1186,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
+
 
     auto server = MakeServerEngine(server_settings);
     auto client = MakeClientEngine(client_settings);

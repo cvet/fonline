@@ -173,25 +173,30 @@ TEST_CASE("CommonUtilities")
     SECTION("SeededRandomGeneratorProducesValues")
     {
         auto generator = MakeSeededRandomGenerator();
-        auto other = MakeSeededRandomGenerator();
 
-        std::array<std::mt19937::result_type, 4> values {};
+        // std::random_device is allowed to be deterministic, so two generators are not required to differ
+        // and comparing them is a flaky assertion. What the helper does owe its callers is that the engine
+        // came back seeded rather than default-constructed: mt19937's default seed is a fixed constant, so
+        // walking the default sequence would mean random_device() was never consulted.
+        std::mt19937 default_seeded;
+        bool matches_default_sequence = true;
 
-        for (auto& value : values) {
-            value = generator();
-        }
-
-        // Two independently seeded generators must not walk the same sequence
-        bool all_equal = true;
-
-        for (auto& value : values) {
-            if (value != other()) {
-                all_equal = false;
-                break;
+        for (int32_t i = 0; i < 4; i++) {
+            if (generator() != default_seeded()) {
+                matches_default_sequence = false;
             }
         }
 
-        CHECK_FALSE(all_equal);
+        CHECK_FALSE(matches_default_sequence);
+
+        // And that it is immediately usable by its consumers
+        std::uniform_int_distribution<int32_t> distribution {10, 20};
+
+        for (int32_t i = 0; i < 8; i++) {
+            int32_t value = distribution(generator);
+            CHECK(value >= 10);
+            CHECK(value <= 20);
+        }
     }
 
     SECTION("PackagedBuildAccessorsAreConsistent")

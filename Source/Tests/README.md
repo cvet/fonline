@@ -15,7 +15,7 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **95** `Test_*.cpp` suites.
+Current count: **100** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -51,6 +51,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Common runtime model
 
@@ -114,7 +115,6 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
@@ -122,6 +122,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -144,6 +145,8 @@ staged ahead of the atomic sampler/matrix cutover.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
+  window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget

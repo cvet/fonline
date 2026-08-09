@@ -161,9 +161,9 @@ reflects that in two different ways:
   Linux run this way with no configuration; measure it on a Windows run.
 - Sources that **compile here but cannot execute in a headless test process**
   are listed in `ENVIRONMENT_EXCLUDED_SOURCES`, each with a written reason —
-  code needing a GPU context, an audio device, a video decoder, real sockets,
-  Mongo, or a debugger attach, plus the deliberately process-killing
-  diagnostic self-test.
+  currently the device-backed audio/video paths, Mongo/updater infrastructure,
+  and the deliberately process-killing diagnostic self-test. Loopback sockets
+  and the debugger endpoint are exercised headlessly and stay in the headline.
 
 The summary prints the scoped headline, a combined all-sources figure, and the
 excluded bucket file-by-file with reasons, so the split stays auditable. Adding
@@ -176,7 +176,7 @@ integration suite with real endpoints.
 `DrawGui()` implementations normally only run inside the windowed application,
 but they are reachable from unit tests through a backend-less ImGui context: no
 renderer is attached and the draw data is discarded, while every panel builder
-runs for real. `Test_ServerEngine.cpp` shows the pattern. Three details matter:
+runs for real. `Test_ServerEngine.cpp` shows the pattern. These details matter:
 
 - Declare `ImGuiBackendFlags_RendererHasTextures` on the IO. The legacy
   `GetTexDataAsRGBA32` / `GetTexDataAsAlpha8` atlas-upload entry points are
@@ -196,6 +196,16 @@ runs for real. `Test_ServerEngine.cpp` shows the pattern. Three details matter:
   the buffer before `LogFinish()`, which clears it, and assert on markers from
   the nested panels so a renamed panel fails the test rather than silently
   dropping coverage.
+- Server diagnostics run at an engine sync point, but that does not implicitly
+  cover entity state. `ServerEngine::DrawGui()` snapshots unlogined players
+  because they are intentionally absent from the entity registry, then acquires
+  one replacement cover for that snapshot plus the registered world. The
+  snapshot is taken under the publication lock and that lock is released before
+  any entity lock, because `OnPlayerConnected` takes the two in the opposite
+  order. `EnsureEntitySynced` is not an alternative here: it only retains an
+  entity the context already covers and throws for one it does not, which is
+  exactly the case for a player outside the registry. Tests should keep a real
+  unlogined connection in the snapshot so this boundary cannot regress.
 - **Pass an explicit depth to `LogToBuffer`.** The default auto-open depth is 2,
   so anything nested deeper stays collapsed and its body never runs. Raising it
   (`ImGui::LogToBuffer(12)`) took the SPARK particle editor from 27% to 48%
@@ -386,7 +396,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **95** `Test_*.cpp` suites.
+Current count: **100** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -422,6 +432,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Common runtime model
 
@@ -485,7 +496,6 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
@@ -493,6 +503,7 @@ Current count: **95** `Test_*.cpp` suites.
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -537,6 +548,8 @@ unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
+  window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget

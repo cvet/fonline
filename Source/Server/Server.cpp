@@ -1131,12 +1131,19 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
+    vector<refcount_ptr<Player>> unlogined_players;
+
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
+        unlogined_players = _unloginedPlayers;
+    }
+
     // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
-    // free: take every registered entity into the shutdown context explicitly so the remaining stages
-    // (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player disconnects) run covered.
-    // The scope-exit Release() drains the held locks.
+    // free: take every registered entity and every unlogined player into the shutdown context explicitly
+    // so the remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
+    // disconnects) run covered. The scope-exit Release() drains the held locks.
     WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
-    SyncWholeWorld(shutdown_ctx.GetContext());
+    SyncWholeWorld(shutdown_ctx.GetContext(), unlogined_players);
 
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
@@ -1201,17 +1208,17 @@ void ServerEngine::Shutdown()
     // Unlogined players
     WriteLog("Shutdown stage: disconnect unlogined players");
 
-    {
-        scoped_lock locker {_unloginedPlayersLocker};
-
-        for (auto& player : _unloginedPlayers) {
-            // Unlogined players are not in the entity registry, so the whole-world lock above did not
-            // reach them; capture each one before the validated disconnect/destroy touches.
-            EnsureEntitySynced(player);
-            player->GetConnection()->HardDisconnect();
-            player->MarkAsDestroyed();
+    for (auto& player : unlogined_players) {
+        if (player->IsDestroyed()) {
+            continue;
         }
 
+        player->GetConnection()->HardDisconnect();
+        player->MarkAsDestroyed();
+    }
+
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
         _unloginedPlayers.clear();
     }
 
@@ -1264,17 +1271,21 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     return true;
 }
 
-void ServerEngine::SyncWholeWorld(SyncContext& ctx)
+void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players)
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
     vector<nptr<ServerEntity>> sync_entities;
-    sync_entities.reserve(entities.size());
+    sync_entities.reserve(entities.size() + additional_players.size());
 
     for (auto& entity : entities) {
         sync_entities.emplace_back(entity);
+    }
+
+    for (const auto& player : additional_players) {
+        sync_entities.emplace_back(player.get_no_const());
     }
 
     ctx.SyncEntities(sync_entities);
@@ -1366,13 +1377,23 @@ void ServerEngine::DrawGui()
 
     auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
+    // Unlogined players are deliberately absent from the entity registry. Snapshot them under their
+    // publication lock before taking any entity locks: OnPlayerConnected owns the fresh entity lock
+    // before it may need the publication lock for rollback, so acquiring in the opposite order here
+    // would deadlock. Connections accepted after this snapshot appear next frame.
+    vector<refcount_ptr<Player>> unlogined_players;
+
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
+        unlogined_players = _unloginedPlayers;
+    }
+
     // The external lock owns only the engine sync point, it does not pre-lock the world. The panels
     // below read cover-requiring entity state (Player::GetConnection, Location::GetMapsCount and the
-    // per-entity property tables), so take every registered entity into this context explicitly, the
-    // same way the shutdown path does. Without it every panel throws "Entity access without sync" as
-    // soon as the world is non-empty. The walk is O(entities), matching what the panels already do,
-    // and the world is already stopped at the sync point for the duration of the frame.
-    SyncWholeWorld(*RequireCurrentSyncContext());
+    // per-entity property tables), so take the registered world and the unlogined snapshot into one
+    // replacement cover. Without it every per-entity panel throws "Entity access without sync". The
+    // walk is O(entities), matching what the panels already do, and the world is stopped for the frame.
+    SyncWholeWorld(*RequireCurrentSyncContext(), unlogined_players);
 
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
@@ -1734,37 +1755,37 @@ void ServerEngine::DrawGui()
         }
     }
 
-    {
-        scoped_lock locker {_unloginedPlayersLocker};
+    if (ImGui::CollapsingHeader(strex("Unlogined players ({})###UnloginedPlayers", unlogined_players.size()).c_str())) {
+        int32_t index = 0;
 
-        if (ImGui::CollapsingHeader(strex("Unlogined players ({})###UnloginedPlayers", _unloginedPlayers.size()).c_str())) {
-            int32_t index = 0;
+        for (const auto& player : unlogined_players) {
+            if (player->IsDestroyed()) {
+                continue;
+            }
 
-            for (const auto& player : _unloginedPlayers) {
-                ImGui::PushID(index++);
+            ImGui::PushID(index++);
 
-                auto connection = player->GetConnection();
-                string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
+            auto connection = player->GetConnection();
+            string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
 
-                if (ImGui::TreeNode(label.c_str())) {
-                    if (begin_info_table("##UnloginedSummary")) {
-                        auto connection_diagnostics = connection->GetDiagnostics();
+            if (ImGui::TreeNode(label.c_str())) {
+                if (begin_info_table("##UnloginedSummary")) {
+                    auto connection_diagnostics = connection->GetDiagnostics();
 
-                        info_row("Host", connection->GetHost());
-                        info_row("Port", strex("{}", connection->GetPort()).str());
-                        info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
-                        info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
-                        info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
-                        info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
-                        info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
-                        ImGui::EndTable();
-                    }
-
-                    ImGui::TreePop();
+                    info_row("Host", connection->GetHost());
+                    info_row("Port", strex("{}", connection->GetPort()).str());
+                    info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
+                    info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
+                    info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
+                    info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
+                    info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
+                    ImGui::EndTable();
                 }
 
-                ImGui::PopID();
+                ImGui::TreePop();
             }
+
+            ImGui::PopID();
         }
     }
 

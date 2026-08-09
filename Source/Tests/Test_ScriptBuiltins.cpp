@@ -1565,6 +1565,10 @@ namespace ScriptBuiltins
         same.set(2, a);
         if (d == same) return -4;
 
+        DictComparableKey[] values = d.getValues();
+        if (values.length() != 2) return -8;
+        if (values[0].Value != 1 || values[1].Value != 2) return -9;
+
         if (d.removeValues(b) != 1) return -5;
         if (d.length() != 1) return -6;
 
@@ -1588,6 +1592,10 @@ namespace ScriptBuiltins
         if (d.length() != 2) return -1;
         if (d.get(low) != 10) return -2;
         if (!d.exists(high)) return -3;
+
+        DictComparableKey[] keys = d.getKeys();
+        if (keys.length() != 2) return -8;
+        if (keys[0].Value != 1 || keys[1].Value != 3) return -9;
 
         DictComparableKey same_low = DictComparableKey();
         same_low.Value = 1;
@@ -4377,7 +4385,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         CHECK(dict->IsEmpty());
         CHECK(dict->GetSize() == 0);
         CHECK(dict->GetDictTypeId() == int_dict_type->GetTypeId());
-        CHECK(dict->GetDictObjectType().get() == int_dict_type.get());
+        CHECK(dict->GetDictObjectType() == int_dict_type);
         CHECK(dict->GetRefCount() == 1);
         CHECK_FALSE(dict->GetFlag());
 

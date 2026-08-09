@@ -1557,6 +1557,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
 
 #endif
 
+#if FO_EFFEKSEER_PARTICLES
 
 // The compiler writes a distinct binary section per authored value type, so these cases walk the type
 // switches directly instead of going through the runtime: one node per type, compiled as a whole project.
@@ -1783,7 +1784,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Ring>
         </DrawingValues>)",
                 shape_type)
-                .str();
+                              .str();
 
             INFO(body);
             EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
@@ -1810,7 +1811,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Track>
         </DrawingValues>)",
                 renderer_type)
-                .str();
+                              .str();
 
             INFO(body);
             EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
@@ -1827,7 +1828,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Ribbon>
         </DrawingValues>)",
                 color_all)
-                .str();
+                              .str();
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -1940,7 +1941,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <Type>5</Type>
           <ViewOffset><Distance><Max>5</Max><Min>1</Min></Distance></ViewOffset>
         </LocationValues>)")
-                         .Binary.empty());
+                .Binary.empty());
     }
 
     SECTION("AbsoluteLocationFields")
@@ -1957,7 +1958,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <Rotation><X>0</X><Y>0</Y><Z>0</Z></Rotation>
         </LocationAbsValues>)",
                 field_type)
-                .str();
+                              .str();
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -1982,7 +1983,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <SphereRadius>4</SphereRadius>
         </KillRulesValues>)",
                 rule_type)
-                .str();
+                              .str();
 
             INFO(body);
             EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
@@ -2066,7 +2067,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <DrawingPriority>2</DrawingPriority>
         </DepthValues>)",
                 uv_type)
-                .str();
+                              .str();
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -2093,7 +2094,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Sound>
         </SoundValues>)",
                 sound_type)
-                .str();
+                              .str();
 
             INFO(body);
             EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
@@ -2119,5 +2120,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
         CHECK_FALSE(CompileEffekseerNodeBody(random_colour).Binary.empty());
     }
 }
+
+#endif
 
 FO_END_NAMESPACE

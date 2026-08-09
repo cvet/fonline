@@ -188,7 +188,7 @@ private:
     ~ScriptDict();
 
     auto PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> ti) const -> nptr<ScriptDictTypeData>;
-    auto MakeSubTypeArray(int32_t sub_type_index, int32_t sub_type_id) const -> refcount_ptr<ScriptArray>;
+    auto MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name) const -> refcount_ptr<ScriptArray>;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32_t _keyTypeId;

@@ -27,7 +27,7 @@ EXCLUDED_SOURCE_FRAGMENTS = (
 # current build emit no coverage mapping at all and are already reported separately as untouched
 # (this is how Direct3D rendering drops out of a Linux run). The table below covers the other case:
 # sources that DO compile here but that a headless test process cannot execute, because they need a
-# real GPU context, an audio device, a video decoder, or physical network/database hardware.
+# real GPU context, an audio device, a video decoder, or an external service/database endpoint.
 #
 # Counting those against a headless run measures the harness, not the code, so they are reported as
 # their own bucket instead of being folded into the headline. The summary still prints the combined

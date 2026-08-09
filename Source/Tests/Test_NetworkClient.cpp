@@ -33,8 +33,8 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
-#include "NetworkServer.h"
 #include "NetworkClient.h"
+#include "NetworkServer.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -391,8 +391,7 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
 
                 return downstream;
             },
-            [&server_received](const_span<uint8_t> buf) { server_received.fetch_add(buf.size()); },
-            []() {});
+            [&server_received](const_span<uint8_t> buf) { server_received.fetch_add(buf.size()); }, []() {});
 
         for (int32_t i = 0; i < 500 && server_received.load() == 0; i++) {
             server_conn->Dispatch();
@@ -478,10 +477,10 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
         }
     }
 
-    if (connected) {
-        vector<uint8_t> outgoing {1, 2, 3, 4, 5};
-        CHECK(conn->SendData(outgoing) == outgoing.size());
-    }
+    REQUIRE(connected);
+
+    vector<uint8_t> outgoing {1, 2, 3, 4, 5};
+    CHECK(conn->SendData(outgoing) == outgoing.size());
 
     conn->Disconnect();
     CHECK_FALSE(conn->IsConnected());

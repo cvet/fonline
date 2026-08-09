@@ -40,22 +40,22 @@
 #include "AngelScriptScripting.h"
 #include "AnimationViewer.h"
 #include "Application.h"
-#include "ImGuiStuff.h"
 #include "Baker.h"
 #include "Client.h"
 #include "CritterView.h"
 #include "DataSerialization.h"
 #include "DefaultSprites.h"
 #include "EffectBaker.h"
+#include "ImGuiStuff.h"
 #include "ModelAnimationData.h"
 #include "ModelInfoBaker.h"
-#include "ModelSourceLoader.h"
-#include "SettingsStorage.h"
 #include "ModelManager.h"
 #include "ModelMeshBaker.h"
 #include "ModelMeshData.h"
+#include "ModelSourceLoader.h"
 #include "ModelSprites.h"
 #include "PlayerView.h"
+#include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -1254,9 +1254,9 @@ namespace ClientEngineTest
         ipos mouse = Game.MousePos;
         bool mouseAvailable = Game.IsMouseAvailable();
         bool fullscreen = Game.IsFullscreen();
-        if (mouse.x < -100000 || mouse.y < -100000) return -9;
-        if (mouseAvailable && !mouseAvailable) return -10;
-        if (fullscreen && !fullscreen) return -11;
+        if (mouse.x != 0 || mouse.y != 0) return -9;
+        if (mouseAvailable) return -10;
+        if (fullscreen) return -11;
 
         Game.GetGamepadState();
 
@@ -1721,7 +1721,7 @@ BoundsMaxY = 1 1 1 1
 BoundsMaxZ = 1 1 1 1
 )",
             model_path)
-                              .str();
+                               .str();
 
         return vector<uint8_t>(anim_info.begin(), anim_info.end());
     }
@@ -1736,35 +1736,34 @@ BoundsMaxZ = 1 1 1 1
         // A one-line description leaves the whole layer machinery unreachable: animation-data layers,
         // per-animation speeds and the link transforms are all authored here and nowhere else
         string mesh_name = strex(mesh_path).extract_file_name().str();
-        string description = strex(
-            "Model {}\n"
-            "Anim 1 1 {} Base\n"
-            "Anim 1 3 {} Base\n"
-            "Anim 1 5 {} Base\n"
-            "Anim 1 17 {} Base\n"
-            "AnimSpeed 1 1 1.5\n"
-            "AnimSpeed 1 3 0.5\n"
-            "AnimLayerValue 1 1 1 1\n"
-            "AnimLayerValue 1 3 1 2\n"
-            "Layer 1\n"
-            "Value 1\n"
-            "Root\n"
-            "Link Root\n"
-            "Scale 1.5\n"
-            "RotX+ 15.0\n"
-            "MoveY* 2.0\n"
-            "ScaleZ+ 0.25\n"
-            "Speed* 1.25\n"
-            "Value 2\n"
-            "Root\n"
-            "Link Root\n"
-            "DisableLayer 2\n"
-            "DisableMesh All\n"
-            "Layer 2\n"
-            "Value 1\n"
-            "Root\n"
-            "Link Root\n"
-            "Scale* 0.5\n",
+        string description = strex("Model {}\n"
+                                   "Anim 1 1 {} Base\n"
+                                   "Anim 1 3 {} Base\n"
+                                   "Anim 1 5 {} Base\n"
+                                   "Anim 1 17 {} Base\n"
+                                   "AnimSpeed 1 1 1.5\n"
+                                   "AnimSpeed 1 3 0.5\n"
+                                   "AnimLayerValue 1 1 1 1\n"
+                                   "AnimLayerValue 1 3 1 2\n"
+                                   "Layer 1\n"
+                                   "Value 1\n"
+                                   "Root\n"
+                                   "Link Root\n"
+                                   "Scale 1.5\n"
+                                   "RotX+ 15.0\n"
+                                   "MoveY* 2.0\n"
+                                   "ScaleZ+ 0.25\n"
+                                   "Speed* 1.25\n"
+                                   "Value 2\n"
+                                   "Root\n"
+                                   "Link Root\n"
+                                   "DisableLayer 2\n"
+                                   "DisableMesh All\n"
+                                   "Layer 2\n"
+                                   "Value 1\n"
+                                   "Root\n"
+                                   "Link Root\n"
+                                   "Scale* 0.5\n",
             mesh_name, mesh_name, mesh_name, mesh_name, mesh_name)
                                  .str();
 
@@ -2089,7 +2088,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetBoneSpritePos(root_bone));
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
-        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) {}));
+        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) { }));
     }
 
     SECTION("LayerValuesDriveTheAnimationDataAndLinkTransforms")
@@ -3263,7 +3262,6 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());
 }
-
 
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {

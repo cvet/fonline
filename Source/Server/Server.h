@@ -255,7 +255,7 @@ private:
     };
 
     void SyncPoint();
-    void SyncWholeWorld(SyncContext& ctx);
+    void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessUnloginedPlayer(ptr<Player> unlogined_player);

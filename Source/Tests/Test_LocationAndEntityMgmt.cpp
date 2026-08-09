@@ -1632,7 +1632,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     // Custom inner entities are written by one server and read back by the next one, and that read path -
     // the inner-entities entry walk and the per-entity load - runs nowhere else in the suite: every other
     // test in this file keeps the world in memory for the lifetime of one engine.
-    auto storage_dir = std::filesystem::temp_directory_path() / string {"fo_engine_custom_entity_reload_test"};
+    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
     std::filesystem::create_directories(storage_dir);
@@ -2199,7 +2199,7 @@ TEST_CASE("TimeEventManagerFiresScriptCallbacks")
         (void)start_self_event("LocEntity::OnCritterThrowingTimer", timespan {std::chrono::seconds {5}});
 
         auto prev_callback = GetExceptionCallback();
-        SetExceptionCallback([](string_view, const CatchedStackTraceData&, bool) {});
+        SetExceptionCallback([](string_view, const CatchedStackTraceData&, bool) { });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         backdate_all_events();
@@ -2301,7 +2301,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
 
     REQUIRE(ready.size() == 1);
     CHECK(ready.front().Event->Id == ready_id);
-    CHECK(ready.front().OwnerEntity.get() == cr.get());
+    CHECK(ready.front().OwnerEntity == cr);
     REQUIRE(time_until_next.has_value());
     CHECK(time_until_next.value() > timespan {});
 

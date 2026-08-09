@@ -197,14 +197,12 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         CHECK_THROWS(audio->SetSource(nullptr));
     }
 
-    SECTION("InputDrainsSimulatedEvents")
+    SECTION("InputIgnoresSimulatedEvents")
     {
         ptr<IAppInput> input = app->MainWindow.GetInput();
 
         InputEvent drained;
-
-        while (input->PollEvent(drained)) {
-        }
+        CHECK_FALSE(input->PollEvent(drained));
 
         InputEvent pushed;
         pushed.Type = InputEvent::EventType::KeyDownEvent;
@@ -212,19 +210,10 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         pushed.KeyDown.Text = "a";
         input->PushEvent(pushed, false);
 
-        // The queue only yields the pushed event once the frame that owns it is pumped
-        bool got_event = false;
-
-        for (int32_t i = 0; i < 4 && !got_event; i++) {
-            got_event = input->PollEvent(drained);
-
-            if (!got_event) {
-                GetApp()->BeginFrame();
-                GetApp()->EndFrame();
-            }
-        }
-
-        ignore_unused(got_event);
+        // The true headless frontend has no event queue; embedders use GetAppWindowStub when they need
+        // simulated input. Pushing into the process-global headless input is therefore a documented no-op.
+        CHECK_FALSE(input->PollEvent(drained));
+        input->ClearEvents();
 
         // The headless input has no system clipboard behind it, so a write does not become readable
         input->SetClipboardText("headless clipboard");
@@ -332,8 +321,16 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         InputEvent ev;
         CHECK_FALSE(input->PollEvent(ev));
 
-        input->PushEvent(InputEvent {}, false);
-        ignore_unused(input->PollEvent(ev));
+        InputEvent pushed;
+        pushed.Type = InputEvent::EventType::KeyDownEvent;
+        pushed.KeyDown.Code = KeyCode::A;
+        pushed.KeyDown.Text = "a";
+        input->PushEvent(pushed, false);
+        REQUIRE(input->PollEvent(ev));
+        CHECK(ev.Type == InputEvent::EventType::KeyDownEvent);
+        CHECK(ev.KeyDown.Code == KeyCode::A);
+        CHECK(ev.KeyDown.Text == "a");
+        CHECK_FALSE(input->PollEvent(ev));
 
         ptr<IAppAudio> audio = window->GetAudio();
         CHECK_FALSE(audio->IsEnabled());

@@ -710,26 +710,17 @@ auto ScriptDict::GetValue(int32_t index) const -> ptr<void>
     return it->second;
 }
 
-auto ScriptDict::MakeSubTypeArray(int32_t sub_type_index, int32_t sub_type_id) const -> refcount_ptr<ScriptArray>
+auto ScriptDict::MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name) const -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType(numeric_cast<AngelScript::asUINT>(sub_type_index));
-    string arr_type_name;
+    nptr<AngelScript::asIScriptFunction> accessor = _typeInfo->GetMethodByName(accessor_name);
+    FO_VERIFY_AND_THROW(accessor, "Dictionary array accessor not found", accessor_name);
 
-    if (sub_type) {
-        arr_type_name = strex("{}{}[]", sub_type->GetName(), (sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
-    }
-    else {
-        // Primitive sub-types carry no type info, so the engine declaration is the only available name
-        nptr<const char> sub_type_decl = engine->GetTypeDeclaration(sub_type_id, true);
-        FO_VERIFY_AND_THROW(sub_type_decl, "Dictionary sub-type declaration not found", sub_type_id);
-        arr_type_name = strex("{}[]", sub_type_decl.get());
-    }
-
-    auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
-    FO_VERIFY_AND_THROW(arr_type, "Array type not found", arr_type_name);
+    nptr<AngelScript::asITypeInfo> arr_type = engine->GetTypeInfoById(accessor->GetReturnTypeId());
+    FO_VERIFY_AND_THROW(arr_type, "Dictionary array accessor return type not found", accessor_name);
+    FO_VERIFY_AND_THROW(arr_type->GetSubTypeCount() == 1 && arr_type->GetSubTypeId() == sub_type_id, "Dictionary array accessor has unexpected sub-type", accessor_name, sub_type_id);
     auto arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
@@ -740,7 +731,7 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto arr = MakeSubTypeArray(0, _keyTypeId);
+    auto arr = MakeSubTypeArray(_keyTypeId, "getKeys");
 
     for (ptr<void> key : _data | std::views::keys) {
         arr->InsertLast(key);
@@ -753,7 +744,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto arr = MakeSubTypeArray(1, _valueTypeId);
+    auto arr = MakeSubTypeArray(_valueTypeId, "getValues");
 
     for (ptr<void> value : _data | std::views::values) {
         arr->InsertLast(value);

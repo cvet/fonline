@@ -92,7 +92,7 @@ namespace ImGuiTestHarness
             string child_prefix = strex("{}/{}_", window->Name, child_label).str();
             nptr<ImGuiWindow> found;
 
-            for (ImGuiWindow* candidate : ImGui::GetCurrentContext()->Windows) {
+            for (ptr<ImGuiWindow> candidate : ImGui::GetCurrentContext()->Windows) {
                 if (string_view {candidate->Name}.starts_with(child_prefix)) {
                     found = candidate;
                     break;

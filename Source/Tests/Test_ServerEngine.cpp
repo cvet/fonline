@@ -38,9 +38,9 @@
 #include "Baker.h"
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Logging.h"
 #include "Movement.h"
-#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 
@@ -893,7 +893,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
     // Everything else in this suite runs against an in-memory database, so the world-load path that a real
     // server takes on every restart never runs. A file-backed JSON storage makes it reachable: one server
     // writes the world, a second one on the same directory has to read it back.
-    auto storage_dir = std::filesystem::temp_directory_path() / string {"fo_engine_world_reload_test"};
+    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_world_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
     std::filesystem::create_directories(storage_dir);
@@ -3062,6 +3062,9 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
         (void)server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
         (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
         (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+
+        shared_ptr<NetworkServerConnection> unlogined_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        (void)server->CreateUnloginedPlayer(std::move(unlogined_connection));
     }
 
     REQUIRE(server->EntityMngr.GetCrittersCount() >= 1);
@@ -3132,6 +3135,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     CHECK(drawn_text.find("Data base") != string::npos);
     CHECK(drawn_text.find("Memory documents") != string::npos);
     CHECK(drawn_text.find("Performance details") != string::npos);
+    CHECK(drawn_text.find("Unlogined players (1)") != string::npos);
 }
 
 FO_END_NAMESPACE
