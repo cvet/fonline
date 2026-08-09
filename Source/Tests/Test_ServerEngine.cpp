@@ -2949,4 +2949,91 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     }
 }
 
+// Minimal accessor for driving NativeDataCaller::ConvertArg directly. The entity branch reads its
+// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body.
+class BoundaryArgAccessor final : public DataAccessor
+{
+public:
+    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return 0; }
+};
+
+TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(static_cast<bool>(setup_ctx));
+
+    BoundaryArgAccessor accessor;
+
+    auto convert = [&accessor](ptr<Critter> cr) {
+        Entity* slot = cr.get();
+        optional<ptr<Critter>> temp;
+        return NativeDataCaller::ConvertArg<ptr<Critter>, optional<ptr<Critter>>>(make_ptr(&slot).void_cast(), accessor, temp);
+    };
+
+    SECTION("LiveCoveredArgumentConverts")
+    {
+        auto cr = server->CreateCritter(critter_pid, false);
+        setup_ctx->EnsureEntitySynced(cr);
+
+        CHECK(convert(cr) == cr);
+
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    SECTION("DestroyedButStillCoveredNamesTheDestroyedHandle")
+    {
+        // The destroyer keeps the victim's own lock, so this is the caller that destroyed the entity
+        // and kept using the handle — the one case the destroyed-entity message actually describes.
+        auto cr = server->CreateCritter(critter_pid, false);
+        setup_ctx->EnsureEntitySynced(cr);
+        server->CrMngr.DestroyCritter(cr);
+
+        REQUIRE(IsEntityAccessValid(cr));
+        CHECK_THROWS_WITH(convert(cr), Catch::Matchers::ContainsSubstring("destroyed entity"));
+    }
+
+    SECTION("DestroyedAndUncoveredNamesTheMissingCover")
+    {
+        // Destroy inside a nested script context so its locks drain on exit. What is left is the shape
+        // a racing caller sees, and the actionable defect there is the absent cover, not the symptom.
+        // Hold a ref: the nested context drops the last one when it releases, and the argument a racing
+        // caller still holds is exactly what has to stay observable here.
+        refcount_nptr<Critter> cr;
+
+        server->RunScriptContext([&] {
+            auto nested_ctx = server->GetCurrentSyncContext();
+            REQUIRE(static_cast<bool>(nested_ctx));
+            ptr<Critter> created = server->CreateCritter(critter_pid, false);
+            cr = created.hold_ref();
+            nested_ctx->EnsureEntitySynced(created);
+            server->CrMngr.DestroyCritter(created);
+        });
+
+        REQUIRE(static_cast<bool>(cr));
+        REQUIRE_FALSE(IsEntityAccessValid(cr));
+        CHECK_THROWS_WITH(convert(cr.as_ptr()), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+    }
+}
+
 FO_END_NAMESPACE

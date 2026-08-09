@@ -1669,50 +1669,69 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
     });
 }
 
+// A script can test an entity for liveness and then call here, but never both at once, so a concurrent
+// destroy can always land in between. These primitives exist to answer "is this entity still reachable",
+// which is why they take the destroyed-argument exemption: rejecting the argument would make their
+// wrappers' recoverable-false contract impossible to honour. A destroyed entity is dropped rather than
+// synchronized — locking a dead entity buys nothing — and the wrapper reports the failure from its own
+// post-call check. Everything below passes the survivors to SyncEntities, which skips the empty slots.
+static auto SyncableOrNull(ptr<ServerEntity> entity) -> nptr<ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return entity->IsDestroyed() ? nptr<ServerEntity> {} : nptr<ServerEntity> {entity};
+}
+
 // SyncScope: replaces current cover with entity plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 1> entities {entity};
+    array<nptr<ServerEntity>, 1> entities {SyncableOrNull(entity)};
     ctx->SyncEntities(entities);
 }
 
 // SyncScope: replaces current cover with both entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 2> entities {entity1, entity2};
+    array<nptr<ServerEntity>, 2> entities {SyncableOrNull(entity1), SyncableOrNull(entity2)};
     ctx->SyncEntities(entities);
 }
 
 // SyncScope: replaces current cover with all entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
+    array<nptr<ServerEntity>, 3> entities {SyncableOrNull(entity1), SyncableOrNull(entity2), SyncableOrNull(entity3)};
     ctx->SyncEntities(entities);
 }
 
 // SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
-    vector<nptr<ServerEntity>> non_null;
-    non_null.reserve(entities.size());
+    vector<nptr<ServerEntity>> syncable;
+    syncable.reserve(entities.size());
 
     for (auto entity : entities) {
         if (!entity) {
             throw ScriptException("Entity in array arg is null");
         }
 
-        non_null.emplace_back(entity);
+        // A null argument is still a caller error, but an entity destroyed since the caller checked it
+        // is the race described above and is simply dropped.
+        if (entity->IsDestroyed()) {
+            continue;
+        }
+
+        syncable.emplace_back(entity);
     }
 
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(non_null);
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries
