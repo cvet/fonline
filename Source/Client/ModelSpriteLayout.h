@@ -40,6 +40,7 @@
 FO_BEGIN_NAMESPACE
 
 constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
+constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = 2048;
 
 struct ModelSpriteLayout
 {
