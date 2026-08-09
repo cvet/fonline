@@ -2985,10 +2985,14 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 
     BoundaryArgAccessor accessor;
 
+    // The script ABI hands an entity to native code as a pointer-sized handle slot holding the Entity
+    // base handle, which ConvertArg reads back through ReadTypedHandleSlot; a borrow wrapper is exactly
+    // that pointer, so it stands in as the slot without unwrapping. Production instantiates the scratch
+    // parameter as optional<...> for the branches that need it — the entity branch never touches it.
     auto convert = [&accessor](ptr<Critter> cr) {
-        Entity* slot = cr.get();
-        optional<ptr<Critter>> temp;
-        return NativeDataCaller::ConvertArg<ptr<Critter>, optional<ptr<Critter>>>(make_ptr(&slot).void_cast(), accessor, temp);
+        nptr<Entity> slot = cr;
+        nptr<Critter> unused_scratch;
+        return NativeDataCaller::ConvertArg<ptr<Critter>, nptr<Critter>>(make_ptr(&slot).void_cast(), accessor, unused_scratch);
     };
 
     SECTION("LiveCoveredArgumentConverts")
