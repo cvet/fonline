@@ -338,11 +338,24 @@ rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
 stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
-observer in constant time and marks the derived free-rectangle list dirty. The
-next allocation rebuilds that list once from all still-live rectangles, in a
-deterministic order, so batches of unloads are coalesced and no surviving
-sprite, pixel region, or UV ever moves. This runtime-only layout change does
-not add settings or alter sprite-resource serialization.
+observer and pushes the freed rectangle straight back into the free list, both
+in constant time. The released rectangle cannot overlap any current free
+rectangle — allocating it split every rectangle that did — so the list stays
+consistent for placement and splitting; what a release does not do is coalesce
+with neighbouring free space, so the list drifts away from the exact maximal
+set as a session churns. Two bounded operations correct that drift, and neither
+runs on the hot path. `DefragmentFreeRectangles` rebuilds the exact set from the
+live allocations, and runs only when a placement misses, so a fragmented but not
+genuinely full page is never abandoned for a fresh one. A prune drops rectangles
+contained in another, and runs only once the list has grown well past the size
+the *previous* prune produced — pacing it against the live allocation count
+instead lets a page whose maximal free set exceeds that count prune on every
+allocation while removing nothing. The prune indexes its keepers by the coarse
+atlas cells they span and tests a candidate only against the keepers covering
+its top-left corner, which is exact because nothing can contain the candidate
+without covering that corner. No surviving sprite, pixel region, or UV ever
+moves. This runtime-only layout behaviour adds no settings and does not alter
+sprite-resource serialization.
 
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after

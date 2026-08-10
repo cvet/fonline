@@ -102,6 +102,7 @@ public:
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _usedArea == 0; }
     [[nodiscard]] auto GetUsedArea() const noexcept -> size_t { return _usedArea; }
+    [[nodiscard]] auto GetPruneCount() const noexcept -> size_t { return _pruneCount; }
 
     auto FindBestFitScore(isize32 size) -> optional<FitScore>;
     auto Allocate(isize32 size) -> unique_del_nptr<Allocation>;
@@ -117,11 +118,12 @@ private:
     auto FindBestPlacement(isize32 size) const noexcept -> optional<Placement>;
     auto AcquireAllocation() -> ptr<Allocation>;
     void Release(ptr<Allocation> allocation) noexcept;
-    void RebuildFreeRectangles();
+    void DefragmentFreeRectangles();
+    auto CanDefragment() const noexcept -> bool;
+    void PruneFreeRectangles(vector<irect32>& free_rectangles);
     void DrawAllocationOverlay(const Allocation& allocation, span<ucolor> pixels) const;
 
     static void SplitFreeRectangles(vector<irect32>& free_rectangles, irect32 used_rectangle);
-    static void PruneFreeRectangles(vector<irect32>& free_rectangles);
     static void DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_size, ipos32 from, ipos32 to, ucolor color) noexcept;
     static auto Intersects(irect32 first, irect32 second) noexcept -> bool;
     static auto Contains(irect32 outer, irect32 inner) noexcept -> bool;
@@ -133,6 +135,8 @@ private:
     vector<ptr<Allocation>> _activeAllocations {};
     vector<ptr<Allocation>> _availableAllocations {};
     size_t _usedArea {};
+    size_t _freeRectanglesAtLastPrune {};
+    size_t _pruneCount {};
     bool _freeRectanglesDirty {};
 };
 

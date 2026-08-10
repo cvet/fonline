@@ -247,7 +247,7 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #if FO_WINDOWS
     ULONG skip_count = 1u + skip;
     constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
-    void* raw_frames[REQUEST_COUNT] = {};
+    void* raw_frames[REQUEST_COUNT];
     USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
     out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
     uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
